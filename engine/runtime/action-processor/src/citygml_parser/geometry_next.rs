@@ -183,13 +183,15 @@ fn geometry_node(node: &RawNode, registry: &mut GeomRegistry) -> Option<GeomNode
         return None;
     };
     let id = raw_gml_id(node);
+    let file = node.source_url.as_str().to_string();
     let geom = if ty.is_inline() {
-        let (geometry, ids) = build_leaf(node, &ty)?;
-        GeomNode::Resolved(geometry, ids)
+        let (geometry, faces) = build_leaf(node, &ty)?;
+        GeomNode::Resolved(geometry, LeafIds { file, faces })
     } else {
         GeomNode::Unresolved(Unresolved {
             ty,
             id: id.clone(),
+            file,
             members: collect_members(node, registry),
         })
     };
@@ -238,7 +240,7 @@ fn collect_members(node: &RawNode, registry: &mut GeomRegistry) -> Vec<(Role, Ge
 /// Parse an inline geometry leaf into a concrete geometry and the per-face gml:ids
 /// captured alongside it, dispatching on its type. Container types and unsupported
 /// leaves yield `None`.
-fn build_leaf(node: &RawNode, ty: &GmlGeometryType) -> Option<(Euclidean3DGeometry, LeafIds)> {
+fn build_leaf(node: &RawNode, ty: &GmlGeometryType) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
     match ty {
         GmlGeometryType::Point => build_point(node),
         GmlGeometryType::LineString => build_line_string(node),
@@ -257,7 +259,7 @@ fn build_leaf(node: &RawNode, ty: &GmlGeometryType) -> Option<(Euclidean3DGeomet
 
 /// Build a `Point` from the element's first coordinate; `None` if it carries none.
 /// A point has no faces, so no gml:ids are captured.
-fn build_point(node: &RawNode) -> Option<(Euclidean3DGeometry, LeafIds)> {
+fn build_point(node: &RawNode) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
     let coords = gather_coords(node);
     coords.first().map(|&c| {
         (
@@ -269,7 +271,7 @@ fn build_point(node: &RawNode) -> Option<(Euclidean3DGeometry, LeafIds)> {
 
 /// Build a `LineString` from the element's coordinates; `None` if it carries none.
 /// A line has no faces, so no gml:ids are captured.
-fn build_line_string(node: &RawNode) -> Option<(Euclidean3DGeometry, LeafIds)> {
+fn build_line_string(node: &RawNode) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
     let coords = gather_coords(node);
     if coords.is_empty() {
         return None;
@@ -280,7 +282,7 @@ fn build_line_string(node: &RawNode) -> Option<(Euclidean3DGeometry, LeafIds)> {
 
 /// Build a single-ring `Polygon` from a `LinearRing`'s coordinates; `None` if it
 /// carries none. The one face's sole ring id is the `LinearRing`'s own gml:id.
-fn build_ring_polygon(node: &RawNode) -> Option<(Euclidean3DGeometry, LeafIds)> {
+fn build_ring_polygon(node: &RawNode) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
     let exterior = gather_coords(node);
     if exterior.is_empty() {
         return None;
@@ -294,7 +296,7 @@ fn build_ring_polygon(node: &RawNode) -> Option<(Euclidean3DGeometry, LeafIds)> 
 }
 
 /// Build a `Polygon` from an element's exterior and interior ring properties.
-fn build_polygon(node: &RawNode) -> Option<(Euclidean3DGeometry, LeafIds)> {
+fn build_polygon(node: &RawNode) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
     let (polygon, face) = polygon_from_rings(node)?;
     Some((Euclidean3DGeometry::Polygon(Box::new(polygon)), vec![face]))
 }
@@ -304,10 +306,10 @@ fn build_polygon(node: &RawNode) -> Option<(Euclidean3DGeometry, LeafIds)> {
 /// `FaceIds` per triangle, in triangle order: each face's surface id the whole
 /// surface's own gml:id (a texture drapes the surface, not a single triangle) and
 /// its sole ring id the triangle's exterior `LinearRing` gml:id.
-fn build_triangulated(node: &RawNode) -> Option<(Euclidean3DGeometry, LeafIds)> {
+fn build_triangulated(node: &RawNode) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
     let surface = raw_gml_id(node);
     let mut soup: Vec<[f64; 3]> = Vec::new();
-    let mut face_ids: LeafIds = Vec::new();
+    let mut face_ids: Vec<FaceIds> = Vec::new();
     for prop in element_children(node) {
         if matches!(local_name(&prop.name.0), "trianglePatches" | "patches") {
             for triangle in element_children(prop) {
@@ -910,10 +912,10 @@ mod tests {
         let GeomNode::Resolved(_, ids) = node else {
             panic!("expected a resolved leaf");
         };
-        assert_eq!(ids.len(), 1);
-        assert_eq!(ids[0].surface.as_deref(), Some("surf1"));
+        assert_eq!(ids.faces.len(), 1);
+        assert_eq!(ids.faces[0].surface.as_deref(), Some("surf1"));
         assert_eq!(
-            ids[0].rings,
+            ids.faces[0].rings,
             vec![Some("ring_ext".to_string()), Some("ring_int".to_string())]
         );
     }
@@ -946,8 +948,8 @@ mod tests {
         let GeomNode::Resolved(_, ids) = node else {
             panic!("expected a resolved leaf");
         };
-        assert_eq!(ids[0].surface.as_deref(), Some("poly1"));
-        assert_eq!(ids[0].rings, vec![Some("ring1".to_string())]);
+        assert_eq!(ids.faces[0].surface.as_deref(), Some("poly1"));
+        assert_eq!(ids.faces[0].rings, vec![Some("ring1".to_string())]);
     }
 
     #[test]
@@ -968,9 +970,9 @@ mod tests {
         let GeomNode::Resolved(_, ids) = &container.members[0].1 else {
             panic!("expected a resolved member leaf");
         };
-        assert_eq!(ids.len(), 1);
-        assert_eq!(ids[0].surface, None);
-        assert_eq!(ids[0].rings, vec![Some("ring1".to_string())]);
+        assert_eq!(ids.faces.len(), 1);
+        assert_eq!(ids.faces[0].surface, None);
+        assert_eq!(ids.faces[0].rings, vec![Some("ring1".to_string())]);
     }
 
     #[test]

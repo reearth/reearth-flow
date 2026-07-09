@@ -24,13 +24,19 @@ use super::resolver::FaceIds;
 use super::utils::{local_name, XmlChild, XmlNode};
 use super::xlink;
 
-/// CityGML appearance indexed by the geometry `gml:id` it targets.
+/// A geometry id qualified by the source file it belongs to: `(file_url, gml_id)`.
+/// An appearance target resolves against the file of the appearance that declares
+/// it, mirroring the file-qualified geometry registry, so identical `gml:id`s in
+/// different files never cross-bind.
+type SurfaceKey = (String, String);
+
+/// CityGML appearance indexed by the file-qualified geometry id it targets.
 #[derive(Default)]
 pub(super) struct AppearanceIndex {
-    /// Per surface gml:id: the styles bound to it, at most one per theme.
-    surfaces: HashMap<String, Vec<SurfaceStyle>>,
-    /// Per `(theme, side, ring gml:id)`: that ring's texture coordinates.
-    ring_uv: HashMap<(String, Side, String), Vec<[f64; 2]>>,
+    /// Per `(file, surface gml:id)`: the styles bound to it, at most one per theme.
+    surfaces: HashMap<SurfaceKey, Vec<SurfaceStyle>>,
+    /// Per `(file, theme, side, ring gml:id)`: that ring's texture coordinates.
+    ring_uv: HashMap<(String, String, Side, String), Vec<[f64; 2]>>,
     /// Unsupported appearance sub-elements already warned about, so each is
     /// reported once per parser run rather than once per occurrence.
     warned: HashSet<&'static str>,
@@ -99,7 +105,7 @@ impl AppearanceIndex {
 
     /// Bind a textured material backed by `raster` and sampled per `sampler` to
     /// `target`'s surface side and record each of its rings' texture coordinates
-    /// under `(theme, side)`.
+    /// under `(file, theme, side)`.
     fn add_texture_target(
         &mut self,
         target: TextureTarget,
@@ -110,22 +116,24 @@ impl AppearanceIndex {
     ) {
         set_side(
             self,
-            &target.surface,
+            target.surface,
             theme,
             side,
             Contribution::Texture(Arc::clone(raster), sampler),
         );
-        for (ring, uv) in target.rings {
-            self.ring_uv.insert((theme.to_string(), side, ring), uv);
+        for ((file, ring), uv) in target.rings {
+            self.ring_uv
+                .insert((file, theme.to_string(), side, ring), uv);
         }
     }
 
     /// Attach the appearance targeting `polygon` to it, assembling per-ring UV from
     /// `rings` (exterior-first, holes-next, matching the polygon's coords).
     ///
-    /// `candidates` are the gml:ids that may carry this polygon's style, most
-    /// specific first: the polygon's own surface id, then its enclosing container
-    /// ids (a `MultiSurface` / `Solid` may bind a material to a whole aggregate).
+    /// `candidates` are the file-qualified ids that may carry this polygon's style,
+    /// most specific first: the polygon's own surface id, then its enclosing
+    /// container ids (a `MultiSurface` / `Solid` may bind a material to a whole
+    /// aggregate). `ring_file` is the file the polygon's ring ids belong to.
     /// Styles are merged per theme with the most specific candidate winning, so a
     /// leaf's own material overrides an inherited container material for that theme
     /// while a container theme the leaf does not carry is still inherited. A
@@ -134,7 +142,8 @@ impl AppearanceIndex {
     pub(super) fn apply_to_polygon(
         &self,
         polygon: &mut Polygon3D,
-        candidates: &[&str],
+        candidates: &[(&str, &str)],
+        ring_file: &str,
         rings: &[Option<String>],
     ) {
         for (surface, style) in self.merged_styles(candidates) {
@@ -142,11 +151,11 @@ impl AppearanceIndex {
             let front = style
                 .front
                 .as_ref()
-                .and_then(|m| self.resolve_side(m, &style.theme, Side::Front, rings));
+                .and_then(|m| self.resolve_side(m, ring_file, &style.theme, Side::Front, rings));
             let back = style
                 .back
                 .as_ref()
-                .and_then(|m| self.resolve_side(m, &style.theme, Side::Back, rings));
+                .and_then(|m| self.resolve_side(m, ring_file, &style.theme, Side::Back, rings));
             let result = match (front, back) {
                 (Some(f), Some(b)) => polygon.set_two_sided_appearance(
                     theme,
@@ -171,16 +180,17 @@ impl AppearanceIndex {
     /// leaf's own material overrides an inherited container material per theme while
     /// a container theme absent from the leaf is still inherited. Each entry pairs
     /// the winning candidate's id (for diagnostics) with its style.
-    fn merged_styles(&self, candidates: &[&str]) -> Vec<(&str, &SurfaceStyle)> {
+    fn merged_styles(&self, candidates: &[(&str, &str)]) -> Vec<(&str, &SurfaceStyle)> {
         let mut seen: HashSet<&str> = HashSet::new();
         let mut out = Vec::new();
-        for id in candidates {
-            let Some((surface, styles)) = self.surfaces.get_key_value(*id) else {
+        for (file, id) in candidates {
+            let key = ((*file).to_string(), (*id).to_string());
+            let Some((surface, styles)) = self.surfaces.get_key_value(&key) else {
                 continue;
             };
             for style in styles {
                 if seen.insert(style.theme.as_str()) {
-                    out.push((surface.as_str(), style));
+                    out.push((surface.1.as_str(), style));
                 }
             }
         }
@@ -193,13 +203,15 @@ impl AppearanceIndex {
     fn resolve_side(
         &self,
         side_material: &SideMaterial,
+        ring_file: &str,
         theme: &str,
         side: Side,
         rings: &[Option<String>],
     ) -> Option<ResolvedSide> {
         let uv = if side_material.is_textured() {
             Some(UvSource::Explicit(
-                self.ring_uv_for(theme, side, rings)?.into_boxed_slice(),
+                self.ring_uv_for(ring_file, theme, side, rings)?
+                    .into_boxed_slice(),
             ))
         } else {
             None
@@ -211,10 +223,11 @@ impl AppearanceIndex {
     }
 
     /// Concatenate the texture coordinates of every `rings` entry under
-    /// `(theme, side)`, in order. `None` if any ring lacks an id or its UV, so a
-    /// partial UV never mismatches the polygon's corner count.
+    /// `(ring_file, theme, side)`, in order. `None` if any ring lacks an id or its
+    /// UV, so a partial UV never mismatches the polygon's corner count.
     fn ring_uv_for(
         &self,
+        ring_file: &str,
         theme: &str,
         side: Side,
         rings: &[Option<String>],
@@ -222,7 +235,12 @@ impl AppearanceIndex {
         let mut out = Vec::new();
         for ring in rings {
             let ring = ring.as_ref()?;
-            let uv = self.ring_uv.get(&(theme.to_string(), side, ring.clone()))?;
+            let uv = self.ring_uv.get(&(
+                ring_file.to_string(),
+                theme.to_string(),
+                side,
+                ring.clone(),
+            ))?;
             out.extend_from_slice(uv);
         }
         Some(out)
@@ -232,8 +250,9 @@ impl AppearanceIndex {
     /// triangles: `faces` gives each triangle's ring in triangle order, from which
     /// one UV coordinate per corner (`3 * triangle_count`) is assembled.
     ///
-    /// `candidates` are the gml:ids that may carry the mesh's style, most specific
-    /// first: the surface's own id, then its enclosing container ids. Styles are
+    /// `candidates` are the file-qualified ids that may carry the mesh's style, most
+    /// specific first: the surface's own id, then its enclosing container ids.
+    /// `ring_file` is the file the mesh's triangle ring ids belong to. Styles are
     /// merged per theme with the most specific candidate winning. A triangular mesh
     /// binds a single side (front preferred, else a lone back); a textured style
     /// whose triangles lack complete UV is skipped rather than attached with a
@@ -241,7 +260,8 @@ impl AppearanceIndex {
     pub(super) fn apply_to_triangular_mesh(
         &self,
         mesh: &mut TriangularMesh3D,
-        candidates: &[&str],
+        candidates: &[(&str, &str)],
+        ring_file: &str,
         faces: &[FaceIds],
     ) {
         for (surface, style) in self.merged_styles(candidates) {
@@ -251,7 +271,7 @@ impl AppearanceIndex {
                 (None, None) => continue,
             };
             let uv = if side_material.is_textured() {
-                match self.mesh_uv(&style.theme, side, faces) {
+                match self.mesh_uv(ring_file, &style.theme, side, faces) {
                     Some(uv) => Some(UvSource::Explicit(uv.into_boxed_slice())),
                     None => continue,
                 }
@@ -268,15 +288,27 @@ impl AppearanceIndex {
     }
 
     /// Concatenate the first three texture coordinates of every triangle's ring
-    /// under `(theme, side)`, in triangle order, giving `3 * triangle_count`
-    /// corners to match the welded soup (each triangle keeps its first three
-    /// vertices). `None` if any triangle lacks a ring id, its UV, or a full three
-    /// coordinates, so a partial UV never mismatches the mesh corner count.
-    fn mesh_uv(&self, theme: &str, side: Side, faces: &[FaceIds]) -> Option<Vec<[f64; 2]>> {
+    /// under `(ring_file, theme, side)`, in triangle order, giving `3 *
+    /// triangle_count` corners to match the welded soup (each triangle keeps its
+    /// first three vertices). `None` if any triangle lacks a ring id, its UV, or a
+    /// full three coordinates, so a partial UV never mismatches the mesh corner
+    /// count.
+    fn mesh_uv(
+        &self,
+        ring_file: &str,
+        theme: &str,
+        side: Side,
+        faces: &[FaceIds],
+    ) -> Option<Vec<[f64; 2]>> {
         let mut out = Vec::with_capacity(faces.len() * 3);
         for face in faces {
             let ring = face.rings.first()?.as_ref()?;
-            let uv = self.ring_uv.get(&(theme.to_string(), side, ring.clone()))?;
+            let uv = self.ring_uv.get(&(
+                ring_file.to_string(),
+                theme.to_string(),
+                side,
+                ring.clone(),
+            ))?;
             if uv.len() < 3 {
                 return None;
             }
@@ -348,12 +380,12 @@ fn side_of(surface_data: &XmlNode) -> Side {
 /// a surface carrying both keeps both, so its texture is modulated by its colour.
 fn set_side(
     index: &mut AppearanceIndex,
-    surface: &str,
+    surface: SurfaceKey,
     theme: &str,
     side: Side,
     contribution: Contribution,
 ) {
-    let styles = index.surfaces.entry(surface.to_string()).or_default();
+    let styles = index.surfaces.entry(surface).or_default();
     let i = match styles.iter().position(|s| s.theme == theme) {
         Some(i) => i,
         None => {
@@ -481,19 +513,20 @@ fn white_phong() -> PhongMaterial {
     }
 }
 
-/// A texture bound to one surface: the surface's `gml:id` and each of its rings'
-/// texture coordinates. The two CityGML encodings are normalized to this shape so
-/// binding the material and recording the UV happen through one path.
+/// A texture bound to one surface: the surface's file-qualified id and each of its
+/// rings' file-qualified id with its texture coordinates. The two CityGML encodings
+/// are normalized to this shape so binding the material and recording the UV happen
+/// through one path.
 struct TextureTarget {
-    surface: String,
-    rings: Vec<(String, Vec<[f64; 2]>)>,
+    surface: SurfaceKey,
+    rings: Vec<(SurfaceKey, Vec<[f64; 2]>)>,
 }
 
 /// CityGML 2.0 texture target: `<app:target uri="#surface">` wrapping a
 /// `TexCoordList` of `<app:textureCoordinates ring="#ring">`, where surface and
-/// ring are `xlink` attributes.
+/// ring are `xlink` attributes resolved against the target element's own file.
 fn inline_target(target: &XmlNode) -> Option<TextureTarget> {
-    let surface = strip_hash(attr(target, "uri")?).to_string();
+    let surface = target_key(attr(target, "uri")?, &target.source_url)?;
     let mut rings = Vec::new();
     for coord_list in child_elements(target) {
         if local_name(&coord_list.name.0) != "TexCoordList" {
@@ -503,11 +536,11 @@ fn inline_target(target: &XmlNode) -> Option<TextureTarget> {
             if local_name(&tc.name.0) != "textureCoordinates" {
                 continue;
             }
-            let Some(ring) = attr(tc, "ring").map(strip_hash) else {
+            let Some(ring) = attr(tc, "ring").and_then(|r| target_key(r, &tc.source_url)) else {
                 continue;
             };
             if let Some(uv) = parse_uv(&text_of(tc)) {
-                rings.push((ring.to_string(), uv));
+                rings.push((ring, uv));
             }
         }
     }
@@ -518,7 +551,7 @@ fn inline_target(target: &XmlNode) -> Option<TextureTarget> {
 /// `<app:target>#surface` and a nested `textureParameterization` / `TexCoordList`
 /// whose `textureCoordinates` and `ring` are positional siblings.
 fn texture_association(assoc: &XmlNode) -> Option<TextureTarget> {
-    let surface = strip_hash(&child_text(assoc, "target")?).to_string();
+    let surface = target_key(&child_text(assoc, "target")?, &assoc.source_url)?;
     let mut rings = Vec::new();
     for param in child_elements(assoc) {
         if local_name(&param.name.0) != "textureParameterization" {
@@ -538,13 +571,17 @@ fn texture_association(assoc: &XmlNode) -> Option<TextureTarget> {
 /// coordinate list keeps its slot (empty) so later pairs stay aligned; it is
 /// dropped later when the UV length fails to match the ring. A list whose ring and
 /// coordinate counts differ cannot be aligned positionally, so it is skipped whole.
-fn tex_coord_pairs(coord_list: &XmlNode) -> Vec<(String, Vec<[f64; 2]>)> {
+fn tex_coord_pairs(coord_list: &XmlNode) -> Vec<(SurfaceKey, Vec<[f64; 2]>)> {
     let mut coords: Vec<Vec<[f64; 2]>> = Vec::new();
-    let mut rings: Vec<String> = Vec::new();
+    let mut rings: Vec<SurfaceKey> = Vec::new();
     for child in child_elements(coord_list) {
         match local_name(&child.name.0) {
             "textureCoordinates" => coords.push(parse_uv(&text_of(child)).unwrap_or_default()),
-            "ring" => rings.push(strip_hash(text_of(child).trim()).to_string()),
+            "ring" => {
+                if let Some(key) = target_key(&text_of(child), &child.source_url) {
+                    rings.push(key);
+                }
+            }
             _ => {}
         }
     }
@@ -582,11 +619,9 @@ fn index_material(material_node: &XmlNode, theme: &str, index: &mut AppearanceIn
         if local_name(&target.name.0) != "target" {
             continue;
         }
-        let text = text_of(target);
-        let surface = strip_hash(text.trim());
-        if surface.is_empty() {
+        let Some(surface) = target_key(&text_of(target), &target.source_url) else {
             continue;
-        }
+        };
         set_side(
             index,
             surface,
@@ -681,9 +716,24 @@ fn attr<'a>(node: &'a XmlNode, name: &str) -> Option<&'a str> {
         .map(|(_, v)| v.as_str())
 }
 
-/// Strip a leading `#` from an `xlink`-style local reference.
-fn strip_hash(reference: &str) -> &str {
-    reference.strip_prefix('#').unwrap_or(reference)
+/// Resolve an appearance target / ring reference to a file-qualified id. A local
+/// `#id` scopes to `base` (the file the reference is written in); an explicit
+/// `file#id` joins `file` against `base`, mirroring a geometry `xlink:href`; a bare
+/// `id` with no `#` is treated as a local reference. `None` for an empty reference
+/// or an unjoinable file.
+fn target_key(reference: &str, base: &Url) -> Option<SurfaceKey> {
+    let reference = reference.trim();
+    if let Some(frag) = reference.strip_prefix('#') {
+        Some((base.as_str().to_string(), frag.to_string()))
+    } else if let Some((file, frag)) = reference.split_once('#') {
+        base.join(file)
+            .ok()
+            .map(|u| (u.to_string(), frag.to_string()))
+    } else if reference.is_empty() {
+        None
+    } else {
+        Some((base.as_str().to_string(), reference.to_string()))
+    }
 }
 
 #[cfg(test)]
@@ -1567,5 +1617,69 @@ mod tests {
             Material::Phong(m) if m.diffuse_map.is_some()
         ));
         assert_eq!(uv_sets(mesh.appearance()).len(), 1, "one welded UV set");
+    }
+
+    #[test]
+    fn same_gml_id_in_two_files_do_not_cross_bind() {
+        // Both files define gml:id="poly1" with a different X3DMaterial colour.
+        // Keying appearance by (file, gml:id) binds each file's material only to
+        // that file's polygon; a bare-id index would let one file's colour leak
+        // onto the other's surface.
+        fn doc(color: &str) -> String {
+            format!(
+                r##"<core:CityModel {NS}>
+                  <core:cityObjectMember><bldg:Building gml:id="b1">
+                    <bldg:lod2MultiSurface><gml:MultiSurface><gml:surfaceMember>
+                      <gml:Polygon gml:id="poly1"><gml:exterior><gml:LinearRing gml:id="ring1">
+                        <gml:posList>0 0 0 1 0 0 0 1 0 0 0 0</gml:posList>
+                      </gml:LinearRing></gml:exterior></gml:Polygon>
+                    </gml:surfaceMember></gml:MultiSurface></bldg:lod2MultiSurface>
+                  </bldg:Building></core:cityObjectMember>
+                  <core:appearanceMember><app:Appearance>
+                    <app:theme>rgbTexture</app:theme>
+                    <app:surfaceData><app:X3DMaterial>
+                      <app:diffuseColor>{color}</app:diffuseColor>
+                      <app:target>#poly1</app:target>
+                    </app:X3DMaterial></app:surfaceData>
+                  </app:Appearance></core:appearanceMember>
+                </core:CityModel>"##
+            )
+        }
+        fn diffuse(geom: &Euclidean3DGeometry) -> [f32; 3] {
+            let Euclidean3DGeometry::Collection(c) = geom else {
+                panic!("expected collection");
+            };
+            let Euclidean3DGeometry::Polygon(p) = c.members().first().expect("one member") else {
+                panic!("expected polygon");
+            };
+            let Material::Phong(m) = &p.appearance().as_ref().expect("styled").materials()[0]
+            else {
+                panic!("expected phong");
+            };
+            m.diffuse
+        }
+        let mut parser = Parser::new();
+        parser
+            .parse(
+                doc("1 0 0").as_bytes(),
+                &Url::parse("file:///dir/a.gml").unwrap(),
+            )
+            .unwrap();
+        parser
+            .parse(
+                doc("0 0 1").as_bytes(),
+                &Url::parse("file:///dir/b.gml").unwrap(),
+            )
+            .unwrap();
+        let (pending, raw_registry, geom_registry, appearance_members, _ns) = parser.finish();
+        let appearance = super::build_index(&appearance_members, &raw_registry);
+        let features: Vec<_> = pending.into_iter().collect();
+        assert_eq!(features.len(), 2);
+        let a = resolve_root(&features[0].geoms[0].node, &geom_registry, &appearance)
+            .expect("file a resolves");
+        let b = resolve_root(&features[1].geoms[0].node, &geom_registry, &appearance)
+            .expect("file b resolves");
+        assert_eq!(diffuse(&a), [1.0, 0.0, 0.0], "file a keeps its own colour");
+        assert_eq!(diffuse(&b), [0.0, 0.0, 1.0], "file b keeps its own colour");
     }
 }

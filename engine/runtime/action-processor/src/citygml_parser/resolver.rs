@@ -47,9 +47,16 @@ pub(super) struct FaceIds {
     pub(super) rings: Vec<Option<String>>,
 }
 
-/// Per-face gml:ids for a built leaf geometry, in the leaf's face order; empty for
-/// leaves with no faces (`Point`, `LineString`).
-pub(super) type LeafIds = Vec<FaceIds>;
+/// Per-face gml:ids for a built leaf geometry, in the leaf's face order, scoped to
+/// the source file every id belongs to. An appearance targeting these ids must be
+/// declared in the same file.
+pub(super) struct LeafIds {
+    /// The source file URL the face ids are scoped to.
+    pub(super) file: String,
+    /// One entry per face, in the leaf's face order; empty for leaves with no faces
+    /// (`Point`, `LineString`).
+    pub(super) faces: Vec<FaceIds>,
+}
 
 /// A geometry container held until pass 2, when its members are resolved and
 /// folded into a single [`Euclidean3DGeometry`].
@@ -59,6 +66,9 @@ pub(super) struct Unresolved {
     /// The `gml:id`, if any, under which this node is registered as a reference
     /// target.
     pub(super) id: Option<String>,
+    /// The source file URL this container was parsed from, scoping its `id` for
+    /// appearance binding.
+    pub(super) file: String,
     /// The child geometries, each tagged with the GML property that owns it.
     pub(super) members: Vec<(Role, GeomNode)>,
 }
@@ -178,15 +188,16 @@ pub(super) fn resolve_root_bare(
     resolve_root(node, registry, &AppearanceIndex::default())
 }
 
-/// Resolve one node. `enclosing` is the chain of enclosing container gml:ids
-/// (nearest first), so a material bound to an aggregate reaches its member
-/// polygons. `in_progress` holds the `xlink` keys on the current resolution path,
-/// so a reference cycle is caught instead of recursing forever.
+/// Resolve one node. `enclosing` is the chain of enclosing container ids, each
+/// file-qualified (nearest first), so a material bound to an aggregate reaches its
+/// member polygons even across an `xlink`ed file boundary. `in_progress` holds the
+/// `xlink` keys on the current resolution path, so a reference cycle is caught
+/// instead of recursing forever.
 fn resolve(
     node: &GeomNode,
     registry: &GeomRegistry,
     appearance: &AppearanceIndex,
-    enclosing: &[&str],
+    enclosing: &[(&str, &str)],
     in_progress: &mut HashSet<RawNodeKey>,
 ) -> Option<Euclidean3DGeometry> {
     match node {
@@ -207,28 +218,29 @@ fn resolve(
 /// a `TriangulatedSurface`'s `TriangularMesh` binds one draped texture over its
 /// triangles; a `Polygon`'s appearance is welded into any enclosing mesh
 /// downstream. The leaf's own surface id takes precedence over the `enclosing`
-/// container ids.
+/// container ids. Every candidate is qualified by the file its id belongs to: the
+/// leaf's own ids by the leaf's file, the enclosing ids by their containers' files.
 fn with_appearance(
     mut geometry: Euclidean3DGeometry,
     ids: &LeafIds,
     appearance: &AppearanceIndex,
-    enclosing: &[&str],
+    enclosing: &[(&str, &str)],
 ) -> Euclidean3DGeometry {
     if appearance.is_empty() {
         return geometry;
     }
-    let Some(first) = ids.first() else {
+    let Some(first) = ids.faces.first() else {
         return geometry;
     };
-    let mut candidates: Vec<&str> = Vec::with_capacity(1 + enclosing.len());
-    candidates.extend(first.surface.as_deref());
+    let mut candidates: Vec<(&str, &str)> = Vec::with_capacity(1 + enclosing.len());
+    candidates.extend(first.surface.as_deref().map(|id| (ids.file.as_str(), id)));
     candidates.extend_from_slice(enclosing);
     match &mut geometry {
         Euclidean3DGeometry::Polygon(polygon) => {
-            appearance.apply_to_polygon(polygon, &candidates, &first.rings);
+            appearance.apply_to_polygon(polygon, &candidates, &ids.file, &first.rings);
         }
         Euclidean3DGeometry::TriangularMesh(mesh) => {
-            appearance.apply_to_triangular_mesh(mesh, &candidates, ids);
+            appearance.apply_to_triangular_mesh(mesh, &candidates, &ids.file, &ids.faces);
         }
         _ => {}
     }
@@ -241,7 +253,7 @@ fn resolve_ref(
     key: &RawNodeKey,
     registry: &GeomRegistry,
     appearance: &AppearanceIndex,
-    enclosing: &[&str],
+    enclosing: &[(&str, &str)],
     in_progress: &mut HashSet<RawNodeKey>,
 ) -> Option<Euclidean3DGeometry> {
     if !in_progress.insert(key.clone()) {
@@ -271,11 +283,11 @@ fn construct(
     node: &Unresolved,
     registry: &GeomRegistry,
     appearance: &AppearanceIndex,
-    enclosing: &[&str],
+    enclosing: &[(&str, &str)],
     in_progress: &mut HashSet<RawNodeKey>,
 ) -> Option<Euclidean3DGeometry> {
-    let mut member_enclosing: Vec<&str> = Vec::with_capacity(1 + enclosing.len());
-    member_enclosing.extend(node.id.as_deref());
+    let mut member_enclosing: Vec<(&str, &str)> = Vec::with_capacity(1 + enclosing.len());
+    member_enclosing.extend(node.id.as_deref().map(|id| (node.file.as_str(), id)));
     member_enclosing.extend_from_slice(enclosing);
 
     let members: Vec<(Role, Euclidean3DGeometry)> = node
@@ -462,13 +474,20 @@ mod tests {
     }
 
     fn resolved(geometry: Euclidean3DGeometry) -> GeomNode {
-        GeomNode::Resolved(geometry, Vec::new())
+        GeomNode::Resolved(
+            geometry,
+            LeafIds {
+                file: String::new(),
+                faces: Vec::new(),
+            },
+        )
     }
 
     fn node(ty: GmlGeometryType, members: Vec<(Role, GeomNode)>) -> GeomNode {
         GeomNode::Unresolved(Unresolved {
             ty,
             id: None,
+            file: String::new(),
             members,
         })
     }
