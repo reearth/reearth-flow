@@ -83,7 +83,9 @@ const createActionNode = async (
   position: XYPosition,
 ): Promise<Node | null> => {
   const { api } = config();
-  const action = await fetcher<Action>(`${api}/actions/${name}`);
+  const action = await fetcher<Action>(
+    `${api}/actions/${encodeURIComponent(name)}`,
+  );
   if (!action) return null;
 
   const patchedParams = patchAnyOfAndOneOfType(
