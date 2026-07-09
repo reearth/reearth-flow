@@ -189,6 +189,8 @@ fn build_cell_glb(
     let mut ecef_vertices: Vec<[f64; 3]> = Vec::new();
     let mut indices: Vec<[u32; 3]> = Vec::new();
     let mut feature_ids: Vec<u32> = Vec::new();
+    let mut polygon_normals: Vec<[f64; 3]> = Vec::new();
+    let mut polygon_tris: Vec<u32> = Vec::new();
     for (row, (_, m)) in cell_members.iter().enumerate() {
         let base = ecef_vertices.len() as u32;
         indices.extend(
@@ -198,6 +200,8 @@ fn build_cell_glb(
         );
         ecef_vertices.extend(&m.ecef_vertices);
         feature_ids.extend(std::iter::repeat_n(row as u32, m.ecef_vertices.len()));
+        polygon_normals.extend(&m.polygon_normals);
+        polygon_tris.extend(&m.polygon_tris);
     }
 
     // Per-tile local origin: keeps the f32 GLB positions small relative to
@@ -223,6 +227,12 @@ fn build_cell_glb(
         .collect();
     let gltf_origin = [origin[0], origin[2], -origin[1]];
 
+    // Same axis swap as position, no translation (a normal is a direction).
+    let normal_values: Vec<[f32; 3]> = polygon_normals
+        .iter()
+        .map(|&[x, y, z]| [x as f32, z as f32, -y as f32])
+        .collect();
+
     let cell_features: Vec<&Feature> = cell_members.iter().map(|(f, _)| *f).collect();
     let table = metadata::build_table(&cell_features, options);
 
@@ -237,7 +247,15 @@ fn build_cell_glb(
         metallic_factor: 0.0,
         roughness_factor: 0.9,
     };
-    let primitive = builder.push_primitive(&gltf_positions, &indices, material);
+    let normal = glb::normal(glb::Granularity::PerPolygon, normal_values);
+    let primitive = builder.push_primitive(
+        gltf_positions,
+        indices,
+        material,
+        &polygon_tris,
+        &[],
+        vec![normal],
+    );
     metadata::encode(&table, &mut builder, primitive, &feature_ids);
     builder.build(gltf_origin)
 }

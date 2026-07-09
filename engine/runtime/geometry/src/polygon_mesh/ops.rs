@@ -2,7 +2,9 @@ use super::{PolygonMesh2D, PolygonMesh3D, PolygonMesh3DData};
 use crate::coordinate::{CoordinateFrame, EpsgCode};
 use crate::index::IndexBuffer;
 use crate::ops::reproject::{transform_coords_2d, transform_coords_3d};
-use crate::ops::triangulation::{expand_appearance, triangulate_2d, triangulate_3d, Cache};
+use crate::ops::triangulation::{
+    expand_appearance, triangulate_2d, triangulate_3d, Cache, Triangulated,
+};
 use crate::ops::{
     Aabb, BoundingBox, Reproject, ReprojectionCache, Triangulate, UnsupportedOperation,
 };
@@ -161,9 +163,17 @@ impl Triangulate for PolygonMesh2D {
 }
 
 impl PolygonMesh3DData {
-    /// Triangulate every face into coordinate-free triangle-mesh data, **stealing**
-    /// this mesh's vertex pool, appearance and UV (see [`Triangulate`]).
-    pub(crate) fn triangulate(&mut self, cache: &mut Cache) -> TriangularMesh3DData {
+    /// Triangulate every polygon into coordinate-free triangle-mesh data,
+    /// **stealing** this mesh's vertex pool, appearance and UV (see
+    /// [`Triangulate`]). Also returns each source polygon's flat normal
+    /// (Newell's method over that polygon's own exterior ring, not
+    /// recomputed per triangle) and how many triangles that polygon was
+    /// split into, in polygon order — plain, transient values, not stored on
+    /// any mesh type. A caller wanting the normal for output triangle `t`
+    /// sums the triangle counts until it passes `t` and reads the matching
+    /// normal entry, rather than this pre-expanding to one entry per
+    /// triangle itself.
+    pub(crate) fn triangulate(&mut self, cache: &mut Cache) -> Triangulated<TriangularMesh3DData> {
         let Cache { earcut, buffers } = cache;
         decode_into(&self.face_indices, &mut buffers.face_indices);
         decode_into(&self.face_offsets, &mut buffers.face_offsets);
@@ -172,6 +182,7 @@ impl PolygonMesh3DData {
         buffers.tris.clear();
         buffers.corner_src.clear();
         buffers.face_tris.clear();
+        buffers.face_normals.clear();
         buffers.tris.reserve(3 * buffers.face_indices.len());
 
         let n = buffers.face_indices.len();
@@ -206,13 +217,14 @@ impl PolygonMesh3DData {
                 // clears it on success; reset explicitly so the per-face count
                 // below holds without relying on either internal.
                 buffers.out.clear();
-                if triangulate_3d(
+                let face_normal = triangulate_3d(
                     earcut,
                     &buffers.verts3,
                     num_outer,
                     &buffers.holes,
                     &mut buffers.out,
-                ) {
+                );
+                if face_normal.is_some() {
                     // SAFETY: each earcut index is `< open_src.len()`.
                     buffers.tris.extend(buffers.out.iter().map(|&l| unsafe {
                         *face.get_unchecked(*buffers.open_src.get_unchecked(l as usize) as usize)
@@ -224,8 +236,12 @@ impl PolygonMesh3DData {
                             .map(|&l| start as u32 + buffers.open_src[l as usize]),
                     );
                 }
-                // Outside the `if`: a degenerate face records 0 (its `out` is empty).
+                // Outside the `if`: a degenerate face records 0 triangles (its
+                // `out` is empty) and a placeholder normal that's never repeated.
                 buffers.face_tris.push((buffers.out.len() / 3) as u32);
+                buffers
+                    .face_normals
+                    .push(face_normal.unwrap_or([0.0, 0.0, 1.0]));
                 start = end;
             }
         }
@@ -244,17 +260,40 @@ impl PolygonMesh3DData {
             )
         };
         data.set_raw_appearance(appearance);
-        data
+        Triangulated {
+            mesh: data,
+            polygon_normals: buffers.face_normals.clone(),
+            polygon_tris: buffers.face_tris.clone(),
+        }
     }
 }
 
 impl Triangulate for PolygonMesh3D {
     fn triangulate(&mut self, cache: &mut Cache) -> Result<Geometry, UnsupportedOperation> {
-        let data = self.data.triangulate(cache);
-        let mesh = TriangularMesh3D::new(self.frame.clone(), data);
+        let result = self.data.triangulate(cache);
+        let mesh = TriangularMesh3D::new(self.frame.clone(), result.mesh);
         Ok(Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(
             Box::new(mesh),
         )))
+    }
+}
+
+impl PolygonMesh3D {
+    /// As [`Triangulate::triangulate`], but also returns each source
+    /// polygon's flat normal and its output triangle count, in polygon order
+    /// (see [`PolygonMesh3DData::triangulate`]), for a caller that wants to
+    /// attach flat normals as a mesh attribute without this crate's geometry
+    /// types ever carrying a normal field themselves.
+    pub fn triangulate_with_normals(
+        &mut self,
+        cache: &mut Cache,
+    ) -> Triangulated<TriangularMesh3D> {
+        let result = self.data.triangulate(cache);
+        Triangulated {
+            mesh: TriangularMesh3D::new(self.frame.clone(), result.mesh),
+            polygon_normals: result.polygon_normals,
+            polygon_tris: result.polygon_tris,
+        }
     }
 }
 
@@ -562,8 +601,8 @@ mod tests {
             theme("rgb"),
         ));
 
-        let out = data.triangulate(&mut Cache::new());
-        let mesh = TriangularMesh3D::new(CoordinateFrame::Euclidean, out);
+        let result = data.triangulate(&mut Cache::new());
+        let mesh = TriangularMesh3D::new(CoordinateFrame::Euclidean, result.mesh);
         assert_eq!(mesh.num_triangles(), 2);
 
         let app = mesh.appearance().as_ref().unwrap();

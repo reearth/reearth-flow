@@ -9,9 +9,7 @@
 
 use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
 use reearth_flow_geometry::ops::reproject::transform_coords_3d;
-use reearth_flow_geometry::ops::{
-    triangulation::Cache as TriangulationCache, ReprojectionCache, Triangulate,
-};
+use reearth_flow_geometry::ops::{triangulation::Cache as TriangulationCache, ReprojectionCache};
 use reearth_flow_geometry::polygon_mesh::PolygonMesh3D;
 use reearth_flow_geometry::solid::Shell;
 use reearth_flow_geometry::{Euclidean3DGeometry, Geometry};
@@ -30,6 +28,13 @@ pub(super) struct ExtractedMesh {
     pub(super) geographic_vertices: Vec<[f64; 3]>,
     /// Triangle index triples, parallel to both vertex arrays above.
     pub(super) indices: Vec<[u32; 3]>,
+    /// Each source polygon's flat normal, in polygon order — see
+    /// `PolygonMesh3D::triangulate_with_normals`. Kept compact (one entry per
+    /// *polygon*, not per triangle); `polygon_tris[i]` says how many
+    /// consecutive entries of `indices` polygon `i` was split into.
+    pub(super) polygon_normals: Vec<[f64; 3]>,
+    /// Output triangle count per source polygon, parallel to `polygon_normals`.
+    pub(super) polygon_tris: Vec<u32>,
 }
 
 /// Extract and reproject every `PolygonMesh` reachable from `geometry`, merged
@@ -45,6 +50,8 @@ pub(super) fn extract(geometry: &Geometry) -> Option<ExtractedMesh> {
         ecef_vertices: Vec::new(),
         geographic_vertices: Vec::new(),
         indices: Vec::new(),
+        polygon_normals: Vec::new(),
+        polygon_tris: Vec::new(),
     };
 
     for mesh in meshes {
@@ -62,6 +69,8 @@ pub(super) fn extract(geometry: &Geometry) -> Option<ExtractedMesh> {
         combined
             .geographic_vertices
             .extend(extracted.geographic_vertices);
+        combined.polygon_normals.extend(extracted.polygon_normals);
+        combined.polygon_tris.extend(extracted.polygon_tris);
     }
 
     if combined.ecef_vertices.is_empty() {
@@ -117,23 +126,11 @@ fn collect_euclidean3d(geometry: &Euclidean3DGeometry, out: &mut Vec<PolygonMesh
 }
 
 /// Triangulate and reproject one `PolygonMesh`.
-fn extract_one(mesh: PolygonMesh3D) -> Option<ExtractedMesh> {
+fn extract_one(mut mesh: PolygonMesh3D) -> Option<ExtractedMesh> {
     let mut triangulation_cache = TriangulationCache::new();
-    let mut geometry = Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(Box::new(mesh)));
-    let triangulated = match geometry.triangulate(&mut triangulation_cache) {
-        Ok(g) => g,
-        Err(e) => {
-            tracing::warn!("Cesium3DTilesWriter: failed to triangulate PolygonMesh: {e:?}");
-            return None;
-        }
-    };
-    let Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(mesh)) = triangulated else {
-        tracing::warn!(
-            "Cesium3DTilesWriter: triangulating a PolygonMesh did not yield a TriangularMesh \
-             (got {triangulated:?}); skipping feature"
-        );
-        return None;
-    };
+    let result = mesh.triangulate_with_normals(&mut triangulation_cache);
+    let (mesh, polygon_normals, polygon_tris) =
+        (result.mesh, result.polygon_normals, result.polygon_tris);
 
     let mut reproject_cache = ReprojectionCache::new();
 
@@ -163,5 +160,7 @@ fn extract_one(mesh: PolygonMesh3D) -> Option<ExtractedMesh> {
         ecef_vertices,
         geographic_vertices,
         indices: mesh.triangles().collect(),
+        polygon_normals,
+        polygon_tris,
     })
 }

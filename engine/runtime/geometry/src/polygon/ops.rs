@@ -157,7 +157,7 @@ impl Triangulate for Polygon3D {
         );
         buffers.out.clear();
         buffers.out.reserve(3 * verts.len());
-        triangulate_3d(earcut, &verts, num_outer, &buffers.holes, &mut buffers.out);
+        let _ = triangulate_3d(earcut, &verts, num_outer, &buffers.holes, &mut buffers.out);
         // SAFETY: every earcut index is `< verts.len()`; count is a multiple of 3.
         let mut mesh = unsafe {
             TriangularMesh3D::from_parts_unchecked(

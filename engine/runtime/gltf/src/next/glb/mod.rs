@@ -2,17 +2,23 @@
 //! `gltf-rs/gltf` crate's `gltf_json` (the base document schema, already a
 //! workspace dependency via the reader half of this crate) and
 //! `gltf::binary::Glb` (the container). Knows nothing about CityGML,
-//! PLATEAU, feature IDs, or any specific glTF extension: a caller pushes one
-//! or more primitives, optionally attaches extra per-vertex attributes and
-//! already-built extension payloads to whatever it got back, then calls
+//! PLATEAU, feature IDs, or any specific glTF extension — not even `NORMAL`:
+//! a caller pushes one or more primitives (supplying any dedup-key vertex
+//! attributes up front via [`normal`], e.g. a precomputed flat normal),
+//! optionally attaches extra per-vertex attributes and already-built
+//! extension payloads to whatever it got back, then calls
 //! [`Builder::build`]. See `crate::next::metadata` for the feature-processing
 //! layer that builds Cesium's metadata extensions on top of this.
 
+mod primitive;
+
 use std::borrow::Cow;
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 
 use gltf::json;
 use gltf::json::validation::{Checked, USize64};
+
+pub use primitive::{normal, DedupAttribute, Granularity};
 
 /// A material's PBR metallic-roughness factors; each primitive is untextured
 /// and single-material.
@@ -47,20 +53,6 @@ struct Extension {
     value: serde_json::Value,
 }
 
-struct PrimitiveBuilder {
-    positions: Vec<[f32; 3]>,
-    normals: Vec<[f32; 3]>,
-    indices: Vec<u32>,
-    /// `representative[out_vertex]` is the original (pre-dedup) vertex index
-    /// it was first produced from, so [`Builder::set_attribute`] can map a
-    /// caller-supplied per-original-vertex array onto the deduped layout
-    /// after the fact.
-    representative: Vec<u32>,
-    material: json::Index<json::Material>,
-    extra_attributes: Vec<(json::mesh::Semantic, Vec<u32>)>,
-    extensions: Vec<Extension>,
-}
-
 /// Accumulates the GLB binary payload alongside the glTF document it
 /// describes. `push_buffer_view` is public so a caller can place its own
 /// domain-specific bytes (e.g. a property table's string values) in the same
@@ -69,7 +61,7 @@ struct PrimitiveBuilder {
 pub struct Builder {
     bin: Vec<u8>,
     root: json::Root,
-    primitives: Vec<PrimitiveBuilder>,
+    primitives: Vec<primitive::PrimitiveBuilder>,
     root_extensions: Vec<Extension>,
 }
 
@@ -173,87 +165,40 @@ impl Builder {
         })
     }
 
-    /// Add a triangle-mesh primitive: derives one flat normal per triangle (a
-    /// cross product of its own three corners) and splits any vertex shared
-    /// by triangles that disagree on it, since no geometry in this pipeline
-    /// ever carries source normals and nothing upstream verifies cross-face
-    /// winding.
-    ///
-    /// `positions` must already be in the target coordinate convention and
-    /// localized (small deltas from the translation given to
-    /// [`Builder::build`], not raw ECEF).
-    pub fn push_primitive(
-        &mut self,
-        positions: &[[f32; 3]],
-        indices: &[[u32; 3]],
-        material: MaterialDesc,
-    ) -> PrimitiveHandle {
-        let mut dedup: HashMap<(u32, u32, u32, u32, u32, u32), u32> = HashMap::new();
-        let mut out_positions: Vec<[f32; 3]> = Vec::with_capacity(positions.len());
-        let mut out_normals: Vec<[f32; 3]> = Vec::with_capacity(positions.len());
-        let mut representative: Vec<u32> = Vec::with_capacity(positions.len());
-        let mut out_indices: Vec<u32> = Vec::with_capacity(indices.len() * 3);
-        for &[i0, i1, i2] in indices {
-            let corners = [i0, i1, i2].map(|i| positions[i as usize]);
-            let normal = triangle_normal(corners);
-            for &orig in &[i0, i1, i2] {
-                let p = positions[orig as usize];
-                let key = (
-                    p[0].to_bits(),
-                    p[1].to_bits(),
-                    p[2].to_bits(),
-                    normal[0].to_bits(),
-                    normal[1].to_bits(),
-                    normal[2].to_bits(),
-                );
-                let idx = *dedup.entry(key).or_insert_with(|| {
-                    out_positions.push(p);
-                    out_normals.push(normal);
-                    representative.push(orig);
-                    (out_positions.len() - 1) as u32
-                });
-                out_indices.push(idx);
+    /// Append a `VEC2`/`VEC3`/`VEC4` f32 accessor for a dedup-key attribute
+    /// other than position, which always uses [`Builder::push_vec3_f32`] for
+    /// its `min`/`max` bounds.
+    fn push_array_f32<const N: usize>(&mut self, data: &[[f32; N]]) -> json::Index<json::Accessor> {
+        let type_ = match N {
+            2 => json::accessor::Type::Vec2,
+            3 => json::accessor::Type::Vec3,
+            4 => json::accessor::Type::Vec4,
+            _ => panic!("unsupported attribute arity {N}"),
+        };
+        let mut bytes = Vec::with_capacity(data.len() * N * 4);
+        for v in data {
+            for c in v {
+                bytes.extend_from_slice(&c.to_le_bytes());
             }
         }
-
-        let material_index = self.root.push(json::Material {
-            pbr_metallic_roughness: json::material::PbrMetallicRoughness {
-                base_color_factor: json::material::PbrBaseColorFactor(material.base_color_factor),
-                metallic_factor: json::material::StrengthFactor(material.metallic_factor),
-                roughness_factor: json::material::StrengthFactor(material.roughness_factor),
-                ..Default::default()
-            },
-            ..Default::default()
-        });
-
-        self.primitives.push(PrimitiveBuilder {
-            positions: out_positions,
-            normals: out_normals,
-            indices: out_indices,
-            representative,
-            material: material_index,
-            extra_attributes: Vec::new(),
-            extensions: Vec::new(),
-        });
-        PrimitiveHandle(self.primitives.len() - 1)
-    }
-
-    /// Attach an extra per-vertex scalar attribute (e.g. a feature ID) to a
-    /// primitive pushed earlier. `data` is indexed by *original* vertex index
-    /// (as given to [`Builder::push_primitive`]), not the deduped layout.
-    pub fn set_attribute(
-        &mut self,
-        primitive: PrimitiveHandle,
-        semantic: json::mesh::Semantic,
-        data: &[u32],
-    ) {
-        let primitive = &mut self.primitives[primitive.0];
-        let out_data: Vec<u32> = primitive
-            .representative
-            .iter()
-            .map(|&orig| data[orig as usize])
-            .collect();
-        primitive.extra_attributes.push((semantic, out_data));
+        let buffer_view =
+            self.push_buffer_view_targeted(&bytes, Some(json::buffer::Target::ArrayBuffer));
+        self.root.push(json::Accessor {
+            buffer_view: Some(buffer_view),
+            byte_offset: None,
+            count: USize64::from(data.len()),
+            component_type: Checked::Valid(json::accessor::GenericComponentType(
+                json::accessor::ComponentType::F32,
+            )),
+            extensions: Default::default(),
+            extras: Default::default(),
+            name: None,
+            type_: Checked::Valid(type_),
+            min: None,
+            max: None,
+            normalized: false,
+            sparse: None,
+        })
     }
 
     /// Attach an already-built extension payload to the document root or a
@@ -267,9 +212,9 @@ impl Builder {
     ) {
         match handle.into() {
             Handle::Root => self.root_extensions.push(Extension { name, value }),
-            Handle::Primitive(handle) => {
-                self.primitives[handle.0].extensions.push(Extension { name, value })
-            }
+            Handle::Primitive(handle) => self.primitives[handle.0]
+                .extensions
+                .push(Extension { name, value }),
         }
     }
 
@@ -285,7 +230,6 @@ impl Builder {
         let mut json_primitives = Vec::with_capacity(primitives.len());
         for p in primitives {
             let position_accessor = self.push_vec3_f32(&p.positions, true);
-            let normal_accessor = self.push_vec3_f32(&p.normals, false);
             let indices_accessor =
                 self.push_scalar_u32(&p.indices, json::buffer::Target::ElementArrayBuffer);
 
@@ -294,10 +238,10 @@ impl Builder {
                 Checked::Valid(json::mesh::Semantic::Positions),
                 position_accessor,
             );
-            attributes.insert(
-                Checked::Valid(json::mesh::Semantic::Normals),
-                normal_accessor,
-            );
+            for attr in p.dedup_attrs {
+                let (semantic, accessor) = attr.into_accessor(&mut self);
+                attributes.insert(Checked::Valid(semantic), accessor);
+            }
             for (semantic, data) in p.extra_attributes {
                 let accessor = self.push_scalar_u32(&data, json::buffer::Target::ArrayBuffer);
                 attributes.insert(Checked::Valid(semantic), accessor);
@@ -320,6 +264,14 @@ impl Builder {
                 targets: None,
             });
         }
+
+        self.root.buffers.push(json::Buffer {
+            byte_length: USize64::from(self.bin.len()),
+            name: None,
+            uri: None,
+            extensions: Default::default(),
+            extras: Default::default(),
+        });
 
         let mut root_ext = json::extensions::root::Root::default();
         for ext in root_extensions {
@@ -356,8 +308,7 @@ impl Builder {
         // itself has no such precision limit on this field, so patch the real
         // `f64` value back in after serialization rather than truncate it.
         json_value["nodes"][0]["translation"] = serde_json::json!(translation);
-        let json_bytes =
-            serde_json::to_vec(&json_value).expect("glTF JSON is always serializable");
+        let json_bytes = serde_json::to_vec(&json_value).expect("glTF JSON is always serializable");
 
         let glb = gltf::binary::Glb {
             header: gltf::binary::Header {
@@ -369,24 +320,6 @@ impl Builder {
             bin: Some(Cow::Owned(self.bin)),
         };
         glb.to_vec().expect("GLB binary output is always writable")
-    }
-}
-
-/// Unit normal of the plane through three points, via cross product; `[0, 0, 1]`
-/// for a degenerate (near-zero-area) triangle.
-fn triangle_normal([a, b, c]: [[f32; 3]; 3]) -> [f32; 3] {
-    let u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
-    let v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
-    let n = [
-        u[1] * v[2] - u[2] * v[1],
-        u[2] * v[0] - u[0] * v[2],
-        u[0] * v[1] - u[1] * v[0],
-    ];
-    let len = (n[0] * n[0] + n[1] * n[1] + n[2] * n[2]).sqrt();
-    if len < 1e-12 {
-        [0.0, 0.0, 1.0]
-    } else {
-        [n[0] / len, n[1] / len, n[2] / len]
     }
 }
 
