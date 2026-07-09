@@ -71,15 +71,17 @@ const ActionBar: React.FC<Props> = ({
         onOpenChange={(open) => {
           if (!open) onDialogClose();
         }}>
-        <PopoverTrigger asChild>
-          <IconButton
-            tooltipText={t("Deploy project's workflow")}
-            tooltipOffset={tooltipOffset}
-            icon={<RocketIcon weight="thin" size={18} />}
-            onClick={() => onDialogOpen("deploy")}
-            disabled={isLocked}
-          />
-        </PopoverTrigger>
+        <PopoverTrigger
+          render={
+            <IconButton
+              tooltipText={t("Deploy project's workflow")}
+              tooltipOffset={tooltipOffset}
+              icon={<RocketIcon weight="thin" size={18} />}
+              onClick={() => onDialogOpen("deploy")}
+              disabled={isLocked}
+            />
+          }
+        />
         <PopoverContent
           sideOffset={8}
           collisionPadding={5}
@@ -98,15 +100,17 @@ const ActionBar: React.FC<Props> = ({
         onOpenChange={(open) => {
           if (!open) onDialogClose();
         }}>
-        <PopoverTrigger asChild>
-          <IconButton
-            tooltipText={t("Share Project")}
-            tooltipOffset={tooltipOffset}
-            disabled={isLocked}
-            icon={<PaperPlaneTiltIcon weight="thin" size={18} />}
-            onClick={() => onDialogOpen("share")}
-          />
-        </PopoverTrigger>
+        <PopoverTrigger
+          render={
+            <IconButton
+              tooltipText={t("Share Project")}
+              tooltipOffset={tooltipOffset}
+              disabled={isLocked}
+              icon={<PaperPlaneTiltIcon weight="thin" size={18} />}
+              onClick={() => onDialogOpen("share")}
+            />
+          }
+        />
         <PopoverContent
           sideOffset={8}
           collisionPadding={5}
