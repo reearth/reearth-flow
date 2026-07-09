@@ -97,9 +97,12 @@ pub fn build(
     features: &[Feature],
     options: MetadataOptions,
 ) -> crate::errors::Result<BuiltTileset> {
+    let mut reproject_caches = mesh::ReprojectCaches::default();
     let extracted: Vec<(&Feature, mesh::ExtractedMesh)> = features
         .iter()
-        .filter_map(|feature| mesh::extract(&feature.geometry).map(|m| (feature, m)))
+        .filter_map(|feature| {
+            mesh::extract(&feature.geometry, &mut reproject_caches).map(|m| (feature, m))
+        })
         .collect();
 
     if extracted.is_empty() {

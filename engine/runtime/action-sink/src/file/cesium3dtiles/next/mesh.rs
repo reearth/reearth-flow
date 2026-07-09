@@ -21,6 +21,15 @@ const WGS84_GEOGRAPHIC: EpsgCode = EpsgCode::new(4979);
 /// WGS84, geocentric (ECEF) — used for glTF vertex positions.
 const WGS84_GEOCENTRIC: EpsgCode = EpsgCode::new(4978);
 
+/// One `ReprojectionCache` per target CRS: each cache only ever sees a
+/// single (from, to) pair, so its cached PROJ transform is never evicted
+/// (a cache handed both target CRSes would thrash between them every call).
+#[derive(Default)]
+pub(super) struct ReprojectCaches {
+    geographic: ReprojectionCache,
+    geocentric: ReprojectionCache,
+}
+
 pub(super) struct ExtractedMesh {
     /// Vertex positions in ECEF (WGS84 geocentric), metres.
     pub(super) ecef_vertices: Vec<[f64; 3]>,
@@ -38,11 +47,12 @@ pub(super) struct ExtractedMesh {
 }
 
 /// Extract and reproject every `PolygonMesh` reachable from `geometry`, merged
-/// into one combined mesh (index-offset concatenation).
+/// into one combined mesh (index-offset concatenation). `caches` should be
+/// shared across every feature in the file.
 ///
 /// Returns `None` when nothing was found, or everything found failed to
 /// triangulate/reproject (each failure is `tracing::warn!`ed individually).
-pub(super) fn extract(geometry: &Geometry) -> Option<ExtractedMesh> {
+pub(super) fn extract(geometry: &Geometry, caches: &mut ReprojectCaches) -> Option<ExtractedMesh> {
     let mut meshes = Vec::new();
     collect_geometry(geometry, &mut meshes);
 
@@ -55,7 +65,7 @@ pub(super) fn extract(geometry: &Geometry) -> Option<ExtractedMesh> {
     };
 
     for mesh in meshes {
-        let Some(extracted) = extract_one(mesh) else {
+        let Some(extracted) = extract_one(mesh, caches) else {
             continue;
         };
         let base = combined.ecef_vertices.len() as u32;
@@ -126,17 +136,15 @@ fn collect_euclidean3d(geometry: &Euclidean3DGeometry, out: &mut Vec<PolygonMesh
 }
 
 /// Triangulate and reproject one `PolygonMesh`.
-fn extract_one(mut mesh: PolygonMesh3D) -> Option<ExtractedMesh> {
+fn extract_one(mut mesh: PolygonMesh3D, caches: &mut ReprojectCaches) -> Option<ExtractedMesh> {
     let mut triangulation_cache = TriangulationCache::new();
     let result = mesh.triangulate_with_normals(&mut triangulation_cache);
     let (mesh, polygon_normals, polygon_tris) =
         (result.mesh, result.polygon_normals, result.polygon_tris);
 
-    let mut reproject_cache = ReprojectionCache::new();
-
     let mut geographic_vertices = mesh.vertices().to_vec();
     if let Err(e) = transform_coords_3d(
-        &mut reproject_cache,
+        &mut caches.geographic,
         ASSUMED_SOURCE_CRS,
         WGS84_GEOGRAPHIC,
         &mut geographic_vertices,
@@ -147,7 +155,7 @@ fn extract_one(mut mesh: PolygonMesh3D) -> Option<ExtractedMesh> {
 
     let mut ecef_vertices = mesh.vertices().to_vec();
     if let Err(e) = transform_coords_3d(
-        &mut reproject_cache,
+        &mut caches.geocentric,
         ASSUMED_SOURCE_CRS,
         WGS84_GEOCENTRIC,
         &mut ecef_vertices,
