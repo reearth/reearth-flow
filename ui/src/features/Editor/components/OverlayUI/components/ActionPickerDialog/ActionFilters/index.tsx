@@ -164,38 +164,40 @@ const ActionFilters = ({
       </div>
       <Collapsible className="flex flex-col" open={tagsOpen}>
         <CollapsibleTrigger
-          asChild
+          nativeButton={false}
           className="border-b pb-2"
-          onClick={() => setTagsOpen((o) => !o)}>
-          <div className="flex w-full items-center justify-between gap-1 hover:cursor-pointer">
-            <div className="flex w-full items-center justify-between gap-1">
-              <div className="flex w-full items-center gap-1">
-                <span className="ml-1 text-sm font-medium text-foreground">
-                  {t("Tags")}
-                </span>
-                {currentTags.length > 0 && (
-                  <span className="text-xs font-medium text-foreground">
-                    ({currentTags.length})
+          onClick={() => setTagsOpen((o) => !o)}
+          render={
+            <div className="flex w-full items-center justify-between gap-1 hover:cursor-pointer">
+              <div className="flex w-full items-center justify-between gap-1">
+                <div className="flex w-full items-center gap-1">
+                  <span className="ml-1 text-sm font-medium text-foreground">
+                    {t("Tags")}
                   </span>
+                  {currentTags.length > 0 && (
+                    <span className="text-xs font-medium text-foreground">
+                      ({currentTags.length})
+                    </span>
+                  )}
+                </div>
+                {currentTags.length > 0 && (
+                  <button
+                    key="clear-tags"
+                    type="button"
+                    className="cursor-pointer rounded-full px-2.5 py-0.5 text-xs font-medium text-foreground select-none hover:bg-primary"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      onTagToggle();
+                    }}
+                    onKeyDown={handleRowArrows}>
+                    {t("Clear")}
+                  </button>
                 )}
               </div>
-              {currentTags.length > 0 && (
-                <button
-                  key="clear-tags"
-                  type="button"
-                  className="cursor-pointer rounded-full px-2.5 py-0.5 text-xs font-medium text-foreground select-none hover:bg-primary"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    onTagToggle();
-                  }}
-                  onKeyDown={handleRowArrows}>
-                  {t("Clear")}
-                </button>
-              )}
+              {tagsOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
             </div>
-            {tagsOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
-          </div>
-        </CollapsibleTrigger>
+          }
+        />
         <CollapsibleContent className="mt-1.5 flex flex-wrap gap-1.5">
           {actionTags.map(({ value, label }) => {
             const isSelected = currentTags.includes(value);

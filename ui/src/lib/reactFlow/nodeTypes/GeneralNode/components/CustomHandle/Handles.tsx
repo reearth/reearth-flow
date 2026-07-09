@@ -236,13 +236,16 @@ const Handles: React.FC<Props> = ({
 
       {((nodeType !== "reader" && hasMoreThanFiveInputHandles) ||
         hasMoreThanFiveOutputHandles) && (
-        <CollapsibleTrigger asChild className="justify-center self-center">
-          <IconButton
-            onClick={() => onCollapsedToggle?.(!isCollapsed)}
-            className="h-6 w-6"
-            icon={!isCollapsed ? <ChevronUpIcon /> : <ChevronDownIcon />}
-          />
-        </CollapsibleTrigger>
+        <CollapsibleTrigger
+          className="justify-center self-center"
+          render={
+            <IconButton
+              onClick={() => onCollapsedToggle?.(!isCollapsed)}
+              className="h-6 w-6"
+              icon={!isCollapsed ? <ChevronUpIcon /> : <ChevronDownIcon />}
+            />
+          }
+        />
       )}
     </Collapsible>
   );

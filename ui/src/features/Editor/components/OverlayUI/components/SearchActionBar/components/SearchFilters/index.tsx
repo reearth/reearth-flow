@@ -79,15 +79,17 @@ const SearchFilters = ({
           onChange={(e) => setSearchTerm(e.target.value)}
           className="h-[36px]"
         />
-        <CollapsibleTrigger asChild>
-          <IconButton
-            variant="ghost"
-            size="icon"
-            className="size-8"
-            tooltipText={t("Search Filters")}
-            icon={<FunnelSimpleIcon size={16} weight="light" />}
-          />
-        </CollapsibleTrigger>
+        <CollapsibleTrigger
+          render={
+            <IconButton
+              variant="ghost"
+              size="icon"
+              className="size-8"
+              tooltipText={t("Search Filters")}
+              icon={<FunnelSimpleIcon size={16} weight="light" />}
+            />
+          }
+        />
       </div>
       <CollapsibleContent className="flex gap-2">
         <Select
