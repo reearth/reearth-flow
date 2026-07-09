@@ -74,7 +74,6 @@ var baseActions = map[string]bool{
 	"Feature Type Filter":         true,
 	"Input Router":                true,
 	"Output Router":               true,
-	"Rhai Caller":                 true,
 	// Utility
 	"Directory Decompressor":  true,
 	"Echo Processor":          true,
