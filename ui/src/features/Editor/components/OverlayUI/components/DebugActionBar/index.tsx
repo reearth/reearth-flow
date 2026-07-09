@@ -364,9 +364,10 @@ const DebugRunDropDownMenu: React.FC<{
 
   return (
     <DropdownMenu open={showDropDownMenu} onOpenChange={setShowDropDownMenu}>
-      <DropdownMenuTrigger asChild>
-        <IconButton
-          className={`w-3 self-center rounded-sm group-hover:bg-accent ${showDropDownMenu ? "bg-accent" : ""}
+      <DropdownMenuTrigger
+        render={
+          <IconButton
+            className={`w-3 self-center rounded-sm group-hover:bg-accent ${showDropDownMenu ? "bg-accent" : ""}
           ${
             debugRunStarted || jobStatus
               ? `h-[32px] ${
@@ -377,12 +378,13 @@ const DebugRunDropDownMenu: React.FC<{
               : "h-[36px] w-3"
           }
         `}
-          disabled={isLocked}
-          tooltipText={t("Additional Debug Actions")}
-          tooltipOffset={tooltipOffset}
-          icon={<CaretDownIcon size={18} weight="light" />}
-        />
-      </DropdownMenuTrigger>
+            disabled={isLocked}
+            tooltipText={t("Additional Debug Actions")}
+            tooltipOffset={tooltipOffset}
+            icon={<CaretDownIcon size={18} weight="light" />}
+          />
+        }
+      />
       <DropdownMenuContent
         className="min-w-42.5 bg-primary/50 backdrop-blur select-none"
         align="start"

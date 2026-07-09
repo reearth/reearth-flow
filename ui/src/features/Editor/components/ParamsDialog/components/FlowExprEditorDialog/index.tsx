@@ -173,12 +173,14 @@ const FlowExprEditorDialog: React.FC<Props> = ({
                     flowExprAllowed &&
                     codeType === "flowExpr" && (
                       <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="outline" size="sm">
-                            <CircleIcon className="h-4 w-4" />
-                            {t("Variables")}
-                          </Button>
-                        </DropdownMenuTrigger>
+                        <DropdownMenuTrigger
+                          render={
+                            <Button variant="outline" size="sm">
+                              <CircleIcon className="h-4 w-4" />
+                              {t("Variables")}
+                            </Button>
+                          }
+                        />
                         <DropdownMenuContent align="end" className="w-64">
                           {workflowVariables.map((variable) => (
                             <DropdownMenuItem

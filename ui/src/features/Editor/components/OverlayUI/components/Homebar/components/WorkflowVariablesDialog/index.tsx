@@ -315,16 +315,18 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
                     </div>
                   </div>
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="default"
-                        size="sm"
-                        className="gap-2"
-                        disabled={isLocked}>
-                        <PlusIcon size={16} />
-                        {t("Add Variable")}
-                      </Button>
-                    </DropdownMenuTrigger>
+                    <DropdownMenuTrigger
+                      render={
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="gap-2"
+                          disabled={isLocked}>
+                          <PlusIcon size={16} />
+                          {t("Add Variable")}
+                        </Button>
+                      }
+                    />
                     <DropdownMenuContent align="end">
                       <DropdownMenuGroup>
                         {allVarTypes.map((type) => (

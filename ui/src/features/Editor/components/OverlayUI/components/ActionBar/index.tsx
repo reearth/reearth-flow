@@ -120,14 +120,16 @@ const ActionBar: React.FC<Props> = ({
         </PopoverContent>
       </Popover>
       <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <IconButton
-            className="w-[25px]"
-            tooltipText={t("Additional actions")}
-            tooltipOffset={tooltipOffset}
-            icon={<DotsThreeVerticalIcon size={18} />}
-          />
-        </DropdownMenuTrigger>
+        <DropdownMenuTrigger
+          render={
+            <IconButton
+              className="w-[25px]"
+              tooltipText={t("Additional actions")}
+              tooltipOffset={tooltipOffset}
+              icon={<DotsThreeVerticalIcon size={18} />}
+            />
+          }
+        />
         <DropdownMenuContent
           className="min-w-[170px] bg-primary/50 backdrop-blur select-none"
           align="end"
@@ -135,9 +137,7 @@ const ActionBar: React.FC<Props> = ({
           alignOffset={2}>
           <DropdownMenuItem
             className="flex items-center justify-between"
-            onSelect={(e) => {
-              e.preventDefault();
-            }}
+            closeOnClick={false}
             disabled={isSaving || isLocked}
             onClick={onProjectSnapshotSave}>
             <div className="flex items-center gap-1">
@@ -152,9 +152,7 @@ const ActionBar: React.FC<Props> = ({
           </DropdownMenuItem>
           <DropdownMenuItem
             className="flex items-center justify-between"
-            onSelect={(e) => {
-              e.preventDefault();
-            }}
+            closeOnClick={false}
             onClick={onProjectLockChange?.bind(null, !isLocked)}>
             <div className="flex items-center gap-1">
               {isLocked ? (
