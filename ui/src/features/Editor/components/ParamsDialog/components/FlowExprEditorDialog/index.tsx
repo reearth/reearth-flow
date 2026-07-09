@@ -144,11 +144,8 @@ const FlowExprEditorDialog: React.FC<Props> = ({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onClose}>
-        <DialogContent
-          size={isFullscreen ? "full" : "3xl"}
-          onInteractOutside={(e) => e.preventDefault()}
-          hideCloseButton>
+      <Dialog open={open} disablePointerDismissal onOpenChange={onClose}>
+        <DialogContent size={isFullscreen ? "full" : "3xl"} hideCloseButton>
           <DialogHeader>
             <DialogTitle className="relative flex h-[52px] items-center justify-between">
               <div className="flex flex-1 gap-4">

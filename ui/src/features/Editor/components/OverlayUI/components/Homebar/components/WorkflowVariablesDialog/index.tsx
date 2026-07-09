@@ -273,13 +273,12 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
 
   return (
     <>
-      <Dialog open onOpenChange={handleCancel}>
+      <Dialog open disablePointerDismissal onOpenChange={handleCancel}>
         <DialogContent
           className="h-[50vh]"
           size="2xl"
           position="off-center"
-          hideCloseButton
-          onInteractOutside={(e) => e.preventDefault()}>
+          hideCloseButton>
           <div className="flex h-full flex-col">
             <DialogHeader>
               <DialogTitle>
