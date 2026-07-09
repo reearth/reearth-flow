@@ -9,7 +9,7 @@ graphs:
       - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
         name: FeatureCreator
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
           creator:
             type: flowExpr
@@ -28,7 +28,7 @@ graphs:
       - id: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
         name: AttributeConversionTable
         type: action
-        action: AttributeConversionTable
+        action: Attribute Conversion Table
         with:
           format: csv
           inline: !include ./files/admin_ward_list.csv.txt
@@ -41,7 +41,7 @@ graphs:
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         name: FileWriterCSV
         type: action
-        action: CsvWriter
+        action: CSV Writer
         with:
           format: csv
           output:

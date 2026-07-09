@@ -4,14 +4,14 @@ nodes:
   - id: 1c0e21d1-cc12-48bd-b761-d5e943f5006f
     name: InputRouter
     type: action
-    action: InputRouter
+    action: Input Router
     with:
       routingPort: features
 
   - id: 6da2ce36-9a86-44ac-8f9f-b427bdb50097
     name: XMLValidatorSyntaxAndNamespace
     type: action
-    action: XMLValidator
+    action: XML Validator
     with:
       attribute: path
       inputType: file
@@ -20,7 +20,7 @@ nodes:
   - id: b51e43bd-1d67-4e9e-9b42-2e91aef79f6f
     name: XMLValidatorSyntaxAndSchema
     type: action
-    action: XMLValidator
+    action: XML Validator
     with:
       attribute: path
       inputType: file
@@ -29,7 +29,7 @@ nodes:
   - id: 14225ce7-1d9f-44bc-8b41-3aa06d4275cd
     name: AttributeManagerCreateValid
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: status
@@ -41,7 +41,7 @@ nodes:
   - id: 9293ff92-7cde-422d-a157-011d54b23cf0
     name: AttributeManagerCreateNotWellFormed
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: status
@@ -53,7 +53,7 @@ nodes:
   - id: 6c235d0b-26fb-47dd-a3df-709fa961855c
     name: AttributeManagerCreateInvalid
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: status
@@ -65,21 +65,21 @@ nodes:
   - id: 8d18c9ee-8473-4294-9a83-07dc00c14dc5
     name: SummaryRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: summary
 
   - id: abd4320c-aa7c-445a-af78-4c4f1f9a35c7
     name: InvalidRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: invalid
 
   - id: 3c0724c6-263e-43b9-8532-e46c7584323a
     name: NotWellFormedRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: notWellFormed
 

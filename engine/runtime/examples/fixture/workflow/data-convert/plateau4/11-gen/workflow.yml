@@ -21,7 +21,7 @@ graphs:
       - id: 7b1af940-900f-4195-b2cc-ae37bfcf62fe
         name: FeatureCreator
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
           creator:
             type: flowExpr
@@ -55,7 +55,7 @@ graphs:
       - id: 04b83179-6c76-446c-851d-ef0f91f62406
         name: TargetPackagesFilter
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -66,7 +66,7 @@ graphs:
       - id: 7bd12def-bc00-4340-adf5-1a2d68995dd7
         name: AttributeManagerPreFlattener
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: meshcode
@@ -98,7 +98,7 @@ graphs:
       - id: 8f254c7d-fa35-416c-8093-dbaafd72d95a
         name: AttributeManagerDict
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: code
@@ -123,7 +123,7 @@ graphs:
       - id: ea88ce7b-1525-419e-a869-d193d8318b71
         name: JsonWriterDict
         type: action
-        action: JsonWriter
+        action: JSON Writer
         with:
           output:
             type: string
@@ -144,7 +144,7 @@ graphs:
       - id: f63b1460-11eb-4000-a976-38f37a4e919b
         name: AttributeManager
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: cityCode
@@ -176,12 +176,11 @@ graphs:
       - id: 2469c61e-dbda-488e-af80-e3b4105197b7
         name: TwoDimensionForcer
         type: action
-        action: TwoDimensionForcer
-
+        action: Two Dimension Forcer
       - id: 9bfcb0a4-0f66-494a-aa93-d26831f6221f
         name: MVTWriter
         type: action
-        action: MVTWriter
+        action: MVT Writer
         with:
           schemaKey: __citygml_feature_type
           layerName:

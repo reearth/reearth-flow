@@ -21,28 +21,28 @@ nodes:
   - id: a0000000-0000-0000-0000-000000000001
     name: BuildingRadiationInput
     type: action
-    action: InputRouter
+    action: Input Router
     with:
       routingPort: buildingRadiation
 
   - id: a0000000-0000-0000-0000-000000000002
     name: BuildingAttrInput
     type: action
-    action: InputRouter
+    action: Input Router
     with:
       routingPort: buildingAttr
 
   - id: a0000000-0000-0000-0000-000000000003
     name: LandRadiationInput
     type: action
-    action: InputRouter
+    action: Input Router
     with:
       routingPort: landRadiation
 
   - id: a0000000-0000-0000-0000-000000000004
     name: DemTriangleInput
     type: action
-    action: InputRouter
+    action: Input Router
     with:
       routingPort: demTriangle
 
@@ -54,7 +54,7 @@ nodes:
   - id: 00000005-0000-0000-0000-000000000030
     name: BuildingTotalCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy: []
       calculations:
@@ -66,7 +66,7 @@ nodes:
   - id: 00000005-0000-0000-0000-000000000031
     name: AddBroadcastKey
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: _bcastKey
@@ -79,7 +79,7 @@ nodes:
   - id: 00000005-0000-0000-0000-000000000032
     name: BuildingRadiationSorter
     type: action
-    action: FeatureSorter
+    action: Feature Sorter
     with:
       attributes:
         - totalSolarRadiation
@@ -88,7 +88,7 @@ nodes:
   - id: 00000005-0000-0000-0000-000000000033
     name: BuildingRankCounter
     type: action
-    action: FeatureCounter
+    action: Feature Counter
     with:
       countStart: 1
       outputAttribute: solarRank
@@ -96,7 +96,7 @@ nodes:
   - id: 00000005-0000-0000-0000-000000000034
     name: AddBroadcastKeyToRanked
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: _bcastKey
@@ -109,7 +109,7 @@ nodes:
   - id: 00000005-0000-0000-0000-000000000035
     name: TotalCountMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttribute:
         - _bcastKey
@@ -120,7 +120,7 @@ nodes:
   - id: 00000005-0000-0000-0000-000000000036
     name: BuildingAttrMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttribute:
         - gmlId
@@ -135,7 +135,7 @@ nodes:
   - id: 00000007-0000-0000-0000-000000000001
     name: RestrictZone1ShapefileReader
     type: action
-    action: ShapefileReader
+    action: Shapefile Reader
     with:
       dataset:
         type: flowExpr
@@ -145,7 +145,7 @@ nodes:
   - id: 00000007-0000-0000-0000-000000000002
     name: RestrictZone1Reprojector
     type: action
-    action: HorizontalReprojector
+    action: Horizontal Reprojector
     with:
       targetEpsgCode:
         type: flowExpr
@@ -154,14 +154,14 @@ nodes:
   - id: 00000007-0000-0000-0000-000000000004
     name: RestrictZone1SpatialFilter
     type: action
-    action: SpatialFilter
+    action: Spatial Filter
     with:
       predicate: intersects
 
   - id: 00000007-0000-0000-0000-000000000005
     name: InZone1FlagPassed
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: inZone1
@@ -173,7 +173,7 @@ nodes:
   - id: 00000007-0000-0000-0000-000000000006
     name: InZone1FlagFailed
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: inZone1
@@ -185,7 +185,7 @@ nodes:
   - id: 00000007-0000-0000-0000-000000000007
     name: Zone1Merger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttribute:
         - gmlId
@@ -196,7 +196,7 @@ nodes:
   - id: 00000007-0000-0000-0000-000000000011
     name: RestrictZone2ShapefileReader
     type: action
-    action: ShapefileReader
+    action: Shapefile Reader
     with:
       dataset:
         type: flowExpr
@@ -206,7 +206,7 @@ nodes:
   - id: 00000007-0000-0000-0000-000000000012
     name: RestrictZone2Reprojector
     type: action
-    action: HorizontalReprojector
+    action: Horizontal Reprojector
     with:
       targetEpsgCode:
         type: flowExpr
@@ -215,14 +215,14 @@ nodes:
   - id: 00000007-0000-0000-0000-000000000014
     name: RestrictZone2SpatialFilter
     type: action
-    action: SpatialFilter
+    action: Spatial Filter
     with:
       predicate: intersects
 
   - id: 00000007-0000-0000-0000-000000000015
     name: InZone2FlagPassed
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: inZone2
@@ -234,7 +234,7 @@ nodes:
   - id: 00000007-0000-0000-0000-000000000016
     name: InZone2FlagFailed
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: inZone2
@@ -246,7 +246,7 @@ nodes:
   - id: 00000007-0000-0000-0000-000000000017
     name: Zone2Merger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttribute:
         - gmlId
@@ -257,7 +257,7 @@ nodes:
   - id: 00000007-0000-0000-0000-000000000021
     name: RestrictZone3ShapefileReader
     type: action
-    action: ShapefileReader
+    action: Shapefile Reader
     with:
       dataset:
         type: flowExpr
@@ -267,7 +267,7 @@ nodes:
   - id: 00000007-0000-0000-0000-000000000022
     name: RestrictZone3Reprojector
     type: action
-    action: HorizontalReprojector
+    action: Horizontal Reprojector
     with:
       targetEpsgCode:
         type: flowExpr
@@ -276,14 +276,14 @@ nodes:
   - id: 00000007-0000-0000-0000-000000000024
     name: RestrictZone3SpatialFilter
     type: action
-    action: SpatialFilter
+    action: Spatial Filter
     with:
       predicate: intersects
 
   - id: 00000007-0000-0000-0000-000000000025
     name: InZone3FlagPassed
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: inZone3
@@ -295,7 +295,7 @@ nodes:
   - id: 00000007-0000-0000-0000-000000000026
     name: InZone3FlagFailed
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: inZone3
@@ -307,7 +307,7 @@ nodes:
   - id: 00000007-0000-0000-0000-000000000027
     name: Zone3Merger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttribute:
         - gmlId
@@ -318,7 +318,7 @@ nodes:
   - id: 00000007-0000-0000-0000-000000000030
     name: SnowShapefileReader
     type: action
-    action: ShapefileReader
+    action: Shapefile Reader
     with:
       dataset:
         type: flowExpr
@@ -328,7 +328,7 @@ nodes:
   - id: 00000007-0000-0000-0000-000000000031
     name: SnowShapefileReprojector
     type: action
-    action: HorizontalReprojector
+    action: Horizontal Reprojector
     with:
       targetEpsgCode:
         type: flowExpr
@@ -337,7 +337,7 @@ nodes:
   - id: 00000007-0000-0000-0000-000000000033
     name: SnowSpatialFilter
     type: action
-    action: SpatialFilter
+    action: Spatial Filter
     with:
       predicate: intersects
       mergeFilterAttributes: true
@@ -346,7 +346,7 @@ nodes:
   - id: 00000007-0000-0000-0000-000000000034
     name: SnowMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttribute:
         - gmlId
@@ -361,7 +361,7 @@ nodes:
   - id: 00000005-0000-0000-0000-000000000060
     name: BuildingJudgmentComputer
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         # 1_1_1: solar radiation absolute threshold
@@ -557,7 +557,7 @@ nodes:
   - id: 00000005-0000-0000-0000-000000000063
     name: BuildingPriorityComputer
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: priority
@@ -588,7 +588,7 @@ nodes:
   - id: 00000005-0000-0000-0000-000000000061
     name: BuildingJudgmentMapper
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: 建物ID
@@ -621,7 +621,7 @@ nodes:
   - id: 00000005-0000-0000-0000-000000000062
     name: BuildingJudgmentWriter
     type: action
-    action: CsvWriter
+    action: CSV Writer
     with:
       format: csv
       output:
@@ -636,7 +636,7 @@ nodes:
   - id: 00000006-0000-0000-0000-000000000002
     name: LandRadiationAggregator
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - gmlId
@@ -666,7 +666,7 @@ nodes:
   - id: 00000006-0000-0000-0000-000000000003
     name: LandJudgmentComputer
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         # 1_1_1: solar radiation absolute threshold
@@ -810,7 +810,7 @@ nodes:
   - id: 00000006-0000-0000-0000-000000000006
     name: LandPriorityComputer
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: priority
@@ -835,7 +835,7 @@ nodes:
   - id: 00000006-0000-0000-0000-000000000004
     name: LandJudgmentMapper
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: 土地ID
@@ -868,7 +868,7 @@ nodes:
   - id: 00000006-0000-0000-0000-000000000005
     name: LandJudgmentWriter
     type: action
-    action: CsvWriter
+    action: CSV Writer
     with:
       format: csv
       output:
@@ -879,7 +879,7 @@ nodes:
   - id: 00000006-0000-0000-0000-000000000010
     name: LandSnowSpatialFilter
     type: action
-    action: SpatialFilter
+    action: Spatial Filter
     with:
       predicate: intersects
       mergeFilterAttributes: true
@@ -888,7 +888,7 @@ nodes:
   - id: 00000006-0000-0000-0000-000000000011
     name: LandSnowMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttribute:
         - gmlId
@@ -899,14 +899,14 @@ nodes:
   - id: 00000006-0000-0000-0000-000000000021
     name: LandZone1SpatialFilter
     type: action
-    action: SpatialFilter
+    action: Spatial Filter
     with:
       predicate: intersects
 
   - id: 00000006-0000-0000-0000-000000000022
     name: LandInZone1FlagPassed
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: inZone1
@@ -918,7 +918,7 @@ nodes:
   - id: 00000006-0000-0000-0000-000000000023
     name: LandInZone1FlagFailed
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: inZone1
@@ -930,7 +930,7 @@ nodes:
   - id: 00000006-0000-0000-0000-000000000024
     name: LandZone1Merger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttribute:
         - gmlId
@@ -941,14 +941,14 @@ nodes:
   - id: 00000006-0000-0000-0000-000000000031
     name: LandZone2SpatialFilter
     type: action
-    action: SpatialFilter
+    action: Spatial Filter
     with:
       predicate: intersects
 
   - id: 00000006-0000-0000-0000-000000000032
     name: LandInZone2FlagPassed
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: inZone2
@@ -960,7 +960,7 @@ nodes:
   - id: 00000006-0000-0000-0000-000000000033
     name: LandInZone2FlagFailed
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: inZone2
@@ -972,7 +972,7 @@ nodes:
   - id: 00000006-0000-0000-0000-000000000034
     name: LandZone2Merger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttribute:
         - gmlId
@@ -983,14 +983,14 @@ nodes:
   - id: 00000006-0000-0000-0000-000000000041
     name: LandZone3SpatialFilter
     type: action
-    action: SpatialFilter
+    action: Spatial Filter
     with:
       predicate: intersects
 
   - id: 00000006-0000-0000-0000-000000000042
     name: LandInZone3FlagPassed
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: inZone3
@@ -1002,7 +1002,7 @@ nodes:
   - id: 00000006-0000-0000-0000-000000000043
     name: LandInZone3FlagFailed
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: inZone3
@@ -1014,7 +1014,7 @@ nodes:
   - id: 00000006-0000-0000-0000-000000000044
     name: LandZone3Merger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttribute:
         - gmlId

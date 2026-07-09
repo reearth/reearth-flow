@@ -20,7 +20,7 @@ graphs:
       - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
         name: FeatureCreator
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
           creator:
             type: flowExpr
@@ -42,7 +42,7 @@ graphs:
       - id: ded2e272-e05c-4918-86b3-aa9f763da6e6
         name: FeatureReaderByCityGml
         type: action
-        action: FeatureCityGmlReader
+        action: Feature CityGML Reader
         with:
           codelistsPath:
             type: flowExpr
@@ -54,7 +54,7 @@ graphs:
       - id: d2e97a03-3a15-4245-9c50-25ba34677c67
         name: TargetPackagesFilter
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -65,7 +65,7 @@ graphs:
       - id: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6e
         name: AttributeManagerPreFlattener
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: meshcode
@@ -96,7 +96,7 @@ graphs:
       - id: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
         name: AttributeManager
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
           - attribute: cityCode
@@ -123,7 +123,7 @@ graphs:
       - id: f1a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6
         name: FilterUrfPackage
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -134,7 +134,7 @@ graphs:
       - id: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8d
         name: StripFeatureTypePrefix
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
           - attribute: feature_type_without_prefix
@@ -154,7 +154,7 @@ graphs:
       - id: d1e2f3a4-b5c6-d7e8-f9a0-b1c2d3e4f5a6
         name: AttributeConversionTable
         type: action
-        action: AttributeConversionTable
+        action: Attribute Conversion Table
         with:
           format: csv
           inline: !include urf_japanese_converter.csv.txt
@@ -169,7 +169,7 @@ graphs:
       - id: c7d8e9f0-a1b2-c3d4-e5f6-a7b8c9d0e1f2
         name: JsonWriter
         type: action
-        action: JsonWriter
+        action: JSON Writer
         with:
           output:
             type: string
@@ -185,7 +185,7 @@ graphs:
       - id: 1f8b3c4e-5a2d-4e1f-9b7c-3d5e6f8a9b0c
         name: FeatureSorter
         type: action
-        action: FeatureSorter
+        action: Feature Sorter
         with:
           attributes:
             - feature_type
@@ -194,7 +194,7 @@ graphs:
       - id: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
         name: MvtWriter
         type: action
-        action: MVTWriter
+        action: MVT Writer
         with:
           schemaKey: __citygml_feature_type
           layerName:

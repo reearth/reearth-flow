@@ -5,14 +5,14 @@ nodes:
   - id: 63341eb4-409d-4668-b338-2d1e5ab003fd
     name: InputRouter
     type: action
-    action: InputRouter
+    action: Input Router
     with:
       routingPort: features
 
   - id: 27bb6136-ff9f-4523-9b28-bf01e0e9f698
     name: FeatureFilePathExtractor
     type: action
-    action: FeatureFilePathExtractor
+    action: Feature File Path Extractor
     with:
       sourceDataset:
         type: flowExpr
@@ -23,7 +23,7 @@ nodes:
   - id: eb76867a-9d21-4c08-959b-abaf06bfadb6
     name: FeatureFilterByGml
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -34,7 +34,7 @@ nodes:
   - id: a650b6b7-d764-4eb8-aeb0-6dc123e52d26
     name: FeatureSorterByName
     type: action
-    action: FeatureSorter
+    action: Feature Sorter
     with:
       attributes:
         - name
@@ -43,7 +43,7 @@ nodes:
   - id: b229d8d1-f6c8-456a-b325-68f39a5fe82b
     name: FeatureCounterIndex
     type: action
-    action: FeatureCounter
+    action: Feature Counter
     with:
       countStart: 1
       outputAttribute: index
@@ -51,7 +51,7 @@ nodes:
   - id: 06437150-b04d-4b41-83fc-e5767ea35a23
     name: FilePropertyExtractor
     type: action
-    action: FilePropertyExtractor
+    action: File Property Extractor
     with:
       filePathAttribute: path
 
@@ -94,7 +94,7 @@ nodes:
   - id: 273fc537-32eb-44e1-af9f-d46bf0ba1cc8
     name: HorizontalReprojector
     type: action
-    action: HorizontalReprojector
+    action: Horizontal Reprojector
     with:
       sourceEpsgCode:
         type: flowExpr
@@ -116,7 +116,7 @@ nodes:
   - id: b60778f7-b110-44cb-a079-26d03f4dbb51
     name: Lod0InvalidSurfaceCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -129,7 +129,7 @@ nodes:
   - id: ce1613dd-0b26-45a8-984e-adcf8932656e
     name: AttributeMapperLod0InvalidSurface
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: filename
@@ -177,8 +177,7 @@ nodes:
   - id: d65886fc-2d62-448c-8b2e-16841e3c4887
     name: TwoDimensionForcer
     type: action
-    action: TwoDimensionForcer
-
+    action: Two Dimension Forcer
   - id: 2edae6ab-44fe-48af-beb4-68c85e26dcdb
     name: AreaOnAreaOverlayerLod0
     type: action
@@ -192,7 +191,7 @@ nodes:
   - id: 2550e8a3-04e0-446d-b592-886edcc3d351
     name: FeatureFilterByAreaOnAreaOverlap
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -221,7 +220,7 @@ nodes:
   - id: 2a060073-02a0-460a-8b68-c3ea965a96d6
     name: AttributeMapperLod0SurfaceIntersection
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: filename_a
@@ -248,7 +247,7 @@ nodes:
   - id: 86da6c18-1b32-4443-9d24-9a0c3d6d060c
     name: Lod0SurfaceIntersectionCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - filename_a
@@ -278,7 +277,7 @@ nodes:
   - id: aefb9355-f63a-459c-beee-69635c4afaf1
     name: FeatureFilterLod0IncorrectOrientation
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -293,7 +292,7 @@ nodes:
   - id: af670379-9f3c-4eef-bccb-580a53c2cc69
     name: OrientationInvalidSurfaceExcluder
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -305,7 +304,7 @@ nodes:
   - id: 0177ff7b-a842-4aca-be99-47813bf1b11d
     name: Lod0IncorrectOrientationCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -318,7 +317,7 @@ nodes:
   - id: 8b6e3dbc-4c45-4d8d-8f64-58ee6e2c419a
     name: AttributeMapperLod0IncorrectOrientation
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: filename
@@ -356,7 +355,7 @@ nodes:
   - id: afa5ac6e-0bf0-496c-91b5-a46058264ff6
     name: Lod1InvalidSurfaceCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -369,7 +368,7 @@ nodes:
   - id: 7d0476b4-30db-45f5-bbd7-99c52a86e30b
     name: AttributeMapperLod1InvalidSurface
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: filename
@@ -419,7 +418,7 @@ nodes:
   - id: 9c9074a7-7977-443e-897e-883128733faf
     name: FeatureFilterInvalidSolidBoundaryLod1
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -430,7 +429,7 @@ nodes:
   - id: 5af53e1b-cbfe-4cba-9f38-d8230d74468b
     name: Lod1NotClosedSolidCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -443,7 +442,7 @@ nodes:
   - id: 4941ec68-5567-41bd-a8a6-946c30343b26
     name: AttributeMapperLod1NotClosedSolid
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: filename
@@ -472,7 +471,7 @@ nodes:
   - id: 19da512d-70c7-4461-824b-047919d0cd40
     name: Lod1SolidIssuesCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -485,7 +484,7 @@ nodes:
   - id: 2173b3cb-18b8-43bf-a49e-cfe2f5fb1ff8
     name: AttributeMapperLod1SolidIssues
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: filename
@@ -524,15 +523,14 @@ nodes:
   - id: 6536f03a-91b4-44d2-9e9d-d7b3e8e91b6b
     name: GeometryExtractorSolidIntersectionLod1
     type: action
-    action: GeometryExtractor
+    action: Geometry Extractor
     with:
       outputAttribute: _solid_geometry
 
   - id: 3cc74f98-96bd-4585-801b-02bb11c434c8
     name: FootprintReplacerSolidIntersectionLod1
     type: action
-    action: FootprintReplacer
-
+    action: Footprint Replacer
   # IMPORTANT: Shrink the footprint by 0.005m to match the behavior of the FME
   # PLATEAU workflow, which silently ignores small intersections caused by a few
   # mm of coordinate precision artifacts at shared building boundaries. This is
@@ -561,7 +559,7 @@ nodes:
   - id: 689eabf1-cc48-43dd-b6b5-0ac7b369d0ab
     name: FeatureFilterSolidIntersectionOverlapLod1
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -581,14 +579,14 @@ nodes:
   - id: c56dec68-91f9-4d49-94d4-3e6142996735
     name: GeometryReplacerSolidIntersectionLod1A
     type: action
-    action: GeometryReplacer
+    action: Geometry Replacer
     with:
       sourceAttribute: _solid_geometry
 
   - id: 23e6f0c7-d4b2-4d1a-8287-a910a4f7dcc7
     name: GeometryReplacerSolidIntersectionLod1B
     type: action
-    action: GeometryReplacer
+    action: Geometry Replacer
     with:
       sourceAttribute: _solid_geometry
 
@@ -616,7 +614,7 @@ nodes:
   - id: a08a7333-b223-41d2-aea1-24966c6349b1
     name: AttributeMapperLod1SolidIntersection
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: intersection_id
@@ -665,7 +663,7 @@ nodes:
   - id: 68871b39-bb4c-45a2-a328-3725ad947f0f
     name: Lod1SolidIntersectionCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - gmlFilenameA
@@ -689,7 +687,7 @@ nodes:
   - id: 7edcc43f-22a3-4091-bef5-b6ba1b18a543
     name: ErrorSummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -702,7 +700,7 @@ nodes:
   - id: 7f364020-94f2-4c3a-9642-f94b696dc551
     name: SurfaceIntersectionSummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -715,7 +713,7 @@ nodes:
   - id: af18b16c-6dd7-41f8-b6b7-65ecb062aa67
     name: OrientationSummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -728,7 +726,7 @@ nodes:
   - id: a9806a8c-4796-42eb-a76e-960435492aaa
     name: InvalidSurfaceLod1SummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -741,7 +739,7 @@ nodes:
   - id: 7af09d51-c5a9-4434-ab60-24ed7f1e8192
     name: NotClosedSolidLod1SummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -754,7 +752,7 @@ nodes:
   - id: d2268a59-ec0c-42a7-953b-b55475d27b30
     name: SolidIssuesLod1SummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -767,7 +765,7 @@ nodes:
   - id: c693f8b2-e6a9-4943-871d-f3ee950f75a0
     name: SolidIntersectionLod1SummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -780,7 +778,7 @@ nodes:
   - id: 428129b3-ad69-4a18-bf99-25492d41ba26
     name: AttributeMapperBuildingSummary
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: Index
@@ -915,7 +913,7 @@ nodes:
   - id: 2eea35c1-6732-471a-bb39-4a03f01d411a
     name: StatisticsCalculatorBuilding
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       calculations:
         - newAttribute: "C-bldg-01 エラー"
@@ -1065,14 +1063,14 @@ nodes:
   - id: 3730412c-8a45-417c-a669-fa10fec80028
     name: OutputRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: features
 
   - id: 20e962f2-e612-42c7-a107-8c0ff21a09af
     name: OutputRouterSummary
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: summaryOutput
 
@@ -1085,7 +1083,7 @@ nodes:
   - id: bd42447c-1efd-4ebb-813b-3cd44d174272
     name: Lod2InvalidSurfaceCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -1098,7 +1096,7 @@ nodes:
   - id: 725c8a38-54c5-41eb-92d5-5172719be124
     name: AttributeMapperLod2InvalidSurface
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: filename
@@ -1131,7 +1129,7 @@ nodes:
   - id: 95cbdea7-0b8b-406f-bd8b-b0ad53139e53
     name: Lod3InvalidSurfaceCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -1144,7 +1142,7 @@ nodes:
   - id: 3ef2a0b9-c1ff-4a74-a245-973dee31c508
     name: AttributeMapperLod3InvalidSurface
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: filename
@@ -1191,7 +1189,7 @@ nodes:
   - id: 172b94c2-b9db-49f8-9a8e-365d3a49d746
     name: FeatureFilterInvalidSolidBoundaryLod2
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -1202,7 +1200,7 @@ nodes:
   - id: 84ce42ad-fcfc-4708-b17d-af3430bbdb82
     name: Lod2NotClosedSolidCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -1215,7 +1213,7 @@ nodes:
   - id: c43097f8-3bed-4223-b25b-10aa277ec6eb
     name: AttributeMapperLod2NotClosedSolid
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: filename
@@ -1234,7 +1232,7 @@ nodes:
   - id: 6022cb9e-77c6-4669-9369-969aa5a0a74e
     name: Lod2SolidIssuesCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -1247,7 +1245,7 @@ nodes:
   - id: c56efca4-f708-4be5-aa69-ba49a2101c75
     name: AttributeMapperLod2SolidIssues
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: filename
@@ -1276,7 +1274,7 @@ nodes:
   - id: 707f16bf-a9a4-4b91-a1c6-e938ef54827f
     name: FeatureFilterInvalidSolidBoundaryLod3
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -1287,7 +1285,7 @@ nodes:
   - id: 16e3b0fd-ecc8-46b2-8577-8c10865870b1
     name: Lod3NotClosedSolidCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -1300,7 +1298,7 @@ nodes:
   - id: 4f585298-309b-406e-adc0-e4a029f82baa
     name: AttributeMapperLod3NotClosedSolid
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: filename
@@ -1319,7 +1317,7 @@ nodes:
   - id: 876700c4-dd8e-42ea-b41f-d45dba190321
     name: Lod3SolidIssuesCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -1332,7 +1330,7 @@ nodes:
   - id: 2eba5329-3f05-41c1-bd8f-be180546b791
     name: AttributeMapperLod3SolidIssues
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: filename
@@ -1352,15 +1350,14 @@ nodes:
   - id: b453e3de-1050-49da-9e7d-a5b31c09d874
     name: GeometryExtractorSolidIntersectionLod2
     type: action
-    action: GeometryExtractor
+    action: Geometry Extractor
     with:
       outputAttribute: _solid_geometry
 
   - id: 58827ddf-8bbb-44c8-a337-9b3ddd8514b4
     name: FootprintReplacerSolidIntersectionLod2
     type: action
-    action: FootprintReplacer
-
+    action: Footprint Replacer
   - id: 4c9eea9b-d92e-4272-baba-97a8153f2cbe
     name: BuffererSolidIntersectionLod2
     type: action
@@ -1385,7 +1382,7 @@ nodes:
   - id: 00073c0d-4d99-4dfd-aab7-93576c344072
     name: FeatureFilterSolidIntersectionOverlapLod2
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -1405,14 +1402,14 @@ nodes:
   - id: 6e902c73-60a3-4857-adcb-050c5a24a2fa
     name: GeometryReplacerSolidIntersectionLod2A
     type: action
-    action: GeometryReplacer
+    action: Geometry Replacer
     with:
       sourceAttribute: _solid_geometry
 
   - id: d61451d4-3c04-48e4-b3a9-934f21f56b24
     name: GeometryReplacerSolidIntersectionLod2B
     type: action
-    action: GeometryReplacer
+    action: Geometry Replacer
     with:
       sourceAttribute: _solid_geometry
 
@@ -1440,7 +1437,7 @@ nodes:
   - id: 06d5d818-0ecc-4fd7-bf89-a4177210c9ce
     name: AttributeMapperLod2SolidIntersection
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: intersection_id
@@ -1489,7 +1486,7 @@ nodes:
   - id: 14a007fc-a5a3-43b0-9fe0-a1f2c765f6e3
     name: Lod2SolidIntersectionCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - gmlFilenameA
@@ -1503,15 +1500,14 @@ nodes:
   - id: 27321acb-d341-4866-9dd8-fd4170ba6918
     name: GeometryExtractorSolidIntersectionLod3
     type: action
-    action: GeometryExtractor
+    action: Geometry Extractor
     with:
       outputAttribute: _solid_geometry
 
   - id: 7aa453e0-7d18-4927-a4d9-582d42e5cdac
     name: FootprintReplacerSolidIntersectionLod3
     type: action
-    action: FootprintReplacer
-
+    action: Footprint Replacer
   - id: 22530283-72ea-4ae2-8ae5-216787c93aff
     name: BuffererSolidIntersectionLod3
     type: action
@@ -1536,7 +1532,7 @@ nodes:
   - id: 4ccbd075-561f-4540-aaa6-7f82a21056b2
     name: FeatureFilterSolidIntersectionOverlapLod3
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -1556,14 +1552,14 @@ nodes:
   - id: 93d01ed1-8ac7-406f-ad28-704bcb213f0c
     name: GeometryReplacerSolidIntersectionLod3A
     type: action
-    action: GeometryReplacer
+    action: Geometry Replacer
     with:
       sourceAttribute: _solid_geometry
 
   - id: 96f36de0-0180-4bb8-9e1e-f503d35af14e
     name: GeometryReplacerSolidIntersectionLod3B
     type: action
-    action: GeometryReplacer
+    action: Geometry Replacer
     with:
       sourceAttribute: _solid_geometry
 
@@ -1591,7 +1587,7 @@ nodes:
   - id: 9bd16218-2091-4ec3-9755-f0145602141b
     name: AttributeMapperLod3SolidIntersection
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: intersection_id
@@ -1640,7 +1636,7 @@ nodes:
   - id: f6cae627-8915-43b0-8781-65956bb6c1ef
     name: Lod3SolidIntersectionCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - gmlFilenameA
@@ -1654,7 +1650,7 @@ nodes:
   - id: 9d779ca4-0750-4098-b6f7-102fa1c331ef
     name: InvalidSurfaceLod2SummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -1666,7 +1662,7 @@ nodes:
   - id: 1306a9be-0cbc-4e44-9a47-9e63b4e6751b
     name: InvalidSurfaceLod3SummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -1678,7 +1674,7 @@ nodes:
   - id: f098ecf6-e0df-492f-848b-e03de1c322b8
     name: NotClosedSolidLod2SummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -1690,7 +1686,7 @@ nodes:
   - id: 8e4d7762-1205-4313-b2a9-0ce18a4b0b08
     name: NotClosedSolidLod3SummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -1702,7 +1698,7 @@ nodes:
   - id: 7791b4fd-0782-47d1-b9bc-df9eb1b89a3f
     name: SolidIssuesLod2SummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -1714,7 +1710,7 @@ nodes:
   - id: 7dd8c30f-f748-4a04-9f74-313f69d8f3e3
     name: SolidIssuesLod3SummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -1726,7 +1722,7 @@ nodes:
   - id: 39075c4f-efb6-4d37-9dd8-43c480093a5c
     name: SolidIntersectionLod2SummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -1738,7 +1734,7 @@ nodes:
   - id: 87eee007-3e1a-41c8-a8ab-90e57e18166f
     name: SolidIntersectionLod3SummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -1755,7 +1751,7 @@ nodes:
   - id: c1b00001-0000-4000-8000-000000000001
     name: FeatureFilterBuildingForDuplicateId
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -1767,7 +1763,7 @@ nodes:
   - id: c1b00002-0000-4000-8000-000000000002
     name: AttributeManagerBuildingId
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: uroBuildingId
@@ -1826,7 +1822,7 @@ nodes:
   - id: c1b00003-0000-4000-8000-000000000003
     name: AttributeAggregatorDuplicateBuildingId
     type: action
-    action: AttributeAggregator
+    action: Attribute Aggregator
     with:
       aggregateAttributes:
         - newAttribute: uroBuildingId
@@ -1851,7 +1847,7 @@ nodes:
   - id: c1b00004-0000-4000-8000-000000000004
     name: FeatureMergerDuplicateBuildingId
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -1866,7 +1862,7 @@ nodes:
   - id: c1b00005-0000-4000-8000-000000000005
     name: FeatureFilterMultipleBuildingId
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -1878,7 +1874,7 @@ nodes:
   - id: c1b00006-0000-4000-8000-000000000006
     name: AttributeMapperDuplicateBuildingId
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: GmlId
@@ -1916,7 +1912,7 @@ nodes:
   - id: c1b00008-0000-4000-8000-000000000008
     name: DuplicateBuildingIdCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -1930,7 +1926,7 @@ nodes:
   - id: c1b00009-0000-4000-8000-000000000009
     name: DuplicateBuildingIdSummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -1948,7 +1944,7 @@ nodes:
   - id: c1b00010-0000-4000-8000-000000000010
     name: FeatureFilterValidBuildingIdFormat
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -1974,7 +1970,7 @@ nodes:
   - id: c1b00011-0000-4000-8000-000000000011
     name: AttributeMapperInvalidBuildingIdFormat
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: Index
@@ -2012,7 +2008,7 @@ nodes:
   - id: c1b00013-0000-4000-8000-000000000013
     name: InvalidBuildingIdFormatCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -2026,7 +2022,7 @@ nodes:
   - id: c1b00014-0000-4000-8000-000000000014
     name: InvalidBuildingIdFormatSummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -2056,7 +2052,7 @@ nodes:
   - id: c1b00022-0000-4000-8000-000000000022
     name: AttributeMapperUsageError
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: Filename
@@ -2084,7 +2080,7 @@ nodes:
   - id: c1b00024-0000-4000-8000-000000000024
     name: UsageErrorCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -2098,7 +2094,7 @@ nodes:
   - id: c1b00025-0000-4000-8000-000000000025
     name: UsageErrorSummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -2112,7 +2108,7 @@ nodes:
   - id: c1b00041-0000-4000-8000-000000000041
     name: AttributeMapperCityCodeError
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: "Feature Type"
@@ -2140,7 +2136,7 @@ nodes:
   - id: c1b00043-0000-4000-8000-000000000043
     name: CityCodeErrorCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -2154,7 +2150,7 @@ nodes:
   - id: c1b00044-0000-4000-8000-000000000044
     name: CityCodeErrorSummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -2177,12 +2173,11 @@ nodes:
   - id: c1b00051-0000-4000-8000-000000000051
     name: UnmatchedXlinkSummaryNoop
     type: action
-    action: NoopSink
-
+    action: Noop Sink
   - id: c1b00052-0000-4000-8000-000000000052
     name: AttributeManagerXlinkFrom
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: Attribute
@@ -2204,7 +2199,7 @@ nodes:
   - id: c1b00053-0000-4000-8000-000000000053
     name: AttributeManagerXlinkTo
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: Attribute
@@ -2226,7 +2221,7 @@ nodes:
   - id: c1b00054-0000-4000-8000-000000000054
     name: AttributeMapperLbldg06
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: Index
@@ -2262,7 +2257,7 @@ nodes:
   - id: c1b00056-0000-4000-8000-000000000056
     name: Lbldg06ErrorCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -2276,7 +2271,7 @@ nodes:
   - id: c1b00057-0000-4000-8000-000000000057
     name: UnmatchedXlinkSummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -2294,7 +2289,7 @@ nodes:
   - id: c1b00060-0000-4000-8000-000000000060
     name: FeatureFilterBuildingPartL02
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -2322,7 +2317,7 @@ nodes:
   - id: c1b00063-0000-4000-8000-000000000063
     name: FilterNonFullStatusL02
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -2338,7 +2333,7 @@ nodes:
   - id: c1b00065-0000-4000-8000-000000000065
     name: AttributeMapperLbldg02
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: Index
@@ -2372,7 +2367,7 @@ nodes:
   - id: c1b00067-0000-4000-8000-000000000067
     name: Lbldg02ErrorCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -2386,7 +2381,7 @@ nodes:
   - id: c1b00068-0000-4000-8000-000000000068
     name: Lbldg02SummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -2414,7 +2409,7 @@ nodes:
   - id: c1b00071-0000-4000-8000-000000000071
     name: MeshCodeTester
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -2425,7 +2420,7 @@ nodes:
   - id: c1b00072-0000-4000-8000-000000000072
     name: AttributeMapperIncorrectMeshCode
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: feature_type
@@ -2457,7 +2452,7 @@ nodes:
   - id: c1b00074-0000-4000-8000-000000000074
     name: IncorrectMeshCodeCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -2471,7 +2466,7 @@ nodes:
   - id: c1b00075-0000-4000-8000-000000000075
     name: IncorrectMeshCodeSummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -2488,7 +2483,7 @@ nodes:
   - id: c1b00080-0000-4000-8000-000000000080
     name: Lod0Or1BuildingPartCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -2502,7 +2497,7 @@ nodes:
   - id: c1b00081-0000-4000-8000-000000000081
     name: AttributeMapperLod0Or1BuildingPart
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: Index
@@ -2530,7 +2525,7 @@ nodes:
   - id: c1b00083-0000-4000-8000-000000000083
     name: Lod0Or1BuildingPartSummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr

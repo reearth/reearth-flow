@@ -10,7 +10,7 @@ graphs:
       - id: c1a91180-ab88-4c1a-aab5-48c242a218ea
         name: FeatureCreator
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
           creator:
             type: flowExpr
@@ -55,7 +55,7 @@ graphs:
       - id: c1a91180-ab88-4c1a-aab5-48c242a218ec
         name: Sink-Json-Writer
         type: action
-        action: JsonWriter
+        action: JSON Writer
         with:
           output:
             type: flowExpr

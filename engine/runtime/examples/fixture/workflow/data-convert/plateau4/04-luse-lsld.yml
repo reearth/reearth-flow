@@ -18,13 +18,13 @@ graphs:
   - id: 35038d96-5e81-4a21-a0e0-72f67eb71db5
     name: InputRouter
     type: action
-    action: InputRouter
+    action: Input Router
     with:
       routingPort: features
   - id: c7315341-26b3-4405-9d02-039d721cd225
     name: DirectoryDecompressor
     type: action
-    action: DirectoryDecompressor
+    action: Directory Decompressor
     with:
       archiveAttributes:
       - codelists
@@ -32,7 +32,7 @@ graphs:
   - id: c73fbb78-74ca-490e-8dc9-e9fa1729bea0
     name: FeatureFilePathExtractor
     type: action
-    action: FeatureFilePathExtractor
+    action: Feature File Path Extractor
     with:
       sourceDataset:
         type: flowExpr
@@ -42,7 +42,7 @@ graphs:
   - id: 9d04983e-e84e-4622-b0c6-827d7afad720
     name: FeatureFilter
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
       - expr:
@@ -62,7 +62,7 @@ graphs:
   - id: f3465c78-59fa-4307-bc02-67c46c2ddd98
     name: FeatureCounterByUdxDirs
     type: action
-    action: FeatureCounter
+    action: Feature Counter
     with:
       countStart: 1
       groupBy:
@@ -78,7 +78,7 @@ graphs:
   - id: 9fccbcdb-ab58-4fda-9a47-05a45c84a7fb
     name: OutputRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: features
   edges:
@@ -123,7 +123,7 @@ graphs:
   - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
     name: FeatureCreator
     type: action
-    action: FeatureCreator
+    action: Feature Creator
     with:
       creator:
         type: flowExpr
@@ -155,7 +155,7 @@ graphs:
   - id: 62a743b1-ac32-4fe1-a0d2-f13b41c37aa6
     name: TargetPackagesFilter
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
       - expr:
@@ -169,11 +169,11 @@ graphs:
   - id: a7c3e1d2-5f8b-4a6c-9e0d-1b2c3d4e5f60
     name: TwoDimensionForcer
     type: action
-    action: TwoDimensionForcer
+    action: Two Dimension Forcer
   - id: 8510992d-2546-4e89-a09b-f31ff435bbb7
     name: FeatureFilterByPackage
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
       - expr:
@@ -187,7 +187,7 @@ graphs:
   - id: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
     name: AttributeMapperLuse
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: meshcode
@@ -247,7 +247,7 @@ graphs:
   - id: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
     name: MVTWriterLuse
     type: action
-    action: MVTWriter
+    action: MVT Writer
     with:
       schemaKey: __citygml_feature_type
       layerName:
@@ -267,7 +267,7 @@ graphs:
   - id: 7a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
     name: AttributeMapperLsld
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: meshcode
@@ -338,7 +338,7 @@ graphs:
   - id: 9c3d4e5f-6a7b-8c9d-0e1f-2a3b4c5d6e7f
     name: FeatureSorterLsld
     type: action
-    action: FeatureSorter
+    action: Feature Sorter
     with:
       attributes:
       - sort_order
@@ -346,7 +346,7 @@ graphs:
   - id: 4b5c6d7e-8f9a-0b1c-2d3e-4f5a6b7c8d9e
     name: AttributeManagerLsldRemoveSortOrder
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: sort_order
@@ -354,7 +354,7 @@ graphs:
   - id: 0d4e5f6a-7b8c-9d0e-1f2a-3b4c5d6e7f8a
     name: MVTWriterLsld
     type: action
-    action: MVTWriter
+    action: MVT Writer
     with:
       schemaKey: __citygml_feature_type
       layerName:

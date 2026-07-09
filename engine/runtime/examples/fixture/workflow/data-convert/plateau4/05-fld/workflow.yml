@@ -23,7 +23,7 @@ graphs:
       - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
         name: FeatureCreator
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
           creator:
             type: flowExpr
@@ -58,7 +58,7 @@ graphs:
       - id: 65852d63-eb2c-486c-95d5-2646874d11a2
         name: TargetPackagesFilter
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -69,7 +69,7 @@ graphs:
       - id: e2441531-649a-4dcd-916f-ac59f7d56de3
         name: AttributeManagerPreFlattener
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: feature_type
@@ -105,7 +105,7 @@ graphs:
       - id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
         name: AttributeManagerRename
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: cityName
@@ -123,7 +123,7 @@ graphs:
       - id: 20cb127d-fc8a-4921-8ab6-0f88438eb9e0
         name: AttributeMapperSchema
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: city_code
@@ -168,7 +168,7 @@ graphs:
       - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
         name: VerticalReprojector
         type: action
-        action: VerticalReprojector
+        action: Vertical Reprojector
         with:
           reprojectorType: jgd2011ToWgs84
 
@@ -180,7 +180,7 @@ graphs:
       - id: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
         name: Cesium3DTilesWriterNoTexture
         type: action
-        action: Cesium3DTilesWriter
+        action: Cesium 3D Tiles Writer
         with:
           schemaKey: __citygml_feature_type
           minZoom: 15
@@ -206,7 +206,7 @@ graphs:
       - id: 739c7093-63e5-43b8-a1b1-1eeae82f3de1
         name: CreateDictionaryNameDict
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: dict_name
@@ -234,7 +234,7 @@ graphs:
       - id: defb033b-e2aa-4ad1-a9ff-58d9cf6dea47
         name: JsonWriterDict
         type: action
-        action: JsonWriter
+        action: JSON Writer
         with:
           output:
             type: string

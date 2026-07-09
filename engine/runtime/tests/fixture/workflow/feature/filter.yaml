@@ -8,7 +8,7 @@ graphs:
       - id: a1a91180-ab88-4c1a-aab5-48c242a218ca
         name: Source-Sample-DatasetUrl-01
         type: action
-        action: JsonReader
+        action: JSON Reader
         with:
           dataset:
             type: string
@@ -17,7 +17,7 @@ graphs:
       - id: a1a91180-ab88-4c1a-aab5-48c242a218cb
         name: Ops-StringSpread-Filter
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
