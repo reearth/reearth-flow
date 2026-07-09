@@ -9,7 +9,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Code, CodeType, CompiledCode, GeometryValue};
 use schemars::JsonSchema;
@@ -43,11 +43,11 @@ impl ProcessorFactory for ThreeDimensionForcerFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -123,7 +123,7 @@ impl Processor for ThreeDimensionForcer {
         let geometry = &feature.geometry;
 
         if geometry.is_empty() {
-            fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
             return Ok(());
         }
 
@@ -141,12 +141,12 @@ impl Processor for ThreeDimensionForcer {
 
         match &geometry.value {
             GeometryValue::None => {
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
             }
             GeometryValue::FlowGeometry3D(geos) => {
                 if self.preserve_existing_z {
                     // Pass through unchanged if we're preserving existing Z values
-                    fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
                 } else {
                     // Convert to 2D then back to 3D with the new elevation
                     let value_2d: Geometry2D = geos.clone().into();
@@ -155,7 +155,7 @@ impl Processor for ThreeDimensionForcer {
                     new_geometry.value = GeometryValue::FlowGeometry3D(value_3d);
                     let mut new_feature = feature.clone();
                     new_feature.geometry = Arc::new(new_geometry);
-                    fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
                 }
             }
             GeometryValue::FlowGeometry2D(geos) => {
@@ -164,12 +164,12 @@ impl Processor for ThreeDimensionForcer {
                 new_geometry.value = GeometryValue::FlowGeometry3D(value_3d);
                 let mut new_feature = feature.clone();
                 new_feature.geometry = Arc::new(new_geometry);
-                fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
             }
             GeometryValue::CityGmlGeometry(gml) => {
                 if self.preserve_existing_z {
                     // CityGML is already 3D, pass through unchanged
-                    fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
                 } else {
                     // Convert to 2D then back to 3D with the new elevation
                     let value_2d: Geometry2D = gml.clone().into();
@@ -178,7 +178,7 @@ impl Processor for ThreeDimensionForcer {
                     new_geometry.value = GeometryValue::FlowGeometry3D(value_3d);
                     let mut new_feature = feature.clone();
                     new_feature.geometry = Arc::new(new_geometry);
-                    fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
                 }
             }
         }

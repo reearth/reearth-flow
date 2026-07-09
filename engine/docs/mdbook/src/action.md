@@ -8,9 +8,9 @@ Removes appearance information (materials, textures) from CityGML geometry
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
@@ -67,9 +67,9 @@ Calculates the planar or sloped area of polygon geometries and adds the results 
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
@@ -148,7 +148,7 @@ Perform Area Overlay Analysis
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * area
 * remnants
@@ -315,9 +315,9 @@ Group and Aggregate Features by Attributes
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Attribute
 
@@ -354,9 +354,9 @@ Join Array Attributes Into Single Values
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Attribute
 
@@ -480,9 +480,9 @@ Transform Feature Attributes Using Lookup Tables
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Attribute
 
@@ -518,9 +518,9 @@ Remove Duplicate Features Based on Attribute Values
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Attribute
 
@@ -557,9 +557,9 @@ Extract File System Information from Path Attributes
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * Attribute
@@ -596,9 +596,9 @@ Flatten Nested Object Attributes into Top-Level Attributes
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Attribute
 
@@ -686,9 +686,9 @@ Create, Convert, Rename, and Remove Feature Attributes
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Attribute
 
@@ -801,9 +801,9 @@ Transform Feature Attributes Using Expressions and Mappings
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Attribute
 
@@ -879,9 +879,9 @@ Map attribute values to ranges and assign corresponding output values
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Attribute
 
@@ -912,9 +912,9 @@ Extracts the boundary of geometries. For solids/meshes returns bounding surfaces
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
@@ -1011,9 +1011,9 @@ Extract Bounding Box Coordinates from Feature Geometry
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * Geometry
@@ -1075,9 +1075,9 @@ Create Buffer Around Features
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * Geometry
@@ -1212,9 +1212,9 @@ Rename Feature Attributes in Bulk
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Attribute
 
@@ -1326,9 +1326,9 @@ Evaluates a Constructive Solid Geometry (CSG) tree to produce a solid geometry. 
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * nullport
 * rejected
 ### Category
@@ -1387,7 +1387,7 @@ Replace Feature Geometry with Center Point
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * point
 * rejected
@@ -1508,7 +1508,7 @@ Export Features as Cesium 3D Tiles for Web Visualization
 }
 ```
 ### Input Ports
-* default
+* features
 * schema
 ### Output Ports
 ### Category
@@ -1588,7 +1588,7 @@ Reads 3D city models from CityGML files.
 ```
 ### Input Ports
 ### Output Ports
-* default
+* features
 ### Category
 * Input
 
@@ -1663,7 +1663,7 @@ Writes features to CityGML 2.0 files
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 ### Category
 * Output
@@ -1693,7 +1693,7 @@ Filter LineString Features by Closed/Open Status
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
 * closed
 * open
@@ -1733,9 +1733,9 @@ Generate Convex Hull Polygons from Grouped Features
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * Geometry
@@ -1864,9 +1864,9 @@ Extracts coordinates from geometry vertices into feature attributes
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * Geometry
@@ -2076,7 +2076,7 @@ Read Features from CSV or TSV File
 ```
 ### Input Ports
 ### Output Ports
-* default
+* features
 ### Category
 * Input
 
@@ -2215,7 +2215,7 @@ Writes features to CSV or TSV files.
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 ### Category
 * Output
@@ -2338,7 +2338,7 @@ Reads geographic features from CZML (Cesium Language) files for 3D visualization
 ```
 ### Input Ports
 ### Output Ports
-* default
+* features
 ### Category
 * File
 
@@ -2508,7 +2508,7 @@ Export features as CZML for Cesium visualization. Supports static entities and t
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 ### Category
 * File
@@ -2670,9 +2670,9 @@ Convert datetime values between different formats
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * failed
 ### Category
 * Attribute
@@ -2685,7 +2685,7 @@ Filter Features by Geometry Dimension
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
 * 2d
 * 3d
@@ -2732,9 +2732,9 @@ Extracts and decompresses archive files from specified attributes
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * File
 
@@ -2820,7 +2820,7 @@ Dissolve Features by Grouping Attributes
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * area
 * rejected
@@ -2835,9 +2835,9 @@ Debug Echo Features to Logs
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Debug
 
@@ -2849,7 +2849,7 @@ Debug Echo Features to Logs
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
 ### Category
 * Debug
@@ -2888,9 +2888,9 @@ Extract Z-Coordinate Elevation to Attribute
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
@@ -2942,7 +2942,7 @@ Writes features to Microsoft Excel format (.xlsx files).
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 ### Category
 * File
@@ -2988,9 +2988,9 @@ Extrude 2D Polygons into 3D Solids
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
@@ -3071,9 +3071,9 @@ Reads CityGML 2.0 files: resolves gml:id references and xlink:href links across 
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Feature
 
@@ -3154,9 +3154,9 @@ Reads CityGML 3.0 files: resolves gml:id references and xlink:href links across 
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Feature
 
@@ -3235,9 +3235,9 @@ Reads and processes features from CityGML files with optional flattening
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Input
 
@@ -3289,9 +3289,9 @@ Count Features and Add Counter to Attribute
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * Debug
@@ -3338,7 +3338,7 @@ Generate Custom Features Using Scripts
 ```
 ### Input Ports
 ### Output Ports
-* default
+* features
 ### Category
 * Input
 
@@ -3350,9 +3350,9 @@ Filter Out Duplicate Features
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Feature
 
@@ -3412,9 +3412,9 @@ Extract File Paths from Dataset to Features
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * unfiltered
 ### Category
 * Feature
@@ -3489,7 +3489,7 @@ Filter Features Based on Custom Conditions
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * unfiltered
 ### Category
@@ -3690,7 +3690,7 @@ Filters features by Level of Detail (LOD), routing them to appropriate output po
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * up_to_lod0
 * up_to_lod1
@@ -3990,9 +3990,9 @@ Reads features from various file formats (CSV, TSV, JSON) with configurable pars
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Feature
 
@@ -4044,9 +4044,9 @@ Sorts features based on specified attributes in ascending or descending order
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Merge
 
@@ -4107,9 +4107,9 @@ Applies transformation expressions to modify feature attributes and properties
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Transform
 
@@ -4140,9 +4140,9 @@ Filter CityGML features by feature type
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * unfiltered
 ### Category
 * Filter
@@ -4364,9 +4364,9 @@ Writes features from various formats
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Feature
 
@@ -4419,7 +4419,7 @@ Extracts file paths from directories or archives, creating features for each dis
 ```
 ### Input Ports
 ### Output Ports
-* default
+* features
 ### Category
 * Input
 
@@ -4447,9 +4447,9 @@ Extracts file system properties (type, size, timestamps) from files
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * File
@@ -4462,7 +4462,7 @@ Projects 3D geometry to XY plane and computes the union footprint (supports soli
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
 * footprint
 * rejected
@@ -4537,7 +4537,7 @@ Reads geographic features from GeoJSON files, supporting both single features an
 ```
 ### Input Ports
 ### Output Ports
-* default
+* features
 ### Category
 * Input
 
@@ -4597,7 +4597,7 @@ Writes geographic features to GeoJSON files with optional grouping
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 ### Category
 * Output
@@ -4741,7 +4741,7 @@ Reads geographic features from GeoPackage (.gpkg) files with support for vector 
 ```
 ### Input Ports
 ### Output Ports
-* default
+* features
 ### Category
 * Input
 
@@ -4817,7 +4817,7 @@ Writes geographic features to GeoPackage (.gpkg) files with proper SQLite struct
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 ### Category
 * Output
@@ -4860,9 +4860,9 @@ Coerces and converts feature geometries to specified target geometry types
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
@@ -4900,9 +4900,9 @@ Extract Geometry Data to Attribute
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
@@ -4964,7 +4964,7 @@ Filter Features by Geometry Type
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * unfiltered
 * none
@@ -5022,7 +5022,7 @@ Extract geometry parts (surfaces) from 3D geometries as separate features
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * extracted
 * remaining
@@ -5038,9 +5038,9 @@ Removes geometry from a feature
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
@@ -5078,9 +5078,9 @@ Replace Feature Geometry from Attribute
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
@@ -5131,9 +5131,9 @@ Split Multi-Geometries into Individual Features
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
@@ -5224,7 +5224,7 @@ Validate Feature Geometry Quality
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * success
 * failed
@@ -5240,7 +5240,7 @@ Filter Features by Geometry Value Type
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
 * none
 * geometry2d
@@ -5334,7 +5334,7 @@ Reads 3D models from glTF 2.0 files, supporting meshes, nodes, scenes, and geome
 ```
 ### Input Ports
 ### Output Ports
-* default
+* features
 ### Category
 * File
 * 3D
@@ -5401,7 +5401,7 @@ Writes 3D features to GLTF format with optional texture attachment
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 ### Category
 * File
@@ -5455,9 +5455,9 @@ Divide Polygons into Regular Grid Cells
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * Geometry
@@ -6803,9 +6803,9 @@ Make HTTP/HTTPS requests and enrich features with response data
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * Web
@@ -6844,9 +6844,9 @@ Count Polygon Holes to Attribute
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
@@ -6858,7 +6858,7 @@ Extract Polygon Holes as Separate Features
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
 * outershell
 * hole
@@ -6932,9 +6932,9 @@ Reproject Geometry to Different Coordinate System
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
@@ -7078,10 +7078,10 @@ Convert vector geometries to raster image format
 }
 ```
 ### Input Ports
-* default
+* features
 * textureCoordinates
 ### Output Ports
-* default
+* features
 * textured
 * textureBounds
 ### Category
@@ -7110,7 +7110,7 @@ Action for first port forwarding for sub-workflows.
 ```
 ### Input Ports
 ### Output Ports
-* default
+* features
 ### Category
 * Filter
 
@@ -7122,9 +7122,9 @@ Divides geometries into Japanese standard mesh grid (1km) and adds mesh codes to
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * Geometry
@@ -7267,9 +7267,9 @@ Fragments JSON documents into individual features based on a JSONPath query
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * Feature
@@ -7342,7 +7342,7 @@ Reads features from JSON files, supporting both single objects and arrays of obj
 ```
 ### Input Ports
 ### Output Ports
-* default
+* features
 ### Category
 * Input
 
@@ -7410,7 +7410,7 @@ Writes features to JSON files.
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 ### Category
 * Output
@@ -7460,7 +7460,7 @@ Intersection points are turned into point features that can contain the merged l
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * point
 * line
@@ -7524,9 +7524,9 @@ Extracts a specific attribute from each element in a list and concatenates them 
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Feature
 
@@ -7563,9 +7563,9 @@ Explodes array attributes into separate features, creating one feature per array
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Transform
 
@@ -7625,9 +7625,9 @@ Copies attributes from a specific list element to become the main attributes of 
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Feature
 
@@ -7771,7 +7771,7 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
 }
 ```
 ### Input Ports
-* default
+* features
 * schema
 ### Output Ports
 ### Category
@@ -7932,9 +7932,9 @@ No-Operation Pass-Through Processor
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Debug
 
@@ -7946,7 +7946,7 @@ No-Operation Sink (Discard Features)
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
 ### Category
 * Debug
@@ -8096,9 +8096,9 @@ Replace null-like attribute values with configured defaults
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * hasNull
 * rejected
 ### Category
@@ -8228,7 +8228,7 @@ Reads 3D models from Wavefront OBJ files, supporting vertices, faces, normals, t
 ```
 ### Input Ports
 ### Output Ports
-* default
+* features
 ### Category
 * File
 * 3D
@@ -8302,7 +8302,7 @@ Writes 3D features to Wavefront OBJ format with optional material (MTL) files
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 ### Category
 * File
@@ -8352,9 +8352,9 @@ Apply Coordinate Offsets to Geometry
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
@@ -8392,9 +8392,9 @@ Extract Polygon Orientation to Attribute
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
@@ -8420,7 +8420,7 @@ Action for last port forwarding for sub-workflows.
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 ### Category
 * Filter
@@ -8433,9 +8433,9 @@ Flattens hierarchical PLATEAU3 building attributes into flat structure for analy
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * PLATEAU
 
@@ -8447,9 +8447,9 @@ Extracts BuildingInstallationGeometryType
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * PLATEAU
 
@@ -8475,11 +8475,11 @@ This processor validates building usage attributes by checking for the presence 
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * lBldgError
 * codeError
-* default
+* features
 ### Category
 * PLATEAU
 
@@ -8491,9 +8491,9 @@ Initializes dictionaries for PLATEAU
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * PLATEAU
@@ -8506,9 +8506,9 @@ Validates domain of definition of CityGML features
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * PLATEAU
@@ -8521,9 +8521,9 @@ Extracts maxLod
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * PLATEAU
 
@@ -8535,9 +8535,9 @@ Check Xlink for Tran
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * PLATEAU
 
@@ -8549,9 +8549,9 @@ Extracts UDX folders from cityGML path
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * PLATEAU
@@ -8564,7 +8564,7 @@ Detect unmatched xlink for PLATEAU
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
 * summary
 * unMatchedXlinkFrom
@@ -8630,7 +8630,7 @@ Extracts attributes from XML fragments based on a schema definition
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * attributeFeature
 * summary
@@ -8659,9 +8659,9 @@ Flatten attributes for building feature
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * schema
 ### Category
 * PLATEAU
@@ -8674,9 +8674,9 @@ Checks BuildingInstallation's geometry type
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * PLATEAU
 
@@ -8742,9 +8742,9 @@ Check connectivity between BuildingParts within the same Building using 3D bound
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Feature
 * PLATEAU
@@ -8789,11 +8789,11 @@ This processor validates building usage attributes by checking for the presence 
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * l0405BldgError
 * cityCodeError
-* default
+* features
 ### Category
 * PLATEAU
 
@@ -8839,9 +8839,9 @@ Extracts city code information from PLATEAU4 codelists for local public authorit
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * PLATEAU
 
@@ -8901,9 +8901,9 @@ Validates CityGML mesh triangles by parsing raw XML: (1) each triangle has exact
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * not_closed
 * incorrect_vertices
 * wrong_orientation
@@ -8922,7 +8922,7 @@ Checks if a CompositeSurface is continuous (all parts share edges)
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
 * passed
 * failed
@@ -8986,9 +8986,9 @@ Extract Japanese standard regional mesh code for PLATEAU destination files and a
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * PLATEAU
@@ -9034,9 +9034,9 @@ Validates domain of definition of CityGML features
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 * duplicateGmlIdStats
 ### Category
@@ -9073,7 +9073,7 @@ Validates individual surfaces of WaterBody features for TIN mesh quality
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * error
 * summary
@@ -9131,9 +9131,9 @@ Generates TIN-based surfaces from flood area polygons for efficient 3D tile gene
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * PLATEAU
 
@@ -9178,9 +9178,9 @@ Validates that gml:name elements have codeSpace attributes (coded values)
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * gmlNameErrors
 * stats
 ### Category
@@ -9218,9 +9218,9 @@ Extracts maxLod
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * PLATEAU
 
@@ -9252,7 +9252,7 @@ Detect missing attributes in PLATEAU features
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * summary
 * required
@@ -9290,9 +9290,9 @@ Extract object list
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * PLATEAU
 
@@ -9439,7 +9439,7 @@ Inserts solar radiation measurement attributes into original CityGML files
 * element
 * textureBounds
 ### Output Ports
-* default
+* features
 ### Category
 * PLATEAU
 
@@ -9737,9 +9737,9 @@ Calculates solar position (altitude and azimuth) for geographic features using S
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * PLATEAU
@@ -9775,7 +9775,7 @@ Creates pairs of features from AreaOnAreaOverlayer output for solid intersection
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * A
 * B
@@ -9821,7 +9821,7 @@ Detect unreferenced surfaces in PLATEAU transportation models (L-TRAN-03)
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * passed
 * failed
@@ -9893,9 +9893,9 @@ Extracts UDX folders from cityGML path
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * PLATEAU
@@ -9908,7 +9908,7 @@ Detect unmatched Xlinks for PLATEAU
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
 * summary
 * unMatchedXlinkFrom
@@ -9955,7 +9955,7 @@ Detect unshared edges in triangular meshes - edges that appear only once. REQUIR
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * unshared
 ### Category
@@ -10023,9 +10023,9 @@ Check connectivity between BuildingParts within the same Building using 3D bound
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Feature
 * PLATEAU
@@ -10070,11 +10070,11 @@ This processor validates building usage attributes by checking for the presence 
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * l0405BldgError
 * cityCodeError
-* default
+* features
 ### Category
 * PLATEAU
 
@@ -10134,9 +10134,9 @@ Extract Japanese standard regional mesh code for PLATEAU destination files and a
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * PLATEAU
@@ -10182,9 +10182,9 @@ Validates domain of definition of CityGML features
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 * duplicateGmlIdStats
 ### Category
@@ -10218,7 +10218,7 @@ Detect missing attributes in PLATEAU features
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * summary
 * required
@@ -10256,9 +10256,9 @@ Extract object list
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * PLATEAU
 
@@ -10293,7 +10293,7 @@ Creates pairs of features from AreaOnAreaOverlayer output for solid intersection
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * A
 * B
@@ -10365,9 +10365,9 @@ Extracts UDX folders from cityGML path
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * PLATEAU
@@ -10380,7 +10380,7 @@ Detect unmatched Xlinks for PLATEAU
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
 * summary
 * unMatchedXlinkFrom
@@ -10460,7 +10460,7 @@ Filter Features by Geometry Planarity
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * planarity
 * notplanarity
@@ -10475,9 +10475,9 @@ Extract normal vectors and other properties for polygon features
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
@@ -10565,9 +10565,9 @@ Execute Python Scripts with Geospatial Data Processing
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Script
 * Python
@@ -10829,9 +10829,9 @@ Refine Complex Geometries into Simple Geometries
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * remain
 ### Category
 * Geometry
@@ -11112,9 +11112,9 @@ Rotate a 3D polygon using from/to vectors or axis-angle specification
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * Geometry
@@ -11207,7 +11207,7 @@ Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .
 ```
 ### Input Ports
 ### Output Ports
-* default
+* features
 ### Category
 * Input
 
@@ -11267,7 +11267,7 @@ Writes geographic features to ESRI Shapefile format with optional grouping
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 ### Category
 * Output
@@ -11313,7 +11313,7 @@ Validates the Solid Boundary Geometry
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * success
 * failed
@@ -11529,7 +11529,7 @@ Read Features from SQL Database
 ```
 ### Input Ports
 ### Output Ports
-* default
+* features
 ### Category
 * Input
 
@@ -11626,9 +11626,9 @@ Calculates statistical aggregations on feature attributes with customizable expr
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * complete
 ### Category
 * Attribute
@@ -11717,9 +11717,9 @@ Replace Geometry with 3D Box from Attributes
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
@@ -11770,9 +11770,9 @@ Convert 2D Geometry to 3D by Adding Z-Coordinates
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
@@ -11784,9 +11784,9 @@ Rotates a single or a set of 2D geometries in 3D space to align them horizontall
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * Geometry
@@ -11964,9 +11964,9 @@ Rotate 3D Geometry Around Arbitrary Axis
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
@@ -11978,9 +11978,9 @@ Force 3D Geometry to 2D by Removing Z-Coordinates
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
@@ -12018,9 +12018,9 @@ Count Geometry Vertices to Attribute
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
@@ -12032,9 +12032,9 @@ Remove Redundant Vertices from Geometry
 ### Parameters
 * No parameters
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 * rejected
 ### Category
 * Geometry
@@ -12076,9 +12076,9 @@ Reproject Vertical Coordinates Between Datums
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Geometry
 
@@ -12162,9 +12162,9 @@ Fragments large XML documents into smaller pieces based on specified element pat
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
-* default
+* features
 ### Category
 * Transform
 
@@ -12218,7 +12218,7 @@ Validates XML documents against XSD schemas with success/failure routing
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 * success
 * failed
@@ -12266,7 +12266,7 @@ Writes features to XML files.
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 ### Category
 * Output
@@ -12312,7 +12312,7 @@ Writes features to a zip file
 }
 ```
 ### Input Ports
-* default
+* features
 ### Output Ports
 ### Category
 * Output

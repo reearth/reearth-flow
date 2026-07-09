@@ -65,11 +65,11 @@ graphs:
       - id: 3379a497-9e4e-40fb-8361-d2eeeb491773
         from: c1a91180-ab88-4c1a-aab5-48c242a218ea
         to: c1a91180-ab88-4c1a-aab5-48c242a218eb
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       - id: 3379a497-9e4e-40fb-8361-d2eeeb491774
         from: c1a91180-ab88-4c1a-aab5-48c242a218eb
         to: c1a91180-ab88-4c1a-aab5-48c242a218ec
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
