@@ -4913,26 +4913,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@radix-ui/react-progress@npm:1.1.10":
-  version: 1.1.10
-  resolution: "@radix-ui/react-progress@npm:1.1.10"
-  dependencies:
-    "@radix-ui/react-context": "npm:1.1.4"
-    "@radix-ui/react-primitive": "npm:2.1.6"
-  peerDependencies:
-    "@types/react": "*"
-    "@types/react-dom": "*"
-    react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
-    react-dom: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
-  peerDependenciesMeta:
-    "@types/react":
-      optional: true
-    "@types/react-dom":
-      optional: true
-  checksum: 10c0/30297f48cd0978aad2cf2e095d4d4209df43b9be8596126d5c5e034a4b1ca92295c308e25e7434bbeb863d88ee1fd739b97e3b7beff266defc44410578eab196
-  languageName: node
-  linkType: hard
-
 "@radix-ui/react-radio-group@npm:1.4.1":
   version: 1.4.1
   resolution: "@radix-ui/react-radio-group@npm:1.4.1"
@@ -5690,7 +5670,6 @@ __metadata:
     "@monaco-editor/react": "npm:4.7.0"
     "@parcel/watcher": "npm:2.5.6"
     "@phosphor-icons/react": "npm:2.1.10"
-    "@radix-ui/react-progress": "npm:1.1.10"
     "@radix-ui/react-radio-group": "npm:1.4.1"
     "@radix-ui/react-scroll-area": "npm:1.2.0"
     "@radix-ui/react-select": "npm:2.2.6"
