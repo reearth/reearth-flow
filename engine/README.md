@@ -74,9 +74,9 @@ graphs:
     name: entry_point
     nodes:
       - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
-        name: FeatureCreator
+        name: Feature Creator
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
           creator: |
             [
@@ -91,7 +91,7 @@ graphs:
       - id: d2b4977d-e218-4628-96f2-d26407aeea14
         name: attributeManager_01
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: addAttribute
@@ -102,7 +102,7 @@ graphs:
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         name: Echo
         type: action
-        action: EchoSink
+        action: Echo Sink
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d
