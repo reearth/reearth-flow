@@ -798,7 +798,6 @@ impl EdgeOrientation {
             }
             if !self.seen.insert((a, b)) {
                 conflict = true;
-                break;
             }
         }
         if conflict {
