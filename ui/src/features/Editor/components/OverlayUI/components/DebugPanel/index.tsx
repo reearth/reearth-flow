@@ -193,7 +193,13 @@ const DebugPanel: React.FC = () => {
                     <Select
                       defaultValue={dataURLs[0].key}
                       value={selectedDataURL}
-                      onValueChange={handleSelectedDataChange}>
+                      onValueChange={(v) =>
+                        v != null && handleSelectedDataChange(v)
+                      }
+                      items={dataURLs.map(({ key, name }) => ({
+                        value: key,
+                        label: name,
+                      }))}>
                       <SelectTrigger className="h-[26px] w-auto max-w-[300px] text-xs font-bold">
                         <SelectValue
                           placeholder={t("Select Data to Preview")}

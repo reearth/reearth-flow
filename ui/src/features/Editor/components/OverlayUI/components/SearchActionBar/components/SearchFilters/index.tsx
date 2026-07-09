@@ -94,7 +94,8 @@ const SearchFilters = ({
       <CollapsibleContent className="flex gap-2">
         <Select
           value={currentWorkflowFilter}
-          onValueChange={setCurrentWorkflowFilter}>
+          onValueChange={(v) => v != null && setCurrentWorkflowFilter(v)}
+          items={workflows}>
           <SelectTrigger className="h-7 w-full min-w-0">
             <div className="flex min-w-0 flex-1 items-center gap-2">
               <ShareNetworkIcon weight="light" size={14} className="shrink-0" />
@@ -113,7 +114,8 @@ const SearchFilters = ({
         </Select>
         <Select
           value={currentActionTypeFilter}
-          onValueChange={setCurrentActionTypeFilter}>
+          onValueChange={(v) => v != null && setCurrentActionTypeFilter(v)}
+          items={actionTypes}>
           <SelectTrigger className="h-7 w-full min-w-0">
             <div className="flex min-w-0 flex-1 items-center gap-2">
               <StackIcon weight="light" size={14} className="shrink-0" />

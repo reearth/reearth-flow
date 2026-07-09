@@ -168,7 +168,10 @@ function DataTable<TData, TValue>({
             />
           )}
           {showOrdering && sortOptions && onSortChange ? (
-            <Select value={currentSortValue} onValueChange={onSortChange}>
+            <Select
+              value={currentSortValue}
+              onValueChange={(v) => v != null && onSortChange(v)}
+              items={sortOptions}>
               <SelectTrigger className="h-[36px] w-[150px]">
                 <SelectValue />
               </SelectTrigger>
@@ -183,7 +186,8 @@ function DataTable<TData, TValue>({
           ) : showOrdering ? (
             <Select
               value={currentOrder || "DESC"}
-              onValueChange={handleOrderChange}>
+              onValueChange={handleOrderChange}
+              items={orderDirections}>
               <SelectTrigger className="h-[36px] w-[150px]">
                 <SelectValue placeholder={orderDirections.ASC} />
               </SelectTrigger>
