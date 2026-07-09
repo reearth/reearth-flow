@@ -1,4 +1,11 @@
-import type { Browser, BrowserContext, Page } from "@playwright/test";
+import path from "path";
+
+import {
+  test,
+  type Browser,
+  type BrowserContext,
+  type Page,
+} from "@playwright/test";
 
 import { AssetsPage } from "../pages/assetsPage";
 import { DeploymentsPage } from "../pages/deploymentsPage";
@@ -18,11 +25,17 @@ export type EditorSession = {
 export async function newEditorSession(
   browser: Browser,
 ): Promise<EditorSession> {
+  // Manually created contexts don't inherit `use.video` from the config, so
+  // recording must be enabled here explicitly.
   const context = await browser.newContext({
     storageState: STORAGE_STATE,
     baseURL: process.env.FLOW_DASHBOARD_E2E_BASEURL,
     viewport: { width: 1920, height: 1080 },
     locale: "en-US",
+    recordVideo: {
+      dir: path.join(__dirname, "../test-results/session-videos"),
+      size: { width: 1920, height: 1080 },
+    },
   });
   const page = await context.newPage();
   return {
@@ -44,7 +57,8 @@ export async function teardownSession(
   } = {},
 ) {
   if (!session) return;
-  const { context, assets, projects, deployments } = session;
+  const { context, page, assets, projects, deployments } = session;
+  const video = page.video();
   try {
     if (opts.deploymentDescription) {
       await deployments.goto();
@@ -62,6 +76,17 @@ export async function teardownSession(
       await assets.deleteAssetIfExists(name).catch(() => {});
     }
   } finally {
+    // The video file is only fully written once the context is closed, so it
+    // has to be attached afterwards (it lands in the suite's Tear down section).
     await context.close();
+    if (video) {
+      const videoPath = await video.path().catch(() => undefined);
+      if (videoPath) {
+        await test
+          .info()
+          .attach("video", { path: videoPath, contentType: "video/webm" })
+          .catch(() => {});
+      }
+    }
   }
 }
