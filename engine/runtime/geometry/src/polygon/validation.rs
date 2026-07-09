@@ -1,9 +1,9 @@
 use super::{Polygon2D, Polygon3D};
 use crate::validation_next::{
-    check_duplicate_points, check_finite_2d, check_finite_3d, check_ring_orientation_2d,
-    check_too_few_points_2d, check_too_few_points_3d, check_unclosed_ring_2d,
-    check_unclosed_ring_3d, open_ring, Validate, ValidationParams, ValidationReport,
-    ValidationType,
+    check_duplicate_points, check_face_orientation_3d, check_finite_2d, check_finite_3d,
+    check_ring_orientation_2d, check_too_few_points_2d, check_too_few_points_3d,
+    check_unclosed_ring_2d, check_unclosed_ring_3d, open_ring, Validate, ValidationParams,
+    ValidationReport, ValidationType,
 };
 
 /// The checks that apply to a 2D polygon face. Planarity is omitted: a 2D face
@@ -19,10 +19,9 @@ const POLYGON_2D_CHECKS: [ValidationType; 8] = [
     ValidationType::Orientation,
 ];
 
-/// The checks that apply to a 3D polygon face: the 2D set with `Planarity`
-/// (a face embedded in 3D can be non-planar) but without `Orientation`
-/// (a face embedded in 3D has no signed winding).
-const POLYGON_3D_CHECKS: [ValidationType; 8] = [
+/// The checks that apply to a 3D polygon face: the 2D set plus `Planarity`. Its
+/// `Orientation` is relative (each hole opposes the exterior), not absolute.
+const POLYGON_3D_CHECKS: [ValidationType; 9] = [
     ValidationType::Finite,
     ValidationType::TooFewPoints,
     ValidationType::UnclosedRing,
@@ -31,6 +30,7 @@ const POLYGON_3D_CHECKS: [ValidationType; 8] = [
     ValidationType::Degenerate,
     ValidationType::Planarity,
     ValidationType::DuplicatePoints,
+    ValidationType::Orientation,
 ];
 
 impl Validate for Polygon2D {
@@ -129,6 +129,13 @@ impl Validate for Polygon3D {
                     r,
                 );
             }
+        })
+    }
+
+    fn check_orientation(&self, _params: &ValidationParams) -> ValidationReport {
+        // Relative orientation: each hole must wind opposite the exterior.
+        ValidationReport::ran(|r| {
+            check_face_orientation_3d(&self.frame, self.exterior(), self.interiors(), r);
         })
     }
 }
@@ -292,5 +299,102 @@ mod tests {
         let ccw_hole = vec![[1.0, 1.0], [2.0, 1.0], [2.0, 2.0], [1.0, 2.0], [1.0, 1.0]];
         let p = Polygon2D::from_rings(CoordinateFrame::Euclidean, square(), vec![ccw_hole]);
         assert_eq!(failures(&p, ValidationType::Orientation).len(), 1);
+    }
+
+    /// A CCW square in the z = 0 plane (right-hand normal +z).
+    fn square3d() -> [[f64; 3]; 5] {
+        [
+            [0.0, 0.0, 0.0],
+            [4.0, 0.0, 0.0],
+            [4.0, 4.0, 0.0],
+            [0.0, 4.0, 0.0],
+            [0.0, 0.0, 0.0],
+        ]
+    }
+
+    /// The failing positions of `check` on a 3D polygon, or a panic if it passed.
+    fn failures3d(p: &Polygon3D, check: ValidationType) -> Vec<crate::Geometry> {
+        match validate_one(p, check, &ValidationParams::default()) {
+            ValidationResult::Failed(positions) => positions,
+            other => panic!("expected {check} to fail, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn face_3d_without_holes_is_oriented() {
+        let p = Polygon3D::from_rings(
+            CoordinateFrame::Euclidean,
+            square3d(),
+            Vec::<Vec<[f64; 3]>>::new(),
+        );
+        assert_eq!(
+            validate_one(
+                &p,
+                ValidationType::Orientation,
+                &ValidationParams::default()
+            ),
+            ValidationResult::Success
+        );
+    }
+
+    #[test]
+    fn face_3d_hole_opposite_exterior_is_oriented() {
+        // CW hole (normal -z) opposes the CCW exterior: valid.
+        let cw_hole = vec![
+            [1.0, 1.0, 0.0],
+            [1.0, 2.0, 0.0],
+            [2.0, 2.0, 0.0],
+            [2.0, 1.0, 0.0],
+            [1.0, 1.0, 0.0],
+        ];
+        let p = Polygon3D::from_rings(CoordinateFrame::Euclidean, square3d(), vec![cw_hole]);
+        assert_eq!(
+            validate_one(
+                &p,
+                ValidationType::Orientation,
+                &ValidationParams::default()
+            ),
+            ValidationResult::Success
+        );
+    }
+
+    #[test]
+    fn face_3d_hole_winding_like_exterior_is_misoriented() {
+        // CCW hole winds like the exterior (not opposite): one problem.
+        let ccw_hole = vec![
+            [1.0, 1.0, 0.0],
+            [2.0, 1.0, 0.0],
+            [2.0, 2.0, 0.0],
+            [1.0, 2.0, 0.0],
+            [1.0, 1.0, 0.0],
+        ];
+        let p = Polygon3D::from_rings(CoordinateFrame::Euclidean, square3d(), vec![ccw_hole]);
+        let positions = failures3d(&p, ValidationType::Orientation);
+        assert_eq!(positions.len(), 1);
+        assert!(matches!(
+            positions[0],
+            crate::Geometry::Euclidean3D(crate::Euclidean3DGeometry::LineString(_))
+        ));
+    }
+
+    #[test]
+    fn face_3d_orientation_is_relative_on_a_tilted_plane() {
+        // On the tilted plane y = z (proves the check is genuinely 3D).
+        let exterior = [
+            [0.0, 0.0, 0.0],
+            [4.0, 0.0, 0.0],
+            [4.0, 4.0, 4.0],
+            [0.0, 4.0, 4.0],
+            [0.0, 0.0, 0.0],
+        ];
+        let same_hole = vec![
+            [1.0, 1.0, 1.0],
+            [2.0, 1.0, 1.0],
+            [2.0, 2.0, 2.0],
+            [1.0, 2.0, 2.0],
+            [1.0, 1.0, 1.0],
+        ];
+        let p = Polygon3D::from_rings(CoordinateFrame::Euclidean, exterior, vec![same_hole]);
+        assert_eq!(failures3d(&p, ValidationType::Orientation).len(), 1);
     }
 }

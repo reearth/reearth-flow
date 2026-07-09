@@ -4,8 +4,8 @@ use crate::index::IndexBuffer;
 use crate::validation_next::{
     check_duplicate_points, check_finite_2d, check_finite_3d, check_ring_orientation_2d,
     check_too_few_points_2d, check_too_few_points_3d, check_unclosed_ring_2d,
-    check_unclosed_ring_3d, open_ring, tetra_volume_6x, EdgeOrientation, FaceTopology, Validate,
-    ValidationParams, ValidationReport, ValidationType,
+    check_unclosed_ring_3d, open_ring, tetra_volume_6x, EdgeOrientation, FaceOrientation,
+    FaceTopology, Validate, ValidationParams, ValidationReport, ValidationType,
 };
 use crate::{Euclidean3DGeometry, Geometry};
 
@@ -139,15 +139,25 @@ impl PolygonMesh3DData {
     }
 
     /// Report a [`ValidationType::Orientation`] problem for face rings that wind
-    /// inconsistently with a neighbour across a shared edge. Shared by the
+    /// inconsistently across a shared edge (cross-face) or for a hole that fails to
+    /// wind opposite its own face's exterior (per-face). Shared by the
     /// [`PolygonMesh3D`] leaf and [`Solid`](crate::solid::Solid) shells.
     pub(crate) fn check_orientation(&self, frame: &CoordinateFrame, report: &mut ValidationReport) {
-        let mut checker = EdgeOrientation::new();
+        let mut edges = EdgeOrientation::new();
+        let mut faces = FaceOrientation::new();
+        // The per-face hole check only fires when some face has a hole; skip its
+        // per-ring coord materialization and normal entirely otherwise.
+        let has_holes = self.interior_offsets.len() != 0;
         for_each_ring(
             &self.face_indices,
             &self.face_offsets,
             &self.interior_offsets,
-            |ring, _| checker.check_ring(frame, &self.vertices, ring, report),
+            |ring, is_exterior| {
+                edges.check_ring(frame, &self.vertices, ring, report);
+                if has_holes {
+                    faces.check_ring(frame, &ring_coords(&self.vertices, ring), is_exterior, report);
+                }
+            },
         );
     }
 
@@ -447,6 +457,46 @@ mod tests {
             [[0u32, 1, 2, 0], [0, 3, 2, 0]],
         )
         .unwrap();
+        assert_eq!(failure_count(&m, ValidationType::Orientation), 1);
+    }
+
+    /// A one-face mesh: CCW exterior square in z = 0 with one hole.
+    fn face_with_hole(hole: Vec<[f64; 3]>) -> PolygonMesh3D {
+        let exterior = [
+            [0.0, 0.0, 0.0],
+            [4.0, 0.0, 0.0],
+            [4.0, 4.0, 0.0],
+            [0.0, 4.0, 0.0],
+            [0.0, 0.0, 0.0],
+        ];
+        let poly =
+            crate::polygon::Polygon3D::from_rings(CoordinateFrame::Euclidean, exterior, vec![hole]);
+        PolygonMesh3D::from_polygons(CoordinateFrame::Euclidean, [&poly]).unwrap()
+    }
+
+    #[test]
+    fn face_hole_opposite_exterior_is_oriented() {
+        // CW hole opposes the CCW exterior: valid.
+        let m = face_with_hole(vec![
+            [1.0, 1.0, 0.0],
+            [1.0, 2.0, 0.0],
+            [2.0, 2.0, 0.0],
+            [2.0, 1.0, 0.0],
+            [1.0, 1.0, 0.0],
+        ]);
+        assert!(is_success(&m, ValidationType::Orientation));
+    }
+
+    #[test]
+    fn face_hole_winding_like_exterior_is_misoriented() {
+        // CCW hole winds like the exterior (not opposite): one problem.
+        let m = face_with_hole(vec![
+            [1.0, 1.0, 0.0],
+            [2.0, 1.0, 0.0],
+            [2.0, 2.0, 0.0],
+            [1.0, 2.0, 0.0],
+            [1.0, 1.0, 0.0],
+        ]);
         assert_eq!(failure_count(&m, ValidationType::Orientation), 1);
     }
 }

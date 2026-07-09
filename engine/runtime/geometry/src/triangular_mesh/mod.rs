@@ -28,7 +28,8 @@ pub struct TriangularMesh2D {
     /// Optional per-vertex elevation, parallel to `vertices`. INVARIANT: when
     /// `Some`, `z.len() == vertices.len()`. `None` = pure 2D.
     z: Option<Box<[f64]>>,
-    /// Flat triangle index list; width from `vertices.len() - 1`.
+    /// Flat triangle index list; width from `vertices.len() - 1`. Each triangle
+    /// uses CCW winding (positive signed area); triangles carry no interior rings.
     indices: IndexBuffer<3>,
     /// Optional materials / themes / per-face binding, incl. per-theme UV parallel
     /// to the corner buffers; `None` = bare.
@@ -47,7 +48,8 @@ pub struct TriangularMesh2D {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct TriangularMesh3DData {
     vertices: Vec<[f64; 3]>,
-    /// Flat triangle index list; width from `vertices.len() - 1`.
+    /// Flat triangle index list; width from `vertices.len() - 1`. Winding orients
+    /// each triangle's normal by the right-hand rule.
     indices: IndexBuffer<3>,
     /// Optional materials / themes / per-face binding, incl. per-theme UV parallel
     /// to the corner buffers; `None` = bare.

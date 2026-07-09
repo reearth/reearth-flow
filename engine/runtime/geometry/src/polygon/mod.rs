@@ -27,7 +27,7 @@ pub struct Polygon2D {
     /// Coordinate frame these coords are expressed in.
     frame: CoordinateFrame,
     /// Exterior ring, then all interior rings (holes), concatenated. A valid polygon
-    /// has each ring closed (first == last).
+    /// has each ring closed (first == last), with the exterior wound CCW and interiors CW.
     coords: Box<[[f64; 2]]>,
     /// Start index in `coords` of each interior ring; empty when there are no
     /// holes. exterior = `coords[0 .. first interior start (or end)]`;
@@ -47,8 +47,10 @@ pub struct Polygon2D {
 pub struct Polygon3D {
     /// Coordinate frame these coords are expressed in.
     frame: CoordinateFrame,
-    /// Exterior ring, then all interior rings (holes), concatenated. A valid polygon
-    /// has each ring closed (first == last).
+    /// Exterior ring, then all interior rings (holes), concatenated. Its normal is
+    /// determined by the right-hand rule with respect to the exterior. A valid
+    /// polygon has each ring closed (first == last), with exterior and interior rings
+    /// wound opposite to each other.
     coords: Box<[[f64; 3]]>,
     /// Start index in `coords` of each interior ring; empty when there are no holes.
     interior_offsets: Box<[u32]>,

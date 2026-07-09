@@ -42,9 +42,10 @@ pub enum ValidationType {
     /// Whether the surface is consistently oriented. Type-dependent: a 2D face means
     /// ring winding. Flow's orientation convention for 2D geometry is
     /// counter-clockwise (CCW): an exterior ring must wind CCW (positive signed
-    /// area) and each interior ring (hole) clockwise. A 3D mesh or solid means
-    /// coherent winding across shared edges (each shared edge traversed in opposite
-    /// directions by its two faces).
+    /// area) and each interior ring (hole) clockwise. A 3D face has no absolute
+    /// winding, so its convention is relative: each hole winds opposite the exterior.
+    /// A 3D mesh or solid means coherent winding across shared edges (each shared
+    /// edge traversed in opposite directions by its two faces).
     Orientation,
     /// Whether a solid's boundary is not a closed 2-manifold (watertight). Solid only.
     ShellManifold,
@@ -384,7 +385,7 @@ validation_checks! {
 /// | Degenerate              |   ·   |    ✓    |   ✓    |   ✓    |     ✓      |     ✓      |     ✓     |     ✓     |   ✓   |  ✓  |    ·    |  ✓   |
 /// | Planarity               |   ·   |    ·    |   ·    |   ✓    |     ·      |     ·      |     ·     |     ·     |   ·   |  ·  |    ·    |  ✓   |
 /// | DuplicatePoints         |   ·   |    ✓    |   ✓    |   ✓    |     ✓      |     ✓      |     ✓     |     ✓     |   ✓   |  ✓  |    ✓    |  ✓   |
-/// | Orientation             |   ·   |    ·    |   ✓    |   ·    |     ✓      |     ✓      |     ✓     |     ✓     |   ✓   |  ✓  |    ·    |  ✓   |
+/// | Orientation             |   ·   |    ·    |   ✓    |   ✓    |     ✓      |     ✓      |     ✓     |     ✓     |   ✓   |  ✓  |    ·    |  ✓   |
 /// | Orientable              |   ·   |    ·    |   ·    |   ·    |     ·      |     ✓      |     ·     |     ✓     |   ✓   |  ✓  |    ·    |  ✓   |
 /// | ShellManifold           |   ·   |    ·    |   ·    |   ·    |     ·      |     ·      |     ·     |     ·     |   ✓   |  ✓  |    ·    |  ✓   |
 /// | ShellOrientation        |   ·   |    ·    |   ·    |   ·    |     ·      |     ·      |     ·     |     ·     |   ✓   |  ✓  |    ·    |  ✓   |
@@ -740,6 +741,78 @@ pub(crate) fn check_ring_orientation_2d(
         report.push(Geometry::Euclidean2D(Euclidean2DGeometry::LineString(
             LineString2D::from_coords(frame.clone(), ring.iter().copied()),
         )));
+    }
+}
+
+/// Right-hand-rule unit normal of a planar 3D ring, `None` if degenerate.
+fn face_normal_3d(ring: &[[f64; 3]]) -> Option<[f64; 3]> {
+    crate::ops::triangulation::normal(open_ring(ring))
+}
+
+/// Report `hole` when its winding agrees with a face's exterior normal (dot > 0)
+/// instead of opposing it; a degenerate hole is skipped.
+fn report_aligned_hole(
+    frame: &CoordinateFrame,
+    exterior_normal: [f64; 3],
+    hole: &[[f64; 3]],
+    report: &mut ValidationReport,
+) {
+    let Some(n) = face_normal_3d(hole) else {
+        return;
+    };
+    let dot = exterior_normal[0] * n[0] + exterior_normal[1] * n[1] + exterior_normal[2] * n[2];
+    if dot > 0.0 {
+        report.push(Geometry::Euclidean3D(Euclidean3DGeometry::LineString(
+            LineString3D::from_coords(frame.clone(), hole.iter().copied()),
+        )));
+    }
+}
+
+/// Report a [`ValidationType::Orientation`] problem for each hole of a planar 3D
+/// face whose winding agrees with the exterior instead of opposing it. A 3D face
+/// has no absolute winding, so orientation is relative: a valid hole's right-hand
+/// normal opposes the exterior's (dot < 0). A ring with no normal (degenerate) is
+/// left to the degeneracy check. The position is the offending hole ring.
+pub(crate) fn check_face_orientation_3d<'a>(
+    frame: &CoordinateFrame,
+    exterior: &[[f64; 3]],
+    interiors: impl IntoIterator<Item = &'a [[f64; 3]]>,
+    report: &mut ValidationReport,
+) {
+    let Some(n_ext) = face_normal_3d(exterior) else {
+        return;
+    };
+    for hole in interiors {
+        report_aligned_hole(frame, n_ext, hole, report);
+    }
+}
+
+/// Streaming form of [`check_face_orientation_3d`] for meshes: fed each ring in
+/// face order (exterior first, then that face's holes), it checks each hole winds
+/// opposite its face's exterior. Mirrors [`EdgeOrientation`]'s streaming shape.
+pub(crate) struct FaceOrientation {
+    exterior_normal: Option<[f64; 3]>,
+}
+
+impl FaceOrientation {
+    pub(crate) fn new() -> Self {
+        Self {
+            exterior_normal: None,
+        }
+    }
+
+    pub(crate) fn check_ring(
+        &mut self,
+        frame: &CoordinateFrame,
+        coords: &[[f64; 3]],
+        is_exterior: bool,
+        report: &mut ValidationReport,
+    ) {
+        if is_exterior {
+            self.exterior_normal = face_normal_3d(coords);
+        } else if let Some(n_ext) = self.exterior_normal {
+            report_aligned_hole(frame, n_ext, coords, report);
+        }
     }
 }
 
