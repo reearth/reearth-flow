@@ -39,6 +39,8 @@ pub mod polygon;
 pub mod polygon_mesh;
 pub mod solid;
 pub mod triangular_mesh;
+#[cfg(feature = "new-geometry")]
+pub mod validation_next;
 
 #[cfg(test)]
 mod test_support;
@@ -49,6 +51,11 @@ use serde::{Deserialize, Serialize};
 
 use ops::triangulation::Cache;
 use ops::{Aabb, BoundingBox, Reproject, ReprojectionCache, Triangulate, UnsupportedOperation};
+// `ValidationParams` / `ValidationType` / `ValidationReport` are named by the
+// `enum_dispatch`-generated `Validate` impls on the geometry enums, so they must
+// be in scope here.
+#[cfg(feature = "new-geometry")]
+use validation_next::{Validate, ValidationParams, ValidationReport, ValidationType};
 
 use coordinate::EpsgCode;
 
@@ -138,7 +145,14 @@ impl GeometryCollection {
 /// common variants don't inflate the enum — and `Geometry` with them — to the
 /// size of the largest leaf. The small tier (`Point`, `LineString`,
 /// `Collection`) stays inline.
-#[enum_dispatch(BoundingBox, Triangulate, Reproject)]
+#[cfg_attr(
+    not(feature = "new-geometry"),
+    enum_dispatch(BoundingBox, Triangulate, Reproject)
+)]
+#[cfg_attr(
+    feature = "new-geometry",
+    enum_dispatch(BoundingBox, Triangulate, Reproject, Validate)
+)]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Euclidean2DGeometry {
     Point(Point2D),
@@ -160,7 +174,14 @@ pub enum Euclidean2DGeometry {
 /// with them — to the size of the largest leaf. The small tier (`Point`,
 /// `LineString`, `Csg`, `Collection`) stays inline; `Csg` already boxes its own
 /// operands.
-#[enum_dispatch(BoundingBox, Triangulate, Reproject)]
+#[cfg_attr(
+    not(feature = "new-geometry"),
+    enum_dispatch(BoundingBox, Triangulate, Reproject)
+)]
+#[cfg_attr(
+    feature = "new-geometry",
+    enum_dispatch(BoundingBox, Triangulate, Reproject, Validate)
+)]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Euclidean3DGeometry {
     Point(Point3D),
