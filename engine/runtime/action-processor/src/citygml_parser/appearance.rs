@@ -114,7 +114,8 @@ impl AppearanceIndex {
 
     /// Bind a textured material backed by `raster` and sampled per `sampler` to
     /// `target`'s surface side and record each of its rings' texture coordinates
-    /// under `(file, theme, side)`.
+    /// under `(file, theme, side)`. When several textures target the same
+    /// surface side or ring, the first binding wins, matching [`set_side`].
     fn add_texture_target(
         &mut self,
         target: TextureTarget,
@@ -138,7 +139,8 @@ impl AppearanceIndex {
                 .or_default()
                 .entry(side)
                 .or_default()
-                .insert(ring, uv);
+                .entry(ring)
+                .or_insert(uv);
         }
     }
 
