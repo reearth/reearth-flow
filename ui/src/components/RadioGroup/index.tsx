@@ -1,41 +1,42 @@
 import { CheckIcon } from "@phosphor-icons/react";
-import * as RadioGroupPrimitive from "@radix-ui/react-radio-group";
+import { Radio as RadioPrimitive } from "@base-ui/react/radio";
+import { RadioGroup as RadioGroupPrimitive } from "@base-ui/react/radio-group";
 import * as React from "react";
 
 import { cn } from "@flow/lib/utils";
 
 const RadioGroup = React.forwardRef<
-  React.ElementRef<typeof RadioGroupPrimitive.Root>,
-  React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Root>
+  React.ElementRef<typeof RadioGroupPrimitive>,
+  React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive>
 >(({ className, ...props }, ref) => {
   return (
-    <RadioGroupPrimitive.Root
+    <RadioGroupPrimitive
       className={cn("grid gap-2", className)}
       {...props}
       ref={ref}
     />
   );
 });
-RadioGroup.displayName = RadioGroupPrimitive.Root.displayName;
+RadioGroup.displayName = "RadioGroup";
 
 const RadioGroupItem = React.forwardRef<
-  React.ElementRef<typeof RadioGroupPrimitive.Item>,
-  React.ComponentPropsWithoutRef<typeof RadioGroupPrimitive.Item>
+  React.ElementRef<typeof RadioPrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof RadioPrimitive.Root>
 >(({ className, ...props }, ref) => {
   return (
-    <RadioGroupPrimitive.Item
+    <RadioPrimitive.Root
       ref={ref}
       className={cn(
-        "aspect-square h-4 w-4 rounded-full border border-accent text-primary shadow-sm focus:outline-hidden focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50",
+        "aspect-square h-4 w-4 rounded-full border border-accent text-primary shadow-sm focus:outline-hidden focus-visible:ring-1 focus-visible:ring-ring data-disabled:cursor-not-allowed data-disabled:opacity-50",
         className,
       )}
       {...props}>
-      <RadioGroupPrimitive.Indicator className="flex items-center justify-center">
+      <RadioPrimitive.Indicator className="flex items-center justify-center">
         <CheckIcon className="size-3.5 fill-primary text-logo" />
-      </RadioGroupPrimitive.Indicator>
-    </RadioGroupPrimitive.Item>
+      </RadioPrimitive.Indicator>
+    </RadioPrimitive.Root>
   );
 });
-RadioGroupItem.displayName = RadioGroupPrimitive.Item.displayName;
+RadioGroupItem.displayName = "RadioGroupItem";
 
 export { RadioGroup, RadioGroupItem };

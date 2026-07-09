@@ -54,14 +54,19 @@ const RadioWidget = <
   //     ),
   //   );
 
+  const selectedIndex = Array.isArray(enumOptions)
+    ? enumOptions.findIndex((option) =>
+        enumOptionsIsSelected<S>(option.value, value),
+      )
+    : -1;
+
   return (
-    <RadioGroup>
+    <RadioGroup value={selectedIndex >= 0 ? String(selectedIndex) : ""}>
       {Array.isArray(enumOptions) &&
         enumOptions.map((option, index) => {
           const itemDisabled =
             Array.isArray(enumDisabled) &&
             enumDisabled.indexOf(option.value) !== -1;
-          const checked = enumOptionsIsSelected<S>(option.value, value);
 
           return (
             <div className="flex items-center space-x-2">
@@ -71,7 +76,6 @@ const RadioWidget = <
                 id={optionId(id, index)}
                 // name={id}
                 disabled={readonly || itemDisabled || disabled}
-                checked={checked}
                 required={required}
                 value={String(index)}
                 // TODO: Fix radio group
