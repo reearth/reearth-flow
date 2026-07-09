@@ -1,5 +1,5 @@
 import { Checkbox as CheckboxPrimitive } from "@base-ui/react/checkbox";
-import { CheckIcon } from "@radix-ui/react-icons";
+import { CheckIcon } from "@phosphor-icons/react";
 import * as React from "react";
 
 import { cn } from "@flow/lib/utils";

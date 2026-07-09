@@ -1,4 +1,4 @@
-import { ChevronDownIcon } from "@radix-ui/react-icons";
+import { CaretDownIcon } from "@phosphor-icons/react";
 import {
   FormContextType,
   RJSFSchema,
@@ -80,7 +80,7 @@ const SelectWidget = <
         <span className={`${value ? "" : "text-muted-foreground"}`}>
           {getCurrentLabel() || placeholder || "-"}
         </span>
-        <ChevronDownIcon className="size-4" />
+        <CaretDownIcon className="size-4" />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="max-h-60 overflow-auto" align="start">
         {showPlaceholderOption && (

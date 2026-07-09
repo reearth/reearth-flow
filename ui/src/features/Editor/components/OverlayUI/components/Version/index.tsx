@@ -1,4 +1,4 @@
-import { Cross2Icon } from "@radix-ui/react-icons";
+import { XIcon } from "@phosphor-icons/react";
 import React, { memo, useCallback, useEffect, useRef, useState } from "react";
 import * as Y from "yjs";
 
@@ -113,7 +113,7 @@ const VersionDialog: React.FC<Props> = ({
             variant={"ghost"}
             className="z-10 h-fit p-0 opacity-70 hover:bg-card hover:opacity-100 dark:font-thin"
             onClick={handleDialogClose}>
-            <Cross2Icon className="size-5" />
+            <XIcon className="size-5" />
           </Button>
         </div>
         <div className="flex flex-1 overflow-hidden">

@@ -1,4 +1,4 @@
-import { PlusIcon } from "@radix-ui/react-icons";
+import { PlusIcon } from "@phosphor-icons/react";
 import {
   FormContextType,
   IconButtonProps,

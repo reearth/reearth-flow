@@ -1,7 +1,7 @@
 "use client";
 
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
-import { Cross2Icon } from "@radix-ui/react-icons";
+import { XIcon } from "@phosphor-icons/react";
 import { forwardRef, ForwardRefExoticComponent, RefAttributes } from "react";
 
 import { cn } from "@flow/lib/utils";
@@ -105,7 +105,7 @@ const DialogContent = forwardRef<
           {children}
           {!hideCloseButton && (
             <DialogPrimitive.Close className="absolute top-4 right-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
-              <Cross2Icon className="size-5" />
+              <XIcon className="size-5" />
               <span className="sr-only">Close</span>
             </DialogPrimitive.Close>
           )}

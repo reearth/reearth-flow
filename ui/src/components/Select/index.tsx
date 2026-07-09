@@ -1,11 +1,11 @@
 "use client";
 
 import {
-  CaretSortIcon,
+  CaretUpDownIcon,
   CheckIcon,
-  ChevronDownIcon,
-  ChevronUpIcon,
-} from "@radix-ui/react-icons";
+  CaretDownIcon,
+  CaretUpIcon,
+} from "@phosphor-icons/react";
 import * as SelectPrimitive from "@radix-ui/react-select";
 import * as React from "react";
 
@@ -30,7 +30,7 @@ const SelectTrigger = React.forwardRef<
     {...props}>
     {children}
     <SelectPrimitive.Icon asChild>
-      <CaretSortIcon className="size-4 shrink-0 opacity-50" />
+      <CaretUpDownIcon className="size-4 shrink-0 opacity-50" />
     </SelectPrimitive.Icon>
   </SelectPrimitive.Trigger>
 ));
@@ -47,7 +47,7 @@ const SelectScrollUpButton = React.forwardRef<
       className,
     )}
     {...props}>
-    <ChevronUpIcon />
+    <CaretUpIcon />
   </SelectPrimitive.ScrollUpButton>
 ));
 SelectScrollUpButton.displayName = SelectPrimitive.ScrollUpButton.displayName;
@@ -63,7 +63,7 @@ const SelectScrollDownButton = React.forwardRef<
       className,
     )}
     {...props}>
-    <ChevronDownIcon />
+    <CaretDownIcon />
   </SelectPrimitive.ScrollDownButton>
 ));
 SelectScrollDownButton.displayName =

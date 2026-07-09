@@ -1,5 +1,10 @@
-import { DatabaseIcon, DiscIcon, LightningIcon } from "@phosphor-icons/react";
-import { ChevronDownIcon, ChevronUpIcon } from "@radix-ui/react-icons";
+import {
+  CaretDownIcon,
+  CaretUpIcon,
+  DatabaseIcon,
+  DiscIcon,
+  LightningIcon,
+} from "@phosphor-icons/react";
 import { useState } from "react";
 
 import {
@@ -194,7 +199,7 @@ const ActionFilters = ({
                   </button>
                 )}
               </div>
-              {tagsOpen ? <ChevronUpIcon /> : <ChevronDownIcon />}
+              {tagsOpen ? <CaretUpIcon /> : <CaretDownIcon />}
             </div>
           }
         />

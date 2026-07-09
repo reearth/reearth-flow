@@ -1,5 +1,5 @@
 import { Accordion as AccordionPrimitive } from "@base-ui/react/accordion";
-import { ChevronDownIcon } from "@radix-ui/react-icons";
+import { CaretDownIcon } from "@phosphor-icons/react";
 import * as React from "react";
 
 import { cn } from "@flow/lib/utils";
@@ -31,7 +31,7 @@ const AccordionTrigger = React.forwardRef<
       )}
       {...props}>
       {children}
-      <ChevronDownIcon className="size-4 shrink-0 text-muted-foreground transition-transform duration-200" />
+      <CaretDownIcon className="size-4 shrink-0 text-muted-foreground transition-transform duration-200" />
     </AccordionPrimitive.Trigger>
   </AccordionPrimitive.Header>
 ));

@@ -1,4 +1,4 @@
-import { ChevronDownIcon, ChevronUpIcon } from "@radix-ui/react-icons";
+import { CaretDownIcon, CaretUpIcon } from "@phosphor-icons/react";
 import { Position, useUpdateNodeInternals } from "@xyflow/react";
 import { memo, useEffect, useMemo, useRef } from "react";
 
@@ -242,7 +242,7 @@ const Handles: React.FC<Props> = ({
             <IconButton
               onClick={() => onCollapsedToggle?.(!isCollapsed)}
               className="h-6 w-6"
-              icon={!isCollapsed ? <ChevronUpIcon /> : <ChevronDownIcon />}
+              icon={!isCollapsed ? <CaretUpIcon /> : <CaretDownIcon />}
             />
           }
         />
