@@ -57,7 +57,7 @@ export default () => {
       },
       {
         keyBinding: EditorKeyBindings["groupToSubWorkFlow"],
-        description: t("Group Selected Actions into a Sub-Workflow"),
+        description: t("Sub-Workflow from Selection"),
       },
     ],
   };
