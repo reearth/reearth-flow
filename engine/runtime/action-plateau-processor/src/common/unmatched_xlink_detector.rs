@@ -11,12 +11,12 @@
 //!
 //! The generation-independent orchestration (raw-GML load, per-container
 //! traversal, set difference, port emission, per-file summary) lives here as a
-//! template method. The generation-specific seam is injected as a
-//! [`UnmatchedXlinkStrategy`] trait object: which elements to scan, which LOD
-//! geometry tags carry the references, where boundary surfaces live and which
-//! `gml` namespace resolves `gml:id`. A generation whose extraction *logic* (not
-//! merely its constants) differs can override the behavioral methods without
-//! touching this file.
+//! template method. The generation-specific seam — which elements to scan, which
+//! LOD geometry tags carry the references, where boundary surfaces live and which
+//! `gml` namespace resolves `gml:id` — is injected as a [`UnmatchedXlinkStrategy`]
+//! trait object, so a generation whose extraction *logic* (not merely its
+//! constants) differs can override the behavioral methods without touching this
+//! file.
 
 use std::{
     cell::RefCell,
