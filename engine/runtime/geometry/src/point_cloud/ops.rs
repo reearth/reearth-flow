@@ -49,12 +49,12 @@ fn segment_positions(seg: &Segment) -> impl Iterator<Item = [f64; 3]> + '_ {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::coordinate::Coordinate;
+    use crate::coordinate::CoordinateFrame;
 
     #[test]
     fn point_cloud_box_spans_all_points() {
         let pc = PointCloud::from_positions(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             [[0.0, 1.0, 2.0], [4.0, -1.0, 2.0], [1.0, 0.0, 9.0]],
         );
         assert_eq!(
@@ -68,7 +68,7 @@ mod tests {
 
     #[test]
     fn empty_point_cloud_has_no_box() {
-        let pc = PointCloud::from_positions(Coordinate::Euclidean, Vec::<[f64; 3]>::new());
+        let pc = PointCloud::from_positions(CoordinateFrame::Euclidean, Vec::<[f64; 3]>::new());
         assert!(pc.bounding_box().is_err());
     }
 }

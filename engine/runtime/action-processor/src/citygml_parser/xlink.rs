@@ -26,6 +26,30 @@ pub fn resolve(
         .collect()
 }
 
+/// Dedup cache of resolved nodes, keyed by the pointer of a `RawNode` held alive
+/// by the registry or a pending feature. Shared across features in one batch so an
+/// attribute node referenced from several features is converted only once.
+#[cfg(feature = "new-geometry")]
+pub type ResolveCache = HashMap<*const RawNode, Arc<XmlNode>>;
+
+/// Resolve a single feature root, reusing `cache` across calls. Returns `None`
+/// when the root cannot be resolved because of a cyclic `xlink:href`.
+#[cfg(feature = "new-geometry")]
+pub fn resolve_one(
+    raw: &Arc<RawNode>,
+    registry: &RawRegistry,
+    cache: &mut ResolveCache,
+) -> Option<Arc<XmlNode>> {
+    let mut in_progress: HashSet<*const RawNode> = HashSet::new();
+    convert_node(raw, registry, cache, &mut in_progress).or_else(|| {
+        tracing::error!(
+            name = raw.name.0.as_str(),
+            "failed to resolve top-level node due to cyclic xlink reference, skipped"
+        );
+        None
+    })
+}
+
 fn convert_node(
     raw: &Arc<RawNode>,
     registry: &RawRegistry,
@@ -74,7 +98,9 @@ fn convert_node(
     Some(node)
 }
 
-#[cfg(test)]
+// Exercises the shared xlink resolution via the legacy parser's `finish`; the geometry world
+// covers the same code path through the pipeline's assembly tests.
+#[cfg(all(test, not(feature = "new-geometry")))]
 mod tests {
     use std::sync::Arc;
     use url::Url;

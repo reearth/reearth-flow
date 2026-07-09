@@ -10,8 +10,8 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::appearance::{Appearance, UvSet};
-use crate::coordinate::Coordinate;
+use crate::appearance::Appearance;
+use crate::coordinate::CoordinateFrame;
 use crate::index::IndexBuffer;
 
 mod constructor;
@@ -21,24 +21,23 @@ mod ops;
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct TriangularMesh2D {
     /// Coordinate frame these vertices are expressed in.
-    coordinate: Coordinate,
+    frame: CoordinateFrame,
     vertices: Vec<[f64; 2]>,
     /// Optional per-vertex elevation, parallel to `vertices`. INVARIANT: when
     /// `Some`, `z.len() == vertices.len()`. `None` = pure 2D.
     z: Option<Box<[f64]>>,
     /// Flat triangle index list; width from `vertices.len() - 1`.
     indices: IndexBuffer<3>,
-    /// Geometric UV, parallel to the corner buffers; empty = no UV.
-    uv_sets: Vec<UvSet>,
-    /// Optional materials / themes / per-face binding; `None` = bare.
+    /// Optional materials / themes / per-face binding, incl. per-theme UV parallel
+    /// to the corner buffers; `None` = bare.
     appearance: Option<Appearance>,
 }
 
 /// The coordinate-free data of a 3D triangle mesh: the vertex pool, triangle
-/// index list, UV and appearance, with no frame of its own.
+/// index list and appearance, with no frame of its own.
 ///
 /// Shared by two hosts that each supply the frame: the standalone
-/// [`TriangularMesh3D`] leaf pairs this with its own [`Coordinate`], while a
+/// [`TriangularMesh3D`] leaf pairs this with its own [`CoordinateFrame`], while a
 /// [`Solid`](crate::solid::Solid) shell stores it directly and takes the one
 /// frame from the enclosing `Solid` — so a solid and its boundaries cannot
 /// disagree on a frame. Mirrors the [`Raster`](crate::appearance::Raster) /
@@ -48,9 +47,8 @@ pub struct TriangularMesh3DData {
     vertices: Vec<[f64; 3]>,
     /// Flat triangle index list; width from `vertices.len() - 1`.
     indices: IndexBuffer<3>,
-    /// Geometric UV, parallel to the corner buffers; empty = no UV.
-    uv_sets: Vec<UvSet>,
-    /// Optional materials / themes / per-face binding; `None` = bare.
+    /// Optional materials / themes / per-face binding, incl. per-theme UV parallel
+    /// to the corner buffers; `None` = bare.
     appearance: Option<Appearance>,
 }
 
@@ -59,8 +57,8 @@ pub struct TriangularMesh3DData {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct TriangularMesh3D {
     /// Coordinate frame the mesh data is expressed in.
-    coordinate: Coordinate,
-    /// Coordinate-free mesh data; the same form a [`Solid`](crate::solid::Solid)
+    frame: CoordinateFrame,
+    /// coordinate-free mesh data; the same form a [`Solid`](crate::solid::Solid)
     /// shell stores directly.
     data: TriangularMesh3DData,
 }
@@ -81,6 +79,13 @@ impl TriangularMesh2D {
         self.indices.len()
     }
 
+    /// The triangles, each as its three vertex indices into the shared vertex
+    /// pool, widened from the internal index width.
+    #[inline]
+    pub fn triangles(&self) -> impl Iterator<Item = [u32; 3]> + '_ {
+        self.indices.iter_u32()
+    }
+
     /// Borrow the appearance, if any.
     #[inline]
     pub fn appearance(&self) -> &Option<Appearance> {
@@ -91,13 +96,6 @@ impl TriangularMesh2D {
     #[inline]
     pub fn appearance_mut(&mut self) -> &mut Option<Appearance> {
         &mut self.appearance
-    }
-
-    /// The UV sets, one per (theme, side, channel); each `Explicit` array is
-    /// parallel to the corner buffer (`3 * num_triangles`).
-    #[inline]
-    pub fn uv_sets(&self) -> &[UvSet] {
-        &self.uv_sets
     }
 }
 
@@ -115,6 +113,13 @@ impl TriangularMesh3D {
         self.data.indices.len()
     }
 
+    /// The triangles, each as its three vertex indices into the shared vertex
+    /// pool, widened from the internal index width.
+    #[inline]
+    pub fn triangles(&self) -> impl Iterator<Item = [u32; 3]> + '_ {
+        self.data.triangles()
+    }
+
     /// Borrow the appearance, if any.
     #[inline]
     pub fn appearance(&self) -> &Option<Appearance> {
@@ -127,19 +132,38 @@ impl TriangularMesh3D {
         &mut self.data.appearance
     }
 
-    /// The UV sets, one per (theme, side, channel); each `Explicit` array is
-    /// parallel to the corner buffer (`3 * num_triangles`).
+    /// Consume the mesh, yielding its coordinate-free data for use as a
+    /// [`Solid`](crate::solid::Solid) shell.
     #[inline]
-    pub fn uv_sets(&self) -> &[UvSet] {
-        &self.data.uv_sets
+    pub fn into_data(self) -> TriangularMesh3DData {
+        self.data
+    }
+
+    /// The shared vertex pool.
+    #[inline]
+    pub fn vertices(&self) -> &[[f64; 3]] {
+        self.data.vertices()
     }
 }
 
 impl TriangularMesh3DData {
+    /// The number of triangles.
+    #[inline]
+    pub fn num_triangles(&self) -> usize {
+        self.indices.len()
+    }
+
+    /// The triangles, each as its three vertex indices into the shared vertex
+    /// pool, widened from the internal index width.
+    #[inline]
+    pub fn triangles(&self) -> impl Iterator<Item = [u32; 3]> + '_ {
+        self.indices.iter_u32()
+    }
+
     /// Drop all back-side appearance, keeping only the front; see
     /// [`crate::appearance::make_front_only`].
     pub(crate) fn make_front_only(&mut self) {
-        crate::appearance::make_front_only(&mut self.appearance, &mut self.uv_sets);
+        crate::appearance::make_front_only(&mut self.appearance);
     }
 }
 
@@ -153,17 +177,32 @@ mod tests {
 
     use super::*;
     use crate::appearance::{
-        ChannelId, FaceBinding, MaterialIndex, Side, ThemeBinding, ThemeId, UvSource,
+        ChannelId, FaceBinding, MaterialIndex, Side, ThemeBinding, ThemeId, UvSet, UvSource,
     };
     use crate::test_support::bare;
 
     fn uv(side: Side) -> UvSet {
         UvSet {
-            theme: Some(ThemeId(Arc::from("t"))),
             side,
             channel: ChannelId::default(),
             uv: UvSource::Explicit(Box::new([])),
         }
+    }
+
+    #[test]
+    fn triangles_yields_widened_index_triples() {
+        let m = TriangularMesh3DData::from_parts(
+            vec![
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [1.0, 1.0, 0.0],
+            ],
+            [0u32, 1, 2, 1, 3, 2],
+        )
+        .unwrap();
+        let tris: Vec<[u32; 3]> = m.triangles().collect();
+        assert_eq!(tris, vec![[0, 1, 2], [1, 3, 2]]);
     }
 
     #[test]
@@ -173,21 +212,23 @@ mod tests {
             [0u32, 1, 2],
         )
         .unwrap();
-        m.appearance = Some(Appearance {
-            materials: vec![bare(), bare()],
-            themes: vec![ThemeBinding {
-                theme: ThemeId(Arc::from("t")),
+        let theme = ThemeId(Arc::from("t"));
+        m.appearance = Some(Appearance::from_parts(
+            vec![bare(), bare()],
+            vec![ThemeBinding {
+                theme: theme.clone(),
                 front: FaceBinding::Uniform(MaterialIndex::new(0).unwrap()),
                 back: Some(FaceBinding::Uniform(MaterialIndex::new(1).unwrap())),
+                uv_sets: vec![uv(Side::Front), uv(Side::Back)],
             }],
-            default_theme: ThemeId(Arc::from("t")),
-        });
-        m.uv_sets = vec![uv(Side::Front), uv(Side::Back)];
+            theme,
+        ));
 
         m.make_front_only();
 
-        assert!(m.appearance.as_ref().unwrap().themes[0].back.is_none());
-        assert_eq!(m.uv_sets.len(), 1);
-        assert_eq!(m.uv_sets[0].side, Side::Front);
+        let app = m.appearance.as_ref().unwrap();
+        assert!(app.themes()[0].back.is_none());
+        assert_eq!(app.themes()[0].uv_sets.len(), 1);
+        assert_eq!(app.themes()[0].uv_sets[0].side, Side::Front);
     }
 }

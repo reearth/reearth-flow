@@ -16,11 +16,12 @@
 //!
 //! * `from_raw_parts` — the flat CSR buffers in hand, validated for consistency.
 //!
-//! Rings are stored **open**: the closing vertex is implied by the face / hole
-//! boundary, so `from_polygons` drops the closing duplicate that a `Polygon`
-//! carries, and `from_parts` expects the open faces OBJ provides. The index widths
-//! follow the type's contract: `face_indices` from the (dedup-discovered) vertex
-//! count, `face_offsets` / `interior_offsets` from `face_indices.len()`.
+//! Polygon-sourced rings are stored closed (last index equals first):
+//! `from_polygons` keeps the closing vertex a valid `Polygon` ring carries and
+//! appends one to an open input ring. `from_parts` / `from_raw_parts` store their
+//! vertex-index faces verbatim. The index widths follow the type's contract:
+//! `face_indices` from the vertex count, `face_offsets` / `interior_offsets` from
+//! `face_indices.len()`.
 //!
 //! 3D constructors build the coordinate-free [`PolygonMesh3DData`] a
 //! [`Solid`](crate::solid::Solid) shell also stores, so the frame-carrying
@@ -34,7 +35,7 @@ use crate::appearance::{
     Appearance, ChannelId, FaceBinding, Material, MaterialIndex, Side, TexMatrix, ThemeBinding,
     ThemeId, UvSet, UvSource,
 };
-use crate::coordinate::Coordinate;
+use crate::coordinate::CoordinateFrame;
 use crate::error::Error;
 use crate::index::{IndexBuffer, IndexWidth};
 use crate::polygon::Polygon3D;
@@ -44,21 +45,19 @@ use super::{PolygonMesh2D, PolygonMesh3D, PolygonMesh3DData};
 impl PolygonMesh3DData {
     /// Build coordinate-free mesh data from independent face polygons, deduplicating
     /// their corners into a shared vertex pool. Each polygon becomes one face
-    /// (exterior then holes), stored open.
+    /// (exterior then holes), each ring stored closed.
     ///
     /// Appearance and UV are merged across the faces (see [`merge_appearance`]):
     /// material palettes concatenate, themes union, each face gets a `PerFace`
-    /// binding, and every per-face UV is welded into one mesh-wide array per
-    /// `(theme, side, channel)` — dropping each ring's closing duplicate to match
-    /// the open corner buffer, baking any `WorldToTexture` matrix to explicit
-    /// corners, and zero-filling faces a theme does not cover (their binding is
-    /// `None`, so the filler is never sampled). Bare input (no appearance on any
-    /// polygon) yields a bare mesh.
+    /// binding, and every per-face UV is welded, per theme, into one mesh-wide
+    /// array per `(side, channel)`, matching the closed corner buffer, baking any
+    /// `WorldToTexture` matrix to explicit corners, and zero-filling faces a theme
+    /// does not cover (their binding is `None`, so the filler is never sampled).
+    /// Bare input (no appearance on any polygon) yields a bare mesh.
     ///
-    /// A welded multi-face mesh's faces carry *different* `WorldToTexture` matrices
-    /// and cannot share one, so any matrix UV is baked to per-corner `Explicit` here
-    /// (a single-surface triangulation keeps its one matrix instead — see
-    /// [`UvSource`]).
+    /// A welded multi-face mesh's faces carry different `WorldToTexture` matrices
+    /// and cannot share one, so any matrix UV is baked to per-corner `Explicit`
+    /// here.
     pub fn from_polygons<'a>(polygons: impl IntoIterator<Item = &'a Polygon3D>) -> Self {
         Self::from_polygons_with_default_theme(polygons, None)
     }
@@ -76,7 +75,7 @@ impl PolygonMesh3DData {
             .iter()
             .map(|p| std::iter::once(p.exterior()).chain(p.interiors()));
         let (vertices, face_indices, face_offsets, interior_offsets) = dedup_faces(faces);
-        let (uv_sets, appearance) = merge_appearance(&polygons, default_theme);
+        let appearance = merge_appearance(&polygons, default_theme);
         let (face_indices, face_offsets, interior_offsets) =
             pack_csr(vertices.len(), face_indices, face_offsets, interior_offsets);
         Self {
@@ -84,7 +83,6 @@ impl PolygonMesh3DData {
             face_indices,
             face_offsets,
             interior_offsets,
-            uv_sets,
             appearance,
         }
     }
@@ -103,7 +101,6 @@ impl PolygonMesh3DData {
             face_indices,
             face_offsets,
             interior_offsets,
-            uv_sets: Vec::new(),
             appearance: None,
         })
     }
@@ -129,7 +126,6 @@ impl PolygonMesh3DData {
             face_indices,
             face_offsets,
             interior_offsets,
-            uv_sets: Vec::new(),
             appearance: None,
         })
     }
@@ -137,37 +133,37 @@ impl PolygonMesh3DData {
 
 impl PolygonMesh3D {
     /// Pair coordinate-free mesh data with the frame it is expressed in.
-    pub fn new(coordinate: Coordinate, data: PolygonMesh3DData) -> Self {
-        Self { coordinate, data }
+    pub fn new(frame: CoordinateFrame, data: PolygonMesh3DData) -> Self {
+        Self { frame, data }
     }
 
     /// Build from independent face polygons; see [`PolygonMesh3DData::from_polygons`].
-    /// Errors if any polygon's frame differs from `coordinate`.
+    /// Errors if any polygon's frame differs from `frame`.
     pub fn from_polygons<'a>(
-        coordinate: Coordinate,
+        frame: CoordinateFrame,
         polygons: impl IntoIterator<Item = &'a Polygon3D>,
     ) -> Result<Self, Error> {
-        Self::from_polygons_with_default_theme(coordinate, polygons, None)
+        Self::from_polygons_with_default_theme(frame, polygons, None)
     }
 
     /// As [`from_polygons`](Self::from_polygons), but pins the merged mesh's active
     /// default theme; see
     /// [`PolygonMesh3DData::from_polygons_with_default_theme`].
     pub fn from_polygons_with_default_theme<'a>(
-        coordinate: Coordinate,
+        frame: CoordinateFrame,
         polygons: impl IntoIterator<Item = &'a Polygon3D>,
         default_theme: Option<ThemeId>,
     ) -> Result<Self, Error> {
         let polygons: Vec<&Polygon3D> = polygons.into_iter().collect();
         for p in &polygons {
-            if p.coordinate() != &coordinate {
+            if p.frame() != &frame {
                 return Err(Error::invalid_geometry(
                     "polygon coordinate frame differs from the mesh frame",
                 ));
             }
         }
         Ok(Self::new(
-            coordinate,
+            frame,
             PolygonMesh3DData::from_polygons_with_default_theme(polygons, default_theme),
         ))
     }
@@ -175,26 +171,26 @@ impl PolygonMesh3D {
     /// Build from a vertex pool and index-list faces; see
     /// [`PolygonMesh3DData::from_parts`].
     pub fn from_parts(
-        coordinate: Coordinate,
+        frame: CoordinateFrame,
         vertices: Vec<[f64; 3]>,
         faces: impl IntoIterator<Item = impl IntoIterator<Item = u32>>,
     ) -> Result<Self, Error> {
         Ok(Self::new(
-            coordinate,
+            frame,
             PolygonMesh3DData::from_parts(vertices, faces)?,
         ))
     }
 
     /// Build from flat CSR buffers; see [`PolygonMesh3DData::from_raw_parts`].
     pub fn from_raw_parts(
-        coordinate: Coordinate,
+        frame: CoordinateFrame,
         vertices: Vec<[f64; 3]>,
         face_indices: Vec<u32>,
         face_offsets: Vec<u32>,
         interior_offsets: Vec<u32>,
     ) -> Result<Self, Error> {
         Ok(Self::new(
-            coordinate,
+            frame,
             PolygonMesh3DData::from_raw_parts(
                 vertices,
                 face_indices,
@@ -208,7 +204,7 @@ impl PolygonMesh3D {
 impl PolygonMesh2D {
     /// Build a pure-2D mesh from a vertex pool and index-list faces (no holes).
     pub fn from_parts(
-        coordinate: Coordinate,
+        frame: CoordinateFrame,
         vertices: Vec<[f64; 2]>,
         faces: impl IntoIterator<Item = impl IntoIterator<Item = u32>>,
     ) -> Result<Self, Error> {
@@ -216,13 +212,12 @@ impl PolygonMesh2D {
         let (face_indices, face_offsets, interior_offsets) =
             pack_csr(vertices.len(), face_indices, face_offsets, Vec::new());
         Ok(Self {
-            coordinate,
+            frame,
             vertices,
             z: None,
             face_indices,
             face_offsets,
             interior_offsets,
-            uv_sets: Vec::new(),
             appearance: None,
         })
     }
@@ -230,7 +225,7 @@ impl PolygonMesh2D {
     /// Build a 2.5D mesh from `[x, y, z]` vertices (the `(x, y)` populate the pool,
     /// the `z` a parallel elevation buffer) and index-list faces (no holes).
     pub fn from_parts_with_elevation(
-        coordinate: Coordinate,
+        frame: CoordinateFrame,
         vertices: Vec<[f64; 3]>,
         faces: impl IntoIterator<Item = impl IntoIterator<Item = u32>>,
     ) -> Result<Self, Error> {
@@ -246,20 +241,19 @@ impl PolygonMesh2D {
         let (face_indices, face_offsets, interior_offsets) =
             pack_csr(xy.len(), face_indices, face_offsets, Vec::new());
         Ok(Self {
-            coordinate,
+            frame,
             vertices: xy,
             z: Some(z),
             face_indices,
             face_offsets,
             interior_offsets,
-            uv_sets: Vec::new(),
             appearance: None,
         })
     }
 
     /// Build a pure-2D mesh from flat CSR buffers.
     pub fn from_raw_parts(
-        coordinate: Coordinate,
+        frame: CoordinateFrame,
         vertices: Vec<[f64; 2]>,
         face_indices: Vec<u32>,
         face_offsets: Vec<u32>,
@@ -274,26 +268,21 @@ impl PolygonMesh2D {
         let (face_indices, face_offsets, interior_offsets) =
             pack_csr(vertices.len(), face_indices, face_offsets, interior_offsets);
         Ok(Self {
-            coordinate,
+            frame,
             vertices,
             z: None,
             face_indices,
             face_offsets,
             interior_offsets,
-            uv_sets: Vec::new(),
             appearance: None,
         })
     }
 }
 
-/// Drop a ring's closing vertex when it duplicates the first, yielding the open
-/// ring (closure is implied by the face / hole boundary in the mesh).
-fn open_ring<const N: usize>(ring: &[[f64; N]]) -> &[[f64; N]] {
-    if ring.len() > 1 && ring.first() == ring.last() {
-        &ring[..ring.len() - 1]
-    } else {
-        ring
-    }
+/// Whether a ring needs its first vertex appended to be stored closed: it has at
+/// least two vertices and its last does not already equal its first.
+fn needs_closing<const N: usize>(ring: &[[f64; N]]) -> bool {
+    ring.len() >= 2 && ring.first() != ring.last()
 }
 
 /// Deduplicate the corners of a sequence of faces (each a sequence of rings,
@@ -319,9 +308,8 @@ where
                 interior_offsets.push(face_indices.len() as u32);
             }
             is_exterior = false;
-            for &coord in open_ring(ring) {
-                // Index of `coord` in the pool, inserting it on first sight; dedup
-                // is on exact `f64` bits.
+            let closing = needs_closing(ring).then(|| &ring[0]);
+            for &coord in ring.iter().chain(closing) {
                 let index = *seen.entry(coord.map(f64::to_bits)).or_insert_with(|| {
                     let next = vertices.len() as u32;
                     vertices.push(coord);
@@ -450,29 +438,35 @@ fn pack_csr(
     )
 }
 
-/// The number of mesh corners a polygon contributes — its rings with each
-/// closing duplicate dropped, matching `dedup_faces` / [`open_ring`]. A face
-/// with zero corners is skipped by `dedup_faces`, so it is dropped here too.
+/// The number of mesh corners a polygon contributes: its rings stored closed,
+/// matching `dedup_faces`.
 fn corner_count(polygon: &Polygon3D) -> usize {
     std::iter::once(polygon.exterior())
         .chain(polygon.interiors())
-        .map(|ring| open_ring(ring).len())
+        .map(|ring| ring.len() + usize::from(needs_closing(ring)))
         .sum()
 }
 
 /// Append one polygon's UV in mesh-corner order for a single `UvSource` directly
-/// onto `out`: rings concatenated (exterior then interiors), each closing
-/// duplicate dropped. `Explicit` slices the parallel array; `WorldToTexture` bakes
-/// the matrix at each corner vertex. Writes straight into the caller's reserved
-/// buffer — no per-face temporary.
+/// onto `out`: rings concatenated (exterior then interiors), each stored closed to
+/// match `dedup_faces`. `Explicit` slices the parallel array; `WorldToTexture` bakes
+/// the matrix at each corner vertex.
 fn extend_polygon_uv(out: &mut Vec<[f64; 2]>, polygon: &Polygon3D, source: &UvSource) {
     let mut pos = 0usize;
     for ring in std::iter::once(polygon.exterior()).chain(polygon.interiors()) {
-        let open = open_ring(ring);
+        let closing = needs_closing(ring);
         match source {
-            UvSource::Explicit(uv) => out.extend_from_slice(&uv[pos..pos + open.len()]),
+            UvSource::Explicit(uv) => {
+                out.extend_from_slice(&uv[pos..pos + ring.len()]);
+                if closing {
+                    out.push(uv[pos]);
+                }
+            }
             UvSource::WorldToTexture(matrix) => {
-                out.extend(open.iter().map(|&vertex| bake(matrix, vertex)));
+                out.extend(ring.iter().map(|&vertex| bake(matrix, vertex)));
+                if closing {
+                    out.push(bake(matrix, ring[0]));
+                }
             }
         }
         pos += ring.len();
@@ -511,7 +505,7 @@ fn has_back(polygon: &Polygon3D, theme: &ThemeId) -> bool {
     polygon
         .appearance()
         .as_ref()
-        .and_then(|app| app.themes.iter().find(|binding| &binding.theme == theme))
+        .and_then(|app| app.themes().iter().find(|binding| &binding.theme == theme))
         .is_some_and(|binding| binding.back.is_some())
 }
 
@@ -528,7 +522,7 @@ fn build_binding(
         .enumerate()
         .map(|(i, polygon)| -> Option<MaterialIndex> {
             let app = polygon.appearance().as_ref()?;
-            let binding = app.themes.iter().find(|b| &b.theme == theme)?;
+            let binding = app.themes().iter().find(|b| &b.theme == theme)?;
             let face = match side {
                 Side::Front => &binding.front,
                 Side::Back => binding.back.as_ref()?,
@@ -542,8 +536,12 @@ fn build_binding(
     FaceBinding::PerFace(per_face)
 }
 
-/// Weld the per-polygon appearance and UV of the kept faces into the mesh-wide
-/// `(uv_sets, appearance)`. Returns `(empty, None)` if no face carries appearance.
+/// Weld the per-polygon appearance and UV of the kept faces into one mesh-wide
+/// `Appearance`. Returns `None` if no face carries appearance.
+///
+/// Each theme's UV pool is rebuilt per (side, channel): one mesh-wide `Explicit`
+/// array whose corners concatenate each face's contribution (zero-filled where a
+/// face lacks that key, whose binding is then `None` so the filler is unsampled).
 ///
 /// `default_override` pins the merged mesh's active default theme; `None` keeps
 /// the auto rule (the shared default when every appearance-carrying face agrees,
@@ -551,7 +549,7 @@ fn build_binding(
 fn merge_appearance(
     polygons: &[&Polygon3D],
     default_override: Option<ThemeId>,
-) -> (Vec<UvSet>, Option<Appearance>) {
+) -> Option<Appearance> {
     let kept: Vec<&Polygon3D> = polygons
         .iter()
         .copied()
@@ -559,7 +557,7 @@ fn merge_appearance(
         .collect();
 
     if kept.iter().all(|p| p.appearance().is_none()) {
-        return (Vec::new(), None);
+        return None;
     }
 
     // Concatenate the material palettes, recording each face's offset for index
@@ -569,7 +567,7 @@ fn merge_appearance(
     for polygon in &kept {
         offset.push(materials.len());
         if let Some(app) = polygon.appearance() {
-            materials.extend(app.materials.iter().cloned());
+            materials.extend(app.materials().iter().cloned());
         }
     }
 
@@ -577,7 +575,7 @@ fn merge_appearance(
     let mut theme_order: Vec<ThemeId> = Vec::new();
     for polygon in &kept {
         if let Some(app) = polygon.appearance() {
-            for binding in &app.themes {
+            for binding in app.themes() {
                 if !theme_order.contains(&binding.theme) {
                     theme_order.push(binding.theme.clone());
                 }
@@ -589,9 +587,46 @@ fn merge_appearance(
     // is the documented fallback when they diverge (rule 2).
     let default_theme = default_override.unwrap_or_else(|| {
         kept.iter()
-            .find_map(|p| p.appearance().as_ref().map(|app| app.default_theme.clone()))
+            .find_map(|p| {
+                p.appearance()
+                    .as_ref()
+                    .map(|app| app.default_theme().clone())
+            })
             .expect("a kept face carries appearance")
     });
+
+    // Index each face's UV by (theme, side, channel) once (so the per-key build is a
+    // map lookup, not a linear scan) and precompute each face's corner count.
+    type UvKey = (ThemeId, Side, ChannelId);
+    let corner_counts: Vec<usize> = kept.iter().map(|p| corner_count(p)).collect();
+    let total_corners: usize = corner_counts.iter().sum();
+    let per_face_uv: Vec<HashMap<UvKey, &UvSource>> = kept
+        .iter()
+        .map(|polygon| {
+            let mut map = HashMap::new();
+            if let Some(app) = polygon.appearance() {
+                for binding in app.themes() {
+                    for set in &binding.uv_sets {
+                        map.insert((binding.theme.clone(), set.side, set.channel), &set.uv);
+                    }
+                }
+            }
+            map
+        })
+        .collect();
+
+    // One mesh-wide UV array for a given (theme, side, channel): each face
+    // contributes its corners, or a zero-filled run where it lacks that key.
+    let build_uv = |key: &UvKey| -> UvSource {
+        let mut data: Vec<[f64; 2]> = Vec::with_capacity(total_corners);
+        for (i, polygon) in kept.iter().enumerate() {
+            match per_face_uv[i].get(key).copied() {
+                Some(uv) => extend_polygon_uv(&mut data, polygon, uv),
+                None => data.resize(data.len() + corner_counts[i], [0.0, 0.0]),
+            }
+        }
+        UvSource::Explicit(data.into_boxed_slice())
+    };
 
     let themes: Vec<ThemeBinding> = theme_order
         .iter()
@@ -601,73 +636,42 @@ fn merge_appearance(
                 .iter()
                 .any(|p| has_back(p, theme))
                 .then(|| build_binding(&kept, &offset, theme, Side::Back));
+
+            // This theme's (side, channel) union across faces, first-seen.
+            let mut uv_keys: Vec<(Side, ChannelId)> = Vec::new();
+            let mut seen: HashSet<(Side, ChannelId)> = HashSet::new();
+            for polygon in &kept {
+                let Some(app) = polygon.appearance() else {
+                    continue;
+                };
+                let Some(binding) = app.themes().iter().find(|b| &b.theme == theme) else {
+                    continue;
+                };
+                for set in &binding.uv_sets {
+                    if seen.insert((set.side, set.channel)) {
+                        uv_keys.push((set.side, set.channel));
+                    }
+                }
+            }
+            let uv_sets = uv_keys
+                .into_iter()
+                .map(|(side, channel)| UvSet {
+                    side,
+                    channel,
+                    uv: build_uv(&(theme.clone(), side, channel)),
+                })
+                .collect();
+
             ThemeBinding {
                 theme: theme.clone(),
                 front,
                 back,
+                uv_sets,
             }
         })
         .collect();
 
-    // Index each face's UV sets by key once (so the per-key build is a map lookup,
-    // not a linear scan) and precompute each face's corner count (recomputing it
-    // per key would re-walk every ring).
-    type UvKey = (Option<ThemeId>, Side, ChannelId);
-    let corner_counts: Vec<usize> = kept.iter().map(|p| corner_count(p)).collect();
-    let total_corners: usize = corner_counts.iter().sum();
-    let per_face_uv: Vec<HashMap<UvKey, &UvSource>> = kept
-        .iter()
-        .map(|polygon| {
-            polygon
-                .uv_sets()
-                .iter()
-                .map(|set| ((set.theme.clone(), set.side, set.channel), &set.uv))
-                .collect()
-        })
-        .collect();
-
-    // UV-set key union, in first-seen order.
-    let mut keys: Vec<UvKey> = Vec::new();
-    let mut seen: HashSet<UvKey> = HashSet::new();
-    for polygon in &kept {
-        for set in polygon.uv_sets() {
-            let key = (set.theme.clone(), set.side, set.channel);
-            if seen.insert(key.clone()) {
-                keys.push(key);
-            }
-        }
-    }
-
-    // One mesh-wide UV array per key: each face contributes its corners, or a
-    // zero-filled run where it lacks that key. Reserved to the total up front.
-    let uv_sets = keys
-        .into_iter()
-        .map(|key| {
-            let mut data: Vec<[f64; 2]> = Vec::with_capacity(total_corners);
-            for (i, polygon) in kept.iter().enumerate() {
-                match per_face_uv[i].get(&key).copied() {
-                    Some(uv) => extend_polygon_uv(&mut data, polygon, uv),
-                    None => data.resize(data.len() + corner_counts[i], [0.0, 0.0]),
-                }
-            }
-            let (theme, side, channel) = key;
-            UvSet {
-                theme,
-                side,
-                channel,
-                uv: UvSource::Explicit(data.into_boxed_slice()),
-            }
-        })
-        .collect();
-
-    (
-        uv_sets,
-        Some(Appearance {
-            materials,
-            themes,
-            default_theme,
-        }),
-    )
+    Some(Appearance::from_parts(materials, themes, default_theme))
 }
 
 #[cfg(test)]
@@ -685,7 +689,11 @@ mod tests {
     }
 
     fn quad(corners: [[f64; 3]; 4]) -> Polygon3D {
-        Polygon3D::from_rings(Coordinate::Euclidean, corners, Vec::<Vec<[f64; 3]>>::new())
+        Polygon3D::from_rings(
+            CoordinateFrame::Euclidean,
+            corners,
+            Vec::<Vec<[f64; 3]>>::new(),
+        )
     }
 
     #[test]
@@ -693,7 +701,7 @@ mod tests {
         // Two unit quads sharing the edge (1,0,0)-(1,1,0): 6 unique vertices.
         let a = quad([[0., 0., 0.], [1., 0., 0.], [1., 1., 0.], [0., 1., 0.]]);
         let b = quad([[1., 0., 0.], [2., 0., 0.], [2., 1., 0.], [1., 1., 0.]]);
-        let m = PolygonMesh3D::from_polygons(Coordinate::Euclidean, [&a, &b]).unwrap();
+        let m = PolygonMesh3D::from_polygons(CoordinateFrame::Euclidean, [&a, &b]).unwrap();
         assert_eq!(
             m.data.vertices,
             vec![
@@ -705,10 +713,13 @@ mod tests {
                 [2., 1., 0.],
             ]
         );
-        // Rings stored open (the closing duplicate is dropped).
-        assert_eq!(ones(&m.data.face_indices), vec![0, 1, 2, 3, 1, 4, 5, 2]);
-        // Internal boundary only: face 0 ends / face 1 begins at 4.
-        assert_eq!(ones(&m.data.face_offsets), vec![4]);
+        // Rings stored closed (each ends where it began).
+        assert_eq!(
+            ones(&m.data.face_indices),
+            vec![0, 1, 2, 3, 0, 1, 4, 5, 2, 1]
+        );
+        // Internal boundary only: face 0 ends / face 1 begins at 5.
+        assert_eq!(ones(&m.data.face_offsets), vec![5]);
         assert!(ones(&m.data.interior_offsets).is_empty());
     }
 
@@ -716,20 +727,20 @@ mod tests {
     fn from_polygons_preserves_a_hole() {
         let outer = [[0., 0., 0.], [4., 0., 0.], [4., 4., 0.], [0., 4., 0.]];
         let hole = vec![[1., 1., 0.], [2., 1., 0.], [2., 2., 0.], [1., 2., 0.]];
-        let p = Polygon3D::from_rings(Coordinate::Euclidean, outer, vec![hole]);
+        let p = Polygon3D::from_rings(CoordinateFrame::Euclidean, outer, vec![hole]);
         let m = PolygonMesh3DData::from_polygons([&p]);
         assert_eq!(m.vertices.len(), 8);
-        assert_eq!(ones(&m.face_indices), vec![0, 1, 2, 3, 4, 5, 6, 7]);
-        // Single face -> no internal boundaries; the hole starts at index 4.
+        assert_eq!(ones(&m.face_indices), vec![0, 1, 2, 3, 0, 4, 5, 6, 7, 4]);
+        // Single face -> no internal boundaries; the hole starts at index 5.
         assert!(ones(&m.face_offsets).is_empty());
-        assert_eq!(ones(&m.interior_offsets), vec![4]);
+        assert_eq!(ones(&m.interior_offsets), vec![5]);
     }
 
     #[test]
     fn from_polygons_rejects_frame_mismatch() {
         let a = quad([[0., 0., 0.], [1., 0., 0.], [1., 1., 0.], [0., 1., 0.]]);
-        let err =
-            PolygonMesh3D::from_polygons(Coordinate::Crs(EpsgCode::new(4326)), [&a]).unwrap_err();
+        let err = PolygonMesh3D::from_polygons(CoordinateFrame::Crs(EpsgCode::new(4326)), [&a])
+            .unwrap_err();
         assert!(matches!(err, Error::InvalidGeometry(_)));
     }
 
@@ -737,7 +748,7 @@ mod tests {
     fn from_parts_builds_faces() {
         let verts = vec![[0., 0., 0.], [1., 0., 0.], [1., 1., 0.], [0., 1., 0.]];
         let faces = vec![vec![0u32, 1, 2], vec![0u32, 2, 3]];
-        let m = PolygonMesh3D::from_parts(Coordinate::Euclidean, verts, faces).unwrap();
+        let m = PolygonMesh3D::from_parts(CoordinateFrame::Euclidean, verts, faces).unwrap();
         assert_eq!(ones(&m.data.face_indices), vec![0, 1, 2, 0, 2, 3]);
         // Two faces -> a single internal boundary at 3.
         assert_eq!(ones(&m.data.face_offsets), vec![3]);
@@ -756,7 +767,7 @@ mod tests {
     fn from_polygons_skips_empty_face() {
         let a = quad([[0., 0., 0.], [1., 0., 0.], [1., 1., 0.], [0., 1., 0.]]);
         let empty = Polygon3D::from_rings(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             Vec::<[f64; 3]>::new(),
             Vec::<Vec<[f64; 3]>>::new(),
         );
@@ -764,14 +775,14 @@ mod tests {
         let m = PolygonMesh3DData::from_polygons([&a, &empty, &b]);
         assert_eq!(m.vertices.len(), 6);
         // Two real faces -> one internal boundary, no duplicate from the empty face.
-        assert_eq!(ones(&m.face_offsets), vec![4]);
+        assert_eq!(ones(&m.face_offsets), vec![5]);
     }
 
     #[test]
     fn from_parts_skips_empty_face() {
         let verts = vec![[0., 0., 0.], [1., 0., 0.], [1., 1., 0.], [0., 1., 0.]];
         let faces: Vec<Vec<u32>> = vec![vec![0, 1, 2], vec![], vec![0, 2, 3]];
-        let m = PolygonMesh3D::from_parts(Coordinate::Euclidean, verts, faces).unwrap();
+        let m = PolygonMesh3D::from_parts(CoordinateFrame::Euclidean, verts, faces).unwrap();
         assert_eq!(ones(&m.data.face_indices), vec![0, 1, 2, 0, 2, 3]);
         assert_eq!(ones(&m.data.face_offsets), vec![3]);
     }
@@ -780,7 +791,7 @@ mod tests {
     fn from_parts_with_elevation_splits_z() {
         let verts = vec![[0., 0., 10.], [1., 0., 11.], [0., 1., 12.]];
         let m = PolygonMesh2D::from_parts_with_elevation(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             verts,
             vec![vec![0u32, 1, 2]],
         )
@@ -841,17 +852,18 @@ mod tests {
 
         let m = PolygonMesh3DData::from_polygons([&p]);
         let app = m.appearance.as_ref().unwrap();
-        assert_eq!(app.materials.len(), 1);
-        assert_eq!(app.default_theme, theme("rgb"));
-        let FaceBinding::PerFace(front) = &app.themes[0].front else {
+        assert_eq!(app.materials().len(), 1);
+        assert_eq!(*app.default_theme(), theme("rgb"));
+        let FaceBinding::PerFace(front) = &app.themes()[0].front else {
             panic!("expected PerFace");
         };
         assert_eq!(front, &[MaterialIndex::new(0)]);
-        assert!(app.themes[0].back.is_none());
-        let UvSource::Explicit(uv) = &m.uv_sets[0].uv else {
+        assert!(app.themes()[0].back.is_none());
+        let UvSource::Explicit(uv) = &m.appearance.as_ref().unwrap().themes()[0].uv_sets[0].uv
+        else {
             panic!("expected Explicit");
         };
-        assert_eq!(uv.len(), 4);
+        assert_eq!(uv.len(), 5);
     }
 
     #[test]
@@ -865,15 +877,16 @@ mod tests {
 
         let m = PolygonMesh3DData::from_polygons([&a, &b]);
         let app = m.appearance.as_ref().unwrap();
-        assert_eq!(app.materials.len(), 2);
-        let FaceBinding::PerFace(front) = &app.themes[0].front else {
+        assert_eq!(app.materials().len(), 2);
+        let FaceBinding::PerFace(front) = &app.themes()[0].front else {
             panic!("expected PerFace");
         };
         assert_eq!(front, &[MaterialIndex::new(0), MaterialIndex::new(1)]);
-        let UvSource::Explicit(uv) = &m.uv_sets[0].uv else {
+        let UvSource::Explicit(uv) = &m.appearance.as_ref().unwrap().themes()[0].uv_sets[0].uv
+        else {
             panic!("expected Explicit");
         };
-        assert_eq!(uv.len(), 8);
+        assert_eq!(uv.len(), 10);
     }
 
     #[test]
@@ -886,17 +899,23 @@ mod tests {
 
         // Auto, diverging: falls back to the first kept face's default (rule 2).
         let m = PolygonMesh3DData::from_polygons([&a, &b]);
-        assert_eq!(m.appearance.as_ref().unwrap().default_theme, theme("rgb"));
+        assert_eq!(
+            *m.appearance.as_ref().unwrap().default_theme(),
+            theme("rgb")
+        );
 
         // Auto, uniform: every face agrees, so that shared default is chosen (rule 1).
         let m = PolygonMesh3DData::from_polygons([&a, &a]);
-        assert_eq!(m.appearance.as_ref().unwrap().default_theme, theme("rgb"));
+        assert_eq!(
+            *m.appearance.as_ref().unwrap().default_theme(),
+            theme("rgb")
+        );
 
         // Explicit override pins the active theme regardless of the faces.
         let m =
             PolygonMesh3DData::from_polygons_with_default_theme([&a, &b], Some(theme("infrared")));
         assert_eq!(
-            m.appearance.as_ref().unwrap().default_theme,
+            *m.appearance.as_ref().unwrap().default_theme(),
             theme("infrared")
         );
     }
@@ -920,24 +939,32 @@ mod tests {
 
         let m = PolygonMesh3DData::from_polygons([&a, &b]);
         let app = m.appearance.as_ref().unwrap();
-        assert_eq!(app.materials.len(), 1, "only the textured face contributes");
-        let FaceBinding::PerFace(front) = &app.themes[0].front else {
+        assert_eq!(
+            app.materials().len(),
+            1,
+            "only the textured face contributes"
+        );
+        let FaceBinding::PerFace(front) = &app.themes()[0].front else {
             panic!("expected PerFace");
         };
         assert_eq!(front, &[MaterialIndex::new(0), None]);
-        let UvSource::Explicit(uv) = &m.uv_sets[0].uv else {
+        let UvSource::Explicit(uv) = &m.appearance.as_ref().unwrap().themes()[0].uv_sets[0].uv
+        else {
             panic!("expected Explicit");
         };
-        assert_eq!(uv.len(), 8);
-        assert_eq!(&uv[0..4], &[[0.2, 0.2], [0.4, 0.2], [0.4, 0.4], [0.2, 0.4]]);
-        assert_eq!(&uv[4..8], &[[0., 0.], [0., 0.], [0., 0.], [0., 0.]]);
+        assert_eq!(uv.len(), 10);
+        assert_eq!(
+            &uv[0..5],
+            &[[0.2, 0.2], [0.4, 0.2], [0.4, 0.4], [0.2, 0.4], [0.2, 0.2]]
+        );
+        assert_eq!(&uv[5..10], &[[0., 0.]; 5]);
     }
 
     #[test]
-    fn from_polygons_drops_closing_uv() {
-        // Closed triangle: coords [a, b, c, a] (4); the mesh keeps 3 open corners.
+    fn from_polygons_keeps_closing_uv() {
+        // Closed triangle: coords [a, b, c, a] (4); the mesh keeps all 4 corners.
         let mut p = Polygon3D::from_rings(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             [[0., 0., 0.], [1., 0., 0.], [0., 1., 0.], [0., 0., 0.]],
             Vec::<Vec<[f64; 3]>>::new(),
         );
@@ -949,11 +976,12 @@ mod tests {
         .unwrap();
 
         let m = PolygonMesh3DData::from_polygons([&p]);
-        let UvSource::Explicit(uv) = &m.uv_sets[0].uv else {
+        let UvSource::Explicit(uv) = &m.appearance.as_ref().unwrap().themes()[0].uv_sets[0].uv
+        else {
             panic!("expected Explicit");
         };
-        assert_eq!(uv.len(), 3);
-        assert_eq!(&uv[..], &[[0., 0.], [1., 0.], [0., 1.]]);
+        assert_eq!(uv.len(), 4);
+        assert_eq!(&uv[..], &[[0., 0.], [1., 0.], [0., 1.], [0., 0.]]);
     }
 
     #[test]
@@ -969,10 +997,11 @@ mod tests {
         .unwrap();
 
         let m = PolygonMesh3DData::from_polygons([&p]);
-        let UvSource::Explicit(uv) = &m.uv_sets[0].uv else {
+        let UvSource::Explicit(uv) = &m.appearance.as_ref().unwrap().themes()[0].uv_sets[0].uv
+        else {
             panic!("expected baked Explicit");
         };
-        assert_eq!(&uv[..], &[[0., 0.], [2., 0.], [2., 3.], [0., 3.]]);
+        assert_eq!(&uv[..], &[[0., 0.], [2., 0.], [2., 3.], [0., 3.], [0., 0.]]);
     }
 
     #[test]
@@ -980,6 +1009,5 @@ mod tests {
         let a = quad([[0., 0., 0.], [1., 0., 0.], [1., 1., 0.], [0., 1., 0.]]);
         let m = PolygonMesh3DData::from_polygons([&a]);
         assert!(m.appearance.is_none());
-        assert!(m.uv_sets.is_empty());
     }
 }

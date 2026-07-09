@@ -1,9 +1,7 @@
 use super::{Polygon2D, Polygon3D};
-use crate::coordinate::{Coordinate, EpsgCode};
+use crate::coordinate::{CoordinateFrame, EpsgCode};
 use crate::ops::reproject::{transform_coords_2d, transform_coords_3d};
-use crate::ops::triangulation::{
-    expand_appearance, retarget_uv, triangulate_2d, triangulate_3d, Cache,
-};
+use crate::ops::triangulation::{expand_appearance, triangulate_2d, triangulate_3d, Cache};
 use crate::ops::{
     Aabb, BoundingBox, Reproject, ReprojectionCache, Triangulate, UnsupportedOperation,
 };
@@ -37,10 +35,10 @@ impl Reproject for Polygon2D {
         target: EpsgCode,
         cache: &mut ReprojectionCache,
     ) -> crate::error::Result<()> {
-        let from = self.coordinate.require_crs()?;
+        let from = self.frame.require_crs()?;
         if from != target {
             transform_coords_2d(cache, from, target, &mut self.coords, self.z.as_deref_mut())?;
-            self.coordinate = Coordinate::Crs(target);
+            self.frame = CoordinateFrame::Crs(target);
         }
         Ok(())
     }
@@ -52,10 +50,10 @@ impl Reproject for Polygon3D {
         target: EpsgCode,
         cache: &mut ReprojectionCache,
     ) -> crate::error::Result<()> {
-        let from = self.coordinate.require_crs()?;
+        let from = self.frame.require_crs()?;
         if from != target {
             transform_coords_3d(cache, from, target, &mut self.coords)?;
-            self.coordinate = Coordinate::Crs(target);
+            self.frame = CoordinateFrame::Crs(target);
         }
         Ok(())
     }
@@ -91,7 +89,7 @@ impl Triangulate for Polygon2D {
                 // SAFETY: every earcut index is `< verts.len()`; count is a multiple of 3.
                 unsafe {
                     TriangularMesh2D::from_parts_unchecked(
-                        self.coordinate.clone(),
+                        self.frame.clone(),
                         verts,
                         buffers.out.len() / 3,
                         buffers.out.iter().copied(),
@@ -115,7 +113,7 @@ impl Triangulate for Polygon2D {
                 // SAFETY: every earcut index is `< verts.len()`; count is a multiple of 3.
                 unsafe {
                     TriangularMesh2D::from_parts_with_elevation_unchecked(
-                        self.coordinate.clone(),
+                        self.frame.clone(),
                         verts,
                         buffers.out.len() / 3,
                         buffers.out.iter().copied(),
@@ -128,15 +126,12 @@ impl Triangulate for Polygon2D {
             .iter()
             .map(|&c| buffers.positions[c as usize])
             .collect();
-        let uv_sets = std::mem::take(&mut self.uv_sets)
-            .into_iter()
-            .map(|uv| retarget_uv(uv, &src_corner))
-            .collect();
         let appearance = expand_appearance(
             std::mem::take(&mut self.appearance),
             &[(buffers.out.len() / 3) as u32],
+            &src_corner,
         );
-        mesh.set_raw_appearance(uv_sets, appearance);
+        mesh.set_raw_appearance(appearance);
         Ok(Geometry::Euclidean2D(Euclidean2DGeometry::TriangularMesh(
             Box::new(mesh),
         )))
@@ -166,7 +161,7 @@ impl Triangulate for Polygon3D {
         // SAFETY: every earcut index is `< verts.len()`; count is a multiple of 3.
         let mut mesh = unsafe {
             TriangularMesh3D::from_parts_unchecked(
-                self.coordinate.clone(),
+                self.frame.clone(),
                 verts,
                 buffers.out.len() / 3,
                 buffers.out.iter().copied(),
@@ -177,15 +172,12 @@ impl Triangulate for Polygon3D {
             .iter()
             .map(|&c| buffers.positions[c as usize])
             .collect();
-        let uv_sets = std::mem::take(&mut self.uv_sets)
-            .into_iter()
-            .map(|uv| retarget_uv(uv, &src_corner))
-            .collect();
         let appearance = expand_appearance(
             std::mem::take(&mut self.appearance),
             &[(buffers.out.len() / 3) as u32],
+            &src_corner,
         );
-        mesh.set_raw_appearance(uv_sets, appearance);
+        mesh.set_raw_appearance(appearance);
         Ok(Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(
             Box::new(mesh),
         )))
@@ -238,7 +230,7 @@ fn open_ring_positions<const N: usize>(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::coordinate::Coordinate;
+    use crate::coordinate::CoordinateFrame;
 
     #[test]
     fn polygon2d_box_is_the_exterior_extent() {
@@ -246,7 +238,7 @@ mod tests {
         // box is the exterior's.
         let exterior = [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]];
         let hole = vec![[1.0, 1.0], [2.0, 1.0], [2.0, 2.0], [1.0, 1.0]];
-        let p = Polygon2D::from_rings(Coordinate::Euclidean, exterior, vec![hole]);
+        let p = Polygon2D::from_rings(CoordinateFrame::Euclidean, exterior, vec![hole]);
         assert_eq!(
             p.bounding_box().unwrap(),
             Aabb::D2 {
@@ -273,8 +265,11 @@ mod tests {
     #[test]
     fn polygon2d_square_triangulates_to_two_triangles() {
         let square = [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]];
-        let mut p =
-            Polygon2D::from_rings(Coordinate::Euclidean, square, Vec::<Vec<[f64; 2]>>::new());
+        let mut p = Polygon2D::from_rings(
+            CoordinateFrame::Euclidean,
+            square,
+            Vec::<Vec<[f64; 2]>>::new(),
+        );
         let g = p.triangulate(&mut Cache::new()).unwrap();
         let m = tri_mesh_2d(&g);
         assert_eq!(m.num_triangles(), 2);
@@ -287,7 +282,7 @@ mod tests {
         // A 4-vertex square with a 4-vertex square hole: earcut yields 8 triangles.
         let exterior = [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]];
         let hole = vec![[1.0, 1.0], [3.0, 1.0], [3.0, 3.0], [1.0, 3.0], [1.0, 1.0]];
-        let mut p = Polygon2D::from_rings(Coordinate::Euclidean, exterior, vec![hole]);
+        let mut p = Polygon2D::from_rings(CoordinateFrame::Euclidean, exterior, vec![hole]);
         let g = p.triangulate(&mut Cache::new()).unwrap();
         let m = tri_mesh_2d(&g);
         assert_eq!(m.num_triangles(), 8);
@@ -296,7 +291,7 @@ mod tests {
     #[test]
     fn polygon2d_preserves_elevation() {
         let g = Polygon2D::from_rings_with_elevation(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             [
                 [0.0, 0.0, 10.0],
                 [4.0, 0.0, 11.0],
@@ -322,8 +317,11 @@ mod tests {
             [0.0, 0.0, 4.0],
             [0.0, 0.0, 0.0],
         ];
-        let mut p =
-            Polygon3D::from_rings(Coordinate::Euclidean, square, Vec::<Vec<[f64; 3]>>::new());
+        let mut p = Polygon3D::from_rings(
+            CoordinateFrame::Euclidean,
+            square,
+            Vec::<Vec<[f64; 3]>>::new(),
+        );
         let g = p.triangulate(&mut Cache::new()).unwrap();
         let m = tri_mesh_3d(&g);
         assert_eq!(m.num_triangles(), 2);
@@ -337,13 +335,17 @@ mod tests {
         let mut cache = Cache::new();
         let square = [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]];
 
-        let a = Polygon2D::from_rings(Coordinate::Euclidean, square, Vec::<Vec<[f64; 2]>>::new())
-            .triangulate(&mut cache)
-            .unwrap();
+        let a = Polygon2D::from_rings(
+            CoordinateFrame::Euclidean,
+            square,
+            Vec::<Vec<[f64; 2]>>::new(),
+        )
+        .triangulate(&mut cache)
+        .unwrap();
         assert_eq!(tri_mesh_2d(&a).num_triangles(), 2);
 
         let hole = vec![[1.0, 1.0], [3.0, 1.0], [3.0, 3.0], [1.0, 3.0], [1.0, 1.0]];
-        let b = Polygon2D::from_rings(Coordinate::Euclidean, square, vec![hole])
+        let b = Polygon2D::from_rings(CoordinateFrame::Euclidean, square, vec![hole])
             .triangulate(&mut cache)
             .unwrap();
         assert_eq!(tri_mesh_2d(&b).num_triangles(), 8);
@@ -355,9 +357,13 @@ mod tests {
             [0.0, 0.0, 4.0],
             [0.0, 0.0, 0.0],
         ];
-        let c = Polygon3D::from_rings(Coordinate::Euclidean, face3d, Vec::<Vec<[f64; 3]>>::new())
-            .triangulate(&mut cache)
-            .unwrap();
+        let c = Polygon3D::from_rings(
+            CoordinateFrame::Euclidean,
+            face3d,
+            Vec::<Vec<[f64; 3]>>::new(),
+        )
+        .triangulate(&mut cache)
+        .unwrap();
         assert_eq!(tri_mesh_3d(&c).num_triangles(), 2);
     }
 
@@ -370,7 +376,11 @@ mod tests {
             [2.0, 2.0, 2.0],
             [0.0, 0.0, 0.0],
         ];
-        let mut p = Polygon3D::from_rings(Coordinate::Euclidean, line, Vec::<Vec<[f64; 3]>>::new());
+        let mut p = Polygon3D::from_rings(
+            CoordinateFrame::Euclidean,
+            line,
+            Vec::<Vec<[f64; 3]>>::new(),
+        );
         let g = p.triangulate(&mut Cache::new()).unwrap();
         assert_eq!(tri_mesh_3d(&g).num_triangles(), 0);
     }
@@ -383,8 +393,11 @@ mod tests {
         // UV is parallel to `coords` (5 entries, last = closing dup), distinct per
         // real corner so the gather is checkable.
         let square = [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]];
-        let mut p =
-            Polygon2D::from_rings(Coordinate::Euclidean, square, Vec::<Vec<[f64; 2]>>::new());
+        let mut p = Polygon2D::from_rings(
+            CoordinateFrame::Euclidean,
+            square,
+            Vec::<Vec<[f64; 2]>>::new(),
+        );
         let src_uv = UvSource::Explicit(Box::new([
             [0.0, 0.0],
             [1.0, 0.0],
@@ -400,13 +413,13 @@ mod tests {
         assert_eq!(m.num_triangles(), 2);
 
         let app = m.appearance().as_ref().expect("appearance carried over");
-        assert_eq!(app.materials.len(), 1);
-        assert_eq!(app.default_theme, theme("rgb"));
-        assert!(matches!(app.themes[0].front, FaceBinding::Uniform(_)));
+        assert_eq!(app.materials().len(), 1);
+        assert_eq!(*app.default_theme(), theme("rgb"));
+        assert!(matches!(app.themes()[0].front, FaceBinding::Uniform(_)));
 
         // Every output UV is one of the real source-corner UVs (gathered, not
         // interpolated; the closing-duplicate slot is never referenced).
-        let UvSource::Explicit(out_uv) = &m.uv_sets()[0].uv else {
+        let UvSource::Explicit(out_uv) = &app.themes()[0].uv_sets[0].uv else {
             panic!("expected an explicit output UV set");
         };
         assert_eq!(out_uv.len(), 6);
@@ -420,8 +433,11 @@ mod tests {
         use crate::test_support::{textured, theme};
 
         let square = [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]];
-        let mut p =
-            Polygon2D::from_rings(Coordinate::Euclidean, square, Vec::<Vec<[f64; 2]>>::new());
+        let mut p = Polygon2D::from_rings(
+            CoordinateFrame::Euclidean,
+            square,
+            Vec::<Vec<[f64; 2]>>::new(),
+        );
         let matrix = TexMatrix([
             [0.25, 0.0, 0.0, 0.0],
             [0.0, 0.25, 0.0, 0.0],
@@ -436,8 +452,9 @@ mod tests {
 
         let g = p.triangulate(&mut Cache::new()).unwrap();
         let m = tri_mesh_2d(&g);
+        let app = m.appearance().as_ref().unwrap();
         assert!(matches!(
-            m.uv_sets()[0].uv,
+            app.themes()[0].uv_sets[0].uv,
             UvSource::WorldToTexture(out) if out == matrix
         ));
     }
@@ -450,7 +467,11 @@ mod tests {
             [4.0, 4.0, 2.0],
             [0.0, 0.0, 1.0],
         ];
-        let p = Polygon3D::from_rings(Coordinate::Euclidean, exterior, Vec::<Vec<[f64; 3]>>::new());
+        let p = Polygon3D::from_rings(
+            CoordinateFrame::Euclidean,
+            exterior,
+            Vec::<Vec<[f64; 3]>>::new(),
+        );
         assert_eq!(
             p.bounding_box().unwrap(),
             Aabb::D3 {
