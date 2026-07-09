@@ -72,7 +72,7 @@ const VersionDialog: React.FC<Props> = ({
         '[data-slot="dropdown-menu-content"]',
       );
 
-      const isDialogClick = target?.closest?.("#dialog-content");
+      const isDialogClick = target?.closest?.('[data-slot="dialog-content"]');
 
       if (
         dialogRef.current &&

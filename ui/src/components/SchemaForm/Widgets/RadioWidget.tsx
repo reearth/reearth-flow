@@ -1,16 +1,18 @@
 import {
   ariaDescribedByIds,
   enumOptionsIsSelected,
-  // enumOptionsValueForIndex,
+  enumOptionsValueForIndex,
   optionId,
   FormContextType,
   RJSFSchema,
   StrictRJSFSchema,
   WidgetProps,
 } from "@rjsf/utils";
-// import { ChangeEvent, FocusEvent } from "react";
+import { useCallback } from "react";
 
 import { RadioGroup, Label, RadioGroupItem } from "@flow/components";
+
+import { paramsAwarenessStyles } from "../utils/awarenessTemplateStyles";
 
 const RadioWidget = <
   T = any,
@@ -23,36 +25,15 @@ const RadioWidget = <
   required,
   disabled,
   readonly,
-  // onChange,
-  // onBlur,
-  // onFocus,
+  registry,
+  onChange,
+  onBlur,
+  onFocus,
 }: WidgetProps<T, S, F>) => {
-  const {
-    enumOptions,
-    enumDisabled,
-    // emptyValue
-  } = options;
-
-  // const _onChange = ({ target: { value } }: ChangeEvent<HTMLInputElement>) =>
-  //   onChange(enumOptionsValueForIndex<S>(value, enumOptions, emptyValue));
-  // const _onBlur = ({ target }: FocusEvent<HTMLInputElement>) =>
-  //   onBlur(
-  //     id,
-  //     enumOptionsValueForIndex<S>(
-  //       target && target.value,
-  //       enumOptions,
-  //       emptyValue,
-  //     ),
-  //   );
-  // const _onFocus = ({ target }: FocusEvent<HTMLInputElement>) =>
-  //   onFocus(
-  //     id,
-  //     enumOptionsValueForIndex<S>(
-  //       target && target.value,
-  //       enumOptions,
-  //       emptyValue,
-  //     ),
-  //   );
+  const { enumOptions, enumDisabled, emptyValue } = options;
+  const formContext = registry?.formContext;
+  const { fieldFocusMap, onFieldFocus } = formContext ?? {};
+  const focusedUsers = fieldFocusMap?.[id] ?? [];
 
   const selectedIndex = Array.isArray(enumOptions)
     ? enumOptions.findIndex((option) =>
@@ -60,8 +41,36 @@ const RadioWidget = <
       )
     : -1;
 
+  const handleValueChange = useCallback(
+    (newValue: unknown) =>
+      onChange(
+        enumOptionsValueForIndex<S>(
+          newValue as string,
+          enumOptions,
+          emptyValue,
+        ),
+      ),
+    [onChange, enumOptions, emptyValue],
+  );
+
+  const handleBlur = useCallback(() => {
+    onBlur?.(id, value);
+    onFieldFocus?.(null);
+  }, [onBlur, onFieldFocus, id, value]);
+
+  const handleFocus = useCallback(() => {
+    onFocus?.(id, value);
+    onFieldFocus?.(id);
+  }, [onFocus, onFieldFocus, id, value]);
+
   return (
-    <RadioGroup value={selectedIndex >= 0 ? String(selectedIndex) : ""}>
+    <RadioGroup
+      value={selectedIndex >= 0 ? String(selectedIndex) : ""}
+      disabled={readonly || disabled}
+      style={paramsAwarenessStyles(focusedUsers)}
+      onValueChange={handleValueChange}
+      onBlur={handleBlur}
+      onFocus={handleFocus}>
       {Array.isArray(enumOptions) &&
         enumOptions.map((option, index) => {
           const itemDisabled =
@@ -69,19 +78,14 @@ const RadioWidget = <
             enumDisabled.indexOf(option.value) !== -1;
 
           return (
-            <div className="flex items-center space-x-2">
+            <div
+              key={optionId(id, index)}
+              className="flex items-center space-x-2">
               <RadioGroupItem
-                key={optionId(id, index)}
-                // label={option.label}
                 id={optionId(id, index)}
-                // name={id}
                 disabled={readonly || itemDisabled || disabled}
                 required={required}
                 value={String(index)}
-                // TODO: Fix radio group
-                // onChange={_onChange}
-                // onBlur={_onBlur}
-                // onFocus={_onFocus}
                 aria-describedby={ariaDescribedByIds(id)}
               />
               <Label htmlFor={optionId(id, index)}>{option.label}</Label>

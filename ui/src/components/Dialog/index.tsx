@@ -66,7 +66,7 @@ const DialogContent = forwardRef<
       <DialogOverlay overlayBgClass={overlayBgClass} />
       <DialogPrimitive.Popup
         ref={ref}
-        id="dialog-content"
+        data-slot="dialog-content"
         initialFocus={false}
         finalFocus={false}
         className={cn(
