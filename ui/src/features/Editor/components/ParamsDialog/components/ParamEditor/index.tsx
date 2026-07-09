@@ -255,11 +255,13 @@ const ParamEditor: React.FC<Props> = ({
                     {t("Customization Options")}
                   </p>
                   <Tooltip>
-                    <TooltipTrigger asChild>
-                      <div className="cursor-pointer p-1">
-                        <QuestionIcon className="h-5 w-5" weight="thin" />
-                      </div>
-                    </TooltipTrigger>
+                    <TooltipTrigger
+                      render={
+                        <div className="cursor-pointer p-1">
+                          <QuestionIcon className="h-5 w-5" weight="thin" />
+                        </div>
+                      }
+                    />
                     <TooltipContent
                       side="top"
                       align="start"

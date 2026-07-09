@@ -225,11 +225,13 @@ const ValueEditorDialog: React.FC<Props> = ({
                 data-placeholder={t("Enter expression...")}
               />
               <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="absolute right-2 bottom-2 cursor-pointer p-1">
-                    <QuestionIcon className="h-6 w-6" weight="thin" />
-                  </div>
-                </TooltipTrigger>
+                <TooltipTrigger
+                  render={
+                    <div className="absolute right-2 bottom-2 cursor-pointer p-1">
+                      <QuestionIcon className="h-6 w-6" weight="thin" />
+                    </div>
+                  }
+                />
                 <TooltipContent side="top" align="end">
                   <p className="text-sm">{t("Expression Editor Help")}</p>
                   <p className="mt-1 max-w-[200px] text-xs text-muted-foreground">
