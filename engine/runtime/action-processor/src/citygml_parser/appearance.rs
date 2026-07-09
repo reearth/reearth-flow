@@ -30,13 +30,22 @@ use super::xlink;
 /// different files never cross-bind.
 type SurfaceKey = (String, String);
 
-/// CityGML appearance indexed by the file-qualified geometry id it targets.
+/// The styles bound to each surface `gml:id`, within one file.
+type FileSurfaces = HashMap<String, Vec<SurfaceStyle>>;
+
+/// Each ring's texture coordinates keyed by ring `gml:id`, within one
+/// `(file, theme, side)`.
+type RingUvs = HashMap<String, Vec<[f64; 2]>>;
+
+/// CityGML appearance indexed by the file-qualified geometry id it targets. Both
+/// maps nest by file (then further keys) so lookups borrow their key parts as
+/// `&str` rather than allocating an owned composite key per lookup.
 #[derive(Default)]
 pub(super) struct AppearanceIndex {
-    /// Per `(file, surface gml:id)`: the styles bound to it, at most one per theme.
-    surfaces: HashMap<SurfaceKey, Vec<SurfaceStyle>>,
-    /// Per `(file, theme, side, ring gml:id)`: that ring's texture coordinates.
-    ring_uv: HashMap<(String, String, Side, String), Vec<[f64; 2]>>,
+    /// Per file, per surface gml:id: the styles bound to it, at most one per theme.
+    surfaces: HashMap<String, FileSurfaces>,
+    /// Per file, per theme, per side: each ring's texture coordinates.
+    ring_uv: HashMap<String, HashMap<String, HashMap<Side, RingUvs>>>,
     /// Unsupported appearance sub-elements already warned about, so each is
     /// reported once per parser run rather than once per occurrence.
     warned: HashSet<&'static str>,
@@ -123,7 +132,13 @@ impl AppearanceIndex {
         );
         for ((file, ring), uv) in target.rings {
             self.ring_uv
-                .insert((file, theme.to_string(), side, ring), uv);
+                .entry(file)
+                .or_default()
+                .entry(theme.to_string())
+                .or_default()
+                .entry(side)
+                .or_default()
+                .insert(ring, uv);
         }
     }
 
@@ -184,13 +199,16 @@ impl AppearanceIndex {
         let mut seen: HashSet<&str> = HashSet::new();
         let mut out = Vec::new();
         for (file, id) in candidates {
-            let key = ((*file).to_string(), (*id).to_string());
-            let Some((surface, styles)) = self.surfaces.get_key_value(&key) else {
+            let Some((surface, styles)) = self
+                .surfaces
+                .get(*file)
+                .and_then(|by_id| by_id.get_key_value(*id))
+            else {
                 continue;
             };
             for style in styles {
                 if seen.insert(style.theme.as_str()) {
-                    out.push((surface.1.as_str(), style));
+                    out.push((surface.as_str(), style));
                 }
             }
         }
@@ -232,18 +250,20 @@ impl AppearanceIndex {
         side: Side,
         rings: &[Option<String>],
     ) -> Option<Vec<[f64; 2]>> {
+        let by_ring = self.ring_uvs(ring_file, theme, side)?;
         let mut out = Vec::new();
         for ring in rings {
             let ring = ring.as_ref()?;
-            let uv = self.ring_uv.get(&(
-                ring_file.to_string(),
-                theme.to_string(),
-                side,
-                ring.clone(),
-            ))?;
-            out.extend_from_slice(uv);
+            out.extend_from_slice(by_ring.get(ring.as_str())?);
         }
         Some(out)
+    }
+
+    /// The per-ring texture coordinates recorded under `(file, theme, side)`, if any.
+    /// Resolving the shared `(file, theme, side)` prefix once lets the per-ring
+    /// lookups borrow the ring id as `&str` instead of allocating a composite key.
+    fn ring_uvs(&self, file: &str, theme: &str, side: Side) -> Option<&RingUvs> {
+        self.ring_uv.get(file)?.get(theme)?.get(&side)
     }
 
     /// Attach the appearance targeting `mesh` to it, draping one texture over its
@@ -300,15 +320,11 @@ impl AppearanceIndex {
         side: Side,
         faces: &[FaceIds],
     ) -> Option<Vec<[f64; 2]>> {
+        let by_ring = self.ring_uvs(ring_file, theme, side)?;
         let mut out = Vec::with_capacity(faces.len() * 3);
         for face in faces {
             let ring = face.rings.first()?.as_ref()?;
-            let uv = self.ring_uv.get(&(
-                ring_file.to_string(),
-                theme.to_string(),
-                side,
-                ring.clone(),
-            ))?;
+            let uv = by_ring.get(ring.as_str())?;
             if uv.len() < 3 {
                 return None;
             }
@@ -385,7 +401,13 @@ fn set_side(
     side: Side,
     contribution: Contribution,
 ) {
-    let styles = index.surfaces.entry(surface).or_default();
+    let (file, id) = surface;
+    let styles = index
+        .surfaces
+        .entry(file)
+        .or_default()
+        .entry(id)
+        .or_default();
     let i = match styles.iter().position(|s| s.theme == theme) {
         Some(i) => i,
         None => {
