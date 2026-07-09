@@ -25,8 +25,6 @@ export type EditorSession = {
 export async function newEditorSession(
   browser: Browser,
 ): Promise<EditorSession> {
-  // Manually created contexts don't inherit `use.video` from the config, so
-  // recording must be enabled here explicitly.
   const context = await browser.newContext({
     storageState: STORAGE_STATE,
     baseURL: process.env.FLOW_DASHBOARD_E2E_BASEURL,
@@ -64,20 +62,18 @@ export async function teardownSession(
       await deployments.goto();
       await deployments
         .deleteDeploymentIfExists(opts.deploymentDescription)
-        .catch(() => {});
+        .catch(() => { });
     }
     if (opts.projectName) {
       await projects.goto();
-      await projects.deleteProjectIfExists(opts.projectName).catch(() => {});
+      await projects.deleteProjectIfExists(opts.projectName).catch(() => { });
     }
     for (const name of opts.assetNames ?? []) {
       if (!name) continue;
       await assets.goto();
-      await assets.deleteAssetIfExists(name).catch(() => {});
+      await assets.deleteAssetIfExists(name).catch(() => { });
     }
   } finally {
-    // The video file is only fully written once the context is closed, so it
-    // has to be attached afterwards (it lands in the suite's Tear down section).
     await context.close();
     if (video) {
       const videoPath = await video.path().catch(() => undefined);
@@ -85,7 +81,7 @@ export async function teardownSession(
         await test
           .info()
           .attach("video", { path: videoPath, contentType: "video/webm" })
-          .catch(() => {});
+          .catch(() => { });
       }
     }
   }
