@@ -9,7 +9,7 @@ use tracing::{error_span, info_span};
 use crate::{
     event::EventHub,
     kvs::KvStore,
-    node::{Port, DEFAULT_PORT},
+    node::{Port, FEATURES_PORT},
 };
 
 #[derive(Clone, Debug)]
@@ -183,7 +183,7 @@ impl ExecutorContext {
         }
     }
 
-    pub fn new_with_default_port(
+    pub fn new_with_features_port(
         feature: Feature,
         env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
         storage_resolver: Arc<StorageResolver>,
@@ -193,7 +193,7 @@ impl ExecutorContext {
     ) -> Self {
         Self {
             feature,
-            port: DEFAULT_PORT.clone(),
+            port: FEATURES_PORT.clone(),
             env_vars,
             storage_resolver,
             kv_store,

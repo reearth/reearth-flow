@@ -6,7 +6,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Code, Feature};
 use schemars::JsonSchema;
@@ -37,11 +37,11 @@ impl ProcessorFactory for JSONFragmenterFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
+        vec![FEATURES_PORT.clone(), REJECTED_PORT.clone()]
     }
 
     fn build(
@@ -224,7 +224,7 @@ impl Processor for JSONFragmenter {
             if opts.reject_no_fragments {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
             } else {
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
             }
             return Ok(());
         }
@@ -263,7 +263,7 @@ impl Processor for JSONFragmenter {
                 }
             }
 
-            fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
         }
 
         Ok(())
@@ -407,7 +407,7 @@ mod tests {
         let (features, ports) = run_processor(&feature, attribute_params("$[*]"));
 
         assert_eq!(features.len(), 2);
-        assert!(ports.iter().all(|p| *p == DEFAULT_PORT.clone()));
+        assert!(ports.iter().all(|p| *p == FEATURES_PORT.clone()));
 
         let body0 = features[0]
             .attributes
@@ -442,7 +442,7 @@ mod tests {
         let (features, ports) = run_processor(&feature, attribute_params("$.data.users[*]"));
 
         assert_eq!(features.len(), 3);
-        assert!(ports.iter().all(|p| *p == DEFAULT_PORT.clone()));
+        assert!(ports.iter().all(|p| *p == FEATURES_PORT.clone()));
     }
 
     #[test]
@@ -548,7 +548,7 @@ mod tests {
         let (_, ports) = run_processor(&feature, attribute_params("$.data[*]"));
 
         assert_eq!(ports.len(), 1);
-        assert_eq!(ports[0], DEFAULT_PORT.clone());
+        assert_eq!(ports[0], FEATURES_PORT.clone());
     }
 
     #[cfg(not(feature = "new-geometry"))]
@@ -582,7 +582,7 @@ mod tests {
         let (features, ports) = run_processor(&feature, attribute_params("$.Depth"));
 
         assert_eq!(features.len(), 1);
-        assert!(ports.iter().all(|p| *p == DEFAULT_PORT.clone()));
+        assert!(ports.iter().all(|p| *p == FEATURES_PORT.clone()));
         let json_type = features[0]
             .attributes
             .get(&Attribute::new("json_type"))
@@ -643,7 +643,7 @@ mod tests {
         let (features, ports) = run_processor(&feature, params);
 
         assert_eq!(features.len(), 2);
-        assert!(ports.iter().all(|p| *p == DEFAULT_PORT.clone()));
+        assert!(ports.iter().all(|p| *p == FEATURES_PORT.clone()));
         assert_eq!(
             features[0].attributes.get(&Attribute::new("name")),
             Some(&AttributeValue::String("Alice".to_string()))

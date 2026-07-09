@@ -178,8 +178,8 @@ graphs:
       - id: c064cf52-705f-443a-b2de-6795266c540d
         from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
         to: f5e66920-24c0-4c70-ae16-6be1ed3b906c
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 ```
 **Upload to the bucket**
 ```

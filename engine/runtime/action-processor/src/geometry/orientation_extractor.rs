@@ -8,7 +8,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, GeometryValue};
 use schemars::JsonSchema;
@@ -45,11 +45,11 @@ impl ProcessorFactory for OrientationExtractorFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
     fn build(
         &self,
@@ -115,7 +115,7 @@ impl Processor for OrientationExtractor {
                 self.output_attribute.clone(),
                 AttributeValue::String(NO_ORIENTATION.to_string()),
             );
-            fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
             return Ok(());
         };
         match &geometry.value {
@@ -125,7 +125,7 @@ impl Processor for OrientationExtractor {
                     self.output_attribute.clone(),
                     AttributeValue::String(NO_ORIENTATION.to_string()),
                 );
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
             }
             GeometryValue::FlowGeometry2D(geometry) => match geometry {
                 Geometry2D::Polygon(polygon) => {
@@ -140,7 +140,7 @@ impl Processor for OrientationExtractor {
                         self.output_attribute.clone(),
                         AttributeValue::String(result.to_string()),
                     );
-                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
                 }
                 Geometry2D::MultiPolygon(polygons) => {
                     let mut feature = feature.clone();
@@ -159,7 +159,7 @@ impl Processor for OrientationExtractor {
                         self.output_attribute.clone(),
                         AttributeValue::String(result.to_string()),
                     );
-                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
                 }
                 _ => unimplemented!(),
             },
@@ -176,7 +176,7 @@ impl Processor for OrientationExtractor {
                         self.output_attribute.clone(),
                         AttributeValue::String(result.to_string()),
                     );
-                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
                 }
                 Geometry3D::MultiPolygon(polygons) => {
                     let mut feature = feature.clone();
@@ -195,9 +195,9 @@ impl Processor for OrientationExtractor {
                         self.output_attribute.clone(),
                         AttributeValue::String(result.to_string()),
                     );
-                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
                 }
-                _ => fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone())),
+                _ => fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone())),
             },
             GeometryValue::CityGmlGeometry(city_gml) => {
                 let mut feature = feature.clone();
@@ -223,7 +223,7 @@ impl Processor for OrientationExtractor {
                     self.output_attribute.clone(),
                     AttributeValue::String(result.to_string()),
                 );
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
             }
         }
         Ok(())

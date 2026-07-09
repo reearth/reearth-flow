@@ -11,7 +11,7 @@ nodes:
     type: action
     action: InputRouter
     with:
-      routingPort: default
+      routingPort: features
 
   # LOD splitter
   - id: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
@@ -421,8 +421,8 @@ edges:
   - id: 01a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c7
     from: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6e
     to: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # ===== LOD outputs → SurfaceValidator3D =====
   # LOD0 → SurfaceValidator3D_LOD0
@@ -430,28 +430,28 @@ edges:
     from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
     to: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e6a
     fromPort: lod0
-    toPort: default
+    toPort: features
 
   # LOD1 → SurfaceValidator3D_LOD1
   - id: 03c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e9
     from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
     to: c2d3e4f5-b6c7-8d9e-0f1a-2b3c4d5e6f7b
     fromPort: lod1
-    toPort: default
+    toPort: features
 
   # LOD2 → SurfaceValidator3D_LOD2
   - id: 04d5e6f7-a8b9-c0d1-e2f3-a4b5c6d7e8f0
     from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
     to: c3d4e5f6-c7d8-9e0f-1a2b-3c4d5e6f7a8c
     fromPort: lod2
-    toPort: default
+    toPort: features
 
   # LOD3 → SurfaceValidator3D_LOD3
   - id: 05e6f7a8-b9c0-d1e2-f3a4-b5c6d7e8f9a1
     from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
     to: c4d5e6f7-d8e9-0f1a-2b3c-4d5e6f7a8b9d
     fromPort: lod3
-    toPort: default
+    toPort: features
 
   # ===== SurfaceValidator3D invalidSurface outputs → AttributeMapper =====
   # LOD0 invalidSurface → AttributeMapper
@@ -459,56 +459,56 @@ edges:
     from: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e6a
     to: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
     fromPort: invalidSurface
-    toPort: default
+    toPort: features
 
   # LOD1 invalidSurface → AttributeMapper
   - id: 12b3c4d5-e6f7-a8b9-c0d1-e2f3a4b5c6d9
     from: c2d3e4f5-b6c7-8d9e-0f1a-2b3c4d5e6f7b
     to: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
     fromPort: invalidSurface
-    toPort: default
+    toPort: features
 
   # LOD2 invalidSurface → AttributeMapper
   - id: 13c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7ea
     from: c3d4e5f6-c7d8-9e0f-1a2b-3c4d5e6f7a8c
     to: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
     fromPort: invalidSurface
-    toPort: default
+    toPort: features
 
   # LOD3 invalidSurface → AttributeMapper
   - id: 14d5e6f7-a8b9-c0d1-e2f3-a4b5c6d7e8fb
     from: c4d5e6f7-d8e9-0f1a-2b3c-4d5e6f7a8b9d
     to: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
     fromPort: invalidSurface
-    toPort: default
+    toPort: features
 
   # ===== AttributeMapper → CsvWriter =====
   - id: 21a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c9
     from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
     to: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6a
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # ===== CsvWriter → OutputRouterFileOutput =====
   - id: 22b3c4d5-e6f7-a8b9-c0d1-e2f3a4b5c6da
     from: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6a
     to: a9b0c1d2-e3f4-5a6b-7c8d-9e0f1a2b3c4e
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # ===== AttributeMapper → SurfaceErrorCounter =====
   - id: 23c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7eb
     from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
     to: f1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6a
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # ===== SurfaceErrorCounter → OutputRouterSurfaceErrors =====
   - id: 24d5e6f7-a8b9-c0d1-e2f3-a4b5c6d7e8fc
     from: f1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6a
     to: 14a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c6
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # ===== SolidBoundaryValidator edges =====
   # LOD1 → SolidBoundaryValidator
@@ -516,63 +516,63 @@ edges:
     from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
     to: a101a2b3-c4d5-e6f7-a8b9-c0d1e2f3a4b5
     fromPort: lod1
-    toPort: default
+    toPort: features
 
   # LOD2 → SolidBoundaryValidator
   - id: a111b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6
     from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
     to: a101a2b3-c4d5-e6f7-a8b9-c0d1e2f3a4b5
     fromPort: lod2
-    toPort: default
+    toPort: features
 
   # LOD3 → SolidBoundaryValidator
   - id: a112c4d5-e6f7-a8b9-c0d1-e2f3a4b5c6d7
     from: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
     to: a101a2b3-c4d5-e6f7-a8b9-c0d1e2f3a4b5
     fromPort: lod3
-    toPort: default
+    toPort: features
 
   # SolidBoundaryValidator (failed) → FeatureFilterNotClosed
   - id: a113d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e8
     from: a101a2b3-c4d5-e6f7-a8b9-c0d1e2f3a4b5
     to: a102b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6
     fromPort: failed
-    toPort: default
+    toPort: features
 
   # FeatureFilterNotClosed (notClosed) → AttributeMapperNotClosed
   - id: a114e6f7-a8b9-c0d1-e2f3-a4b5c6d7e8f9
     from: a102b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6
     to: a103c4d5-e6f7-a8b9-c0d1-e2f3a4b5c6d7
     fromPort: notClosed
-    toPort: default
+    toPort: features
 
   # AttributeMapperNotClosed → FeatureWriterNotClosed
   - id: a115f7a8-b9c0-d1e2-f3a4-b5c6d7e8f9a0
     from: a103c4d5-e6f7-a8b9-c0d1-e2f3a4b5c6d7
     to: a104d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e8
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # FeatureWriterNotClosed → OutputRouterFileOutput
   - id: a116a8b9-c0d1-e2f3-a4b5-c6d7e8f9a0b1
     from: a104d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e8
     to: a9b0c1d2-e3f4-5a6b-7c8d-9e0f1a2b3c4e
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # AttributeMapperNotClosed → NotClosedErrorCounter
   - id: a117b9c0-d1e2-f3a4-b5c6-d7e8f9a0b1c2
     from: a103c4d5-e6f7-a8b9-c0d1-e2f3a4b5c6d7
     to: a105e6f7-a8b9-c0d1-e2f3-a4b5c6d7e8f9
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # NotClosedErrorCounter → OutputRouterNotClosed
   - id: a118c0d1-e2f3-a4b5-c6d7-e8f9a0b1c2d3
     from: a105e6f7-a8b9-c0d1-e2f3-a4b5c6d7e8f9
     to: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d90
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # ===== Solid Issues (立体のエラー) edges =====
   # FeatureFilterNotClosed (unfiltered) → AttributeMapperSolidIssues
@@ -580,42 +580,42 @@ edges:
     from: a102b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6
     to: a119d1e2-f3a4-b5c6-d7e8-e9f0a1b2c3d4
     fromPort: unfiltered
-    toPort: default
+    toPort: features
 
   # AttributeMapperSolidIssues → FeatureWriterSolidIssues
   - id: a120f3a4-b5c6-d7e8-f9a0-a1b2c3d4e5f6
     from: a119d1e2-f3a4-b5c6-d7e8-e9f0a1b2c3d4
     to: a120e2f3-a4b5-c6d7-e8f9-f0a1b2c3d4e5
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # FeatureWriterSolidIssues → OutputRouterFileOutput
   - id: a121a4b5-c6d7-e8f9-a0b1-b2c3d4e5f6a7
     from: a120e2f3-a4b5-c6d7-e8f9-f0a1b2c3d4e5
     to: a9b0c1d2-e3f4-5a6b-7c8d-9e0f1a2b3c4e
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # AttributeMapperSolidIssues → SolidIssuesErrorCounter
   - id: a122b5c6-d7e8-f9a0-b1c2-c3d4e5f6a7b8
     from: a119d1e2-f3a4-b5c6-d7e8-e9f0a1b2c3d4
     to: a121f3a4-b5c6-d7e8-f9a0-a1b2c3d4e5f6
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # SolidIssuesErrorCounter → OutputRouterSolidErrors
   - id: a123c6d7-e8f9-a0b1-c2d3-d4e5f6a7b8c9
     from: a121f3a4-b5c6-d7e8-f9a0-a1b2c3d4e5f6
     to: 18a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5d0
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # InputRouter → GmlNameCodeSpaceValidator
   - id: a124d7e8-f9a0-b1c2-d3e4-e5f6a7b8c9d0
     from: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6e
     to: 19a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5d1
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # ===== Orientation errors (面の向き不正) - LOD0 only =====
   # SurfaceValidator3D_LOD0 inCorrectOrientation → AttributeMapperOrientationErrors
@@ -623,49 +623,49 @@ edges:
     from: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e6a
     to: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7d
     fromPort: inCorrectOrientation
-    toPort: default
+    toPort: features
 
   # AttributeMapperOrientationErrors → CsvWriterOrientationErrors
   - id: 26b3c4d5-e6f7-a8b9-c0d1-e2f3a4b5c6d1
     from: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7d
     to: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8e
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # CsvWriterOrientationErrors → OutputRouterFileOutputOrientationErrors
   - id: 27c4d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e2
     from: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8e
     to: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9a
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # AttributeMapperOrientationErrors → OrientationErrorCounter
   - id: 28d5e6f7-a8b9-c0d1-e2f3-a4b5c6d7e8f3
     from: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7d
     to: 15a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c7
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # OrientationErrorCounter → OutputRouterOrientationErrors
   - id: 14f5a6b7-c8d9-e0f1-a2b3-c4d5e6f7a8c0
     from: 15a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c7
     to: 16a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c8
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # GmlNameCodeSpaceValidator (gmlNameErrors) → CsvWriterGmlNameErrors
   - id: 18f9a0b1-c2d3-e4f5-a6b7-c8d9e0f1a204
     from: 19a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5d1
     to: 21a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5d3
     fromPort: gmlNameErrors
-    toPort: default
+    toPort: features
 
   # CsvWriterGmlNameErrors → OutputRouterFileOutput
   - id: 23a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5d5
     from: 21a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5d3
     to: a9b0c1d2-e3f4-5a6b-7c8d-9e0f1a2b3c4e
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # GmlNameCodeSpaceValidator (stats) → OutputRouterUncodedGmlName
   # Skip the StatisticsCalculator since the validator already outputs aggregated error counts per file
@@ -673,25 +673,25 @@ edges:
     from: 19a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5d1
     to: 20a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5d2
     fromPort: stats
-    toPort: default
+    toPort: features
 
 ports:
   outputs:
     - id: errorCountNotClosedSolid
       nodeId: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d90
-      port: default
+      port: features
     - id: errorCountSurfaceErrors
       nodeId: 14a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c6
-      port: default
+      port: features
     - id: errorCountOrientationErrors
       nodeId: 16a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c8
-      port: default
+      port: features
     - id: errorCountSolidErrors
       nodeId: 18a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5d0
-      port: default
+      port: features
     - id: errorCountUncodedGmlName
       nodeId: 20a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5d2
-      port: default
+      port: features
     - id: fileOutput
       nodeId: a9b0c1d2-e3f4-5a6b-7c8d-9e0f1a2b3c4e
-      port: default
+      port: features

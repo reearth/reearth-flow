@@ -7,7 +7,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Geometry};
 use schemars::JsonSchema;
@@ -37,11 +37,11 @@ impl ProcessorFactory for GeometryReplacerFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -96,18 +96,18 @@ impl Processor for GeometryReplacer {
         let feature = &ctx.feature;
         let mut feature = feature.clone();
         let Some(source) = feature.attributes.get(&self.source_attribute) else {
-            fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
             return Ok(());
         };
         let AttributeValue::String(dump) = source else {
-            fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
             return Ok(());
         };
         let dump = decode(dump)?;
         let geometry: Geometry = serde_json::from_str(&dump)?;
         feature.geometry = Arc::new(geometry);
         feature.remove(&self.source_attribute);
-        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
         Ok(())
     }
 

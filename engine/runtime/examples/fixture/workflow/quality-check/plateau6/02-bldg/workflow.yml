@@ -95,7 +95,7 @@ graphs:
             - expr:
                 type: flowExpr
                 value: attributes["totalErrorCount"] == 0
-              outputPort: default
+              outputPort: features
 
       - id: df1c774c-a239-4d00-b7d8-01bb3af80c8d
         name: FileWriterQcResultOk
@@ -113,60 +113,60 @@ graphs:
       - id: ca53a8b9-377c-460e-9076-368cdb2a8911
         from: 9d39970f-e631-4440-893d-9770abdad26f
         to: 4bff1e48-0f4f-4fbb-a277-a9287ef2eba8
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: b0a98fba-ff5e-4c96-93f7-cbcbb1166a07
         from: 4bff1e48-0f4f-4fbb-a277-a9287ef2eba8
         to: 9c3286ea-0e02-4bd0-bc21-0c5abd7e13d5
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 33167a41-af01-4679-9f74-667b39ae1625
         from: 4bff1e48-0f4f-4fbb-a277-a9287ef2eba8
         to: d539b2c4-0538-40c0-bf2f-fd06e8488c3e
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 814d25b0-d072-4ca8-b6e4-d1cccd742220
         from: 4bff1e48-0f4f-4fbb-a277-a9287ef2eba8
         to: bd5c8270-4ca6-4dd4-a604-6b5fe7db517a
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 4640e7a9-ae76-4a81-9687-7273c56b02eb
         from: 9c3286ea-0e02-4bd0-bc21-0c5abd7e13d5
         to: d658ccbd-8f8c-4776-a2ea-425fb3dea282
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 21d944e8-c3af-41cb-8aed-8899dc78ec93
         from: d539b2c4-0538-40c0-bf2f-fd06e8488c3e
         to: d658ccbd-8f8c-4776-a2ea-425fb3dea282
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: f15832f5-3e5c-4a44-aa87-417f5a53a42d
         from: bd5c8270-4ca6-4dd4-a604-6b5fe7db517a
         to: d658ccbd-8f8c-4776-a2ea-425fb3dea282
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: a8382723-da1a-4afd-b763-b4a7ea4b7da6
         from: 9c3286ea-0e02-4bd0-bc21-0c5abd7e13d5
         to: 47639a83-eb27-47d6-93a7-7393542aca1a
         fromPort: summaryOutput
-        toPort: default
+        toPort: features
       - id: 689c4f2e-e3f5-4146-a993-26ed84960cb4
         from: d539b2c4-0538-40c0-bf2f-fd06e8488c3e
         to: 47639a83-eb27-47d6-93a7-7393542aca1a
         fromPort: summaryOutput
-        toPort: default
+        toPort: features
       - id: 6f181136-e476-47bf-ad2b-525a7c159499
         from: bd5c8270-4ca6-4dd4-a604-6b5fe7db517a
         to: 47639a83-eb27-47d6-93a7-7393542aca1a
         fromPort: summaryOutput
-        toPort: default
+        toPort: features
       - id: f0c86e3d-1927-4528-82a6-6ac700d9cc8b
         from: 47639a83-eb27-47d6-93a7-7393542aca1a
         to: 4ae87699-571e-4cc8-bb13-4a977edbcac3
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 98b65b7d-8c23-45e5-91eb-a21bf416c033
         from: 4ae87699-571e-4cc8-bb13-4a977edbcac3
         to: df1c774c-a239-4d00-b7d8-01bb3af80c8d
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features

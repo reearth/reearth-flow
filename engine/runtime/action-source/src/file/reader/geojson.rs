@@ -1,6 +1,6 @@
 use bytes::Bytes;
 use geojson::FeatureCollection;
-use reearth_flow_runtime::node::{IngestionMessage, Port, DEFAULT_PORT};
+use reearth_flow_runtime::node::{IngestionMessage, Port, FEATURES_PORT};
 use reearth_flow_types::Feature;
 use tokio::sync::mpsc::Sender;
 
@@ -19,7 +19,7 @@ pub(crate) async fn read_geojson(
             .map_err(|e| crate::errors::SourceError::GeoJsonFileReader(format!("{e:?}")))?;
         sender
             .send((
-                DEFAULT_PORT.clone(),
+                FEATURES_PORT.clone(),
                 IngestionMessage::OperationEvent { feature },
             ))
             .await
