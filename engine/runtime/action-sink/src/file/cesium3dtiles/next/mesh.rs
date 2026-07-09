@@ -1,12 +1,3 @@
-//! Extracts every reachable `PolygonMesh` leaf (bare, or as a `Solid`'s
-//! boundary shell) from `Geometry`, and reprojects it to WGS84 (tileset
-//! placement) and ECEF (glTF vertices).
-//!
-//! Reprojection assumes JGD2011 (EPSG:6697) as the source CRS for every leaf,
-//! since the CityGML reader tags every leaf `CoordinateFrame::Euclidean`
-//! regardless of its real frame. Each mesh's vertex buffer is reprojected
-//! directly via `transform_coords_3d`.
-
 use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
 use reearth_flow_geometry::ops::reproject::transform_coords_3d;
 use reearth_flow_geometry::ops::{triangulation::Cache as TriangulationCache, ReprojectionCache};
@@ -14,7 +5,7 @@ use reearth_flow_geometry::polygon_mesh::PolygonMesh3D;
 use reearth_flow_geometry::solid::Shell;
 use reearth_flow_geometry::{Euclidean3DGeometry, Geometry};
 
-/// JGD2011.
+/// JGD2011 — temporary until the new-geometry CityGML reader parses srsName/EPSG.
 const ASSUMED_SOURCE_CRS: EpsgCode = EpsgCode::new(6697);
 /// WGS84, 3D geographic (lon, lat, height) — used for the tileset's bounding region.
 const WGS84_GEOGRAPHIC: EpsgCode = EpsgCode::new(4979);
@@ -37,10 +28,8 @@ pub(super) struct ExtractedMesh {
     pub(super) geographic_vertices: Vec<[f64; 3]>,
     /// Triangle index triples, parallel to both vertex arrays above.
     pub(super) indices: Vec<[u32; 3]>,
-    /// Each source polygon's flat normal, in polygon order — see
-    /// `PolygonMesh3D::triangulate_with_normals`. Kept compact (one entry per
-    /// *polygon*, not per triangle); `polygon_tris[i]` says how many
-    /// consecutive entries of `indices` polygon `i` was split into.
+    /// Each source polygon's flat normal (one entry per polygon, not per
+    /// triangle); `polygon_tris[i]` is how many triangles polygon `i` expanded into.
     pub(super) polygon_normals: Vec<[f64; 3]>,
     /// Output triangle count per source polygon, parallel to `polygon_normals`.
     pub(super) polygon_tris: Vec<u32>,

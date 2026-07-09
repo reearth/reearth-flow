@@ -1,7 +1,3 @@
-//! Walks a Cesium 3D Tiles tileset, collecting every referenced `.glb` path
-//! and the `geometricError` of the tile it came from. Shared by
-//! `conv::cesium` and `align_cesium`.
-
 use serde_json::Value;
 use std::fs;
 use std::path::{Path, PathBuf};

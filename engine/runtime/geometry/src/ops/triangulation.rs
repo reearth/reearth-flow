@@ -23,9 +23,8 @@ impl Cache {
     }
 }
 
-/// A triangulated mesh, plus each source polygon's flat normal and output
-/// triangle count, both in polygon order — see
-/// [`PolygonMesh3D::triangulate_with_normals`](crate::polygon_mesh::PolygonMesh3D::triangulate_with_normals).
+/// A triangulated mesh, plus each source polygon's flat normal and triangle
+/// count, both in polygon order.
 pub struct Triangulated<M> {
     pub mesh: M,
     pub polygon_normals: Vec<[f64; 3]>,

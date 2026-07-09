@@ -1,11 +1,3 @@
-//! `tileset.json` for the containment-placement quadtree: one explicit root
-//! tile declaring 3D Tiles 1.1 implicit tiling. Every descendant tile's
-//! bounding volume and geometric error are derived by the client from
-//! `level` alone, so nothing per-tile is written here beyond the root.
-//!
-//! Which cells actually hold content lives in the paired `.subtree` file
-//! (`subtree.rs`), not in this JSON.
-
 use serde_json::{json, Value};
 
 use super::quadtree::{geometric_error, root_ground_diagonal_m, GeoBox};
@@ -13,6 +5,10 @@ use super::quadtree::{geometric_error, root_ground_diagonal_m, GeoBox};
 const CONTENT_URI_TEMPLATE: &str = "content/{level}/{x}/{y}.glb";
 const SUBTREES_URI_TEMPLATE: &str = "subtrees/{level}.{x}.{y}.subtree";
 
+/// One explicit root tile declaring 3D Tiles 1.1 implicit tiling;
+/// descendants' bounding volume/geometric error are client-derived from
+/// `level` alone. Which cells hold content lives in the paired `.subtree`
+/// file (`subtree.rs`), not here.
 pub(super) fn build(root: &GeoBox, subtree_levels: u32) -> Value {
     let region = [
         root.west.to_radians(),

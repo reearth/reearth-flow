@@ -1,7 +1,6 @@
-//! Minimal, from-scratch Cesium 3D Tiles writer for the new geometry type
-//! (`reearth_flow_geometry`). Handles a bare `PolygonMesh` leaf per feature
-//! (see `mesh.rs`); no appearance/materials/textures, no same-tile content
-//! splitting or texture atlasing.
+//! Minimal, from-scratch Cesium 3D Tiles writer for the new geometry type.
+//! Handles a bare `PolygonMesh` leaf per feature; no appearance/materials/
+//! textures, no same-tile content splitting or texture atlasing.
 
 mod mesh;
 mod quadtree;
