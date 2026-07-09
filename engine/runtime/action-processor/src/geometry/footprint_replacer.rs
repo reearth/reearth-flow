@@ -28,7 +28,7 @@ pub struct FootprintReplacerFactory;
 
 impl ProcessorFactory for FootprintReplacerFactory {
     fn name(&self) -> &str {
-        "FootprintReplacer"
+        "Footprint Replacer"
     }
 
     fn description(&self) -> &str {
@@ -113,7 +113,7 @@ impl Processor for FootprintReplacer {
     }
 
     fn name(&self) -> &str {
-        "FootprintReplacer"
+        "Footprint Replacer"
     }
 }
 

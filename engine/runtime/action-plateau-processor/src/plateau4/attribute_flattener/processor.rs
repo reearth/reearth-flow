@@ -959,7 +959,7 @@ impl Processor for AttributeFlattener {
     }
 
     fn name(&self) -> &str {
-        "AttributeFlattener"
+        "Attribute Flattener"
     }
 }
 

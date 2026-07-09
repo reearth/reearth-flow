@@ -280,7 +280,7 @@ pub struct HorizontalReprojectorFactory;
 
 impl ProcessorFactory for HorizontalReprojectorFactory {
     fn name(&self) -> &str {
-        "HorizontalReprojector"
+        "Horizontal Reprojector"
     }
 
     fn description(&self) -> &str {
@@ -510,6 +510,6 @@ impl Processor for HorizontalReprojector {
     }
 
     fn name(&self) -> &str {
-        "HorizontalReprojector"
+        "Horizontal Reprojector"
     }
 }

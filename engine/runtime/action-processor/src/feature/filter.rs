@@ -23,7 +23,7 @@ pub(super) struct FeatureFilterFactory;
 
 impl ProcessorFactory for FeatureFilterFactory {
     fn name(&self) -> &str {
-        "FeatureFilter"
+        "Feature Filter"
     }
 
     fn description(&self) -> &str {
@@ -216,7 +216,7 @@ impl Processor for FeatureFilter {
     }
 
     fn name(&self) -> &str {
-        "FeatureFilter"
+        "Feature Filter"
     }
 
     fn num_threads(&self) -> usize {

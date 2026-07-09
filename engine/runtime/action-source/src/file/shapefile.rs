@@ -96,7 +96,7 @@ pub(crate) struct ShapefileReaderFactory;
 
 impl SourceFactory for ShapefileReaderFactory {
     fn name(&self) -> &str {
-        "ShapefileReader"
+        "Shapefile Reader"
     }
 
     fn description(&self) -> &str {
@@ -223,7 +223,7 @@ impl Source for ShapefileReader {
     async fn initialize(&self, _ctx: NodeContext) {}
 
     fn name(&self) -> &str {
-        "ShapefileReader"
+        "Shapefile Reader"
     }
 
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {

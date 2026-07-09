@@ -36,7 +36,7 @@ pub struct GridDividerFactory;
 
 impl ProcessorFactory for GridDividerFactory {
     fn name(&self) -> &str {
-        "GridDivider"
+        "Grid Divider"
     }
 
     fn description(&self) -> &str {
@@ -150,7 +150,7 @@ pub struct GridDivider {
 
 impl fmt::Debug for GridDivider {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("GridDivider")
+        f.debug_struct("Grid Divider")
             .field("unit_square_size", &self.unit_square_size)
             .field("group_count", &self.group_count)
             .field("buffer_bytes", &self.buffer_bytes)
@@ -479,7 +479,7 @@ impl Processor for GridDivider {
     }
 
     fn name(&self) -> &str {
-        "GridDivider"
+        "Grid Divider"
     }
 }
 

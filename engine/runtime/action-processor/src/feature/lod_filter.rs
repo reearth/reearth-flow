@@ -27,7 +27,7 @@ pub(super) struct FeatureLodFilterFactory;
 
 impl ProcessorFactory for FeatureLodFilterFactory {
     fn name(&self) -> &str {
-        "FeatureLodFilter"
+        "Feature LOD Filter"
     }
 
     fn description(&self) -> &str {
@@ -159,7 +159,7 @@ impl Processor for FeatureLodFilter {
     }
 
     fn name(&self) -> &str {
-        "FeatureLodFilter"
+        "Feature LOD Filter"
     }
 }
 

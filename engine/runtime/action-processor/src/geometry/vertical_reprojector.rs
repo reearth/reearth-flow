@@ -21,7 +21,7 @@ pub struct VerticalReprojectorFactory;
 
 impl ProcessorFactory for VerticalReprojectorFactory {
     fn name(&self) -> &str {
-        "VerticalReprojector"
+        "Vertical Reprojector"
     }
 
     fn description(&self) -> &str {
@@ -145,6 +145,6 @@ impl Processor for VerticalReprojector {
     }
 
     fn name(&self) -> &str {
-        "VerticalReprojector"
+        "Vertical Reprojector"
     }
 }

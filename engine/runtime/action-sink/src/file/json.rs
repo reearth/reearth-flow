@@ -19,7 +19,7 @@ pub(crate) struct JsonWriterFactory;
 
 impl SinkFactory for JsonWriterFactory {
     fn name(&self) -> &str {
-        "JsonWriter"
+        "JSON Writer"
     }
 
     fn description(&self) -> &str {
@@ -107,7 +107,7 @@ pub(super) struct JsonWriterParam {
 
 impl Sink for JsonWriter {
     fn name(&self) -> &str {
-        "JsonWriter"
+        "JSON Writer"
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {

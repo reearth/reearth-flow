@@ -19,7 +19,7 @@ pub(super) struct PolygonNormalExtractorFactory;
 
 impl ProcessorFactory for PolygonNormalExtractorFactory {
     fn name(&self) -> &str {
-        "PolygonNormalExtractor"
+        "Polygon Normal Extractor"
     }
 
     fn description(&self) -> &str {
@@ -138,7 +138,7 @@ impl Processor for PolygonNormalExtractor {
     }
 
     fn name(&self) -> &str {
-        "PolygonNormalExtractor"
+        "Polygon Normal Extractor"
     }
 }
 
