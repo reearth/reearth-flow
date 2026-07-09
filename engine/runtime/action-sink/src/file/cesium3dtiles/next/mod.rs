@@ -12,7 +12,7 @@ use std::sync::Arc;
 
 use reearth_flow_gltf::next::{glb, metadata};
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::DEFAULT_PORT;
+use reearth_flow_runtime::node::FEATURES_PORT;
 use reearth_flow_types::Feature;
 
 use super::sink::Cesium3DTilesWriter;
@@ -25,7 +25,7 @@ impl Cesium3DTilesWriter {
         &mut self,
         ctx: &ExecutorContext,
     ) -> crate::errors::Result<()> {
-        if ctx.port != *DEFAULT_PORT {
+        if ctx.port != *FEATURES_PORT {
             // The schema port has no meaning without attribute/metadata output
             // in this pass; ignore it.
             return Ok(());
