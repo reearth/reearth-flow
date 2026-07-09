@@ -171,6 +171,14 @@ impl AppearanceIndex {
                 .back
                 .as_ref()
                 .and_then(|m| self.resolve_side(m, ring_file, &style.theme, Side::Back, rings));
+            // A side that carried a material but resolved to `None` was textured
+            // with incomplete per-ring UV and is being dropped; surface it.
+            if style.front.is_some() && front.is_none() {
+                warn_incomplete_uv(surface, &style.theme, Side::Front);
+            }
+            if style.back.is_some() && back.is_none() {
+                warn_incomplete_uv(surface, &style.theme, Side::Back);
+            }
             let result = match (front, back) {
                 (Some(f), Some(b)) => polygon.set_two_sided_appearance(
                     theme,
@@ -293,7 +301,10 @@ impl AppearanceIndex {
             let uv = if side_material.is_textured() {
                 match self.mesh_uv(ring_file, &style.theme, side, faces) {
                     Some(uv) => Some(UvSource::Explicit(uv.into_boxed_slice())),
-                    None => continue,
+                    None => {
+                        warn_incomplete_uv(surface, &style.theme, side);
+                        continue;
+                    }
                 }
             } else {
                 None
@@ -519,6 +530,19 @@ fn warn_unsupported(index: &mut AppearanceIndex, feature: &'static str) {
     }
 }
 
+/// Warn that a textured surface side is being dropped because its per-ring texture
+/// coordinates are incomplete (a ring carries no `textureCoordinates`), so no full
+/// UV can be assembled. Deriving the missing UV from a fitted world-to-texture
+/// transform is not yet supported.
+fn warn_incomplete_uv(surface: &str, theme: &str, side: Side) {
+    tracing::warn!(
+        surface,
+        theme,
+        ?side,
+        "citygml appearance: textured surface has incomplete per-ring UV, texture skipped"
+    );
+}
+
 /// A white Phong material with no maps, the base for a texture bound to a surface
 /// that carries no X3DMaterial colour.
 fn white_phong() -> PhongMaterial {
@@ -589,21 +613,20 @@ fn texture_association(assoc: &XmlNode) -> Option<TextureTarget> {
 }
 
 /// Pair a CityGML 3.0 `TexCoordList`'s `textureCoordinates` with its `ring`s by
-/// document order: the i-th ring gets the i-th coordinate list. An unparseable
-/// coordinate list keeps its slot (empty) so later pairs stay aligned; it is
-/// dropped later when the UV length fails to match the ring. A list whose ring and
-/// coordinate counts differ cannot be aligned positionally, so it is skipped whole.
+/// document order: the i-th ring gets the i-th coordinate list. Each `ring` and
+/// each `textureCoordinates` keeps its slot even when it cannot be resolved (an
+/// unresolvable ring reference or an unparseable coordinate list), so the remaining
+/// pairs stay aligned; only the individual unresolvable pair is dropped, and an
+/// empty coordinate list is dropped later when its UV length fails to match the
+/// ring. A list whose ring and coordinate counts differ cannot be aligned
+/// positionally, so it is skipped whole.
 fn tex_coord_pairs(coord_list: &XmlNode) -> Vec<(SurfaceKey, Vec<[f64; 2]>)> {
     let mut coords: Vec<Vec<[f64; 2]>> = Vec::new();
-    let mut rings: Vec<SurfaceKey> = Vec::new();
+    let mut rings: Vec<Option<SurfaceKey>> = Vec::new();
     for child in child_elements(coord_list) {
         match local_name(&child.name.0) {
             "textureCoordinates" => coords.push(parse_uv(&text_of(child)).unwrap_or_default()),
-            "ring" => {
-                if let Some(key) = target_key(&text_of(child), &child.source_url) {
-                    rings.push(key);
-                }
-            }
+            "ring" => rings.push(target_key(&text_of(child), &child.source_url)),
             _ => {}
         }
     }
@@ -615,7 +638,11 @@ fn tex_coord_pairs(coord_list: &XmlNode) -> Vec<(SurfaceKey, Vec<[f64; 2]>)> {
         );
         return Vec::new();
     }
-    rings.into_iter().zip(coords).collect()
+    rings
+        .into_iter()
+        .zip(coords)
+        .filter_map(|(ring, uv)| Some((ring?, uv)))
+        .collect()
 }
 
 /// Index one `app:X3DMaterial`: a colour-only Phong material bound to each target
@@ -659,12 +686,9 @@ fn child_color(node: &XmlNode, name: &str, default: [f32; 3]) -> [f32; 3] {
     let Some(text) = child_text(node, name) else {
         return default;
     };
-    let values: Vec<f32> = text
-        .split_whitespace()
-        .filter_map(|s| s.parse().ok())
-        .collect();
-    match values[..] {
-        [r, g, b] => [r, g, b],
+    let values: Option<Vec<f32>> = text.split_whitespace().map(|s| s.parse().ok()).collect();
+    match values.as_deref() {
+        Some(&[r, g, b]) => [r, g, b],
         _ => default,
     }
 }
@@ -990,6 +1014,86 @@ mod tests {
             uv_sets(polygon.appearance()).is_empty(),
             "colour-only, no UV"
         );
+    }
+
+    #[test]
+    fn malformed_diffuse_colour_falls_back_to_default() {
+        // A diffuseColor with a non-numeric token is rejected whole (not silently
+        // compacted into a wrong triple), so the material keeps the default grey.
+        let xml = format!(
+            r##"<core:CityModel {NS}>
+              <core:cityObjectMember><bldg:Building gml:id="b1">
+                <bldg:lod2MultiSurface><gml:MultiSurface><gml:surfaceMember>
+                  <gml:Polygon gml:id="poly1"><gml:exterior><gml:LinearRing gml:id="ring1">
+                    <gml:posList>0 0 0 1 0 0 0 1 0 0 0 0</gml:posList>
+                  </gml:LinearRing></gml:exterior></gml:Polygon>
+                </gml:surfaceMember></gml:MultiSurface></bldg:lod2MultiSurface>
+              </bldg:Building></core:cityObjectMember>
+              <app:appearanceMember><app:Appearance>
+                <app:theme>rgbTexture</app:theme>
+                <app:surfaceDataMember><app:X3DMaterial>
+                  <app:diffuseColor>0.5 x 0.6 0.7</app:diffuseColor>
+                  <app:target>#poly1</app:target>
+                </app:X3DMaterial></app:surfaceDataMember>
+              </app:Appearance></app:appearanceMember>
+            </core:CityModel>"##
+        );
+        let Polygon3DOut(polygon) = resolve_only_polygon(&xml);
+        let appearance = polygon.appearance().as_ref().expect("polygon is coloured");
+        let Material::Phong(m) = &appearance.materials()[0] else {
+            panic!("expected Phong");
+        };
+        assert_eq!(
+            m.diffuse,
+            [0.8, 0.8, 0.8],
+            "malformed colour must not shift into a wrong-but-valid triple"
+        );
+    }
+
+    #[test]
+    fn cg3_texcoordlist_survives_one_bad_ring() {
+        // A CityGML 3.0 TexCoordList whose second (ring, textureCoordinates) pair has
+        // an unresolvable ring reference must not discard the first, valid pair: the
+        // surface's own ring still receives its UV and the polygon is textured.
+        let xml = format!(
+            r##"<core:CityModel {NS}>
+              <core:cityObjectMember><bldg:Building gml:id="b1">
+                <bldg:lod2MultiSurface><gml:MultiSurface><gml:surfaceMember>
+                  <gml:Polygon gml:id="poly1"><gml:exterior><gml:LinearRing gml:id="ring1">
+                    <gml:posList>0 0 0 1 0 0 0 1 0 0 0 0</gml:posList>
+                  </gml:LinearRing></gml:exterior></gml:Polygon>
+                </gml:surfaceMember></gml:MultiSurface></bldg:lod2MultiSurface>
+              </bldg:Building></core:cityObjectMember>
+              <app:appearanceMember><app:Appearance>
+                <app:theme>rgbTexture</app:theme>
+                <app:surfaceData><app:ParameterizedTexture>
+                  <app:imageURI>tex/a.jpg</app:imageURI>
+                  <app:textureParameterization><app:TextureAssociation>
+                    <app:target>#poly1</app:target>
+                    <app:textureParameterization><app:TexCoordList>
+                      <app:textureCoordinates>0 0 1 0 1 1 0 0</app:textureCoordinates>
+                      <app:ring>#ring1</app:ring>
+                      <app:textureCoordinates>0 0 0 0 0 0 0 0</app:textureCoordinates>
+                      <app:ring></app:ring>
+                    </app:TexCoordList></app:textureParameterization>
+                  </app:TextureAssociation></app:textureParameterization>
+                </app:ParameterizedTexture></app:surfaceData>
+              </app:Appearance></app:appearanceMember>
+            </core:CityModel>"##
+        );
+        let Polygon3DOut(polygon) = resolve_only_polygon(&xml);
+        let appearance = polygon
+            .appearance()
+            .as_ref()
+            .expect("polygon is textured despite the bad ring");
+        let Material::Phong(m) = &appearance.materials()[0] else {
+            panic!("expected Phong");
+        };
+        assert!(
+            m.diffuse_map.is_some(),
+            "the valid ring's UV survives, so the texture attaches"
+        );
+        assert_eq!(uv_sets(polygon.appearance()).len(), 1);
     }
 
     #[test]
