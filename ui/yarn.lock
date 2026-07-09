@@ -4696,25 +4696,6 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@radix-ui/react-label@npm:2.1.10":
-  version: 2.1.10
-  resolution: "@radix-ui/react-label@npm:2.1.10"
-  dependencies:
-    "@radix-ui/react-primitive": "npm:2.1.6"
-  peerDependencies:
-    "@types/react": "*"
-    "@types/react-dom": "*"
-    react: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
-    react-dom: ^16.8 || ^17.0 || ^18.0 || ^19.0 || ^19.0.0-rc
-  peerDependenciesMeta:
-    "@types/react":
-      optional: true
-    "@types/react-dom":
-      optional: true
-  checksum: 10c0/07fd6353c8da26745e2f2779b15f81736611eb148f6c4073b686fb5c3b9c068b89f0e9690d2f70733f1e662faf07b3cbfb461df6bea11d97c31b2f372080993e
-  languageName: node
-  linkType: hard
-
 "@radix-ui/react-navigation-menu@npm:1.2.16":
   version: 1.2.16
   resolution: "@radix-ui/react-navigation-menu@npm:1.2.16"
@@ -5808,7 +5789,6 @@ __metadata:
     "@monaco-editor/react": "npm:4.7.0"
     "@parcel/watcher": "npm:2.5.6"
     "@phosphor-icons/react": "npm:2.1.10"
-    "@radix-ui/react-label": "npm:2.1.10"
     "@radix-ui/react-navigation-menu": "npm:1.2.16"
     "@radix-ui/react-popover": "npm:1.1.17"
     "@radix-ui/react-progress": "npm:1.1.10"
