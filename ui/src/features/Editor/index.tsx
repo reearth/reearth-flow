@@ -5,7 +5,12 @@ import { Doc, Map as YMap, UndoManager as YUndoManager } from "yjs";
 import Canvas from "@flow/features/Canvas";
 import { YWorkflow } from "@flow/lib/yjs/types";
 
-import { OverlayUI, ParamsDialog, NodeDeletionDialog } from "./components";
+import {
+  OverlayUI,
+  ParamsDialog,
+  NodeDeletionDialog,
+  LegacyPortsDialog,
+} from "./components";
 import { EditorContextType, EditorProvider } from "./editorContext";
 import useHooks from "./hooks";
 import PreviewSchemaMonitors from "./usePreviewSchema/PreviewSchemaMonitors";
@@ -94,6 +99,9 @@ export default function Editor({
     handleProjectSnapshotSave,
     isLocked,
     handleProjectLockChange,
+    showLegacyPortsDialog,
+    handleLegacyPortsMigrate,
+    handleLegacyPortsDialogClose,
     handleSpotlightUserSelect,
     handleSpotlightUserDeselect,
     handleNodesDisable,
@@ -265,6 +273,13 @@ export default function Editor({
               showBeforeDeleteDialog={showBeforeDeleteDialog}
               deferredDeleteRef={deferredDeleteRef}
               onDialogClose={handleDeleteDialogClose}
+            />
+          )}
+          {showLegacyPortsDialog && !isLocked && (
+            <LegacyPortsDialog
+              isOpen={showLegacyPortsDialog}
+              onClose={handleLegacyPortsDialogClose}
+              onConfirm={handleLegacyPortsMigrate}
             />
           )}
         </div>

@@ -125,6 +125,8 @@
   "Create": "创建",
   "Cancel": "取消",
   "Continue": "继续",
+  "Project update required": "需要更新项目",
+  "Action connection ports were renamed from \"default\" to \"features\" in the latest engine, and this project still uses the old names. Workflows will fail to run until it is updated. Continue to update all affected connections now — this change applies to the project for all collaborators and cannot be undone.": "在最新的引擎中，操作连接端口已从 \"default\" 重命名为 \"features\"，而此项目仍在使用旧名称。在更新之前，工作流将无法运行。现在继续更新所有受影响的连接——此更改适用于项目的所有协作者，且无法撤销。",
   "Are you sure you want to delete an input or output action?": "您确定要删除输入或输出操作吗？",
   "Input and Output actions are required for the workflow to run. By deleting an action you may cause unexpected behavior.": "输入和输出操作是工作流运行所必需的。通过删除操作，您可能会导致意外行为。",
   "Deploy Project": "部署项目",
