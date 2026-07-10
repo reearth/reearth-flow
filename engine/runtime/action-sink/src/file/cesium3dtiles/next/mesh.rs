@@ -7,7 +7,7 @@ use reearth_flow_geometry::{Euclidean3DGeometry, Geometry};
 
 /// JGD2011 — temporary until the new-geometry CityGML reader parses srsName/EPSG.
 const ASSUMED_SOURCE_CRS: EpsgCode = EpsgCode::new(6697);
-/// WGS84, 3D geographic (lon, lat, height) — used for the tileset's bounding region.
+/// WGS84, 3D geographic (lat, lon, height) — used for the tileset's bounding region.
 const WGS84_GEOGRAPHIC: EpsgCode = EpsgCode::new(4979);
 /// WGS84, geocentric (ECEF) — used for glTF vertex positions.
 const WGS84_GEOCENTRIC: EpsgCode = EpsgCode::new(4978);
@@ -24,7 +24,7 @@ pub(super) struct ReprojectCaches {
 pub(super) struct ExtractedMesh {
     /// Vertex positions in ECEF (WGS84 geocentric), metres.
     pub(super) ecef_vertices: Vec<[f64; 3]>,
-    /// The same vertices in WGS84 geographic (lon, lat, height); degrees/metres.
+    /// The same vertices in WGS84 geographic (lat, lon, height); degrees/metres.
     pub(super) geographic_vertices: Vec<[f64; 3]>,
     /// Triangle index triples, parallel to both vertex arrays above.
     pub(super) indices: Vec<[u32; 3]>,

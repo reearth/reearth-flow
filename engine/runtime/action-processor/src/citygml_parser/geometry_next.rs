@@ -427,10 +427,9 @@ fn parse_ordinates(text: &str) -> Option<Vec<f64>> {
         .collect()
 }
 
-/// Parse a `gml:posList` into `[x, y, z]` triples, swapping the leading
-/// latitude/longitude pair into `x, y` order. A list with any unparseable token,
-/// or whose ordinate count is not a multiple of 3, is skipped whole rather than
-/// producing misaligned coordinates.
+/// Parse a `gml:posList` into ordinate triples, in the source's own axis order.
+/// A list with any unparseable token, or whose ordinate count is not a multiple
+/// of 3, is skipped whole rather than producing misaligned coordinates.
 fn parse_pos_list(text: &str) -> Vec<[f64; 3]> {
     let Some(values) = parse_ordinates(text) else {
         tracing::warn!("citygml geometry: invalid gml:posList content, skipped");
@@ -440,10 +439,10 @@ fn parse_pos_list(text: &str) -> Vec<[f64; 3]> {
         tracing::warn!("citygml geometry: gml:posList length not a multiple of 3, skipped");
         return Vec::new();
     }
-    values.chunks_exact(3).map(|c| [c[1], c[0], c[2]]).collect()
+    values.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect()
 }
 
-/// Parse a single `gml:pos` into one `[x, y, z]`, swapping latitude/longitude.
+/// Parse a single `gml:pos` into one ordinate triple, in the source's own axis order.
 fn parse_pos(text: &str) -> Option<[f64; 3]> {
     let Some(values) = parse_ordinates(text) else {
         tracing::warn!("citygml geometry: invalid gml:pos content, skipped");
@@ -452,7 +451,7 @@ fn parse_pos(text: &str) -> Option<[f64; 3]> {
     if values.len() != 3 {
         return None;
     }
-    Some([values[1], values[0], values[2]])
+    Some([values[0], values[1], values[2]])
 }
 
 /// Extract the LOD digit from a `lod<N>…` property name.
@@ -668,8 +667,7 @@ mod tests {
         match only_member(&geometry) {
             Euclidean3DGeometry::LineString(ls) => {
                 assert_eq!(ls.coords().len(), 3);
-                // posList is lat/lon; stored x/y, so the pair is swapped.
-                assert_eq!(ls.coords()[0], [1.0, 0.0, 0.0]);
+                assert_eq!(ls.coords()[0], [0.0, 1.0, 0.0]);
             }
             other => panic!("expected LineString, got {other:?}"),
         }
@@ -686,7 +684,7 @@ mod tests {
         match only_member(&geometry) {
             Euclidean3DGeometry::Polygon(p) => {
                 assert_eq!(p.exterior().len(), 4);
-                assert_eq!(p.exterior()[0], [2.0, 1.0, 0.0]); // swapped
+                assert_eq!(p.exterior()[0], [1.0, 2.0, 0.0]);
                 assert_eq!(p.interiors().count(), 0);
             }
             other => panic!("expected Polygon, got {other:?}"),
@@ -826,7 +824,7 @@ mod tests {
         assert_eq!(geoms.len(), 1);
         assert_eq!(geoms[0].lod, Some(0));
         match resolve_root_bare(&geoms[0].node, &registry).unwrap() {
-            Euclidean3DGeometry::Point(p) => assert_eq!(p.position(), [2.0, 1.0, 5.0]),
+            Euclidean3DGeometry::Point(p) => assert_eq!(p.position(), [1.0, 2.0, 5.0]),
             other => panic!("expected Point, got {other:?}"),
         }
     }
