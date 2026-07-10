@@ -246,7 +246,9 @@ fn flatten(path: String, value: &AttributeValue, out: &mut BTreeMap<String, Stri
             }
         }
         leaf => {
-            out.insert(path, leaf.to_string());
+            if out.insert(path.clone(), leaf.to_string()).is_some() {
+                tracing::warn!("Cesium3DTilesWriter: attribute path {path:?} collided; overwriting");
+            }
         }
     }
 }
