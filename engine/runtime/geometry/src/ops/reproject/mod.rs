@@ -34,7 +34,7 @@ impl<T: Reproject + ?Sized> Reproject for Box<T> {
 }
 
 /// Reproject a 3D coordinate buffer in place from `from` to `target` (EPSG).
-pub(crate) fn transform_coords_3d(
+pub fn transform_coords_3d(
     cache: &mut ReprojectionCache,
     from: EpsgCode,
     target: EpsgCode,

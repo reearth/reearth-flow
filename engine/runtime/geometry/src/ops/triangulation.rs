@@ -23,6 +23,14 @@ impl Cache {
     }
 }
 
+/// A triangulated mesh, plus each source polygon's flat normal and triangle
+/// count, both in polygon order.
+pub struct Triangulated<M> {
+    pub mesh: M,
+    pub polygon_normals: Vec<[f64; 3]>,
+    pub polygon_tris: Vec<u32>,
+}
+
 /// The scratch buffers [`Cache`] reuses across calls; each is cleared before use.
 #[derive(Default)]
 pub(crate) struct Buffers {
@@ -41,8 +49,13 @@ pub(crate) struct Buffers {
     /// (mesh); the index [`retarget_uv`] re-gathers each corner's UV from.
     pub(crate) corner_src: Vec<u32>,
     /// Triangle count per source face, in face order (mesh); the per-face counts
-    /// [`expand_appearance`] repeats each `PerFace` binding entry by.
+    /// [`expand_appearance`] repeats each `PerFace` binding entry by, and a
+    /// caller wanting a flat normal per output triangle repeats `face_normals`
+    /// by the same counts.
     pub(crate) face_tris: Vec<u32>,
+    /// Exterior ring normal per source face, in face order (mesh); `[0.0, 0.0,
+    /// 1.0]` for a degenerate face, harmless since its `face_tris` count is 0.
+    pub(crate) face_normals: Vec<[f64; 3]>,
     /// Decoded CSR buffers (mesh).
     pub(crate) face_indices: Vec<u32>,
     pub(crate) face_offsets: Vec<u32>,
@@ -67,24 +80,27 @@ pub(crate) fn triangulate_2d(
 /// Triangulate one planar 3D face by projecting it onto its best-fit plane
 /// (fit from the first `num_outer` vertices, the exterior ring) and feeding the
 /// projected points straight to earcut as an iterator — no intermediate buffer.
-/// Returns `false` (and clears `out`) when the exterior cannot define a plane.
+/// Returns the exterior ring's Newell's-method normal (already computed while
+/// fitting the projection plane, and shared by every triangle the face is
+/// split into), or `None` (with `out` cleared) when the exterior cannot define
+/// a plane.
 pub(crate) fn triangulate_3d(
     earcut: &mut Earcut<f64>,
     verts: &[[f64; 3]],
     num_outer: usize,
     holes: &[u32],
     out: &mut Vec<u32>,
-) -> bool {
+) -> Option<[f64; 3]> {
     if num_outer < 3 {
         out.clear();
-        return false;
+        return None;
     }
-    let Some(projector) = Projector::fit(&verts[..num_outer]) else {
+    let Some((projector, normal)) = Projector::fit(&verts[..num_outer]) else {
         out.clear();
-        return false;
+        return None;
     };
     earcut.earcut(verts.iter().map(|&v| projector.project(v)), holes, out);
-    true
+    Some(normal)
 }
 
 /// Expand a source geometry's appearance onto its triangulated mesh, consuming it.
@@ -176,30 +192,33 @@ enum Projector {
 
 impl Projector {
     /// Fit from the exterior ring `outer`; `None` if it has no usable normal.
-    fn fit(outer: &[[f64; 3]]) -> Option<Self> {
-        let [nx, ny, nz] = normal(outer)?;
+    /// Also returns that normal, since it's already computed here and a
+    /// caller triangulating a planar face wants it too.
+    fn fit(outer: &[[f64; 3]]) -> Option<(Self, [f64; 3])> {
+        let n @ [nx, ny, nz] = normal(outer)?;
         let dd = (nx * nx + ny * ny).sqrt();
-        if dd < EPSILON {
-            Some(if nz > 0.0 {
+        let projector = if dd < EPSILON {
+            if nz > 0.0 {
                 Projector::KeepXy
             } else {
                 Projector::FlipXy
-            })
+            }
         } else {
             let ax = -ny / dd;
             let ay = nx / dd;
             let theta = nz.acos();
             let (sint, cost) = (theta.sin(), theta.cos());
             let s = ax * ay * (1.0 - cost);
-            Some(Projector::Rotate {
+            Projector::Rotate {
                 m11: ax * ax * (1.0 - cost) + cost,
                 m12: s,
                 m13: -(ay * sint),
                 m21: s,
                 m22: ay * ay * (1.0 - cost) + cost,
                 m23: ax * sint,
-            })
-        }
+            }
+        };
+        Some((projector, n))
     }
 
     #[inline]
