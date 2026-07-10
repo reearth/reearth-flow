@@ -108,7 +108,7 @@ pub(super) struct FeatureSorterFactory;
 
 impl ProcessorFactory for FeatureSorterFactory {
     fn name(&self) -> &str {
-        "FeatureSorter"
+        "Feature Sorter"
     }
 
     fn description(&self) -> &str {
@@ -378,6 +378,6 @@ impl Processor for FeatureSorter {
     }
 
     fn name(&self) -> &str {
-        "FeatureSorter"
+        "Feature Sorter"
     }
 }

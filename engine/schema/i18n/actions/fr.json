@@ -1,11 +1,11 @@
 {
   "actions": [
     {
-      "name": "AppearanceRemover",
+      "name": "Appearance Remover",
       "description": "Supprime les informations d'apparence (matériaux, textures) de la géométrie CityGML"
     },
     {
-      "name": "AreaCalculator",
+      "name": "Area Calculator",
       "description": "Calcule la surface plane ou inclinée des géométries de polygone et ajoute les résultats en tant qu'attributs",
       "parameterI18n": {
         "": {
@@ -54,7 +54,7 @@
       }
     },
     {
-      "name": "AttributeAggregator",
+      "name": "Attribute Aggregator",
       "description": "Group and Aggregate Features by Attributes",
       "parameterI18n": {
         "": {
@@ -108,21 +108,7 @@
       }
     },
     {
-      "name": "AttributeBulkArrayJoiner",
-      "description": "Join Array Attributes Into Single Values",
-      "parameterI18n": {
-        "": {
-          "title": "AttributeBulkArrayJoiner Parameters",
-          "description": "Configure which array attributes to join into single values"
-        },
-        "ignoreAttributes": {
-          "title": "Attributes to Ignore",
-          "description": "List of attribute names to skip during array joining process"
-        }
-      }
-    },
-    {
-      "name": "AttributeConversionTable",
+      "name": "Attribute Conversion Table",
       "description": "Transform Feature Attributes Using Lookup Tables",
       "parameterI18n": {
         "": {
@@ -163,33 +149,7 @@
       }
     },
     {
-      "name": "AttributeDuplicateFilter",
-      "description": "Remove Duplicate Features Based on Attribute Values",
-      "parameterI18n": {
-        "": {
-          "title": "AttributeDuplicateFilter Parameters"
-        },
-        "filterBy": {
-          "title": "Filter Attributes",
-          "description": "Attributes used to identify duplicate features - features with identical values for these attributes will be deduplicated"
-        }
-      }
-    },
-    {
-      "name": "AttributeFilePathInfoExtractor",
-      "description": "Extract File System Information from Path Attributes",
-      "parameterI18n": {
-        "": {
-          "title": "AttributeFilePathInfoExtractor Parameters"
-        },
-        "attribute": {
-          "title": "Source Path Attribute",
-          "description": "Attribute containing the file path to analyze for extracting file system information"
-        }
-      }
-    },
-    {
-      "name": "AttributeFlattener",
+      "name": "Attribute Flattener",
       "description": "Flatten Nested Object Attributes into Top-Level Attributes",
       "parameterI18n": {
         "": {
@@ -202,7 +162,7 @@
       }
     },
     {
-      "name": "AttributeManager",
+      "name": "Attribute Manager",
       "description": "Create, Convert, Rename, and Remove Feature Attributes",
       "parameterI18n": {
         "": {
@@ -229,7 +189,7 @@
       }
     },
     {
-      "name": "AttributeMapper",
+      "name": "Attribute Mapper",
       "description": "Transform Feature Attributes Using Expressions and Mappings",
       "parameterI18n": {
         "": {
@@ -260,6 +220,46 @@
           "valueAttribute": {
             "title": "Attribute name to get value from"
           }
+        }
+      }
+    },
+    {
+      "name": "AttributeBulkArrayJoiner",
+      "description": "Join Array Attributes Into Single Values",
+      "parameterI18n": {
+        "": {
+          "title": "AttributeBulkArrayJoiner Parameters",
+          "description": "Configure which array attributes to join into single values"
+        },
+        "ignoreAttributes": {
+          "title": "Attributes to Ignore",
+          "description": "List of attribute names to skip during array joining process"
+        }
+      }
+    },
+    {
+      "name": "AttributeDuplicateFilter",
+      "description": "Remove Duplicate Features Based on Attribute Values",
+      "parameterI18n": {
+        "": {
+          "title": "AttributeDuplicateFilter Parameters"
+        },
+        "filterBy": {
+          "title": "Filter Attributes",
+          "description": "Attributes used to identify duplicate features - features with identical values for these attributes will be deduplicated"
+        }
+      }
+    },
+    {
+      "name": "AttributeFilePathInfoExtractor",
+      "description": "Extract File System Information from Path Attributes",
+      "parameterI18n": {
+        "": {
+          "title": "AttributeFilePathInfoExtractor Parameters"
+        },
+        "attribute": {
+          "title": "Source Path Attribute",
+          "description": "Attribute containing the file path to analyze for extracting file system information"
         }
       }
     },
@@ -321,7 +321,7 @@
       }
     },
     {
-      "name": "BoundsExtractor",
+      "name": "Bounds Extractor",
       "description": "Extract Bounding Box Coordinates from Feature Geometry",
       "parameterI18n": {
         "": {
@@ -384,7 +384,7 @@
       }
     },
     {
-      "name": "BulkAttributeRenamer",
+      "name": "Bulk Attribute Renamer",
       "description": "Rename Feature Attributes in Bulk",
       "parameterI18n": {
         "": {
@@ -484,151 +484,7 @@
       }
     },
     {
-      "name": "CenterPointReplacer",
-      "description": "Replace Feature Geometry with Center Point",
-      "parameterI18n": {
-        "": {
-          "title": "CenterPointReplacerParam"
-        },
-        "mode": {
-          "description": "The method used to compute the replacement center point."
-        }
-      },
-      "enumI18n": {
-        "CenterPointMode": {
-          "anyInsidePoint": {
-            "description": "Computes a point guaranteed to lie inside the geometry (pole of inaccessibility)."
-          },
-          "boundingBoxCenter": {
-            "description": "Computes the center of the geometry's bounding box."
-          },
-          "centerOfGravity": {
-            "description": "Computes the centroid (center of gravity) of the geometry."
-          }
-        }
-      }
-    },
-    {
-      "name": "Cesium3DTilesWriter",
-      "description": "Export Features as Cesium 3D Tiles for Web Visualization",
-      "parameterI18n": {
-        "": {
-          "title": "Cesium3DTilesWriter Parameters"
-        },
-        "attachTexture": {
-          "title": "Attach Textures",
-          "description": "Whether to include texture information in the generated tiles"
-        },
-        "compressOutput": {
-          "title": "Compressed Output Path",
-          "description": "Optional path for compressed archive output"
-        },
-        "dracoCompression": {
-          "title": "Draco Compression",
-          "description": "Use draco compression. Defaults to true."
-        },
-        "maxZoom": {
-          "title": "Maximum Zoom Level",
-          "description": "Maximum zoom level for tile generation (0-24)"
-        },
-        "minZoom": {
-          "title": "Minimum Zoom Level",
-          "description": "Minimum zoom level for tile generation (0-24)"
-        },
-        "output": {
-          "title": "Output Path",
-          "description": "Directory path where the 3D tiles will be written"
-        },
-        "schemaKey": {
-          "title": "Schema Key",
-          "description": "Attribute key whose value identifies the schema type and determines the output filename: all features sharing the same value are written to the same file. This attribute is excluded from output."
-        },
-        "skipUnexposedAttributes": {
-          "title": "Skip unexposed Attributes",
-          "description": "Skip attributes with double underscore prefix"
-        }
-      }
-    },
-    {
-      "name": "CityGmlReader",
-      "description": "Lit des modèles de ville 3D depuis des fichiers CityGML",
-      "parameterI18n": {
-        "": {
-          "title": "CityGmlReader Parameters",
-          "description": "Configuration for reading CityGML files as 3D city models."
-        },
-        "dataset": {
-          "title": "File Path",
-          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)"
-        },
-        "flatten": {},
-        "inline": {
-          "title": "Inline Content",
-          "description": "Expression that returns the file content as text instead of reading from a file path"
-        }
-      }
-    },
-    {
-      "name": "CityGmlWriter",
-      "description": "Écrit des entités dans des fichiers CityGML 2.0",
-      "parameterI18n": {
-        "": {
-          "title": "CityGmlWriterParam"
-        },
-        "epsgCode": {
-          "description": "EPSG code for coordinate reference system"
-        },
-        "lodFilter": {
-          "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs."
-        },
-        "output": {
-          "description": "Output file path expression"
-        },
-        "prettyPrint": {
-          "description": "Whether to format output with indentation (default: true)"
-        }
-      }
-    },
-    {
-      "name": "Clipper",
-      "description": "Clip Features Using Boundary Shapes"
-    },
-    {
-      "name": "ClosedCurveFilter",
-      "description": "Filter LineString Features by Closed/Open Status"
-    },
-    {
-      "name": "ConvexHullAccumulator",
-      "description": "Generate Convex Hull Polygons from Grouped Features",
-      "parameterI18n": {
-        "": {
-          "title": "ConvexHullAccumulator Parameters"
-        },
-        "groupBy": {
-          "title": "Group By Attributes",
-          "description": "Attributes used to group features before creating convex hulls - each group gets its own hull"
-        }
-      }
-    },
-    {
-      "name": "CoordinateExtractor",
-      "description": "Extrait les coordonnées des sommets de géométrie en tant qu'attributs d'entité",
-      "parameterI18n": {
-        "": {
-          "title": "Coordinate Extractor Parameters"
-        },
-        "defaultZValue": {
-          "title": "Default Z Value",
-          "description": "Z value to use for 2D geometries that have no Z coordinate."
-        },
-        "mode": {
-          "title": "Extraction Mode",
-          "description": "How to extract coordinates from geometry vertices."
-        }
-      }
-    },
-    {
-      "name": "CsvReader",
+      "name": "CSV Reader",
       "description": "Read Features from CSV or TSV File",
       "parameterI18n": {
         "": {
@@ -686,7 +542,7 @@
       }
     },
     {
-      "name": "CsvWriter",
+      "name": "CSV Writer",
       "description": "Écrit des entités dans des fichiers CSV ou TSV",
       "parameterI18n": {
         "": {
@@ -714,6 +570,150 @@
             "title": "TSV (Tab-Separated Values)",
             "description": "File with tab-separated values"
           }
+        }
+      }
+    },
+    {
+      "name": "CenterPointReplacer",
+      "description": "Replace Feature Geometry with Center Point",
+      "parameterI18n": {
+        "": {
+          "title": "CenterPointReplacerParam"
+        },
+        "mode": {
+          "description": "The method used to compute the replacement center point."
+        }
+      },
+      "enumI18n": {
+        "CenterPointMode": {
+          "anyInsidePoint": {
+            "description": "Computes a point guaranteed to lie inside the geometry (pole of inaccessibility)."
+          },
+          "boundingBoxCenter": {
+            "description": "Computes the center of the geometry's bounding box."
+          },
+          "centerOfGravity": {
+            "description": "Computes the centroid (center of gravity) of the geometry."
+          }
+        }
+      }
+    },
+    {
+      "name": "Cesium 3D Tiles Writer",
+      "description": "Export Features as Cesium 3D Tiles for Web Visualization",
+      "parameterI18n": {
+        "": {
+          "title": "Cesium3DTilesWriter Parameters"
+        },
+        "attachTexture": {
+          "title": "Attach Textures",
+          "description": "Whether to include texture information in the generated tiles"
+        },
+        "compressOutput": {
+          "title": "Compressed Output Path",
+          "description": "Optional path for compressed archive output"
+        },
+        "dracoCompression": {
+          "title": "Draco Compression",
+          "description": "Use draco compression. Defaults to true."
+        },
+        "maxZoom": {
+          "title": "Maximum Zoom Level",
+          "description": "Maximum zoom level for tile generation (0-24)"
+        },
+        "minZoom": {
+          "title": "Minimum Zoom Level",
+          "description": "Minimum zoom level for tile generation (0-24)"
+        },
+        "output": {
+          "title": "Output Path",
+          "description": "Directory path where the 3D tiles will be written"
+        },
+        "schemaKey": {
+          "title": "Schema Key",
+          "description": "Attribute key whose value identifies the schema type and determines the output filename: all features sharing the same value are written to the same file. This attribute is excluded from output."
+        },
+        "skipUnexposedAttributes": {
+          "title": "Skip unexposed Attributes",
+          "description": "Skip attributes with double underscore prefix"
+        }
+      }
+    },
+    {
+      "name": "CityGML Reader",
+      "description": "Lit des modèles de ville 3D depuis des fichiers CityGML",
+      "parameterI18n": {
+        "": {
+          "title": "CityGmlReader Parameters",
+          "description": "Configuration for reading CityGML files as 3D city models."
+        },
+        "dataset": {
+          "title": "File Path",
+          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)"
+        },
+        "flatten": {},
+        "inline": {
+          "title": "Inline Content",
+          "description": "Expression that returns the file content as text instead of reading from a file path"
+        }
+      }
+    },
+    {
+      "name": "CityGML Writer",
+      "description": "Écrit des entités dans des fichiers CityGML 2.0",
+      "parameterI18n": {
+        "": {
+          "title": "CityGmlWriterParam"
+        },
+        "epsgCode": {
+          "description": "EPSG code for coordinate reference system"
+        },
+        "lodFilter": {
+          "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs."
+        },
+        "output": {
+          "description": "Output file path expression"
+        },
+        "prettyPrint": {
+          "description": "Whether to format output with indentation (default: true)"
+        }
+      }
+    },
+    {
+      "name": "Clipper",
+      "description": "Clip Features Using Boundary Shapes"
+    },
+    {
+      "name": "ClosedCurveFilter",
+      "description": "Filter LineString Features by Closed/Open Status"
+    },
+    {
+      "name": "ConvexHullAccumulator",
+      "description": "Generate Convex Hull Polygons from Grouped Features",
+      "parameterI18n": {
+        "": {
+          "title": "ConvexHullAccumulator Parameters"
+        },
+        "groupBy": {
+          "title": "Group By Attributes",
+          "description": "Attributes used to group features before creating convex hulls - each group gets its own hull"
+        }
+      }
+    },
+    {
+      "name": "CoordinateExtractor",
+      "description": "Extrait les coordonnées des sommets de géométrie en tant qu'attributs d'entité",
+      "parameterI18n": {
+        "": {
+          "title": "Coordinate Extractor Parameters"
+        },
+        "defaultZValue": {
+          "title": "Default Z Value",
+          "description": "Z value to use for 2D geometries that have no Z coordinate."
+        },
+        "mode": {
+          "title": "Extraction Mode",
+          "description": "How to extract coordinates from geometry vertices."
         }
       }
     },
@@ -881,11 +881,11 @@
       }
     },
     {
-      "name": "DimensionFilter",
+      "name": "Dimension Filter",
       "description": "Filter Features by Geometry Dimension"
     },
     {
-      "name": "DirectoryDecompressor",
+      "name": "Directory Decompressor",
       "description": "Extracts and decompresses archive files from specified attributes",
       "parameterI18n": {
         "": {
@@ -939,15 +939,15 @@
       }
     },
     {
-      "name": "EchoProcessor",
+      "name": "Echo Processor",
       "description": "Debug Echo Features to Logs"
     },
     {
-      "name": "EchoSink",
+      "name": "Echo Sink",
       "description": "Debug Echo Features to Logs"
     },
     {
-      "name": "ElevationExtractor",
+      "name": "Elevation Extractor",
       "description": "Extract Z-Coordinate Elevation to Attribute",
       "parameterI18n": {
         "": {
@@ -987,6 +987,246 @@
         "distance": {
           "title": "Distance",
           "description": "The vertical distance (height) to extrude the polygon. Can be a constant value or an expression"
+        }
+      }
+    },
+    {
+      "name": "Feature CityGML Reader",
+      "description": "Reads and processes features from CityGML files with optional flattening",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureCityGmlReader Parameters",
+          "description": "Configuration for reading and processing CityGML files as features."
+        },
+        "codelistsPath": {
+          "title": "Codelists Path",
+          "description": "Optional path to the codelists directory for resolving codelist values"
+        },
+        "dataset": {
+          "title": "Dataset",
+          "description": "Path or expression to the CityGML dataset file to be read"
+        },
+        "flatten": {
+          "title": "Flatten",
+          "description": "Whether to flatten the hierarchical structure of the CityGML data"
+        }
+      }
+    },
+    {
+      "name": "Feature Counter",
+      "description": "Count Features and Add Counter to Attribute",
+      "parameterI18n": {
+        "": {
+          "title": "Feature Counter Parameters",
+          "description": "Configure how features are counted and grouped, and where to store the count"
+        },
+        "countStart": {
+          "title": "Start Count",
+          "description": "Starting value for the counter"
+        },
+        "groupBy": {
+          "title": "Group By Attributes",
+          "description": "List of attribute names to group features by before counting"
+        },
+        "outputAttribute": {
+          "title": "Output Attribute",
+          "description": "Name of the attribute where the count will be stored"
+        }
+      }
+    },
+    {
+      "name": "Feature Creator",
+      "description": "Generate Custom Features Using Scripts",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureCreator Parameters",
+          "description": "Configure how to generate custom features using script expressions"
+        },
+        "creator": {
+          "title": "Script Expression",
+          "description": "Write a script expression that returns a map (single feature) or array of maps (multiple features). Each map represents feature attributes as key-value pairs."
+        }
+      }
+    },
+    {
+      "name": "Feature File Path Extractor",
+      "description": "Extract File Paths from Dataset to Features",
+      "parameterI18n": {
+        "": {
+          "title": "Feature File Path Extractor Parameters",
+          "description": "Configure how to extract file paths from datasets and optionally extract archives"
+        },
+        "destPrefix": {
+          "title": "Destination Prefix",
+          "description": "Optional prefix to add to extracted file paths"
+        },
+        "extractArchive": {
+          "title": "Extract Archive",
+          "description": "Whether to extract archive files found in the dataset"
+        },
+        "sourceDataset": {
+          "title": "Source Dataset",
+          "description": "Expression to get the source dataset path or URL"
+        }
+      }
+    },
+    {
+      "name": "Feature Filter",
+      "description": "Filter Features Based on Custom Conditions",
+      "parameterI18n": {
+        "": {
+          "title": "Feature Filter Parameters",
+          "description": "Configure the conditions and output ports for filtering features based on expressions"
+        },
+        "conditions": {
+          "title": "Filter Conditions",
+          "description": "List of conditions and their corresponding output ports for routing filtered features"
+        }
+      },
+      "definitionI18n": {
+        "Condition": {
+          "expr": {
+            "title": "Condition expression"
+          },
+          "outputPort": {
+            "title": "Output port"
+          }
+        }
+      }
+    },
+    {
+      "name": "Feature Joiner",
+      "description": "Joint des entités requérantes et fournisseuses basées sur des valeurs d'attributs correspondantes avec des types de jointure configurables",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureJoiner Parameters",
+          "description": "Configuration for joining requestor and supplier features based on matching attributes or expressions."
+        },
+        "conflictResolution": {
+          "description": "Attribute conflict resolution strategy when both requestor and supplier have the same attribute"
+        },
+        "joinType": {
+          "description": "Join type: inner, left, or full"
+        },
+        "requestorAttribute": {
+          "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue)"
+        },
+        "requestorAttributeValue": {
+          "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute)"
+        },
+        "supplierAttribute": {
+          "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue)"
+        },
+        "supplierAttributeValue": {
+          "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute)"
+        }
+      },
+      "enumI18n": {
+        "ConflictResolution": {
+          "requestorWins": {
+            "description": "Requestor attributes win on conflict"
+          },
+          "supplierWins": {
+            "description": "Supplier attributes win on conflict (default)"
+          }
+        },
+        "JoinType": {
+          "full": {
+            "description": "Emit all features from both sides"
+          },
+          "inner": {
+            "description": "Only emit features where a match exists"
+          },
+          "left": {
+            "description": "Emit all requestor features (default)"
+          }
+        }
+      }
+    },
+    {
+      "name": "Feature LOD Filter",
+      "description": "Filters features by Level of Detail (LOD), routing them to appropriate output ports",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureLodFilter Parameters",
+          "description": "Configuration for filtering features based on Level of Detail (LOD)."
+        },
+        "filterKey": {
+          "description": "Attribute used to group features for LOD filtering"
+        }
+      }
+    },
+    {
+      "name": "Feature Merger",
+      "description": "Merges requestor and supplier features based on matching attribute values",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureMerger Parameters",
+          "description": "Configuration for merging requestor and supplier features based on matching attributes or expressions."
+        },
+        "completeGrouped": {
+          "description": "Whether to complete grouped features before processing the next group"
+        },
+        "requestorAttribute": {
+          "description": "Attributes from requestor features to use for matching (alternative to requestor_attribute_value)"
+        },
+        "requestorAttributeValue": {
+          "description": "Expression to evaluate for requestor feature matching values (alternative to requestor_attribute)"
+        },
+        "supplierAttribute": {
+          "description": "Attributes from supplier features to use for matching (alternative to supplier_attribute_value)"
+        },
+        "supplierAttributeValue": {
+          "description": "Expression to evaluate for supplier feature matching values (alternative to supplier_attribute)"
+        }
+      }
+    },
+    {
+      "name": "Feature Sorter",
+      "description": "Sorts features based on specified attributes in ascending or descending order",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureSorter Parameters",
+          "description": "Configuration for sorting features based on attribute values."
+        },
+        "attributes": {
+          "description": "Attributes to use for sorting features (sort order based on attribute order)"
+        },
+        "order": {
+          "description": "Sorting order (ascending or descending)"
+        }
+      }
+    },
+    {
+      "name": "Feature Transformer",
+      "description": "Applies transformation expressions to modify feature attributes and properties",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureTransformer Parameters",
+          "description": "Configuration for applying transformation expressions to features."
+        },
+        "transformers": {
+          "description": "List of transformation expressions to apply to each feature"
+        }
+      },
+      "definitionI18n": {
+        "Transform": {
+          "expr": {
+            "description": "Expression that modifies the feature (can access and modify attributes, geometry, etc.)"
+          }
+        }
+      }
+    },
+    {
+      "name": "Feature Type Filter",
+      "description": "Filters features by feature type",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureTypeFilter Parameters",
+          "description": "Configuration for filtering features based on their feature type."
+        },
+        "targetTypes": {
+          "description": "Target feature types"
         }
       }
     },
@@ -1057,199 +1297,8 @@
       }
     },
     {
-      "name": "FeatureCityGmlReader",
-      "description": "Reads and processes features from CityGML files with optional flattening",
-      "parameterI18n": {
-        "": {
-          "title": "FeatureCityGmlReader Parameters",
-          "description": "Configuration for reading and processing CityGML files as features."
-        },
-        "codelistsPath": {
-          "title": "Codelists Path",
-          "description": "Optional path to the codelists directory for resolving codelist values"
-        },
-        "dataset": {
-          "title": "Dataset",
-          "description": "Path or expression to the CityGML dataset file to be read"
-        },
-        "flatten": {
-          "title": "Flatten",
-          "description": "Whether to flatten the hierarchical structure of the CityGML data"
-        }
-      }
-    },
-    {
-      "name": "FeatureCounter",
-      "description": "Count Features and Add Counter to Attribute",
-      "parameterI18n": {
-        "": {
-          "title": "Feature Counter Parameters",
-          "description": "Configure how features are counted and grouped, and where to store the count"
-        },
-        "countStart": {
-          "title": "Start Count",
-          "description": "Starting value for the counter"
-        },
-        "groupBy": {
-          "title": "Group By Attributes",
-          "description": "List of attribute names to group features by before counting"
-        },
-        "outputAttribute": {
-          "title": "Output Attribute",
-          "description": "Name of the attribute where the count will be stored"
-        }
-      }
-    },
-    {
-      "name": "FeatureCreator",
-      "description": "Generate Custom Features Using Scripts",
-      "parameterI18n": {
-        "": {
-          "title": "FeatureCreator Parameters",
-          "description": "Configure how to generate custom features using script expressions"
-        },
-        "creator": {
-          "title": "Script Expression",
-          "description": "Write a script expression that returns a map (single feature) or array of maps (multiple features). Each map represents feature attributes as key-value pairs."
-        }
-      }
-    },
-    {
       "name": "FeatureDuplicateFilter",
       "description": "Filter Out Duplicate Features"
-    },
-    {
-      "name": "FeatureFilePathExtractor",
-      "description": "Extract File Paths from Dataset to Features",
-      "parameterI18n": {
-        "": {
-          "title": "Feature File Path Extractor Parameters",
-          "description": "Configure how to extract file paths from datasets and optionally extract archives"
-        },
-        "destPrefix": {
-          "title": "Destination Prefix",
-          "description": "Optional prefix to add to extracted file paths"
-        },
-        "extractArchive": {
-          "title": "Extract Archive",
-          "description": "Whether to extract archive files found in the dataset"
-        },
-        "sourceDataset": {
-          "title": "Source Dataset",
-          "description": "Expression to get the source dataset path or URL"
-        }
-      }
-    },
-    {
-      "name": "FeatureFilter",
-      "description": "Filter Features Based on Custom Conditions",
-      "parameterI18n": {
-        "": {
-          "title": "Feature Filter Parameters",
-          "description": "Configure the conditions and output ports for filtering features based on expressions"
-        },
-        "conditions": {
-          "title": "Filter Conditions",
-          "description": "List of conditions and their corresponding output ports for routing filtered features"
-        }
-      },
-      "definitionI18n": {
-        "Condition": {
-          "expr": {
-            "title": "Condition expression"
-          },
-          "outputPort": {
-            "title": "Output port"
-          }
-        }
-      }
-    },
-    {
-      "name": "FeatureJoiner",
-      "description": "Joint des entités requérantes et fournisseuses basées sur des valeurs d'attributs correspondantes avec des types de jointure configurables",
-      "parameterI18n": {
-        "": {
-          "title": "FeatureJoiner Parameters",
-          "description": "Configuration for joining requestor and supplier features based on matching attributes or expressions."
-        },
-        "conflictResolution": {
-          "description": "Attribute conflict resolution strategy when both requestor and supplier have the same attribute"
-        },
-        "joinType": {
-          "description": "Join type: inner, left, or full"
-        },
-        "requestorAttribute": {
-          "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue)"
-        },
-        "requestorAttributeValue": {
-          "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute)"
-        },
-        "supplierAttribute": {
-          "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue)"
-        },
-        "supplierAttributeValue": {
-          "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute)"
-        }
-      },
-      "enumI18n": {
-        "ConflictResolution": {
-          "requestorWins": {
-            "description": "Requestor attributes win on conflict"
-          },
-          "supplierWins": {
-            "description": "Supplier attributes win on conflict (default)"
-          }
-        },
-        "JoinType": {
-          "full": {
-            "description": "Emit all features from both sides"
-          },
-          "inner": {
-            "description": "Only emit features where a match exists"
-          },
-          "left": {
-            "description": "Emit all requestor features (default)"
-          }
-        }
-      }
-    },
-    {
-      "name": "FeatureLodFilter",
-      "description": "Filters features by Level of Detail (LOD), routing them to appropriate output ports",
-      "parameterI18n": {
-        "": {
-          "title": "FeatureLodFilter Parameters",
-          "description": "Configuration for filtering features based on Level of Detail (LOD)."
-        },
-        "filterKey": {
-          "description": "Attribute used to group features for LOD filtering"
-        }
-      }
-    },
-    {
-      "name": "FeatureMerger",
-      "description": "Merges requestor and supplier features based on matching attribute values",
-      "parameterI18n": {
-        "": {
-          "title": "FeatureMerger Parameters",
-          "description": "Configuration for merging requestor and supplier features based on matching attributes or expressions."
-        },
-        "completeGrouped": {
-          "description": "Whether to complete grouped features before processing the next group"
-        },
-        "requestorAttribute": {
-          "description": "Attributes from requestor features to use for matching (alternative to requestor_attribute_value)"
-        },
-        "requestorAttributeValue": {
-          "description": "Expression to evaluate for requestor feature matching values (alternative to requestor_attribute)"
-        },
-        "supplierAttribute": {
-          "description": "Attributes from supplier features to use for matching (alternative to supplier_attribute_value)"
-        },
-        "supplierAttributeValue": {
-          "description": "Expression to evaluate for supplier feature matching values (alternative to supplier_attribute)"
-        }
-      }
     },
     {
       "name": "FeatureReader",
@@ -1257,55 +1306,6 @@
       "parameterI18n": {
         "": {
           "title": "FeatureReaderParam"
-        }
-      }
-    },
-    {
-      "name": "FeatureSorter",
-      "description": "Sorts features based on specified attributes in ascending or descending order",
-      "parameterI18n": {
-        "": {
-          "title": "FeatureSorter Parameters",
-          "description": "Configuration for sorting features based on attribute values."
-        },
-        "attributes": {
-          "description": "Attributes to use for sorting features (sort order based on attribute order)"
-        },
-        "order": {
-          "description": "Sorting order (ascending or descending)"
-        }
-      }
-    },
-    {
-      "name": "FeatureTransformer",
-      "description": "Applies transformation expressions to modify feature attributes and properties",
-      "parameterI18n": {
-        "": {
-          "title": "FeatureTransformer Parameters",
-          "description": "Configuration for applying transformation expressions to features."
-        },
-        "transformers": {
-          "description": "List of transformation expressions to apply to each feature"
-        }
-      },
-      "definitionI18n": {
-        "Transform": {
-          "expr": {
-            "description": "Expression that modifies the feature (can access and modify attributes, geometry, etc.)"
-          }
-        }
-      }
-    },
-    {
-      "name": "FeatureTypeFilter",
-      "description": "Filters features by feature type",
-      "parameterI18n": {
-        "": {
-          "title": "FeatureTypeFilter Parameters",
-          "description": "Configuration for filtering features based on their feature type."
-        },
-        "targetTypes": {
-          "description": "Target feature types"
         }
       }
     },
@@ -1320,7 +1320,7 @@
       }
     },
     {
-      "name": "FilePathExtractor",
+      "name": "File Path Extractor",
       "description": "Extracts file paths from directories or archives, creating features for each discovered file",
       "parameterI18n": {
         "": {
@@ -1338,7 +1338,7 @@
       }
     },
     {
-      "name": "FilePropertyExtractor",
+      "name": "File Property Extractor",
       "description": "Extracts file system properties (type, size, timestamps) from files",
       "parameterI18n": {
         "": {
@@ -1351,11 +1351,11 @@
       }
     },
     {
-      "name": "FootprintReplacer",
+      "name": "Footprint Replacer",
       "description": "Projette la géométrie 3D sur le plan XY et calcule l'empreinte union (supporte les solides, surfaces et CityGML)"
     },
     {
-      "name": "GeoJsonReader",
+      "name": "GeoJSON Reader",
       "description": "Reads geographic features from GeoJSON files, supporting both single features and feature collections",
       "parameterI18n": {
         "": {
@@ -1373,7 +1373,7 @@
       }
     },
     {
-      "name": "GeoJsonWriter",
+      "name": "GeoJSON Writer",
       "description": "Writes geographic features to GeoJSON files with optional grouping",
       "parameterI18n": {
         "": {
@@ -1389,7 +1389,7 @@
       }
     },
     {
-      "name": "GeoPackageReader",
+      "name": "GeoPackage Reader",
       "description": "Lit les entités géographiques à partir de fichiers GeoPackage (.gpkg) avec prise en charge des entités vectorielles, des tuiles et des métadonnées",
       "parameterI18n": {
         "": {
@@ -1414,7 +1414,7 @@
       }
     },
     {
-      "name": "GeoPackageWriter",
+      "name": "GeoPackage Writer",
       "description": "Écrit des entités géographiques dans des fichiers GeoPackage (.gpkg) avec une structure SQLite appropriée, une indexation spatiale et des tables de métadonnées",
       "parameterI18n": {
         "": {
@@ -1445,20 +1445,7 @@
       }
     },
     {
-      "name": "GeometryCoercer",
-      "description": "Coerces and converts feature geometries to specified target geometry types",
-      "parameterI18n": {
-        "": {
-          "title": "GeometryCoercer Parameters",
-          "description": "Configuration for coercing geometries to specific target types."
-        },
-        "targetType": {
-          "description": "Target geometry type to coerce features to (e.g., LineString)"
-        }
-      }
-    },
-    {
-      "name": "GeometryExtractor",
+      "name": "Geometry Extractor",
       "description": "Extract Geometry Data to Attribute",
       "parameterI18n": {
         "": {
@@ -1472,17 +1459,7 @@
       }
     },
     {
-      "name": "GeometryFilter",
-      "description": "Filter Features by Geometry Type",
-      "parameterI18n": {
-        "": {
-          "title": "Geometry Filter Parameters",
-          "description": "Configure how to filter features based on their geometry type"
-        }
-      }
-    },
-    {
-      "name": "GeometryPartExtractor",
+      "name": "Geometry Part Extractor",
       "description": "Extrait les parties de géométrie (surfaces) des géométries 3D en tant qu'entités séparées",
       "parameterI18n": {
         "": {
@@ -1503,11 +1480,11 @@
       }
     },
     {
-      "name": "GeometryRemover",
+      "name": "Geometry Remover",
       "description": "Supprime la géométrie d'une entité"
     },
     {
-      "name": "GeometryReplacer",
+      "name": "Geometry Replacer",
       "description": "Replace Feature Geometry from Attribute",
       "parameterI18n": {
         "": {
@@ -1521,7 +1498,7 @@
       }
     },
     {
-      "name": "GeometrySplitter",
+      "name": "Geometry Splitter",
       "description": "Split Multi-Geometries into Individual Features",
       "parameterI18n": {
         "": {
@@ -1544,7 +1521,7 @@
       }
     },
     {
-      "name": "GeometryValidator",
+      "name": "Geometry Validator",
       "description": "Validate Feature Geometry Quality",
       "parameterI18n": {
         "": {
@@ -1559,6 +1536,29 @@
       "enumI18n": {
         "ValidationType": {
           "duplicatePoints": {}
+        }
+      }
+    },
+    {
+      "name": "GeometryCoercer",
+      "description": "Coerces and converts feature geometries to specified target geometry types",
+      "parameterI18n": {
+        "": {
+          "title": "GeometryCoercer Parameters",
+          "description": "Configuration for coercing geometries to specific target types."
+        },
+        "targetType": {
+          "description": "Target geometry type to coerce features to (e.g., LineString)"
+        }
+      }
+    },
+    {
+      "name": "GeometryFilter",
+      "description": "Filter Features by Geometry Type",
+      "parameterI18n": {
+        "": {
+          "title": "Geometry Filter Parameters",
+          "description": "Configure how to filter features based on their geometry type"
         }
       }
     },
@@ -1618,7 +1618,7 @@
       }
     },
     {
-      "name": "GridDivider",
+      "name": "Grid Divider",
       "description": "Divise les polygones en cellules de grille régulières",
       "parameterI18n": {
         "": {
@@ -1981,7 +1981,7 @@
       "description": "Extract Polygon Holes as Separate Features"
     },
     {
-      "name": "HorizontalReprojector",
+      "name": "Horizontal Reprojector",
       "description": "Reproject Geometry to Different Coordinate System",
       "parameterI18n": {
         "": {
@@ -1999,7 +1999,7 @@
       }
     },
     {
-      "name": "ImageRasterizer",
+      "name": "Image Rasterizer",
       "description": "Convertit les géométries vectorielles au format d'image raster",
       "parameterI18n": {
         "": {
@@ -2028,7 +2028,7 @@
       }
     },
     {
-      "name": "InputRouter",
+      "name": "Input Router",
       "description": "Action for first port forwarding for sub-workflows.",
       "parameterI18n": {
         "": {
@@ -2042,17 +2042,7 @@
       "description": "Divides geometries into Japanese standard mesh grid (1km) and adds mesh codes to features"
     },
     {
-      "name": "JSONFragmenter",
-      "description": "Fragmente des documents JSON en entités individuelles basées sur une requête JSONPath",
-      "parameterI18n": {
-        "": {
-          "title": "JSONFragmenter Parameters",
-          "description": "Configuration for fragmenting JSON documents into individual features."
-        }
-      }
-    },
-    {
-      "name": "JsonReader",
+      "name": "JSON Reader",
       "description": "Lit des entités depuis des fichiers JSON, prenant en charge les objets individuels et les tableaux d'objets",
       "parameterI18n": {
         "": {
@@ -2070,7 +2060,7 @@
       }
     },
     {
-      "name": "JsonWriter",
+      "name": "JSON Writer",
       "description": "Écrit des entités dans des fichiers JSON",
       "parameterI18n": {
         "": {
@@ -2082,6 +2072,16 @@
         },
         "output": {
           "description": "Output path or expression for the JSON file to create"
+        }
+      }
+    },
+    {
+      "name": "JSONFragmenter",
+      "description": "Fragmente des documents JSON en entités individuelles basées sur une requête JSONPath",
+      "parameterI18n": {
+        "": {
+          "title": "JSONFragmenter Parameters",
+          "description": "Configuration for fragmenting JSON documents into individual features."
         }
       }
     },
@@ -2098,6 +2098,19 @@
           "description": "Name of the attribute to store the overlaid lists. Defaults to \"overlaidLists\"."
         },
         "tolerance": {}
+      }
+    },
+    {
+      "name": "List Exploder",
+      "description": "Explodes array attributes into separate features, creating one feature per array element",
+      "parameterI18n": {
+        "": {
+          "title": "ListExploder Parameters",
+          "description": "Configuration for exploding array attributes into individual features."
+        },
+        "sourceAttribute": {
+          "description": "Attribute containing the array to explode (each element becomes a separate feature)"
+        }
       }
     },
     {
@@ -2119,19 +2132,6 @@
         },
         "separateCharacter": {
           "description": "Character(s) to use as separator between concatenated values"
-        }
-      }
-    },
-    {
-      "name": "ListExploder",
-      "description": "Explodes array attributes into separate features, creating one feature per array element",
-      "parameterI18n": {
-        "": {
-          "title": "ListExploder Parameters",
-          "description": "Configuration for exploding array attributes into individual features."
-        },
-        "sourceAttribute": {
-          "description": "Attribute containing the array to explode (each element becomes a separate feature)"
         }
       }
     },
@@ -2158,7 +2158,7 @@
       }
     },
     {
-      "name": "MVTWriter",
+      "name": "MVT Writer",
       "description": "Writes vector features to Mapbox Vector Tiles (MVT) format for web mapping",
       "parameterI18n": {
         "": {
@@ -2262,15 +2262,15 @@
       }
     },
     {
-      "name": "NoopProcessor",
+      "name": "Noop Processor",
       "description": "No-Operation Pass-Through Processor"
     },
     {
-      "name": "NoopSink",
+      "name": "Noop Sink",
       "description": "No-Operation Sink (Discard Features)"
     },
     {
-      "name": "NullAttributeMapper",
+      "name": "Null Attribute Mapper",
       "description": "Remplace les valeurs d'attributs nulles par des valeurs par défaut configurées",
       "parameterI18n": {
         "": {
@@ -2441,7 +2441,7 @@
       }
     },
     {
-      "name": "OutputRouter",
+      "name": "Output Router",
       "description": "Action for last port forwarding for sub-workflows.",
       "parameterI18n": {
         "": {
@@ -2989,7 +2989,7 @@
       }
     },
     {
-      "name": "PolygonNormalExtractor",
+      "name": "Polygon Normal Extractor",
       "description": "Extrait les vecteurs normaux et d'autres propriétés des entités de polygone"
     },
     {
@@ -3018,7 +3018,7 @@
       }
     },
     {
-      "name": "RayIntersector",
+      "name": "Ray Intersector",
       "description": "Calcule les points d'intersection entre des rayons et des géométries",
       "parameterI18n": {
         "": {
@@ -3099,7 +3099,25 @@
       }
     },
     {
-      "name": "ShapefileReader",
+      "name": "SQL Reader",
+      "description": "Read Features from SQL Database",
+      "parameterI18n": {
+        "": {
+          "title": "SQL Reader Parameters",
+          "description": "Configure the SQL query and database connection for reading features from a database"
+        },
+        "databaseUrl": {
+          "title": "Database URL",
+          "description": "Database connection URL (e.g. `sqlite:///tests/sqlite/sqlite.db`, `mysql://user:password@localhost:3306/db`, `postgresql://user:password@localhost:5432/db`)"
+        },
+        "sql": {
+          "title": "SQL Query",
+          "description": "SQL query expression to execute for retrieving data"
+        }
+      }
+    },
+    {
+      "name": "Shapefile Reader",
       "description": "Lit des entités géographiques depuis des archives Shapefile (.zip contenant .shp, .dbf, .shx)",
       "parameterI18n": {
         "": {
@@ -3129,7 +3147,7 @@
       }
     },
     {
-      "name": "ShapefileWriter",
+      "name": "Shapefile Writer",
       "description": "Writes geographic features to ESRI Shapefile format with optional grouping",
       "parameterI18n": {
         "": {
@@ -3159,7 +3177,7 @@
       }
     },
     {
-      "name": "SpatialFilter",
+      "name": "Spatial Filter",
       "description": "Filtre les entités par relation spatiale",
       "parameterI18n": {
         "": {
@@ -3220,25 +3238,7 @@
       }
     },
     {
-      "name": "SqlReader",
-      "description": "Read Features from SQL Database",
-      "parameterI18n": {
-        "": {
-          "title": "SQL Reader Parameters",
-          "description": "Configure the SQL query and database connection for reading features from a database"
-        },
-        "databaseUrl": {
-          "title": "Database URL",
-          "description": "Database connection URL (e.g. `sqlite:///tests/sqlite/sqlite.db`, `mysql://user:password@localhost:3306/db`, `postgresql://user:password@localhost:5432/db`)"
-        },
-        "sql": {
-          "title": "SQL Query",
-          "description": "SQL query expression to execute for retrieving data"
-        }
-      }
-    },
-    {
-      "name": "StatisticsCalculator",
+      "name": "Statistics Calculator",
       "description": "Calculates statistical aggregations on feature attributes with customizable expressions",
       "parameterI18n": {
         "": {
@@ -3266,6 +3266,24 @@
           "newAttribute": {
             "title": "New attribute name"
           }
+        }
+      }
+    },
+    {
+      "name": "Three Dimension Forcer",
+      "description": "Convertit les géométries 2D en 3D en ajoutant des coordonnées Z (élévation)",
+      "parameterI18n": {
+        "": {
+          "title": "ThreeDimensionForcer Parameters",
+          "description": "Configure how to convert 2D geometries to 3D by adding Z-coordinates"
+        },
+        "elevation": {
+          "title": "Elevation",
+          "description": "The Z-coordinate (elevation) value to add to all points. Can be a constant value or an expression. Defaults to 0.0 if not specified."
+        },
+        "preserveExistingZ": {
+          "title": "Preserve Existing Z Values",
+          "description": "If true, geometries that are already 3D will pass through unchanged. If false, existing Z values will be replaced with the specified elevation. Defaults to false."
         }
       }
     },
@@ -3300,24 +3318,6 @@
         "minZ": {
           "title": "Minimum Z Attribute",
           "description": "Name of attribute containing the minimum Z coordinate"
-        }
-      }
-    },
-    {
-      "name": "ThreeDimensionForcer",
-      "description": "Convertit les géométries 2D en 3D en ajoutant des coordonnées Z (élévation)",
-      "parameterI18n": {
-        "": {
-          "title": "ThreeDimensionForcer Parameters",
-          "description": "Configure how to convert 2D geometries to 3D by adding Z-coordinates"
-        },
-        "elevation": {
-          "title": "Elevation",
-          "description": "The Z-coordinate (elevation) value to add to all points. Can be a constant value or an expression. Defaults to 0.0 if not specified."
-        },
-        "preserveExistingZ": {
-          "title": "Preserve Existing Z Values",
-          "description": "If true, geometries that are already 3D will pass through unchanged. If false, existing Z values will be replaced with the specified elevation. Defaults to false."
         }
       }
     },
@@ -3364,7 +3364,7 @@
       }
     },
     {
-      "name": "TwoDimensionForcer",
+      "name": "Two Dimension Forcer",
       "description": "Force 3D Geometry to 2D by Removing Z-Coordinates"
     },
     {
@@ -3386,7 +3386,7 @@
       "description": "Remove Redundant Vertices from Geometry"
     },
     {
-      "name": "VerticalReprojector",
+      "name": "Vertical Reprojector",
       "description": "Reproject Vertical Coordinates Between Datums",
       "parameterI18n": {
         "": {
@@ -3400,7 +3400,7 @@
       }
     },
     {
-      "name": "XMLFragmenter",
+      "name": "XML Fragmenter",
       "description": "Fragments large XML documents into smaller pieces based on specified element patterns",
       "parameterI18n": {
         "": {
@@ -3410,7 +3410,7 @@
       }
     },
     {
-      "name": "XMLValidator",
+      "name": "XML Validator",
       "description": "Validates XML documents against XSD schemas with success/failure routing",
       "parameterI18n": {
         "": {
@@ -3422,7 +3422,7 @@
       }
     },
     {
-      "name": "XmlWriter",
+      "name": "XML Writer",
       "description": "Écrit des entités dans des fichiers XML",
       "parameterI18n": {
         "": {
@@ -3435,7 +3435,7 @@
       }
     },
     {
-      "name": "ZipFileWriter",
+      "name": "Zip File Writer",
       "description": "Writes features to a zip file",
       "parameterI18n": {
         "": {

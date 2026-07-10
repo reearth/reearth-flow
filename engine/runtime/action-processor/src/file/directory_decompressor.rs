@@ -19,7 +19,7 @@ pub(super) struct DirectoryDecompressorFactory;
 
 impl ProcessorFactory for DirectoryDecompressorFactory {
     fn name(&self) -> &str {
-        "DirectoryDecompressor"
+        "Directory Decompressor"
     }
 
     fn description(&self) -> &str {
@@ -144,7 +144,7 @@ impl Processor for DirectoryDecompressor {
     }
 
     fn name(&self) -> &str {
-        "DirectoryDecompressor"
+        "Directory Decompressor"
     }
 }
 

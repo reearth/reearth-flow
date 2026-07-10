@@ -8,7 +8,7 @@ graphs:
       - id: b1a91180-ab88-4c1a-aab5-48c242a218da
         name: Source-Json-Reader-01
         type: action
-        action: JsonReader
+        action: JSON Reader
         with:
           dataset:
             type: string
@@ -50,7 +50,7 @@ graphs:
       - id: b1a91180-ab88-4c1a-aab5-48c242a218dc
         name: Sink-Json-Writer-01
         type: action
-        action: JsonWriter
+        action: JSON Writer
         with:
           output:
             type: flowExpr

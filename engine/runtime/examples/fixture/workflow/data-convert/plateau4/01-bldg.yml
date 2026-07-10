@@ -16,13 +16,13 @@ graphs:
   - id: 35038d96-5e81-4a21-a0e0-72f67eb71db5
     name: InputRouter
     type: action
-    action: InputRouter
+    action: Input Router
     with:
       routingPort: features
   - id: c7315341-26b3-4405-9d02-039d721cd225
     name: DirectoryDecompressor
     type: action
-    action: DirectoryDecompressor
+    action: Directory Decompressor
     with:
       archiveAttributes:
       - codelists
@@ -30,7 +30,7 @@ graphs:
   - id: c73fbb78-74ca-490e-8dc9-e9fa1729bea0
     name: FeatureFilePathExtractor
     type: action
-    action: FeatureFilePathExtractor
+    action: Feature File Path Extractor
     with:
       sourceDataset:
         type: flowExpr
@@ -40,7 +40,7 @@ graphs:
   - id: 9d04983e-e84e-4622-b0c6-827d7afad720
     name: FeatureFilter
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
       - expr:
@@ -60,7 +60,7 @@ graphs:
   - id: f3465c78-59fa-4307-bc02-67c46c2ddd98
     name: FeatureCounterByUdxDirs
     type: action
-    action: FeatureCounter
+    action: Feature Counter
     with:
       countStart: 1
       groupBy:
@@ -76,7 +76,7 @@ graphs:
   - id: 9fccbcdb-ab58-4fda-9a47-05a45c84a7fb
     name: OutputRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: features
   edges:
@@ -121,7 +121,7 @@ graphs:
   - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
     name: FeatureCreator
     type: action
-    action: FeatureCreator
+    action: Feature Creator
     with:
       creator:
         type: flowExpr
@@ -142,7 +142,7 @@ graphs:
   - id: ded2e272-e05c-4918-86b3-aa9f763da6e6
     name: FeatureReaderByCityGml
     type: action
-    action: FeatureCityGmlReader
+    action: Feature CityGML Reader
     with:
       codelistsPath:
         type: flowExpr
@@ -153,7 +153,7 @@ graphs:
   - id: a9b8c7d6-e5f4-3a2b-1c0d-9e8f7a6b5c4d
     name: TargetPackagesFilter
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
       - expr:
@@ -163,7 +163,7 @@ graphs:
   - id: 33e32a91-5ade-4265-8665-b061f552839c
     name: AttributeManagerForCityCodeAndCityName
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: cityCode
@@ -193,7 +193,7 @@ graphs:
   - id: ae9c558d-ce05-4b40-ae04-a4477d96db5a
     name: AttributeConversionTable
     type: action
-    action: AttributeConversionTable
+    action: Attribute Conversion Table
     with:
       format: csv
       inline: |
@@ -415,7 +415,7 @@ graphs:
   - id: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
     name: CityCodeBoundaryFilter
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
       - expr:
@@ -425,7 +425,7 @@ graphs:
   - id: 4ffbb8a3-371e-4938-aa73-c142f11bb04b
     name: FeatureSorter
     type: action
-    action: FeatureSorter
+    action: Feature Sorter
     with:
       attributes:
       - path
@@ -439,7 +439,7 @@ graphs:
   - id: 3e637368-48dc-48c2-aade-253d5b0cfeeb
     name: AttributeManagerRemoveUnnecessaryAttributes
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: meshcode
@@ -503,13 +503,13 @@ graphs:
   - id: c32a279d-97be-4584-b282-4d65627b1132
     name: FeatureLodFilter
     type: action
-    action: FeatureLodFilter
+    action: Feature LOD Filter
     with:
       filterKey: city_code
   - id: dc85a21b-4356-4a29-a862-270029071234
     name: BoundsExtractorByLod1
     type: action
-    action: BoundsExtractor
+    action: Bounds Extractor
     with:
       xmin: _xmin
       ymin: _ymin
@@ -520,7 +520,7 @@ graphs:
   - id: fe1daa11-2b3c-4e52-8a1f-123456789011
     name: AttributeManagerXYByLod1
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: _x
@@ -541,13 +541,13 @@ graphs:
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
     name: VerticalReprojectorByLod1
     type: action
-    action: VerticalReprojector
+    action: Vertical Reprojector
     with:
       reprojectorType: jgd2011ToWgs84
   - id: dc85a21b-4356-4a29-a862-270029071235
     name: BoundsExtractorByLod2
     type: action
-    action: BoundsExtractor
+    action: Bounds Extractor
     with:
       xmin: _xmin
       ymin: _ymin
@@ -558,7 +558,7 @@ graphs:
   - id: fe1daa11-2b3c-4e52-8a1f-123456789012
     name: AttributeManagerXYByLod2
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: _x
@@ -579,13 +579,13 @@ graphs:
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d2
     name: VerticalReprojectorByLod2
     type: action
-    action: VerticalReprojector
+    action: Vertical Reprojector
     with:
       reprojectorType: jgd2011ToWgs84
   - id: dc85a21b-4356-4a29-a862-270029071236
     name: BoundsExtractorByLod2NoTexture
     type: action
-    action: BoundsExtractor
+    action: Bounds Extractor
     with:
       xmin: _xmin
       ymin: _ymin
@@ -596,7 +596,7 @@ graphs:
   - id: fe1daa11-2b3c-4e52-8a1f-123456789013
     name: AttributeManagerXYByLod2NoTexture
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: _x
@@ -617,13 +617,13 @@ graphs:
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d3
     name: VerticalReprojectorByLod2NoTexture
     type: action
-    action: VerticalReprojector
+    action: Vertical Reprojector
     with:
       reprojectorType: jgd2011ToWgs84
   - id: dc85a21b-4356-4a29-a862-270029071237
     name: BoundsExtractorByLod3
     type: action
-    action: BoundsExtractor
+    action: Bounds Extractor
     with:
       xmin: _xmin
       ymin: _ymin
@@ -634,7 +634,7 @@ graphs:
   - id: fe1daa11-2b3c-4e52-8a1f-123456789014
     name: AttributeManagerXYByLod3
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: _x
@@ -655,13 +655,13 @@ graphs:
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d4
     name: VerticalReprojectorByLod3
     type: action
-    action: VerticalReprojector
+    action: Vertical Reprojector
     with:
       reprojectorType: jgd2011ToWgs84
   - id: dc85a21b-4356-4a29-a862-270029071238
     name: BoundsExtractorByLod3NoTexture
     type: action
-    action: BoundsExtractor
+    action: Bounds Extractor
     with:
       xmin: _xmin
       ymin: _ymin
@@ -672,7 +672,7 @@ graphs:
   - id: fe1daa11-2b3c-4e52-8a1f-123456789015
     name: AttributeManagerXYByLod3NoTexture
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: _x
@@ -693,13 +693,13 @@ graphs:
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d5
     name: VerticalReprojectorByLod3NoTexture
     type: action
-    action: VerticalReprojector
+    action: Vertical Reprojector
     with:
       reprojectorType: jgd2011ToWgs84
   - id: dc85a21b-4356-4a29-a862-270029071239
     name: BoundsExtractorByLod4
     type: action
-    action: BoundsExtractor
+    action: Bounds Extractor
     with:
       xmin: _xmin
       ymin: _ymin
@@ -710,7 +710,7 @@ graphs:
   - id: fe1daa11-2b3c-4e52-8a1f-123456789016
     name: AttributeManagerXYByLod4
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: _x
@@ -731,13 +731,13 @@ graphs:
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d6
     name: VerticalReprojectorByLod4
     type: action
-    action: VerticalReprojector
+    action: Vertical Reprojector
     with:
       reprojectorType: jgd2011ToWgs84
   - id: dc85a21b-4356-4a29-a862-270029071240
     name: BoundsExtractorByLod4NoTexture
     type: action
-    action: BoundsExtractor
+    action: Bounds Extractor
     with:
       xmin: _xmin
       ymin: _ymin
@@ -748,7 +748,7 @@ graphs:
   - id: fe1daa11-2b3c-4e52-8a1f-123456789017
     name: AttributeManagerXYByLod4NoTexture
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: _x
@@ -769,13 +769,13 @@ graphs:
   - id: 8b05f9d4-1cb2-4071-a1da-c968431bc0d7
     name: VerticalReprojectorByLod4NoTexture
     type: action
-    action: VerticalReprojector
+    action: Vertical Reprojector
     with:
       reprojectorType: jgd2011ToWgs84
   - id: 41d69f1f-2a4d-4bc1-a5d0-175698273571
     name: cesium3DTilesWriterByLod1
     type: action
-    action: Cesium3DTilesWriter
+    action: Cesium 3D Tiles Writer
     with:
       schemaKey: __citygml_feature_type
       minZoom: 15
@@ -801,7 +801,7 @@ graphs:
   - id: a61799d5-176e-4fb9-aa64-5d350adf0bb8
     name: cesium3DTilesWriterByLod2
     type: action
-    action: Cesium3DTilesWriter
+    action: Cesium 3D Tiles Writer
     with:
       schemaKey: __citygml_feature_type
       minZoom: 15
@@ -827,7 +827,7 @@ graphs:
   - id: fc4c3817-6efe-4d6e-8e82-ebd84d5e6e19
     name: cesium3DTilesWriterByLod2NoTexture
     type: action
-    action: Cesium3DTilesWriter
+    action: Cesium 3D Tiles Writer
     with:
       schemaKey: __citygml_feature_type
       minZoom: 15
@@ -853,7 +853,7 @@ graphs:
   - id: 953f5c48-9875-4c78-a1d6-4619f8fdedd2
     name: cesium3DTilesWriterByLod3
     type: action
-    action: Cesium3DTilesWriter
+    action: Cesium 3D Tiles Writer
     with:
       schemaKey: __citygml_feature_type
       minZoom: 15
@@ -879,7 +879,7 @@ graphs:
   - id: 990ff798-168a-496e-a20a-b428de6a9ec0
     name: cesium3DTilesWriterByLod3NoTexture
     type: action
-    action: Cesium3DTilesWriter
+    action: Cesium 3D Tiles Writer
     with:
       schemaKey: __citygml_feature_type
       minZoom: 15
@@ -905,7 +905,7 @@ graphs:
   - id: b0f8f2c5-bb9b-4f4f-8c27-254367031ded
     name: cesium3DTilesWriterByLod4
     type: action
-    action: Cesium3DTilesWriter
+    action: Cesium 3D Tiles Writer
     with:
       schemaKey: __citygml_feature_type
       minZoom: 15
@@ -931,7 +931,7 @@ graphs:
   - id: 3dfe09e6-0de5-4ba6-ac84-8dd4d2e94638
     name: cesium3DTilesWriterByLod4NoTexture
     type: action
-    action: Cesium3DTilesWriter
+    action: Cesium 3D Tiles Writer
     with:
       schemaKey: __citygml_feature_type
       minZoom: 15

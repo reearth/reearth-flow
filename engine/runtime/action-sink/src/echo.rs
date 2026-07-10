@@ -11,7 +11,7 @@ pub struct EchoSinkFactory;
 
 impl SinkFactory for EchoSinkFactory {
     fn name(&self) -> &str {
-        "EchoSink"
+        "Echo Sink"
     }
 
     fn description(&self) -> &str {
@@ -50,7 +50,7 @@ pub struct EchoSink;
 
 impl Sink for EchoSink {
     fn name(&self) -> &str {
-        "EchoSink"
+        "Echo Sink"
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {

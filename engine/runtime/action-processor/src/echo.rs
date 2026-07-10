@@ -14,7 +14,7 @@ pub struct EchoProcessorFactory;
 
 impl ProcessorFactory for EchoProcessorFactory {
     fn name(&self) -> &str {
-        "EchoProcessor"
+        "Echo Processor"
     }
 
     fn description(&self) -> &str {
@@ -79,6 +79,6 @@ impl Processor for EchoProcessor {
     }
 
     fn name(&self) -> &str {
-        "EchoProcessor"
+        "Echo Processor"
     }
 }

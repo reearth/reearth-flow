@@ -9,7 +9,7 @@ graphs:
       - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
         name: FeatureCreator
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
           creator:
             type: flowExpr
@@ -24,7 +24,7 @@ graphs:
       - id: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
         name: FeatureFilterBydate
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
           - expr:
@@ -59,7 +59,7 @@ graphs:
       - id: 5aa001b2-94d4-41c0-8552-58adf04ef66a
         name: ZipFileWriter
         type: action
-        action: ZipFileWriter
+        action: Zip File Writer
         with:
           output:
             type: string

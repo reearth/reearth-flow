@@ -22,7 +22,7 @@ pub(super) struct FeatureTypeFilterFactory;
 
 impl ProcessorFactory for FeatureTypeFilterFactory {
     fn name(&self) -> &str {
-        "FeatureTypeFilter"
+        "Feature Type Filter"
     }
 
     fn description(&self) -> &str {
@@ -111,6 +111,6 @@ impl Processor for FeatureTypeFilter {
     }
 
     fn name(&self) -> &str {
-        "FeatureTypeFilter"
+        "Feature Type Filter"
     }
 }

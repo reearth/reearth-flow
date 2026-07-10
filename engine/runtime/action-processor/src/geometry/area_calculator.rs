@@ -20,7 +20,7 @@ pub(super) struct AreaCalculatorFactory;
 
 impl ProcessorFactory for AreaCalculatorFactory {
     fn name(&self) -> &str {
-        "AreaCalculator"
+        "Area Calculator"
     }
 
     fn description(&self) -> &str {
@@ -203,6 +203,6 @@ impl Processor for AreaCalculator {
     }
 
     fn name(&self) -> &str {
-        "AreaCalculator"
+        "Area Calculator"
     }
 }

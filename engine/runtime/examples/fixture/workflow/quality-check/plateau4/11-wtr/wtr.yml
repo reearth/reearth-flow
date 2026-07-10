@@ -8,7 +8,7 @@ nodes:
   - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d
     name: InputRouter
     type: action
-    action: InputRouter
+    action: Input Router
     with:
       routingPort: features
 
@@ -32,7 +32,7 @@ nodes:
   - id: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f9a
     name: AttributeManagerInvalidSpatialAttrType
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: Folder
@@ -84,7 +84,7 @@ nodes:
   - id: f6a7b8c9-d0e1-2f3a-4b5c-6d7e8f9a0b1c
     name: StatisticsCalculatorInvalidSpatialAttr
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - Filename
@@ -97,7 +97,7 @@ nodes:
   - id: a7b8c9d0-e1f2-3a4b-5c6d-7e8f9a0b1c2d
     name: OutputRouterInvalidSpatialAttr
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: errorCountInvalidSpatialAttr
 
@@ -111,7 +111,7 @@ nodes:
   - id: 11a2b2c2-d2e2-f2a2-b2c2-d2e2f2a2b2c2
     name: AttributeMapperLod1SurfaceErrors
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: Folder
@@ -175,7 +175,7 @@ nodes:
   - id: 13a4b4c4-d4e4-f4a4-b4c4-d4e4f4a4b4c4
     name: StatisticsCalculatorLod1SurfaceErrors
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupId: gmlFilename
       groupBy:
@@ -189,7 +189,7 @@ nodes:
   - id: 14a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c5
     name: OutputRouterLod1SurfaceErrors
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: errorCountLod1SurfaceErrors
 
@@ -206,7 +206,7 @@ nodes:
   - id: d0e1f2a3-b4c5-6d7e-8f9a-0b1c2d3e4f5a
     name: FeatureFilterSolidIssues
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -218,7 +218,7 @@ nodes:
   - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b
     name: AttributeMapperNotClosed
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: filename
@@ -256,7 +256,7 @@ nodes:
   - id: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8d
     name: StatisticsCalculatorNotClosed
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupId: gmlFilename
       groupBy:
@@ -270,7 +270,7 @@ nodes:
   - id: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d9e
     name: OutputRouterNotClosed
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: errorCountNotClosedSolid
 
@@ -278,7 +278,7 @@ nodes:
   - id: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e0f
     name: AttributeMapperOtherSolidErrors
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: filename
@@ -316,7 +316,7 @@ nodes:
   - id: e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a2b
     name: StatisticsCalculatorOtherSolidErrors
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupId: gmlFilename
       groupBy:
@@ -330,7 +330,7 @@ nodes:
   - id: f8a9b0c1-d2e3-4f5a-6b7c-8d9e0f1a2b3c
     name: OutputRouterOtherSolidErrors
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: errorCountOtherSolidErrors
 
@@ -343,7 +343,7 @@ nodes:
   - id: 02a2b2c2-d2e2-f2a2-b2c2-d2e2f2a2b2c2
     name: AttributeMapperBoundarySurfaceErrors
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: Folder
@@ -407,7 +407,7 @@ nodes:
   - id: 04a4b4c4-d4e4-f4a4-b4c4-d4e4f4a4b4c4
     name: StatisticsCalculatorBoundarySurfaceErrors
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupId: gmlFilename
       groupBy:
@@ -421,7 +421,7 @@ nodes:
   - id: 05a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c5
     name: OutputRouterBoundarySurfaceErrors
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: errorCountBoundarySurfaceErrors
 
@@ -429,7 +429,7 @@ nodes:
   - id: a9b0c1d2-e3f4-5a6b-7c8d-9e0f1a2b3c4d
     name: OutputRouterFileOutput
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: fileOutput
 

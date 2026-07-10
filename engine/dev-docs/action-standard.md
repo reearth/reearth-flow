@@ -85,7 +85,7 @@ The parameter schema object itself must have a top-level `description` summarisi
 - `title`: short noun phrase in title case — "Output Attribute", "Target EPSG Code"
 - Prefer one sentence for `description`; two sentences are acceptable when the parameter behaviour is complex enough to warrant it
 - Describes what the parameter controls and what values are valid
-- Does not restate the parameter name or the action name: `"The outputAttribute"` or `"GeometrySplitter Parameters"` adds nothing
+- Does not restate the parameter name or the action name: `"The outputAttribute"` or `"Geometry Splitter Parameters"` adds nothing
 - For enums, describes what each variant does — see §3.4 for the mechanism and when each approach applies
 
 ### 3.4 Enum values

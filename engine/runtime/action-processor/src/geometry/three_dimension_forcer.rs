@@ -23,7 +23,7 @@ pub struct ThreeDimensionForcerFactory;
 
 impl ProcessorFactory for ThreeDimensionForcerFactory {
     fn name(&self) -> &str {
-        "ThreeDimensionForcer"
+        "Three Dimension Forcer"
     }
 
     fn description(&self) -> &str {
@@ -195,7 +195,7 @@ impl Processor for ThreeDimensionForcer {
     }
 
     fn name(&self) -> &str {
-        "ThreeDimensionForcer"
+        "Three Dimension Forcer"
     }
 }
 

@@ -108,7 +108,7 @@ pub(super) struct NullAttributeMapperFactory;
 
 impl ProcessorFactory for NullAttributeMapperFactory {
     fn name(&self) -> &str {
-        "NullAttributeMapper"
+        "Null Attribute Mapper"
     }
 
     fn description(&self) -> &str {
@@ -302,7 +302,7 @@ impl Processor for NullAttributeMapper {
     }
 
     fn name(&self) -> &str {
-        "NullAttributeMapper"
+        "Null Attribute Mapper"
     }
 }
 
@@ -733,7 +733,7 @@ mod tests {
         let result = factory.build(
             NodeContext::default(),
             EventHub::new(30),
-            "NullAttributeMapper".to_string(),
+            "Null Attribute Mapper".to_string(),
             Some(serde_json::from_str(&serde_json::to_string(&params).unwrap()).unwrap()),
         );
 

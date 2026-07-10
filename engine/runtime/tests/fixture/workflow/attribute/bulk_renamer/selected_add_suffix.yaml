@@ -11,7 +11,7 @@ graphs:
       - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
         name: FeatureCreator
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
           creator:
             type: flowExpr
@@ -30,7 +30,7 @@ graphs:
       - id: d2b4977d-e218-4628-96f2-d26407aeea14
         name: BulkRenamer
         type: action
-        action: BulkAttributeRenamer
+        action: Bulk Attribute Renamer
         with:
           renameType: Selected
           renameAction: AddSuffix
@@ -41,7 +41,7 @@ graphs:
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         name: JsonWriter
         type: action
-        action: JsonWriter
+        action: JSON Writer
         with:
           output:
             type: flowExpr

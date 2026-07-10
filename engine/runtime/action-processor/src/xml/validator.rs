@@ -180,7 +180,7 @@ pub struct XmlValidatorFactory;
 
 impl ProcessorFactory for XmlValidatorFactory {
     fn name(&self) -> &str {
-        "XMLValidator"
+        "XML Validator"
     }
 
     fn description(&self) -> &str {
@@ -294,7 +294,7 @@ impl Processor for XmlValidator {
     }
 
     fn name(&self) -> &str {
-        "XMLValidator"
+        "XML Validator"
     }
 }
 

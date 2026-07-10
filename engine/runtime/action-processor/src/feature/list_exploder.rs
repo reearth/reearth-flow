@@ -19,7 +19,7 @@ pub(super) struct ListExploderFactory;
 
 impl ProcessorFactory for ListExploderFactory {
     fn name(&self) -> &str {
-        "ListExploder"
+        "List Exploder"
     }
 
     fn description(&self) -> &str {
@@ -123,6 +123,6 @@ impl Processor for ListExploder {
     }
 
     fn name(&self) -> &str {
-        "ListExploder"
+        "List Exploder"
     }
 }

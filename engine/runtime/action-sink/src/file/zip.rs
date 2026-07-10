@@ -21,7 +21,7 @@ pub(crate) struct ZipFileWriterFactory;
 
 impl SinkFactory for ZipFileWriterFactory {
     fn name(&self) -> &str {
-        "ZipFileWriter"
+        "Zip File Writer"
     }
 
     fn description(&self) -> &str {
@@ -108,7 +108,7 @@ struct ZipFileWriterParam {
 
 impl Sink for ZipFileWriter {
     fn name(&self) -> &str {
-        "ZipFileWriter"
+        "Zip File Writer"
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {

@@ -20,7 +20,7 @@ pub(super) struct AttributeMapperFactory;
 
 impl ProcessorFactory for AttributeMapperFactory {
     fn name(&self) -> &str {
-        "AttributeMapper"
+        "Attribute Mapper"
     }
 
     fn description(&self) -> &str {
@@ -291,7 +291,7 @@ impl Processor for AttributeMapper {
     }
 
     fn name(&self) -> &str {
-        "AttributeMapper"
+        "Attribute Mapper"
     }
 }
 

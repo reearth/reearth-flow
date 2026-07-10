@@ -16,7 +16,7 @@ pub struct AppearanceRemoverFactory;
 
 impl ProcessorFactory for AppearanceRemoverFactory {
     fn name(&self) -> &str {
-        "AppearanceRemover"
+        "Appearance Remover"
     }
 
     fn description(&self) -> &str {
@@ -101,6 +101,6 @@ impl Processor for AppearanceRemover {
     }
 
     fn name(&self) -> &str {
-        "AppearanceRemover"
+        "Appearance Remover"
     }
 }

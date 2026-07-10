@@ -7,9 +7,9 @@ graphs:
     name: main_graph
     nodes:
       - id: a1fc0a3e-61d3-48e2-a328-e7226c2ad1ac
-        name: FeatureCreator
+        name: Feature Creator
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
           creator:
             type: flowExpr
@@ -17,15 +17,15 @@ graphs:
       - id: b2f50a3e-61d3-48e2-a328-e7226c2ad1ac
         name: BulkRenamer
         type: action
-        action: BulkAttributeRenamer
+        action: Bulk Attribute Renamer
         with:
           renameType: All
           renameAction: AddPrefix
           renameValue: null  # null value will cause Factory error
       - id: c1fc0a3e-61d3-48e2-a328-e7226c2ad1ac
-        name: JsonWriter
+        name: JSON Writer
         type: action
-        action: JsonWriter
+        action: JSON Writer
         with:
           output:
             type: string

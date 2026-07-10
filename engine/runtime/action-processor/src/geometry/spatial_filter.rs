@@ -27,7 +27,7 @@ pub(super) struct SpatialFilterFactory;
 
 impl ProcessorFactory for SpatialFilterFactory {
     fn name(&self) -> &str {
-        "SpatialFilter"
+        "Spatial Filter"
     }
 
     fn description(&self) -> &str {
@@ -248,7 +248,7 @@ impl Processor for SpatialFilter {
     }
 
     fn name(&self) -> &str {
-        "SpatialFilter"
+        "Spatial Filter"
     }
 }
 

@@ -11,7 +11,7 @@ graphs:
       - id: a2b92281-bc99-5d2b-bbc6-59d353b329dc
         name: CityGML-Reader
         type: action
-        action: CityGmlReader
+        action: CityGML Reader
         with:
           dataset:
             type: string
@@ -19,7 +19,7 @@ graphs:
       - id: c3c93382-cd00-6e3c-ccd7-60e464c430ed
         name: CityGML-Writer
         type: action
-        action: CityGmlWriter
+        action: CityGML Writer
         with:
           output:
             type: flowExpr

@@ -1,7 +1,7 @@
 {
   "actions": [
     {
-      "name": "AppearanceRemover",
+      "name": "Appearance Remover",
       "type": "processor",
       "description": "Elimina información de apariencia (materiales, texturas) de la geometría CityGML",
       "parameter": null,
@@ -21,7 +21,7 @@
       ]
     },
     {
-      "name": "AreaCalculator",
+      "name": "Area Calculator",
       "type": "processor",
       "description": "Calcula el área plana o inclinada de geometrías de polígono y agrega los resultados como atributos",
       "parameter": {
@@ -168,7 +168,7 @@
       "tags": []
     },
     {
-      "name": "AttributeAggregator",
+      "name": "Attribute Aggregator",
       "type": "processor",
       "description": "Agrupa las entidades según sus atributos",
       "parameter": {
@@ -336,47 +336,7 @@
       ]
     },
     {
-      "name": "AttributeBulkArrayJoiner",
-      "type": "processor",
-      "description": "Une atributos de matriz en valores únicos",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "AttributeBulkArrayJoiner Parameters",
-        "description": "Configure which array attributes to join into single values",
-        "type": "object",
-        "properties": {
-          "ignoreAttributes": {
-            "title": "Attributes to Ignore",
-            "description": "List of attribute names to skip during array joining process",
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/definitions/Attribute"
-            }
-          }
-        },
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "features"
-      ],
-      "categories": [
-        "Attribute"
-      ],
-      "tags": []
-    },
-    {
-      "name": "AttributeConversionTable",
+      "name": "Attribute Conversion Table",
       "type": "processor",
       "description": "Transforma atributos de características usando tablas de búsqueda",
       "parameter": {
@@ -505,87 +465,7 @@
       ]
     },
     {
-      "name": "AttributeDuplicateFilter",
-      "type": "processor",
-      "description": "Filtra las entidades con atributos duplicados",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "AttributeDuplicateFilter Parameters",
-        "type": "object",
-        "required": [
-          "filterBy"
-        ],
-        "properties": {
-          "filterBy": {
-            "title": "Filter Attributes",
-            "description": "Attributes used to identify duplicate features - features with identical values for these attributes will be deduplicated",
-            "type": "array",
-            "items": {
-              "$ref": "#/definitions/Attribute"
-            }
-          }
-        },
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "features"
-      ],
-      "categories": [
-        "Attribute"
-      ],
-      "tags": []
-    },
-    {
-      "name": "AttributeFilePathInfoExtractor",
-      "type": "processor",
-      "description": "Extrae información de rutas de archivo a partir de atributos",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "AttributeFilePathInfoExtractor Parameters",
-        "type": "object",
-        "required": [
-          "attribute"
-        ],
-        "properties": {
-          "attribute": {
-            "title": "Source Path Attribute",
-            "description": "Attribute containing the file path to analyze for extracting file system information",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "features",
-        "rejected"
-      ],
-      "categories": [
-        "Attribute"
-      ],
-      "tags": []
-    },
-    {
-      "name": "AttributeFlattener",
+      "name": "Attribute Flattener",
       "type": "processor",
       "description": "Aplanador para atributos anidados",
       "parameter": {
@@ -626,7 +506,7 @@
       ]
     },
     {
-      "name": "AttributeManager",
+      "name": "Attribute Manager",
       "type": "processor",
       "description": "Gestiona atributos",
       "parameter": {
@@ -717,7 +597,7 @@
       "tags": []
     },
     {
-      "name": "AttributeMapper",
+      "name": "Attribute Mapper",
       "type": "processor",
       "description": "Asigna atributos",
       "parameter": {
@@ -835,6 +715,126 @@
       ]
     },
     {
+      "name": "AttributeBulkArrayJoiner",
+      "type": "processor",
+      "description": "Une atributos de matriz en valores únicos",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "AttributeBulkArrayJoiner Parameters",
+        "description": "Configure which array attributes to join into single values",
+        "type": "object",
+        "properties": {
+          "ignoreAttributes": {
+            "title": "Attributes to Ignore",
+            "description": "List of attribute names to skip during array joining process",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Attribute"
+      ],
+      "tags": []
+    },
+    {
+      "name": "AttributeDuplicateFilter",
+      "type": "processor",
+      "description": "Filtra las entidades con atributos duplicados",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "AttributeDuplicateFilter Parameters",
+        "type": "object",
+        "required": [
+          "filterBy"
+        ],
+        "properties": {
+          "filterBy": {
+            "title": "Filter Attributes",
+            "description": "Attributes used to identify duplicate features - features with identical values for these attributes will be deduplicated",
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Attribute"
+      ],
+      "tags": []
+    },
+    {
+      "name": "AttributeFilePathInfoExtractor",
+      "type": "processor",
+      "description": "Extrae información de rutas de archivo a partir de atributos",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "AttributeFilePathInfoExtractor Parameters",
+        "type": "object",
+        "required": [
+          "attribute"
+        ],
+        "properties": {
+          "attribute": {
+            "title": "Source Path Attribute",
+            "description": "Attribute containing the file path to analyze for extracting file system information",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
+      ],
+      "categories": [
+        "Attribute"
+      ],
+      "tags": []
+    },
+    {
       "name": "AttributeRangeMapper",
       "type": "processor",
       "description": "Mapear valores de atributos a rangos y asignar valores de salida correspondientes",
@@ -948,7 +948,7 @@
       "tags": []
     },
     {
-      "name": "BoundsExtractor",
+      "name": "Bounds Extractor",
       "type": "processor",
       "description": "Extractor de límites",
       "parameter": {
@@ -1116,7 +1116,7 @@
       ]
     },
     {
-      "name": "BulkAttributeRenamer",
+      "name": "Bulk Attribute Renamer",
       "type": "processor",
       "description": "Cambia el nombre de atributos añadiendo/eliminando prefijos o sufijos, o reemplazando texto",
       "parameter": {
@@ -1371,6 +1371,359 @@
       "tags": []
     },
     {
+      "name": "CSV Reader",
+      "type": "source",
+      "description": "Lee características de un archivo CSV",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "CsvReader Parameters",
+        "description": "Configure how CSV and TSV files are processed and read",
+        "type": "object",
+        "required": [
+          "format"
+        ],
+        "properties": {
+          "format": {
+            "title": "File Format",
+            "description": "Choose the delimiter format for the input file",
+            "allOf": [
+              {
+                "$ref": "#/definitions/CsvFormat"
+              }
+            ]
+          },
+          "encoding": {
+            "title": "Character Encoding",
+            "description": "Character encoding for the CSV/TSV file. If not specified, defaults to UTF-8.\n\nSupported encodings include: - **UTF-8** - Unicode UTF-8 (default) - **Shift-JIS** - Japanese encoding - **EUC-JP** - Japanese encoding - **Windows Code Pages** - Windows-1250 through Windows-1258 - **ISO-8859 family** - ISO-8859-1 through ISO-8859-16\n\nAll encoding labels are case-insensitive.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "dataset": {
+            "title": "File Path",
+            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "inline": {
+            "title": "Inline Content",
+            "description": "Expression that returns the file content as text instead of reading from a file path",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "offset": {
+            "title": "Header Row Offset",
+            "description": "Skip this many rows from the beginning to find the header row (0 = first row is header)",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint",
+            "minimum": 0.0
+          },
+          "headerRows": {
+            "title": "Header Row Count",
+            "description": "Number of consecutive rows that make up the header (default: 1). When 0, no header rows are read and column names are auto-generated as \"column1\", \"column2\", etc. When greater than 1, column names are formed by joining non-empty values from each header row with \"_\".",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint",
+            "minimum": 0.0
+          },
+          "geometry": {
+            "title": "Geometry Configuration",
+            "description": "Optional configuration for parsing geometry from CSV columns",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/GeometryConfig"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "CsvFormat": {
+            "oneOf": [
+              {
+                "title": "CSV (Comma-Separated Values)",
+                "description": "File with comma-separated values",
+                "type": "string",
+                "enum": [
+                  "csv"
+                ]
+              },
+              {
+                "title": "TSV (Tab-Separated Values)",
+                "description": "File with tab-separated values",
+                "type": "string",
+                "enum": [
+                  "tsv"
+                ]
+              }
+            ]
+          },
+          "GeometryConfig": {
+            "title": "Geometry Configuration",
+            "description": "Configure how geometry data is extracted from CSV columns",
+            "type": "object",
+            "oneOf": [
+              {
+                "title": "WKT Column",
+                "description": "Geometry stored as Well-Known Text in a single column",
+                "type": "object",
+                "required": [
+                  "column"
+                ],
+                "properties": {
+                  "column": {
+                    "title": "WKT Column Name",
+                    "description": "Name of the column containing WKT geometry",
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "title": "Coordinate Columns",
+                "description": "Geometry stored as separate X, Y, (optional Z) columns",
+                "type": "object",
+                "required": [
+                  "xColumn",
+                  "yColumn"
+                ],
+                "properties": {
+                  "xColumn": {
+                    "title": "X Column Name",
+                    "description": "Name of the column containing X coordinate (longitude)",
+                    "type": "string"
+                  },
+                  "yColumn": {
+                    "title": "Y Column Name",
+                    "description": "Name of the column containing Y coordinate (latitude)",
+                    "type": "string"
+                  },
+                  "zColumn": {
+                    "title": "Z Column Name",
+                    "description": "Optional name of the column containing Z coordinate (elevation)",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              }
+            ],
+            "properties": {
+              "epsg": {
+                "title": "EPSG Code",
+                "description": "Coordinate Reference System code (e.g., 4326 for WGS84)",
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "format": "uint16",
+                "minimum": 0.0
+              }
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Input"
+      ],
+      "tags": [
+        "csv"
+      ]
+    },
+    {
+      "name": "CSV Writer",
+      "type": "sink",
+      "description": "Escribe entidades en archivos CSV o TSV",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "CsvWriter Parameters",
+        "description": "Configuration for writing features to CSV/TSV files.",
+        "type": "object",
+        "required": [
+          "format",
+          "output"
+        ],
+        "properties": {
+          "output": {
+            "description": "Output path or expression for the CSV/TSV file to create",
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "format": {
+            "description": "File format: csv (comma) or tsv (tab)",
+            "allOf": [
+              {
+                "$ref": "#/definitions/CsvFormat"
+              }
+            ]
+          },
+          "geometry": {
+            "title": "Geometry Configuration",
+            "description": "Optional configuration for exporting geometry to CSV columns",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/GeometryExportConfig"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "CsvFormat": {
+            "oneOf": [
+              {
+                "title": "CSV (Comma-Separated Values)",
+                "description": "File with comma-separated values",
+                "type": "string",
+                "enum": [
+                  "csv"
+                ]
+              },
+              {
+                "title": "TSV (Tab-Separated Values)",
+                "description": "File with tab-separated values",
+                "type": "string",
+                "enum": [
+                  "tsv"
+                ]
+              }
+            ]
+          },
+          "GeometryExportConfig": {
+            "title": "Geometry Export Configuration",
+            "description": "Configure how geometry data is written to CSV columns",
+            "type": "object",
+            "oneOf": [
+              {
+                "title": "WKT Column",
+                "description": "Write geometry as Well-Known Text in a single column",
+                "type": "object",
+                "required": [
+                  "column"
+                ],
+                "properties": {
+                  "column": {
+                    "title": "WKT Column Name",
+                    "description": "Name of the column to write WKT geometry",
+                    "type": "string"
+                  }
+                }
+              },
+              {
+                "title": "Coordinate Columns",
+                "description": "Write geometry as separate X, Y, (optional Z) columns\nNote: Only supports Point geometries. Non-point geometries will be skipped with a warning.",
+                "type": "object",
+                "required": [
+                  "xColumn",
+                  "yColumn"
+                ],
+                "properties": {
+                  "xColumn": {
+                    "title": "X Column Name",
+                    "description": "Name of the column for X coordinate (longitude)",
+                    "type": "string"
+                  },
+                  "yColumn": {
+                    "title": "Y Column Name",
+                    "description": "Name of the column for Y coordinate (latitude)",
+                    "type": "string"
+                  },
+                  "zColumn": {
+                    "title": "Z Column Name",
+                    "description": "Optional name of the column for Z coordinate (elevation)",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "Output"
+      ],
+      "tags": [
+        "csv"
+      ]
+    },
+    {
       "name": "CenterPointReplacer",
       "type": "processor",
       "description": "Reemplaza la geometría de la entidad con un punto que esté en el centro de su caja delimitadora, en su centro de masa o dentro de su área.",
@@ -1432,7 +1785,7 @@
       "tags": []
     },
     {
-      "name": "Cesium3DTilesWriter",
+      "name": "Cesium 3D Tiles Writer",
       "type": "sink",
       "description": "Escribe las entidades en un archivo",
       "parameter": {
@@ -1555,7 +1908,7 @@
       ]
     },
     {
-      "name": "CityGmlReader",
+      "name": "CityGML Reader",
       "type": "source",
       "description": "Lee modelos de ciudad 3D desde archivos CityGML",
       "parameter": {
@@ -1636,7 +1989,7 @@
       ]
     },
     {
-      "name": "CityGmlWriter",
+      "name": "CityGML Writer",
       "type": "sink",
       "description": "Escribe entidades en archivos CityGML 2.0",
       "parameter": {
@@ -1926,359 +2279,6 @@
         "Geometry"
       ],
       "tags": []
-    },
-    {
-      "name": "CsvReader",
-      "type": "source",
-      "description": "Lee características de un archivo CSV",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "CsvReader Parameters",
-        "description": "Configure how CSV and TSV files are processed and read",
-        "type": "object",
-        "required": [
-          "format"
-        ],
-        "properties": {
-          "format": {
-            "title": "File Format",
-            "description": "Choose the delimiter format for the input file",
-            "allOf": [
-              {
-                "$ref": "#/definitions/CsvFormat"
-              }
-            ]
-          },
-          "encoding": {
-            "title": "Character Encoding",
-            "description": "Character encoding for the CSV/TSV file. If not specified, defaults to UTF-8.\n\nSupported encodings include: - **UTF-8** - Unicode UTF-8 (default) - **Shift-JIS** - Japanese encoding - **EUC-JP** - Japanese encoding - **Windows Code Pages** - Windows-1250 through Windows-1258 - **ISO-8859 family** - ISO-8859-1 through ISO-8859-16\n\nAll encoding labels are case-insensitive.",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "dataset": {
-            "title": "File Path",
-            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-            "type": [
-              "object",
-              "null"
-            ],
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr",
-                  "string"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "inline": {
-            "title": "Inline Content",
-            "description": "Expression that returns the file content as text instead of reading from a file path",
-            "type": [
-              "object",
-              "null"
-            ],
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr",
-                  "string"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "offset": {
-            "title": "Header Row Offset",
-            "description": "Skip this many rows from the beginning to find the header row (0 = first row is header)",
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "uint",
-            "minimum": 0.0
-          },
-          "headerRows": {
-            "title": "Header Row Count",
-            "description": "Number of consecutive rows that make up the header (default: 1). When 0, no header rows are read and column names are auto-generated as \"column1\", \"column2\", etc. When greater than 1, column names are formed by joining non-empty values from each header row with \"_\".",
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "uint",
-            "minimum": 0.0
-          },
-          "geometry": {
-            "title": "Geometry Configuration",
-            "description": "Optional configuration for parsing geometry from CSV columns",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/GeometryConfig"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "CsvFormat": {
-            "oneOf": [
-              {
-                "title": "CSV (Comma-Separated Values)",
-                "description": "File with comma-separated values",
-                "type": "string",
-                "enum": [
-                  "csv"
-                ]
-              },
-              {
-                "title": "TSV (Tab-Separated Values)",
-                "description": "File with tab-separated values",
-                "type": "string",
-                "enum": [
-                  "tsv"
-                ]
-              }
-            ]
-          },
-          "GeometryConfig": {
-            "title": "Geometry Configuration",
-            "description": "Configure how geometry data is extracted from CSV columns",
-            "type": "object",
-            "oneOf": [
-              {
-                "title": "WKT Column",
-                "description": "Geometry stored as Well-Known Text in a single column",
-                "type": "object",
-                "required": [
-                  "column"
-                ],
-                "properties": {
-                  "column": {
-                    "title": "WKT Column Name",
-                    "description": "Name of the column containing WKT geometry",
-                    "type": "string"
-                  }
-                }
-              },
-              {
-                "title": "Coordinate Columns",
-                "description": "Geometry stored as separate X, Y, (optional Z) columns",
-                "type": "object",
-                "required": [
-                  "xColumn",
-                  "yColumn"
-                ],
-                "properties": {
-                  "xColumn": {
-                    "title": "X Column Name",
-                    "description": "Name of the column containing X coordinate (longitude)",
-                    "type": "string"
-                  },
-                  "yColumn": {
-                    "title": "Y Column Name",
-                    "description": "Name of the column containing Y coordinate (latitude)",
-                    "type": "string"
-                  },
-                  "zColumn": {
-                    "title": "Z Column Name",
-                    "description": "Optional name of the column containing Z coordinate (elevation)",
-                    "type": [
-                      "string",
-                      "null"
-                    ]
-                  }
-                }
-              }
-            ],
-            "properties": {
-              "epsg": {
-                "title": "EPSG Code",
-                "description": "Coordinate Reference System code (e.g., 4326 for WGS84)",
-                "type": [
-                  "integer",
-                  "null"
-                ],
-                "format": "uint16",
-                "minimum": 0.0
-              }
-            }
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [],
-      "outputPorts": [
-        "features"
-      ],
-      "categories": [
-        "Input"
-      ],
-      "tags": [
-        "csv"
-      ]
-    },
-    {
-      "name": "CsvWriter",
-      "type": "sink",
-      "description": "Escribe entidades en archivos CSV o TSV",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "CsvWriter Parameters",
-        "description": "Configuration for writing features to CSV/TSV files.",
-        "type": "object",
-        "required": [
-          "format",
-          "output"
-        ],
-        "properties": {
-          "output": {
-            "description": "Output path or expression for the CSV/TSV file to create",
-            "type": "object",
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr",
-                  "string"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "format": {
-            "description": "File format: csv (comma) or tsv (tab)",
-            "allOf": [
-              {
-                "$ref": "#/definitions/CsvFormat"
-              }
-            ]
-          },
-          "geometry": {
-            "title": "Geometry Configuration",
-            "description": "Optional configuration for exporting geometry to CSV columns",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/GeometryExportConfig"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "CsvFormat": {
-            "oneOf": [
-              {
-                "title": "CSV (Comma-Separated Values)",
-                "description": "File with comma-separated values",
-                "type": "string",
-                "enum": [
-                  "csv"
-                ]
-              },
-              {
-                "title": "TSV (Tab-Separated Values)",
-                "description": "File with tab-separated values",
-                "type": "string",
-                "enum": [
-                  "tsv"
-                ]
-              }
-            ]
-          },
-          "GeometryExportConfig": {
-            "title": "Geometry Export Configuration",
-            "description": "Configure how geometry data is written to CSV columns",
-            "type": "object",
-            "oneOf": [
-              {
-                "title": "WKT Column",
-                "description": "Write geometry as Well-Known Text in a single column",
-                "type": "object",
-                "required": [
-                  "column"
-                ],
-                "properties": {
-                  "column": {
-                    "title": "WKT Column Name",
-                    "description": "Name of the column to write WKT geometry",
-                    "type": "string"
-                  }
-                }
-              },
-              {
-                "title": "Coordinate Columns",
-                "description": "Write geometry as separate X, Y, (optional Z) columns\nNote: Only supports Point geometries. Non-point geometries will be skipped with a warning.",
-                "type": "object",
-                "required": [
-                  "xColumn",
-                  "yColumn"
-                ],
-                "properties": {
-                  "xColumn": {
-                    "title": "X Column Name",
-                    "description": "Name of the column for X coordinate (longitude)",
-                    "type": "string"
-                  },
-                  "yColumn": {
-                    "title": "Y Column Name",
-                    "description": "Name of the column for Y coordinate (latitude)",
-                    "type": "string"
-                  },
-                  "zColumn": {
-                    "title": "Z Column Name",
-                    "description": "Optional name of the column for Z coordinate (elevation)",
-                    "type": [
-                      "string",
-                      "null"
-                    ]
-                  }
-                }
-              }
-            ]
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [],
-      "categories": [
-        "Output"
-      ],
-      "tags": [
-        "csv"
-      ]
     },
     {
       "name": "CzmlReader",
@@ -2739,7 +2739,7 @@
       "tags": []
     },
     {
-      "name": "DimensionFilter",
+      "name": "Dimension Filter",
       "type": "processor",
       "description": "Filtra las entidades según su dimensión",
       "parameter": null,
@@ -2761,7 +2761,7 @@
       ]
     },
     {
-      "name": "DirectoryDecompressor",
+      "name": "Directory Decompressor",
       "type": "processor",
       "description": "Descomprime directorios de archivos",
       "parameter": {
@@ -2900,7 +2900,7 @@
       "tags": []
     },
     {
-      "name": "EchoProcessor",
+      "name": "Echo Processor",
       "type": "processor",
       "description": "Repite las entidades",
       "parameter": null,
@@ -2917,7 +2917,7 @@
       "tags": []
     },
     {
-      "name": "EchoSink",
+      "name": "Echo Sink",
       "type": "sink",
       "description": "Repite las entidades",
       "parameter": null,
@@ -2932,7 +2932,7 @@
       "tags": []
     },
     {
-      "name": "ElevationExtractor",
+      "name": "Elevation Extractor",
       "type": "processor",
       "description": "Extrae el primer valor de la coordenada z de una entidad y lo almacena en un atributo.",
       "parameter": {
@@ -3076,6 +3076,810 @@
       "tags": [
         "3d"
       ]
+    },
+    {
+      "name": "Feature CityGML Reader",
+      "type": "processor",
+      "description": "Lee características de archivos CityGML",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureCityGmlReader Parameters",
+        "description": "Configuration for reading and processing CityGML files as features.",
+        "type": "object",
+        "required": [
+          "dataset"
+        ],
+        "properties": {
+          "dataset": {
+            "title": "Dataset",
+            "description": "Path or expression to the CityGML dataset file to be read",
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "flatten": {
+            "title": "Flatten",
+            "description": "Whether to flatten the hierarchical structure of the CityGML data",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "codelistsPath": {
+            "title": "Codelists Path",
+            "description": "Optional path to the codelists directory for resolving codelist values",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Input"
+      ],
+      "tags": [
+        "citygml",
+        "3d"
+      ]
+    },
+    {
+      "name": "Feature Counter",
+      "type": "processor",
+      "description": "Cuenta entidades",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Feature Counter Parameters",
+        "description": "Configure how features are counted and grouped, and where to store the count",
+        "type": "object",
+        "required": [
+          "countStart",
+          "outputAttribute"
+        ],
+        "properties": {
+          "countStart": {
+            "title": "Start Count",
+            "description": "Starting value for the counter",
+            "type": "integer",
+            "format": "int64"
+          },
+          "groupBy": {
+            "title": "Group By Attributes",
+            "description": "List of attribute names to group features by before counting",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "outputAttribute": {
+            "title": "Output Attribute",
+            "description": "Name of the attribute where the count will be stored",
+            "type": "string"
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
+      ],
+      "categories": [
+        "Debug"
+      ],
+      "tags": []
+    },
+    {
+      "name": "Feature Creator",
+      "type": "source",
+      "description": "Crea entidades a partir de expresiones",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureCreator Parameters",
+        "description": "Configure how to generate custom features using script expressions",
+        "type": "object",
+        "required": [
+          "creator"
+        ],
+        "properties": {
+          "creator": {
+            "title": "Script Expression",
+            "description": "Write a script expression that returns a map (single feature) or array of maps (multiple features). Each map represents feature attributes as key-value pairs.",
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Input"
+      ],
+      "tags": []
+    },
+    {
+      "name": "Feature File Path Extractor",
+      "type": "processor",
+      "description": "Extrae rutas de archivo de características",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Feature File Path Extractor Parameters",
+        "description": "Configure how to extract file paths from datasets and optionally extract archives",
+        "type": "object",
+        "required": [
+          "extractArchive",
+          "sourceDataset"
+        ],
+        "properties": {
+          "sourceDataset": {
+            "title": "Source Dataset",
+            "description": "Expression to get the source dataset path or URL",
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "extractArchive": {
+            "title": "Extract Archive",
+            "description": "Whether to extract archive files found in the dataset",
+            "type": "boolean"
+          },
+          "destPrefix": {
+            "title": "Destination Prefix",
+            "description": "Optional prefix to add to extracted file paths",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "unfiltered"
+      ],
+      "categories": [
+        "Feature"
+      ],
+      "tags": [
+        "file",
+        "path"
+      ]
+    },
+    {
+      "name": "Feature Filter",
+      "type": "processor",
+      "description": "Filtra entidades según condiciones",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Feature Filter Parameters",
+        "description": "Configure the conditions and output ports for filtering features based on expressions",
+        "type": "object",
+        "required": [
+          "conditions"
+        ],
+        "properties": {
+          "conditions": {
+            "title": "Filter Conditions",
+            "description": "List of conditions and their corresponding output ports for routing filtered features",
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Condition"
+            }
+          }
+        },
+        "definitions": {
+          "Condition": {
+            "type": "object",
+            "required": [
+              "expr",
+              "outputPort"
+            ],
+            "properties": {
+              "expr": {
+                "title": "Condition expression",
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              "outputPort": {
+                "title": "Output port",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Port"
+                  }
+                ]
+              }
+            }
+          },
+          "Port": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "unfiltered"
+      ],
+      "categories": [
+        "Filter"
+      ],
+      "tags": []
+    },
+    {
+      "name": "Feature Joiner",
+      "type": "processor",
+      "description": "Une entidades solicitantes y proveedoras basándose en valores de atributos coincidentes con tipos de unión configurables",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureJoiner Parameters",
+        "description": "Configuration for joining requestor and supplier features based on matching attributes or expressions.",
+        "type": "object",
+        "required": [
+          "joinType"
+        ],
+        "properties": {
+          "joinType": {
+            "description": "Join type: inner, left, or full",
+            "allOf": [
+              {
+                "$ref": "#/definitions/JoinType"
+              }
+            ]
+          },
+          "requestorAttribute": {
+            "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue)",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "supplierAttribute": {
+            "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue)",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "requestorAttributeValue": {
+            "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute)",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "supplierAttributeValue": {
+            "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute)",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "conflictResolution": {
+            "description": "Attribute conflict resolution strategy when both requestor and supplier have the same attribute",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/ConflictResolution"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "JoinType": {
+            "oneOf": [
+              {
+                "description": "Only emit features where a match exists",
+                "type": "string",
+                "enum": [
+                  "inner"
+                ]
+              },
+              {
+                "description": "Emit all requestor features (default)",
+                "type": "string",
+                "enum": [
+                  "left"
+                ]
+              },
+              {
+                "description": "Emit all features from both sides",
+                "type": "string",
+                "enum": [
+                  "full"
+                ]
+              }
+            ]
+          },
+          "Attribute": {
+            "type": "string"
+          },
+          "ConflictResolution": {
+            "oneOf": [
+              {
+                "description": "Requestor attributes win on conflict",
+                "type": "string",
+                "enum": [
+                  "requestorWins"
+                ]
+              },
+              {
+                "description": "Supplier attributes win on conflict (default)",
+                "type": "string",
+                "enum": [
+                  "supplierWins"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "requestor",
+        "supplier"
+      ],
+      "outputPorts": [
+        "joined",
+        "unjoinedRequestor",
+        "unjoinedSupplier"
+      ],
+      "categories": [
+        "Merge"
+      ],
+      "tags": [
+        "join"
+      ]
+    },
+    {
+      "name": "Feature LOD Filter",
+      "type": "processor",
+      "description": "Filtra basado en Nivel de Detalle",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureLodFilter Parameters",
+        "description": "Configuration for filtering features based on Level of Detail (LOD).",
+        "type": "object",
+        "required": [
+          "filterKey"
+        ],
+        "properties": {
+          "filterKey": {
+            "description": "Attribute used to group features for LOD filtering",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "up_to_lod0",
+        "up_to_lod1",
+        "up_to_lod2",
+        "up_to_lod3",
+        "up_to_lod4",
+        "unfiltered"
+      ],
+      "categories": [
+        "Filter"
+      ],
+      "tags": [
+        "lod",
+        "citygml"
+      ]
+    },
+    {
+      "name": "Feature Merger",
+      "type": "processor",
+      "description": "Une entidades según sus atributos",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureMerger Parameters",
+        "description": "Configuration for merging requestor and supplier features based on matching attributes or expressions.",
+        "type": "object",
+        "properties": {
+          "requestorAttribute": {
+            "description": "Attributes from requestor features to use for matching (alternative to requestor_attribute_value)",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "supplierAttribute": {
+            "description": "Attributes from supplier features to use for matching (alternative to supplier_attribute_value)",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "requestorAttributeValue": {
+            "description": "Expression to evaluate for requestor feature matching values (alternative to requestor_attribute)",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "supplierAttributeValue": {
+            "description": "Expression to evaluate for supplier feature matching values (alternative to supplier_attribute)",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "completeGrouped": {
+            "description": "Whether to complete grouped features before processing the next group",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "requestor",
+        "supplier"
+      ],
+      "outputPorts": [
+        "merged",
+        "unmerged"
+      ],
+      "categories": [
+        "Merge"
+      ],
+      "tags": []
+    },
+    {
+      "name": "Feature Sorter",
+      "type": "processor",
+      "description": "Ordena entidades por atributos",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureSorter Parameters",
+        "description": "Configuration for sorting features based on attribute values.",
+        "type": "object",
+        "required": [
+          "attributes",
+          "order"
+        ],
+        "properties": {
+          "attributes": {
+            "description": "Attributes to use for sorting features (sort order based on attribute order)",
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "order": {
+            "description": "Sorting order (ascending or descending)",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Order"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "Order": {
+            "type": "string",
+            "enum": [
+              "ascending",
+              "descending"
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Merge"
+      ],
+      "tags": [
+        "sort"
+      ]
+    },
+    {
+      "name": "Feature Transformer",
+      "type": "processor",
+      "description": "Transforma entidades mediante expresiones",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureTransformer Parameters",
+        "description": "Configuration for applying transformation expressions to features.",
+        "type": "object",
+        "required": [
+          "transformers"
+        ],
+        "properties": {
+          "transformers": {
+            "description": "List of transformation expressions to apply to each feature",
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Transform"
+            }
+          }
+        },
+        "definitions": {
+          "Transform": {
+            "type": "object",
+            "required": [
+              "expr"
+            ],
+            "properties": {
+              "expr": {
+                "description": "Expression that modifies the feature (can access and modify attributes, geometry, etc.)",
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Transform"
+      ],
+      "tags": []
+    },
+    {
+      "name": "Feature Type Filter",
+      "type": "processor",
+      "description": "Filtra entidades por tipo de entidad",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureTypeFilter Parameters",
+        "description": "Configuration for filtering features based on their feature type.",
+        "type": "object",
+        "required": [
+          "targetTypes"
+        ],
+        "properties": {
+          "targetTypes": {
+            "description": "Target feature types",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "unfiltered"
+      ],
+      "categories": [
+        "Filter"
+      ],
+      "tags": []
     },
     {
       "name": "FeatureCityGml2Reader",
@@ -3246,193 +4050,6 @@
       "tags": []
     },
     {
-      "name": "FeatureCityGmlReader",
-      "type": "processor",
-      "description": "Lee características de archivos CityGML",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureCityGmlReader Parameters",
-        "description": "Configuration for reading and processing CityGML files as features.",
-        "type": "object",
-        "required": [
-          "dataset"
-        ],
-        "properties": {
-          "dataset": {
-            "title": "Dataset",
-            "description": "Path or expression to the CityGML dataset file to be read",
-            "type": "object",
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr",
-                  "string"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "flatten": {
-            "title": "Flatten",
-            "description": "Whether to flatten the hierarchical structure of the CityGML data",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "codelistsPath": {
-            "title": "Codelists Path",
-            "description": "Optional path to the codelists directory for resolving codelist values",
-            "type": [
-              "object",
-              "null"
-            ],
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr",
-                  "string"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "features"
-      ],
-      "categories": [
-        "Input"
-      ],
-      "tags": [
-        "citygml",
-        "3d"
-      ]
-    },
-    {
-      "name": "FeatureCounter",
-      "type": "processor",
-      "description": "Cuenta entidades",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "Feature Counter Parameters",
-        "description": "Configure how features are counted and grouped, and where to store the count",
-        "type": "object",
-        "required": [
-          "countStart",
-          "outputAttribute"
-        ],
-        "properties": {
-          "countStart": {
-            "title": "Start Count",
-            "description": "Starting value for the counter",
-            "type": "integer",
-            "format": "int64"
-          },
-          "groupBy": {
-            "title": "Group By Attributes",
-            "description": "List of attribute names to group features by before counting",
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/definitions/Attribute"
-            }
-          },
-          "outputAttribute": {
-            "title": "Output Attribute",
-            "description": "Name of the attribute where the count will be stored",
-            "type": "string"
-          }
-        },
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "features",
-        "rejected"
-      ],
-      "categories": [
-        "Debug"
-      ],
-      "tags": []
-    },
-    {
-      "name": "FeatureCreator",
-      "type": "source",
-      "description": "Crea entidades a partir de expresiones",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureCreator Parameters",
-        "description": "Configure how to generate custom features using script expressions",
-        "type": "object",
-        "required": [
-          "creator"
-        ],
-        "properties": {
-          "creator": {
-            "title": "Script Expression",
-            "description": "Write a script expression that returns a map (single feature) or array of maps (multiple features). Each map represents feature attributes as key-value pairs.",
-            "type": "object",
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [],
-      "outputPorts": [
-        "features"
-      ],
-      "categories": [
-        "Input"
-      ],
-      "tags": []
-    },
-    {
       "name": "FeatureDuplicateFilter",
       "type": "processor",
       "description": "Elimina características duplicadas",
@@ -3446,467 +4063,6 @@
       ],
       "categories": [
         "Feature"
-      ],
-      "tags": []
-    },
-    {
-      "name": "FeatureFilePathExtractor",
-      "type": "processor",
-      "description": "Extrae rutas de archivo de características",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "Feature File Path Extractor Parameters",
-        "description": "Configure how to extract file paths from datasets and optionally extract archives",
-        "type": "object",
-        "required": [
-          "extractArchive",
-          "sourceDataset"
-        ],
-        "properties": {
-          "sourceDataset": {
-            "title": "Source Dataset",
-            "description": "Expression to get the source dataset path or URL",
-            "type": "object",
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr",
-                  "string"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "extractArchive": {
-            "title": "Extract Archive",
-            "description": "Whether to extract archive files found in the dataset",
-            "type": "boolean"
-          },
-          "destPrefix": {
-            "title": "Destination Prefix",
-            "description": "Optional prefix to add to extracted file paths",
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "features",
-        "unfiltered"
-      ],
-      "categories": [
-        "Feature"
-      ],
-      "tags": [
-        "file",
-        "path"
-      ]
-    },
-    {
-      "name": "FeatureFilter",
-      "type": "processor",
-      "description": "Filtra entidades según condiciones",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "Feature Filter Parameters",
-        "description": "Configure the conditions and output ports for filtering features based on expressions",
-        "type": "object",
-        "required": [
-          "conditions"
-        ],
-        "properties": {
-          "conditions": {
-            "title": "Filter Conditions",
-            "description": "List of conditions and their corresponding output ports for routing filtered features",
-            "type": "array",
-            "items": {
-              "$ref": "#/definitions/Condition"
-            }
-          }
-        },
-        "definitions": {
-          "Condition": {
-            "type": "object",
-            "required": [
-              "expr",
-              "outputPort"
-            ],
-            "properties": {
-              "expr": {
-                "title": "Condition expression",
-                "type": "object",
-                "format": "code",
-                "required": [
-                  "type",
-                  "value"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flowExpr"
-                    ]
-                  },
-                  "value": {
-                    "type": "string"
-                  }
-                }
-              },
-              "outputPort": {
-                "title": "Output port",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Port"
-                  }
-                ]
-              }
-            }
-          },
-          "Port": {
-            "type": "string"
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "unfiltered"
-      ],
-      "categories": [
-        "Filter"
-      ],
-      "tags": []
-    },
-    {
-      "name": "FeatureJoiner",
-      "type": "processor",
-      "description": "Une entidades solicitantes y proveedoras basándose en valores de atributos coincidentes con tipos de unión configurables",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureJoiner Parameters",
-        "description": "Configuration for joining requestor and supplier features based on matching attributes or expressions.",
-        "type": "object",
-        "required": [
-          "joinType"
-        ],
-        "properties": {
-          "joinType": {
-            "description": "Join type: inner, left, or full",
-            "allOf": [
-              {
-                "$ref": "#/definitions/JoinType"
-              }
-            ]
-          },
-          "requestorAttribute": {
-            "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue)",
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/definitions/Attribute"
-            }
-          },
-          "supplierAttribute": {
-            "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue)",
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/definitions/Attribute"
-            }
-          },
-          "requestorAttributeValue": {
-            "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute)",
-            "type": [
-              "object",
-              "null"
-            ],
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "supplierAttributeValue": {
-            "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute)",
-            "type": [
-              "object",
-              "null"
-            ],
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "conflictResolution": {
-            "description": "Attribute conflict resolution strategy when both requestor and supplier have the same attribute",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/ConflictResolution"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "JoinType": {
-            "oneOf": [
-              {
-                "description": "Only emit features where a match exists",
-                "type": "string",
-                "enum": [
-                  "inner"
-                ]
-              },
-              {
-                "description": "Emit all requestor features (default)",
-                "type": "string",
-                "enum": [
-                  "left"
-                ]
-              },
-              {
-                "description": "Emit all features from both sides",
-                "type": "string",
-                "enum": [
-                  "full"
-                ]
-              }
-            ]
-          },
-          "Attribute": {
-            "type": "string"
-          },
-          "ConflictResolution": {
-            "oneOf": [
-              {
-                "description": "Requestor attributes win on conflict",
-                "type": "string",
-                "enum": [
-                  "requestorWins"
-                ]
-              },
-              {
-                "description": "Supplier attributes win on conflict (default)",
-                "type": "string",
-                "enum": [
-                  "supplierWins"
-                ]
-              }
-            ]
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "requestor",
-        "supplier"
-      ],
-      "outputPorts": [
-        "joined",
-        "unjoinedRequestor",
-        "unjoinedSupplier"
-      ],
-      "categories": [
-        "Merge"
-      ],
-      "tags": [
-        "join"
-      ]
-    },
-    {
-      "name": "FeatureLodFilter",
-      "type": "processor",
-      "description": "Filtra basado en Nivel de Detalle",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureLodFilter Parameters",
-        "description": "Configuration for filtering features based on Level of Detail (LOD).",
-        "type": "object",
-        "required": [
-          "filterKey"
-        ],
-        "properties": {
-          "filterKey": {
-            "description": "Attribute used to group features for LOD filtering",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "up_to_lod0",
-        "up_to_lod1",
-        "up_to_lod2",
-        "up_to_lod3",
-        "up_to_lod4",
-        "unfiltered"
-      ],
-      "categories": [
-        "Filter"
-      ],
-      "tags": [
-        "lod",
-        "citygml"
-      ]
-    },
-    {
-      "name": "FeatureMerger",
-      "type": "processor",
-      "description": "Une entidades según sus atributos",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureMerger Parameters",
-        "description": "Configuration for merging requestor and supplier features based on matching attributes or expressions.",
-        "type": "object",
-        "properties": {
-          "requestorAttribute": {
-            "description": "Attributes from requestor features to use for matching (alternative to requestor_attribute_value)",
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/definitions/Attribute"
-            }
-          },
-          "supplierAttribute": {
-            "description": "Attributes from supplier features to use for matching (alternative to supplier_attribute_value)",
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/definitions/Attribute"
-            }
-          },
-          "requestorAttributeValue": {
-            "description": "Expression to evaluate for requestor feature matching values (alternative to requestor_attribute)",
-            "type": [
-              "object",
-              "null"
-            ],
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "supplierAttributeValue": {
-            "description": "Expression to evaluate for supplier feature matching values (alternative to supplier_attribute)",
-            "type": [
-              "object",
-              "null"
-            ],
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "completeGrouped": {
-            "description": "Whether to complete grouped features before processing the next group",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          }
-        },
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "requestor",
-        "supplier"
-      ],
-      "outputPorts": [
-        "merged",
-        "unmerged"
-      ],
-      "categories": [
-        "Merge"
       ],
       "tags": []
     },
@@ -4100,162 +4256,6 @@
       ],
       "categories": [
         "Feature"
-      ],
-      "tags": []
-    },
-    {
-      "name": "FeatureSorter",
-      "type": "processor",
-      "description": "Ordena entidades por atributos",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureSorter Parameters",
-        "description": "Configuration for sorting features based on attribute values.",
-        "type": "object",
-        "required": [
-          "attributes",
-          "order"
-        ],
-        "properties": {
-          "attributes": {
-            "description": "Attributes to use for sorting features (sort order based on attribute order)",
-            "type": "array",
-            "items": {
-              "$ref": "#/definitions/Attribute"
-            }
-          },
-          "order": {
-            "description": "Sorting order (ascending or descending)",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Order"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          },
-          "Order": {
-            "type": "string",
-            "enum": [
-              "ascending",
-              "descending"
-            ]
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "features"
-      ],
-      "categories": [
-        "Merge"
-      ],
-      "tags": [
-        "sort"
-      ]
-    },
-    {
-      "name": "FeatureTransformer",
-      "type": "processor",
-      "description": "Transforma entidades mediante expresiones",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureTransformer Parameters",
-        "description": "Configuration for applying transformation expressions to features.",
-        "type": "object",
-        "required": [
-          "transformers"
-        ],
-        "properties": {
-          "transformers": {
-            "description": "List of transformation expressions to apply to each feature",
-            "type": "array",
-            "items": {
-              "$ref": "#/definitions/Transform"
-            }
-          }
-        },
-        "definitions": {
-          "Transform": {
-            "type": "object",
-            "required": [
-              "expr"
-            ],
-            "properties": {
-              "expr": {
-                "description": "Expression that modifies the feature (can access and modify attributes, geometry, etc.)",
-                "type": "object",
-                "format": "code",
-                "required": [
-                  "type",
-                  "value"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flowExpr"
-                    ]
-                  },
-                  "value": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "features"
-      ],
-      "categories": [
-        "Transform"
-      ],
-      "tags": []
-    },
-    {
-      "name": "FeatureTypeFilter",
-      "type": "processor",
-      "description": "Filtra entidades por tipo de entidad",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureTypeFilter Parameters",
-        "description": "Configuration for filtering features based on their feature type.",
-        "type": "object",
-        "required": [
-          "targetTypes"
-        ],
-        "properties": {
-          "targetTypes": {
-            "description": "Target feature types",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "features",
-        "unfiltered"
-      ],
-      "categories": [
-        "Filter"
       ],
       "tags": []
     },
@@ -4484,7 +4484,7 @@
       "tags": []
     },
     {
-      "name": "FilePathExtractor",
+      "name": "File Path Extractor",
       "type": "source",
       "description": "Extrae archivos de un directorio o de un archivo comprimido",
       "parameter": {
@@ -4539,7 +4539,7 @@
       ]
     },
     {
-      "name": "FilePropertyExtractor",
+      "name": "File Property Extractor",
       "type": "processor",
       "description": "Extrae propiedades de un archivo",
       "parameter": {
@@ -4573,7 +4573,7 @@
       ]
     },
     {
-      "name": "FootprintReplacer",
+      "name": "Footprint Replacer",
       "type": "processor",
       "description": "Proyecta la geometría 3D al plano XY y calcula el polígono base unificado (compatible con sólidos, superficies y CityGML)",
       "parameter": null,
@@ -4594,7 +4594,7 @@
       ]
     },
     {
-      "name": "GeoJsonReader",
+      "name": "GeoJSON Reader",
       "type": "source",
       "description": "Lee características de un archivo GeoJSON",
       "parameter": {
@@ -4668,7 +4668,7 @@
       ]
     },
     {
-      "name": "GeoJsonWriter",
+      "name": "GeoJSON Writer",
       "type": "sink",
       "description": "Escribe entidades en un archivo GeoJSON",
       "parameter": {
@@ -4731,7 +4731,7 @@
       ]
     },
     {
-      "name": "GeoPackageReader",
+      "name": "GeoPackage Reader",
       "type": "source",
       "description": "Lee características geográficas de archivos GeoPackage (.gpkg) con soporte para características vectoriales, mosaicos y metadatos",
       "parameter": {
@@ -4876,7 +4876,7 @@
       ]
     },
     {
-      "name": "GeoPackageWriter",
+      "name": "GeoPackage Writer",
       "type": "sink",
       "description": "Escribe características geográficas en archivos GeoPackage (.gpkg) con estructura SQLite adecuada, indexación espacial y tablas de metadatos",
       "parameter": {
@@ -4955,52 +4955,7 @@
       ]
     },
     {
-      "name": "GeometryCoercer",
-      "type": "processor",
-      "description": "Fuerza la geometría de una entidad a una geometría específica",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "GeometryCoercer Parameters",
-        "description": "Configuration for coercing geometries to specific target types.",
-        "type": "object",
-        "required": [
-          "targetType"
-        ],
-        "properties": {
-          "targetType": {
-            "description": "Target geometry type to coerce features to (e.g., LineString)",
-            "allOf": [
-              {
-                "$ref": "#/definitions/CoerceTarget"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "CoerceTarget": {
-            "type": "string",
-            "enum": [
-              "lineString",
-              "polygon",
-              "triangularMesh"
-            ]
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "features"
-      ],
-      "categories": [
-        "Geometry"
-      ],
-      "tags": []
-    },
-    {
-      "name": "GeometryExtractor",
+      "name": "Geometry Extractor",
       "type": "processor",
       "description": "Extrae la geometría de una entidad y la añade como un atributo.",
       "parameter": {
@@ -5041,84 +4996,7 @@
       "tags": []
     },
     {
-      "name": "GeometryFilter",
-      "type": "processor",
-      "description": "Filtra la geometría por tipo",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "Geometry Filter Parameters",
-        "description": "Configure how to filter features based on their geometry type",
-        "oneOf": [
-          {
-            "type": "object",
-            "required": [
-              "filterType"
-            ],
-            "properties": {
-              "filterType": {
-                "type": "string",
-                "enum": [
-                  "none"
-                ]
-              }
-            }
-          },
-          {
-            "type": "object",
-            "required": [
-              "filterType"
-            ],
-            "properties": {
-              "filterType": {
-                "type": "string",
-                "enum": [
-                  "multiple"
-                ]
-              }
-            }
-          },
-          {
-            "type": "object",
-            "required": [
-              "filterType"
-            ],
-            "properties": {
-              "filterType": {
-                "type": "string",
-                "enum": [
-                  "geometryType"
-                ]
-              }
-            }
-          }
-        ]
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "unfiltered",
-        "none",
-        "contains",
-        "solid",
-        "multiSurface",
-        "compositeSurface",
-        "surface",
-        "triangle",
-        "multiCurve",
-        "curve",
-        "multiPoint",
-        "point",
-        "tin"
-      ],
-      "categories": [
-        "Geometry"
-      ],
-      "tags": []
-    },
-    {
-      "name": "GeometryPartExtractor",
+      "name": "Geometry Part Extractor",
       "type": "processor",
       "description": "Extrae partes de geometría (superficies) de geometrías 3D como entidades separadas",
       "parameter": {
@@ -5170,7 +5048,7 @@
       ]
     },
     {
-      "name": "GeometryRemover",
+      "name": "Geometry Remover",
       "type": "processor",
       "description": "Elimina la geometría de una entidad",
       "parameter": null,
@@ -5187,7 +5065,7 @@
       "tags": []
     },
     {
-      "name": "GeometryReplacer",
+      "name": "Geometry Replacer",
       "type": "processor",
       "description": "Reemplaza la geometría de una entidad con una nueva geometría.",
       "parameter": {
@@ -5228,7 +5106,7 @@
       "tags": []
     },
     {
-      "name": "GeometrySplitter",
+      "name": "Geometry Splitter",
       "type": "processor",
       "description": "Divide la geometría por tipo",
       "parameter": {
@@ -5285,7 +5163,7 @@
       ]
     },
     {
-      "name": "GeometryValidator",
+      "name": "Geometry Validator",
       "type": "processor",
       "description": "Valida la geometría de una entidad",
       "parameter": {
@@ -5381,6 +5259,128 @@
       "tags": [
         "validate"
       ]
+    },
+    {
+      "name": "GeometryCoercer",
+      "type": "processor",
+      "description": "Fuerza la geometría de una entidad a una geometría específica",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "GeometryCoercer Parameters",
+        "description": "Configuration for coercing geometries to specific target types.",
+        "type": "object",
+        "required": [
+          "targetType"
+        ],
+        "properties": {
+          "targetType": {
+            "description": "Target geometry type to coerce features to (e.g., LineString)",
+            "allOf": [
+              {
+                "$ref": "#/definitions/CoerceTarget"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "CoerceTarget": {
+            "type": "string",
+            "enum": [
+              "lineString",
+              "polygon",
+              "triangularMesh"
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": []
+    },
+    {
+      "name": "GeometryFilter",
+      "type": "processor",
+      "description": "Filtra la geometría por tipo",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Geometry Filter Parameters",
+        "description": "Configure how to filter features based on their geometry type",
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "filterType"
+            ],
+            "properties": {
+              "filterType": {
+                "type": "string",
+                "enum": [
+                  "none"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "filterType"
+            ],
+            "properties": {
+              "filterType": {
+                "type": "string",
+                "enum": [
+                  "multiple"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "filterType"
+            ],
+            "properties": {
+              "filterType": {
+                "type": "string",
+                "enum": [
+                  "geometryType"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "unfiltered",
+        "none",
+        "contains",
+        "solid",
+        "multiSurface",
+        "compositeSurface",
+        "surface",
+        "triangle",
+        "multiCurve",
+        "curve",
+        "multiPoint",
+        "point",
+        "tin"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": []
     },
     {
       "name": "GeometryValueFilter",
@@ -5560,7 +5560,7 @@
       "tags": []
     },
     {
-      "name": "GridDivider",
+      "name": "Grid Divider",
       "type": "processor",
       "description": "Divide polígonos en celdas de cuadrícula regulares",
       "parameter": {
@@ -7028,7 +7028,7 @@
       "tags": []
     },
     {
-      "name": "HorizontalReprojector",
+      "name": "Horizontal Reprojector",
       "type": "processor",
       "description": "Reproyecta la geometría de una entidad a un sistema de coordenadas especificado",
       "parameter": {
@@ -7104,7 +7104,7 @@
       ]
     },
     {
-      "name": "ImageRasterizer",
+      "name": "Image Rasterizer",
       "type": "processor",
       "description": "Convierte geometrías vectoriales a formato de imagen raster",
       "parameter": {
@@ -7258,7 +7258,7 @@
       ]
     },
     {
-      "name": "InputRouter",
+      "name": "Input Router",
       "type": "processor",
       "description": "Acción para el reenvío del primer puerto en sub-flujos de trabajo.",
       "parameter": {
@@ -7303,6 +7303,151 @@
         "Geometry"
       ],
       "tags": []
+    },
+    {
+      "name": "JSON Reader",
+      "type": "source",
+      "description": "Lee entidades desde archivos JSON, compatible con objetos individuales y arrays de objetos",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "JsonReader Parameters",
+        "description": "Configuration for reading JSON files as features.",
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "title": "File Path",
+            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "inline": {
+            "title": "Inline Content",
+            "description": "Expression that returns the file content as text instead of reading from a file path",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Input"
+      ],
+      "tags": [
+        "json"
+      ]
+    },
+    {
+      "name": "JSON Writer",
+      "type": "sink",
+      "description": "Escribe entidades en archivos JSON",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "JsonWriter Parameters",
+        "description": "Configuration for writing features to JSON files.",
+        "type": "object",
+        "required": [
+          "output"
+        ],
+        "properties": {
+          "output": {
+            "description": "Output path or expression for the JSON file to create",
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "converter": {
+            "description": "Optional converter expression to transform features before writing",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "Output"
+      ],
+      "tags": [
+        "json"
+      ]
     },
     {
       "name": "JSONFragmenter",
@@ -7451,151 +7596,6 @@
       "tags": []
     },
     {
-      "name": "JsonReader",
-      "type": "source",
-      "description": "Lee entidades desde archivos JSON, compatible con objetos individuales y arrays de objetos",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "JsonReader Parameters",
-        "description": "Configuration for reading JSON files as features.",
-        "type": "object",
-        "properties": {
-          "dataset": {
-            "title": "File Path",
-            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-            "type": [
-              "object",
-              "null"
-            ],
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr",
-                  "string"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "inline": {
-            "title": "Inline Content",
-            "description": "Expression that returns the file content as text instead of reading from a file path",
-            "type": [
-              "object",
-              "null"
-            ],
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr",
-                  "string"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [],
-      "outputPorts": [
-        "features"
-      ],
-      "categories": [
-        "Input"
-      ],
-      "tags": [
-        "json"
-      ]
-    },
-    {
-      "name": "JsonWriter",
-      "type": "sink",
-      "description": "Escribe entidades en archivos JSON",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "JsonWriter Parameters",
-        "description": "Configuration for writing features to JSON files.",
-        "type": "object",
-        "required": [
-          "output"
-        ],
-        "properties": {
-          "output": {
-            "description": "Output path or expression for the JSON file to create",
-            "type": "object",
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr",
-                  "string"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "converter": {
-            "description": "Optional converter expression to transform features before writing",
-            "type": [
-              "object",
-              "null"
-            ],
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [],
-      "categories": [
-        "Output"
-      ],
-      "tags": [
-        "json"
-      ]
-    },
-    {
       "name": "LineOnLineOverlayer",
       "type": "processor",
       "description": "Los puntos de intersección se convierten en entidades de puntos que pueden contener la lista combinada de atributos de las líneas originales intersectadas.",
@@ -7648,6 +7648,48 @@
         "Geometry"
       ],
       "tags": []
+    },
+    {
+      "name": "List Exploder",
+      "type": "processor",
+      "description": "Divide en varios elementos los atributos de tipo lista",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "ListExploder Parameters",
+        "description": "Configuration for exploding array attributes into individual features.",
+        "type": "object",
+        "required": [
+          "sourceAttribute"
+        ],
+        "properties": {
+          "sourceAttribute": {
+            "description": "Attribute containing the array to explode (each element becomes a separate feature)",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Transform"
+      ],
+      "tags": [
+        "list"
+      ]
     },
     {
       "name": "ListConcatenator",
@@ -7713,48 +7755,6 @@
       "tags": []
     },
     {
-      "name": "ListExploder",
-      "type": "processor",
-      "description": "Divide en varios elementos los atributos de tipo lista",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ListExploder Parameters",
-        "description": "Configuration for exploding array attributes into individual features.",
-        "type": "object",
-        "required": [
-          "sourceAttribute"
-        ],
-        "properties": {
-          "sourceAttribute": {
-            "description": "Attribute containing the array to explode (each element becomes a separate feature)",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "features"
-      ],
-      "categories": [
-        "Transform"
-      ],
-      "tags": [
-        "list"
-      ]
-    },
-    {
       "name": "ListIndexer",
       "type": "processor",
       "description": "Copia los atributos de un elemento de lista específico para convertirlos en los atributos principales de una entidad",
@@ -7818,7 +7818,7 @@
       "tags": []
     },
     {
-      "name": "MVTWriter",
+      "name": "MVT Writer",
       "type": "sink",
       "description": "Escribe entidades en un archivo",
       "parameter": {
@@ -8114,7 +8114,7 @@
       "tags": []
     },
     {
-      "name": "NoopProcessor",
+      "name": "Noop Processor",
       "type": "processor",
       "description": "No realiza ninguna operación sobre las entidades",
       "parameter": null,
@@ -8131,7 +8131,7 @@
       "tags": []
     },
     {
-      "name": "NoopSink",
+      "name": "Noop Sink",
       "type": "sink",
       "description": "No realiza ninguna operación final",
       "parameter": null,
@@ -8146,7 +8146,7 @@
       "tags": []
     },
     {
-      "name": "NullAttributeMapper",
+      "name": "Null Attribute Mapper",
       "type": "processor",
       "description": "Reemplaza valores de atributos nulos con valores predeterminados configurados",
       "parameter": {
@@ -8598,7 +8598,7 @@
       "tags": []
     },
     {
-      "name": "OutputRouter",
+      "name": "Output Router",
       "type": "processor",
       "description": "Acción para el reenvío del último puerto en sub-flujos de trabajo.",
       "parameter": {
@@ -10735,7 +10735,7 @@
       "tags": []
     },
     {
-      "name": "PolygonNormalExtractor",
+      "name": "Polygon Normal Extractor",
       "type": "processor",
       "description": "Extrae vectores normales y otras propiedades de entidades de polígono",
       "parameter": null,
@@ -10847,7 +10847,7 @@
       "tags": []
     },
     {
-      "name": "RayIntersector",
+      "name": "Ray Intersector",
       "type": "processor",
       "description": "Calcula los puntos de intersección entre rayos y geometrías",
       "parameter": {
@@ -11405,7 +11405,79 @@
       "tags": []
     },
     {
-      "name": "ShapefileReader",
+      "name": "SQL Reader",
+      "type": "source",
+      "description": "Lee características de base de datos SQL",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "SQL Reader Parameters",
+        "description": "Configure the SQL query and database connection for reading features from a database",
+        "type": "object",
+        "required": [
+          "databaseUrl",
+          "sql"
+        ],
+        "properties": {
+          "sql": {
+            "title": "SQL Query",
+            "description": "SQL query expression to execute for retrieving data",
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "databaseUrl": {
+            "title": "Database URL",
+            "description": "Database connection URL (e.g. `sqlite:///tests/sqlite/sqlite.db`, `mysql://user:password@localhost:3306/db`, `postgresql://user:password@localhost:5432/db`)",
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Input"
+      ],
+      "tags": [
+        "database"
+      ]
+    },
+    {
+      "name": "Shapefile Reader",
       "type": "source",
       "description": "Lee entidades geográficas desde archivos Shapefile (.zip que contiene .shp, .dbf, .shx)",
       "parameter": {
@@ -11499,7 +11571,7 @@
       ]
     },
     {
-      "name": "ShapefileWriter",
+      "name": "Shapefile Writer",
       "type": "sink",
       "description": "Escribe características a un Shapefile",
       "parameter": {
@@ -11612,7 +11684,7 @@
       "tags": []
     },
     {
-      "name": "SpatialFilter",
+      "name": "Spatial Filter",
       "type": "processor",
       "description": "Filtra entidades por relación espacial",
       "parameter": {
@@ -11755,79 +11827,7 @@
       "tags": []
     },
     {
-      "name": "SqlReader",
-      "type": "source",
-      "description": "Lee características de base de datos SQL",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "SQL Reader Parameters",
-        "description": "Configure the SQL query and database connection for reading features from a database",
-        "type": "object",
-        "required": [
-          "databaseUrl",
-          "sql"
-        ],
-        "properties": {
-          "sql": {
-            "title": "SQL Query",
-            "description": "SQL query expression to execute for retrieving data",
-            "type": "object",
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr",
-                  "string"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "databaseUrl": {
-            "title": "Database URL",
-            "description": "Database connection URL (e.g. `sqlite:///tests/sqlite/sqlite.db`, `mysql://user:password@localhost:3306/db`, `postgresql://user:password@localhost:5432/db`)",
-            "type": "object",
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr",
-                  "string"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [],
-      "outputPorts": [
-        "features"
-      ],
-      "categories": [
-        "Input"
-      ],
-      "tags": [
-        "database"
-      ]
-    },
-    {
-      "name": "StatisticsCalculator",
+      "name": "Statistics Calculator",
       "type": "processor",
       "description": "Calcula estadísticas de las entidades",
       "parameter": {
@@ -11931,6 +11931,62 @@
       ]
     },
     {
+      "name": "Three Dimension Forcer",
+      "type": "processor",
+      "description": "Convierte geometrías 2D a 3D añadiendo coordenadas Z (elevación)",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "ThreeDimensionForcer Parameters",
+        "description": "Configure how to convert 2D geometries to 3D by adding Z-coordinates",
+        "type": "object",
+        "properties": {
+          "elevation": {
+            "title": "Elevation",
+            "description": "The Z-coordinate (elevation) value to add to all points. Can be a constant value or an expression. Defaults to 0.0 if not specified.",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "preserveExistingZ": {
+            "title": "Preserve Existing Z Values",
+            "description": "If true, geometries that are already 3D will pass through unchanged. If false, existing Z values will be replaced with the specified elevation. Defaults to false.",
+            "default": false,
+            "type": "boolean"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": [
+        "3d"
+      ]
+    },
+    {
       "name": "ThreeDimensionBoxReplacer",
       "type": "processor",
       "description": "Reemplaza una caja tridimensional con un polígono.",
@@ -12020,62 +12076,6 @@
         "Geometry"
       ],
       "tags": []
-    },
-    {
-      "name": "ThreeDimensionForcer",
-      "type": "processor",
-      "description": "Convierte geometrías 2D a 3D añadiendo coordenadas Z (elevación)",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ThreeDimensionForcer Parameters",
-        "description": "Configure how to convert 2D geometries to 3D by adding Z-coordinates",
-        "type": "object",
-        "properties": {
-          "elevation": {
-            "title": "Elevation",
-            "description": "The Z-coordinate (elevation) value to add to all points. Can be a constant value or an expression. Defaults to 0.0 if not specified.",
-            "type": [
-              "object",
-              "null"
-            ],
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "preserveExistingZ": {
-            "title": "Preserve Existing Z Values",
-            "description": "If true, geometries that are already 3D will pass through unchanged. If false, existing Z values will be replaced with the specified elevation. Defaults to false.",
-            "default": false,
-            "type": "boolean"
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "features"
-      ],
-      "categories": [
-        "Geometry"
-      ],
-      "tags": [
-        "3d"
-      ]
     },
     {
       "name": "ThreeDimensionPlanarityRotator",
@@ -12276,7 +12276,7 @@
       "tags": []
     },
     {
-      "name": "TwoDimensionForcer",
+      "name": "Two Dimension Forcer",
       "type": "processor",
       "description": "Fuerza una geometría a ser bidimensional.",
       "parameter": null,
@@ -12354,7 +12354,7 @@
       "tags": []
     },
     {
-      "name": "VerticalReprojector",
+      "name": "Vertical Reprojector",
       "type": "processor",
       "description": "Reproyecta la geometría de una entidad a un sistema de coordenadas especificado",
       "parameter": {
@@ -12401,7 +12401,7 @@
       ]
     },
     {
-      "name": "XMLFragmenter",
+      "name": "XML Fragmenter",
       "type": "processor",
       "description": "Fragmenta XML",
       "parameter": {
@@ -12490,7 +12490,7 @@
       ]
     },
     {
-      "name": "XMLValidator",
+      "name": "XML Validator",
       "type": "processor",
       "description": "Valida contenido XML",
       "parameter": {
@@ -12551,7 +12551,7 @@
       ]
     },
     {
-      "name": "XmlWriter",
+      "name": "XML Writer",
       "type": "sink",
       "description": "Escribe entidades en archivos XML",
       "parameter": {
@@ -12599,7 +12599,7 @@
       ]
     },
     {
-      "name": "ZipFileWriter",
+      "name": "Zip File Writer",
       "type": "sink",
       "description": "Escribe características a un archivo zip",
       "parameter": {

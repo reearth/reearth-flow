@@ -21,7 +21,7 @@ pub(super) struct AttributeConversionTableFactory;
 
 impl ProcessorFactory for AttributeConversionTableFactory {
     fn name(&self) -> &str {
-        "AttributeConversionTable"
+        "Attribute Conversion Table"
     }
 
     fn description(&self) -> &str {
@@ -233,7 +233,7 @@ impl Processor for AttributeConversionTable {
     }
 
     fn name(&self) -> &str {
-        "AttributeConversionTable"
+        "Attribute Conversion Table"
     }
 }
 

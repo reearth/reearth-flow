@@ -30,7 +30,7 @@ pub(crate) struct FeatureCityGmlReaderFactory;
 
 impl ProcessorFactory for FeatureCityGmlReaderFactory {
     fn name(&self) -> &str {
-        "FeatureCityGmlReader"
+        "Feature CityGML Reader"
     }
 
     fn description(&self) -> &str {
@@ -123,7 +123,7 @@ pub struct FeatureCityGmlReader {
 
 impl std::fmt::Debug for FeatureCityGmlReader {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("FeatureCityGmlReader")
+        f.debug_struct("Feature CityGML Reader")
             .field("cache_paths", &self.cache_paths.len())
             .field("store_pool", &self.store_pool.len())
             .finish_non_exhaustive()
@@ -247,6 +247,6 @@ impl Processor for FeatureCityGmlReader {
     }
 
     fn name(&self) -> &str {
-        "FeatureCityGmlReader"
+        "Feature CityGML Reader"
     }
 }

@@ -75,7 +75,7 @@ pub(super) struct RayIntersectorFactory;
 
 impl ProcessorFactory for RayIntersectorFactory {
     fn name(&self) -> &str {
-        "RayIntersector"
+        "Ray Intersector"
     }
 
     fn description(&self) -> &str {
@@ -308,7 +308,7 @@ pub struct RayIntersector {
 
 impl fmt::Debug for RayIntersector {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("RayIntersector")
+        f.debug_struct("Ray Intersector")
             .field("pair_ids", &self.pair_ids.len())
             .field("buffer_bytes", &self.buffer_bytes)
             .field("temp_dir", &self.temp_dir)
@@ -944,7 +944,7 @@ impl Processor for RayIntersector {
     }
 
     fn name(&self) -> &str {
-        "RayIntersector"
+        "Ray Intersector"
     }
 }
 

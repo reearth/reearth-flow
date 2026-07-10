@@ -9,7 +9,7 @@ nodes:
   - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6e
     name: InputRouter
     type: action
-    action: InputRouter
+    action: Input Router
     with:
       routingPort: features
 
@@ -48,7 +48,7 @@ nodes:
   - id: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
     name: AttributeMapperSurfaceErrors
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: Folder
@@ -106,7 +106,7 @@ nodes:
   - id: f1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6a
     name: SurfaceErrorCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - Filename
@@ -119,7 +119,7 @@ nodes:
   - id: 14a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c6
     name: OutputRouterSurfaceErrors
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: errorCountSurfaceErrors
 
@@ -138,7 +138,7 @@ nodes:
   - id: a102b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6
     name: FeatureFilterNotClosed
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -150,7 +150,7 @@ nodes:
   - id: a103c4d5-e6f7-a8b9-c0d1-e2f3a4b5c6d7
     name: AttributeMapperNotClosed
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: Folder
@@ -200,7 +200,7 @@ nodes:
   - id: a105e6f7-a8b9-c0d1-e2f3-a4b5c6d7e8f9
     name: NotClosedErrorCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - Filename
@@ -213,7 +213,7 @@ nodes:
   - id: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d90
     name: OutputRouterNotClosed
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: errorCountNotClosedSolid
 
@@ -222,7 +222,7 @@ nodes:
   - id: a119d1e2-f3a4-b5c6-d7e8-e9f0a1b2c3d4
     name: AttributeMapperSolidIssues
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: Folder
@@ -272,7 +272,7 @@ nodes:
   - id: a121f3a4-b5c6-d7e8-f9a0-a1b2c3d4e5f6
     name: SolidIssuesErrorCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - Filename
@@ -286,7 +286,7 @@ nodes:
   - id: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7d
     name: AttributeMapperOrientationErrors
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: Folder
@@ -334,7 +334,7 @@ nodes:
   - id: 15a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c7
     name: OrientationErrorCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - Filename
@@ -347,14 +347,14 @@ nodes:
   - id: 16a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c8
     name: OutputRouterOrientationErrors
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: errorCountOrientationErrors
 
   - id: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9a
     name: OutputRouterFileOutputOrientationErrors
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: fileOutput
 
@@ -362,7 +362,7 @@ nodes:
   - id: 18a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5d0
     name: OutputRouterSolidErrors
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: errorCountSolidErrors
 
@@ -391,7 +391,7 @@ nodes:
   - id: 22a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5d4
     name: UncodedGmlNameStatsAggregator
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - Filename
@@ -404,7 +404,7 @@ nodes:
   - id: 20a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5d2
     name: OutputRouterUncodedGmlName
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: errorCountUncodedGmlName
 
@@ -412,7 +412,7 @@ nodes:
   - id: a9b0c1d2-e3f4-5a6b-7c8d-9e0f1a2b3c4e
     name: OutputRouterFileOutput
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: fileOutput
 

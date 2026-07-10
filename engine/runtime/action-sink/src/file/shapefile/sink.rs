@@ -19,7 +19,7 @@ pub(crate) struct ShapefileWriterFactory;
 
 impl SinkFactory for ShapefileWriterFactory {
     fn name(&self) -> &str {
-        "ShapefileWriter"
+        "Shapefile Writer"
     }
 
     fn description(&self) -> &str {
@@ -110,7 +110,7 @@ pub(crate) struct ShapefileWriterParam {
 
 impl Sink for ShapefileWriter {
     fn name(&self) -> &str {
-        "ShapefileWriter"
+        "Shapefile Writer"
     }
 
     #[cfg(not(feature = "new-geometry"))]

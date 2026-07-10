@@ -17,7 +17,7 @@ pub struct TwoDimensionForcerFactory;
 
 impl ProcessorFactory for TwoDimensionForcerFactory {
     fn name(&self) -> &str {
-        "TwoDimensionForcer"
+        "Two Dimension Forcer"
     }
 
     fn description(&self) -> &str {
@@ -108,6 +108,6 @@ impl Processor for TwoDimensionForcer {
     }
 
     fn name(&self) -> &str {
-        "TwoDimensionForcer"
+        "Two Dimension Forcer"
     }
 }

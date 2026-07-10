@@ -25,7 +25,7 @@ pub struct XmlFragmenterFactory;
 
 impl ProcessorFactory for XmlFragmenterFactory {
     fn name(&self) -> &str {
-        "XMLFragmenter"
+        "XML Fragmenter"
     }
 
     fn description(&self) -> &str {

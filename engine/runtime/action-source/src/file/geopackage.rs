@@ -36,7 +36,7 @@ pub(crate) struct GeoPackageReaderFactory;
 
 impl SourceFactory for GeoPackageReaderFactory {
     fn name(&self) -> &str {
-        "GeoPackageReader"
+        "GeoPackage Reader"
     }
 
     fn description(&self) -> &str {
@@ -165,7 +165,7 @@ impl Source for GeoPackageReader {
     async fn initialize(&self, _ctx: NodeContext) {}
 
     fn name(&self) -> &str {
-        "GeoPackageReader"
+        "GeoPackage Reader"
     }
 
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {

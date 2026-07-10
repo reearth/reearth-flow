@@ -14,7 +14,7 @@ graphs:
       - id: 550e8400-e29b-41d4-a716-446655440010
         name: Generate-User-IDs
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
           creator:
             type: flowExpr
@@ -59,7 +59,7 @@ graphs:
       - id: 550e8400-e29b-41d4-a716-446655440030
         name: Save-Results
         type: action
-        action: JsonWriter
+        action: JSON Writer
         with:
           output:
             type: flowExpr

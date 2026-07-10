@@ -263,7 +263,7 @@ graphs:
       - id: {READER_ID}
         name: reader
         type: action
-        action: GeoJsonReader
+        action: GeoJSON Reader
         with:
           dataset:
             type: string
@@ -271,7 +271,7 @@ graphs:
       - id: {MANAGER_ID}
         name: manager
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: name
@@ -378,7 +378,7 @@ graphs:
       - id: {READER_ID}
         name: reader
         type: action
-        action: GeoJsonReader
+        action: GeoJSON Reader
         with:
           dataset:
             type: flowExpr
