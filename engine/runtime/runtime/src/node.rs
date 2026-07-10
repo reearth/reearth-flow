@@ -15,7 +15,7 @@ use crate::event::EventHub;
 use crate::executor_operation::{ExecutorContext, NodeContext};
 use crate::forwarder::ProcessorChannelForwarder;
 
-pub static DEFAULT_PORT: Lazy<Port> = Lazy::new(|| Port::new("default"));
+pub static FEATURES_PORT: Lazy<Port> = Lazy::new(|| Port::new("features"));
 pub static REJECTED_PORT: Lazy<Port> = Lazy::new(|| Port::new("rejected"));
 pub static ROUTING_PARAM_KEY: &str = "routingPort";
 pub static INPUT_ROUTING_ACTION: &str = "InputRouter";
@@ -494,7 +494,7 @@ impl ProcessorFactory for InputRouterFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -529,7 +529,7 @@ impl Processor for InputRouter {
         let feature = ctx.feature;
         fw.send(ExecutorContext::new(
             feature,
-            DEFAULT_PORT.clone(),
+            FEATURES_PORT.clone(),
             Arc::clone(&ctx.env_vars),
             Arc::clone(&ctx.storage_resolver),
             Arc::clone(&ctx.kv_store),
@@ -577,7 +577,7 @@ impl ProcessorFactory for OutputRouterFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
@@ -654,10 +654,10 @@ mod schema_hook_tests {
             None
         }
         fn get_input_ports(&self) -> Vec<Port> {
-            vec![DEFAULT_PORT.clone()]
+            vec![FEATURES_PORT.clone()]
         }
         fn get_output_ports(&self) -> Vec<Port> {
-            vec![DEFAULT_PORT.clone()]
+            vec![FEATURES_PORT.clone()]
         }
         fn build(
             &self,

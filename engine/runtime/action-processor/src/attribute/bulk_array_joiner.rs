@@ -5,7 +5,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue};
 use schemars::JsonSchema;
@@ -35,11 +35,11 @@ impl ProcessorFactory for AttributeBulkArrayJoinerFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -130,7 +130,7 @@ impl Processor for AttributeBulkArrayJoiner {
             new_attributes.insert(key.clone(), AttributeValue::String(new_value.join(",")));
         }
         feature.extend(new_attributes);
-        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
         Ok(())
     }
 
@@ -182,7 +182,7 @@ mod test {
             assert_eq!(noop.send_ports.lock().unwrap().len(), 1);
             assert_eq!(
                 noop.send_ports.lock().unwrap().first().cloned(),
-                Some(DEFAULT_PORT.clone())
+                Some(FEATURES_PORT.clone())
             );
             assert_eq!(noop.send_features.lock().unwrap().len(), 1);
             let feature = noop.send_features.lock().unwrap().first().unwrap().clone();
@@ -213,7 +213,7 @@ mod test {
             assert_eq!(noop.send_ports.lock().unwrap().len(), 1);
             assert_eq!(
                 noop.send_ports.lock().unwrap().first().cloned(),
-                Some(DEFAULT_PORT.clone())
+                Some(FEATURES_PORT.clone())
             );
             assert_eq!(noop.send_features.lock().unwrap().len(), 1);
             let feature = noop.send_features.lock().unwrap().first().unwrap().clone();
@@ -248,7 +248,7 @@ mod test {
             assert_eq!(noop.send_ports.lock().unwrap().len(), 1);
             assert_eq!(
                 noop.send_ports.lock().unwrap().first().unwrap().clone(),
-                DEFAULT_PORT.clone()
+                FEATURES_PORT.clone()
             );
             assert_eq!(noop.send_features.lock().unwrap().len(), 1);
             let feature = noop.send_features.lock().unwrap().first().unwrap().clone();

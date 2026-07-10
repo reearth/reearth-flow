@@ -10,7 +10,7 @@ require (
 	github.com/fsouza/fake-gcs-server v1.54.0
 	github.com/gorilla/websocket v1.5.3
 	github.com/redis/go-redis/v9 v9.20.0
-	github.com/reearth/ygo v1.22.0
+	github.com/reearth/ygo v1.30.1
 	go.opentelemetry.io/contrib/detectors/gcp v1.42.0
 	go.opentelemetry.io/contrib/instrumentation/net/http/otelhttp v0.63.0
 	go.opentelemetry.io/otel v1.44.0

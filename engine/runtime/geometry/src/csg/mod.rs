@@ -11,6 +11,8 @@ use super::solid::Solid;
 
 mod constructor;
 mod ops;
+#[cfg(feature = "new-geometry")]
+mod validation;
 
 /// Volumetric, closed 3D geometries that `Csg` boolean operations are defined
 /// over.

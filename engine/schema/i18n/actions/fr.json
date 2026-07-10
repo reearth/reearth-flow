@@ -2556,7 +2556,9 @@
         "": {
           "title": "BuildingUsageAttributeValidatorParam"
         },
-        "codelistsPath": {}
+        "codelistsPath": {
+          "description": "Expression evaluating to the PLATEAU codelists directory path."
+        }
       }
     },
     {
@@ -2836,6 +2838,63 @@
       }
     },
     {
+      "name": "PLATEAU6.BuildingPartConnectivityChecker",
+      "parameterI18n": {
+        "": {
+          "title": "BuildingPartConnectivityChecker Parameters",
+          "description": "Configure how to check connectivity between BuildingParts"
+        },
+        "buildingIdAttribute": {
+          "title": "Building ID Attribute",
+          "description": "Attribute containing the parent Building ID (default: \"gmlId\")"
+        },
+        "fileIndexAttribute": {
+          "title": "File Index Attribute",
+          "description": "Attribute containing the file index (default: \"fileIndex\")"
+        },
+        "lodAttribute": {
+          "title": "LOD Attribute",
+          "description": "Attribute containing the Level of Detail (default: \"lod\")"
+        },
+        "partIdAttribute": {
+          "title": "Part ID Attribute",
+          "description": "Attribute containing the BuildingPart ID (default: \"featureId\")"
+        }
+      }
+    },
+    {
+      "name": "PLATEAU6.BuildingUsageAttributeValidator",
+      "parameterI18n": {
+        "": {
+          "title": "BuildingUsageAttributeValidator Parameters"
+        },
+        "codelistsPath": {
+          "description": "Expression evaluating to the PLATEAU codelists directory path."
+        }
+      }
+    },
+    {
+      "name": "PLATEAU6.DestinationMeshCodeExtractor",
+      "parameterI18n": {
+        "": {
+          "title": "PLATEAU Destination MeshCode Extractor Parameters",
+          "description": "Configure mesh code extraction for Japanese standard regional mesh"
+        },
+        "epsgCode": {
+          "title": "EPSG Code",
+          "description": "Japanese Plane Rectangular Coordinate System EPSG code for area calculation"
+        },
+        "meshType": {
+          "title": "Mesh Type",
+          "description": "Japanese standard mesh type: 1=80km, 2=10km, 3=1km, 4=500m, 5=250m, 6=125m"
+        },
+        "meshcodeAttr": {
+          "title": "Mesh Code Attribute Name",
+          "description": "Output attribute name for the mesh code"
+        }
+      }
+    },
+    {
       "name": "PLATEAU6.DomainOfDefinitionValidator",
       "description": "Validates domain of definition of CityGML features",
       "parameterI18n": {
@@ -2869,6 +2928,23 @@
       }
     },
     {
+      "name": "PLATEAU6.SolidIntersectionTestPairCreator",
+      "parameterI18n": {
+        "": {
+          "title": "SolidIntersectionTestPairCreatorParam"
+        },
+        "gmlIdAttribute": {
+          "description": "Attribute name for the GML ID within the list items (default: \"gmlId\")"
+        },
+        "listAttribute": {
+          "description": "Attribute name containing the list of overlapping features from AreaOnAreaOverlayer (default: \"list\")"
+        },
+        "pairIdAttribute": {
+          "description": "Attribute name to store the pair ID (default: \"pair_id\")"
+        }
+      }
+    },
+    {
       "name": "PLATEAU6.UDXFolderExtractor",
       "description": "Extracts UDX folders from cityGML path",
       "parameterI18n": {
@@ -2880,6 +2956,9 @@
         "codelistsPath": {},
         "schemasPath": {}
       }
+    },
+    {
+      "name": "PLATEAU6.UnmatchedXlinkDetector"
     },
     {
       "name": "PlanarityFilter",

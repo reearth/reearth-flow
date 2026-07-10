@@ -153,22 +153,22 @@ graphs:
       - id: 550e8400-e29b-41d4-a716-446655440060
         from: 550e8400-e29b-41d4-a716-446655440020
         to: 550e8400-e29b-41d4-a716-446655440030
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # Successful responses go to success output
       - id: 550e8400-e29b-41d4-a716-446655440070
         from: 550e8400-e29b-41d4-a716-446655440030
         to: 550e8400-e29b-41d4-a716-446655440040
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # Failed requests go to error output
       - id: 550e8400-e29b-41d4-a716-446655440080
         from: 550e8400-e29b-41d4-a716-446655440030
         to: 550e8400-e29b-41d4-a716-446655440050
         fromPort: rejected
-        toPort: default
+        toPort: features
 
 # To run this workflow:
 # cargo run --package reearth-flow-cli -- run \

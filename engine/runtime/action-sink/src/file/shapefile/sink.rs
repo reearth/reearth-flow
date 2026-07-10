@@ -4,7 +4,7 @@ use std::vec;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
+use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
 use reearth_flow_types::{Attribute, AttributeValue, Code, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -39,7 +39,7 @@ impl SinkFactory for ShapefileWriterFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn prepare(&self) -> Result<(), BoxedError> {

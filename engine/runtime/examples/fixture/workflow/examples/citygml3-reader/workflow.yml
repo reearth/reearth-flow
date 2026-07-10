@@ -55,7 +55,7 @@ graphs:
             - expr:
                 type: flowExpr
                 value: attributes["extension"] == "gml"
-              outputPort: default
+              outputPort: features
 
       - id: c1d2e3f4-a5b6-7890-cdef-1234567890ab
         name: PLATEAU4.UDXFolderExtractor
@@ -108,35 +108,35 @@ graphs:
       - id: f6a7b8c9-d0e1-2f3a-4b5c-6d7e8f9a0b1c
         from: c3d4e5f6-a7b8-9012-cdef-123456789012
         to: b2a1c3d4-e5f6-7890-abcd-ef0123456789
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: e1f2a3b4-c5d6-7890-abcd-ef0123456789
         from: b2a1c3d4-e5f6-7890-abcd-ef0123456789
         to: a2b3c4d5-e6f7-8901-abcd-ef2345678901
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: b3c4d5e6-f7a8-9012-bcde-f23456789012
         from: a2b3c4d5-e6f7-8901-abcd-ef2345678901
         to: a3b4c5d6-e7f8-9012-bcde-f34567890123
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: c4d5e6f7-a8b9-0123-cdef-123456789012
         from: a3b4c5d6-e7f8-9012-bcde-f34567890123
         to: c1d2e3f4-a5b6-7890-cdef-1234567890ab
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: d5e6f7a8-b9c0-1234-def1-234567890123
         from: c1d2e3f4-a5b6-7890-cdef-1234567890ab
         to: d4e5f6a7-b8c9-0123-def1-234567890123
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: a7b8c9d0-e1f2-3a4b-5c6d-7e8f9a0b1c2d
         from: d4e5f6a7-b8c9-0123-def1-234567890123
         to: b1c2d3e4-f5a6-7890-bcde-f12345678901
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: c8d9e0f1-a2b3-4c5d-6e7f-8a9b0c1d2e3f
         from: b1c2d3e4-f5a6-7890-bcde-f12345678901
         to: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a0b
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features

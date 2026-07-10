@@ -18,7 +18,7 @@ graphs:
     type: action
     action: InputRouter
     with:
-      routingPort: default
+      routingPort: features
   - id: c7315341-26b3-4405-9d02-039d721cd225
     name: DirectoryDecompressor
     type: action
@@ -46,7 +46,7 @@ graphs:
       - expr:
           type: flowExpr
           value: attributes["extension"] == "gml"
-        outputPort: default
+        outputPort: features
   - id: 712e4c72-950d-466d-9598-19f299668e7e
     name: PLATEAU4.UDXFolderExtractor
     type: action
@@ -78,43 +78,43 @@ graphs:
     type: action
     action: OutputRouter
     with:
-      routingPort: default
+      routingPort: features
   edges:
   - id: 5d700a9c-1537-442e-bfb2-0728a9e1ec9c
     from: 35038d96-5e81-4a21-a0e0-72f67eb71db5
     to: c7315341-26b3-4405-9d02-039d721cd225
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 749d8e90-dbc3-4fc9-bfee-046344f5f5b9
     from: c7315341-26b3-4405-9d02-039d721cd225
     to: c73fbb78-74ca-490e-8dc9-e9fa1729bea0
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 1379a497-9e4e-40fb-8361-d2eeeb491762
     from: c73fbb78-74ca-490e-8dc9-e9fa1729bea0
     to: 9d04983e-e84e-4622-b0c6-827d7afad720
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 2379a497-9e4e-40fb-8361-d2eeeb491763
     from: 9d04983e-e84e-4622-b0c6-827d7afad720
     to: 712e4c72-950d-466d-9598-19f299668e7e
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 2379a497-9e4e-40fb-8361-d2eeeb491764
     from: 712e4c72-950d-466d-9598-19f299668e7e
     to: f3465c78-59fa-4307-bc02-67c46c2ddd98
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 0f43aebf-caf7-4f07-be97-f23b9c2c585f
     from: f3465c78-59fa-4307-bc02-67c46c2ddd98
     to: 7bad5b43-6e59-4f6b-95c4-b3043d2b950d
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 80462b53-a06a-4e0b-bed8-07dcda744a55
     from: 7bad5b43-6e59-4f6b-95c4-b3043d2b950d
     to: 9fccbcdb-ab58-4fda-9a47-05a45c84a7fb
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 - id: 7e98d856-1438-4148-bdcb-91747ef2e405
   name: PLATEAU3.LodSplitterWithDM
   nodes:
@@ -123,7 +123,7 @@ graphs:
     type: action
     action: InputRouter
     with:
-      routingPort: default
+      routingPort: features
   - id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
     name: DmGeometricAttributeFilter
     type: action
@@ -220,63 +220,63 @@ graphs:
   - id: fcc0d596-9169-4289-9f35-07c8cbec6f10
     from: 5848465e-828f-4646-874e-e2f182b73714
     to: a1b2c3d4-e5f6-7890-abcd-ef1234567890
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e6f
     from: a1b2c3d4-e5f6-7890-abcd-ef1234567890
     to: 278ab965-ce22-473d-98c6-c7b381c38679
     fromPort: unfiltered
-    toPort: default
+    toPort: features
   - id: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7a
     from: a1b2c3d4-e5f6-7890-abcd-ef1234567890
     to: b1c2d3e4-f5a6-7890-bcde-f12345678901
     fromPort: DmGeometricAttribute
-    toPort: default
+    toPort: features
   - id: 1386a662-cf02-4475-a5d2-3668a50a56b7
     from: 278ab965-ce22-473d-98c6-c7b381c38679
     to: 1787b15c-19b5-4386-a0ff-f0e58f477d07
     fromPort: unfiltered
-    toPort: default
+    toPort: features
   - id: ef2f1484-6173-4f34-85bc-58bc45e31bff
     from: 1787b15c-19b5-4386-a0ff-f0e58f477d07
     to: 8fe1a102-e3f3-40dd-b235-66e9c148830f
     fromPort: unfiltered
-    toPort: default
+    toPort: features
   - id: 111cc70e-e1ad-44f4-b4c8-82f7b1cf1309
     from: 8fe1a102-e3f3-40dd-b235-66e9c148830f
     to: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 5857909b-7fc0-4d3e-adfa-65a5669a6646
     from: 1787b15c-19b5-4386-a0ff-f0e58f477d07
     to: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
     fromPort: exceptSplit
-    toPort: default
+    toPort: features
   - id: 1a802e2e-c876-42e3-b3ae-639af1bc7780
     from: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
     to: dab9d3b6-594e-40cc-9f6b-c605005e3320
     fromPort: lod0
-    toPort: default
+    toPort: features
   - id: 1a802e2e-c876-42e3-b3ae-639af1bc7781
     from: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
     to: dab9d3b6-594e-40cc-9f6b-c605005e3321
     fromPort: lod1
-    toPort: default
+    toPort: features
   - id: 1a802e2e-c876-42e3-b3ae-639af1bc7782
     from: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
     to: dab9d3b6-594e-40cc-9f6b-c605005e3322
     fromPort: lod2
-    toPort: default
+    toPort: features
   - id: 1a802e2e-c876-42e3-b3ae-639af1bc7783
     from: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
     to: dab9d3b6-594e-40cc-9f6b-c605005e3323
     fromPort: lod3
-    toPort: default
+    toPort: features
   - id: 1a802e2e-c876-42e3-b3ae-639af1bc7784
     from: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
     to: dab9d3b6-594e-40cc-9f6b-c605005e3324
     fromPort: lod4
-    toPort: default
+    toPort: features
 - id: b8d2e9f3-4c5a-6b7d-0e1f-a2345678901b
   name: entry_point
   nodes:
@@ -321,7 +321,7 @@ graphs:
       - expr:
           type: flowExpr
           value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
-        outputPort: default
+        outputPort: features
   - id: d4f8a5b9-0e1c-2d3f-6a7b-c89012d1c701
     name: AttributeManagerDict
     type: action
@@ -584,120 +584,120 @@ graphs:
   - id: d4f8a5b9-0e1c-2d3f-6a7b-c89012345b6f
     from: c9e3f0a4-5d6b-7c8e-1f2a-b3456789012c
     to: d0f4a1b5-6e7c-8d9f-2a3b-c4567890123d
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e5a9b6c0-1f2d-3e4a-7b8c-d90123456c7a
     from: d0f4a1b5-6e7c-8d9f-2a3b-c4567890123d
     to: e1a5b2c6-7f8d-9e0a-3b4c-d5678901234e
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: c9e3f0a4-5d6b-7c8e-1f2a-b345d1c701e1
     from: 44bd136f-0fba-44f4-b719-22c28163c070
     to: d4f8a5b9-0e1c-2d3f-6a7b-c89012d1c701
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: d0f4a1b5-6e7c-8d9f-2a3b-c456d1c702e2
     from: d4f8a5b9-0e1c-2d3f-6a7b-c89012d1c701
     to: e5a9b6c0-1f2d-3e4a-7b8c-d90123d1c702
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e1a5b2c6-7f8d-9e0a-3b4c-d567d1c703e3
     from: e5a9b6c0-1f2d-3e4a-7b8c-d90123d1c702
     to: f6b0c7d1-2a3e-4f5b-8c9d-e01234d1c703
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: f2b6c3d7-8a9e-0f1b-4c5d-e678d1c704e4
     from: f6b0c7d1-2a3e-4f5b-8c9d-e01234d1c703
     to: a7c1d8e2-3b4f-5a6c-9d0e-f12345d1c704
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: ccb494b2-8908-4a01-ae38-918718315912
     from: e1a5b2c6-7f8d-9e0a-3b4c-d5678901234e
     to: 44bd136f-0fba-44f4-b719-22c28163c070
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 2c41faa3-589d-4955-9c62-941eb184e559
     from: 44bd136f-0fba-44f4-b719-22c28163c070
     to: 0f670054-828b-48d8-9672-dbc34247f2b3
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 19d12a4b-13d5-4a9f-ada5-24315b4d6392
     from: 0f670054-828b-48d8-9672-dbc34247f2b3
     to: 70c07659-ed1b-4d2a-9e44-9e6c85ac4095
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: b35b7683-5513-48d2-ad0d-241391323805
     from: 70c07659-ed1b-4d2a-9e44-9e6c85ac4095
     to: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 5bbab594-dc6d-4ecb-be5d-e6fd5006222f
     from: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
     to: 3713b42c-a3af-489f-91a5-d101c26fcaee
     fromPort: lod1
-    toPort: default
+    toPort: features
   - id: e4a9a38d-bbcb-4ef1-bbfb-cb4cc6322a34
     from: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
     to: 3713b42c-a3af-489f-91a5-d101c26fcaee
     fromPort: lod2
-    toPort: default
+    toPort: features
   - id: 520cdac3-22e4-487b-b326-a859bb5d38a7
     from: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
     to: 3713b42c-a3af-489f-91a5-d101c26fcaee
     fromPort: lod3
-    toPort: default
+    toPort: features
   - id: 6e1f7a8b-9c0d-1e2f-3a4b-5c6d7e8f9a0b
     from: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
     to: 3713b42c-a3af-489f-91a5-d101c26fcaee
     fromPort: lod4
-    toPort: default
+    toPort: features
   - id: bf8df312-1461-4431-8134-010dd518d4a4
     from: 3713b42c-a3af-489f-91a5-d101c26fcaee
     to: c4d5e6f7-a8b9-0c1d-2e3f-456789abcdef
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: d5e6f7a8-b9c0-1d2e-3f45-6789abcdef01
     from: c4d5e6f7-a8b9-0c1d-2e3f-456789abcdef
     to: 873e4890-f9d0-4a1a-ab2c-76975655bcc1
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: f251eb31-4ffd-4edf-a56c-f2dbd9eb0fc9
     from: 873e4890-f9d0-4a1a-ab2c-76975655bcc1
     to: 782c6a8d-a772-4238-a32e-32caadbbb91f
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e9a3b0c4-5f6d-7e8a-1b2c-d345678c8000
     from: 70c07659-ed1b-4d2a-9e44-9e6c85ac4095
     to: d5a9b6c0-1f2d-3e4a-7b8c-d90123456ff0
     fromPort: schema
-    toPort: default
+    toPort: features
   - id: f0b4c1d5-6a7e-8f9b-2c3d-e456789d9000
     from: d5a9b6c0-1f2d-3e4a-7b8c-d90123456ff0
     to: 782c6a8d-a772-4238-a32e-32caadbbb91f
-    fromPort: default
+    fromPort: features
     toPort: schema
   - id: 9bef0954-f6a8-4a02-8d41-8f1f24a72881
     from: 7d6d7fbb-c5c8-46e0-aed3-92e7ed03d660
     to: 5ea849f7-c314-4460-ad98-50be3e2fe24d
     fromPort: DmGeometricAttribute
-    toPort: default
+    toPort: features
   - id: dfa3779b-517c-47ce-86e5-74bc74a0d2b7
     from: 5ea849f7-c314-4460-ad98-50be3e2fe24d
     to: a1b2c3d4-e5f6-7890-a1b2-c3d4e5f67890
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: b1c2d3e4-f5a6-7890-b1c2-d3e4f5a67890
     from: a1b2c3d4-e5f6-7890-a1b2-c3d4e5f67890
     to: b2c3d4e5-f6a7-8901-b2c3-d4e5f6a78901
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: c3d4e5f6-a7b8-9012-c3d4-e5f6a7b89012
     from: b2c3d4e5-f6a7-8901-b2c3-d4e5f6a78901
     to: ec2b6be7-75a2-4761-bca4-7dbfbde247e2
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: a9683146-31ad-4dca-9903-947088c6731b
     from: ec2b6be7-75a2-4761-bca4-7dbfbde247e2
     to: 9966a139-fdf3-4b67-8da3-e5cc83141b1e
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features

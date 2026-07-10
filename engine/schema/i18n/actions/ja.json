@@ -2559,7 +2559,9 @@
         "": {
           "title": "BuildingUsageAttributeValidator パラメータ"
         },
-        "codelistsPath": {}
+        "codelistsPath": {
+          "description": "PLATEAU コードリストディレクトリのパスを表す式"
+        }
       }
     },
     {
@@ -2839,6 +2841,66 @@
       }
     },
     {
+      "name": "PLATEAU6.BuildingPartConnectivityChecker",
+      "description": "3Dの境界サーフェスマッチングを使用して、同一建物内のBuildingPart間の接続性を確認する",
+      "parameterI18n": {
+        "": {
+          "title": "BuildingPartConnectivityChecker パラメータ",
+          "description": "BuildingPart 間の接続性チェック方法を設定する"
+        },
+        "buildingIdAttribute": {
+          "title": "建物 ID 属性",
+          "description": "親の Building ID を含む属性（デフォルト: \"gmlId\"）"
+        },
+        "fileIndexAttribute": {
+          "title": "ファイルインデックス属性",
+          "description": "ファイルインデックスを含む属性（デフォルト: \"fileIndex\"）"
+        },
+        "lodAttribute": {
+          "title": "LOD 属性",
+          "description": "詳細レベル（LOD）を含む属性（デフォルト: \"lod\"）"
+        },
+        "partIdAttribute": {
+          "title": "パーツ ID 属性",
+          "description": "BuildingPart ID を含む属性（デフォルト: \"featureId\"）"
+        }
+      }
+    },
+    {
+      "name": "PLATEAU6.BuildingUsageAttributeValidator",
+      "description": "建物利用属性の依存関係違反（L-bldg-04,05）と、市区町村コードを Common_localPublicAuthorities コードリストと照合して検証する。利用属性エラーは l0405BldgError ポート、市区町村コードエラーは cityCodeError ポートへ出力する",
+      "parameterI18n": {
+        "": {
+          "title": "BuildingUsageAttributeValidator パラメータ"
+        },
+        "codelistsPath": {
+          "description": "PLATEAU コードリストディレクトリのパスを表す式"
+        }
+      }
+    },
+    {
+      "name": "PLATEAU6.DestinationMeshCodeExtractor",
+      "description": "PLATEAUの出力ファイル用に日本の標準地域メッシュコードを抽出し、属性として追加する",
+      "parameterI18n": {
+        "": {
+          "title": "DestinationMeshCodeExtractor パラメータ",
+          "description": "日本標準地域メッシュのメッシュコード抽出を設定する"
+        },
+        "epsgCode": {
+          "title": "EPSG コード",
+          "description": "面積計算に使用する日本の平面直角座標系 EPSG コード"
+        },
+        "meshType": {
+          "title": "メッシュタイプ",
+          "description": "日本標準メッシュタイプ: 1=80km、2=10km、3=1km、4=500m、5=250m、6=125m"
+        },
+        "meshcodeAttr": {
+          "title": "メッシュコード属性名",
+          "description": "メッシュコードの出力属性名"
+        }
+      }
+    },
+    {
       "name": "PLATEAU6.DomainOfDefinitionValidator",
       "description": "PLATEAU6の定義領域を検証する",
       "parameterI18n": {
@@ -2872,6 +2934,24 @@
       }
     },
     {
+      "name": "PLATEAU6.SolidIntersectionTestPairCreator",
+      "description": "AreaOnAreaOverlayerの出力からソリッドの交差テスト用の地物ペアを作成する",
+      "parameterI18n": {
+        "": {
+          "title": "SolidIntersectionTestPairCreator パラメータ"
+        },
+        "gmlIdAttribute": {
+          "description": "リストアイテム内の GML ID の属性名（デフォルト: \"gmlId\"）"
+        },
+        "listAttribute": {
+          "description": "AreaOnAreaOverlayer からの重複フィーチャーのリストを含む属性名（デフォルト: \"list\"）"
+        },
+        "pairIdAttribute": {
+          "description": "ペア ID を格納する属性名（デフォルト: \"pair_id\"）"
+        }
+      }
+    },
+    {
       "name": "PLATEAU6.UDXFolderExtractor",
       "description": "PLATEAU6データからUDXフォルダを抽出する",
       "parameterI18n": {
@@ -2883,6 +2963,10 @@
         "codelistsPath": {},
         "schemasPath": {}
       }
+    },
+    {
+      "name": "PLATEAU6.UnmatchedXlinkDetector",
+      "description": "PLATEAUの未一致Xlinkを検出する"
     },
     {
       "name": "PlanarityFilter",

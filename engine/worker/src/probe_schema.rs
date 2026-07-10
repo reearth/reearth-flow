@@ -381,8 +381,8 @@ graphs:
       - id: {EDGE_ID}
         from: {READER_ID}
         to: {MANAGER_ID}
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 "#
         );
 
@@ -429,7 +429,7 @@ graphs:
         assert_eq!(value["version"], 1);
         assert_eq!(value["sampleSize"], 10);
 
-        let reader = &value["nodes"][READER_ID]["ports"]["default"]["fields"];
+        let reader = &value["nodes"][READER_ID]["ports"]["features"]["fields"];
         let reader_names: Vec<String> = reader
             .as_array()
             .expect("reader fields array")
@@ -446,7 +446,7 @@ graphs:
         );
 
         // AttributeManager removal propagates: `name` gone, `id` survives.
-        let manager = &value["nodes"][MANAGER_ID]["ports"]["default"]["fields"];
+        let manager = &value["nodes"][MANAGER_ID]["ports"]["features"]["fields"];
         let manager_names: Vec<String> = manager
             .as_array()
             .expect("manager fields array")

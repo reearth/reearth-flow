@@ -10,7 +10,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, CityGmlGeometry, GeometryValue};
 use schemars::JsonSchema;
@@ -111,11 +111,11 @@ impl ProcessorFactory for CoordinateExtractorFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
+        vec![FEATURES_PORT.clone(), REJECTED_PORT.clone()]
     }
 
     fn build(
@@ -207,7 +207,7 @@ impl Processor for CoordinateExtractor {
                     })
                     .collect();
                 new_feature.insert(list_name, AttributeValue::Array(array));
-                fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
             }
             CoordinateExtractionMode::SpecifyCoordinate {
                 coordinate_index,
@@ -250,7 +250,7 @@ impl Processor for CoordinateExtractor {
                             z.and_then(|v| AttributeValue::try_from(v).ok())
                                 .unwrap_or(AttributeValue::Null),
                         );
-                        fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+                        fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
                     }
                     None => {
                         fw.send(
@@ -360,7 +360,7 @@ mod tests {
             let features = noop.send_features.lock().unwrap();
             let ports = noop.send_ports.lock().unwrap();
             assert_eq!(features.len(), 1);
-            assert_eq!(ports[0], DEFAULT_PORT.clone());
+            assert_eq!(ports[0], FEATURES_PORT.clone());
 
             let arr = features[0]
                 .attributes
@@ -500,7 +500,7 @@ mod tests {
         if let ProcessorChannelForwarder::Noop(noop) = fw {
             let features = noop.send_features.lock().unwrap();
             let ports = noop.send_ports.lock().unwrap();
-            assert_eq!(ports[0], DEFAULT_PORT.clone());
+            assert_eq!(ports[0], FEATURES_PORT.clone());
             assert_eq!(
                 features[0].attributes.get(&Attribute::new("_x")),
                 Some(&AttributeValue::try_from(30.0).unwrap())
@@ -530,7 +530,7 @@ mod tests {
         if let ProcessorChannelForwarder::Noop(noop) = fw {
             let features = noop.send_features.lock().unwrap();
             let ports = noop.send_ports.lock().unwrap();
-            assert_eq!(ports[0], DEFAULT_PORT.clone());
+            assert_eq!(ports[0], FEATURES_PORT.clone());
             assert_eq!(
                 features[0].attributes.get(&Attribute::new("_x")),
                 Some(&AttributeValue::try_from(50.0).unwrap())
@@ -597,7 +597,7 @@ mod tests {
         if let ProcessorChannelForwarder::Noop(noop) = fw {
             let features = noop.send_features.lock().unwrap();
             let ports = noop.send_ports.lock().unwrap();
-            assert_eq!(ports[0], DEFAULT_PORT.clone());
+            assert_eq!(ports[0], FEATURES_PORT.clone());
             assert_eq!(
                 features[0].attributes.get(&Attribute::new("_z")),
                 Some(&AttributeValue::try_from(99.0).unwrap())
@@ -660,7 +660,7 @@ mod tests {
         if let ProcessorChannelForwarder::Noop(noop) = fw {
             let features = noop.send_features.lock().unwrap();
             let ports = noop.send_ports.lock().unwrap();
-            assert_eq!(ports[0], DEFAULT_PORT.clone());
+            assert_eq!(ports[0], FEATURES_PORT.clone());
 
             let arr = features[0]
                 .attributes

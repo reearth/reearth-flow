@@ -13,7 +13,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
 };
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_storage::storage::Storage;
@@ -296,12 +296,12 @@ impl ProcessorFactory for DomainOfDefinitionValidatorFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
         vec![
-            DEFAULT_PORT.clone(),
+            FEATURES_PORT.clone(),
             REJECTED_PORT.clone(),
             DUPLICATE_GML_ID_STATS_PORT.clone(),
         ]
@@ -492,7 +492,7 @@ impl Processor for DomainOfDefinitionValidator {
                 fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                     &ctx,
                     result_feature,
-                    DEFAULT_PORT.clone(),
+                    FEATURES_PORT.clone(),
                 ));
             }
             dup_id += 1;
@@ -702,7 +702,7 @@ fn process_feature(
         "invalidLodXGeometry",
         AttributeValue::Number(Number::from(response.invalid_lod_x_geometry_num)),
     );
-    fw.send(ctx.new_with_feature_and_port(result_feature.clone(), DEFAULT_PORT.clone()));
+    fw.send(ctx.new_with_feature_and_port(result_feature.clone(), FEATURES_PORT.clone()));
     accumulator.result.push(result_feature);
     Ok((accumulator.result, accumulator.gml_ids))
 }
@@ -816,7 +816,7 @@ fn run_domain_of_definition_checks(
                 context.fw.send(
                     context
                         .ctx
-                        .new_with_feature_and_port(result_feature.clone(), DEFAULT_PORT.clone()),
+                        .new_with_feature_and_port(result_feature.clone(), FEATURES_PORT.clone()),
                 );
                 accumulator.result.push(result_feature);
                 accumulator.response.xlink_has_no_reference_num += 1;
@@ -1028,7 +1028,7 @@ fn process_member_node(
         context.fw.send(
             context
                 .ctx
-                .new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()),
+                .new_with_feature_and_port(result_feature, FEATURES_PORT.clone()),
         );
         accumulator.response.gml_id_not_well_formed_num += 1;
     }
@@ -1366,7 +1366,7 @@ fn process_member_node(
             context.fw.send(
                 context
                     .ctx
-                    .new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()),
+                    .new_with_feature_and_port(result_feature, FEATURES_PORT.clone()),
             );
         }
     }
@@ -1460,7 +1460,7 @@ fn process_member_node(
                     context.fw.send(
                         context
                             .ctx
-                            .new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()),
+                            .new_with_feature_and_port(result_feature, FEATURES_PORT.clone()),
                     );
                     accumulator.response.xlink_has_no_reference_num += 1;
                 }
@@ -1477,7 +1477,7 @@ fn process_member_node(
                 context.fw.send(
                     context
                         .ctx
-                        .new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()),
+                        .new_with_feature_and_port(result_feature, FEATURES_PORT.clone()),
                 );
                 accumulator.response.xlink_has_no_reference_num += 1;
             } else if let Some(gml_ids) =
@@ -1512,7 +1512,7 @@ fn process_member_node(
                     context.fw.send(
                         context
                             .ctx
-                            .new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()),
+                            .new_with_feature_and_port(result_feature, FEATURES_PORT.clone()),
                     );
                     accumulator.response.xlink_invalid_object_type_num += 1;
                 }
@@ -1578,7 +1578,7 @@ fn process_member_node(
             context.fw.send(
                 context
                     .ctx
-                    .new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()),
+                    .new_with_feature_and_port(result_feature, FEATURES_PORT.clone()),
             );
             accumulator.response.invalid_lod_x_geometry_num += 1;
         }
@@ -1902,7 +1902,7 @@ fn handle_code_validation_failure(
         AttributeValue::String(code_value.to_string()),
     );
     result.push(result_feature.clone());
-    fw.send(ctx.new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()));
+    fw.send(ctx.new_with_feature_and_port(result_feature, FEATURES_PORT.clone()));
 }
 
 #[cfg(test)]

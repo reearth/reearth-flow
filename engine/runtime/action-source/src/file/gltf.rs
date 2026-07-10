@@ -8,7 +8,7 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
+    node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
 
@@ -45,7 +45,7 @@ impl SourceFactory for GltfReaderFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -355,7 +355,7 @@ async fn send_feature(
 
     sender
         .send((
-            DEFAULT_PORT.clone(),
+            FEATURES_PORT.clone(),
             IngestionMessage::OperationEvent { feature },
         ))
         .await
