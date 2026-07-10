@@ -221,7 +221,10 @@ export default ({
     showLegacyPortsDialog,
     handleLegacyPortsMigrate,
     handleLegacyPortsDialogClose,
-  } = useLegacyPortsMigration({ yWorkflows });
+  } = useLegacyPortsMigration({
+    yWorkflows,
+    onProjectSnapshotSave: handleProjectSnapshotSave,
+  });
 
   const { sharingUrl, handleProjectShare } = useProjectShare({
     currentProject,

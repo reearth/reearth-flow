@@ -7,7 +7,13 @@ import {
   migrateLegacyPorts,
 } from "./utils/legacyPortsMigration";
 
-export default ({ yWorkflows }: { yWorkflows: YMap<YWorkflow> }) => {
+export default ({
+  yWorkflows,
+  onProjectSnapshotSave,
+}: {
+  yWorkflows: YMap<YWorkflow>;
+  onProjectSnapshotSave: () => void;
+}) => {
   const [showLegacyPortsDialog, setShowLegacyPortsDialog] = useState(false);
   const [dismissed, setDismissed] = useState(false);
   useEffect(() => {
@@ -28,9 +34,10 @@ export default ({ yWorkflows }: { yWorkflows: YMap<YWorkflow> }) => {
     yWorkflows.doc?.transact(() => {
       migrateLegacyPorts(yWorkflows);
     }, "legacy-ports-migration");
+    onProjectSnapshotSave();
     setShowLegacyPortsDialog(false);
     setDismissed(true);
-  }, [yWorkflows]);
+  }, [yWorkflows, onProjectSnapshotSave]);
 
   const handleLegacyPortsDialogClose = useCallback(() => {
     setShowLegacyPortsDialog(false);
