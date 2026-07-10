@@ -86,9 +86,9 @@ fn glb_content_uris(tile: &Value) -> Vec<String> {
     uris
 }
 
-/// QUADTREE-only, and reads only the root `.subtree` file — chaining across
-/// a subtree boundary via `childSubtreeAvailability` is unimplemented. Both
-/// limits surface as an `Err`.
+/// QUADTREE-only. Follows `childSubtreeAvailability` to chain across
+/// `subtreeLevels`-sized windows, so a dataset deeper than one window (as
+/// produced by the `cesium3dtiles/next` writer) is still fully readable.
 fn collect_implicit(
     tileset_dir: &Path,
     root: &Value,
@@ -114,17 +114,6 @@ fn collect_implicit(
         "subtreeLevels should not exceed 10, got {subtree_levels}"
     );
 
-    // `availableLevels` beyond `subtreeLevels` implies chaining into child
-    // subtree files, which this reader doesn't follow.
-    if let Some(available_levels) = implicit.get("availableLevels").and_then(|v| v.as_u64()) {
-        if available_levels as u32 != subtree_levels {
-            return Err(format!(
-                "implicitTiling.availableLevels ({available_levels}) exceeds subtreeLevels \
-                 ({subtree_levels}); reading chained subtree files is unimplemented"
-            ));
-        }
-    }
-
     let content_template = root
         .get("content")
         .and_then(|c| c.get("uri"))
@@ -142,20 +131,50 @@ fn collect_implicit(
         .and_then(|v| v.as_f64())
         .ok_or_else(|| "implicit root tile missing geometricError".to_string())?;
 
-    let subtree_path = resolve_existing(tileset_dir, &expand_template(subtree_template, 0, 0, 0))?;
+    let mut out = Vec::new();
+    collect_subtree_chain(
+        tileset_dir,
+        content_template,
+        subtree_template,
+        (0, 0, 0),
+        subtree_levels,
+        root_geometric_error,
+        &mut out,
+    )?;
+    Ok(out)
+}
+
+/// Reads the `.subtree` file rooted at `(level, x, y)` (all absolute,
+/// dataset-wide coordinates), collects its in-window content, then recurses
+/// into every subtree it chains to via `childSubtreeAvailability`.
+fn collect_subtree_chain(
+    tileset_dir: &Path,
+    content_template: &str,
+    subtree_template: &str,
+    (root_level, root_x, root_y): (u32, u32, u32),
+    subtree_levels: u32,
+    root_geometric_error: f64,
+    out: &mut Vec<TileContent>,
+) -> Result<(), String> {
+    let subtree_path = resolve_existing(
+        tileset_dir,
+        &expand_template(subtree_template, root_level, root_x, root_y),
+    )?;
     let subtree_bytes = fs::read(&subtree_path)
         .map_err(|e| format!("Failed to read subtree file {:?}: {}", subtree_path, e))?;
-    let content_available = parse_subtree_content_availability(&subtree_bytes)?;
+    let subtree = parse_subtree(&subtree_bytes)?;
 
-    let mut out = Vec::new();
-    for level in 0..subtree_levels {
-        let n = 1u32 << level;
-        for y in 0..n {
-            for x in 0..n {
-                let bit = level_offset(level) + morton2d(x, y);
-                if !content_available.get(bit) {
+    for rel_level in 0..subtree_levels {
+        let n = 1u32 << rel_level;
+        for ry in 0..n {
+            for rx in 0..n {
+                let bit = level_offset(rel_level) + morton2d(rx, ry);
+                if !subtree.content_availability.get(bit) {
                     continue;
                 }
+                let level = root_level + rel_level;
+                let x = (root_x << rel_level) | rx;
+                let y = (root_y << rel_level) | ry;
                 let uri = expand_template(content_template, level, x, y);
                 out.push(TileContent {
                     path: resolve_existing(tileset_dir, &uri)?,
@@ -164,7 +183,32 @@ fn collect_implicit(
             }
         }
     }
-    Ok(out)
+
+    // `childSubtreeAvailability` is indexed over the level one past this
+    // file's window — where a chained subtree's root sits — not the boundary
+    // level itself. Mirrors `cesium3dtiles/next/subtree.rs`'s `rel_xy` there.
+    let n = 1u32 << subtree_levels;
+    for cy in 0..n {
+        for cx in 0..n {
+            if !subtree.child_subtree_availability.get(morton2d(cx, cy)) {
+                continue;
+            }
+            collect_subtree_chain(
+                tileset_dir,
+                content_template,
+                subtree_template,
+                (
+                    root_level + subtree_levels,
+                    (root_x << subtree_levels) | cx,
+                    (root_y << subtree_levels) | cy,
+                ),
+                subtree_levels,
+                root_geometric_error,
+                out,
+            )?;
+        }
+    }
+    Ok(())
 }
 
 fn expand_template(template: &str, level: u32, x: u32, y: u32) -> String {
@@ -193,14 +237,24 @@ impl Availability {
     }
 }
 
-/// Parses a `.subtree` file (3D Tiles 1.1 implicit tiling: a 24-byte
-/// header — magic `subt`, version, JSON length, binary length — followed by
-/// the two chunks) and returns just its `contentAvailability[0]` bitstream;
-/// nothing here needs `tileAvailability` or `childSubtreeAvailability`.
-fn parse_subtree_content_availability(bytes: &[u8]) -> Result<Availability, String> {
+/// The two availability bitstreams `collect_subtree_chain` needs:
+/// `contentAvailability[0]` for this file's own window, and
+/// `childSubtreeAvailability` to find chained `.subtree` files.
+/// `tileAvailability` is unused — nothing here queries tile existence
+/// independent of content.
+struct ParsedSubtree {
+    content_availability: Availability,
+    child_subtree_availability: Availability,
+}
+
+/// Parses a `.subtree` file: a 24-byte header (magic `subt`, version, JSON
+/// length, binary length) followed by the two chunks.
+fn parse_subtree(bytes: &[u8]) -> Result<ParsedSubtree, String> {
     if bytes.len() < 24 || &bytes[0..4] != b"subt" {
         return Err("Invalid .subtree file: bad magic".to_string());
     }
+    let version = u32::from_le_bytes(bytes[4..8].try_into().unwrap());
+    assert_eq!(version, 1, "unsupported .subtree version: {version}");
     let json_len = u64::from_le_bytes(bytes[8..16].try_into().unwrap()) as usize;
     let bin_len = u64::from_le_bytes(bytes[16..24].try_into().unwrap()) as usize;
 
@@ -227,8 +281,19 @@ fn parse_subtree_content_availability(bytes: &[u8]) -> Result<Availability, Stri
         .and_then(|c| c.as_array())
         .and_then(|arr| arr.first())
         .ok_or_else(|| "subtree JSON missing contentAvailability".to_string())?;
+    let content_availability =
+        parse_availability(content_availability_def, &buffer_views, bin_bytes)?;
 
-    parse_availability(content_availability_def, &buffer_views, bin_bytes)
+    let child_subtree_availability_def = json
+        .get("childSubtreeAvailability")
+        .ok_or_else(|| "subtree JSON missing childSubtreeAvailability".to_string())?;
+    let child_subtree_availability =
+        parse_availability(child_subtree_availability_def, &buffer_views, bin_bytes)?;
+
+    Ok(ParsedSubtree {
+        content_availability,
+        child_subtree_availability,
+    })
 }
 
 fn parse_availability(
@@ -282,4 +347,116 @@ fn spread_bits(v: u32) -> u64 {
     x = (x | (x << 2)) & 0x3333_3333_3333_3333;
     x = (x | (x << 1)) & 0x5555_5555_5555_5555;
     x
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn bitset(len_bits: usize, set_bits: &[u64]) -> Vec<u8> {
+        let mut bytes = vec![0u8; len_bits.div_ceil(8)];
+        for &i in set_bits {
+            bytes[(i / 8) as usize] |= 1 << (i % 8);
+        }
+        bytes
+    }
+
+    /// Hand-encodes a `.subtree` file with `subtreeLevels = 1` (window: level
+    /// 0 only), given which in-window bit is content-available and which
+    /// one-past-the-boundary bit chains to another subtree.
+    fn encode_subtree(content_bit: Option<u64>, chained_bit: Option<u64>) -> Vec<u8> {
+        let content_bits: Vec<u64> = content_bit.into_iter().collect();
+        let content_availability = bitset(1, &content_bits);
+        let child_availability_bits: Vec<u64> = chained_bit.into_iter().collect();
+        let child_availability = bitset(4, &child_availability_bits);
+
+        let mut buffers = vec![content_availability];
+        let child_json = if child_availability_bits.is_empty() {
+            json!({"constant": 0})
+        } else {
+            let bitstream = buffers.len();
+            buffers.push(child_availability);
+            json!({"bitstream": bitstream, "availableCount": 1})
+        };
+
+        let mut buffer_views = Vec::new();
+        let mut offset = 0usize;
+        for b in &buffers {
+            buffer_views.push(json!({"buffer": 0, "byteOffset": offset, "byteLength": b.len()}));
+            offset += b.len();
+        }
+        let header_json = json!({
+            "buffers": [{"byteLength": offset}],
+            "bufferViews": buffer_views,
+            "tileAvailability": {"constant": 1},
+            "contentAvailability": [{"bitstream": 0, "availableCount": 1}],
+            "childSubtreeAvailability": child_json,
+        });
+        let mut json_bytes = serde_json::to_vec(&header_json).unwrap();
+        while !json_bytes.len().is_multiple_of(8) {
+            json_bytes.push(b' ');
+        }
+        let mut binary: Vec<u8> = buffers.into_iter().flatten().collect();
+        while !binary.len().is_multiple_of(8) {
+            binary.push(0);
+        }
+
+        let mut out = Vec::new();
+        out.extend_from_slice(b"subt");
+        out.extend_from_slice(&1u32.to_le_bytes());
+        out.extend_from_slice(&(json_bytes.len() as u64).to_le_bytes());
+        out.extend_from_slice(&(binary.len() as u64).to_le_bytes());
+        out.extend_from_slice(&json_bytes);
+        out.extend_from_slice(&binary);
+        out
+    }
+
+    #[test]
+    fn collect_implicit_follows_a_chained_subtree_past_one_window() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::create_dir_all(dir.path().join("subtrees")).unwrap();
+        fs::create_dir_all(dir.path().join("content")).unwrap();
+
+        // Root window (subtreeLevels=1): level 0 has content, and chains to
+        // a second subtree rooted at level 1, x=1, y=0.
+        let root_bytes = encode_subtree(Some(0), Some(morton2d(1, 0)));
+        fs::write(dir.path().join("subtrees/0.0.0.subtree"), root_bytes).unwrap();
+        // Chained window rooted at (1, 1, 0): its own level 0 (= absolute
+        // level 1) has content, no further chaining.
+        let chained_bytes = encode_subtree(Some(0), None);
+        fs::write(dir.path().join("subtrees/1.1.0.subtree"), chained_bytes).unwrap();
+
+        for (level, x, y) in [(0, 0, 0), (1, 1, 0)] {
+            let path = dir.path().join(format!("content/{level}/{x}/{y}.glb"));
+            fs::create_dir_all(path.parent().unwrap()).unwrap();
+            fs::write(path, b"glb").unwrap();
+        }
+
+        let root_tile = json!({
+            "geometricError": 100.0,
+            "content": {"uri": "content/{level}/{x}/{y}.glb"},
+            "implicitTiling": {
+                "subdivisionScheme": "QUADTREE",
+                "subtreeLevels": 1,
+                "availableLevels": 2,
+                "subtrees": {"uri": "subtrees/{level}.{x}.{y}.subtree"},
+            },
+        });
+
+        let mut found: Vec<_> = collect_tile_contents(dir.path(), &root_tile)
+            .unwrap()
+            .into_iter()
+            .map(|c| (c.path, c.geometric_error))
+            .collect();
+        found.sort_by(|a, b| a.0.cmp(&b.0));
+
+        let mut expected = vec![
+            (dir.path().join("content/0/0/0.glb"), 100.0),
+            (dir.path().join("content/1/1/0.glb"), 50.0),
+        ];
+        expected.sort_by(|a, b| a.0.cmp(&b.0));
+
+        assert_eq!(found, expected);
+    }
 }
