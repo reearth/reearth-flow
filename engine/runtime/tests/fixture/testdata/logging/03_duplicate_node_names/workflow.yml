@@ -42,15 +42,15 @@ graphs:
       - id: e1fc0a3e-61d3-48e2-a328-e7226c2ad1ab
         from: a1fc0a3e-61d3-48e2-a328-e7226c2ad1ab
         to: a3fc0a3e-61d3-48e2-a328-e7226c2ad1ab
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: e2fc0a3e-61d3-48e2-a328-e7226c2ad1ab
         from: a2fc0a3e-61d3-48e2-a328-e7226c2ad1ab
         to: a3fc0a3e-61d3-48e2-a328-e7226c2ad1ab
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: e3fc0a3e-61d3-48e2-a328-e7226c2ad1ab
         from: a3fc0a3e-61d3-48e2-a328-e7226c2ad1ab
         to: c1fc0a3e-61d3-48e2-a328-e7226c2ad1ab
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features

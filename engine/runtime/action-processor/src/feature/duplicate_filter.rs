@@ -5,7 +5,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::Feature;
 use serde_json::Value;
@@ -31,11 +31,11 @@ impl ProcessorFactory for FeatureDuplicateFilterFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -76,7 +76,7 @@ impl Processor for FeatureDuplicateFilter {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
                 feature.clone(),
-                DEFAULT_PORT.clone(),
+                FEATURES_PORT.clone(),
             ));
         }
         Ok(())
@@ -116,7 +116,7 @@ mod tests {
             assert_eq!(noop.send_ports.lock().unwrap().len(), 2);
             assert_eq!(
                 noop.send_ports.lock().unwrap().first().cloned(),
-                Some(DEFAULT_PORT.clone())
+                Some(FEATURES_PORT.clone())
             );
         }
     }

@@ -6,7 +6,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue};
 use schemars::JsonSchema;
@@ -36,11 +36,11 @@ impl ProcessorFactory for AttributeFilePathInfoExtractorFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
+        vec![FEATURES_PORT.clone(), REJECTED_PORT.clone()]
     }
 
     fn build(
@@ -124,7 +124,7 @@ impl Processor for AttributeFilePathInfoExtractor {
                 new_feature.insert("fileCtime", AttributeValue::DateTime(ctime.into()));
             }
         }
-        fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
         Ok(())
     }
 

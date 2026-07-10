@@ -6,7 +6,7 @@ nodes:
     type: action
     action: InputRouter
     with:
-      routingPort: default
+      routingPort: features
 
   - id: 747d2fa3-2527-4324-b630-92fba84a548c
     name: PLATEAU6.DomainOfDefinitionValidator
@@ -134,60 +134,60 @@ edges:
   - id: 7779cb5a-0dfc-4726-9c2f-6e32e196520d
     from: dfcdb977-e929-41b9-a3de-e368d158b5b9
     to: 747d2fa3-2527-4324-b630-92fba84a548c
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: d661eff9-2ee3-4735-ab36-ac2c662464fd
     from: 747d2fa3-2527-4324-b630-92fba84a548c
     to: 6f53b8d5-c238-471f-95c5-4987f1c315f2
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 41141e61-6815-4556-b247-05c4e5de8bb0
     from: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     to: 0cf15acc-f7d1-4fbd-a502-97f766cff6d0
     fromPort: summary
-    toPort: default
+    toPort: features
   - id: 41141e61-6815-4556-b247-05c4e5de8bb1
     from: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     to: 0cf15acc-f7d1-4fbd-a502-97f766cff6d1
     fromPort: codeValidation
-    toPort: default
+    toPort: features
   - id: 41141e61-6815-4556-b247-05c4e5de8bb2
     from: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     to: 0cf15acc-f7d1-4fbd-a502-97f766cff6d2
     fromPort: extentsValidation
-    toPort: default
+    toPort: features
   - id: 41141e61-6815-4556-b247-05c4e5de8bb3
     from: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     to: 0cf15acc-f7d1-4fbd-a502-97f766cff6d3
     fromPort: gmlIdNotWellFormed
-    toPort: default
+    toPort: features
   - id: 41141e61-6815-4556-b247-05c4e5de8bb4
     from: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     to: 0cf15acc-f7d1-4fbd-a502-97f766cff6d4
     fromPort: gmlIdNotUnique
-    toPort: default
+    toPort: features
   - id: 41141e61-6815-4556-b247-05c4e5de8bb5
     from: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     to: 0cf15acc-f7d1-4fbd-a502-97f766cff6d5
     fromPort: xlinkNoReference
-    toPort: default
+    toPort: features
   - id: 41141e61-6815-4556-b247-05c4e5de8bb6
     from: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     to: 0cf15acc-f7d1-4fbd-a502-97f766cff6d6
     fromPort: xLinkInvalidObjectType
-    toPort: default
+    toPort: features
   - id: 41141e61-6815-4556-b247-05c4e5de8bb7
     from: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     to: 0cf15acc-f7d1-4fbd-a502-97f766cff6d7
     fromPort: invalidLodXGeometry
-    toPort: default
+    toPort: features
   - id: 41141e61-6815-4556-b247-05c4e5de8bb8
     from: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     to: 0cf15acc-f7d1-4fbd-a502-97f766cff6d8
     fromPort: inCorrectCodeSpace
-    toPort: default
+    toPort: features
   - id: 41141e61-6815-4556-b247-05c4e5de8bb9
     from: 747d2fa3-2527-4324-b630-92fba84a548c
     to: 0cf15acc-f7d1-4fbd-a502-97f766cff6d9
     fromPort: duplicateGmlIdStats
-    toPort: default
+    toPort: features

@@ -6,7 +6,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Code, CodeType, CompiledCode};
 use schemars::JsonSchema;
@@ -39,7 +39,7 @@ impl ProcessorFactory for FeatureFilterFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
@@ -116,7 +116,7 @@ impl ProcessorFactory for FeatureFilterFactory {
         // output ports are dynamically derived from `with["conditions"]` (mirrors
         // the dynamic-port derivation in `builder_dag`).
         let input = inputs
-            .get(&DEFAULT_PORT.clone())
+            .get(&FEATURES_PORT.clone())
             .cloned()
             .unwrap_or_else(AttrSchema::open);
 
@@ -242,7 +242,7 @@ mod tests {
             AttrField::always(AttrType::Number),
         );
         let mut inputs = HashMap::new();
-        inputs.insert(DEFAULT_PORT.clone(), input.clone());
+        inputs.insert(FEATURES_PORT.clone(), input.clone());
 
         let out = FeatureFilterFactory
             .infer_output_schema(&inputs, &None)
@@ -262,7 +262,7 @@ mod tests {
             AttrField::always(AttrType::String),
         );
         let mut inputs = HashMap::new();
-        inputs.insert(DEFAULT_PORT.clone(), input.clone());
+        inputs.insert(FEATURES_PORT.clone(), input.clone());
 
         // Condition param shape: { conditions: [ { expr, outputPort } ] }.
         let with: HashMap<String, Value> = serde_json::from_value(serde_json::json!({

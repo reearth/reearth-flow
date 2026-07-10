@@ -6,7 +6,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::CitygmlFeatureExt;
 use schemars::JsonSchema;
@@ -38,11 +38,11 @@ impl ProcessorFactory for FeatureTypeFilterFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone(), UNFILTERED_PORT.clone()]
+        vec![FEATURES_PORT.clone(), UNFILTERED_PORT.clone()]
     }
 
     fn build(
@@ -95,7 +95,7 @@ impl Processor for FeatureTypeFilter {
             return Ok(());
         };
         if self.target_types.contains(&feature_type) {
-            fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
         } else {
             fw.send(ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone()));
         }

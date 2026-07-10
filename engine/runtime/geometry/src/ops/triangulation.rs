@@ -219,9 +219,10 @@ impl Projector {
     }
 }
 
-/// Newell's-method normal of a planar ring; `None` if degenerate (fewer than 3
-/// vertices, or a near-zero normal). Ported from `earcut::utils3d`.
-fn normal(vertices: &[[f64; 3]]) -> Option<[f64; 3]> {
+/// Newell's-method unit normal of a planar ring, following the winding by the
+/// right-hand rule; `None` if degenerate (fewer than three vertices, or a
+/// near-zero normal). Ported from `earcut::utils3d`.
+pub(crate) fn normal(vertices: &[[f64; 3]]) -> Option<[f64; 3]> {
     let (&last, _) = vertices.split_last()?;
     if vertices.len() < 3 {
         return None;

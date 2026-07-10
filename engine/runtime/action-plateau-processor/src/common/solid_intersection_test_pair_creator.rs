@@ -48,7 +48,7 @@ impl ProcessorFactory for SolidIntersectionTestPairCreatorFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![reearth_flow_runtime::node::DEFAULT_PORT.clone()]
+        vec![reearth_flow_runtime::node::FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {

@@ -29,5 +29,5 @@ graphs:
       - id: f4f94483-de11-7f4d-dde8-71f575d541fe
         from: a2b92281-bc99-5d2b-bbc6-59d353b329dc
         to: c3c93382-cd00-6e3c-ccd7-60e464c430ed
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features

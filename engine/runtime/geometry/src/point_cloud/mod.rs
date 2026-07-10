@@ -22,6 +22,8 @@ use crate::coordinate::CoordinateFrame;
 
 mod constructor;
 mod ops;
+#[cfg(feature = "new-geometry")]
+mod validation;
 
 /// Bit positions of the optional primary fields within a [`Segment`]'s
 /// [`FieldMask`]. Private to this module: the full field-bit layout, not all of

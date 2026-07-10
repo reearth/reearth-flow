@@ -10,7 +10,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, Code, CompiledCode, Feature};
 use regex::Regex;
@@ -76,12 +76,12 @@ impl ProcessorFactory for GmlNameCodeSpaceValidatorFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
         vec![
-            DEFAULT_PORT.clone(),
+            FEATURES_PORT.clone(),
             GML_NAME_ERRORS_PORT.clone(),
             STATS_PORT.clone(),
         ]
@@ -257,7 +257,7 @@ impl Processor for GmlNameCodeSpaceValidator {
         }
 
         // Forward original feature (always, regardless of whether validation was performed)
-        fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
 
         Ok(())
     }
