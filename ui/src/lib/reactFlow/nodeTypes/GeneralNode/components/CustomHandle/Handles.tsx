@@ -1,4 +1,4 @@
-import { ChevronDownIcon, ChevronUpIcon } from "@radix-ui/react-icons";
+import { CaretDownIcon, CaretUpIcon } from "@phosphor-icons/react";
 import { Position, useUpdateNodeInternals } from "@xyflow/react";
 import { memo, useEffect, useMemo, useRef } from "react";
 
@@ -236,13 +236,16 @@ const Handles: React.FC<Props> = ({
 
       {((nodeType !== "reader" && hasMoreThanFiveInputHandles) ||
         hasMoreThanFiveOutputHandles) && (
-        <CollapsibleTrigger asChild className="justify-center self-center">
-          <IconButton
-            onClick={() => onCollapsedToggle?.(!isCollapsed)}
-            className="h-6 w-6"
-            icon={!isCollapsed ? <ChevronUpIcon /> : <ChevronDownIcon />}
-          />
-        </CollapsibleTrigger>
+        <CollapsibleTrigger
+          className="justify-center self-center"
+          render={
+            <IconButton
+              onClick={() => onCollapsedToggle?.(!isCollapsed)}
+              className="h-6 w-6"
+              icon={!isCollapsed ? <CaretUpIcon /> : <CaretDownIcon />}
+            />
+          }
+        />
       )}
     </Collapsible>
   );

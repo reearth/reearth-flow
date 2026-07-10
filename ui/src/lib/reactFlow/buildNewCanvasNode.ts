@@ -121,6 +121,9 @@ const createActionNode = async (
       inputs: [...action.inputPorts],
       outputs: [...action.outputPorts],
       params: defaultParams,
+      // Baseline schema for migration detection: if the action's schema
+      // changes on the API later, ParamEditor compares against this copy.
+      paramsSchema: action.parameter,
     },
   };
 

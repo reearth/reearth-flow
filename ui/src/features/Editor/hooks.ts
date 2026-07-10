@@ -29,6 +29,7 @@ import {
   useYjsStore,
 } from "@flow/lib/yjs";
 import type { YWorkflow } from "@flow/lib/yjs/types";
+import useLegacyPortsMigration from "@flow/lib/yjs/useLegacyPortsMigration";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
 import { useCurrentProject } from "@flow/stores";
 import type { Algorithm, Direction, Edge, Node } from "@flow/types";
@@ -215,6 +216,15 @@ export default ({
   const { isLocked, handleProjectLockChange } = useProjectLock({
     currentProject,
     yDoc,
+  });
+
+  const {
+    showLegacyPortsDialog,
+    handleLegacyPortsMigrate,
+    handleLegacyPortsDialogClose,
+  } = useLegacyPortsMigration({
+    yWorkflows,
+    onProjectSnapshotSave: handleProjectSnapshotSave,
   });
 
   const { sharingUrl, handleProjectShare } = useProjectShare({
@@ -527,6 +537,9 @@ export default ({
     staleNodeIds,
     handleProjectLockChange,
     isLocked,
+    showLegacyPortsDialog,
+    handleLegacyPortsMigrate,
+    handleLegacyPortsDialogClose,
     handleSpotlightUserSelect,
     handleSpotlightUserDeselect,
     handlePaneClick,

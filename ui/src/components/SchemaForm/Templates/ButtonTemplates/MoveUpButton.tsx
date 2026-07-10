@@ -1,4 +1,4 @@
-import { ArrowUpIcon } from "@radix-ui/react-icons";
+import { ArrowUpIcon } from "@phosphor-icons/react";
 import {
   FormContextType,
   IconButtonProps,

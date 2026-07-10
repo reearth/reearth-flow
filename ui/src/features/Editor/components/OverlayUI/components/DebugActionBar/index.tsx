@@ -229,73 +229,78 @@ const StartButton: React.FC<{
         onOpenChange={(open) => {
           if (!open) onPopoverClose();
         }}>
-        <PopoverTrigger asChild>
-          <div className="group flex gap-1 rounded-md transition-all duration-300 ease-in-out">
-            <IconButton
-              className={`min-w-9 group-hover:bg-accent ${
-                debugRunStarted || jobStatus
-                  ? `h-8 w-full rounded-lg pr-1 pl-2 dark:bg-primary/50 ${jobStatus === "running" || jobStatus === "queued" ? "cursor-pointer" : ""}`
-                  : "w-9"
-              }`}
-              disabled={
-                isSaving ||
-                isLocked ||
-                debugRunStarted ||
-                jobStatus === "running" ||
-                jobStatus === "queued"
-              }
-              tooltipText={
-                isRunStale
-                  ? t("Debug Cache is Stale")
-                  : (jobStatus ?? t("Start debug run of workflow"))
-              }
-              tooltipOffset={tooltipOffset}
-              delayDuration={200}
-              icon={
-                debugRunStarted || jobStatus ? (
-                  <div className="flex items-center gap-2">
-                    <div className="relative">
-                      {isRunStale ? (
-                        <WarningCircleIcon className="size-4 text-warning" />
-                      ) : (
-                        <div
-                          className={`${
-                            jobStatus === "completed"
-                              ? "bg-success"
-                              : jobStatus === "running"
-                                ? "active-node-status"
-                                : jobStatus === "cancelled"
-                                  ? "bg-warning"
-                                  : jobStatus === "failed"
-                                    ? "bg-destructive"
-                                    : jobStatus === "queued"
-                                      ? "queued-node-status"
-                                      : "bg-secondary"
-                          } size-3 rounded-full`}
-                        />
-                      )}
+        <PopoverTrigger
+          nativeButton={false}
+          render={
+            <div className="group flex gap-1 rounded-md transition-all duration-300 ease-in-out">
+              <IconButton
+                className={`min-w-9 group-hover:bg-accent ${
+                  debugRunStarted || jobStatus
+                    ? `h-8 w-full rounded-lg pr-1 pl-2 dark:bg-primary/50 ${jobStatus === "running" || jobStatus === "queued" ? "cursor-pointer" : ""}`
+                    : "w-9"
+                }`}
+                disabled={
+                  isSaving ||
+                  isLocked ||
+                  debugRunStarted ||
+                  jobStatus === "running" ||
+                  jobStatus === "queued"
+                }
+                tooltipText={
+                  isRunStale
+                    ? t("Debug Cache is Stale")
+                    : (jobStatus ?? t("Start debug run of workflow"))
+                }
+                tooltipOffset={tooltipOffset}
+                delayDuration={200}
+                icon={
+                  debugRunStarted || jobStatus ? (
+                    <div className="flex items-center gap-2">
+                      <div className="relative">
+                        {isRunStale ? (
+                          <WarningCircleIcon className="size-4 text-warning" />
+                        ) : (
+                          <div
+                            className={`${
+                              jobStatus === "completed"
+                                ? "bg-success"
+                                : jobStatus === "running"
+                                  ? "active-node-status"
+                                  : jobStatus === "cancelled"
+                                    ? "bg-warning"
+                                    : jobStatus === "failed"
+                                      ? "bg-destructive"
+                                      : jobStatus === "queued"
+                                        ? "queued-node-status"
+                                        : "bg-secondary"
+                            } size-3 rounded-full`}
+                          />
+                        )}
+                      </div>
+                      <PlayIcon weight="thin" size={18} />
                     </div>
+                  ) : (
                     <PlayIcon weight="thin" size={18} />
-                  </div>
-                ) : (
-                  <PlayIcon weight="thin" size={18} />
-                )
-              }
-              onClick={onShowDebugStartPopover}
-            />
-            <DebugRunDropDownMenu
-              debugRunStarted={debugRunStarted}
-              selectedNodeIds={selectedNodeIds}
-              edges={edges}
-              isSaving={isSaving}
-              jobStatus={jobStatus}
-              debugJob={debugJob}
-              showPopover={showPopover}
-              onShowDebugStartPopover={onShowDebugStartPopover}
-              onDebugRunStartFromSelectedNode={onDebugRunStartFromSelectedNode}
-            />
-          </div>
-        </PopoverTrigger>
+                  )
+                }
+                onClick={onShowDebugStartPopover}
+              />
+              <DebugRunDropDownMenu
+                debugRunStarted={debugRunStarted}
+                selectedNodeIds={selectedNodeIds}
+                edges={edges}
+                isSaving={isSaving}
+                jobStatus={jobStatus}
+                debugJob={debugJob}
+                showPopover={showPopover}
+                onShowDebugStartPopover={onShowDebugStartPopover}
+                onDebugRunStartFromSelectedNode={
+                  onDebugRunStartFromSelectedNode
+                }
+              />
+            </div>
+          }
+        />
         <PopoverContent
           sideOffset={8}
           collisionPadding={5}
@@ -331,18 +336,20 @@ const StopButton: React.FC<{
       onOpenChange={(open) => {
         if (!open) onPopoverClose();
       }}>
-      <PopoverTrigger asChild>
-        <IconButton
-          className="shrink-0"
-          disabled={
-            !jobStatus || (jobStatus !== "running" && jobStatus !== "queued")
-          }
-          tooltipText={t("Stop debug run of workflow")}
-          tooltipOffset={tooltipOffset}
-          icon={<StopIcon weight="thin" size={18} />}
-          onClick={onShowDebugStopPopover}
-        />
-      </PopoverTrigger>
+      <PopoverTrigger
+        render={
+          <IconButton
+            className="shrink-0"
+            disabled={
+              !jobStatus || (jobStatus !== "running" && jobStatus !== "queued")
+            }
+            tooltipText={t("Stop debug run of workflow")}
+            tooltipOffset={tooltipOffset}
+            icon={<StopIcon weight="thin" size={18} />}
+            onClick={onShowDebugStopPopover}
+          />
+        }
+      />
       <PopoverContent
         sideOffset={8}
         collisionPadding={5}
@@ -392,9 +399,10 @@ const DebugRunDropDownMenu: React.FC<{
 
   return (
     <DropdownMenu open={showDropDownMenu} onOpenChange={setShowDropDownMenu}>
-      <DropdownMenuTrigger asChild>
-        <IconButton
-          className={`w-3 self-center rounded-sm group-hover:bg-accent ${showDropDownMenu ? "bg-accent" : ""}
+      <DropdownMenuTrigger
+        render={
+          <IconButton
+            className={`w-3 self-center rounded-sm group-hover:bg-accent ${showDropDownMenu ? "bg-accent" : ""}
           ${
             debugRunStarted || jobStatus
               ? `h-[32px] ${
@@ -405,12 +413,13 @@ const DebugRunDropDownMenu: React.FC<{
               : "h-[36px] w-3"
           }
         `}
-          disabled={isLocked}
-          tooltipText={t("Additional Debug Actions")}
-          tooltipOffset={tooltipOffset}
-          icon={<CaretDownIcon size={18} weight="light" />}
-        />
-      </DropdownMenuTrigger>
+            disabled={isLocked}
+            tooltipText={t("Additional Debug Actions")}
+            tooltipOffset={tooltipOffset}
+            icon={<CaretDownIcon size={18} weight="light" />}
+          />
+        }
+      />
       <DropdownMenuContent
         className="min-w-42.5 bg-primary/50 backdrop-blur select-none"
         align="start"
