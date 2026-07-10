@@ -225,11 +225,13 @@ const TriggerDetails: React.FC<Props> = ({
               <span className="font-semibold">3. {t("Custom Variables")}</span>
 
               <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="cursor-pointer p-1">
-                    <QuestionIcon className="h-4 w-4" weight="thin" />
-                  </div>
-                </TooltipTrigger>
+                <TooltipTrigger
+                  render={
+                    <div className="cursor-pointer p-1">
+                      <QuestionIcon className="h-4 w-4" weight="thin" />
+                    </div>
+                  }
+                />
                 <TooltipContent side="top" align="end" className="bg-primary">
                   <div className="max-w-[300px] text-xs text-muted-foreground">
                     {t(

@@ -50,19 +50,23 @@ const WorkflowsDropdown: React.FC<Props> = ({
 
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger asChild disabled={noOpenSubworkflows}>
-        <div
-          className={`flex max-w-[300px] flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl bg-border/20 px-2 py-0.5 dark:bg-primary/70 ${noOpenSubworkflows ? "" : "hover:bg-border/30 dark:hover:bg-primary"}`}>
-          <p className="truncate pr-px text-sm font-light italic dark:font-extralight">
-            {currentWorkflow?.name || "-"}
-          </p>
-          {!noOpenSubworkflows && (
-            <div>
-              <CaretDownIcon size={12} />
-            </div>
-          )}
-        </div>
-      </DropdownMenuTrigger>
+      <DropdownMenuTrigger
+        nativeButton={false}
+        disabled={noOpenSubworkflows}
+        render={
+          <div
+            className={`flex max-w-[300px] flex-1 cursor-pointer items-center justify-center gap-2 rounded-xl bg-border/20 px-2 py-0.5 dark:bg-primary/70 ${noOpenSubworkflows ? "" : "hover:bg-border/30 dark:hover:bg-primary"}`}>
+            <p className="truncate pr-px text-sm font-light italic dark:font-extralight">
+              {currentWorkflow?.name || "-"}
+            </p>
+            {!noOpenSubworkflows && (
+              <div>
+                <CaretDownIcon size={12} />
+              </div>
+            )}
+          </div>
+        }
+      />
       <DropdownMenuContent
         className="min-w-[200px]"
         side="bottom"

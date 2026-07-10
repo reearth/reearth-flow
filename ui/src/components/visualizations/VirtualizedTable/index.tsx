@@ -276,11 +276,13 @@ function VirtualizedTable<TData, TValue>({
 
           {selectColumns && (
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="ml-auto">
-                  {t("Columns")}
-                </Button>
-              </DropdownMenuTrigger>
+              <DropdownMenuTrigger
+                render={
+                  <Button variant="outline" size="sm" className="ml-auto">
+                    {t("Columns")}
+                  </Button>
+                }
+              />
               <DropdownMenuContent align="end">
                 <DropdownMenuItem onClick={handleSelectAllColumns}>
                   {t("Select All")}
