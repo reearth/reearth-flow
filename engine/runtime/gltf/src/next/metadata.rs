@@ -152,6 +152,8 @@ pub fn encode(
         .expect("EXT_mesh_features is always serializable"),
     );
 
+    // `Semantic::Extras`'s inner name excludes the glTF-spec-mandated
+    // leading underscore; the crate adds it on (de)serialization.
     builder.set_attribute(
         primitive,
         json::mesh::Semantic::Extras("FEATURE_ID_0".to_string()),
