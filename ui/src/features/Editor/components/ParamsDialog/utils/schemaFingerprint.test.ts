@@ -77,13 +77,17 @@ describe("computeSchemaFingerprint", () => {
     const a = s({
       config: {
         type: "object",
-        properties: { host: { type: "string", title: "Host", description: "x" } },
+        properties: {
+          host: { type: "string", title: "Host", description: "x" },
+        },
       },
     });
     const b = s({
       config: {
         type: "object",
-        properties: { host: { type: "string", title: "ホスト", description: "y" } },
+        properties: {
+          host: { type: "string", title: "ホスト", description: "y" },
+        },
       },
     });
     expect(computeSchemaFingerprint(a)).toBe(computeSchemaFingerprint(b));
@@ -108,8 +112,12 @@ describe("schemasMatch", () => {
   });
 
   it("returns true when only translated text differs", () => {
-    const stored = s({ url: { type: "string", title: "URL", description: "en" } });
-    const current = s({ url: { type: "string", title: "URL先", description: "ja" } });
+    const stored = s({
+      url: { type: "string", title: "URL", description: "en" },
+    });
+    const current = s({
+      url: { type: "string", title: "URL先", description: "ja" },
+    });
     expect(schemasMatch(stored, current)).toBe(true);
   });
 

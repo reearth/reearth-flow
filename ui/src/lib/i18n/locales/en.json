@@ -125,6 +125,8 @@
   "Create": "",
   "Cancel": "",
   "Continue": "",
+  "Project update required": "",
+  "Action connection ports were renamed from \"default\" to \"features\" in the latest engine, and this project still uses the old names. Workflows will fail to run until it is updated. Continue to update all affected connections now — this change applies to the project for all collaborators and cannot be undone.": "",
   "Are you sure you want to delete an input or output action?": "",
   "Input and Output actions are required for the workflow to run. By deleting an action you may cause unexpected behavior.": "",
   "Deploy Project": "",
