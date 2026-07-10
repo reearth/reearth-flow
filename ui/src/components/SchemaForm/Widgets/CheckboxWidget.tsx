@@ -6,7 +6,7 @@ import {
   StrictRJSFSchema,
   WidgetProps,
 } from "@rjsf/utils";
-import { FocusEvent, useCallback } from "react";
+import { useCallback } from "react";
 
 import { Checkbox } from "@flow/components";
 
@@ -46,8 +46,6 @@ const CheckboxWidget = <
   const formContext = registry?.formContext;
   const { fieldFocusMap, onFieldFocus } = formContext ?? {};
   const focusedUsers = fieldFocusMap?.[id] ?? [];
-  const _onChange = ({ target }: FocusEvent<HTMLButtonElement>) =>
-    onChange(id, target?.value);
 
   const handleBlur = useCallback(() => {
     onBlur?.(id, value);
@@ -69,10 +67,9 @@ const CheckboxWidget = <
         required={required}
         disabled={readonly || disabled}
         autoFocus={autofocus}
-        onChange={_onChange}
+        onCheckedChange={(checked) => onChange(checked)}
         onBlur={handleBlur}
         onFocus={handleFocus}
-        onClick={() => onChange(!value)}
         aria-describedby={ariaDescribedByIds(id)}
       />
       {!hideLabel && <p className="text-xs">{label}</p>}

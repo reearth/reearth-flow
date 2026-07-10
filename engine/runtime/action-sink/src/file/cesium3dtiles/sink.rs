@@ -187,6 +187,18 @@ impl Sink for Cesium3DTilesWriter {
         self.flush_buffer(ctx.as_context())?;
         Ok(())
     }
+
+    #[cfg(feature = "new-geometry")]
+    fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
+        self.process_new_geometry(&ctx)?;
+        Ok(())
+    }
+
+    #[cfg(feature = "new-geometry")]
+    fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
+        self.finish_new_geometry(ctx)?;
+        Ok(())
+    }
 }
 
 impl Cesium3DTilesWriter {

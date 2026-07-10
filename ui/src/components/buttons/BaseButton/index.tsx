@@ -1,4 +1,4 @@
-import { Slot } from "@radix-ui/react-slot";
+import { Button as ButtonPrimitive } from "@base-ui/react/button";
 import { cva, type VariantProps } from "class-variance-authority";
 import * as React from "react";
 
@@ -33,23 +33,19 @@ const buttonVariants = cva(
   },
 );
 
-export type ButtonProps = {
-  asChild?: boolean;
-} & React.ButtonHTMLAttributes<HTMLButtonElement> &
+export type ButtonProps = React.ComponentPropsWithoutRef<
+  typeof ButtonPrimitive
+> &
   VariantProps<typeof buttonVariants>;
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
-  (
-    { className, variant, size, asChild = false, onClick, type, ...props },
-    ref,
-  ) => {
-    const Comp = asChild ? Slot : "button";
+  ({ className, variant, size, onClick, type, ...props }, ref) => {
     return (
-      <Comp
+      <ButtonPrimitive
         className={cn(buttonVariants({ variant, size, className }))}
         ref={ref}
-        type={asChild ? type : (type ?? "button")}
-        onClick={(e: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+        type={type ?? "button"}
+        onClick={(e) => {
           if (!onClick) return;
           e.stopPropagation();
           onClick(e);

@@ -119,7 +119,8 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
               </Label>
               <Select
                 value={eventSource}
-                onValueChange={handleSelectEventSource}>
+                onValueChange={(v) => v != null && handleSelectEventSource(v)}
+                items={eventSources}>
                 <SelectTrigger>
                   <SelectValue placeholder={t("Select an event source")} />
                 </SelectTrigger>
@@ -149,7 +150,10 @@ const TriggerAddDialog: React.FC<Props> = ({ setShowDialog }) => {
                 </Label>
                 <Select
                   value={timeInterval || "EVERY_DAY"} // Set default value here as well
-                  onValueChange={handleSelectTimeInterval}>
+                  onValueChange={(v) =>
+                    v != null && handleSelectTimeInterval(v)
+                  }
+                  items={timeIntervals}>
                   <SelectTrigger>
                     <SelectValue placeholder={timeIntervals.EVERY_DAY} />
                   </SelectTrigger>

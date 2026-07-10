@@ -201,15 +201,17 @@ const TriggerWorkflowVariablesMappingDialog: React.FC<
             <div className="flex items-center gap-1">
               {row.original.deploymentDefault !== undefined && (
                 <Tooltip>
-                  <TooltipTrigger asChild>
-                    <IconButton
-                      size="sm"
-                      variant="ghost"
-                      icon={<ArrowUDownLeftIcon />}
-                      onClick={() => handleResetToDefault(row.index)}
-                      disabled={isAtDefault(row.original)}
-                    />
-                  </TooltipTrigger>
+                  <TooltipTrigger
+                    render={
+                      <IconButton
+                        size="sm"
+                        variant="ghost"
+                        icon={<ArrowUDownLeftIcon />}
+                        onClick={() => handleResetToDefault(row.index)}
+                        disabled={isAtDefault(row.original)}
+                      />
+                    }
+                  />
                   <TooltipContent>
                     {t("Reset to workflow default")}
                   </TooltipContent>

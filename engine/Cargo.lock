@@ -4810,6 +4810,7 @@ dependencies = [
  "quick-xml 0.37.5",
  "rayon",
  "reearth-flow-action-log",
+ "reearth-flow-action-processor",
  "reearth-flow-atlas",
  "reearth-flow-common",
  "reearth-flow-geometry",
