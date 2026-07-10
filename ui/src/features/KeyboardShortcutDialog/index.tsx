@@ -31,8 +31,13 @@ const KeyboardShortcutDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
     }, 100);
   }, [onOpenChange]);
 
-  const { title, generalShortcuts, editorShortcuts, canvasShortcuts } =
-    useHooks();
+  const {
+    title,
+    generalShortcuts,
+    editorShortcuts,
+    canvasShortcuts,
+    debugShortcuts,
+  } = useHooks();
   return (
     <Portal isVisible={isOpen} onClose={handlePortalClose}>
       <div
@@ -60,6 +65,7 @@ const KeyboardShortcutDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
               </TabsTrigger>
               <TabsTrigger value="editor">{editorShortcuts.title}</TabsTrigger>
               <TabsTrigger value="canvas">{canvasShortcuts.title}</TabsTrigger>
+              <TabsTrigger value="debug">{debugShortcuts.title}</TabsTrigger>
             </TabsList>
           </div>
           <TabsContent value="general">
@@ -75,6 +81,11 @@ const KeyboardShortcutDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
           <TabsContent value="canvas">
             <div className="flex h-[200px] justify-center">
               <Shortcuts shortcuts={canvasShortcuts.shortcuts} />
+            </div>
+          </TabsContent>
+          <TabsContent value="debug">
+            <div className="flex h-[200px] justify-center">
+              <Shortcuts shortcuts={debugShortcuts.shortcuts} />
             </div>
           </TabsContent>
         </Tabs>

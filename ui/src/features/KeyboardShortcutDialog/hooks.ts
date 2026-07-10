@@ -7,6 +7,8 @@ import {
   CanvasKeys,
   EditorKeys,
   GeneralKeys,
+  DebugKeys,
+  DebugKeyBindings,
 } from "@flow/types";
 
 export default () => {
@@ -116,10 +118,33 @@ export default () => {
     ],
   };
 
+  const debugShortcuts: Shortcuts<DebugKeys> = {
+    title: t("Debug Shortcuts"),
+    shortcuts: [
+      {
+        keyBinding: DebugKeyBindings["startDebugRun"],
+        description: t("Run Debug Workflow"),
+      },
+      {
+        keyBinding: DebugKeyBindings["runDebugFromSelected"],
+        description: t("Run Debug from Selected"),
+      },
+      {
+        keyBinding: DebugKeyBindings["cancelDebugRun"],
+        description: t("Stop Debug Workflow"),
+      },
+      {
+        keyBinding: DebugKeyBindings["clearDebugResults"],
+        description: t("Clear Debug Results"),
+      },
+    ],
+  };
+
   return {
     title,
     generalShortcuts,
     editorShortcuts,
     canvasShortcuts,
+    debugShortcuts,
   };
 };

@@ -20,6 +20,14 @@ export const GLOBAL_HOT_KEYS = [
   "ctrl+f", // fullscreen win
 ];
 
+export const DEBUG_HOT_KEYS = [
+  "meta+enter",
+  "ctrl+enter+r",
+  "escape",
+  "shift+meta+backspace",
+  "shift+ctrl+backspace",
+];
+
 export const CANVAS_HOT_KEYS = [
   "r", // reader dialog
   "t", // transformer dialog

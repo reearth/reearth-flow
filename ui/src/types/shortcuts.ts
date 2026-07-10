@@ -33,7 +33,9 @@ export type CanvasKeys =
   | "-" // zoom out
   | "0"; // fit view
 
-export type PossibleKeys = GeneralKeys | EditorKeys | CanvasKeys;
+export type DebugKeys = "Enter" | "Escape" | "Backspace";
+
+export type PossibleKeys = GeneralKeys | EditorKeys | CanvasKeys | DebugKeys;
 
 type PossibleActions =
   | "zoomIn"
@@ -59,7 +61,12 @@ type PossibleActions =
   | "leftPanelActionsList"
   | "leftPanelResources"
   | "groupToSubWorkFlow"
-  | "openSearch";
+  | "openSearch"
+  | "startDebugRun"
+  | "runDebugFromSelected"
+  | "cancelDebugRun"
+  | "openDebugRuns"
+  | "clearDebugResults";
 
 export type KeyBinding<K extends PossibleKeys = PossibleKeys> = {
   key: K;
@@ -115,4 +122,26 @@ export const CanvasKeyBindings: Partial<
   compressNodes: { key: "-", shiftKey: true },
   spreadNodes: { key: "+", shiftKey: true },
   fitView: { key: "0", commandKey: true },
+};
+
+export const DebugKeyBindings: Partial<
+  Record<PossibleActions, KeyBinding<DebugKeys>>
+> = {
+  startDebugRun: {
+    key: "Enter",
+    commandKey: true,
+  },
+  runDebugFromSelected: {
+    key: "Enter",
+    commandKey: true,
+    shiftKey: true,
+  },
+  cancelDebugRun: {
+    key: "Escape",
+  },
+  clearDebugResults: {
+    key: "Backspace",
+    commandKey: true,
+    shiftKey: true,
+  },
 };
