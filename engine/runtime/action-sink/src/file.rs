@@ -1,4 +1,4 @@
-pub(super) mod cesium3dtiles;
+pub mod cesium3dtiles;
 pub mod citygml;
 pub(super) mod csv;
 pub(super) mod czml;
