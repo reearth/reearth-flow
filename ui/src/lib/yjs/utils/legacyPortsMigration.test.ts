@@ -100,6 +100,38 @@ describe("hasLegacyPorts", () => {
     );
     expect(hasLegacyPorts(yWorkflows)).toBe(false);
   });
+
+  it("ignores user-named condition ports and their edges (e.g. FeatureFilter output named 'default')", () => {
+    const yWorkflows = buildDoc(
+      [
+        node("filter", {
+          officialName: "FeatureFilter",
+          params: {
+            conditions: [
+              { expr: "true", outputPort: "default" },
+              { expr: "false", outputPort: "other" },
+            ],
+          },
+        }),
+        node("merger", {
+          officialName: "FeatureMerger",
+          params: {
+            conditions: [{ inputPort: "default" }],
+          },
+        }),
+      ],
+      [
+        {
+          id: "e1",
+          source: "filter",
+          target: "merger",
+          sourceHandle: "default",
+          targetHandle: "default",
+        },
+      ],
+    );
+    expect(hasLegacyPorts(yWorkflows)).toBe(false);
+  });
 });
 
 describe("migrateLegacyPorts", () => {
@@ -165,6 +197,60 @@ describe("migrateLegacyPorts", () => {
 
     const e2 = edges.find((e) => e.id === "e2");
     expect(e2?.sourceHandle).toBe("rejected");
+  });
+
+  it("preserves a custom condition port named 'default' while migrating legacy ports on other nodes", () => {
+    const yWorkflows = buildDoc(
+      [
+        node("filter", {
+          officialName: "FeatureFilter",
+          inputs: ["default"],
+          params: {
+            conditions: [{ expr: "true", outputPort: "default" }],
+          },
+        }),
+        node("writer", {
+          officialName: "SomeWriter",
+          inputs: ["default"],
+        }),
+      ],
+      [
+        // Out of the filter's user-named "default" port — must be preserved
+        {
+          id: "e1",
+          source: "filter",
+          target: "writer",
+          sourceHandle: "default",
+          targetHandle: "default",
+        },
+        // Into the filter's legacy action-definition input — must be migrated
+        {
+          id: "e2",
+          source: "reader",
+          target: "filter",
+          sourceHandle: "default",
+          targetHandle: "default",
+        },
+      ],
+    );
+
+    // 2 node input lists + e1 targetHandle + e2 sourceHandle + e2 targetHandle
+    expect(migrateLegacyPorts(yWorkflows)).toBe(5);
+
+    const workflow = rebuildWorkflow(yWorkflows.get("main") as YWorkflow);
+    const edges = workflow.edges as Edge[];
+
+    const e1 = edges.find((e) => e.id === "e1");
+    expect(e1?.sourceHandle).toBe("default");
+    expect(e1?.targetHandle).toBe("features");
+
+    const e2 = edges.find((e) => e.id === "e2");
+    expect(e2?.sourceHandle).toBe("features");
+    expect(e2?.targetHandle).toBe("features");
+
+    const filter = (workflow.nodes as Node[]).find((n) => n.id === "filter");
+    expect(filter?.data.params?.conditions[0].outputPort).toBe("default");
+    expect(filter?.data.inputs).toEqual(["features"]);
   });
 
   it("is idempotent", () => {

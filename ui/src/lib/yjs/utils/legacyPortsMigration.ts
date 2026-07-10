@@ -12,6 +12,17 @@ import type { YWorkflow } from "../types";
 // reference it and can no longer run against current actions.
 const LEGACY_PORT = "default";
 
+const getConditionPorts = (
+  params: unknown,
+  key: "inputPort" | "outputPort",
+): string[] => {
+  const conditions = (params as Record<string, any> | undefined)?.conditions;
+  if (!Array.isArray(conditions)) return [];
+  return conditions
+    .map((condition: any) => condition?.[key])
+    .filter((port: unknown): port is string => typeof port === "string");
+};
+
 /**
  * Walks every workflow in the doc counting references to the legacy
  * "default" port. With apply=true it also rewrites them to the current
@@ -19,14 +30,17 @@ const LEGACY_PORT = "default";
  *
  * Covered locations (these reference each other by string equality, so
  * exact-match replacement keeps them consistent):
- * - edge sourceHandle / targetHandle
- * - node data.inputs / data.outputs port lists
+ * - node data.inputs / data.outputs port lists (action-definition ports)
  * - node data.params.routingPort (InputRouter / OutputRouter)
  * - subworkflow node pseudoInputs / pseudoOutputs portName
+ * - edge sourceHandle / targetHandle — EXCEPT handles that match a
+ *   user-defined condition port on the endpoint node (e.g. a FeatureFilter
+ *   output the user named "default"): the condition param is user data and
+ *   is left alone, so its edge handle must stay "default" to keep matching.
  *
- * Composed pseudo port names (e.g. "MyNode-default") are left alone: they
- * are opaque matched pairs between a router's routingPort and the parent
- * edge handle, and don't need to equal any action port name.
+ * Composed pseudo port names (e.g. "MyNode-default") are also left alone:
+ * they are opaque matched pairs between a router's routingPort and the
+ * parent edge handle, and don't need to equal any action port name.
  */
 export function scanLegacyPorts(
   yWorkflows: Y.Map<YWorkflow>,
@@ -36,7 +50,26 @@ export function scanLegacyPorts(
 
   yWorkflows.forEach((yWorkflow) => {
     const yNodes = yWorkflow.get("nodes");
+
+    // Per-node user-defined condition ports, so edges into/out of a custom port named "default" are preserved.
+    const customInputPorts = new Map<string, Set<string>>();
+    const customOutputPorts = new Map<string, Set<string>>();
+
     if (yNodes instanceof Y.Map) {
+      yNodes.forEach((yNode, nodeId) => {
+        const yData = (yNode as Y.Map<unknown>).get("data");
+        if (!(yData instanceof Y.Map)) return;
+        const params = yData.get("params");
+        customInputPorts.set(
+          nodeId,
+          new Set(getConditionPorts(params, "inputPort")),
+        );
+        customOutputPorts.set(
+          nodeId,
+          new Set(getConditionPorts(params, "outputPort")),
+        );
+      });
+
       yNodes.forEach((yNode) => {
         const yData = (yNode as Y.Map<unknown>).get("data");
         if (!(yData instanceof Y.Map)) return;
@@ -86,12 +119,31 @@ export function scanLegacyPorts(
     const yEdges = yWorkflow.get("edges");
     if (yEdges instanceof Y.Map) {
       yEdges.forEach((yEdge) => {
-        for (const key of ["sourceHandle", "targetHandle"]) {
-          const handle = (yEdge as Y.Map<unknown>).get(key);
+        const edgeEnds = [
+          {
+            handleKey: "sourceHandle",
+            nodeKey: "source",
+            customPorts: customOutputPorts,
+          },
+          {
+            handleKey: "targetHandle",
+            nodeKey: "target",
+            customPorts: customInputPorts,
+          },
+        ];
+        for (const { handleKey, nodeKey, customPorts } of edgeEnds) {
+          const handle = (yEdge as Y.Map<unknown>).get(handleKey);
           if (handle === undefined || String(handle) !== LEGACY_PORT) continue;
+
+          const nodeId = String((yEdge as Y.Map<unknown>).get(nodeKey));
+          if (customPorts.get(nodeId)?.has(LEGACY_PORT)) continue;
+
           count++;
           if (apply)
-            (yEdge as Y.Map<unknown>).set(key, new Y.Text(DEFAULT_EDGE_PORT));
+            (yEdge as Y.Map<unknown>).set(
+              handleKey,
+              new Y.Text(DEFAULT_EDGE_PORT),
+            );
         }
       });
     }
