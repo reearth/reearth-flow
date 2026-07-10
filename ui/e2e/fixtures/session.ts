@@ -62,16 +62,16 @@ export async function teardownSession(
       await deployments.goto();
       await deployments
         .deleteDeploymentIfExists(opts.deploymentDescription)
-        .catch(() => { });
+        .catch(() => {});
     }
     if (opts.projectName) {
       await projects.goto();
-      await projects.deleteProjectIfExists(opts.projectName).catch(() => { });
+      await projects.deleteProjectIfExists(opts.projectName).catch(() => {});
     }
     for (const name of opts.assetNames ?? []) {
       if (!name) continue;
       await assets.goto();
-      await assets.deleteAssetIfExists(name).catch(() => { });
+      await assets.deleteAssetIfExists(name).catch(() => {});
     }
   } finally {
     await context.close();
@@ -81,7 +81,7 @@ export async function teardownSession(
         await test
           .info()
           .attach("video", { path: videoPath, contentType: "video/webm" })
-          .catch(() => { });
+          .catch(() => {});
       }
     }
   }
