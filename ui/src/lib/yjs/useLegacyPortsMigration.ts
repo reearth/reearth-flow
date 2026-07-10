@@ -9,11 +9,19 @@ import {
 
 export default ({ yWorkflows }: { yWorkflows: YMap<YWorkflow> }) => {
   const [showLegacyPortsDialog, setShowLegacyPortsDialog] = useState(false);
-
+  const [dismissed, setDismissed] = useState(false);
   useEffect(() => {
     setShowLegacyPortsDialog(hasLegacyPorts(yWorkflows));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    const update = () => {
+      setShowLegacyPortsDialog(!dismissed && hasLegacyPorts(yWorkflows));
+    };
+
+    update();
+    yWorkflows.observeDeep(update);
+    return () => {
+      yWorkflows.unobserveDeep(update);
+    };
+  }, [yWorkflows, dismissed]);
 
   const handleLegacyPortsMigrate = useCallback(() => {
     // Perform the migration without adding to undo stack, as this is a one-time migration that should not be undoable.
@@ -21,10 +29,12 @@ export default ({ yWorkflows }: { yWorkflows: YMap<YWorkflow> }) => {
       migrateLegacyPorts(yWorkflows);
     }, "legacy-ports-migration");
     setShowLegacyPortsDialog(false);
+    setDismissed(true);
   }, [yWorkflows]);
 
   const handleLegacyPortsDialogClose = useCallback(() => {
     setShowLegacyPortsDialog(false);
+    setDismissed(true);
   }, []);
 
   return {
