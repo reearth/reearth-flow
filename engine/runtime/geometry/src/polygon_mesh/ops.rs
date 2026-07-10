@@ -262,8 +262,8 @@ impl PolygonMesh3DData {
         data.set_raw_appearance(appearance);
         Triangulated {
             mesh: data,
-            polygon_normals: buffers.face_normals.clone(),
-            polygon_tris: buffers.face_tris.clone(),
+            polygon_normals: std::mem::take(&mut buffers.face_normals),
+            polygon_tris: std::mem::take(&mut buffers.face_tris),
         }
     }
 }

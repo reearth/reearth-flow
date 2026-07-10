@@ -306,7 +306,8 @@ mod tests {
         let (json_len, _) = header_lengths(&files[0].1);
         let binary = &files[0].1[24 + json_len..];
         let tile_availability_len = level_offset(SUBTREE_LEVELS).div_ceil(8) as usize;
-        let content_availability = &binary[tile_availability_len..];
+        let content_availability =
+            &binary[tile_availability_len..tile_availability_len + tile_availability_len];
         // The root window never sees `deep`'s content directly — it's fully chained away.
         assert_eq!(
             content_availability

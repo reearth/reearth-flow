@@ -13,7 +13,7 @@
 mod primitive;
 
 use std::borrow::Cow;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 use gltf::json;
 use gltf::json::validation::{Checked, USize64};
@@ -63,6 +63,7 @@ pub struct Builder {
     root: json::Root,
     primitives: Vec<primitive::PrimitiveBuilder>,
     root_extensions: Vec<Extension>,
+    used_extension_names: HashSet<&'static str>,
 }
 
 impl Builder {
@@ -70,6 +71,14 @@ impl Builder {
 
     pub fn new() -> Self {
         Self::default()
+    }
+
+    /// Registers `name` in `extensionsUsed`, once, no matter how many
+    /// primitives or root extensions reference it.
+    fn mark_extension_used(&mut self, name: &'static str) {
+        if self.used_extension_names.insert(name) {
+            self.root.extensions_used.push(name.to_string());
+        }
     }
 
     /// Append `bytes` as a new, 4-byte-padded bufferView; returns its index.
@@ -250,7 +259,7 @@ impl Builder {
             let mut prim_ext = json::extensions::mesh::Primitive::default();
             for ext in p.extensions {
                 prim_ext.others.insert(ext.name.to_string(), ext.value);
-                self.root.extensions_used.push(ext.name.to_string());
+                self.mark_extension_used(ext.name);
             }
             let extensions = (!prim_ext.others.is_empty()).then_some(prim_ext);
 
@@ -276,7 +285,7 @@ impl Builder {
         let mut root_ext = json::extensions::root::Root::default();
         for ext in root_extensions {
             root_ext.others.insert(ext.name.to_string(), ext.value);
-            self.root.extensions_used.push(ext.name.to_string());
+            self.mark_extension_used(ext.name);
         }
         if !root_ext.others.is_empty() {
             self.root.extensions = Some(root_ext);

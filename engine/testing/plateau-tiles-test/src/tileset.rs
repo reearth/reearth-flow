@@ -109,6 +109,10 @@ fn collect_implicit(
         .and_then(|v| v.as_u64())
         .ok_or_else(|| "implicitTiling missing subtreeLevels".to_string())?
         as u32;
+    assert!(
+        subtree_levels < 10,
+        "subtreeLevels should not exceed 10, got {subtree_levels}"
+    );
 
     // `availableLevels` beyond `subtreeLevels` implies chaining into child
     // subtree files, which this reader doesn't follow.
