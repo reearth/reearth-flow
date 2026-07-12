@@ -71,7 +71,7 @@ pub(super) struct StatisticsCalculatorFactory;
 
 impl ProcessorFactory for StatisticsCalculatorFactory {
     fn name(&self) -> &str {
-        "StatisticsCalculator"
+        "Statistics Calculator"
     }
 
     fn description(&self) -> &str {
@@ -344,7 +344,7 @@ impl Processor for StatisticsCalculator {
     }
 
     fn name(&self) -> &str {
-        "StatisticsCalculator"
+        "Statistics Calculator"
     }
 }
 

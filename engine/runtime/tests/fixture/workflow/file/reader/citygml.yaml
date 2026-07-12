@@ -8,7 +8,7 @@ graphs:
       - id: a1a91180-ab88-4c1a-aab5-48c242a218ca
         name: Source-Sample-DatasetUrl-01
         type: action
-        action: CityGmlReader
+        action: CityGML Reader
         with:
           dataset:
             type: string

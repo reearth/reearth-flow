@@ -20,7 +20,7 @@ pub(crate) struct JsonReaderFactory;
 
 impl SourceFactory for JsonReaderFactory {
     fn name(&self) -> &str {
-        "JsonReader"
+        "JSON Reader"
     }
 
     fn description(&self) -> &str {
@@ -93,7 +93,7 @@ impl Source for JsonReader {
     async fn initialize(&self, _ctx: NodeContext) {}
 
     fn name(&self) -> &str {
-        "JsonReader"
+        "JSON Reader"
     }
 
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {

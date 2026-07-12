@@ -4,14 +4,14 @@ nodes:
   - id: 5848465e-828f-4646-874e-e2f182b73714
     name: InputRouter
     type: action
-    action: InputRouter
+    action: Input Router
     with:
       routingPort: features
 
   - id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
     name: DmGeometricAttributeFilter
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -29,7 +29,7 @@ nodes:
   - id: 1787b15c-19b5-4386-a0ff-f0e58f477d07
     name: FeatureFilterByExceptSplit
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -40,12 +40,11 @@ nodes:
   - id: 8fe1a102-e3f3-40dd-b235-66e9c148830f
     name: GeometrySplitter
     type: action
-    action: GeometrySplitter
-
+    action: Geometry Splitter
   - id: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
     name: FeatureFilterByLod
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -72,42 +71,42 @@ nodes:
   - id: b1c2d3e4-f5a6-7890-bcde-f12345678901
     name: DmGeometricAttributeRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: DmGeometricAttribute
 
   - id: dab9d3b6-594e-40cc-9f6b-c605005e3320
     name: Lod0Router
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: lod0
 
   - id: dab9d3b6-594e-40cc-9f6b-c605005e3321
     name: Lod1Router
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: lod1
 
   - id: dab9d3b6-594e-40cc-9f6b-c605005e3322
     name: Lod2Router
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: lod2
 
   - id: dab9d3b6-594e-40cc-9f6b-c605005e3323
     name: Lod3Router
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: lod3
 
   - id: dab9d3b6-594e-40cc-9f6b-c605005e3324
     name: Lod4Router
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: lod4
 

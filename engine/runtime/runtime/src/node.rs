@@ -18,9 +18,9 @@ use crate::forwarder::ProcessorChannelForwarder;
 pub static FEATURES_PORT: Lazy<Port> = Lazy::new(|| Port::new("features"));
 pub static REJECTED_PORT: Lazy<Port> = Lazy::new(|| Port::new("rejected"));
 pub static ROUTING_PARAM_KEY: &str = "routingPort";
-pub static INPUT_ROUTING_ACTION: &str = "InputRouter";
-pub static OUTPUT_ROUTING_ACTION: &str = "OutputRouter";
-pub static FEATURE_FILTER_ACTION: &str = "FeatureFilter";
+pub static INPUT_ROUTING_ACTION: &str = "Input Router";
+pub static OUTPUT_ROUTING_ACTION: &str = "Output Router";
+pub static FEATURE_FILTER_ACTION: &str = "Feature Filter";
 pub static REMAIN_PORT: Lazy<Port> = Lazy::new(|| Port::new("remain"));
 
 pub static SYSTEM_ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {

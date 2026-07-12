@@ -251,7 +251,7 @@ mod tests {
         nodes.insert(
             "node-1".to_string(),
             NodeReport {
-                name: "GeoJsonReader".to_string(),
+                name: "GeoJSON Reader".to_string(),
                 ports,
                 note: None,
             },

@@ -31,7 +31,7 @@ graphs:
       - id: 4d7b9e2a-5c8f-41d6-b9a3-7e1c5f8d2b9a
         name: FeatureCreator
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
           creator:
             type: flowExpr
@@ -61,7 +61,7 @@ graphs:
       - id: c7315341-26b3-4405-9d02-039d721cd225
         name: DirectoryDecompressor
         type: action
-        action: DirectoryDecompressor
+        action: Directory Decompressor
         with:
           archiveAttributes:
             - codelists
@@ -70,7 +70,7 @@ graphs:
       - id: 2aaa4ac9-2e79-479f-aa50-6543f461a76e
         name: FeatureFilePathExtractor
         type: action
-        action: FeatureFilePathExtractor
+        action: Feature File Path Extractor
         with:
           sourceDataset:
             type: flowExpr
@@ -81,7 +81,7 @@ graphs:
       - id: 0daf7972-4d58-4ccd-a576-f3dfc418f749
         name: FeatureFilterByGml
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -92,7 +92,7 @@ graphs:
       - id: 151fbadf-1b40-4264-a003-f6f11f6af2d6
         name: FeatureCounterFileIndex
         type: action
-        action: FeatureCounter
+        action: Feature Counter
         with:
           countStart: 1
           outputAttribute: fileIndex
@@ -111,7 +111,7 @@ graphs:
       - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13
         name: FeatureFilterByPackage
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
           - expr:
@@ -127,7 +127,7 @@ graphs:
       - id: 3f7b2a9d-1c8e-4a6f-b5d3-9e2c7a4f8b1d
         name: FeatureCityGmlReader
         type: action
-        action: FeatureCityGmlReader
+        action: Feature CityGML Reader
         with:
           codelistsPath:
             type: flowExpr
@@ -139,7 +139,7 @@ graphs:
       - id: 7c3e8b1f-2a9d-4f6c-8e5a-9b2d4f7c1e8a
         name: AttributeMapperGmlPathAndFilename
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: gmlPath
@@ -156,7 +156,7 @@ graphs:
       - id: a8a7e7f8-8d73-4078-9cff-4476924f2ad7
         name: FeatureSorter
         type: action
-        action: FeatureSorter
+        action: Feature Sorter
         with:
           attributes: [fileIndex]
           order: ascending
@@ -164,7 +164,7 @@ graphs:
       - id: 5a7b1469-217a-4d4b-bb01-971a9f9140d8
         name: FeatureCounterFeatureIndex
         type: action
-        action: FeatureCounter
+        action: Feature Counter
         with:
           countStart: 0
           outputAttribute: featureIndex
@@ -172,12 +172,11 @@ graphs:
       - id: 00e04196-60a5-4e0e-8389-74d2d0fad6e1
         name: AppearanceRemover
         type: action
-        action: AppearanceRemover
-
+        action: Appearance Remover
       - id: e51ebef4-2a0f-4c67-abdc-1583db29a72b
         name: AttributeManagerRemoveUnusedAttributesForGeometryChecks
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: gmlPath
@@ -190,7 +189,7 @@ graphs:
       - id: 10df06f3-cafa-4abd-ba94-04ac71dae467
         name: HorizontalReprojector
         type: action
-        action: HorizontalReprojector
+        action: Horizontal Reprojector
         with:
           targetEpsgCode:
             type: flowExpr
@@ -199,7 +198,7 @@ graphs:
       - id: 2b8c4e7a-9f1d-4a3b-c6e8-5d2a7b9c1e4f
         name: FeatureFilterBuildingPart
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -231,7 +230,7 @@ graphs:
       - id: b1c2d3e4-5f6a-7b8c-9d0e-1f2a3b4c5d6e
         name: FileInfoExtractor
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: index
@@ -243,12 +242,11 @@ graphs:
       - id: 4712539b-5103-41ee-9359-0333eefb82ef
         name: GeometryRemoverForErrorSummary
         type: action
-        action: GeometryRemover
-
+        action: Geometry Remover
       - id: c2d3e4f5-6a7b-8c9d-0e1f-2a3b4c5d6e7f
         name: ErrorSummaryMerger
         type: action
-        action: FeatureMerger
+        action: Feature Merger
         with:
           requestorAttributeValue:
             type: flowExpr
@@ -261,7 +259,7 @@ graphs:
       - id: d3e4f5a6-7b8c-9d0e-1f2a-3b4c5d6e7f8a
         name: SummaryAttributeMapper
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: Index
@@ -396,7 +394,7 @@ graphs:
       - id: f5a6b7c8-9d0e-1f2a-3b4c-5d6e7f8a9b0c
         name: StatisticsCalculator
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           calculations:
             - newAttribute: "C-bldg-01 エラー"
@@ -579,7 +577,7 @@ graphs:
       - id: 9e0f1a2b-3c4d-5e6f-7a8b-9c0d1e2f3a4b
         name: StatisticsCalculatorTotalErrors
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           calculations:
             - newAttribute: totalErrorCount
@@ -590,7 +588,7 @@ graphs:
       - id: a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
         name: FeatureFilterNoErrors
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -601,7 +599,7 @@ graphs:
       - id: b2c3d4e5-6f7a-8b9c-0d1e-2f3a4b5c6d7e
         name: FileWriterQcResultOk
         type: action
-        action: JsonWriter
+        action: JSON Writer
         with:
           converter:
             type: flowExpr
@@ -614,7 +612,7 @@ graphs:
       - id: 9f8e7d6c-5b4a-3928-1716-0f5e4d3c2b1a
         name: ZipFileWriter
         type: action
-        action: ZipFileWriter
+        action: Zip File Writer
         with:
           output:
             type: flowExpr

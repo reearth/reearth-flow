@@ -26,7 +26,7 @@ graphs:
       - id: 9d39970f-e631-4440-893d-9770abdad26f
         name: FeatureCreator
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
           creator:
             type: flowExpr
@@ -45,7 +45,7 @@ graphs:
       - id: 4bff1e48-0f4f-4fbb-a277-a9287ef2eba8
         name: DirectoryDecompressor
         type: action
-        action: DirectoryDecompressor
+        action: Directory Decompressor
         with:
           archiveAttributes:
             - codelists
@@ -69,7 +69,7 @@ graphs:
       - id: d658ccbd-8f8c-4776-a2ea-425fb3dea282
         name: ZipFileWriter
         type: action
-        action: ZipFileWriter
+        action: Zip File Writer
         with:
           output:
             type: flowExpr
@@ -78,7 +78,7 @@ graphs:
       - id: 47639a83-eb27-47d6-93a7-7393542aca1a
         name: StatisticsCalculatorTotalErrors
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           calculations:
             - newAttribute: totalErrorCount
@@ -89,7 +89,7 @@ graphs:
       - id: 4ae87699-571e-4cc8-bb13-4a977edbcac3
         name: FeatureFilterNoErrors
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -100,7 +100,7 @@ graphs:
       - id: df1c774c-a239-4d00-b7d8-01bb3af80c8d
         name: FileWriterQcResultOk
         type: action
-        action: JsonWriter
+        action: JSON Writer
         with:
           converter:
             type: flowExpr

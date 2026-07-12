@@ -22,7 +22,7 @@ pub(crate) struct CityGmlReaderFactory;
 
 impl SourceFactory for CityGmlReaderFactory {
     fn name(&self) -> &str {
-        "CityGmlReader"
+        "CityGML Reader"
     }
 
     fn description(&self) -> &str {
@@ -110,7 +110,7 @@ impl Source for CityGmlReader {
     async fn initialize(&self, _ctx: NodeContext) {}
 
     fn name(&self) -> &str {
-        "CityGmlReader"
+        "CityGML Reader"
     }
 
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {

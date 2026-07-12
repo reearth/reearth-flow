@@ -11,7 +11,7 @@ graphs:
       - id: a0f40a3e-61d3-48e2-a328-e7226c2ad2a2
         name: CsvReader
         type: action
-        action: CsvReader
+        action: CSV Reader
         with:
           format: csv
           inline:
@@ -27,7 +27,7 @@ graphs:
       - id: b5e66920-24c0-4c70-ae16-6be1ed3b917b
         name: CsvWriter
         type: action
-        action: CsvWriter
+        action: CSV Writer
         with:
           format: csv
           output:

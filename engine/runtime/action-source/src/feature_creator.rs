@@ -20,7 +20,7 @@ pub struct FeatureCreatorFactory;
 
 impl SourceFactory for FeatureCreatorFactory {
     fn name(&self) -> &str {
-        "FeatureCreator"
+        "Feature Creator"
     }
 
     fn description(&self) -> &str {
@@ -103,7 +103,7 @@ impl Source for FeatureCreatorSource {
     async fn initialize(&self, _ctx: NodeContext) {}
 
     fn name(&self) -> &str {
-        "FeatureCreator"
+        "Feature Creator"
     }
 
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {

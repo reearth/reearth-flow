@@ -61,7 +61,7 @@ pub(super) struct FeatureCounterFactory;
 
 impl ProcessorFactory for FeatureCounterFactory {
     fn name(&self) -> &str {
-        "FeatureCounter"
+        "Feature Counter"
     }
 
     fn description(&self) -> &str {
@@ -180,6 +180,6 @@ impl Processor for FeatureCounter {
     }
 
     fn name(&self) -> &str {
-        "FeatureCounter"
+        "Feature Counter"
     }
 }

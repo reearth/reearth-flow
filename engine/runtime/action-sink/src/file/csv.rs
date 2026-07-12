@@ -19,7 +19,7 @@ pub(crate) struct CsvWriterFactory;
 
 impl SinkFactory for CsvWriterFactory {
     fn name(&self) -> &str {
-        "CsvWriter"
+        "CSV Writer"
     }
 
     fn description(&self) -> &str {
@@ -125,7 +125,7 @@ impl CsvFormat {
 
 impl Sink for CsvWriter {
     fn name(&self) -> &str {
-        "CsvWriter"
+        "CSV Writer"
     }
 
     #[cfg(not(feature = "new-geometry"))]

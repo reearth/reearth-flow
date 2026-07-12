@@ -19,7 +19,7 @@ pub(crate) struct GeoJsonWriterFactory;
 
 impl SinkFactory for GeoJsonWriterFactory {
     fn name(&self) -> &str {
-        "GeoJsonWriter"
+        "GeoJSON Writer"
     }
 
     fn description(&self) -> &str {
@@ -111,7 +111,7 @@ pub(super) struct GeoJsonWriterParam {
 
 impl Sink for GeoJsonWriter {
     fn name(&self) -> &str {
-        "GeoJsonWriter"
+        "GeoJSON Writer"
     }
 
     #[cfg(not(feature = "new-geometry"))]

@@ -32,7 +32,7 @@ pub(super) struct FeatureMergerFactory;
 
 impl ProcessorFactory for FeatureMergerFactory {
     fn name(&self) -> &str {
-        "FeatureMerger"
+        "Feature Merger"
     }
 
     fn description(&self) -> &str {
@@ -181,7 +181,7 @@ pub struct FeatureMerger {
 
 impl std::fmt::Debug for FeatureMerger {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("FeatureMerger")
+        f.debug_struct("Feature Merger")
             .field("requestor_keys", &self.requestor_key_map.len())
             .field("supplier_keys", &self.supplier_key_map.len())
             .finish_non_exhaustive()
@@ -571,6 +571,6 @@ impl Processor for FeatureMerger {
     }
 
     fn name(&self) -> &str {
-        "FeatureMerger"
+        "Feature Merger"
     }
 }

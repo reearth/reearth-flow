@@ -21,7 +21,7 @@ pub struct GeometryReplacerFactory;
 
 impl ProcessorFactory for GeometryReplacerFactory {
     fn name(&self) -> &str {
-        "GeometryReplacer"
+        "Geometry Replacer"
     }
 
     fn description(&self) -> &str {
@@ -121,6 +121,6 @@ impl Processor for GeometryReplacer {
     }
 
     fn name(&self) -> &str {
-        "GeometryReplacer"
+        "Geometry Replacer"
     }
 }

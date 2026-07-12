@@ -11,7 +11,7 @@ graphs:
       - id: 01234567-0000-0000-0000-000000000103
         name: ReadShapefile
         type: action
-        action: ShapefileReader
+        action: Shapefile Reader
         with:
           dataset:
             type: string
@@ -21,7 +21,7 @@ graphs:
       - id: 01234567-0000-0000-0000-000000000104
         name: WriteToFile
         type: action
-        action: JsonWriter
+        action: JSON Writer
         with:
           output:
             type: flowExpr

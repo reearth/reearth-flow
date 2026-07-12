@@ -33,7 +33,7 @@ pub(super) struct FeatureJoinerFactory;
 
 impl ProcessorFactory for FeatureJoinerFactory {
     fn name(&self) -> &str {
-        "FeatureJoiner"
+        "Feature Joiner"
     }
 
     fn description(&self) -> &str {
@@ -213,7 +213,7 @@ pub struct FeatureJoiner {
 
 impl std::fmt::Debug for FeatureJoiner {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("FeatureJoiner")
+        f.debug_struct("Feature Joiner")
             .field("requestor_keys", &self.requestor_key_map.len())
             .field("supplier_keys", &self.supplier_key_map.len())
             .field("join_type", &self.params.join_type)
@@ -590,6 +590,6 @@ impl Processor for FeatureJoiner {
     }
 
     fn name(&self) -> &str {
-        "FeatureJoiner"
+        "Feature Joiner"
     }
 }

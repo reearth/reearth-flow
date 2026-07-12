@@ -28,7 +28,7 @@ pub struct FilePathExtractorFactory;
 
 impl SourceFactory for FilePathExtractorFactory {
     fn name(&self) -> &str {
-        "FilePathExtractor"
+        "File Path Extractor"
     }
 
     fn description(&self) -> &str {
@@ -255,7 +255,7 @@ impl Source for FilePathExtractorSource {
     async fn initialize(&self, _ctx: NodeContext) {}
 
     fn name(&self) -> &str {
-        "FilePathExtractor"
+        "File Path Extractor"
     }
 
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {

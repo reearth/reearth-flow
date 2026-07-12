@@ -30,7 +30,7 @@ pub struct GeometryValidatorFactory;
 
 impl ProcessorFactory for GeometryValidatorFactory {
     fn name(&self) -> &str {
-        "GeometryValidator"
+        "Geometry Validator"
     }
 
     fn description(&self) -> &str {
@@ -212,7 +212,7 @@ impl Processor for GeometryValidator {
     }
 
     fn name(&self) -> &str {
-        "GeometryValidator"
+        "Geometry Validator"
     }
 }
 

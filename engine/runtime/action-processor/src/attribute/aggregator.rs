@@ -22,7 +22,7 @@ pub(super) struct AttributeAggregatorFactory;
 
 impl ProcessorFactory for AttributeAggregatorFactory {
     fn name(&self) -> &str {
-        "AttributeAggregator"
+        "Attribute Aggregator"
     }
 
     fn description(&self) -> &str {
@@ -253,7 +253,7 @@ impl Processor for AttributeAggregator {
     }
 
     fn name(&self) -> &str {
-        "AttributeAggregator"
+        "Attribute Aggregator"
     }
 }
 

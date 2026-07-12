@@ -14,7 +14,7 @@ pub struct NoopProcessorFactory;
 
 impl ProcessorFactory for NoopProcessorFactory {
     fn name(&self) -> &str {
-        "NoopProcessor"
+        "Noop Processor"
     }
 
     fn description(&self) -> &str {
@@ -70,6 +70,6 @@ impl Processor for NoopProcessor {
     }
 
     fn name(&self) -> &str {
-        "NoopProcessor"
+        "Noop Processor"
     }
 }

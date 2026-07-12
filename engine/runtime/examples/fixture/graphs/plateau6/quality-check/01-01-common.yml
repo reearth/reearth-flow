@@ -4,14 +4,14 @@ nodes:
   - id: 3a85e550-49e8-4b67-bc92-908430ef6eee
     name: InputRouter
     type: action
-    action: InputRouter
+    action: Input Router
     with:
       routingPort: features
 
   - id: 2aaa4ac9-2e79-479f-aa50-6543f461a76e
     name: FeatureFilePathExtractor
     type: action
-    action: FeatureFilePathExtractor
+    action: Feature File Path Extractor
     with:
       sourceDataset:
         type: flowExpr
@@ -22,7 +22,7 @@ nodes:
   - id: 0daf7972-4d58-4ccd-a576-f3dfc418f749
     name: FeatureFilterByGml
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -33,7 +33,7 @@ nodes:
   - id: 4b5c6d7e-8f9a-4b5c-9d0e-1f2a3b4c5d6e
     name: FeatureSorterByName
     type: action
-    action: FeatureSorter
+    action: Feature Sorter
     with:
       attributes:
         - name
@@ -42,7 +42,7 @@ nodes:
   - id: 151fbadf-1b40-4264-a003-f6f11f6af2d6
     name: FeatureCounterIndex
     type: action
-    action: FeatureCounter
+    action: Feature Counter
     with:
       countStart: 1
       outputAttribute: index
@@ -50,7 +50,7 @@ nodes:
   - id: 8939cb8a-9748-4955-9fa6-0bc79b1d4e0e
     name: FilePropertyExtractor
     type: action
-    action: FilePropertyExtractor
+    action: File Property Extractor
     with:
       filePathAttribute: path
 
@@ -73,7 +73,7 @@ nodes:
   - id: aa7828b4-54f5-41c7-9ab7-15653010200c
     name: AttributeManagerL01AndL02Errors
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: L01Errors
@@ -100,7 +100,7 @@ nodes:
   - id: a5b4c3d2-1e0f-4a9b-8c7d-6e5f4a3b2c1d
     name: AttributeMapperNotWellFormedXml
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: Index
@@ -134,7 +134,7 @@ nodes:
   - id: b3f2e7a5-8d19-4c9a-91f6-4a8b5c7e2f3d
     name: AttributeMapperInvalidXml
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: Index
@@ -175,7 +175,7 @@ nodes:
   - id: 2936b715-609c-498f-8803-486c889dea31
     name: FeatureMerger01
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -187,7 +187,7 @@ nodes:
   - id: d71b0796-97a2-4e65-92df-635fc3b0a92f
     name: FeatureMerger02
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -199,7 +199,7 @@ nodes:
   - id: f19638b9-679a-4dd9-9a39-3cf2a82c6ff5
     name: AttributeMapper
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: Index
@@ -304,7 +304,7 @@ nodes:
   - id: 9e34709d-b8d1-4080-8ebf-bebe4641e681
     name: StatisticsCalculator
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       calculations:
         - newAttribute: "L01エラー"
@@ -393,7 +393,7 @@ nodes:
   - id: 4f2a8b1e-3c7d-4e9f-a2b5-8f6c9d3e1a7b
     name: AttributeMapperGmlIdNotWellFormed
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: Index
@@ -419,7 +419,7 @@ nodes:
   - id: 5e4f3a2b-1c0d-4e9f-a2b5-8f6c9d3e1a7b
     name: AttributeMapperGmlIdNotUnique
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: Index
@@ -445,7 +445,7 @@ nodes:
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d2
     name: AttributeMapperExtentsValidation
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: Index
@@ -497,7 +497,7 @@ nodes:
   - id: 6c8d9e2f-4a5b-4c7d-8e9f-2a3b4c5d6e7f
     name: AttributeMapperCodeValidation
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: Index
@@ -529,7 +529,7 @@ nodes:
   - id: 8e7f0a3b-6c5d-4e8f-9f0a-4b5c6d7e8f9a
     name: AttributeMapperInCorrectCodeSpace
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: Index
@@ -561,7 +561,7 @@ nodes:
   - id: a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
     name: AttributeMapperFileStats
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: flag
@@ -584,7 +584,7 @@ nodes:
   - id: b4c5d6e7-8f9a-0b1c-2d3e-4f5a6b7c8d9e
     name: AttributeMapperXlinkNoReference
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: Index
@@ -612,7 +612,7 @@ nodes:
   - id: d6e7f8a9-0b1c-2d3e-4f5a-6b7c8d9e0f1a
     name: AttributeMapperXlinkInvalidObjectType
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: Index
@@ -646,7 +646,7 @@ nodes:
   - id: f8a9b0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c
     name: AttributeMapperInvalidLodXGeometry
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: Index
@@ -676,7 +676,7 @@ nodes:
   - id: c3d4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
     name: FeatureMerger03
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -688,7 +688,7 @@ nodes:
   - id: 3e6f8a9b-4c5d-4e7f-9a1b-2c3d4e5f6a7b
     name: AttributeManagerTotalErrorCount
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: totalErrorCount
@@ -708,21 +708,21 @@ nodes:
   - id: f9359716-5c5a-43e5-b197-d1df171d5684
     name: OutputRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: features
 
   - id: 6a7b8c9d-0e1f-4a2b-3c4d-5e6f7a8b9c0d
     name: OutputRouterSummary
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: summaryOutput
 
   - id: 7b8c9d0e-1f2a-4b3c-5d6e-7f8a9b0c1d2e
     name: OutputRouterPerFile
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: perFileOutput
 
