@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import * as Y from "yjs";
 
-import type { Edge, Node } from "@flow/types";
+import type { Edge, Node, NodeType } from "@flow/types";
 
 import { yWorkflowConstructor } from "../conversions";
 import { rebuildWorkflow } from "../conversions/rebuildWorkflow";
@@ -9,9 +9,13 @@ import type { YWorkflow } from "../types";
 
 import { hasLegacyPorts, migrateLegacyPorts } from "./legacyPortsMigration";
 
-const node = (id: string, data: Node["data"]): Node => ({
+const node = (
+  id: string,
+  data: Node["data"],
+  type: NodeType = "transformer",
+): Node => ({
   id,
-  type: "transformer",
+  type,
   position: { x: 0, y: 0 },
   data,
 });
@@ -61,24 +65,88 @@ describe("hasLegacyPorts", () => {
     expect(hasLegacyPorts(yWorkflows)).toBe(true);
   });
 
-  it("detects legacy routingPort params", () => {
+  it("ignores a routingPort named 'default' — user-named router ports stay legal", () => {
     const yWorkflows = buildDoc([
       node("n1", {
         officialName: "InputRouter",
+        outputs: ["features"],
         params: { routingPort: "default" },
       }),
     ]);
-    expect(hasLegacyPorts(yWorkflows)).toBe(true);
+    expect(hasLegacyPorts(yWorkflows)).toBe(false);
   });
 
-  it("detects legacy pseudo port names", () => {
-    const yWorkflows = buildDoc([
-      node("n1", {
-        officialName: "Subworkflow",
-        pseudoInputs: [{ nodeId: "r1", portName: "default" }],
-      }),
-    ]);
-    expect(hasLegacyPorts(yWorkflows)).toBe(true);
+  it("ignores Input/OutputRouter nodes entirely — existing routers keep their 'default' handles", () => {
+    const yWorkflows = buildDoc(
+      [
+        node("in", {
+          officialName: "InputRouter",
+          outputs: ["default"],
+          params: { routingPort: "features" },
+        }),
+        node("out", {
+          officialName: "OutputRouter",
+          inputs: ["default"],
+          params: { routingPort: "features" },
+        }),
+        node("n1", {
+          officialName: "AttributeManager",
+          inputs: ["features"],
+          outputs: ["features"],
+        }),
+      ],
+      [
+        {
+          id: "e1",
+          source: "in",
+          target: "n1",
+          sourceHandle: "default",
+          targetHandle: "features",
+        },
+        {
+          id: "e2",
+          source: "n1",
+          target: "out",
+          sourceHandle: "features",
+          targetHandle: "default",
+        },
+      ],
+    );
+    expect(hasLegacyPorts(yWorkflows)).toBe(false);
+  });
+
+  it("ignores pseudo port names and subworkflow edge handles named 'default'", () => {
+    const yWorkflows = buildDoc(
+      [
+        node(
+          "sub",
+          {
+            officialName: "Subworkflow",
+            pseudoInputs: [{ nodeId: "r1", portName: "default" }],
+            pseudoOutputs: [{ nodeId: "r2", portName: "default" }],
+          },
+          "subworkflow",
+        ),
+        node("n1", { officialName: "X", outputs: ["features"] }),
+      ],
+      [
+        {
+          id: "e1",
+          source: "n1",
+          target: "sub",
+          sourceHandle: "features",
+          targetHandle: "default",
+        },
+        {
+          id: "e2",
+          source: "sub",
+          target: "n1",
+          sourceHandle: "default",
+          targetHandle: "features",
+        },
+      ],
+    );
+    expect(hasLegacyPorts(yWorkflows)).toBe(false);
   });
 
   it("ignores composed pseudo port names ending in -default", () => {
@@ -135,7 +203,7 @@ describe("hasLegacyPorts", () => {
 });
 
 describe("migrateLegacyPorts", () => {
-  it("rewrites all legacy port references and leaves the rest untouched", () => {
+  it("rewrites action-definition ports and leaves user-named ports untouched", () => {
     const yWorkflows = buildDoc(
       [
         node("n1", {
@@ -143,17 +211,24 @@ describe("migrateLegacyPorts", () => {
           inputs: ["default"],
           outputs: ["default", "rejected"],
         }),
+        // Existing router: kept exactly as-is — handles and routingPort
         node("router", {
           officialName: "InputRouter",
-          params: { routingPort: "default", other: "default" },
+          outputs: ["default"],
+          params: { routingPort: "default" },
         }),
-        node("sub", {
-          officialName: "Subworkflow",
-          pseudoInputs: [{ nodeId: "router", portName: "default" }],
-          pseudoOutputs: [{ nodeId: "out", portName: "MyNode-default" }],
-        }),
+        node(
+          "sub",
+          {
+            officialName: "Subworkflow",
+            pseudoInputs: [{ nodeId: "router", portName: "default" }],
+            pseudoOutputs: [{ nodeId: "out", portName: "MyNode-default" }],
+          },
+          "subworkflow",
+        ),
       ],
       [
+        // n1's action port (migrate) → sub's pseudo port (preserve)
         {
           id: "e1",
           source: "n1",
@@ -167,11 +242,20 @@ describe("migrateLegacyPorts", () => {
           target: "x",
           sourceHandle: "rejected",
         },
+        // router side preserved, n1 side migrated
+        {
+          id: "e3",
+          source: "router",
+          target: "n1",
+          sourceHandle: "default",
+          targetHandle: "default",
+        },
       ],
     );
 
+    // n1 inputs + n1 outputs + e1 sourceHandle + e3 targetHandle
     const changed = migrateLegacyPorts(yWorkflows);
-    expect(changed).toBe(6);
+    expect(changed).toBe(4);
     expect(hasLegacyPorts(yWorkflows)).toBe(false);
 
     const workflow = rebuildWorkflow(yWorkflows.get("main") as YWorkflow);
@@ -183,20 +267,23 @@ describe("migrateLegacyPorts", () => {
     expect(n1?.data.outputs).toEqual(["features", "rejected"]);
 
     const router = nodes.find((n) => n.id === "router");
-    expect(router?.data.params?.routingPort).toBe("features");
-    // Only routingPort is a port reference — other params keep their values
-    expect(router?.data.params?.other).toBe("default");
+    expect(router?.data.outputs).toEqual(["default"]);
+    expect(router?.data.params?.routingPort).toBe("default");
 
     const sub = nodes.find((n) => n.id === "sub");
-    expect(sub?.data.pseudoInputs?.[0].portName).toBe("features");
+    expect(sub?.data.pseudoInputs?.[0].portName).toBe("default");
     expect(sub?.data.pseudoOutputs?.[0].portName).toBe("MyNode-default");
 
     const e1 = edges.find((e) => e.id === "e1");
     expect(e1?.sourceHandle).toBe("features");
-    expect(e1?.targetHandle).toBe("features");
+    expect(e1?.targetHandle).toBe("default");
 
     const e2 = edges.find((e) => e.id === "e2");
     expect(e2?.sourceHandle).toBe("rejected");
+
+    const e3 = edges.find((e) => e.id === "e3");
+    expect(e3?.sourceHandle).toBe("default");
+    expect(e3?.targetHandle).toBe("features");
   });
 
   it("preserves a custom condition port named 'default' while migrating legacy ports on other nodes", () => {
