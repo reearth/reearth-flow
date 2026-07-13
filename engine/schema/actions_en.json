@@ -3411,7 +3411,7 @@
     {
       "name": "Feature Joiner",
       "type": "processor",
-      "description": "Joins requestor and supplier features based on matching attribute values with configurable join types",
+      "description": "Joins requestor and supplier features based on matching attribute values, with configurable join types.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FeatureJoiner Parameters",
@@ -3422,6 +3422,7 @@
         ],
         "properties": {
           "joinType": {
+            "title": "Join Type",
             "description": "Join type: inner, left, or full",
             "allOf": [
               {
@@ -3430,6 +3431,7 @@
             ]
           },
           "requestorAttribute": {
+            "title": "Requestor Attributes",
             "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue)",
             "type": [
               "array",
@@ -3440,6 +3442,7 @@
             }
           },
           "supplierAttribute": {
+            "title": "Supplier Attributes",
             "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue)",
             "type": [
               "array",
@@ -3450,6 +3453,7 @@
             }
           },
           "requestorAttributeValue": {
+            "title": "Requestor Attribute Value",
             "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute)",
             "type": [
               "object",
@@ -3473,6 +3477,7 @@
             }
           },
           "supplierAttributeValue": {
+            "title": "Supplier Attribute Value",
             "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute)",
             "type": [
               "object",
@@ -3496,6 +3501,7 @@
             }
           },
           "conflictResolution": {
+            "title": "Conflict Resolution",
             "description": "Attribute conflict resolution strategy when both requestor and supplier have the same attribute",
             "anyOf": [
               {
@@ -3511,6 +3517,7 @@
           "JoinType": {
             "oneOf": [
               {
+                "title": "Inner",
                 "description": "Only emit features where a match exists",
                 "type": "string",
                 "enum": [
@@ -3518,6 +3525,7 @@
                 ]
               },
               {
+                "title": "Left",
                 "description": "Emit all requestor features (default)",
                 "type": "string",
                 "enum": [
@@ -3525,6 +3533,7 @@
                 ]
               },
               {
+                "title": "Full",
                 "description": "Emit all features from both sides",
                 "type": "string",
                 "enum": [
@@ -3539,6 +3548,7 @@
           "ConflictResolution": {
             "oneOf": [
               {
+                "title": "Requestor Wins",
                 "description": "Requestor attributes win on conflict",
                 "type": "string",
                 "enum": [
@@ -3546,6 +3556,7 @@
                 ]
               },
               {
+                "title": "Supplier Wins",
                 "description": "Supplier attributes win on conflict (default)",
                 "type": "string",
                 "enum": [
@@ -3563,15 +3574,13 @@
       ],
       "outputPorts": [
         "joined",
-        "unjoinedRequestor",
-        "unjoinedSupplier"
+        "unjoined-requestor",
+        "unjoined-supplier"
       ],
       "categories": [
         "Merge"
       ],
-      "tags": [
-        "join"
-      ]
+      "tags": []
     },
     {
       "name": "Feature LOD Filter",
@@ -3632,6 +3641,7 @@
         "type": "object",
         "properties": {
           "requestorAttribute": {
+            "title": "Requestor Attributes",
             "description": "Attributes from requestor features to use for matching (alternative to requestor_attribute_value)",
             "type": [
               "array",
@@ -3642,6 +3652,7 @@
             }
           },
           "supplierAttribute": {
+            "title": "Supplier Attributes",
             "description": "Attributes from supplier features to use for matching (alternative to supplier_attribute_value)",
             "type": [
               "array",
@@ -3652,6 +3663,7 @@
             }
           },
           "requestorAttributeValue": {
+            "title": "Requestor Attribute Value",
             "description": "Expression to evaluate for requestor feature matching values (alternative to requestor_attribute)",
             "type": [
               "object",
@@ -3675,6 +3687,7 @@
             }
           },
           "supplierAttributeValue": {
+            "title": "Supplier Attribute Value",
             "description": "Expression to evaluate for supplier feature matching values (alternative to supplier_attribute)",
             "type": [
               "object",
@@ -3698,6 +3711,7 @@
             }
           },
           "completeGrouped": {
+            "title": "Complete Grouped",
             "description": "Whether to complete grouped features before processing the next group",
             "type": [
               "boolean",
@@ -3740,6 +3754,7 @@
         ],
         "properties": {
           "attributes": {
+            "title": "Sort Attributes",
             "description": "Attributes to use for sorting features (sort order based on attribute order)",
             "type": "array",
             "items": {
@@ -3747,6 +3762,7 @@
             }
           },
           "order": {
+            "title": "Sort Order",
             "description": "Sorting order (ascending or descending)",
             "allOf": [
               {
@@ -3778,9 +3794,7 @@
       "categories": [
         "Merge"
       ],
-      "tags": [
-        "sort"
-      ]
+      "tags": []
     },
     {
       "name": "Feature Transformer",

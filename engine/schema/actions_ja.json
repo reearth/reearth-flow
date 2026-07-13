@@ -3425,6 +3425,7 @@
         ],
         "properties": {
           "joinType": {
+            "title": "Join Type",
             "description": "結合タイプ: inner（内部結合）、left（左外部結合）、または full（完全外部結合）",
             "allOf": [
               {
@@ -3433,6 +3434,7 @@
             ]
           },
           "requestorAttribute": {
+            "title": "Requestor Attributes",
             "description": "照合に使用するリクエスタフィーチャーの属性（requestorAttributeValue の代替）",
             "type": [
               "array",
@@ -3443,6 +3445,7 @@
             }
           },
           "supplierAttribute": {
+            "title": "Supplier Attributes",
             "description": "照合に使用するサプライヤフィーチャーの属性（supplierAttributeValue の代替）",
             "type": [
               "array",
@@ -3453,6 +3456,7 @@
             }
           },
           "requestorAttributeValue": {
+            "title": "Requestor Attribute Value",
             "description": "リクエスタフィーチャーの照合値を評価する式（requestorAttribute の代替）",
             "type": [
               "object",
@@ -3476,6 +3480,7 @@
             }
           },
           "supplierAttributeValue": {
+            "title": "Supplier Attribute Value",
             "description": "サプライヤフィーチャーの照合値を評価する式（supplierAttribute の代替）",
             "type": [
               "object",
@@ -3499,6 +3504,7 @@
             }
           },
           "conflictResolution": {
+            "title": "Conflict Resolution",
             "description": "リクエスタとサプライヤが同じ属性を持つ場合の競合解決戦略",
             "anyOf": [
               {
@@ -3514,6 +3520,7 @@
           "JoinType": {
             "oneOf": [
               {
+                "title": "Inner",
                 "description": "一致するフィーチャーのみを出力する",
                 "type": "string",
                 "enum": [
@@ -3521,6 +3528,7 @@
                 ]
               },
               {
+                "title": "Left",
                 "description": "リクエスタのすべてのフィーチャーを出力する（デフォルト）",
                 "type": "string",
                 "enum": [
@@ -3528,6 +3536,7 @@
                 ]
               },
               {
+                "title": "Full",
                 "description": "両側のすべてのフィーチャーを出力する",
                 "type": "string",
                 "enum": [
@@ -3542,6 +3551,7 @@
           "ConflictResolution": {
             "oneOf": [
               {
+                "title": "Requestor Wins",
                 "description": "競合時はリクエスタの属性が優先される",
                 "type": "string",
                 "enum": [
@@ -3549,6 +3559,7 @@
                 ]
               },
               {
+                "title": "Supplier Wins",
                 "description": "競合時はサプライヤの属性が優先される（デフォルト）",
                 "type": "string",
                 "enum": [
@@ -3566,15 +3577,13 @@
       ],
       "outputPorts": [
         "joined",
-        "unjoinedRequestor",
-        "unjoinedSupplier"
+        "unjoined-requestor",
+        "unjoined-supplier"
       ],
       "categories": [
         "Merge"
       ],
-      "tags": [
-        "join"
-      ]
+      "tags": []
     },
     {
       "name": "Feature LOD Filter",
@@ -3635,6 +3644,7 @@
         "type": "object",
         "properties": {
           "requestorAttribute": {
+            "title": "Requestor Attributes",
             "description": "照合に使用するリクエスタフィーチャーの属性（requestor_attribute_value の代替）",
             "type": [
               "array",
@@ -3645,6 +3655,7 @@
             }
           },
           "supplierAttribute": {
+            "title": "Supplier Attributes",
             "description": "照合に使用するサプライヤフィーチャーの属性（supplier_attribute_value の代替）",
             "type": [
               "array",
@@ -3655,6 +3666,7 @@
             }
           },
           "requestorAttributeValue": {
+            "title": "Requestor Attribute Value",
             "description": "リクエスタフィーチャーの照合値を評価する式（requestor_attribute の代替）",
             "type": [
               "object",
@@ -3678,6 +3690,7 @@
             }
           },
           "supplierAttributeValue": {
+            "title": "Supplier Attribute Value",
             "description": "サプライヤフィーチャーの照合値を評価する式（supplier_attribute の代替）",
             "type": [
               "object",
@@ -3701,6 +3714,7 @@
             }
           },
           "completeGrouped": {
+            "title": "Complete Grouped",
             "description": "次のグループを処理する前に、グループ化されたフィーチャーを完了するか",
             "type": [
               "boolean",
@@ -3743,6 +3757,7 @@
         ],
         "properties": {
           "attributes": {
+            "title": "Sort Attributes",
             "description": "フィーチャーのソートに使用する属性（属性の順序でソート順が決まる）",
             "type": "array",
             "items": {
@@ -3750,6 +3765,7 @@
             }
           },
           "order": {
+            "title": "Sort Order",
             "description": "ソート順（昇順または降順）",
             "allOf": [
               {
@@ -3781,9 +3797,7 @@
       "categories": [
         "Merge"
       ],
-      "tags": [
-        "sort"
-      ]
+      "tags": []
     },
     {
       "name": "Feature Transformer",
