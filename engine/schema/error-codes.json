@@ -42,6 +42,12 @@
     "help": "The solid has no renderable faces; check upstream geometry processing."
   },
   {
+    "code": "internal.diagnostics_overflow",
+    "category": "internal",
+    "defaultDisposition": "warn_drop",
+    "message": "additional diagnostics collapsed into this overflow marker"
+  },
+  {
     "code": "internal.invariant_violation",
     "category": "internal",
     "defaultDisposition": "fatal",

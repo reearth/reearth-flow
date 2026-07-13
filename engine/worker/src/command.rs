@@ -26,7 +26,7 @@ use reearth_flow_worker::{
     logger::{enable_file_logging, set_pubsub_context, USER_FACING_LOG_HANDLER},
     pubsub::{PubSubBackend, Publisher},
     types::{
-        job_complete_event::{JobCompleteEvent, JobResult},
+        job_complete_event::{JobCompleteEvent, JobResult, JOB_COMPLETE_TOP_K},
         metadata::Metadata,
     },
 };
@@ -259,8 +259,6 @@ impl RunWorkerCommand {
             artifact_uri,
         )
         .await;
-        // Task 10 puts this on JobCompleteEvent.
-        #[allow(unused_variables)]
         let run_summary: Option<RunSummary> = result.as_ref().ok().cloned();
         let job_result = match &result {
             Ok(summary) => {
@@ -289,21 +287,21 @@ impl RunWorkerCommand {
             Err(_) => derive_job_result(None, false),
         };
         self.cleanup(&meta, &storage_resolver).await?;
+        let complete_event = match &run_summary {
+            Some(summary) => JobCompleteEvent::with_summary(
+                workflow_id,
+                meta.job_id,
+                job_result.clone(),
+                &summary.capped(JOB_COMPLETE_TOP_K),
+            ),
+            // No summary means the runner returned `Err`: publish the
+            // pre-Task-10 shape (no diagnostics fields) exactly as before.
+            None => JobCompleteEvent::new(workflow_id, meta.job_id, job_result.clone()),
+        };
         match &pubsub {
-            PubSubBackend::Google(p) => p
-                .publish(JobCompleteEvent::new(
-                    workflow_id,
-                    meta.job_id,
-                    job_result.clone(),
-                ))
-                .await
-                .map_err(Error::run),
+            PubSubBackend::Google(p) => p.publish(complete_event).await.map_err(Error::run),
             PubSubBackend::Noop(p) => p
-                .publish(JobCompleteEvent::new(
-                    workflow_id,
-                    meta.job_id,
-                    job_result.clone(),
-                ))
+                .publish(complete_event)
                 .await
                 .map_err(|e| Error::run(format!("{e:?}"))),
         }?;

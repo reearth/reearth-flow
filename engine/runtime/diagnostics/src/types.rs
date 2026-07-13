@@ -195,3 +195,251 @@ pub struct RunSummary {
     pub aggregated_diagnostics: Vec<Diagnostic>,
     pub dropped_event_count: u64,
 }
+
+/// Ranks `items` by `aggregated.count` descending (entries with no count
+/// sort last; ties/None-vs-None keep their original relative order via a
+/// stable sort). When `items.len() <= k` this is a no-op clone. Otherwise
+/// the top `k` are kept (in ranked order) and everything else collapses
+/// into a single `internal.diagnostics_overflow` marker Diagnostic whose
+/// `aggregated.count` is the sum of the collapsed entries' counts (an
+/// entry with no `aggregated.count` contributes 1) and whose
+/// `effective_disposition` is `overflow_disposition`.
+fn cap_diagnostics(
+    items: &[Diagnostic],
+    k: usize,
+    overflow_disposition: Disposition,
+) -> Vec<Diagnostic> {
+    if items.len() <= k {
+        return items.to_vec();
+    }
+    let mut ranked: Vec<&Diagnostic> = items.iter().collect();
+    ranked.sort_by(|a, b| {
+        let ca = a.aggregated.as_ref().map(|info| info.count);
+        let cb = b.aggregated.as_ref().map(|info| info.count);
+        match (ca, cb) {
+            (Some(x), Some(y)) => y.cmp(&x),
+            (Some(_), None) => std::cmp::Ordering::Less,
+            (None, Some(_)) => std::cmp::Ordering::Greater,
+            (None, None) => std::cmp::Ordering::Equal,
+        }
+    });
+    let mut kept: Vec<Diagnostic> = ranked[..k].iter().map(|d| (*d).clone()).collect();
+    let residual_total: u64 = ranked[k..]
+        .iter()
+        .map(|d| d.aggregated.as_ref().map(|info| info.count).unwrap_or(1))
+        .sum();
+    let mut overflow = Diagnostic::from_draft(
+        DiagnosticDraft::new(ErrorCode::InternalDiagnosticsOverflow),
+        None,
+        None,
+        None,
+    );
+    overflow.aggregated = Some(AggregateInfo {
+        count: residual_total,
+        sample_feature_ids: vec![],
+    });
+    overflow.effective_disposition = Some(overflow_disposition);
+    kept.push(overflow);
+    kept
+}
+
+impl RunSummary {
+    /// Top-K bound for wire payloads (spec 4.7): caps both `failed_nodes`
+    /// and `aggregated_diagnostics` independently at `k` entries each,
+    /// ranked by `aggregated.count` descending, collapsing any remainder
+    /// into one overflow-marker `Diagnostic` per list. `dropped_event_count`
+    /// passes through unchanged.
+    pub fn capped(&self, k: usize) -> RunSummary {
+        RunSummary {
+            failed_nodes: cap_diagnostics(&self.failed_nodes, k, Disposition::Fatal),
+            aggregated_diagnostics: cap_diagnostics(
+                &self.aggregated_diagnostics,
+                k,
+                Disposition::WarnDrop,
+            ),
+            dropped_event_count: self.dropped_event_count,
+        }
+    }
+}
+
+#[cfg(test)]
+mod run_summary_capped_tests {
+    use super::*;
+    use crate::ErrorCode;
+    use pretty_assertions::assert_eq;
+
+    fn diag_with_count(code: ErrorCode, count: u64) -> Diagnostic {
+        let mut d = Diagnostic::from_draft(DiagnosticDraft::new(code), None, None, None);
+        d.aggregated = Some(AggregateInfo {
+            count,
+            sample_feature_ids: vec![],
+        });
+        d
+    }
+
+    fn diag_no_count(code: ErrorCode) -> Diagnostic {
+        Diagnostic::from_draft(DiagnosticDraft::new(code), None, None, None)
+    }
+
+    #[test]
+    fn under_k_is_passthrough_clone() {
+        let summary = RunSummary {
+            failed_nodes: vec![diag_no_count(ErrorCode::InternalInvariantViolation)],
+            aggregated_diagnostics: vec![
+                diag_with_count(ErrorCode::GltfZeroFaceSolid, 5),
+                diag_with_count(ErrorCode::Cesium3dtilesEmptyGeometry, 2),
+            ],
+            dropped_event_count: 7,
+        };
+        let capped = summary.capped(10);
+        assert_eq!(capped.failed_nodes.len(), 1);
+        assert_eq!(capped.aggregated_diagnostics.len(), 2);
+        assert_eq!(capped.dropped_event_count, 7);
+        // passthrough: original order preserved, not re-sorted
+        assert_eq!(
+            capped.aggregated_diagnostics[0].code,
+            ErrorCode::GltfZeroFaceSolid
+        );
+        assert_eq!(
+            capped.aggregated_diagnostics[1].code,
+            ErrorCode::Cesium3dtilesEmptyGeometry
+        );
+    }
+
+    #[test]
+    fn len_equal_to_k_is_passthrough_no_overflow_marker() {
+        let summary = RunSummary {
+            failed_nodes: vec![],
+            aggregated_diagnostics: vec![
+                diag_with_count(ErrorCode::GltfZeroFaceSolid, 5),
+                diag_with_count(ErrorCode::Cesium3dtilesEmptyGeometry, 2),
+            ],
+            dropped_event_count: 0,
+        };
+        let capped = summary.capped(2);
+        assert_eq!(capped.aggregated_diagnostics.len(), 2);
+        assert!(capped
+            .aggregated_diagnostics
+            .iter()
+            .all(|d| d.code != ErrorCode::InternalDiagnosticsOverflow));
+    }
+
+    #[test]
+    fn over_k_collapses_remainder_with_correct_residual_total() {
+        let summary = RunSummary {
+            failed_nodes: vec![],
+            aggregated_diagnostics: vec![
+                diag_with_count(ErrorCode::GltfZeroFaceSolid, 5),
+                diag_with_count(ErrorCode::Cesium3dtilesEmptyGeometry, 2),
+                diag_with_count(ErrorCode::Cesium3dtilesNonCitygmlGeometry, 8),
+            ],
+            dropped_event_count: 0,
+        };
+        let capped = summary.capped(2);
+        assert_eq!(capped.aggregated_diagnostics.len(), 3); // 2 kept + 1 overflow marker
+        let overflow = capped.aggregated_diagnostics.last().unwrap();
+        assert_eq!(overflow.code, ErrorCode::InternalDiagnosticsOverflow);
+        // residual = the single collapsed entry (count 2, the smallest of the three)
+        assert_eq!(overflow.aggregated.as_ref().unwrap().count, 2);
+        assert!(overflow
+            .aggregated
+            .as_ref()
+            .unwrap()
+            .sample_feature_ids
+            .is_empty());
+        assert_eq!(overflow.effective_disposition, Some(Disposition::WarnDrop));
+    }
+
+    #[test]
+    fn kept_entries_are_ordered_by_count_descending() {
+        let summary = RunSummary {
+            failed_nodes: vec![],
+            aggregated_diagnostics: vec![
+                diag_with_count(ErrorCode::GltfZeroFaceSolid, 3),
+                diag_with_count(ErrorCode::Cesium3dtilesEmptyGeometry, 9),
+                diag_with_count(ErrorCode::Cesium3dtilesNonCitygmlGeometry, 6),
+            ],
+            dropped_event_count: 0,
+        };
+        let capped = summary.capped(2);
+        assert_eq!(
+            capped.aggregated_diagnostics[0].code,
+            ErrorCode::Cesium3dtilesEmptyGeometry
+        );
+        assert_eq!(
+            capped.aggregated_diagnostics[0]
+                .aggregated
+                .as_ref()
+                .unwrap()
+                .count,
+            9
+        );
+        assert_eq!(
+            capped.aggregated_diagnostics[1].code,
+            ErrorCode::Cesium3dtilesNonCitygmlGeometry
+        );
+        assert_eq!(
+            capped.aggregated_diagnostics[1]
+                .aggregated
+                .as_ref()
+                .unwrap()
+                .count,
+            6
+        );
+    }
+
+    #[test]
+    fn none_count_entries_sort_last_and_stable_among_themselves() {
+        let summary = RunSummary {
+            failed_nodes: vec![],
+            aggregated_diagnostics: vec![
+                diag_no_count(ErrorCode::GltfZeroFaceSolid),
+                diag_with_count(ErrorCode::Cesium3dtilesEmptyGeometry, 4),
+                diag_no_count(ErrorCode::Cesium3dtilesNonCitygmlGeometry),
+            ],
+            dropped_event_count: 0,
+        };
+        // k=3 == len, so passthrough — order unchanged, no sort applied
+        let passthrough = summary.capped(3);
+        assert_eq!(
+            passthrough.aggregated_diagnostics[0].code,
+            ErrorCode::GltfZeroFaceSolid
+        );
+
+        // k=2 forces a sort: the Some(4) entry must come first, the two
+        // None entries retain their relative order (stable) and the later
+        // of the two collapses into the overflow marker.
+        let capped = summary.capped(2);
+        assert_eq!(
+            capped.aggregated_diagnostics[0].code,
+            ErrorCode::Cesium3dtilesEmptyGeometry
+        );
+        assert_eq!(
+            capped.aggregated_diagnostics[1].code,
+            ErrorCode::GltfZeroFaceSolid
+        );
+        let overflow = capped.aggregated_diagnostics.last().unwrap();
+        assert_eq!(overflow.code, ErrorCode::InternalDiagnosticsOverflow);
+        // one collapsed None-count entry contributes 1 to the residual total
+        assert_eq!(overflow.aggregated.as_ref().unwrap().count, 1);
+    }
+
+    #[test]
+    fn failed_nodes_overflow_marker_keeps_fatal_disposition_and_counts_entries() {
+        let summary = RunSummary {
+            failed_nodes: vec![
+                diag_no_count(ErrorCode::InternalInvariantViolation),
+                diag_no_count(ErrorCode::InternalUnclassified),
+                diag_no_count(ErrorCode::InternalInvariantViolation),
+            ],
+            aggregated_diagnostics: vec![],
+            dropped_event_count: 0,
+        };
+        let capped = summary.capped(1);
+        assert_eq!(capped.failed_nodes.len(), 2); // 1 kept + 1 overflow marker
+        let overflow = capped.failed_nodes.last().unwrap();
+        assert_eq!(overflow.code, ErrorCode::InternalDiagnosticsOverflow);
+        assert_eq!(overflow.aggregated.as_ref().unwrap().count, 2);
+        assert_eq!(overflow.effective_disposition, Some(Disposition::Fatal));
+    }
+}
