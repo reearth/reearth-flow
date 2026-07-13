@@ -2,6 +2,9 @@ use std::path::PathBuf;
 use std::sync::Arc;
 
 use reearth_flow_common::uri::Uri;
+use reearth_flow_diagnostics::{
+    Diagnostic, DiagnosticDraft, DiagnosticKind, Disposition, ErrorCode,
+};
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::Feature;
 use tracing::{error_span, info_span};
@@ -40,6 +43,10 @@ pub struct Context {
     /// sentinel. Tests using `NodeContext::default()` get `file:///`, which
     /// `sandbox::ensure_under` treats as "no sandbox" for any candidate scheme.
     pub sandbox_root: Uri,
+    /// Per-node diagnostics handle for the `report`/`warn`/`warn_once` API.
+    /// `None` for fresh/legacy contexts; derived contexts propagate it from
+    /// their source.
+    pub diagnostics: Option<crate::diagnostics::SharedNodeDiagnostics>,
 }
 
 impl From<ExecutorContext> for Context {
@@ -50,6 +57,7 @@ impl From<ExecutorContext> for Context {
             kv_store: ctx.kv_store,
             event_hub: ctx.event_hub,
             sandbox_root: ctx.sandbox_root,
+            diagnostics: ctx.diagnostics,
         }
     }
 }
@@ -62,6 +70,7 @@ impl From<NodeContext> for Context {
             kv_store: ctx.kv_store,
             event_hub: ctx.event_hub,
             sandbox_root: ctx.sandbox_root,
+            diagnostics: ctx.diagnostics,
         }
     }
 }
@@ -80,6 +89,7 @@ impl Context {
             kv_store,
             event_hub,
             sandbox_root,
+            diagnostics: None,
         }
     }
 
@@ -92,6 +102,7 @@ impl Context {
             kv_store: self.kv_store.clone(),
             event_hub: self.event_hub.clone(),
             sandbox_root: self.sandbox_root.clone(),
+            diagnostics: self.diagnostics.clone(),
         }
     }
 }
@@ -110,6 +121,10 @@ pub struct ExecutorContext {
     /// sentinel. Tests using `NodeContext::default()` get `file:///`, which
     /// `sandbox::ensure_under` treats as "no sandbox" for any candidate scheme.
     pub sandbox_root: Uri,
+    /// Per-node diagnostics handle for the `report`/`warn`/`warn_once` API.
+    /// `None` for fresh/legacy contexts; derived contexts propagate it from
+    /// their source.
+    pub diagnostics: Option<crate::diagnostics::SharedNodeDiagnostics>,
 }
 
 impl ExecutorContext {
@@ -130,6 +145,7 @@ impl ExecutorContext {
             kv_store,
             event_hub,
             sandbox_root,
+            diagnostics: None,
         }
     }
 
@@ -140,6 +156,7 @@ impl ExecutorContext {
             kv_store: self.kv_store.clone(),
             event_hub: self.event_hub.clone(),
             sandbox_root: self.sandbox_root.clone(),
+            diagnostics: self.diagnostics.clone(),
         }
     }
 
@@ -152,6 +169,7 @@ impl ExecutorContext {
             kv_store: Arc::clone(&self.kv_store),
             event_hub: self.event_hub.clone(),
             sandbox_root: self.sandbox_root.clone(),
+            diagnostics: self.diagnostics.clone(),
         }
     }
 
@@ -168,6 +186,7 @@ impl ExecutorContext {
             kv_store: Arc::clone(&ctx.kv_store),
             event_hub: ctx.event_hub.clone(),
             sandbox_root: ctx.sandbox_root.clone(),
+            diagnostics: ctx.diagnostics.clone(),
         }
     }
 
@@ -180,6 +199,7 @@ impl ExecutorContext {
             kv_store: Arc::clone(&ctx.kv_store),
             event_hub: ctx.event_hub.clone(),
             sandbox_root: ctx.sandbox_root.clone(),
+            diagnostics: ctx.diagnostics.clone(),
         }
     }
 
@@ -199,6 +219,7 @@ impl ExecutorContext {
             kv_store,
             event_hub,
             sandbox_root,
+            diagnostics: None,
         }
     }
 
@@ -208,6 +229,101 @@ impl ExecutorContext {
 
     pub fn error_span(&self) -> tracing::Span {
         error_span!("action")
+    }
+}
+
+impl ExecutorContext {
+    fn diagnostic_identity(&self) -> (Option<String>, Option<String>) {
+        match &self.diagnostics {
+            Some(handle) => (
+                Some(handle.inner.node_id().to_string()),
+                Some(handle.inner.action_type().to_string()),
+            ),
+            None => (None, None),
+        }
+    }
+
+    fn emit_immediate_warn(&self, diagnostic: &Diagnostic) {
+        self.event_hub.send(crate::event::Event::Log {
+            level: tracing::Level::WARN,
+            span: None,
+            node_handle: self.diagnostics.as_ref().map(|h| h.node_handle.clone()),
+            node_name: self.diagnostics.as_ref().map(|h| h.node_name.clone()),
+            message: diagnostic.to_string(),
+        });
+    }
+
+    /// Report a feature-disposition decision (drop / reject / fail).
+    /// Auto-injects node_id, action_type and the current feature id.
+    /// Fatal is returned as Err(diagnostic) — `ctx.report(draft)?` is the
+    /// idiomatic call shape — but the no-silent-fatal guarantee is executor-side:
+    /// the fatal is recorded in the per-node slot BEFORE Err is returned, and the
+    /// executor fails the node at drain end even if the action swallowed the Err.
+    // `Diagnostic` is the deliberate error type here (actions match on
+    // `effective_disposition`/`?`-propagate it as a `BoxedError`); boxing it
+    // would break the interface this task specifies.
+    #[allow(clippy::result_large_err)]
+    pub fn report(&self, draft: DiagnosticDraft) -> Result<Disposition, Diagnostic> {
+        let (node_id, action_type) = self.diagnostic_identity();
+        let mut diagnostic =
+            Diagnostic::from_draft(draft, node_id, action_type, Some(self.feature.id));
+        // Phase 1: effective = registry default; the policy resolve() ladder lands in Phase 2.
+        let effective = diagnostic.default_disposition;
+        diagnostic.effective_disposition = Some(effective);
+        match effective {
+            Disposition::Fatal => {
+                if let Some(handle) = &self.diagnostics {
+                    handle.inner.record_fatal(diagnostic.clone());
+                }
+                Err(diagnostic)
+            }
+            Disposition::WarnDrop | Disposition::Reject => {
+                let kind = if effective == Disposition::WarnDrop {
+                    DiagnosticKind::WarnDrop
+                } else {
+                    DiagnosticKind::Reject
+                };
+                match &self.diagnostics {
+                    Some(handle) => {
+                        handle
+                            .inner
+                            .record(kind, diagnostic.code, Some(self.feature.id))
+                    }
+                    // never silent, even on a context without a handle (tests/legacy paths)
+                    None => self.emit_immediate_warn(&diagnostic),
+                }
+                Ok(effective)
+            }
+        }
+    }
+
+    /// Warn-and-continue: the feature keeps flowing untouched. Aggregated per
+    /// node keyed on code; one finish() summary per code. Never fails.
+    pub fn warn(&self, draft: DiagnosticDraft) {
+        let (node_id, action_type) = self.diagnostic_identity();
+        let diagnostic = Diagnostic::from_draft(draft, node_id, action_type, Some(self.feature.id));
+        match &self.diagnostics {
+            Some(handle) => handle.inner.record(
+                DiagnosticKind::WarnContinue,
+                diagnostic.code,
+                Some(self.feature.id),
+            ),
+            None => self.emit_immediate_warn(&diagnostic),
+        }
+    }
+
+    /// Run-level notice: one immediate line per run per code, bypasses the aggregator.
+    pub fn warn_once(&self, draft: DiagnosticDraft) {
+        let first = match &self.diagnostics {
+            Some(handle) => handle.inner.try_mark_warn_once(draft.code),
+            None => true,
+        };
+        if !first {
+            return;
+        }
+        let (node_id, action_type) = self.diagnostic_identity();
+        let diagnostic = Diagnostic::from_draft(draft, node_id, action_type, None);
+        self.emit_immediate_warn(&diagnostic);
     }
 }
 
@@ -223,6 +339,10 @@ pub struct NodeContext {
     /// sentinel. Tests using `NodeContext::default()` get `file:///`, which
     /// `sandbox::ensure_under` treats as "no sandbox" for any candidate scheme.
     pub sandbox_root: Uri,
+    /// Per-node diagnostics handle for the `report`/`warn`/`warn_once` API.
+    /// `None` for fresh/legacy contexts; derived contexts propagate it from
+    /// their source.
+    pub diagnostics: Option<crate::diagnostics::SharedNodeDiagnostics>,
 }
 
 impl From<Context> for NodeContext {
@@ -233,6 +353,7 @@ impl From<Context> for NodeContext {
             kv_store: ctx.kv_store,
             event_hub: ctx.event_hub,
             sandbox_root: ctx.sandbox_root,
+            diagnostics: ctx.diagnostics,
         }
     }
 }
@@ -245,6 +366,7 @@ impl From<ExecutorContext> for NodeContext {
             kv_store: ctx.kv_store,
             event_hub: ctx.event_hub,
             sandbox_root: ctx.sandbox_root,
+            diagnostics: ctx.diagnostics,
         }
     }
 }
@@ -262,6 +384,7 @@ impl Default for NodeContext {
             // `Runner::run` path; production entrypoints reject this value.
             sandbox_root: std::str::FromStr::from_str("file:///")
                 .expect("'file:///' is always a valid URI"),
+            diagnostics: None,
         }
     }
 }
@@ -280,6 +403,7 @@ impl NodeContext {
             kv_store,
             event_hub,
             sandbox_root,
+            diagnostics: None,
         }
     }
 
@@ -298,6 +422,23 @@ impl NodeContext {
             kv_store: self.kv_store.clone(),
             event_hub: self.event_hub.clone(),
             sandbox_root: self.sandbox_root.clone(),
+            diagnostics: self.diagnostics.clone(),
+        }
+    }
+}
+
+impl NodeContext {
+    /// finish()-time drop reporting (sinks run finish with only a NodeContext).
+    pub fn report_drop(&self, code: ErrorCode, feature_id: Option<uuid::Uuid>) {
+        match &self.diagnostics {
+            Some(handle) => handle.report_drop(code, feature_id),
+            None => self.event_hub.send(crate::event::Event::Log {
+                level: tracing::Level::WARN,
+                span: None,
+                node_handle: None,
+                node_name: None,
+                message: format!("{} ({})", code.default_message(), code),
+            }),
         }
     }
 }
@@ -327,5 +468,100 @@ impl Default for ExecutorOptions {
             sandbox_root: std::str::FromStr::from_str("file:///")
                 .expect("'file:///' is always a valid URI"),
         }
+    }
+}
+
+#[cfg(test)]
+mod diagnostics_tests {
+    use std::sync::Arc;
+
+    use indexmap::IndexMap;
+    use reearth_flow_diagnostics::{DiagnosticDraft, Disposition, ErrorCode};
+    use reearth_flow_types::{AttributeValue, Feature};
+
+    use crate::diagnostics::NodeDiagnosticsHandle;
+    use crate::executor_operation::{ExecutorContext, NodeContext};
+    use crate::node::{NodeHandle, NodeId, FEATURES_PORT};
+
+    fn ctx_with_handle() -> (ExecutorContext, crate::diagnostics::SharedNodeDiagnostics) {
+        let handle = Arc::new(NodeDiagnosticsHandle::new(
+            NodeHandle::new(NodeId::new("node-1".to_string())),
+            "writer-1".to_string(),
+            "Cesium 3D Tiles Writer".to_string(),
+            Arc::default(),
+        ));
+        let node_ctx = NodeContext::default();
+        let mut ctx = ExecutorContext::new_with_node_context_feature_and_port(
+            &node_ctx,
+            Feature::from(IndexMap::<String, AttributeValue>::new()),
+            FEATURES_PORT.clone(),
+        );
+        ctx.diagnostics = Some(handle.clone());
+        (ctx, handle)
+    }
+
+    #[test]
+    fn report_warn_drop_increments_bucket_and_returns_disposition() {
+        let (ctx, handle) = ctx_with_handle();
+        let disp = ctx
+            .report(DiagnosticDraft::new(ErrorCode::Cesium3dtilesEmptyGeometry))
+            .unwrap();
+        assert_eq!(disp, Disposition::WarnDrop);
+        let summaries = handle.inner.drain_summaries();
+        assert_eq!(summaries.len(), 1);
+        assert_eq!(summaries[0].aggregated.as_ref().unwrap().count, 1);
+        // node identity was auto-injected
+        assert_eq!(summaries[0].node_id.as_deref(), Some("node-1"));
+        assert_eq!(
+            summaries[0].action_type.as_deref(),
+            Some("Cesium 3D Tiles Writer")
+        );
+    }
+
+    #[test]
+    fn report_fatal_records_slot_before_returning_err_even_if_swallowed() {
+        let (ctx, handle) = ctx_with_handle();
+        // deliberately swallow the Err — the no-silent-fatal guarantee is executor-side
+        let _ = ctx.report(DiagnosticDraft::new(ErrorCode::InternalInvariantViolation));
+        let fatal = handle.inner.take_fatal().expect("fatal slot must be set");
+        assert_eq!(fatal.effective_disposition, Some(Disposition::Fatal));
+        assert_eq!(fatal.feature_id, Some(ctx.feature.id));
+    }
+
+    #[test]
+    fn warn_feeds_warn_continue_bucket_and_never_fails() {
+        let (ctx, handle) = ctx_with_handle();
+        ctx.warn(DiagnosticDraft::new(ErrorCode::GltfZeroFaceSolid));
+        ctx.warn(DiagnosticDraft::new(ErrorCode::GltfZeroFaceSolid));
+        let summaries = handle.inner.drain_summaries();
+        assert_eq!(summaries.len(), 1);
+        assert_eq!(summaries[0].aggregated.as_ref().unwrap().count, 2);
+        assert_eq!(summaries[0].effective_disposition, None);
+    }
+
+    #[test]
+    fn warn_once_emits_immediately_and_only_once() {
+        let (ctx, handle) = ctx_with_handle();
+        let mut receiver = ctx.event_hub.sender.subscribe();
+        ctx.warn_once(DiagnosticDraft::new(ErrorCode::GltfZeroFaceSolid));
+        ctx.warn_once(DiagnosticDraft::new(ErrorCode::GltfZeroFaceSolid));
+        // exactly one immediate Event::Log, nothing aggregated
+        let first = receiver.try_recv().expect("one immediate warn event");
+        assert!(matches!(first, crate::event::Event::Log { .. }));
+        assert!(receiver.try_recv().is_err());
+        assert!(handle.inner.drain_summaries().is_empty());
+    }
+
+    #[test]
+    fn report_drop_on_node_context_feeds_warn_drop_bucket() {
+        let (ctx, handle) = ctx_with_handle();
+        let node_ctx: NodeContext = ctx.into();
+        node_ctx.report_drop(ErrorCode::CitygmlEmptyGeometry, None);
+        let summaries = handle.inner.drain_summaries();
+        assert_eq!(summaries.len(), 1);
+        assert_eq!(
+            summaries[0].effective_disposition,
+            Some(Disposition::WarnDrop)
+        );
     }
 }

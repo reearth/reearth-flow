@@ -80,6 +80,10 @@ pub struct ProcessorNode<F> {
     /// State for writing source intermediate data
     feature_state: Arc<State>,
     incremental_mode: bool,
+    /// This node's report/warn/warn_once diagnostics handle. Stamped onto
+    /// every `ExecutorContext`/`NodeContext` this node receives so
+    /// process()/finish()-time reports are attributed to this node.
+    diagnostics: crate::diagnostics::SharedNodeDiagnostics,
 }
 
 impl<F: Future + Unpin + Debug> ProcessorNode<F> {
@@ -90,6 +94,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
         shutdown: F,
         runtime: Arc<Handle>,
         incremental_mode: bool,
+        warn_once: reearth_flow_diagnostics::WarnOnceSet,
     ) -> Self {
         let node = dag.node_weight_mut(node_index);
         let Some(kind) = node.kind.take() else {
@@ -134,6 +139,13 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             SourceIntermediateRecorder::collect(dag, node_index, &node_handles);
         let feature_state = dag.feature_state();
 
+        let diagnostics = Arc::new(crate::diagnostics::NodeDiagnosticsHandle::new(
+            node_handle.clone(),
+            node_name.clone(),
+            processor.name().to_string(),
+            warn_once,
+        ));
+
         Self {
             node_handle,
             node_name,
@@ -161,6 +173,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             source_intermediate_recorder,
             feature_state,
             incremental_mode,
+            diagnostics,
         }
     }
 
@@ -301,13 +314,18 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                         feature_id: None,
                     });
 
-                    let terminate_result = self.on_terminate(NodeContext::new(
+                    let mut finish_ctx = NodeContext::new(
                         self.env_vars.clone(),
                         self.storage_resolver.clone(),
                         self.kv_store.clone(),
                         self.event_hub.clone(),
                         self.sandbox_root.clone(),
-                    ));
+                    );
+                    // Receive-site stamping: this is a fresh context built for
+                    // finish(), not derived from anything upstream, so stamp
+                    // this node's own diagnostics handle onto it directly.
+                    finish_ctx.diagnostics = Some(self.diagnostics.clone());
+                    let terminate_result = self.on_terminate(finish_ctx);
 
                     if terminate_result.is_err()
                         && !has_failed.load(std::sync::atomic::Ordering::SeqCst)
@@ -317,6 +335,21 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                             status: NodeStatus::Failed,
                             feature_id: None,
                         });
+                    }
+
+                    // Swallowed-fatal backstop: a `ctx.report()` call that resolved to
+                    // Fatal recorded a diagnostic in this node's fatal slot even if the
+                    // action's process()/finish() swallowed the returned Err. Fail the
+                    // node here so a swallowed fatal can never pass as a successful run.
+                    if let Some(diag) = self.diagnostics.inner.take_fatal() {
+                        if !has_failed.load(std::sync::atomic::Ordering::SeqCst) {
+                            self.event_hub.send(Event::NodeStatusChanged {
+                                node_handle: self.node_handle.clone(),
+                                status: NodeStatus::Failed,
+                                feature_id: None,
+                            });
+                        }
+                        return Err(ExecutionError::Processor(Box::new(diag)));
                     }
 
                     return terminate_result;
@@ -399,9 +432,12 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
 
     fn on_op_with_failure_tracking(
         &mut self,
-        ctx: ExecutorContext,
+        mut ctx: ExecutorContext,
         has_failed: Arc<std::sync::atomic::AtomicBool>,
     ) -> Result<(), ExecutionError> {
+        // Receive-site stamping: this node's own diagnostics handle wins over
+        // whatever the upstream sender's context carried.
+        ctx.diagnostics = Some(self.diagnostics.clone());
         let channel_manager = Arc::clone(&self.channel_manager);
         let processor = Arc::clone(&self.processor);
 
@@ -461,6 +497,11 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
             .write()
             .finish(ctx.clone(), channel_manager)
             .map_err(|e| ExecutionError::CannotSendToChannel(format!("{e:?}")));
+        // Emit this node's aggregated warn/drop/reject summaries regardless of
+        // whether finish() itself succeeded — reports recorded during
+        // process()/finish() must not be silently dropped just because
+        // finish() failed.
+        crate::diagnostics::emit_summaries(&self.event_hub, &self.diagnostics);
         // Flush any features that were spilled to disk during finish().
         // These are sent as FileBackedOps which the downstream already handles.
         channel_manager.flush_spill_files(&ctx.as_context());

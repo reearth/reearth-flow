@@ -5159,6 +5159,7 @@ dependencies = [
  "reearth-flow-action-log",
  "reearth-flow-action-source",
  "reearth-flow-common",
+ "reearth-flow-diagnostics",
  "reearth-flow-state",
  "reearth-flow-storage",
  "reearth-flow-types",

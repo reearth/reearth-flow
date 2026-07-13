@@ -117,6 +117,11 @@ impl DagExecutor {
             sandbox_root.clone(),
         );
 
+        // Run-scoped warn-once dedup set: shared by every processor/sink node
+        // started below so `ctx.warn_once(...)` fires at most once per code
+        // per run, regardless of which node reports it.
+        let warn_once: reearth_flow_diagnostics::WarnOnceSet = Arc::default();
+
         let should_run_sources = execution_dag.graph().node_indices().any(|i| {
             execution_dag.graph()[i].is_source
                 && execute_node_ids.contains(&execution_dag.graph()[i].handle.id)
@@ -176,6 +181,7 @@ impl DagExecutor {
                         shutdown.clone(),
                         runtime.clone(),
                         incremental_run_config.is_some(),
+                        warn_once.clone(),
                     )
                     .await;
                     join_handles.push(start_processor(processor_node)?);
@@ -195,6 +201,7 @@ impl DagExecutor {
                         shutdown.clone(),
                         runtime.clone(),
                         incremental_run_config.is_some(),
+                        warn_once.clone(),
                     );
                     join_handles.push(start_sink(sink_node)?);
                 }

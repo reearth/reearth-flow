@@ -60,6 +60,10 @@ pub struct SinkNode<F> {
     /// State for writing source intermediate data
     feature_state: Arc<State>,
     incremental_mode: bool,
+    /// This node's report/warn/warn_once diagnostics handle. Stamped onto
+    /// every `ExecutorContext`/`NodeContext` this node receives so
+    /// process()/finish()-time reports are attributed to this node.
+    diagnostics: crate::diagnostics::SharedNodeDiagnostics,
 }
 
 impl<F: Future + Unpin + Debug> SinkNode<F> {
@@ -70,6 +74,7 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
         shutdown: F,
         runtime: Arc<Handle>,
         incremental_mode: bool,
+        warn_once: reearth_flow_diagnostics::WarnOnceSet,
     ) -> Self {
         let node = dag.node_weight_mut(node_index);
         let Some(kind) = node.kind.take() else {
@@ -97,6 +102,12 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
             "node.id" = node_handle.id.to_string().as_str(),
             "node.name" = node_name.as_str(),
         );
+        let diagnostics = Arc::new(crate::diagnostics::NodeDiagnosticsHandle::new(
+            node_handle.clone(),
+            node_name.clone(),
+            sink.name().to_string(),
+            warn_once,
+        ));
         Self {
             node_handle,
             node_name,
@@ -115,6 +126,7 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
             source_intermediate_recorder,
             feature_state,
             incremental_mode,
+            diagnostics,
         }
     }
 
@@ -166,6 +178,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                 storage_resolver: self.storage_resolver.clone(),
                 event_hub: self.event_hub.clone(),
                 sandbox_root: self.sandbox_root.clone(),
+                diagnostics: None,
             })
             .map_err(ExecutionError::Sink);
 
@@ -361,6 +374,23 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                         if let Some(e) = first_error {
                             return Err(e);
                         }
+
+                        // Swallowed-fatal backstop: a `ctx.report()` call that resolved
+                        // to Fatal recorded a diagnostic in this node's fatal slot even
+                        // if the action's process()/finish() swallowed the returned Err.
+                        // Only checked once no other error already won above — an
+                        // observed processing/finish error always takes precedence.
+                        if let Some(diag) = self.diagnostics.inner.take_fatal() {
+                            if !has_failed {
+                                self.event_hub.send(Event::NodeStatusChanged {
+                                    node_handle: self.node_handle.clone(),
+                                    status: NodeStatus::Failed,
+                                    feature_id: None,
+                                });
+                            }
+                            return Err(ExecutionError::Sink(Box::new(diag)));
+                        }
+
                         return terminate_result;
                     }
                 }
@@ -369,16 +399,31 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
     }
 
     fn on_op(&mut self, ctx: ExecutorContext) -> Result<(), ExecutionError> {
+        // Receive-site stamping: this node's own diagnostics handle wins over
+        // whatever the upstream sender's context carried.
+        let mut ctx = ctx;
+        ctx.diagnostics = Some(self.diagnostics.clone());
         self.sink
             .process(ctx)
             .map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{e:?}")))
     }
 
     fn on_terminate(&mut self, ctx: NodeContext) -> Result<(), ExecutionError> {
+        // The incoming ctx was built by the upstream sender (or, for the
+        // last-writer-wins multi-input case, whichever sender terminated
+        // last) — overwrite with this node's own handle before finish() runs
+        // so finish()-time drops are attributed to this node, not the sender.
+        let mut ctx = ctx;
+        ctx.diagnostics = Some(self.diagnostics.clone());
         let result = self
             .sink
             .finish(ctx)
             .map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{e:?}")));
+        // Emit this node's aggregated warn/drop/reject summaries regardless of
+        // whether finish() itself succeeded — reports recorded during
+        // process()/finish() must not be silently dropped just because
+        // finish() failed.
+        crate::diagnostics::emit_summaries(&self.event_hub, &self.diagnostics);
         self.event_hub.send(Event::SinkFinished {
             node: self.node_handle.clone(),
             name: self.node_name.clone(),
