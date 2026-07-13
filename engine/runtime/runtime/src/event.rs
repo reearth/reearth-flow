@@ -1,7 +1,11 @@
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 
 use tokio::sync::{
-    broadcast::{Receiver, Sender},
+    broadcast::{
+        error::{RecvError, TryRecvError},
+        Receiver, Sender,
+    },
     Notify,
 };
 use tracing::{error, info, Level, Span};
@@ -38,9 +42,10 @@ pub enum Event {
         status: NodeStatus,
         feature_id: Option<uuid::Uuid>,
     },
-    /// Structured twin of a diagnostic-derived `Event::Log` line. `Arc`'d
-    /// because `EventHub` is a broadcast channel — every subscriber gets its
-    /// own clone of `Event`, and `Diagnostic` is large.
+    /// Structured diagnostic signal; rendered into action logs by
+    /// `LogEventHandler` and consumed directly by other wire handlers.
+    /// `Arc`'d because `EventHub` is a broadcast channel — every subscriber
+    /// gets its own clone of `Event`, and `Diagnostic` is large.
     Diagnostic(Arc<reearth_flow_diagnostics::Diagnostic>),
 }
 
@@ -214,30 +219,238 @@ pub trait EventHandler: Send + Sync {
     async fn on_shutdown(&self) {}
 }
 
+/// Runs every handler's `on_shutdown`, bounded by a 5s timeout so a wedged
+/// handler can't hang the subscriber forever.
+async fn run_shutdown(event_handlers: &[Arc<dyn EventHandler>]) {
+    let shutdown_futures = event_handlers.iter().map(|handler| handler.on_shutdown());
+    match tokio::time::timeout(
+        std::time::Duration::from_secs(5),
+        futures::future::join_all(shutdown_futures),
+    )
+    .await
+    {
+        Ok(_) => info!("All handlers shut down successfully"),
+        Err(_) => error!("Shutdown timed out for some handlers"),
+    }
+}
+
+/// Drains every event still queued in the broadcast ring — via non-blocking
+/// `try_recv` — dispatching each to `event_handlers` and tallying any
+/// `Lagged` gap into `dropped`. Called right before shutdown so in-flight
+/// events reach handlers deterministically instead of relying on a
+/// fixed-delay sleep after shutdown is signaled.
+async fn drain_queued(
+    receiver: &mut Receiver<Event>,
+    event_handlers: &[Arc<dyn EventHandler>],
+    dropped: &Arc<AtomicU64>,
+) {
+    loop {
+        match receiver.try_recv() {
+            Ok(ev) => {
+                for handler in event_handlers.iter() {
+                    handler.on_event(&ev).await;
+                }
+            }
+            Err(TryRecvError::Lagged(n)) => {
+                dropped.fetch_add(n, Ordering::Relaxed);
+            }
+            Err(TryRecvError::Empty) | Err(TryRecvError::Closed) => break,
+        }
+    }
+}
+
 pub async fn subscribe_event(
     receiver: &mut Receiver<Event>,
     notify: Arc<Notify>,
     event_handlers: &[Arc<dyn EventHandler>],
+    dropped: Arc<AtomicU64>,
 ) {
     loop {
         tokio::select! {
             _ = notify.notified() => {
-                let shutdown_futures = event_handlers.iter()
-                    .map(|handler| handler.on_shutdown());
-                match tokio::time::timeout(
-                    std::time::Duration::from_secs(5),
-                    futures::future::join_all(shutdown_futures)
-                ).await {
-                    Ok(_) => info!("All handlers shut down successfully"),
-                    Err(_) => error!("Shutdown timed out for some handlers"),
-                }
+                // Real fix for what a fixed-delay "settle" sleep after
+                // shutdown used to paper over: flush whatever is still
+                // queued before running on_shutdown, so completeness no
+                // longer depends on timing.
+                drain_queued(receiver, event_handlers, &dropped).await;
+                run_shutdown(event_handlers).await;
                 return;
             },
-            Ok(ev) = receiver.recv() => {
-                for handler in event_handlers.iter() {
-                    handler.on_event(&ev).await;
+            result = receiver.recv() => {
+                match result {
+                    Ok(ev) => {
+                        for handler in event_handlers.iter() {
+                            handler.on_event(&ev).await;
+                        }
+                    }
+                    Err(RecvError::Lagged(n)) => {
+                        dropped.fetch_add(n, Ordering::Relaxed);
+                    }
+                    Err(RecvError::Closed) => {
+                        // The hub sender is gone; treat it the same as an
+                        // explicit shutdown notification so handlers still
+                        // get a clean on_shutdown before we return.
+                        run_shutdown(event_handlers).await;
+                        return;
+                    }
                 }
             },
         }
+    }
+}
+
+#[cfg(test)]
+mod subscribe_event_tests {
+    use std::sync::Mutex;
+
+    use super::*;
+
+    /// Records every `on_event`/`on_shutdown` call, in order, so tests can
+    /// assert both counts and ordering.
+    #[derive(Default)]
+    struct RecordingHandler {
+        log: Mutex<Vec<String>>,
+    }
+
+    impl RecordingHandler {
+        fn event_count(&self) -> usize {
+            self.log
+                .lock()
+                .unwrap()
+                .iter()
+                .filter(|entry| entry.starts_with("event:"))
+                .count()
+        }
+
+        fn shutdown_called(&self) -> bool {
+            self.log.lock().unwrap().iter().any(|e| e == "shutdown")
+        }
+
+        /// True iff every recorded event precedes the (single) shutdown entry.
+        fn events_precede_shutdown(&self) -> bool {
+            let log = self.log.lock().unwrap();
+            let Some(shutdown_pos) = log.iter().position(|e| e == "shutdown") else {
+                return false;
+            };
+            log[..shutdown_pos].iter().all(|e| e.starts_with("event:"))
+                && log[shutdown_pos + 1..].is_empty()
+        }
+    }
+
+    #[async_trait::async_trait]
+    impl EventHandler for RecordingHandler {
+        async fn on_event(&self, _event: &Event) {
+            self.log.lock().unwrap().push("event:seen".to_string());
+        }
+
+        async fn on_shutdown(&self) {
+            self.log.lock().unwrap().push("shutdown".to_string());
+        }
+    }
+
+    fn log_event(message: &str) -> Event {
+        Event::Log {
+            level: Level::INFO,
+            span: None,
+            node_handle: None,
+            node_name: None,
+            message: message.to_string(),
+        }
+    }
+
+    /// (a) A capacity-2 broadcast channel flooded with 5 sends before the
+    /// subscriber ever runs: the broadcast ring can only retain the newest 2,
+    /// so the drain the notify arm performs must report the other 3 as
+    /// dropped while still dispatching the 2 survivors to the handler.
+    #[tokio::test]
+    async fn lagged_events_are_counted_and_survivors_dispatched() {
+        let (sender, mut receiver) = tokio::sync::broadcast::channel::<Event>(2);
+        for i in 0..5 {
+            sender.send(log_event(&format!("event-{i}"))).unwrap();
+        }
+
+        let handler = Arc::new(RecordingHandler::default());
+        let handlers: Vec<Arc<dyn EventHandler>> = vec![handler.clone()];
+        let notify = Arc::new(Notify::new());
+        // A stored permit (unlike `notify_waiters`) is observed by
+        // `notified()` no matter when it's next polled, so this is seen
+        // regardless of how `subscribe_event`'s internal select! races.
+        notify.notify_one();
+        let dropped = Arc::new(AtomicU64::new(0));
+
+        subscribe_event(&mut receiver, notify, &handlers, Arc::clone(&dropped)).await;
+
+        assert!(
+            dropped.load(Ordering::Relaxed) >= 3,
+            "expected at least 3 dropped events (5 sent - capacity 2), got {}",
+            dropped.load(Ordering::Relaxed)
+        );
+        assert_eq!(
+            handler.event_count(),
+            2,
+            "the 2 surviving events must still reach the handler"
+        );
+        assert!(handler.shutdown_called());
+        assert!(handler.events_precede_shutdown());
+    }
+
+    /// (b) Normal flow: sends that fit comfortably within capacity are
+    /// dispatched with no lag at all, so the counter must stay at 0.
+    #[tokio::test]
+    async fn normal_dispatch_keeps_dropped_counter_at_zero() {
+        let (sender, mut receiver) = tokio::sync::broadcast::channel::<Event>(8);
+        sender.send(log_event("a")).unwrap();
+        sender.send(log_event("b")).unwrap();
+        sender.send(log_event("c")).unwrap();
+
+        let handler = Arc::new(RecordingHandler::default());
+        let handlers: Vec<Arc<dyn EventHandler>> = vec![handler.clone()];
+        let notify = Arc::new(Notify::new());
+        notify.notify_one();
+        let dropped = Arc::new(AtomicU64::new(0));
+
+        subscribe_event(&mut receiver, notify, &handlers, Arc::clone(&dropped)).await;
+
+        assert_eq!(dropped.load(Ordering::Relaxed), 0);
+        assert_eq!(handler.event_count(), 3);
+        assert!(handler.shutdown_called());
+    }
+
+    /// (c) After notify fires, any events still queued must reach handlers
+    /// via the drain loop strictly before `on_shutdown` runs.
+    #[tokio::test]
+    async fn queued_events_reach_handlers_before_shutdown() {
+        let (sender, mut receiver) = tokio::sync::broadcast::channel::<Event>(4);
+        sender.send(log_event("first")).unwrap();
+        sender.send(log_event("second")).unwrap();
+
+        let handler = Arc::new(RecordingHandler::default());
+        let handlers: Vec<Arc<dyn EventHandler>> = vec![handler.clone()];
+        let notify = Arc::new(Notify::new());
+        notify.notify_one();
+        let dropped = Arc::new(AtomicU64::new(0));
+
+        subscribe_event(&mut receiver, notify, &handlers, dropped).await;
+
+        assert_eq!(handler.event_count(), 2);
+        assert!(handler.events_precede_shutdown());
+    }
+
+    /// The hub sender being dropped (`RecvError::Closed`) must run the same
+    /// shutdown path as an explicit notify, not silently vanish.
+    #[tokio::test]
+    async fn closed_sender_triggers_shutdown_path() {
+        let (sender, mut receiver) = tokio::sync::broadcast::channel::<Event>(4);
+        drop(sender);
+
+        let handler = Arc::new(RecordingHandler::default());
+        let handlers: Vec<Arc<dyn EventHandler>> = vec![handler.clone()];
+        let notify = Arc::new(Notify::new());
+        let dropped = Arc::new(AtomicU64::new(0));
+
+        subscribe_event(&mut receiver, notify, &handlers, dropped).await;
+
+        assert!(handler.shutdown_called());
+        assert_eq!(handler.event_count(), 0);
     }
 }

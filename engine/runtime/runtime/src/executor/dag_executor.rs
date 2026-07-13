@@ -1,5 +1,6 @@
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::fmt::Debug;
+use std::sync::atomic::{AtomicU64, Ordering};
 use std::sync::Arc;
 use std::thread::Builder;
 use std::thread::JoinHandle;
@@ -55,6 +56,13 @@ pub struct DagExecutorJoinHandle {
     join_handles: Vec<JoinHandle<NodeThreadResult>>,
     notify: Arc<Notify>,
     executor_id: uuid::Uuid,
+    /// The event-subscriber's own tokio task, retained so callers can await
+    /// its drain-then-shutdown before finalizing a run (Phase 2a Task 7) —
+    /// previously spawned detached and left to run down on its own timing.
+    subscriber: Option<tokio::task::JoinHandle<()>>,
+    /// Events the broadcast ring dropped (`RecvError::Lagged`) before the
+    /// subscriber could dispatch them, tallied live by `subscribe_event`.
+    dropped_events: Arc<AtomicU64>,
 }
 
 impl DagExecutor {
@@ -146,8 +154,16 @@ impl DagExecutor {
         let notify = Arc::new(Notify::new());
         let notify_publish = Arc::clone(&notify);
         let notify_subscribe = Arc::clone(&notify);
-        runtime.spawn(async move {
-            subscribe_event(&mut receiver, notify_subscribe.clone(), &event_handlers).await;
+        let dropped_events = Arc::new(AtomicU64::new(0));
+        let subscriber_dropped_events = Arc::clone(&dropped_events);
+        let subscriber = runtime.spawn(async move {
+            subscribe_event(
+                &mut receiver,
+                notify_subscribe.clone(),
+                &event_handlers,
+                subscriber_dropped_events,
+            )
+            .await;
         });
 
         // Start the threads.
@@ -269,6 +285,8 @@ impl DagExecutor {
             join_handles,
             notify: notify_publish.clone(),
             executor_id,
+            subscriber: Some(subscriber),
+            dropped_events,
         })
     }
 }
@@ -277,8 +295,9 @@ async fn subscribe_event(
     receiver: &mut Receiver<Event>,
     notify: Arc<Notify>,
     event_handlers: &[Arc<dyn EventHandler>],
+    dropped: Arc<AtomicU64>,
 ) {
-    crate::event::subscribe_event(receiver, notify, event_handlers).await;
+    crate::event::subscribe_event(receiver, notify, event_handlers, dropped).await;
 }
 
 impl DagExecutorJoinHandle {
@@ -347,6 +366,20 @@ impl DagExecutorJoinHandle {
     pub fn notify(&self) {
         self.notify.notify_waiters();
     }
+
+    /// Takes the event-subscriber's tokio task, if it hasn't already been
+    /// taken, so the caller can await its drain-then-shutdown after
+    /// `notify()` — the deterministic replacement for the old fixed-delay
+    /// settle sleep.
+    pub fn take_subscriber(&mut self) -> Option<tokio::task::JoinHandle<()>> {
+        self.subscriber.take()
+    }
+
+    /// Events the broadcast ring dropped (`RecvError::Lagged`) before the
+    /// subscriber could dispatch them.
+    pub fn dropped_events(&self) -> u64 {
+        self.dropped_events.load(Ordering::Relaxed)
+    }
 }
 
 /// Pure fold: turns every node thread's `(NodeOutcome, Result<(),
@@ -359,6 +392,11 @@ impl DagExecutorJoinHandle {
 /// `effective_disposition = Some(Disposition::Fatal)`: reaching this fold
 /// at all means that node's thread returned `Err`, so the run is fatally
 /// broken by it regardless of the diagnostic's own registry default.
+/// `dropped_event_count` is always 0 here — this fold only ever sees node
+/// thread outcomes, not the event subscriber's own lagged-event tally.
+/// `run_dag_executor` (engine/runtime/runner) fills that field in
+/// afterwards from `DagExecutorJoinHandle::dropped_events()` once it has
+/// awaited the subscriber's drain (Phase 2a Task 7).
 fn fold_outcomes(results: Vec<NodeThreadResult>) -> RunSummary {
     let mut aggregated_diagnostics = Vec::new();
     let mut failed_nodes = Vec::new();
@@ -375,7 +413,7 @@ fn fold_outcomes(results: Vec<NodeThreadResult>) -> RunSummary {
     RunSummary {
         failed_nodes,
         aggregated_diagnostics,
-        dropped_event_count: 0, // Task 7 wires drop-event accounting through.
+        dropped_event_count: 0, // Filled in by run_dag_executor after the subscriber drains.
     }
 }
 
@@ -818,7 +856,11 @@ mod fold_outcomes_tests {
     }
 
     #[test]
-    fn dropped_event_count_defaults_to_zero_pending_task_7() {
+    fn fold_outcomes_never_sets_dropped_event_count() {
+        // fold_outcomes only ever sees node thread outcomes; the event
+        // subscriber's lagged-event tally is folded in separately by
+        // run_dag_executor (engine/runtime/runner) after it awaits the
+        // subscriber's drain.
         let summary = fold_outcomes(vec![(outcome(vec![]), Ok(()))]);
         assert_eq!(summary.dropped_event_count, 0);
     }
