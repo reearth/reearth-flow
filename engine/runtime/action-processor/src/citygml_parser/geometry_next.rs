@@ -16,11 +16,9 @@ use reearth_flow_geometry::polygon::Polygon3D;
 use reearth_flow_geometry::triangular_mesh::TriangularMesh3D;
 use reearth_flow_geometry::Euclidean3DGeometry;
 
-use super::parser::{raw_gml_id, RawChild, RawNode};
-use super::resolver::{
-    FaceIds, GeomNode, GeomRegistry, GmlGeometryType, LeafIds, Role, Unresolved,
-};
-use super::utils::{local_name, GML_NS_311_ID, GML_NS_ID};
+use super::parser::{raw_gml_id, Parser, RawChild, RawNode};
+use super::resolver::{FaceIds, GeomNode, GmlGeometryType, LeafIds, Role, Unresolved};
+use super::utils::{frame_for, local_name, GML_NS_311_ID, GML_NS_ID};
 
 /// A geometry carved from a feature, tagged with the LOD of the property it came
 /// from (`None` for `tin`) and the `gml:id`s of its enclosing elements (nearest
@@ -48,94 +46,172 @@ fn owner_chain(mut owner: Option<&Owner>) -> Vec<String> {
     ids
 }
 
-/// Strip every geometry property from `node`, returning the geometry-free
-/// attribute tree and the geometries carved out of it. Geometries carrying a
-/// `gml:id` are registered in `registry` as reference targets. `track_owners`
-/// records each geometry's enclosing `gml:id`s, needed only when children will be
-/// hoisted.
-pub(super) fn split_geometry(
-    node: &Arc<RawNode>,
-    frame: &CoordinateFrame,
-    registry: &mut GeomRegistry,
-    track_owners: bool,
-) -> (Arc<RawNode>, Vec<PendingGeom>) {
-    let mut geoms = Vec::new();
-    let stripped = strip(node, frame, None, registry, &mut geoms, track_owners);
-    (stripped, geoms)
-}
+impl Parser {
+    /// Strip every geometry property from `node`, returning the geometry-free
+    /// attribute tree and the geometries carved out of it. Geometries carrying a
+    /// `gml:id` are registered as `xlink` reference targets.
+    pub(super) fn split_geometry(
+        &mut self,
+        node: &Arc<RawNode>,
+    ) -> (Arc<RawNode>, Vec<PendingGeom>) {
+        let mut geoms = Vec::new();
+        let stripped = self.strip(node, None, &mut geoms);
+        (stripped, geoms)
+    }
 
-/// Recursively rebuild `node` without its geometry-property children, collecting
-/// the parsed geometries into `geoms`. `owner` is the chain of enclosing
-/// `gml:id`s above `node`.
-fn strip(
-    node: &Arc<RawNode>,
-    frame: &CoordinateFrame,
-    owner: Option<&Owner>,
-    registry: &mut GeomRegistry,
-    geoms: &mut Vec<PendingGeom>,
-    track_owners: bool,
-) -> Arc<RawNode> {
-    let here = gml_id_ref(node).map(|id| Owner { id, parent: owner });
-    let owner = here.as_ref().or(owner);
-    let mut new_children: Option<Vec<RawChild>> = None;
+    /// Recursively rebuild `node` without its geometry-property children, collecting
+    /// the parsed geometries into `geoms`. `owner` is the chain of enclosing
+    /// `gml:id`s above `node`.
+    fn strip(
+        &mut self,
+        node: &Arc<RawNode>,
+        owner: Option<&Owner>,
+        geoms: &mut Vec<PendingGeom>,
+    ) -> Arc<RawNode> {
+        let here = gml_id_ref(node).map(|id| Owner { id, parent: owner });
+        let owner = here.as_ref().or(owner);
+        let mut new_children: Option<Vec<RawChild>> = None;
 
-    for (i, child) in node.children.iter().enumerate() {
-        let RawChild::Element(e) = child else {
-            if let Some(ref mut nc) = new_children {
-                nc.push(child.clone());
-            }
-            continue;
-        };
-
-        let ln = local_name(&e.name.0);
-        let lod = if ln == "tin" {
-            Some(None)
-        } else {
-            extract_lod(ln).map(Some)
-        };
-        // A name match alone is not enough: keep an element that merely shares the
-        // `lod<N>…` / `tin` naming but wraps no geometry, rather than stripping it.
-        let lod = lod.filter(|_| is_geometry_property(e));
-
-        if let Some(lod) = lod {
-            if let Some(gnode) = property_geometry(e, frame, registry) {
-                let owner_ids = if track_owners {
-                    owner_chain(owner)
-                } else {
-                    Vec::new()
-                };
-                geoms.push(PendingGeom {
-                    lod,
-                    node: gnode,
-                    owner_ids,
-                });
-            }
-            if new_children.is_none() {
-                new_children = Some(node.children[..i].to_vec());
-            }
-        } else {
-            let stripped_child = strip(e, frame, owner, registry, geoms, track_owners);
-            match new_children {
-                None => {
-                    if !Arc::ptr_eq(&stripped_child, e) {
-                        let mut nc = node.children[..i].to_vec();
-                        nc.push(RawChild::Element(stripped_child));
-                        new_children = Some(nc);
-                    }
+        for (i, child) in node.children.iter().enumerate() {
+            let RawChild::Element(e) = child else {
+                if let Some(ref mut nc) = new_children {
+                    nc.push(child.clone());
                 }
-                Some(ref mut nc) => nc.push(RawChild::Element(stripped_child)),
+                continue;
+            };
+
+            let ln = local_name(&e.name.0);
+            let lod = if ln == "tin" {
+                Some(None)
+            } else {
+                extract_lod(ln).map(Some)
+            };
+            // A name match alone is not enough: keep an element that merely shares
+            // the `lod<N>…` / `tin` naming but wraps no geometry, rather than
+            // stripping it.
+            let lod = lod.filter(|_| is_geometry_property(e));
+
+            if let Some(lod) = lod {
+                if let Some(gnode) = self.property_geometry(e) {
+                    let owner_ids = if self.track_owners {
+                        owner_chain(owner)
+                    } else {
+                        Vec::new()
+                    };
+                    geoms.push(PendingGeom {
+                        lod,
+                        node: gnode,
+                        owner_ids,
+                    });
+                }
+                if new_children.is_none() {
+                    new_children = Some(node.children[..i].to_vec());
+                }
+            } else {
+                let stripped_child = self.strip(e, owner, geoms);
+                match new_children {
+                    None => {
+                        if !Arc::ptr_eq(&stripped_child, e) {
+                            let mut nc = node.children[..i].to_vec();
+                            nc.push(RawChild::Element(stripped_child));
+                            new_children = Some(nc);
+                        }
+                    }
+                    Some(ref mut nc) => nc.push(RawChild::Element(stripped_child)),
+                }
             }
+        }
+
+        match new_children {
+            None => Arc::clone(node),
+            Some(children) => Arc::new(RawNode {
+                name: node.name.clone(),
+                attrs: node.attrs.clone(),
+                children,
+                source_url: Arc::clone(&node.source_url),
+            }),
         }
     }
 
-    match new_children {
-        None => Arc::clone(node),
-        Some(children) => Arc::new(RawNode {
-            name: node.name.clone(),
-            attrs: node.attrs.clone(),
-            children,
-            source_url: Arc::clone(&node.source_url),
-        }),
+    /// Parse the single geometry element (or `xlink:href`) inside a `lod<N>…` /
+    /// `tin` property into a [`GeomNode`].
+    fn property_geometry(&mut self, prop: &RawNode) -> Option<GeomNode> {
+        for child in &prop.children {
+            match child {
+                RawChild::Ref(key) => return Some(GeomNode::Ref(key.clone())),
+                RawChild::Element(e) => return self.geometry_node(e),
+                RawChild::Text(_) => {}
+            }
+        }
+        None
+    }
+
+    /// Convert a geometry element into a [`GeomNode`]: an inline leaf is parsed to a
+    /// concrete geometry, tagged with its source file's frame; a container is left
+    /// [`Unresolved`]. A node with a `gml:id` is registered and replaced by a
+    /// [`GeomNode::Ref`].
+    fn geometry_node(&mut self, node: &RawNode) -> Option<GeomNode> {
+        let Some(ty) = geometry_type(local_name(&node.name.0)) else {
+            tracing::warn!(
+                element = local_name(&node.name.0),
+                "citygml geometry: unrecognized element, skipped"
+            );
+            return None;
+        };
+        let id = raw_gml_id(node);
+        let file = node.source_url.as_str().to_string();
+        let geom = if ty.is_inline() {
+            let (geometry, faces) = build_leaf(node, &ty, &self.frame(node))?;
+            GeomNode::Resolved(geometry, LeafIds { file, faces })
+        } else {
+            GeomNode::Unresolved(Unresolved {
+                ty,
+                id: id.clone(),
+                file,
+                members: self.collect_members(node),
+            })
+        };
+        Some(self.register(node, id, geom))
+    }
+
+    /// Register a geometry as an `xlink` target if it has a `gml:id`, returning a
+    /// [`GeomNode::Ref`] in its place; otherwise return it unchanged.
+    fn register(&mut self, node: &RawNode, id: Option<String>, geom: GeomNode) -> GeomNode {
+        match id {
+            Some(id) => {
+                let key = (node.source_url.as_str().to_string(), id);
+                self.geom_registry.insert(key.clone(), geom);
+                GeomNode::Ref(key)
+            }
+            None => geom,
+        }
+    }
+
+    /// Collect a container's members, tagging each with the role of the property
+    /// that owns it.
+    fn collect_members(&mut self, node: &RawNode) -> Vec<(Role, GeomNode)> {
+        let mut members = Vec::new();
+        for prop in element_children(node) {
+            let role = property_role(local_name(&prop.name.0));
+            for child in &prop.children {
+                match child {
+                    RawChild::Ref(key) => members.push((role, GeomNode::Ref(key.clone()))),
+                    RawChild::Element(inner) => {
+                        if let Some(g) = self.geometry_node(inner) {
+                            members.push((role, g));
+                        }
+                    }
+                    RawChild::Text(_) => {}
+                }
+            }
+        }
+        members
+    }
+
+    /// The coordinate frame geometry from `node` is expressed in: the CRS of the
+    /// file the node was parsed from, or `Euclidean` when that file declared none.
+    fn frame(&self, node: &RawNode) -> CoordinateFrame {
+        frame_for(node.source_url.as_str(), &self.srs_by_file)
     }
 }
 
@@ -149,7 +225,7 @@ fn gml_id_ref(node: &RawNode) -> Option<&str> {
 
 /// Whether a `lod<N>…` / `tin`-named element actually wraps a geometry: its first
 /// non-text child is a recognized GML geometry element or an `xlink:href`
-/// reference. Mirrors [`property_geometry`]'s child selection.
+/// reference. Mirrors [`Parser::property_geometry`]'s child selection.
 fn is_geometry_property(prop: &RawNode) -> bool {
     for child in &prop.children {
         match child {
@@ -159,97 +235,6 @@ fn is_geometry_property(prop: &RawNode) -> bool {
         }
     }
     false
-}
-
-/// Parse the single geometry element (or `xlink:href`) inside a `lod<N>…` / `tin`
-/// property into a [`GeomNode`].
-fn property_geometry(
-    prop: &RawNode,
-    frame: &CoordinateFrame,
-    registry: &mut GeomRegistry,
-) -> Option<GeomNode> {
-    for child in &prop.children {
-        match child {
-            RawChild::Ref(key) => return Some(GeomNode::Ref(key.clone())),
-            RawChild::Element(e) => return geometry_node(e, frame, registry),
-            RawChild::Text(_) => {}
-        }
-    }
-    None
-}
-
-/// Convert a geometry element into a [`GeomNode`]: an inline leaf is parsed to a
-/// concrete geometry, a container is left [`Unresolved`]. A node with a `gml:id`
-/// is moved into `registry` and replaced by a [`GeomNode::Ref`].
-fn geometry_node(
-    node: &RawNode,
-    frame: &CoordinateFrame,
-    registry: &mut GeomRegistry,
-) -> Option<GeomNode> {
-    let Some(ty) = geometry_type(local_name(&node.name.0)) else {
-        tracing::warn!(
-            element = local_name(&node.name.0),
-            "citygml geometry: unrecognized element, skipped"
-        );
-        return None;
-    };
-    let id = raw_gml_id(node);
-    let file = node.source_url.as_str().to_string();
-    let geom = if ty.is_inline() {
-        let (geometry, faces) = build_leaf(node, &ty, frame)?;
-        GeomNode::Resolved(geometry, LeafIds { file, faces })
-    } else {
-        GeomNode::Unresolved(Unresolved {
-            ty,
-            id: id.clone(),
-            file,
-            members: collect_members(node, frame, registry),
-        })
-    };
-    Some(register(node, id, geom, registry))
-}
-
-/// Register a geometry as an `xlink` target if it has a `gml:id`, returning a
-/// [`GeomNode::Ref`] in its place; otherwise return it unchanged.
-fn register(
-    node: &RawNode,
-    id: Option<String>,
-    geom: GeomNode,
-    registry: &mut GeomRegistry,
-) -> GeomNode {
-    match id {
-        Some(id) => {
-            let key = (node.source_url.as_str().to_string(), id);
-            registry.insert(key.clone(), geom);
-            GeomNode::Ref(key)
-        }
-        None => geom,
-    }
-}
-
-/// Collect a container's members, tagging each with the role of the property that
-/// owns it.
-fn collect_members(
-    node: &RawNode,
-    frame: &CoordinateFrame,
-    registry: &mut GeomRegistry,
-) -> Vec<(Role, GeomNode)> {
-    let mut members = Vec::new();
-    for prop in element_children(node) {
-        let role = property_role(local_name(&prop.name.0));
-        for child in &prop.children {
-            match child {
-                RawChild::Ref(key) => members.push((role, GeomNode::Ref(key.clone()))),
-                RawChild::Element(inner) => {
-                    if let Some(g) = geometry_node(inner, frame, registry) {
-                        members.push((role, g));
-                    }
-                }
-                RawChild::Text(_) => {}
-            }
-        }
-    }
-    members
 }
 
 /// Parse an inline geometry leaf into a concrete geometry and the per-face gml:ids
@@ -568,7 +553,7 @@ fn text_content(node: &RawNode) -> &str {
 mod tests {
     use super::*;
     use crate::citygml_parser::parser::{Parser, ParserOutput};
-    use crate::citygml_parser::resolver::resolve_root_bare;
+    use crate::citygml_parser::resolver::{resolve_root_bare, GeomRegistry};
     use url::Url;
 
     /// Parse one CityGML feature wrapping `inner`, returning its stripped attribute

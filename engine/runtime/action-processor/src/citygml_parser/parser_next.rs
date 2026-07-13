@@ -14,9 +14,8 @@ use super::geometry;
 use super::resolver::GeomRegistry;
 use super::srsname;
 use super::utils::{
-    frame_for, gml_id_attr, local_name as utils_local_name, srs_name_attr, xlink_href_attr,
-    NamespaceRegistry, NsId, QName, XmlChild, XmlNode, EMPTY_NS_ID, GML_NS_311_ID, GML_NS_ID,
-    XLINK_NS_ID,
+    gml_id_attr, local_name as utils_local_name, srs_name_attr, xlink_href_attr, NamespaceRegistry,
+    NsId, QName, XmlChild, XmlNode, EMPTY_NS_ID, GML_NS_311_ID, GML_NS_ID, XLINK_NS_ID,
 };
 
 pub(super) type RawNodeKey = (String, String); // (file_url, gml_id)
@@ -73,7 +72,7 @@ pub enum ParseError {
 /// the state for pass-2 reference resolution.
 pub struct Parser {
     raw_registry: RawRegistry,
-    geom_registry: GeomRegistry,
+    pub(super) geom_registry: GeomRegistry,
     /// The `app:appearanceMember` roots, retained for pass-2 indexing once every
     /// `gml:id` is known, so a surface data or appearance reached by `xlink:href`
     /// resolves.
@@ -82,10 +81,10 @@ pub struct Parser {
     pending: Vec<PendingFeature>,
     /// Whether to record each geometry's enclosing `gml:id`s, needed only when
     /// `flatten` will hoist children into separate features.
-    track_owners: bool,
+    pub(super) track_owners: bool,
     /// Each file's CRS, parsed from its `gml:boundedBy/gml:Envelope/@srsName`; a
     /// file with no entry declared no (or an unrecognized) srsName.
-    srs_by_file: HashMap<String, EpsgCode>,
+    pub(super) srs_by_file: HashMap<String, EpsgCode>,
 }
 
 impl Default for Parser {
@@ -157,13 +156,7 @@ impl Parser {
                                 _ => None,
                             })
                         {
-                            let frame = frame_for(source_url_arc.as_str(), &self.srs_by_file);
-                            let (stripped, geoms) = geometry::split_geometry(
-                                &feature_node,
-                                &frame,
-                                &mut self.geom_registry,
-                                self.track_owners,
-                            );
+                            let (stripped, geoms) = self.split_geometry(&feature_node);
                             collect_ids(&stripped, source_url_arc.as_str(), &mut self.raw_registry);
                             collect_nested_appearances(&stripped, &mut self.appearance_members);
                             self.pending.push(PendingFeature {
