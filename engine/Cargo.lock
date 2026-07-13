@@ -5127,6 +5127,7 @@ dependencies = [
  "petgraph 0.8.3",
  "reearth-flow-action-log",
  "reearth-flow-common",
+ "reearth-flow-diagnostics",
  "reearth-flow-runtime",
  "reearth-flow-state",
  "reearth-flow-storage",

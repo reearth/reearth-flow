@@ -2,11 +2,11 @@ use std::sync::Arc;
 
 use reearth_flow_diagnostics::{DiagnosticKind, ErrorCode, NodeDiagnostics};
 
-use crate::event::{Event, EventHub};
+use crate::event::EventHub;
 use crate::node::NodeHandle;
 
 /// Runtime-side wrapper pairing the crate-agnostic aggregator with the
-/// runtime identities needed to emit `Event::Log`s.
+/// runtime identities needed to emit `Event::Diagnostic`s.
 #[derive(Debug)]
 pub struct NodeDiagnosticsHandle {
     pub node_handle: NodeHandle,
@@ -38,24 +38,17 @@ impl NodeDiagnosticsHandle {
     }
 }
 
-/// Drain the node's buckets once and, for each (code, kind) summary, emit
-/// both the existing WARN `Event::Log` (unchanged — keeps `.log`/golden
-/// fixtures byte-identical) and a structured `Event::Diagnostic` twin.
-/// Called once per node after `finish()`. Returns the drained summaries for
-/// callers that need them (e.g. RunSummary, Task 5).
+/// Drain the node's buckets once and, for each (code, kind) summary, emit a
+/// structured `Event::Diagnostic`. `LogEventHandler` renders it through the
+/// action log (see `runner::log_event_handler`), so no twin `Event::Log` is
+/// sent here. Called once per node after `finish()`. Returns the drained
+/// summaries for callers that need them (e.g. RunSummary, Task 5).
 pub fn emit_summaries(
     event_hub: &EventHub,
     handle: &NodeDiagnosticsHandle,
 ) -> Vec<reearth_flow_diagnostics::Diagnostic> {
     let summaries = handle.inner.drain_summaries();
     for summary in &summaries {
-        event_hub.send(Event::Log {
-            level: tracing::Level::WARN,
-            span: None,
-            node_handle: Some(handle.node_handle.clone()),
-            node_name: Some(handle.node_name.clone()),
-            message: summary.message.clone(),
-        });
         event_hub.diagnostic(summary.clone());
     }
     summaries
@@ -64,6 +57,7 @@ pub fn emit_summaries(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::event::Event;
     use crate::node::{NodeHandle, NodeId};
     use reearth_flow_diagnostics::{DiagnosticKind, ErrorCode};
 
@@ -77,7 +71,7 @@ mod tests {
     }
 
     #[test]
-    fn emit_summaries_sends_one_log_and_one_diagnostic_per_summary_and_drains_once() {
+    fn emit_summaries_sends_exactly_one_diagnostic_and_zero_log_per_summary_and_drains_once() {
         let handle = handle();
         handle.inner.record(
             DiagnosticKind::WarnDrop,
@@ -97,7 +91,7 @@ mod tests {
 
         let mut log_count = 0;
         let mut diagnostic_count = 0;
-        for _ in 0..4 {
+        for _ in 0..2 {
             match receiver.try_recv().expect("expected event") {
                 Event::Log { .. } => log_count += 1,
                 Event::Diagnostic(d) => {
@@ -107,7 +101,7 @@ mod tests {
                 other => panic!("unexpected event: {other:?}"),
             }
         }
-        assert_eq!(log_count, 2);
+        assert_eq!(log_count, 0);
         assert_eq!(diagnostic_count, 2);
         assert!(receiver.try_recv().is_err());
 
