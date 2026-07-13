@@ -12,10 +12,11 @@ use url::Url;
 
 use super::geometry;
 use super::resolver::GeomRegistry;
+use super::srsname;
 use super::utils::{
-    frame_for, gml_id_attr, local_name as utils_local_name, parse_epsg_from_srs_name,
-    srs_name_attr, xlink_href_attr, NamespaceRegistry, NsId, QName, XmlChild, XmlNode, EMPTY_NS_ID,
-    GML_NS_311_ID, GML_NS_ID, XLINK_NS_ID,
+    frame_for, gml_id_attr, local_name as utils_local_name, srs_name_attr, xlink_href_attr,
+    NamespaceRegistry, NsId, QName, XmlChild, XmlNode, EMPTY_NS_ID, GML_NS_311_ID, GML_NS_ID,
+    XLINK_NS_ID,
 };
 
 pub(super) type RawNodeKey = (String, String); // (file_url, gml_id)
@@ -244,8 +245,9 @@ impl Parser {
     }
 }
 
-/// The EPSG code from a `gml:boundedBy` element's `gml:Envelope/@srsName`, if
-/// present and recognized.
+/// The EPSG code declared by a `gml:boundedBy` element's `gml:Envelope/@srsName`.
+/// New-geometry only tracks EPSG CRSes; a present-but-unrecognized srsName is
+/// warned and treated as no declaration.
 fn envelope_epsg(bounded_by: &RawNode) -> Option<EpsgCode> {
     bounded_by.children.iter().find_map(|child| {
         let RawChild::Element(node) = child else {
@@ -255,11 +257,11 @@ fn envelope_epsg(bounded_by: &RawNode) -> Option<EpsgCode> {
             return None;
         }
         let srs_name = srs_name_attr(&node.attrs)?;
-        let epsg = parse_epsg_from_srs_name(srs_name);
+        let epsg = srsname::parse_epsg(srs_name);
         if epsg.is_none() {
             tracing::warn!(
                 srs_name,
-                "citygml: gml:Envelope srsName is not a recognized EPSG URI, ignored"
+                "citygml: gml:Envelope srsName is not a recognized EPSG CRS, ignored"
             );
         }
         epsg

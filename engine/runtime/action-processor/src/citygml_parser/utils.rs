@@ -99,24 +99,13 @@ pub(super) fn xlink_href_attr(attrs: &[(QName, String)]) -> Option<&str> {
         .map(|(_, v)| v.as_str())
 }
 
+/// The `srsName` attribute of an element, if present.
 #[cfg(feature = "new-geometry")]
 pub(super) fn srs_name_attr(attrs: &[(QName, String)]) -> Option<&str> {
     attrs
         .iter()
         .find(|((q, _), _)| local_name(q) == "srsName")
         .map(|(_, v)| v.as_str())
-}
-
-/// Parse the trailing EPSG code from a `srsName` URI, e.g.
-/// `http://www.opengis.net/def/crs/EPSG/0/6697` -> `6697`. `None` if the URI's
-/// last path segment isn't a plain number.
-#[cfg(feature = "new-geometry")]
-pub(super) fn parse_epsg_from_srs_name(srs_name: &str) -> Option<EpsgCode> {
-    srs_name
-        .rsplit('/')
-        .next()
-        .and_then(|code| code.parse::<u16>().ok())
-        .map(EpsgCode::new)
 }
 
 /// The frame for geometry parsed from `file`: `Crs` if `srs_by_file` has an entry
