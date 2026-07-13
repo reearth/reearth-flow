@@ -1,6 +1,8 @@
 use std::sync::Arc;
 
-use reearth_flow_action_log::{action_error_log, action_log, factory::LoggerFactory, ActionLogger};
+use reearth_flow_action_log::{
+    action_error_log, action_log, action_warn_log, factory::LoggerFactory, ActionLogger,
+};
 use tracing::{debug_span, error_span, info_span, trace_span, warn_span};
 
 use crate::node_info_tls;
@@ -56,7 +58,14 @@ impl reearth_flow_runtime::event::EventHandler for LogEventHandler {
                 }
                 tracing::Level::WARN => {
                     let span = span.clone().unwrap_or_else(|| warn_span!(""));
-                    tracing::event!(parent: span, tracing::Level::WARN, "job_id"=self.job_id.to_string(), "node_id"=node_id, "{:?}", message);
+
+                    if !node_id.is_empty() {
+                        node_info_tls::set_node_info(node_id.clone(), node_name.clone());
+                    }
+
+                    action_warn_log!(parent: span, self.logger, "{:?}", message);
+
+                    node_info_tls::clear_node_info();
                 }
                 tracing::Level::INFO => {
                     let span = span.clone().unwrap_or_else(|| info_span!(""));
