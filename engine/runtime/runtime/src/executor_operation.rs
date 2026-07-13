@@ -307,6 +307,11 @@ impl ExecutorContext {
     }
 
     /// Run-level notice: one immediate line per run per code, bypasses the aggregator.
+    /// On a context without a diagnostics handle (`self.diagnostics == None`),
+    /// there is no dedup ledger to consult, so `first` is unconditionally
+    /// `true` and this degrades to warn-every-time instead of once-per-run;
+    /// that's a test-only/legacy situation — production contexts are always
+    /// stamped with a diagnostics handle.
     pub fn warn_once(&self, draft: DiagnosticDraft) {
         let first = match &self.diagnostics {
             Some(handle) => handle.inner.try_mark_warn_once(draft.code),

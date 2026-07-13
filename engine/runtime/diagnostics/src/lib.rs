@@ -30,7 +30,11 @@ mod tests {
             let _ = code.category();
             let _ = code.default_disposition();
         }
-        assert_eq!(ErrorCode::ALL.len(), 9);
+        assert_eq!(
+            ErrorCode::ALL.len(),
+            9,
+            "update this count when adding registry codes"
+        );
     }
 
     #[test]

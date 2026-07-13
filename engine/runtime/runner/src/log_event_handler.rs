@@ -145,3 +145,119 @@ impl reearth_flow_runtime::event::EventHandler for LogEventHandler {
         }
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use std::fs;
+
+    use reearth_flow_action_log::factory;
+    use reearth_flow_diagnostics::{Diagnostic, DiagnosticDraft, ErrorCode};
+    use reearth_flow_runtime::event::{Event, EventHandler};
+
+    use super::*;
+
+    /// Sends a single `Event::Diagnostic(Arc::new(diagnostic))` through
+    /// `LogEventHandler::on_event`, then flushes and returns the resulting
+    /// `all.log` contents.
+    ///
+    /// `LoggerFactory::action_logger` wraps its drain in `slog_async::Async`
+    /// (see `action-log/src/split.rs`): writes are enqueued to a background
+    /// thread, not applied synchronously. `slog-async`'s `AsyncCore::drop`
+    /// only sends the flush/terminate message and joins that thread once
+    /// the *last* reference to the drain's `Arc` is dropped. `LogEventHandler`
+    /// is the sole owner of its `Arc<ActionLogger>` here (never cloned), so
+    /// dropping `handler` on this thread — never the background writer
+    /// thread itself — deterministically blocks until every enqueued record
+    /// has been written to disk, with no sleep/poll needed before reading.
+    fn render_diagnostic_to_action_log(diagnostic: Diagnostic) -> String {
+        let tempdir = tempfile::tempdir().unwrap();
+        let action_log_dir = tempdir.path().join("action-log");
+        fs::create_dir_all(&action_log_dir).unwrap();
+
+        let root_logger = factory::create_root_logger(action_log_dir.clone());
+        let logger_factory = Arc::new(LoggerFactory::new(root_logger, action_log_dir.clone()));
+
+        let handler =
+            LogEventHandler::new(uuid::Uuid::new_v4(), uuid::Uuid::new_v4(), logger_factory);
+
+        let event = Event::Diagnostic(Arc::new(diagnostic));
+        let rt = tokio::runtime::Runtime::new().unwrap();
+        rt.block_on(handler.on_event(&event));
+
+        // Flush: see the doc comment above for why this drop must happen
+        // here, before the read below.
+        drop(handler);
+
+        fs::read_to_string(action_log_dir.join("all.log"))
+            .unwrap_or_else(|e| panic!("failed to read all.log: {e}"))
+    }
+
+    fn single_json_line(content: &str) -> serde_json::Value {
+        let lines: Vec<&str> = content.lines().filter(|l| !l.trim().is_empty()).collect();
+        assert_eq!(
+            lines.len(),
+            1,
+            "expected exactly one action-log line, got {}: {content:?}",
+            lines.len()
+        );
+        serde_json::from_str(lines[0]).expect("action-log line must be valid JSON")
+    }
+
+    /// End-to-end proof of the CRITICAL path at the handler level (2a Task
+    /// 12): a Fatal-disposition code (`InternalInvariantViolation`, whose
+    /// registry default disposition is `Fatal`) defaults to
+    /// `Severity::Fatal` per `Diagnostic::from_draft` (2a Task 2), and
+    /// `LogEventHandler::on_event` renders `Severity::Fatal` through
+    /// `action_critical_log!`, which the `Json` drain serializes as
+    /// `"level":"CRITICAL"` (see `slog::Level::Critical::as_str()`).
+    #[test]
+    fn fatal_diagnostic_renders_as_a_single_critical_line() {
+        let d = Diagnostic::from_draft(
+            DiagnosticDraft::new(ErrorCode::InternalInvariantViolation),
+            Some("node-x".into()),
+            Some("TestAction".into()),
+            None,
+        );
+        assert_eq!(d.severity, reearth_flow_diagnostics::Severity::Fatal);
+        let message = d.message.clone();
+
+        let content = render_diagnostic_to_action_log(d);
+        let parsed = single_json_line(&content);
+
+        assert_eq!(parsed["level"], "CRITICAL");
+        assert!(
+            parsed["msg"]
+                .as_str()
+                .expect("msg must be a string")
+                .contains(&message),
+            "expected msg to contain {message:?}, got {parsed}"
+        );
+    }
+
+    /// Companion case: a Warn-severity diagnostic renders at `"WARNING"`
+    /// through the exact same handler path, proving `Severity` — not the
+    /// call site — drives the rendered log level.
+    #[test]
+    fn warn_diagnostic_renders_as_a_single_warning_line() {
+        let d = Diagnostic::from_draft(
+            DiagnosticDraft::new(ErrorCode::GltfZeroFaceSolid),
+            Some("node-y".into()),
+            Some("TestAction".into()),
+            None,
+        );
+        assert_eq!(d.severity, reearth_flow_diagnostics::Severity::Warn);
+        let message = d.message.clone();
+
+        let content = render_diagnostic_to_action_log(d);
+        let parsed = single_json_line(&content);
+
+        assert_eq!(parsed["level"], "WARNING");
+        assert!(
+            parsed["msg"]
+                .as_str()
+                .expect("msg must be a string")
+                .contains(&message),
+            "expected msg to contain {message:?}, got {parsed}"
+        );
+    }
+}

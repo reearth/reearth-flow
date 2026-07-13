@@ -253,6 +253,48 @@ mod tests {
         assert!(back.dropped_event_count.is_none());
     }
 
+    /// An empty `RunSummary` (no failed nodes, no aggregated diagnostics, no
+    /// dropped events) is still a `Some` summary — deliberately distinct
+    /// from `new()`'s `None` fields (see
+    /// `event_without_summary_has_pre_task_wire_shape_exactly`). The wire
+    /// decision: `with_summary` always renders these as PRESENT keys
+    /// (`Some(vec![])` / `Some(0)`), i.e. `[]` / `0`, never omitted, so a
+    /// consumer can distinguish "ran, produced nothing to report" from
+    /// "the runner returned `Err` before a summary existed at all".
+    #[test]
+    fn with_summary_on_empty_run_summary_serializes_present_empty_fields() {
+        let empty = RunSummary {
+            failed_nodes: vec![],
+            aggregated_diagnostics: vec![],
+            dropped_event_count: 0,
+        };
+        let mut event = JobCompleteEvent::with_summary(
+            fixed_uuid(0x11),
+            fixed_uuid(0x22),
+            JobResult::Success,
+            &empty,
+        );
+        event.timestamp = fixed_timestamp();
+
+        let json = serde_json::to_string_pretty(&event).unwrap();
+        let expected = r#"{
+  "workflowId": "11111111-1111-1111-1111-111111111111",
+  "jobId": "22222222-2222-2222-2222-222222222222",
+  "result": "success",
+  "timestamp": "2026-01-01T00:00:00Z",
+  "failedNodes": [],
+  "aggregatedDiagnostics": [],
+  "droppedEventCount": 0
+}"#;
+        assert_eq!(json, expected);
+
+        let value: serde_json::Value = serde_json::to_value(&event).unwrap();
+        let obj = value.as_object().unwrap();
+        assert!(obj.contains_key("failedNodes"));
+        assert!(obj.contains_key("aggregatedDiagnostics"));
+        assert!(obj.contains_key("droppedEventCount"));
+    }
+
     #[test]
     fn job_complete_topic_defaults_when_env_unset() {
         // Only asserts the default; explicitly setting/unsetting the env var

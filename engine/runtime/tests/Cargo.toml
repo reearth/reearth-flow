@@ -113,7 +113,7 @@ name = "test-logging-orphaned-sink"
 path = "logging_test/09_orphaned_sink.rs"
 
 [[test]]
-name = "10_warn_drop_aggregation"
+name = "test-logging-warn-drop-aggregation"
 path = "logging_test/10_warn_drop_aggregation.rs"
 
 [[test]]
