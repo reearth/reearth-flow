@@ -4,11 +4,9 @@ import { isActionNodeType } from "@flow/types";
 
 import type { YWorkflow } from "../types";
 
-// Base actions were renamed from concatenated PascalCase to space-separated
-// title case (engine v0.0.430, PR #2240), e.g. "Cesium3DTilesWriter" →
-// "Cesium 3D Tiles Writer". The engine resolves actions by exact name, so
-// projects saved before the rename can no longer run. This map is the exact
-// old → new name diff of engine/schema/actions.json across that rename.
+// Base actions were renamed from PascalCase to spaced title case (engine PR #2240),
+// e.g. "Cesium3DTilesWriter" → "Cesium 3D Tiles Writer". The engine resolves
+// actions by exact name, so projects saved before the rename can no longer run.
 export const LEGACY_ACTION_NAMES: Record<string, string> = {
   AppearanceRemover: "Appearance Remover",
   AreaCalculator: "Area Calculator",
@@ -82,15 +80,11 @@ export const LEGACY_ACTION_NAMES: Record<string, string> = {
 };
 
 /**
- * Walks every workflow in the doc counting nodes whose officialName is still
- * a pre-rename action name. With apply=true it also rewrites them to the
- * current names — call inside a transaction when applying.
+ * Counts nodes whose officialName is still a pre-rename action name; with
+ * apply=true also rewrites them — call inside a transaction when applying.
  *
- * Only action nodes (reader/writer/transformer) are touched: officialName is
- * stamped from the action definition there, and the engine resolves it by
- * exact name. On other node types (subworkflow, batch, note) officialName is
- * user space — a subworkflow the user happened to name "FeatureFilter" must
- * not be renamed. User customizations (customName) are never touched either.
+ * Only action nodes (reader/writer/transformer) are touched: on other node
+ * types officialName is user space (e.g. a subworkflow named "FeatureFilter").
  */
 export function scanLegacyActionNames(
   yWorkflows: Y.Map<YWorkflow>,

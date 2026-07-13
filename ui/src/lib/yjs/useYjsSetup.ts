@@ -90,7 +90,6 @@ export default ({
                 yWorkflows.set(DEFAULT_ENTRY_GRAPH_ID, yWorkflow);
                 docMetadata.set("initialized", true);
                 // A doc initialized now can't contain legacy data — stamp it
-                // so the legacy migration scans never run for it.
                 markLegacyMigrationComplete(yDoc);
               }
             });

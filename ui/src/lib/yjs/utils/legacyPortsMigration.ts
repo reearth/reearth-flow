@@ -4,15 +4,11 @@ import { DEFAULT_EDGE_PORT } from "@flow/global-constants";
 
 import type { YWorkflow } from "../types";
 
-// Port name used before the engine renamed its default port to "features"
-// (engine v0.0.429, PR #2236). Projects saved before the rename still
-// reference it on action-definition ports and can no longer run.
+// Port name used before the engine renamed its default port to "features" (engine PR #2236).
 const LEGACY_PORT = "default";
 
-// Ports a user defined themselves via condition params (e.g. FeatureFilter
-// outputPort). These are user data, not action-definition ports — a user may
-// legitimately name one "default", so they and their edges must not be
-// rewritten.
+// User-defined condition ports (e.g. FeatureFilter outputPort) may legitimately
+// be named "default" — never rewrite these or their edges.
 const getConditionPorts = (
   params: unknown,
   key: "inputPort" | "outputPort",
@@ -25,27 +21,16 @@ const getConditionPorts = (
 };
 
 /**
- * Walks every workflow in the doc counting references to the legacy
- * "default" port. With apply=true it also rewrites them to the current
- * port names — call inside a transaction when applying.
+ * Counts references to the legacy "default" port; with apply=true also
+ * rewrites them — call inside a transaction when applying.
  *
- * Only action-definition ports are rewritten — the ones the engine rename
- * actually broke:
- * - node data.inputs / data.outputs port lists (stamped from the action
- *   definition)
- * - edge sourceHandle / targetHandle referencing those ports
- *
- * User-named ports are never touched, so "default" stays a legal name:
- * - params.routingPort, subworkflow pseudoInputs/pseudoOutputs portNames,
- *   and edge handles on subworkflow nodes: the engine wires routers by
- *   string equality between routingPort and the parent edge port
- *   (dag_schemas.rs), so a "default"-named trio still runs — and rewriting
- *   it would rename a port the user may have chosen deliberately.
- * - condition ports (e.g. a FeatureFilter output named "default") and the
- *   edge handles that reference them.
- * - InputRouter / OutputRouter nodes entirely: their canvas handles are
- *   frontend-only, so existing routers keep their "default" handles —
- *   only newly created routers get "features" from the action definition.
+ * Only action-definition ports are rewritten (node data.inputs/outputs and
+ * the edge handles referencing them) — these are what the rename actually
+ * broke. "default" stays a legal name everywhere else: routingPort, subworkflow
+ * pseudo ports and their edge handles (the engine wires routers by string
+ * equality between routingPort and the parent edge port, per dag_schemas.rs),
+ * condition ports, and InputRouter/OutputRouter nodes (their canvas handles
+ * are frontend-only, so existing routers keep "default").
  */
 export function scanLegacyPorts(
   yWorkflows: Y.Map<YWorkflow>,

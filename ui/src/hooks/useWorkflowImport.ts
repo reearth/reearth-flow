@@ -113,9 +113,7 @@ export default () => {
                 );
                 yWorkflows.set(w.id, yWorkflow);
               });
-              // The imported file was already migrated before conversion, so
-              // the doc starts out current — stamp it so the editor's legacy
-              // migration scans never run for it.
+              // Already migrated before conversion — stamp so it's not rescanned.
               markLegacyMigrationComplete(yDoc);
             });
 

@@ -15,9 +15,6 @@ import {
   migrateLegacyPorts,
 } from "./utils/legacyPortsMigration";
 
-// The version stamp check comes first: once a doc is stamped (migrated here,
-// imported migrated, or created fresh) the full workflow scans are skipped
-// on every doc change.
 const needsLegacyMigration = (yWorkflows: YMap<YWorkflow>) =>
   !isLegacyMigrationComplete(yWorkflows.doc) &&
   (hasLegacyPorts(yWorkflows) || hasLegacyActionNames(yWorkflows));
@@ -41,8 +38,7 @@ export default ({
 
     update();
     yWorkflows.observeDeep(update);
-    // The stamp lives in doc metadata, so a collaborator stamping the doc
-    // hides the dialog here even without a workflow change.
+    // Stamp lives in doc metadata, so a collaborator's migration can hide this dialog too.
     const yMetadata = yWorkflows.doc?.getMap("metadata");
     yMetadata?.observe(update);
     return () => {
@@ -54,8 +50,7 @@ export default ({
   const handleLegacyMigration = useCallback(() => {
     // Perform the migration without adding to undo stack, as this is a one-time migration that should not be undoable.
     yWorkflows.doc?.transact(() => {
-      // Ports first: the port migration keys off pre-rename router names to
-      // decide which "default" handles to preserve.
+      // Ports first: it keys off pre-rename router names, which action-name migration renames.
       migrateLegacyPorts(yWorkflows);
       migrateLegacyActionNames(yWorkflows);
       markLegacyMigrationComplete(yWorkflows.doc);
