@@ -15,7 +15,7 @@ impl SinkFactory for NoopSinkFactory {
     }
 
     fn description(&self) -> &str {
-        "No-Operation Sink (Discard Features)"
+        "Discards all incoming features."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
