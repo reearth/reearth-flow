@@ -8,6 +8,8 @@ use std::sync::Arc;
 
 use bytes::Bytes;
 use reearth_flow_common::uri::Uri;
+use reearth_flow_diagnostics::ErrorCode;
+use reearth_flow_runtime::diagnostics::NodeDiagnosticsHandle;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
@@ -31,6 +33,7 @@ use writer::CityGmlXmlWriter;
 /// This is the single canonical implementation shared by both the `CityGmlWriter` sink and
 /// the `FeatureWriter` processor.
 #[cfg(not(feature = "new-geometry"))]
+#[allow(clippy::too_many_arguments)]
 pub fn write_citygml_to_storage(
     output: &Uri,
     sandbox_root: &Uri,
@@ -39,6 +42,7 @@ pub fn write_citygml_to_storage(
     epsg_code: Option<u32>,
     pretty_print: bool,
     storage_resolver: &Arc<StorageResolver>,
+    diagnostics: Option<&NodeDiagnosticsHandle>,
 ) -> Result<(), SinkError> {
     if features.is_empty() {
         return Ok(());
@@ -184,6 +188,9 @@ pub fn write_citygml_to_storage(
 
         for feature in features {
             let GeometryValue::CityGmlGeometry(ref geom) = feature.geometry.value else {
+                if let Some(diagnostics) = diagnostics {
+                    diagnostics.report_drop(ErrorCode::CitygmlNonCitygmlGeometry, Some(feature.id));
+                }
                 continue;
             };
 
@@ -195,6 +202,9 @@ pub fn write_citygml_to_storage(
 
             let (geometries, appearance) = convert_citygml_geometry(geom, lod_mask);
             if geometries.is_empty() {
+                if let Some(diagnostics) = diagnostics {
+                    diagnostics.report_drop(ErrorCode::CitygmlEmptyGeometry, Some(feature.id));
+                }
                 continue;
             }
 
@@ -392,9 +402,75 @@ impl Sink for CityGmlWriterSink {
             self.params.epsg_code,
             self.params.pretty_print.unwrap_or(true),
             &ctx.storage_resolver,
+            ctx.diagnostics.as_deref(),
         )?;
 
         Ok(())
+    }
+}
+
+#[cfg(all(test, not(feature = "new-geometry")))]
+mod diagnostics_tests {
+    use std::str::FromStr;
+    use std::sync::Arc;
+
+    use indexmap::IndexMap;
+    use reearth_flow_common::uri::Uri;
+    use reearth_flow_runtime::diagnostics::NodeDiagnosticsHandle;
+    use reearth_flow_runtime::node::NodeHandle;
+    use reearth_flow_storage::resolve::StorageResolver;
+    use reearth_flow_types::AttributeValue;
+    use tempfile::tempdir;
+
+    use super::*;
+
+    /// `NodeId` is `pub(super)` inside `reearth_flow_runtime` (crate-private),
+    /// so an external crate cannot name it directly. Its `Deserialize` impl
+    /// is still public, so we build one via inference through `NodeHandle`'s
+    /// public `id` field instead of naming the type.
+    fn test_node_handle(id: &str) -> NodeHandle {
+        NodeHandle {
+            id: serde_json::from_value(serde_json::Value::String(id.to_string())).unwrap(),
+        }
+    }
+
+    #[test]
+    fn non_citygml_geometry_feature_is_reported_not_silently_dropped() {
+        let tmp = tempdir().unwrap();
+        let sandbox_root = Uri::from_str(&format!("file://{}", tmp.path().display())).unwrap();
+        let output = Uri::from_str(&format!("file://{}/out.gml", tmp.path().display())).unwrap();
+        let storage_resolver = Arc::new(StorageResolver::new());
+
+        let handle = Arc::new(NodeDiagnosticsHandle::new(
+            test_node_handle("n1"),
+            "writer".into(),
+            "CityGML Writer".into(),
+            Arc::default(),
+        ));
+
+        // `Feature::from` on an empty attribute map carries `GeometryValue::None`,
+        // which does not match `GeometryValue::CityGmlGeometry` — this exercises
+        // the non-CityGML drop lane without fabricating CityGML geometry.
+        let features = vec![Feature::from(IndexMap::<String, AttributeValue>::new())];
+
+        write_citygml_to_storage(
+            &output,
+            &sandbox_root,
+            &features,
+            &LodMask::all(),
+            None,
+            false,
+            &storage_resolver,
+            Some(&handle),
+        )
+        .unwrap();
+
+        let summaries = handle.inner.drain_summaries();
+        assert_eq!(summaries.len(), 1);
+        assert_eq!(summaries[0].aggregated.as_ref().unwrap().count, 1);
+        assert!(summaries[0]
+            .message
+            .contains("citygml.non_citygml_geometry"));
     }
 }
 

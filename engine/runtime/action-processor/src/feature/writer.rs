@@ -310,6 +310,7 @@ impl Processor for FeatureWriter {
                         &epsg_code,
                         &pretty_print,
                         &ctx.storage_resolver,
+                        ctx.diagnostics.as_deref(),
                     )?;
                 }
             }
