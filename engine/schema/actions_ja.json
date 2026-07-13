@@ -3414,19 +3414,19 @@
     {
       "name": "Feature Joiner",
       "type": "processor",
-      "description": "設定可能な結合タイプで、一致する属性値に基づいてリクエスタとサプライヤの地物を結合する",
+      "description": "設定可能な結合タイプで、一致する属性値に基づいてリクエスタとサプライヤの地物を結合する。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureJoiner パラメータ",
-        "description": "属性値または式の一致に基づいてリクエスタとサプライヤのフィーチャーを結合する設定",
+        "title": "Feature Joiner パラメータ",
+        "description": "属性値または式の一致に基づいてリクエスタとサプライヤのフィーチャーを結合する設定。",
         "type": "object",
         "required": [
           "joinType"
         ],
         "properties": {
           "joinType": {
-            "title": "Join Type",
-            "description": "結合タイプ: inner（内部結合）、left（左外部結合）、または full（完全外部結合）",
+            "title": "結合タイプ",
+            "description": "未マッチの地物の扱い方: inner（内部結合）、left（左外部結合）、または full（完全外部結合）。",
             "allOf": [
               {
                 "$ref": "#/definitions/JoinType"
@@ -3434,8 +3434,8 @@
             ]
           },
           "requestorAttribute": {
-            "title": "Requestor Attributes",
-            "description": "照合に使用するリクエスタフィーチャーの属性（requestorAttributeValue の代替）",
+            "title": "リクエスタ属性",
+            "description": "照合に使用するリクエスタフィーチャーの属性（requestorAttributeValue の代替）。",
             "type": [
               "array",
               "null"
@@ -3445,8 +3445,8 @@
             }
           },
           "supplierAttribute": {
-            "title": "Supplier Attributes",
-            "description": "照合に使用するサプライヤフィーチャーの属性（supplierAttributeValue の代替）",
+            "title": "サプライヤ属性",
+            "description": "照合に使用するサプライヤフィーチャーの属性（supplierAttributeValue の代替）。",
             "type": [
               "array",
               "null"
@@ -3456,8 +3456,8 @@
             }
           },
           "requestorAttributeValue": {
-            "title": "Requestor Attribute Value",
-            "description": "リクエスタフィーチャーの照合値を評価する式（requestorAttribute の代替）",
+            "title": "リクエスタ属性値",
+            "description": "リクエスタフィーチャーの照合値を評価する式（requestorAttribute の代替）。",
             "type": [
               "object",
               "null"
@@ -3480,8 +3480,8 @@
             }
           },
           "supplierAttributeValue": {
-            "title": "Supplier Attribute Value",
-            "description": "サプライヤフィーチャーの照合値を評価する式（supplierAttribute の代替）",
+            "title": "サプライヤ属性値",
+            "description": "サプライヤフィーチャーの照合値を評価する式（supplierAttribute の代替）。",
             "type": [
               "object",
               "null"
@@ -3504,8 +3504,8 @@
             }
           },
           "conflictResolution": {
-            "title": "Conflict Resolution",
-            "description": "リクエスタとサプライヤが同じ属性を持つ場合の競合解決戦略",
+            "title": "競合解決",
+            "description": "リクエスタとサプライヤが同じ属性を持つ場合の競合解決戦略。",
             "anyOf": [
               {
                 "$ref": "#/definitions/ConflictResolution"
@@ -3520,24 +3520,24 @@
           "JoinType": {
             "oneOf": [
               {
-                "title": "Inner",
-                "description": "一致するフィーチャーのみを出力する",
+                "title": "内部結合",
+                "description": "一致するフィーチャーのみを出力する。",
                 "type": "string",
                 "enum": [
                   "inner"
                 ]
               },
               {
-                "title": "Left",
-                "description": "リクエスタのすべてのフィーチャーを出力する（デフォルト）",
+                "title": "左外部結合",
+                "description": "リクエスタのすべてのフィーチャーを出力する（一致の有無を問わない）。",
                 "type": "string",
                 "enum": [
                   "left"
                 ]
               },
               {
-                "title": "Full",
-                "description": "両側のすべてのフィーチャーを出力する",
+                "title": "完全外部結合",
+                "description": "両側のすべてのフィーチャーを出力する。",
                 "type": "string",
                 "enum": [
                   "full"
@@ -3551,16 +3551,16 @@
           "ConflictResolution": {
             "oneOf": [
               {
-                "title": "Requestor Wins",
-                "description": "競合時はリクエスタの属性が優先される",
+                "title": "リクエスタ優先",
+                "description": "競合時はリクエスタの属性が優先される。",
                 "type": "string",
                 "enum": [
                   "requestorWins"
                 ]
               },
               {
-                "title": "Supplier Wins",
-                "description": "競合時はサプライヤの属性が優先される（デフォルト）",
+                "title": "サプライヤ優先",
+                "description": "競合時はサプライヤの属性が優先される（デフォルト）。",
                 "type": "string",
                 "enum": [
                   "supplierWins"
@@ -3636,16 +3636,16 @@
     {
       "name": "Feature Merger",
       "type": "processor",
-      "description": "属性に基づいて地物をマージする",
+      "description": "一致する属性値に基づいてリクエスタとサプライヤの地物をマージする。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureMerger パラメータ",
-        "description": "属性値または式の一致に基づいてリクエスタとサプライヤのフィーチャーをマージする設定",
+        "title": "Feature Merger パラメータ",
+        "description": "属性値または式の一致に基づいてリクエスタとサプライヤのフィーチャーをマージする設定。",
         "type": "object",
         "properties": {
           "requestorAttribute": {
-            "title": "Requestor Attributes",
-            "description": "照合に使用するリクエスタフィーチャーの属性（requestor_attribute_value の代替）",
+            "title": "リクエスタ属性",
+            "description": "照合に使用するリクエスタフィーチャーの属性（requestorAttributeValue の代替）。",
             "type": [
               "array",
               "null"
@@ -3655,8 +3655,8 @@
             }
           },
           "supplierAttribute": {
-            "title": "Supplier Attributes",
-            "description": "照合に使用するサプライヤフィーチャーの属性（supplier_attribute_value の代替）",
+            "title": "サプライヤ属性",
+            "description": "照合に使用するサプライヤフィーチャーの属性（supplierAttributeValue の代替）。",
             "type": [
               "array",
               "null"
@@ -3666,8 +3666,8 @@
             }
           },
           "requestorAttributeValue": {
-            "title": "Requestor Attribute Value",
-            "description": "リクエスタフィーチャーの照合値を評価する式（requestor_attribute の代替）",
+            "title": "リクエスタ属性値",
+            "description": "リクエスタフィーチャーの照合値を評価する式（requestorAttribute の代替）。",
             "type": [
               "object",
               "null"
@@ -3690,8 +3690,8 @@
             }
           },
           "supplierAttributeValue": {
-            "title": "Supplier Attribute Value",
-            "description": "サプライヤフィーチャーの照合値を評価する式（supplier_attribute の代替）",
+            "title": "サプライヤ属性値",
+            "description": "サプライヤフィーチャーの照合値を評価する式（supplierAttribute の代替）。",
             "type": [
               "object",
               "null"
@@ -3714,8 +3714,8 @@
             }
           },
           "completeGrouped": {
-            "title": "Complete Grouped",
-            "description": "次のグループを処理する前に、グループ化されたフィーチャーを完了するか",
+            "title": "グループ完了処理",
+            "description": "次のグループを処理する前に、グループ化されたフィーチャーを完了するか。",
             "type": [
               "boolean",
               "null"
@@ -3745,11 +3745,11 @@
     {
       "name": "Feature Sorter",
       "type": "processor",
-      "description": "地物を属性でソートする",
+      "description": "指定した属性に基づいて、地物を昇順または降順でソートする。",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureSorter パラメータ",
-        "description": "属性値に基づいてフィーチャーをソートする設定",
+        "title": "Feature Sorter パラメータ",
+        "description": "属性値に基づいてフィーチャーをソートする設定。",
         "type": "object",
         "required": [
           "attributes",
@@ -3757,16 +3757,16 @@
         ],
         "properties": {
           "attributes": {
-            "title": "Sort Attributes",
-            "description": "フィーチャーのソートに使用する属性（属性の順序でソート順が決まる）",
+            "title": "ソート属性",
+            "description": "ソートに使用する属性。先に指定した属性が優先される。",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Attribute"
             }
           },
           "order": {
-            "title": "Sort Order",
-            "description": "ソート順（昇順または降順）",
+            "title": "ソート順",
+            "description": "ソート順（昇順または降順）。",
             "allOf": [
               {
                 "$ref": "#/definitions/Order"
