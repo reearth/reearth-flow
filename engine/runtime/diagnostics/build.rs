@@ -74,7 +74,8 @@ fn main() {
         .collect();
     paths.sort();
     for path in paths {
-        let raw = fs::read_to_string(&path).unwrap();
+        let raw = fs::read_to_string(&path)
+            .unwrap_or_else(|e| panic!("failed to read registry file {}: {e}", path.display()));
         let file: RegistryFile = toml::from_str(&raw)
             .unwrap_or_else(|e| panic!("invalid registry file {}: {e}", path.display()));
         entries.extend(file.codes);
@@ -171,5 +172,6 @@ fn main() {
     };
 
     let out = PathBuf::from(env::var("OUT_DIR").unwrap()).join("error_codes.rs");
-    fs::write(&out, generated.to_string()).unwrap();
+    fs::write(&out, generated.to_string())
+        .unwrap_or_else(|e| panic!("failed to write {}: {e}", out.display()));
 }

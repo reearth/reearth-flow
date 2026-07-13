@@ -37,6 +37,5 @@ mod tests {
         assert_eq!(code.as_str(), "gltf.zero_face_solid");
         assert_eq!(code.category(), ErrorCategory::Geometry);
         assert_eq!(code.default_disposition(), Disposition::WarnDrop);
-        assert_eq!(code.default_disposition(), Disposition::WarnDrop);
     }
 }
