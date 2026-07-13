@@ -3,6 +3,7 @@ use std::{collections::HashMap, env, str::FromStr, sync::Arc, time::Instant};
 use once_cell::sync::Lazy;
 use reearth_flow_action_log::factory::LoggerFactory;
 use reearth_flow_common::uri::Uri;
+use reearth_flow_diagnostics::RunSummary;
 use reearth_flow_runtime::{
     event::EventHandler, incremental::IncrementalRunConfig, node::NodeKind, shutdown,
 };
@@ -62,6 +63,8 @@ impl Runner {
         let sandbox_root = Uri::from_str("file:///").expect("'file:///' is always a valid URI");
         // Bypass `run_with_sandbox_root`'s sentinel guard — this entrypoint
         // intentionally requests the unsandboxed mode.
+        // Given Task 5's invariant (`Ok(_)` implies `failed_nodes.is_empty()`),
+        // discarding the summary here preserves exact legacy semantics.
         Self::run_with_event_handler(
             job_id,
             workflow,
@@ -74,6 +77,7 @@ impl Runner {
             vec![],
             sandbox_root,
         )
+        .map(|_summary| ())
     }
 
     /// Run a workflow with a sandboxed output path.
@@ -94,6 +98,42 @@ impl Runner {
         incremental_run_config: Option<IncrementalRunConfig>,
         sandbox_root: Uri,
     ) -> Result<(), crate::errors::Error> {
+        reject_unsandboxed_sentinel(&sandbox_root)?;
+        // Given Task 5's invariant (`Ok(_)` implies `failed_nodes.is_empty()`),
+        // discarding the summary here preserves exact legacy semantics.
+        Self::run_with_event_handler(
+            job_id,
+            workflow,
+            factories,
+            logger_factory,
+            storage_resolver,
+            ingress_state,
+            feature_state,
+            incremental_run_config,
+            vec![],
+            sandbox_root,
+        )
+        .map(|_summary| ())
+    }
+
+    /// Like [`Runner::run_with_sandbox_root`], but returns the by-value
+    /// `RunSummary` instead of discarding it. Applies the same sandbox
+    /// sentinel guard (the sync [`Runner::run_with_event_handler`] does not
+    /// apply it itself) before delegating. Used by callers — e.g. the CLI —
+    /// that want to render aggregated diagnostics / failed nodes / dropped
+    /// event counts at the end of a run.
+    #[allow(clippy::too_many_arguments)]
+    pub fn run_with_sandbox_root_returning_summary(
+        job_id: uuid::Uuid,
+        workflow: Workflow,
+        factories: HashMap<String, NodeKind>,
+        logger_factory: Arc<LoggerFactory>,
+        storage_resolver: Arc<StorageResolver>,
+        ingress_state: Arc<State>,
+        feature_state: Arc<State>,
+        incremental_run_config: Option<IncrementalRunConfig>,
+        sandbox_root: Uri,
+    ) -> Result<RunSummary, crate::errors::Error> {
         reject_unsandboxed_sentinel(&sandbox_root)?;
         Self::run_with_event_handler(
             job_id,
@@ -121,7 +161,7 @@ impl Runner {
         incremental_run_config: Option<IncrementalRunConfig>,
         event_handlers: Vec<Arc<dyn EventHandler>>,
         sandbox_root: Uri,
-    ) -> Result<(), crate::errors::Error> {
+    ) -> Result<RunSummary, crate::errors::Error> {
         let runtime = tokio::runtime::Builder::new_multi_thread()
             .worker_threads(*ASYNC_WORKER_NUM)
             .enable_all()
@@ -170,11 +210,17 @@ impl Runner {
                 .await
         });
 
-        if let Err(e) = &result {
-            error!(parent: &span, "Failed to workflow: {:?}", e);
-            info!(parent: &span, "Finish workflow = {:?} (failed), duration = {:?}", workflow_name.as_str(), start.elapsed());
-        } else {
-            info!(parent: &span, "Finish workflow = {:?} (success), duration = {:?}", workflow_name.as_str(), start.elapsed());
+        match &result {
+            Err(e) => {
+                error!(parent: &span, "Failed to workflow: {:?}", e);
+                info!(parent: &span, "Finish workflow = {:?} (failed), duration = {:?}", workflow_name.as_str(), start.elapsed());
+            }
+            Ok(summary) if !summary.failed_nodes.is_empty() => {
+                info!(parent: &span, "Finish workflow = {:?} (success, {} failed node(s)), duration = {:?}", workflow_name.as_str(), summary.failed_nodes.len(), start.elapsed());
+            }
+            Ok(_) => {
+                info!(parent: &span, "Finish workflow = {:?} (success), duration = {:?}", workflow_name.as_str(), start.elapsed());
+            }
         }
         result
     }
@@ -202,6 +248,8 @@ impl AsyncRunner {
         incremental_run_config: Option<IncrementalRunConfig>,
     ) -> Result<(), crate::errors::Error> {
         let sandbox_root = Uri::from_str("file:///").expect("'file:///' is always a valid URI");
+        // Given Task 5's invariant (`Ok(_)` implies `failed_nodes.is_empty()`),
+        // discarding the summary here preserves exact legacy semantics.
         Self::run_with_event_handler(
             job_id,
             workflow,
@@ -215,6 +263,7 @@ impl AsyncRunner {
             sandbox_root,
         )
         .await
+        .map(|_summary| ())
     }
 
     /// Run a workflow with a sandboxed output path.
@@ -236,6 +285,8 @@ impl AsyncRunner {
         sandbox_root: Uri,
     ) -> Result<(), crate::errors::Error> {
         reject_unsandboxed_sentinel(&sandbox_root)?;
+        // Given Task 5's invariant (`Ok(_)` implies `failed_nodes.is_empty()`),
+        // discarding the summary here preserves exact legacy semantics.
         Self::run_with_event_handler(
             job_id,
             workflow,
@@ -249,6 +300,7 @@ impl AsyncRunner {
             sandbox_root,
         )
         .await
+        .map(|_summary| ())
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -263,7 +315,7 @@ impl AsyncRunner {
         incremental_run_config: Option<IncrementalRunConfig>,
         event_handlers: Vec<Arc<dyn EventHandler>>,
         sandbox_root: Uri,
-    ) -> Result<(), crate::errors::Error> {
+    ) -> Result<RunSummary, crate::errors::Error> {
         let start = Instant::now();
         let version = env!("CARGO_PKG_VERSION");
         let span = info_span!(
@@ -299,11 +351,17 @@ impl AsyncRunner {
                 sandbox_root,
             )
             .await;
-        if let Err(e) = &result {
-            error!("Failed to workflow: {:?}", e);
-            info!(parent: &span, "Finish workflow = {:?} (failed), duration = {:?}", workflow_name.as_str(), start.elapsed());
-        } else {
-            info!(parent: &span, "Finish workflow = {:?} (success), duration = {:?}", workflow_name.as_str(), start.elapsed());
+        match &result {
+            Err(e) => {
+                error!("Failed to workflow: {:?}", e);
+                info!(parent: &span, "Finish workflow = {:?} (failed), duration = {:?}", workflow_name.as_str(), start.elapsed());
+            }
+            Ok(summary) if !summary.failed_nodes.is_empty() => {
+                info!(parent: &span, "Finish workflow = {:?} (success, {} failed node(s)), duration = {:?}", workflow_name.as_str(), summary.failed_nodes.len(), start.elapsed());
+            }
+            Ok(_) => {
+                info!(parent: &span, "Finish workflow = {:?} (success), duration = {:?}", workflow_name.as_str(), start.elapsed());
+            }
         }
         result
     }

@@ -18,6 +18,7 @@ reearth-flow-action-processor.workspace = true
 reearth-flow-action-sink.workspace = true
 reearth-flow-action-source.workspace = true
 reearth-flow-common.workspace = true
+reearth-flow-diagnostics.workspace = true
 reearth-flow-runner.workspace = true
 reearth-flow-runtime.workspace = true
 reearth-flow-state.workspace = true
@@ -114,3 +115,7 @@ path = "logging_test/09_orphaned_sink.rs"
 [[test]]
 name = "10_warn_drop_aggregation"
 path = "logging_test/10_warn_drop_aggregation.rs"
+
+[[test]]
+name = "test-run-summary-threading"
+path = "logging_test/11_run_summary_threading.rs"

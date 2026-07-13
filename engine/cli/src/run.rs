@@ -317,7 +317,7 @@ impl RunCliCommand {
             create_root_logger(action_log_uri.path()),
             action_log_uri.path(),
         ));
-        Runner::run_with_sandbox_root(
+        let result = Runner::run_with_sandbox_root_returning_summary(
             job_id,
             workflow,
             ALL_ACTION_FACTORIES.clone(),
@@ -327,7 +327,35 @@ impl RunCliCommand {
             feature_state,
             incremental_run_config,
             artifact_uri,
-        )
-        .map_err(|e| crate::errors::Error::Run(format!("Failed to run workflow: {e}")))
+        );
+
+        if let Ok(summary) = &result {
+            Self::print_run_summary(summary);
+        }
+
+        result
+            .map(|_summary| ())
+            .map_err(|e| crate::errors::Error::Run(format!("Failed to run workflow: {e}")))
+    }
+
+    /// Render a run-end summary to stdout: aggregated (finish()-time)
+    /// diagnostics, failed nodes, and dropped event count — each only when
+    /// non-empty. Under the current by-value `RunSummary` invariant (Task 5:
+    /// `Ok(_)` implies `failed_nodes.is_empty()`), the failed-node list is
+    /// dead today but kept ready for when a later task relaxes that
+    /// invariant.
+    fn print_run_summary(summary: &reearth_flow_diagnostics::RunSummary) {
+        for diagnostic in &summary.aggregated_diagnostics {
+            println!("warning: {}", diagnostic.message);
+        }
+        if !summary.failed_nodes.is_empty() {
+            println!("failed nodes:");
+            for diagnostic in &summary.failed_nodes {
+                println!("  {}", diagnostic.message);
+            }
+        }
+        if summary.dropped_event_count > 0 {
+            println!("dropped events: {}", summary.dropped_event_count);
+        }
     }
 }

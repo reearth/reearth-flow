@@ -6,6 +6,7 @@ use reearth_flow_common::{
     dir::setup_job_directory,
     uri::{Protocol, Uri},
 };
+use reearth_flow_diagnostics::RunSummary;
 use reearth_flow_runner::runner::AsyncRunner;
 use reearth_flow_runtime::incremental::IncrementalRunConfig;
 use reearth_flow_state::State;
@@ -240,6 +241,10 @@ impl RunWorkerCommand {
         };
 
         let workflow_id = workflow.id;
+        // Kept registered as a cross-check against `RunSummary.failed_nodes`
+        // during the Phase 2a transition, but no longer the sole source of
+        // truth for job success. Delete once Phase 2b confirms the two
+        // signals always agree in production.
         let node_failure_handler = Arc::new(NodeFailureHandler::new());
         let result = AsyncRunner::run_with_event_handler(
             meta.job_id,
@@ -254,9 +259,28 @@ impl RunWorkerCommand {
             artifact_uri,
         )
         .await;
-        let job_result = match result {
-            Ok(_) => {
-                if node_failure_handler.all_success() {
+        // Task 10 puts this on JobCompleteEvent.
+        #[allow(unused_variables)]
+        let run_summary: Option<RunSummary> = result.as_ref().ok().cloned();
+        let job_result = match &result {
+            Ok(summary) => {
+                let handler_success = node_failure_handler.all_success();
+                let summary_success = summary.failed_nodes.is_empty();
+                if handler_success != summary_success {
+                    // Belt-and-braces transition period: NodeFailureHandler
+                    // (event-driven) and RunSummary (by-value, collect-all
+                    // fold) are expected to agree. A divergence here is
+                    // diagnostic gold — it means one of the two signals is
+                    // missing/duplicating a node failure.
+                    tracing::warn!(
+                        "NodeFailureHandler/RunSummary disagree on run success: handler_success={}, summary_success={}, handler_failed_nodes={:?}, summary_failed_nodes={:?}",
+                        handler_success,
+                        summary_success,
+                        node_failure_handler.failed_nodes(),
+                        summary.failed_nodes,
+                    );
+                }
+                if handler_success && summary_success {
                     JobResult::Success
                 } else {
                     tracing::error!("Failed nodes: {:?}", node_failure_handler.failed_nodes());

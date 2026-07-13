@@ -284,21 +284,27 @@ async fn subscribe_event(
 impl DagExecutorJoinHandle {
     /// Collects every node thread's `(NodeOutcome, Result<(), ExecutionError>)`
     /// — never short-circuits on the first failure — then folds them into a
-    /// `RunSummary` via `fold_outcomes`. `cleanup_executor_cache` always runs
-    /// once every thread has been joined, on every exit path.
+    /// `RunSummary` via `fold_outcomes`. `cleanup_executor_cache` runs once
+    /// every thread has been joined, on every exit path except the
+    /// panic-reraise below: `handle.join().unwrap()` re-panics this thread
+    /// if a node thread itself panicked, which skips cleanup entirely (a
+    /// panicked node thread is already a bug at that point).
     ///
     /// Interim (Phase 2a Task 5) error semantics: collecting every thread
     /// before deciding anything fixes the historical leaked-threads bug,
     /// where the old fail-fast loop returned on the FIRST thread to error
     /// while every other node thread kept running unjoined. But to keep
-    /// `run_dag_executor` and every golden logging scenario byte-identical
-    /// until Task 6 threads `RunSummary` all the way through the runner,
+    /// `run_dag_executor` and every golden logging scenario byte-identical,
     /// this still surfaces the first-completed thread's raw
     /// `ExecutionError` via `Err(..)` — exactly what the old fail-fast loop
     /// returned (it always returned whichever thread finished first, and
-    /// threads are discovered/collected here in that same order). Task 6
-    /// removes this branch, always returns `Ok(RunSummary)`, and leaves
-    /// fatality to be decided by the caller from `failed_nodes`.
+    /// threads are discovered/collected here in that same order). Phase 2a
+    /// Task 6 threads the resulting `RunSummary` by value through
+    /// `run_dag_executor` and the runner/orchestrator call chain, but this
+    /// early-`Err` branch — and the invariant it guarantees today,
+    /// `Ok(_)` implies `failed_nodes.is_empty()` — is unchanged here; a
+    /// later task removes it and leaves fatality to be decided by the
+    /// caller from `failed_nodes`.
     pub fn join(&mut self) -> Result<RunSummary, ExecutionError> {
         let mut results: Vec<NodeThreadResult> = Vec::with_capacity(self.join_handles.len());
 

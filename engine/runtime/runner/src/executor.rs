@@ -1,6 +1,7 @@
 use std::{collections::HashMap, sync::Arc, time::Duration};
 
 use reearth_flow_common::future::SharedFuture;
+use reearth_flow_diagnostics::RunSummary;
 use reearth_flow_runtime::{
     event::EventHandler,
     executor::dag_executor::DagExecutor,
@@ -59,7 +60,7 @@ pub fn run_dag_executor(
     incremental_run_config: Option<IncrementalRunConfig>,
     event_handlers: Vec<Arc<dyn EventHandler>>,
     executor_id: uuid::Uuid,
-) -> Result<(), Error> {
+) -> Result<RunSummary, Error> {
     let shutdown_future = shutdown.create_shutdown_future();
 
     let mut join_handle = runtime.block_on(dag_executor.start(
@@ -74,13 +75,13 @@ pub fn run_dag_executor(
         event_handlers,
         executor_id,
     ))?;
-    // `join()` now collects every node thread and folds their diagnostics
-    // into a `RunSummary` (Phase 2a Task 5), but — as an interim measure —
-    // still returns `Err` with the same raw `ExecutionError` the old
-    // fail-fast loop would have returned when any node thread failed, so
-    // this call site (and every golden logging scenario) needs zero
-    // changes for now. A successful join can therefore never carry a
-    // non-empty `failed_nodes`.
+    // `join()` collects every node thread and folds their diagnostics into a
+    // `RunSummary` (Phase 2a Task 5), but — as an interim measure — still
+    // returns `Err` with the same raw `ExecutionError` the old fail-fast loop
+    // would have returned when any node thread failed, so every golden
+    // logging scenario stays byte-identical through this call site. A
+    // successful join can therefore never carry a non-empty `failed_nodes`
+    // (Phase 2a Task 5/6 invariant; a later task relaxes it).
     let join_result = join_handle.join().map_err(Error::ExecutionError);
     // Settle delay between join completion and notify. The historical 1000ms
     // was a defensive value (likely waiting for in-flight async tasks / output
@@ -91,12 +92,5 @@ pub fn run_dag_executor(
     // wall-clock cost without exposing the underlying race.
     std::thread::sleep(Duration::from_millis(100));
     join_handle.notify();
-    match join_result {
-        Ok(summary) => {
-            // Task 6 threads the summary through properly.
-            let _summary = summary;
-            Ok(())
-        }
-        Err(e) => Err(e),
-    }
+    join_result
 }

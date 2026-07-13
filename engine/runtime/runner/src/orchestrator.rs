@@ -6,6 +6,7 @@ use futures::stream::FuturesUnordered;
 use futures::{FutureExt, StreamExt};
 use once_cell::sync::Lazy;
 use reearth_flow_common::uri::Uri;
+use reearth_flow_diagnostics::RunSummary;
 use reearth_flow_runtime::event::EventHandler;
 use reearth_flow_runtime::executor_operation::ExecutorOptions;
 use reearth_flow_runtime::incremental::IncrementalRunConfig;
@@ -71,7 +72,7 @@ impl Orchestrator {
         incremental_run_config: Option<IncrementalRunConfig>,
         event_handlers: Vec<Arc<dyn EventHandler>>,
         sandbox_root: Uri,
-    ) -> Result<(), Error> {
+    ) -> Result<RunSummary, Error> {
         let executor = Executor {};
         let options = ExecutorOptions {
             channel_buffer_sz: *CHANNEL_BUFFER_SIZE,
@@ -116,11 +117,14 @@ impl Orchestrator {
 
         let mut futures = FuturesUnordered::new();
         futures.push(flatten_join_handle(pipeline_future).boxed());
+        let mut summary: Option<RunSummary> = None;
         while let Some(result) = futures.next().await {
-            result?;
+            summary = Some(result?);
         }
 
-        Ok(())
+        Ok(summary.expect(
+            "run_apps pushes exactly one pipeline future, so the loop above yields exactly one result",
+        ))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -135,7 +139,7 @@ impl Orchestrator {
         incremental_run_config: Option<IncrementalRunConfig>,
         event_handlers: Vec<Arc<dyn EventHandler>>,
         sandbox_root: Uri,
-    ) -> Result<(), Error> {
+    ) -> Result<RunSummary, Error> {
         let pipeline_shutdown = shutdown.clone();
         self.run_apps(
             workflow,
