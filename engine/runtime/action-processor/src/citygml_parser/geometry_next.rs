@@ -20,8 +20,7 @@ use super::parser::{raw_gml_id, RawChild, RawNode};
 use super::resolver::{
     FaceIds, GeomNode, GeomRegistry, GmlGeometryType, LeafIds, Role, Unresolved,
 };
-use super::srsname::parse_epsg;
-use super::utils::{local_name, srs_name_attr, GML_NS_311_ID, GML_NS_ID};
+use super::utils::{local_name, GML_NS_311_ID, GML_NS_ID};
 
 /// A geometry carved from a feature, tagged with the LOD of the property it came
 /// from (`None` for `tin`) and the `gml:id`s of its enclosing elements (nearest
@@ -140,26 +139,6 @@ fn strip(
     }
 }
 
-/// Error on a geometry-level `srsName` naming a CRS other than the file's: the
-/// reader can't honour a per-geometry override, so the geometry is left
-/// mis-referenced. A redundant restatement of the file CRS is silent.
-fn check_local_srs(node: &RawNode, frame: &CoordinateFrame) {
-    let Some(srs_name) = srs_name_attr(&node.attrs) else {
-        return;
-    };
-    let file_epsg = match frame {
-        CoordinateFrame::Crs(epsg) => Some(*epsg),
-        _ => None,
-    };
-    if file_epsg.is_some() && parse_epsg(srs_name) == file_epsg {
-        return;
-    }
-    tracing::error!(
-        srs_name,
-        "citygml geometry: local srsName is not honoured; geometry left in the file CRS"
-    );
-}
-
 /// Borrow a node's `gml:id`, if any.
 fn gml_id_ref(node: &RawNode) -> Option<&str> {
     node.attrs
@@ -214,7 +193,6 @@ fn geometry_node(
         );
         return None;
     };
-    check_local_srs(node, frame);
     let id = raw_gml_id(node);
     let file = node.source_url.as_str().to_string();
     let geom = if ty.is_inline() {
