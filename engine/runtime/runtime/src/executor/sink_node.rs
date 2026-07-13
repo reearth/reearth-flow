@@ -16,6 +16,7 @@ use tokio::runtime::Handle;
 use tracing::info_span;
 
 use reearth_flow_common::uri::Uri;
+use reearth_flow_diagnostics::Diagnostic;
 
 use crate::{
     builder_dag::NodeKind,
@@ -345,53 +346,38 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                             message,
                         );
 
-                        // Set final status based on overall success/failure
-                        let final_status = if has_failed {
-                            NodeStatus::Failed
-                        } else {
-                            NodeStatus::Completed
-                        };
-
-                        self.event_hub.send(Event::NodeStatusChanged {
-                            node_handle: self.node_handle.clone(),
-                            status: final_status,
-                            feature_id: None,
-                        });
-
                         let terminate_result = self.on_terminate(ctx);
 
                         if terminate_result.is_err() && !has_failed {
                             tracing::error!("Sink node {} termination failed", self.node_handle.id);
-                            self.event_hub.send(Event::NodeStatusChanged {
-                                node_handle: self.node_handle.clone(),
-                                status: NodeStatus::Failed,
-                                feature_id: None,
-                            });
                         }
 
-                        // If there was an error during processing, return that error
-                        // Otherwise, return the terminate result
-                        if let Some(e) = first_error {
-                            return Err(e);
-                        }
+                        // Unified failure precedence: a real error returned during
+                        // processing (`first_error`) always wins; a real error from
+                        // `on_terminate` (finish()/terminate-send) wins next; the
+                        // fatal slot is a swallowed-fatal backstop, consulted only
+                        // when nothing else failed. Exactly one
+                        // NodeStatusChanged{Failed|Completed} is emitted below, from
+                        // the single reconciled outcome.
+                        let fatal = self.diagnostics.inner.take_fatal();
+                        let (final_result, node_failed) = reconcile_sink_terminate_result(
+                            first_error,
+                            terminate_result,
+                            fatal,
+                            has_failed,
+                        );
 
-                        // Swallowed-fatal backstop: a `ctx.report()` call that resolved
-                        // to Fatal recorded a diagnostic in this node's fatal slot even
-                        // if the action's process()/finish() swallowed the returned Err.
-                        // Only checked once no other error already won above — an
-                        // observed processing/finish error always takes precedence.
-                        if let Some(diag) = self.diagnostics.inner.take_fatal() {
-                            if !has_failed {
-                                self.event_hub.send(Event::NodeStatusChanged {
-                                    node_handle: self.node_handle.clone(),
-                                    status: NodeStatus::Failed,
-                                    feature_id: None,
-                                });
-                            }
-                            return Err(ExecutionError::Sink(Box::new(diag)));
-                        }
+                        self.event_hub.send(Event::NodeStatusChanged {
+                            node_handle: self.node_handle.clone(),
+                            status: if node_failed {
+                                NodeStatus::Failed
+                            } else {
+                                NodeStatus::Completed
+                            },
+                            feature_id: None,
+                        });
 
-                        return terminate_result;
+                        return final_result;
                     }
                 }
             }
@@ -429,5 +415,126 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
             name: self.node_name.clone(),
         });
         result
+    }
+}
+
+/// Unified failure precedence for the sink drain end: a real returned error
+/// wins; the fatal slot is only a backstop for swallowed `report()` fatals.
+/// Precedence: `first_error` (from process()) > `terminate_result` Err
+/// (from finish()/terminate-send) > fatal slot. Returns (final_result, node_failed).
+fn reconcile_sink_terminate_result(
+    first_error: Option<ExecutionError>,
+    terminate_result: Result<(), ExecutionError>,
+    fatal: Option<Diagnostic>,
+    has_failed: bool,
+) -> (Result<(), ExecutionError>, bool) {
+    match (first_error, terminate_result, fatal) {
+        (Some(e), _, _) => (Err(e), true),
+        (None, Err(e), _) => (Err(e), true),
+        (None, Ok(()), Some(diag)) => (Err(ExecutionError::Sink(Box::new(diag))), true),
+        (None, Ok(()), None) => (Ok(()), has_failed),
+    }
+}
+
+#[cfg(test)]
+mod reconcile_tests {
+    use super::*;
+    use reearth_flow_diagnostics::{Diagnostic, DiagnosticDraft, ErrorCode};
+
+    fn dummy_diagnostic(message: &str) -> Diagnostic {
+        Diagnostic::from_draft(
+            DiagnosticDraft::new(ErrorCode::InternalInvariantViolation).with_message(message),
+            None,
+            None,
+            None,
+        )
+    }
+
+    fn first_err(message: &str) -> ExecutionError {
+        ExecutionError::CannotReceiveFromChannel(message.to_string())
+    }
+
+    fn term_err(message: &str) -> ExecutionError {
+        ExecutionError::CannotSendToChannel(message.to_string())
+    }
+
+    #[test]
+    fn no_errors_no_fatal_result_is_ok_and_node_failed_tracks_has_failed() {
+        for has_failed in [false, true] {
+            let (result, node_failed) =
+                reconcile_sink_terminate_result(None, Ok(()), None, has_failed);
+            assert!(result.is_ok());
+            assert_eq!(node_failed, has_failed);
+        }
+    }
+
+    #[test]
+    fn fatal_backstop_fires_only_when_nothing_else_failed() {
+        for has_failed in [false, true] {
+            let (result, node_failed) = reconcile_sink_terminate_result(
+                None,
+                Ok(()),
+                Some(dummy_diagnostic("fatal")),
+                has_failed,
+            );
+            assert!(node_failed);
+            match result {
+                Err(ExecutionError::Sink(e)) => assert!(e.to_string().contains("fatal")),
+                other => panic!("expected the fatal backstop to fire, got {other:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn terminate_err_wins_over_fatal_when_there_is_no_first_error() {
+        for fatal_present in [false, true] {
+            for has_failed in [false, true] {
+                let fatal = fatal_present.then(|| dummy_diagnostic("fatal"));
+                let (result, node_failed) = reconcile_sink_terminate_result(
+                    None,
+                    Err(term_err("terminate boom")),
+                    fatal,
+                    has_failed,
+                );
+                assert!(node_failed);
+                match result {
+                    Err(ExecutionError::CannotSendToChannel(msg)) => {
+                        assert_eq!(msg, "terminate boom")
+                    }
+                    other => panic!(
+                        "expected the real terminate error, not the fatal backstop, got {other:?}"
+                    ),
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn first_error_always_wins_over_terminate_result_and_fatal() {
+        for terminate_is_err in [false, true] {
+            for fatal_present in [false, true] {
+                for has_failed in [false, true] {
+                    let terminate_result = if terminate_is_err {
+                        Err(term_err("terminate boom"))
+                    } else {
+                        Ok(())
+                    };
+                    let fatal = fatal_present.then(|| dummy_diagnostic("fatal"));
+                    let (result, node_failed) = reconcile_sink_terminate_result(
+                        Some(first_err("first boom")),
+                        terminate_result,
+                        fatal,
+                        has_failed,
+                    );
+                    assert!(node_failed);
+                    match result {
+                        Err(ExecutionError::CannotReceiveFromChannel(msg)) => {
+                            assert_eq!(msg, "first boom")
+                        }
+                        other => panic!("expected first_error to win, got {other:?}"),
+                    }
+                }
+            }
+        }
     }
 }

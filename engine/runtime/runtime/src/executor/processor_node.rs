@@ -11,6 +11,7 @@ use futures::Future;
 use once_cell::sync::Lazy;
 use petgraph::graph::NodeIndex;
 use reearth_flow_common::uri::Uri;
+use reearth_flow_diagnostics::Diagnostic;
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use tokio::runtime::Handle;
@@ -302,18 +303,6 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                         message,
                     );
 
-                    let final_status = if has_failed.load(std::sync::atomic::Ordering::SeqCst) {
-                        NodeStatus::Failed
-                    } else {
-                        NodeStatus::Completed
-                    };
-
-                    self.event_hub.send(Event::NodeStatusChanged {
-                        node_handle: self.node_handle.clone(),
-                        status: final_status,
-                        feature_id: None,
-                    });
-
                     let mut finish_ctx = NodeContext::new(
                         self.env_vars.clone(),
                         self.storage_resolver.clone(),
@@ -327,32 +316,31 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                     finish_ctx.diagnostics = Some(self.diagnostics.clone());
                     let terminate_result = self.on_terminate(finish_ctx);
 
-                    if terminate_result.is_err()
-                        && !has_failed.load(std::sync::atomic::Ordering::SeqCst)
-                    {
-                        self.event_hub.send(Event::NodeStatusChanged {
-                            node_handle: self.node_handle.clone(),
-                            status: NodeStatus::Failed,
-                            feature_id: None,
-                        });
-                    }
+                    // Unified failure precedence: a real error returned by
+                    // `on_terminate` (finish() or the downstream terminate-send)
+                    // always wins over the fatal slot; the fatal slot is a
+                    // swallowed-fatal backstop, consulted only when
+                    // `on_terminate` succeeded and no earlier process() call
+                    // failed. Exactly one NodeStatusChanged{Failed|Completed}
+                    // is emitted below, from the single reconciled outcome.
+                    let fatal = self.diagnostics.inner.take_fatal();
+                    let (final_result, node_failed) = reconcile_terminate_result(
+                        terminate_result,
+                        fatal,
+                        has_failed.load(std::sync::atomic::Ordering::SeqCst),
+                    );
 
-                    // Swallowed-fatal backstop: a `ctx.report()` call that resolved to
-                    // Fatal recorded a diagnostic in this node's fatal slot even if the
-                    // action's process()/finish() swallowed the returned Err. Fail the
-                    // node here so a swallowed fatal can never pass as a successful run.
-                    if let Some(diag) = self.diagnostics.inner.take_fatal() {
-                        if !has_failed.load(std::sync::atomic::Ordering::SeqCst) {
-                            self.event_hub.send(Event::NodeStatusChanged {
-                                node_handle: self.node_handle.clone(),
-                                status: NodeStatus::Failed,
-                                feature_id: None,
-                            });
-                        }
-                        return Err(ExecutionError::Processor(Box::new(diag)));
-                    }
+                    self.event_hub.send(Event::NodeStatusChanged {
+                        node_handle: self.node_handle.clone(),
+                        status: if node_failed {
+                            NodeStatus::Failed
+                        } else {
+                            NodeStatus::Completed
+                        },
+                        feature_id: None,
+                    });
 
-                    return terminate_result;
+                    return final_result;
                 }
                 // Polling-backoff for the busy-wait that drains `thread_counter`
                 // after all inputs have terminated. A 100µs sleep keeps CPU usage
@@ -597,5 +585,91 @@ fn process(
         });
     } else {
         features_processed.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
+/// Unified failure precedence: a real returned error wins; the fatal slot is
+/// only a backstop for swallowed `report()` fatals. Returns (final_result, node_failed).
+fn reconcile_terminate_result(
+    terminate_result: Result<(), ExecutionError>,
+    fatal: Option<Diagnostic>,
+    has_failed: bool,
+) -> (Result<(), ExecutionError>, bool) {
+    match (terminate_result, fatal) {
+        (Err(e), _) => (Err(e), true),
+        (Ok(()), Some(diag)) => (Err(ExecutionError::Processor(Box::new(diag))), true),
+        (Ok(()), None) => (Ok(()), has_failed),
+    }
+}
+
+#[cfg(test)]
+mod reconcile_tests {
+    use super::*;
+    use reearth_flow_diagnostics::{Diagnostic, DiagnosticDraft, ErrorCode};
+
+    fn dummy_diagnostic(message: &str) -> Diagnostic {
+        Diagnostic::from_draft(
+            DiagnosticDraft::new(ErrorCode::InternalInvariantViolation).with_message(message),
+            None,
+            None,
+            None,
+        )
+    }
+
+    fn terminate_err(message: &str) -> ExecutionError {
+        ExecutionError::CannotSendToChannel(message.to_string())
+    }
+
+    #[test]
+    fn ok_no_fatal_result_is_ok_and_node_failed_tracks_has_failed() {
+        for has_failed in [false, true] {
+            let (result, node_failed) = reconcile_terminate_result(Ok(()), None, has_failed);
+            assert!(result.is_ok());
+            assert_eq!(node_failed, has_failed);
+        }
+    }
+
+    #[test]
+    fn ok_with_fatal_backstop_fires_regardless_of_has_failed() {
+        for has_failed in [false, true] {
+            let (result, node_failed) =
+                reconcile_terminate_result(Ok(()), Some(dummy_diagnostic("fatal")), has_failed);
+            assert!(node_failed);
+            match result {
+                Err(ExecutionError::Processor(e)) => assert!(e.to_string().contains("fatal")),
+                other => panic!("expected the fatal backstop to fire, got {other:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn err_no_fatal_the_real_error_wins_regardless_of_has_failed() {
+        for has_failed in [false, true] {
+            let (result, node_failed) =
+                reconcile_terminate_result(Err(terminate_err("boom")), None, has_failed);
+            assert!(node_failed);
+            match result {
+                Err(ExecutionError::CannotSendToChannel(msg)) => assert_eq!(msg, "boom"),
+                other => panic!("expected the real terminate error, got {other:?}"),
+            }
+        }
+    }
+
+    #[test]
+    fn err_with_fatal_the_real_error_still_wins_over_the_fatal_backstop() {
+        for has_failed in [false, true] {
+            let (result, node_failed) = reconcile_terminate_result(
+                Err(terminate_err("boom")),
+                Some(dummy_diagnostic("fatal")),
+                has_failed,
+            );
+            assert!(node_failed);
+            match result {
+                Err(ExecutionError::CannotSendToChannel(msg)) => assert_eq!(msg, "boom"),
+                other => panic!(
+                    "expected the real terminate error to win over the fatal backstop, got {other:?}"
+                ),
+            }
+        }
     }
 }
