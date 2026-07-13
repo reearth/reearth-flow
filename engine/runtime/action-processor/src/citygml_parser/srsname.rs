@@ -84,8 +84,14 @@ mod tests {
 
     #[test]
     fn ogc_http_uri() {
-        assert_eq!(code("http://www.opengis.net/def/crs/EPSG/0/6697"), Some(6697));
-        assert_eq!(code("https://www.opengis.net/def/crs/EPSG/0/4326"), Some(4326));
+        assert_eq!(
+            code("http://www.opengis.net/def/crs/EPSG/0/6697"),
+            Some(6697)
+        );
+        assert_eq!(
+            code("https://www.opengis.net/def/crs/EPSG/0/4326"),
+            Some(4326)
+        );
     }
 
     #[test]
