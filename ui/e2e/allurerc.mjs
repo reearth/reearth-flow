@@ -10,7 +10,7 @@ export default defineConfig({
         // https://allure.test.reearth.dev, and Cloud Run rejects responses
         // over 32MB — a single-file report with inlined attachments (session
         // videos, screenshots) exceeds that. To view a downloaded CI artifact
-        // locally, run `npx allure open allure-report`.
+        // locally, run `npm run allure:open` (from ui/e2e).
         singleFile: false,
         reportLanguage: "en",
       },
