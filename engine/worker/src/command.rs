@@ -280,14 +280,13 @@ impl RunWorkerCommand {
                         summary.failed_nodes,
                     );
                 }
-                if handler_success && summary_success {
-                    JobResult::Success
-                } else {
+                let job_result = derive_job_result(Some(summary_success), handler_success);
+                if matches!(job_result, JobResult::Failed) {
                     tracing::error!("Failed nodes: {:?}", node_failure_handler.failed_nodes());
-                    JobResult::Failed
                 }
+                job_result
             }
-            Err(_) => JobResult::Failed,
+            Err(_) => derive_job_result(None, false),
         };
         self.cleanup(&meta, &storage_resolver).await?;
         match &pubsub {
@@ -564,5 +563,67 @@ impl RunWorkerCommand {
     ) -> errors::Result<()> {
         upload_artifact(storage_resolver, meta).await?;
         Ok(())
+    }
+}
+
+/// Belt-and-braces `JobResult` derivation from the two independent
+/// success signals: `NodeFailureHandler` (event-driven) and `RunSummary`
+/// (by-value, thread-Result-driven).
+///
+/// `summary_success` encodes the outcome of `AsyncRunner::run_with_event_handler`:
+/// `Err(_)` (the run itself failed) maps to `None`, `Ok(summary)` maps to
+/// `Some(summary.failed_nodes.is_empty())`. `handler_all_success` is
+/// `NodeFailureHandler::all_success()`. The two signals are expected to
+/// agree; a job is only reported `Success` when both do.
+fn derive_job_result(summary_success: Option<bool>, handler_all_success: bool) -> JobResult {
+    match summary_success {
+        None => JobResult::Failed,
+        Some(summary_success) => {
+            if handler_all_success && summary_success {
+                JobResult::Success
+            } else {
+                JobResult::Failed
+            }
+        }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn derive_job_result_success_when_both_signals_agree_on_success() {
+        let result = derive_job_result(Some(true), true);
+        assert!(matches!(result, JobResult::Success));
+    }
+
+    #[test]
+    fn derive_job_result_failed_when_handler_catches_what_summary_missed() {
+        // scenario-06 divergence: NodeFailureHandler saw a failure that
+        // RunSummary's thread-Result-driven fold did not.
+        let result = derive_job_result(Some(true), false);
+        assert!(matches!(result, JobResult::Failed));
+    }
+
+    #[test]
+    fn derive_job_result_failed_when_summary_catches_what_handler_missed() {
+        let result = derive_job_result(Some(false), true);
+        assert!(matches!(result, JobResult::Failed));
+    }
+
+    #[test]
+    fn derive_job_result_failed_when_both_signals_agree_on_failure() {
+        let result = derive_job_result(Some(false), false);
+        assert!(matches!(result, JobResult::Failed));
+    }
+
+    #[test]
+    fn derive_job_result_failed_when_run_itself_errored() {
+        let result = derive_job_result(None, true);
+        assert!(matches!(result, JobResult::Failed));
+
+        let result = derive_job_result(None, false);
+        assert!(matches!(result, JobResult::Failed));
     }
 }

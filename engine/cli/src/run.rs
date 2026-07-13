@@ -1,6 +1,7 @@
 use std::{collections::HashMap, io, str::FromStr, sync::Arc};
 
 use clap::{Arg, ArgAction, ArgMatches, Command};
+use reearth_flow_diagnostics::RunSummary;
 use reearth_flow_runner::runner::Runner;
 use reearth_flow_runtime::incremental::IncrementalRunConfig;
 use reearth_flow_state::State;
@@ -344,7 +345,10 @@ impl RunCliCommand {
     /// `Ok(_)` implies `failed_nodes.is_empty()`), the failed-node list is
     /// dead today but kept ready for when a later task relaxes that
     /// invariant.
-    fn print_run_summary(summary: &reearth_flow_diagnostics::RunSummary) {
+    fn print_run_summary(summary: &RunSummary) {
+        // Intentionally terse: prints only `diagnostic.message`, not
+        // `Diagnostic`'s fuller `Display` (severity/location/etc.) — this is
+        // a one-line-per-item CLI summary, not a full diagnostic report.
         for diagnostic in &summary.aggregated_diagnostics {
             println!("warning: {}", diagnostic.message);
         }
