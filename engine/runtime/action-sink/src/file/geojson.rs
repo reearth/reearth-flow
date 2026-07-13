@@ -134,6 +134,7 @@ impl Sink for GeoJsonWriter {
         self.buffer.entry(key).or_default().push(feature.clone());
         Ok(())
     }
+
     #[cfg(not(feature = "new-geometry"))]
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
         let path = self.output.as_str();
@@ -143,31 +144,63 @@ impl Sink for GeoJsonWriter {
             } else {
                 format!("{}/{}.geojson", path, to_hash(key.to_string().as_str()))
             };
+
+            // Keep the sandbox gate at flush time via SinkOutput, then delegate
+            // the actual serialization/write to the shared helper.
             let out = crate::SinkOutput::new(&ctx.sandbox_root, &out_path, &ctx.storage_resolver)
                 .map_err(crate::errors::SinkError::geojson_writer)?;
-
-            let mut buffer = Vec::from(b"{\"type\":\"FeatureCollection\",\"features\":[");
-
-            let geojsons: Vec<geojson::Feature> = features
-                .iter()
-                .flat_map(|f| {
-                    let geojsons: Option<Vec<geojson::Feature>> = f.clone().try_into().ok();
-                    geojsons
-                })
-                .flatten()
-                .collect();
-            for (index, geojson) in geojsons.iter().enumerate() {
-                if index > 0 {
-                    buffer.push(b',');
-                }
-                let bytes = serde_json::to_vec(&geojson)
-                    .map_err(|e| crate::errors::SinkError::GeoJsonWriter(format!("{e}")))?;
-                buffer.extend(bytes);
-            }
-            buffer.extend(Vec::from(b"]}\n"));
-            out.write(Bytes::from(buffer))
-                .map_err(crate::errors::SinkError::geojson_writer)?;
+            write_geojson_to_storage(&out, features)?;
         }
         Ok(())
     }
+}
+
+/// Serialize `features` as a GeoJSON `FeatureCollection` and write it to `output`.
+///
+/// This is the single canonical implementation shared by both the `GeoJsonWriter`
+/// sink and the `FeatureGeoJsonWriter` processor. It is gated on
+/// `not(new-geometry)` because it relies on `TryFrom<Feature> for
+/// Vec<geojson::Feature>`, which is only provided in the current geometry world.
+///
+/// It takes a [`SinkOutput`](crate::SinkOutput) rather than a bare `Uri` so the
+/// sandbox gate stays coupled to the write: callers must go through
+/// `SinkOutput::new` (which validates the path against the sandbox root and
+/// acquires the storage backend) before they can reach this helper.
+#[cfg(not(feature = "new-geometry"))]
+pub fn write_geojson_to_storage(
+    output: &crate::SinkOutput,
+    features: &[Feature],
+) -> Result<(), SinkError> {
+    let mut geojson_features: Vec<geojson::Feature> = Vec::with_capacity(features.len());
+    let mut failed = 0usize;
+
+    for feature in features {
+        match TryInto::<Vec<geojson::Feature>>::try_into(feature.clone()) {
+            Ok(mut converted) => geojson_features.append(&mut converted),
+            Err(e) => {
+                failed += 1;
+                tracing::warn!(feature_id = %feature.id, error = %e, "failed to convert feature to GeoJSON; omitting it");
+            }
+        }
+    }
+
+    let feature_collection = geojson::FeatureCollection {
+        bbox: None,
+        features: geojson_features,
+        foreign_members: None,
+    };
+    let buffer = serde_json::to_vec(&feature_collection)
+        .map_err(|e| SinkError::GeoJsonWriter(format!("{e}")))?;
+    output
+        .write(Bytes::from(buffer))
+        .map_err(SinkError::geojson_writer)?;
+
+    if failed > 0 {
+        tracing::warn!(
+            failed,
+            "{failed} feature(s) could not be converted to GeoJSON and were omitted from {}",
+            output.uri()
+        );
+    }
+    Ok(())
 }
