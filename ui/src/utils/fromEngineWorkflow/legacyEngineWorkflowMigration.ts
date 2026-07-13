@@ -17,7 +17,9 @@ export const isLegacyEngineWorkflow = (
 ): boolean =>
   engineWorkflow.graphs?.some((graph) =>
     graph.nodes?.some(
-      (node) => node.action != null && node.action in LEGACY_ACTION_NAMES,
+      (node) =>
+        node.action != null &&
+        Object.prototype.hasOwnProperty.call(LEGACY_ACTION_NAMES, node.action),
     ),
   ) ?? false;
 

@@ -68,8 +68,14 @@ export function scanLegacyPorts(
         const yData = (yNode as Y.Map<unknown>).get("data");
         if (!(yData instanceof Y.Map)) return;
         const officialName = String(yData.get("officialName"));
-        if (officialName === "InputRouter" || officialName === "OutputRouter")
+        if (
+          officialName === "InputRouter" ||
+          officialName === "OutputRouter" ||
+          officialName === "Input Router" ||
+          officialName === "Output Router"
+        ) {
           routerNodeIds.add(nodeId);
+        }
         const params = yData.get("params");
         customInputPorts.set(
           nodeId,
@@ -103,19 +109,20 @@ export function scanLegacyPorts(
 
     const yEdges = yWorkflow.get("edges");
     if (yEdges instanceof Y.Map) {
+      const edgeEnds = [
+        {
+          handleKey: "sourceHandle",
+          nodeKey: "source",
+          customPorts: customOutputPorts,
+        },
+        {
+          handleKey: "targetHandle",
+          nodeKey: "target",
+          customPorts: customInputPorts,
+        },
+      ];
+
       yEdges.forEach((yEdge) => {
-        const edgeEnds = [
-          {
-            handleKey: "sourceHandle",
-            nodeKey: "source",
-            customPorts: customOutputPorts,
-          },
-          {
-            handleKey: "targetHandle",
-            nodeKey: "target",
-            customPorts: customInputPorts,
-          },
-        ];
         for (const { handleKey, nodeKey, customPorts } of edgeEnds) {
           const handle = (yEdge as Y.Map<unknown>).get(handleKey);
           if (handle === undefined || String(handle) !== LEGACY_PORT) continue;
