@@ -8,6 +8,7 @@ use glam::{DMat4, DVec3, DVec4};
 use indexmap::IndexSet;
 use nusamai_projection::cartesian::geodetic_to_geocentric;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
+use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
 use reearth_flow_gltf::{BoundingVolume, MetadataEncoder};
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
@@ -181,7 +182,7 @@ impl Sink for GltfWriter {
                 self.process_citygml(city_gml, feature)?;
             }
             reearth_flow_types::geometry::GeometryValue::FlowGeometry3D(geo) => {
-                self.process_flow_geometry_3d(geo, feature)?;
+                self.process_flow_geometry_3d(&ctx, geo, feature)?;
             }
             _ => {
                 return Err(SinkError::GltfWriter(
@@ -485,6 +486,7 @@ impl GltfWriter {
 
     fn process_flow_geometry_3d(
         &mut self,
+        ctx: &ExecutorContext,
         geo: &reearth_flow_geometry::types::geometry::Geometry3D<f64>,
         feature: &reearth_flow_types::Feature,
     ) -> Result<(), BoxedError> {
@@ -493,7 +495,7 @@ impl GltfWriter {
         // Only support Solid, Polygon, and MultiPolygon for now
         match geo {
             Geometry3D::Solid(solid) => {
-                self.convert_solid_to_gltf(solid, feature)?;
+                self.convert_solid_to_gltf(ctx, solid, feature)?;
             }
             Geometry3D::Polygon(polygon) => {
                 self.convert_polygon_to_gltf(polygon, feature)?;
@@ -597,6 +599,7 @@ impl GltfWriter {
 
     fn convert_solid_to_gltf(
         &mut self,
+        ctx: &ExecutorContext,
         solid: &reearth_flow_geometry::types::solid::Solid3D<f64>,
         feature: &reearth_flow_types::Feature,
     ) -> Result<(), BoxedError> {
@@ -606,6 +609,7 @@ impl GltfWriter {
         let faces = solid.all_faces();
 
         if faces.is_empty() {
+            ctx.report(DiagnosticDraft::new(ErrorCode::GltfZeroFaceSolid))?;
             return Ok(());
         }
 
@@ -721,5 +725,69 @@ mod tests {
             result.is_err(),
             "build must error when flowExpr references a missing env var"
         );
+    }
+}
+
+#[cfg(test)]
+mod diagnostics_tests {
+    use std::sync::Arc;
+
+    use indexmap::IndexMap;
+    use reearth_flow_geometry::types::solid::Solid3D;
+    use reearth_flow_runtime::diagnostics::NodeDiagnosticsHandle;
+    use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
+    use reearth_flow_runtime::node::{NodeHandle, FEATURES_PORT};
+    use reearth_flow_types::{AttributeValue, Feature};
+
+    use super::*;
+
+    /// `NodeId` is `pub(super)` inside `reearth_flow_runtime` (crate-private),
+    /// so an external crate cannot name it directly. Its `Deserialize` impl
+    /// is still public, so we build one via inference through `NodeHandle`'s
+    /// public `id` field instead of naming the type.
+    fn test_node_handle(id: &str) -> NodeHandle {
+        NodeHandle {
+            id: serde_json::from_value(serde_json::Value::String(id.to_string())).unwrap(),
+        }
+    }
+
+    fn test_writer() -> GltfWriter {
+        GltfWriter {
+            output: String::new(),
+            classified_features: Default::default(),
+            attach_texture: true,
+            draco_compression: false,
+            schema_key: None,
+        }
+    }
+
+    #[test]
+    fn zero_face_solid_is_reported_not_silently_dropped() {
+        let handle = Arc::new(NodeDiagnosticsHandle::new(
+            test_node_handle("n1"),
+            "writer".into(),
+            "GltfWriter".into(),
+            Arc::default(),
+        ));
+        let node_ctx = NodeContext::default();
+        let feature = Feature::from(IndexMap::<String, AttributeValue>::new());
+        let mut ctx = ExecutorContext::new_with_node_context_feature_and_port(
+            &node_ctx,
+            feature.clone(),
+            FEATURES_PORT.clone(),
+        );
+        ctx.diagnostics = Some(handle.clone());
+
+        let solid: Solid3D<f64> = Solid3D::new_with_faces(vec![]);
+
+        let mut writer = test_writer();
+        writer
+            .convert_solid_to_gltf(&ctx, &solid, &feature)
+            .unwrap();
+
+        let summaries = handle.inner.drain_summaries();
+        assert_eq!(summaries.len(), 1);
+        assert_eq!(summaries[0].aggregated.as_ref().unwrap().count, 1);
+        assert!(summaries[0].message.contains("gltf.zero_face_solid"));
     }
 }
