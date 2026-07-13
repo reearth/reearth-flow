@@ -786,7 +786,7 @@ fn target_key(reference: &str, base: &Url) -> Option<SurfaceKey> {
 
 #[cfg(test)]
 mod tests {
-    use crate::citygml_parser::parser::Parser;
+    use crate::citygml_parser::parser::{Parser, ParserOutput};
     use crate::citygml_parser::resolver::resolve_root;
     use reearth_flow_geometry::appearance::{
         Appearance, Material, Sampler, Side, ThemeId, UvSet, UvSource, WrapMode,
@@ -817,7 +817,14 @@ mod tests {
         parser
             .parse(xml.as_bytes(), &Url::parse("file:///dir/test.gml").unwrap())
             .unwrap();
-        let (pending, raw_registry, geom_registry, appearance_members, srs, _ns) = parser.finish();
+        let ParserOutput {
+            pending,
+            raw_registry,
+            geom_registry,
+            appearance_members,
+            srs_by_file: srs,
+            ..
+        } = parser.finish();
         let appearance = super::build_index(&appearance_members, &raw_registry);
         assert!(!appearance.is_empty(), "appearance should be indexed");
         let feature = pending.into_iter().next().expect("one feature");
@@ -1461,7 +1468,14 @@ mod tests {
         parser
             .parse(xml.as_bytes(), &Url::parse("file:///dir/test.gml").unwrap())
             .unwrap();
-        let (pending, raw_registry, geom_registry, appearance_members, srs, _ns) = parser.finish();
+        let ParserOutput {
+            pending,
+            raw_registry,
+            geom_registry,
+            appearance_members,
+            srs_by_file: srs,
+            ..
+        } = parser.finish();
         let appearance = super::build_index(&appearance_members, &raw_registry);
         let feature = pending.into_iter().next().expect("one feature");
         let geom = resolve_root(&feature.geoms[0].node, &geom_registry, &appearance, &srs)
@@ -1697,7 +1711,14 @@ mod tests {
         parser
             .parse(xml.as_bytes(), &Url::parse("file:///dir/test.gml").unwrap())
             .unwrap();
-        let (pending, raw_registry, geom_registry, appearance_members, srs, _ns) = parser.finish();
+        let ParserOutput {
+            pending,
+            raw_registry,
+            geom_registry,
+            appearance_members,
+            srs_by_file: srs,
+            ..
+        } = parser.finish();
         let appearance = super::build_index(&appearance_members, &raw_registry);
         let feature = pending.into_iter().next().expect("one feature");
         let geom = resolve_root(&feature.geoms[0].node, &geom_registry, &appearance, &srs)
@@ -1799,7 +1820,14 @@ mod tests {
                 &Url::parse("file:///dir/b.gml").unwrap(),
             )
             .unwrap();
-        let (pending, raw_registry, geom_registry, appearance_members, srs, _ns) = parser.finish();
+        let ParserOutput {
+            pending,
+            raw_registry,
+            geom_registry,
+            appearance_members,
+            srs_by_file: srs,
+            ..
+        } = parser.finish();
         let appearance = super::build_index(&appearance_members, &raw_registry);
         let features: Vec<_> = pending.into_iter().collect();
         assert_eq!(features.len(), 2);

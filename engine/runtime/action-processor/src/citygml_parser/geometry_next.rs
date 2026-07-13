@@ -567,7 +567,7 @@ fn text_content(node: &RawNode) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::citygml_parser::parser::Parser;
+    use crate::citygml_parser::parser::{Parser, ParserOutput};
     use crate::citygml_parser::resolver::resolve_root_bare;
     use url::Url;
 
@@ -589,7 +589,11 @@ mod tests {
         let url = Url::parse("file:///test.gml").unwrap();
         let mut parser = Parser::new();
         parser.parse(xml.as_bytes(), &url).unwrap();
-        let (pending, _raw, geom_registry, _app, _srs, _ns) = parser.finish();
+        let ParserOutput {
+            pending,
+            geom_registry,
+            ..
+        } = parser.finish();
         let feature = pending.into_iter().next().expect("one feature");
         (feature.root, feature.geoms, geom_registry)
     }
@@ -977,7 +981,7 @@ mod tests {
         parser
             .parse(xml.as_bytes(), &Url::parse("file:///test.gml").unwrap())
             .unwrap();
-        let (_pending, _raw, geom_registry, _app, _srs, _ns) = parser.finish();
+        let ParserOutput { geom_registry, .. } = parser.finish();
         let node = geom_registry
             .get(&("file:///test.gml".to_string(), "poly1".to_string()))
             .expect("polygon registered under its GML 3.1 gml:id");

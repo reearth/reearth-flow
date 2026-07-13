@@ -36,6 +36,22 @@ pub(crate) enum RawChild {
 
 pub(crate) type RawRegistry = HashMap<RawNodeKey, Arc<RawNode>>;
 
+/// Everything [`Parser::finish`] hands off to pass-2 reference resolution.
+pub(super) struct ParserOutput {
+    /// The features awaiting geometry resolution.
+    pub(super) pending: Vec<PendingFeature>,
+    /// Attribute trees, keyed for `xlink:href` lookup.
+    pub(super) raw_registry: RawRegistry,
+    /// Parsed geometry nodes, keyed for `xlink:href` lookup.
+    pub(super) geom_registry: GeomRegistry,
+    /// Retained appearance member roots.
+    pub(super) appearance_members: Vec<Arc<RawNode>>,
+    /// Each file's CRS, parsed from its `gml:boundedBy/gml:Envelope/@srsName`.
+    pub(super) srs_by_file: HashMap<String, EpsgCode>,
+    /// Interned namespace URIs.
+    pub(super) ns_registry: NamespaceRegistry,
+}
+
 #[derive(Debug, thiserror::Error)]
 pub enum ParseError {
     #[error("XML error: {0}")]
@@ -215,27 +231,16 @@ impl Parser {
         Ok(())
     }
 
-    /// Consume the parser and return the pending features, the attribute and
-    /// geometry registries, the retained appearance member roots, each file's CRS,
-    /// and the namespace registry for pass-2 resolution.
-    pub(super) fn finish(
-        self,
-    ) -> (
-        Vec<PendingFeature>,
-        RawRegistry,
-        GeomRegistry,
-        Vec<Arc<RawNode>>,
-        HashMap<String, EpsgCode>,
-        NamespaceRegistry,
-    ) {
-        (
-            self.pending,
-            self.raw_registry,
-            self.geom_registry,
-            self.appearance_members,
-            self.srs_by_file,
-            self.ns_registry,
-        )
+    /// Consume the parser and hand off its state for pass-2 resolution.
+    pub(super) fn finish(self) -> ParserOutput {
+        ParserOutput {
+            pending: self.pending,
+            raw_registry: self.raw_registry,
+            geom_registry: self.geom_registry,
+            appearance_members: self.appearance_members,
+            srs_by_file: self.srs_by_file,
+            ns_registry: self.ns_registry,
+        }
     }
 }
 
@@ -659,7 +664,7 @@ mod tests {
 
         let mut parser = Parser::new();
         parser.parse(xml, &dummy_url()).unwrap();
-        let (pending, _, _, _, _, _) = parser.finish();
+        let ParserOutput { pending, .. } = parser.finish();
 
         assert_eq!(pending.len(), 2);
         assert_eq!(raw_gml_id(&pending[0].root), Some("bldg001".to_string()));
@@ -681,7 +686,11 @@ mod tests {
 
         let mut parser = Parser::new();
         parser.parse(xml, &dummy_url()).unwrap();
-        let (pending, raw_reg, _, _, _, _) = parser.finish();
+        let ParserOutput {
+            pending,
+            raw_registry: raw_reg,
+            ..
+        } = parser.finish();
         assert_eq!(raw_gml_id(&pending[0].root), Some("bldg001".to_string()));
         assert!(raw_reg.contains_key(&(dummy_url().to_string(), "bldg001".to_string())));
     }
@@ -702,7 +711,10 @@ mod tests {
 
         let mut parser = Parser::new();
         parser.parse(xml, &dummy_url()).unwrap();
-        let (_, raw_reg, _, _, _, _) = parser.finish();
+        let ParserOutput {
+            raw_registry: raw_reg,
+            ..
+        } = parser.finish();
 
         let url = dummy_url().to_string();
         assert!(raw_reg.contains_key(&(url.clone(), "bldg001".to_string())));
@@ -727,7 +739,10 @@ mod tests {
         let mut parser = Parser::new();
         parser.parse(xml, &url_a).unwrap();
         parser.parse(xml, &url_b).unwrap();
-        let (_, raw_reg, _, _, _, _) = parser.finish();
+        let ParserOutput {
+            raw_registry: raw_reg,
+            ..
+        } = parser.finish();
 
         assert_eq!(raw_reg.len(), 2);
         assert!(raw_reg.contains_key(&(url_a.to_string(), "shared001".to_string())));
@@ -756,7 +771,7 @@ mod tests {
 
         let mut parser = Parser::new();
         parser.parse(xml, &dummy_url()).unwrap();
-        let (pending, _, _, _, _, _) = parser.finish();
+        let ParserOutput { pending, .. } = parser.finish();
         assert_eq!(pending.len(), 1);
     }
 
@@ -789,7 +804,7 @@ mod tests {
 
         let mut parser = Parser::new();
         parser.parse(xml, &dummy_url()).unwrap();
-        let (pending, _, _, _, _, _) = parser.finish();
+        let ParserOutput { pending, .. } = parser.finish();
         assert_eq!(pending.len(), 1);
     }
 
@@ -853,7 +868,7 @@ mod tests {
 
         let mut parser = Parser::new();
         parser.parse(xml, &dummy_url()).unwrap();
-        let (pending, _, _, _, _, _) = parser.finish();
+        let ParserOutput { pending, .. } = parser.finish();
 
         assert_eq!(
             pending[0]
