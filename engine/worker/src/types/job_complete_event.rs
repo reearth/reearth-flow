@@ -44,8 +44,19 @@ pub struct JobCompleteEvent {
     /// Absent (not `null`) when there is no `RunSummary` to report (the
     /// runner returned `Err`), so old subscribers that don't know about
     /// these fields see exactly the pre-Task-10 wire shape.
+    ///
+    /// Consumers MUST NOT infer job failure from this field: `result:
+    /// "failed"` with an empty or absent `failedNodes` is common (legacy
+    /// per-feature errors don't produce structured failed nodes yet; the
+    /// regex log fallback remains the failure-detail source until they are
+    /// converted). Absent = run aborted before a summary existed; empty =
+    /// run completed with no structured node failures recorded.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub failed_nodes: Option<Vec<WireDiagnostic>>,
+    /// finish()-time diagnostics aggregated across all nodes. Same
+    /// absent-vs-empty contract as `failed_nodes` (absent = run aborted
+    /// before a summary existed, empty = run completed with nothing to
+    /// report) — do not infer job failure from this field either.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub aggregated_diagnostics: Option<Vec<WireDiagnostic>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
