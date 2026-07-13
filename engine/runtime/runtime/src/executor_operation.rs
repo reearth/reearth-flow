@@ -251,6 +251,7 @@ impl ExecutorContext {
             node_name: self.diagnostics.as_ref().map(|h| h.node_name.clone()),
             message: diagnostic.to_string(),
         });
+        self.event_hub.diagnostic(diagnostic.clone());
     }
 
     /// Report a feature-disposition decision (drop / reject / fail).
@@ -432,13 +433,20 @@ impl NodeContext {
     pub fn report_drop(&self, code: ErrorCode, feature_id: Option<uuid::Uuid>) {
         match &self.diagnostics {
             Some(handle) => handle.report_drop(code, feature_id),
-            None => self.event_hub.send(crate::event::Event::Log {
-                level: tracing::Level::WARN,
-                span: None,
-                node_handle: None,
-                node_name: None,
-                message: format!("{} ({})", code.default_message(), code),
-            }),
+            None => {
+                self.event_hub.send(crate::event::Event::Log {
+                    level: tracing::Level::WARN,
+                    span: None,
+                    node_handle: None,
+                    node_name: None,
+                    message: format!("{} ({})", code.default_message(), code),
+                });
+                // Structured twin: never silent even on a context without a
+                // handle (tests/legacy paths), same guarantee as `report()`.
+                let diagnostic =
+                    Diagnostic::from_draft(DiagnosticDraft::new(code), None, None, feature_id);
+                self.event_hub.diagnostic(diagnostic);
+            }
         }
     }
 }
@@ -545,9 +553,11 @@ mod diagnostics_tests {
         let mut receiver = ctx.event_hub.sender.subscribe();
         ctx.warn_once(DiagnosticDraft::new(ErrorCode::GltfZeroFaceSolid));
         ctx.warn_once(DiagnosticDraft::new(ErrorCode::GltfZeroFaceSolid));
-        // exactly one immediate Event::Log, nothing aggregated
-        let first = receiver.try_recv().expect("one immediate warn event");
+        // exactly one immediate Event::Log + one Event::Diagnostic, nothing aggregated
+        let first = receiver.try_recv().expect("one immediate log event");
         assert!(matches!(first, crate::event::Event::Log { .. }));
+        let second = receiver.try_recv().expect("one immediate diagnostic event");
+        assert!(matches!(second, crate::event::Event::Diagnostic(_)));
         assert!(receiver.try_recv().is_err());
         assert!(handle.inner.drain_summaries().is_empty());
     }
@@ -563,5 +573,39 @@ mod diagnostics_tests {
             summaries[0].effective_disposition,
             Some(Disposition::WarnDrop)
         );
+    }
+
+    #[test]
+    fn report_on_no_handle_context_emits_log_and_diagnostic() {
+        let node_ctx = NodeContext::default();
+        let ctx = ExecutorContext::new_with_node_context_feature_and_port(
+            &node_ctx,
+            Feature::from(IndexMap::<String, AttributeValue>::new()),
+            FEATURES_PORT.clone(),
+        );
+        // ctx.diagnostics is None (never wired to a handle)
+        let mut receiver = ctx.event_hub.sender.subscribe();
+        let disp = ctx
+            .report(DiagnosticDraft::new(ErrorCode::Cesium3dtilesEmptyGeometry))
+            .unwrap();
+        assert_eq!(disp, Disposition::WarnDrop);
+        // never-silent structured twin: one Event::Log + one Event::Diagnostic
+        let first = receiver.try_recv().expect("one immediate log event");
+        assert!(matches!(first, crate::event::Event::Log { .. }));
+        let second = receiver.try_recv().expect("one immediate diagnostic event");
+        assert!(matches!(second, crate::event::Event::Diagnostic(_)));
+        assert!(receiver.try_recv().is_err());
+    }
+
+    #[test]
+    fn report_drop_on_no_handle_node_context_emits_log_and_diagnostic() {
+        let node_ctx = NodeContext::default();
+        let mut receiver = node_ctx.event_hub.sender.subscribe();
+        node_ctx.report_drop(ErrorCode::CitygmlEmptyGeometry, None);
+        let first = receiver.try_recv().expect("one immediate log event");
+        assert!(matches!(first, crate::event::Event::Log { .. }));
+        let second = receiver.try_recv().expect("one immediate diagnostic event");
+        assert!(matches!(second, crate::event::Event::Diagnostic(_)));
+        assert!(receiver.try_recv().is_err());
     }
 }

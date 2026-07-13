@@ -38,6 +38,10 @@ pub enum Event {
         status: NodeStatus,
         feature_id: Option<uuid::Uuid>,
     },
+    /// Structured twin of a diagnostic-derived `Event::Log` line. `Arc`'d
+    /// because `EventHub` is a broadcast channel — every subscriber gets its
+    /// own clone of `Event`, and `Diagnostic` is large.
+    Diagnostic(Arc<reearth_flow_diagnostics::Diagnostic>),
 }
 
 #[derive(Debug)]
@@ -54,6 +58,12 @@ impl EventHub {
 
     pub fn send(&self, event: Event) {
         let _ = self.sender.send(event);
+    }
+
+    /// Send a structured diagnostic as an `Event::Diagnostic`, wrapping it in
+    /// the `Arc` the broadcast channel needs to clone cheaply per receiver.
+    pub fn diagnostic(&self, diagnostic: reearth_flow_diagnostics::Diagnostic) {
+        self.send(Event::Diagnostic(Arc::new(diagnostic)));
     }
 
     pub fn info_log<T: ToString>(&self, span: Option<Span>, message: T) {

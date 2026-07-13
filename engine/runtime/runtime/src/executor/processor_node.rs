@@ -489,7 +489,8 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
         // whether finish() itself succeeded — reports recorded during
         // process()/finish() must not be silently dropped just because
         // finish() failed.
-        crate::diagnostics::emit_summaries(&self.event_hub, &self.diagnostics);
+        // Returned Vec is consumed by a later task (RunSummary, Task 5).
+        let _summaries = crate::diagnostics::emit_summaries(&self.event_hub, &self.diagnostics);
         // Flush any features that were spilled to disk during finish().
         // These are sent as FileBackedOps which the downstream already handles.
         channel_manager.flush_spill_files(&ctx.as_context());

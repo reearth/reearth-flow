@@ -409,7 +409,8 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
         // whether finish() itself succeeded — reports recorded during
         // process()/finish() must not be silently dropped just because
         // finish() failed.
-        crate::diagnostics::emit_summaries(&self.event_hub, &self.diagnostics);
+        // Returned Vec is consumed by a later task (RunSummary, Task 5).
+        let _summaries = crate::diagnostics::emit_summaries(&self.event_hub, &self.diagnostics);
         self.event_hub.send(Event::SinkFinished {
             node: self.node_handle.clone(),
             name: self.node_name.clone(),

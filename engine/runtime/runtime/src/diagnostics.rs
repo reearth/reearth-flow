@@ -38,10 +38,17 @@ impl NodeDiagnosticsHandle {
     }
 }
 
-/// Drain the node's buckets and emit one WARN `Event::Log` per (code, kind)
-/// summary. Called once per node after `finish()`.
-pub fn emit_summaries(event_hub: &EventHub, handle: &NodeDiagnosticsHandle) {
-    for summary in handle.inner.drain_summaries() {
+/// Drain the node's buckets once and, for each (code, kind) summary, emit
+/// both the existing WARN `Event::Log` (unchanged — keeps `.log`/golden
+/// fixtures byte-identical) and a structured `Event::Diagnostic` twin.
+/// Called once per node after `finish()`. Returns the drained summaries for
+/// callers that need them (e.g. RunSummary, Task 5).
+pub fn emit_summaries(
+    event_hub: &EventHub,
+    handle: &NodeDiagnosticsHandle,
+) -> Vec<reearth_flow_diagnostics::Diagnostic> {
+    let summaries = handle.inner.drain_summaries();
+    for summary in &summaries {
         event_hub.send(Event::Log {
             level: tracing::Level::WARN,
             span: None,
@@ -49,5 +56,65 @@ pub fn emit_summaries(event_hub: &EventHub, handle: &NodeDiagnosticsHandle) {
             node_name: Some(handle.node_name.clone()),
             message: summary.message.clone(),
         });
+        event_hub.diagnostic(summary.clone());
+    }
+    summaries
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::node::{NodeHandle, NodeId};
+    use reearth_flow_diagnostics::{DiagnosticKind, ErrorCode};
+
+    fn handle() -> NodeDiagnosticsHandle {
+        NodeDiagnosticsHandle::new(
+            NodeHandle::new(NodeId::new("node-1".to_string())),
+            "writer-1".to_string(),
+            "Cesium 3D Tiles Writer".to_string(),
+            Arc::default(),
+        )
+    }
+
+    #[test]
+    fn emit_summaries_sends_one_log_and_one_diagnostic_per_summary_and_drains_once() {
+        let handle = handle();
+        handle.inner.record(
+            DiagnosticKind::WarnDrop,
+            ErrorCode::Cesium3dtilesEmptyGeometry,
+            None,
+        );
+        handle.inner.record(
+            DiagnosticKind::WarnDrop,
+            ErrorCode::Cesium3dtilesNonCitygmlGeometry,
+            None,
+        );
+        let event_hub = EventHub::new(30);
+        let mut receiver = event_hub.sender.subscribe();
+
+        let summaries = emit_summaries(&event_hub, &handle);
+        assert_eq!(summaries.len(), 2);
+
+        let mut log_count = 0;
+        let mut diagnostic_count = 0;
+        for _ in 0..4 {
+            match receiver.try_recv().expect("expected event") {
+                Event::Log { .. } => log_count += 1,
+                Event::Diagnostic(d) => {
+                    diagnostic_count += 1;
+                    assert_eq!(d.aggregated.as_ref().unwrap().count, 1);
+                }
+                other => panic!("unexpected event: {other:?}"),
+            }
+        }
+        assert_eq!(log_count, 2);
+        assert_eq!(diagnostic_count, 2);
+        assert!(receiver.try_recv().is_err());
+
+        // second call: buckets already drained, no events, empty Vec
+        let mut receiver2 = event_hub.sender.subscribe();
+        let summaries2 = emit_summaries(&event_hub, &handle);
+        assert!(summaries2.is_empty());
+        assert!(receiver2.try_recv().is_err());
     }
 }
