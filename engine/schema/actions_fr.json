@@ -3416,6 +3416,57 @@
       "tags": []
     },
     {
+      "name": "Feature GeoJSON Writer",
+      "type": "processor",
+      "description": "Writes features to a GeoJSON file for each resolved output path.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureGeoJsonWriter Parameters",
+        "description": "Configuration for writing features to GeoJSON files.",
+        "type": "object",
+        "required": [
+          "output"
+        ],
+        "properties": {
+          "output": {
+            "title": "Output",
+            "description": "Path (or expression evaluated per feature) of the GeoJSON file to write. Features sharing a resolved path are written to the same file, so the expression can split features across files by attribute value.",
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Feature"
+      ],
+      "tags": [
+        "geojson"
+      ]
+    },
+    {
       "name": "Feature Joiner",
       "type": "processor",
       "description": "Joint des entités requérantes et fournisseuses basées sur des valeurs d'attributs correspondantes avec des types de jointure configurables",
