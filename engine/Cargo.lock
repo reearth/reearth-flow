@@ -4981,6 +4981,19 @@ dependencies = [
 ]
 
 [[package]]
+name = "reearth-flow-diagnostics"
+version = "0.0.432"
+dependencies = [
+ "pretty_assertions",
+ "proc-macro2",
+ "quote",
+ "serde",
+ "serde_json",
+ "toml",
+ "uuid",
+]
+
+[[package]]
 name = "reearth-flow-examples"
 version = "0.0.432"
 dependencies = [

@@ -55,6 +55,7 @@ reearth-flow-action-sink = { path = "runtime/action-sink" }
 reearth-flow-action-source = { path = "runtime/action-source" }
 reearth-flow-atlas = { path = "runtime/atlas" }
 reearth-flow-common = { path = "runtime/common" }
+reearth-flow-diagnostics = { path = "runtime/diagnostics" }
 reearth-flow-expr = { path = "runtime/expr" }
 reearth-flow-geometry = { path = "runtime/geometry" }
 reearth-flow-gltf = { path = "runtime/gltf" }

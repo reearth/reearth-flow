@@ -1,0 +1,20 @@
+[[codes]]
+code = "cesium3dtiles.empty_geometry"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "skipped feature with empty geometry"
+help = "Filter empty-geometry features upstream or fix the source data."
+
+[[codes]]
+code = "cesium3dtiles.non_citygml_geometry"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "skipped feature with non-CityGML geometry"
+help = "Cesium 3D Tiles Writer only accepts CityGML geometry; route other geometry types to a different writer."
+
+[[codes]]
+code = "cesium3dtiles.missing_schema_key"
+category = "schema"
+default_disposition = "warn_drop"
+message = "skipped schema feature missing the configured schemaKey attribute"
+help = "Ensure upstream features carry the attribute named by schemaKey, or unset schemaKey."

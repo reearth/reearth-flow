@@ -1,0 +1,5 @@
+[[codes]]
+code = "internal.invariant_violation"
+category = "internal"
+default_disposition = "fatal"
+message = "internal invariant violated"
