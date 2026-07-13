@@ -1,5 +1,7 @@
+pub mod aggregator;
 pub mod types;
 
+pub use aggregator::*;
 pub use types::*;
 
 include!(concat!(env!("OUT_DIR"), "/error_codes.rs"));
