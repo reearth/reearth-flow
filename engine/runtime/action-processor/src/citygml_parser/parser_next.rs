@@ -6,14 +6,16 @@ use indexmap::IndexMap;
 use quick_xml::events::Event;
 use quick_xml::name::ResolveResult;
 use quick_xml::NsReader;
+use reearth_flow_geometry::coordinate::EpsgCode;
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, CitygmlFeatureExt, Feature};
 use url::Url;
 
 use super::geometry;
 use super::resolver::GeomRegistry;
 use super::utils::{
-    gml_id_attr, local_name as utils_local_name, xlink_href_attr, NamespaceRegistry, NsId, QName,
-    XmlChild, XmlNode, EMPTY_NS_ID, GML_NS_311_ID, GML_NS_ID, XLINK_NS_ID,
+    frame_for, gml_id_attr, local_name as utils_local_name, parse_epsg_from_srs_name,
+    srs_name_attr, xlink_href_attr, NamespaceRegistry, NsId, QName, XmlChild, XmlNode, EMPTY_NS_ID,
+    GML_NS_311_ID, GML_NS_ID, XLINK_NS_ID,
 };
 
 pub(super) type RawNodeKey = (String, String); // (file_url, gml_id)
@@ -64,6 +66,9 @@ pub struct Parser {
     /// Whether to record each geometry's enclosing `gml:id`s, needed only when
     /// `flatten` will hoist children into separate features.
     track_owners: bool,
+    /// Each file's CRS, parsed from its `gml:boundedBy/gml:Envelope/@srsName`; a
+    /// file with no entry declared no (or an unrecognized) srsName.
+    srs_by_file: HashMap<String, EpsgCode>,
 }
 
 impl Default for Parser {
@@ -97,6 +102,7 @@ impl Parser {
             ns_registry: NamespaceRegistry::new(),
             pending: Vec::new(),
             track_owners,
+            srs_by_file: HashMap::new(),
         }
     }
 
@@ -134,8 +140,10 @@ impl Parser {
                                 _ => None,
                             })
                         {
+                            let frame = frame_for(source_url_arc.as_str(), &self.srs_by_file);
                             let (stripped, geoms) = geometry::split_geometry(
                                 &feature_node,
+                                &frame,
                                 &mut self.geom_registry,
                                 self.track_owners,
                             );
@@ -161,6 +169,19 @@ impl Parser {
                         )?);
                         collect_ids(&member, source_url_arc.as_str(), &mut self.raw_registry);
                         self.appearance_members.push(member);
+                    } else if ln == "boundedBy" {
+                        let bounded_by = parse_element(
+                            &mut reader,
+                            &mut buf,
+                            name,
+                            attrs,
+                            &source_url_arc,
+                            &mut self.ns_registry,
+                        )?;
+                        if let Some(epsg) = envelope_epsg(&bounded_by) {
+                            self.srs_by_file
+                                .insert(source_url_arc.as_str().to_string(), epsg);
+                        }
                     } else {
                         skip_element(&mut reader, &mut buf, &mut self.ns_registry)?;
                     }
@@ -195,8 +216,8 @@ impl Parser {
     }
 
     /// Consume the parser and return the pending features, the attribute and
-    /// geometry registries, the retained appearance member roots, and the namespace
-    /// registry for pass-2 resolution.
+    /// geometry registries, the retained appearance member roots, each file's CRS,
+    /// and the namespace registry for pass-2 resolution.
     pub(super) fn finish(
         self,
     ) -> (
@@ -204,6 +225,7 @@ impl Parser {
         RawRegistry,
         GeomRegistry,
         Vec<Arc<RawNode>>,
+        HashMap<String, EpsgCode>,
         NamespaceRegistry,
     ) {
         (
@@ -211,9 +233,32 @@ impl Parser {
             self.raw_registry,
             self.geom_registry,
             self.appearance_members,
+            self.srs_by_file,
             self.ns_registry,
         )
     }
+}
+
+/// The EPSG code from a `gml:boundedBy` element's `gml:Envelope/@srsName`, if
+/// present and recognized.
+fn envelope_epsg(bounded_by: &RawNode) -> Option<EpsgCode> {
+    bounded_by.children.iter().find_map(|child| {
+        let RawChild::Element(node) = child else {
+            return None;
+        };
+        if local_name(&node.name.0) != "Envelope" {
+            return None;
+        }
+        let srs_name = srs_name_attr(&node.attrs)?;
+        let epsg = parse_epsg_from_srs_name(srs_name);
+        if epsg.is_none() {
+            tracing::warn!(
+                srs_name,
+                "citygml: gml:Envelope srsName is not a recognized EPSG URI, ignored"
+            );
+        }
+        epsg
+    })
 }
 
 /// A top-level city object awaiting pass-2 resolution: its attribute tree, with
@@ -614,7 +659,7 @@ mod tests {
 
         let mut parser = Parser::new();
         parser.parse(xml, &dummy_url()).unwrap();
-        let (pending, _, _, _, _) = parser.finish();
+        let (pending, _, _, _, _, _) = parser.finish();
 
         assert_eq!(pending.len(), 2);
         assert_eq!(raw_gml_id(&pending[0].root), Some("bldg001".to_string()));
@@ -636,7 +681,7 @@ mod tests {
 
         let mut parser = Parser::new();
         parser.parse(xml, &dummy_url()).unwrap();
-        let (pending, raw_reg, _, _, _) = parser.finish();
+        let (pending, raw_reg, _, _, _, _) = parser.finish();
         assert_eq!(raw_gml_id(&pending[0].root), Some("bldg001".to_string()));
         assert!(raw_reg.contains_key(&(dummy_url().to_string(), "bldg001".to_string())));
     }
@@ -657,7 +702,7 @@ mod tests {
 
         let mut parser = Parser::new();
         parser.parse(xml, &dummy_url()).unwrap();
-        let (_, raw_reg, _, _, _) = parser.finish();
+        let (_, raw_reg, _, _, _, _) = parser.finish();
 
         let url = dummy_url().to_string();
         assert!(raw_reg.contains_key(&(url.clone(), "bldg001".to_string())));
@@ -682,7 +727,7 @@ mod tests {
         let mut parser = Parser::new();
         parser.parse(xml, &url_a).unwrap();
         parser.parse(xml, &url_b).unwrap();
-        let (_, raw_reg, _, _, _) = parser.finish();
+        let (_, raw_reg, _, _, _, _) = parser.finish();
 
         assert_eq!(raw_reg.len(), 2);
         assert!(raw_reg.contains_key(&(url_a.to_string(), "shared001".to_string())));
@@ -711,7 +756,7 @@ mod tests {
 
         let mut parser = Parser::new();
         parser.parse(xml, &dummy_url()).unwrap();
-        let (pending, _, _, _, _) = parser.finish();
+        let (pending, _, _, _, _, _) = parser.finish();
         assert_eq!(pending.len(), 1);
     }
 
@@ -744,7 +789,7 @@ mod tests {
 
         let mut parser = Parser::new();
         parser.parse(xml, &dummy_url()).unwrap();
-        let (pending, _, _, _, _) = parser.finish();
+        let (pending, _, _, _, _, _) = parser.finish();
         assert_eq!(pending.len(), 1);
     }
 
@@ -808,7 +853,7 @@ mod tests {
 
         let mut parser = Parser::new();
         parser.parse(xml, &dummy_url()).unwrap();
-        let (pending, _, _, _, _) = parser.finish();
+        let (pending, _, _, _, _, _) = parser.finish();
 
         assert_eq!(
             pending[0]

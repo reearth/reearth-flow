@@ -8,7 +8,7 @@
 use std::collections::{HashMap, HashSet};
 
 use reearth_flow_geometry::collection::Collection3D;
-use reearth_flow_geometry::coordinate::CoordinateFrame;
+use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
 use reearth_flow_geometry::line_string::LineString3D;
 use reearth_flow_geometry::polygon::Polygon3D;
 use reearth_flow_geometry::polygon_mesh::PolygonMesh3D;
@@ -17,10 +17,7 @@ use reearth_flow_geometry::Euclidean3DGeometry;
 
 use super::appearance::AppearanceIndex;
 use super::parser::RawNodeKey;
-
-/// The coordinate frame all resolved geometry is expressed in; CityGML `srsName`
-/// / EPSG handling happens downstream.
-pub(super) const FRAME: CoordinateFrame = CoordinateFrame::Euclidean;
+use super::utils::frame_for;
 
 /// A node in a CityGML geometry tree during pass-2 resolution: a geometry already
 /// built in pass 1, a reference still to be looked up, or a container still to be
@@ -175,17 +172,25 @@ pub(super) fn resolve_root(
     node: &GeomNode,
     registry: &GeomRegistry,
     appearance: &AppearanceIndex,
+    srs_by_file: &HashMap<String, EpsgCode>,
 ) -> Option<Euclidean3DGeometry> {
-    resolve(node, registry, appearance, &[], &mut HashSet::new())
+    resolve(
+        node,
+        registry,
+        appearance,
+        srs_by_file,
+        &[],
+        &mut HashSet::new(),
+    )
 }
 
-/// Resolve a top-level geometry node with no appearance attached.
+/// Resolve a top-level geometry node with no appearance attached and no known CRS.
 #[cfg(test)]
 pub(super) fn resolve_root_bare(
     node: &GeomNode,
     registry: &GeomRegistry,
 ) -> Option<Euclidean3DGeometry> {
-    resolve_root(node, registry, &AppearanceIndex::default())
+    resolve_root(node, registry, &AppearanceIndex::default(), &HashMap::new())
 }
 
 /// Resolve one node. `enclosing` is the chain of enclosing container ids, each
@@ -197,6 +202,7 @@ fn resolve(
     node: &GeomNode,
     registry: &GeomRegistry,
     appearance: &AppearanceIndex,
+    srs_by_file: &HashMap<String, EpsgCode>,
     enclosing: &[(&str, &str)],
     in_progress: &mut HashSet<RawNodeKey>,
 ) -> Option<Euclidean3DGeometry> {
@@ -207,10 +213,22 @@ fn resolve(
             appearance,
             enclosing,
         )),
-        GeomNode::Ref(key) => resolve_ref(key, registry, appearance, enclosing, in_progress),
-        GeomNode::Unresolved(unresolved) => {
-            construct(unresolved, registry, appearance, enclosing, in_progress)
-        }
+        GeomNode::Ref(key) => resolve_ref(
+            key,
+            registry,
+            appearance,
+            srs_by_file,
+            enclosing,
+            in_progress,
+        ),
+        GeomNode::Unresolved(unresolved) => construct(
+            unresolved,
+            registry,
+            appearance,
+            srs_by_file,
+            enclosing,
+            in_progress,
+        ),
     }
 }
 
@@ -253,6 +271,7 @@ fn resolve_ref(
     key: &RawNodeKey,
     registry: &GeomRegistry,
     appearance: &AppearanceIndex,
+    srs_by_file: &HashMap<String, EpsgCode>,
     enclosing: &[(&str, &str)],
     in_progress: &mut HashSet<RawNodeKey>,
 ) -> Option<Euclidean3DGeometry> {
@@ -261,7 +280,14 @@ fn resolve_ref(
         return None;
     }
     let resolved = match registry.get(key) {
-        Some(target) => resolve(target, registry, appearance, enclosing, in_progress),
+        Some(target) => resolve(
+            target,
+            registry,
+            appearance,
+            srs_by_file,
+            enclosing,
+            in_progress,
+        ),
         None => {
             tracing::warn!(
                 id = key.1,
@@ -278,11 +304,15 @@ fn resolve_ref(
 /// type. Members that fail to resolve are dropped, so a container survives with
 /// whatever members did resolve. This container's own gml:id is prepended to
 /// `enclosing` for its members, so an appearance bound to the container reaches
-/// them.
+/// them. The container's own frame is `node.file`'s CRS, so a container welded
+/// here (a mesh, a solid, a ring-polygon) is tagged with the CRS of the file its
+/// own element lives in, regardless of what file any `xlink:href` member resolved
+/// from.
 fn construct(
     node: &Unresolved,
     registry: &GeomRegistry,
     appearance: &AppearanceIndex,
+    srs_by_file: &HashMap<String, EpsgCode>,
     enclosing: &[(&str, &str)],
     in_progress: &mut HashSet<RawNodeKey>,
 ) -> Option<Euclidean3DGeometry> {
@@ -294,10 +324,19 @@ fn construct(
         .members
         .iter()
         .filter_map(|(role, child)| {
-            resolve(child, registry, appearance, &member_enclosing, in_progress).map(|g| (*role, g))
+            resolve(
+                child,
+                registry,
+                appearance,
+                srs_by_file,
+                &member_enclosing,
+                in_progress,
+            )
+            .map(|g| (*role, g))
         })
         .collect();
 
+    let frame = frame_for(&node.file, srs_by_file);
     match node.ty {
         GmlGeometryType::MultiPoint
         | GmlGeometryType::MultiCurve
@@ -312,12 +351,12 @@ fn construct(
         GmlGeometryType::OrientableCurve | GmlGeometryType::OrientableSurface => {
             members.into_iter().next().map(|(_, geometry)| geometry)
         }
-        GmlGeometryType::Ring => ring(members),
+        GmlGeometryType::Ring => ring(members, &frame),
         GmlGeometryType::CompositeSurface
         | GmlGeometryType::Shell
         | GmlGeometryType::Surface
-        | GmlGeometryType::PolyhedralSurface => surface_mesh(members),
-        GmlGeometryType::Solid => solid(members),
+        | GmlGeometryType::PolyhedralSurface => surface_mesh(members, &frame),
+        GmlGeometryType::Solid => solid(members, &frame),
         _ => {
             tracing::warn!("citygml geometry: inline type deferred to pass 2, skipped");
             None
@@ -334,7 +373,10 @@ fn collection(members: Vec<(Role, Euclidean3DGeometry)>) -> Euclidean3DGeometry 
 
 /// Concatenate curve members into one open exterior ring, yielding a single-ring
 /// `Polygon`.
-fn ring(members: Vec<(Role, Euclidean3DGeometry)>) -> Option<Euclidean3DGeometry> {
+fn ring(
+    members: Vec<(Role, Euclidean3DGeometry)>,
+    frame: &CoordinateFrame,
+) -> Option<Euclidean3DGeometry> {
     let mut exterior: Vec<[f64; 3]> = Vec::new();
     for (_, geometry) in members {
         match into_line_string(geometry) {
@@ -345,7 +387,7 @@ fn ring(members: Vec<(Role, Euclidean3DGeometry)>) -> Option<Euclidean3DGeometry
     if exterior.is_empty() {
         return None;
     }
-    let polygon = Polygon3D::from_rings(FRAME, exterior, Vec::<Vec<[f64; 3]>>::new());
+    let polygon = Polygon3D::from_rings(frame.clone(), exterior, Vec::<Vec<[f64; 3]>>::new());
     Some(Euclidean3DGeometry::Polygon(Box::new(polygon)))
 }
 
@@ -355,7 +397,10 @@ fn ring(members: Vec<(Role, Euclidean3DGeometry)>) -> Option<Euclidean3DGeometry
 /// welded into a single mesh, carrying each member polygon's appearance across.
 /// Mesh members mixed with other members are not yet supported and are skipped
 /// with a warning.
-fn surface_mesh(members: Vec<(Role, Euclidean3DGeometry)>) -> Option<Euclidean3DGeometry> {
+fn surface_mesh(
+    members: Vec<(Role, Euclidean3DGeometry)>,
+    frame: &CoordinateFrame,
+) -> Option<Euclidean3DGeometry> {
     if members.len() == 1
         && matches!(
             members[0].1,
@@ -380,20 +425,23 @@ fn surface_mesh(members: Vec<(Role, Euclidean3DGeometry)>) -> Option<Euclidean3D
     if faces.is_empty() {
         return None;
     }
-    build_mesh(faces).map(|mesh| Euclidean3DGeometry::PolygonMesh(Box::new(mesh)))
+    build_mesh(faces, frame).map(|mesh| Euclidean3DGeometry::PolygonMesh(Box::new(mesh)))
 }
 
 /// Pair an exterior boundary with any interior void boundaries into a `Solid`.
-fn solid(members: Vec<(Role, Euclidean3DGeometry)>) -> Option<Euclidean3DGeometry> {
+fn solid(
+    members: Vec<(Role, Euclidean3DGeometry)>,
+    frame: &CoordinateFrame,
+) -> Option<Euclidean3DGeometry> {
     let mut exterior: Option<Shell> = None;
     let mut interiors: Vec<Shell> = Vec::new();
     for (role, geometry) in members {
         match role {
-            Role::Exterior if exterior.is_none() => exterior = into_shell(geometry),
+            Role::Exterior if exterior.is_none() => exterior = into_shell(geometry, frame),
             Role::Exterior => {
                 tracing::warn!("citygml geometry: solid with multiple exteriors, extra skipped")
             }
-            Role::Interior => interiors.extend(into_shell(geometry)),
+            Role::Interior => interiors.extend(into_shell(geometry, frame)),
             Role::Member => {
                 tracing::warn!("citygml geometry: unexpected solid member role, skipped")
             }
@@ -401,13 +449,15 @@ fn solid(members: Vec<(Role, Euclidean3DGeometry)>) -> Option<Euclidean3DGeometr
     }
     let exterior = exterior?;
     Some(Euclidean3DGeometry::Solid(Box::new(Solid::new(
-        FRAME, exterior, interiors,
+        frame.clone(),
+        exterior,
+        interiors,
     ))))
 }
 
-/// Weld independent faces into one polygon mesh in [`FRAME`].
-fn build_mesh(faces: Vec<Polygon3D>) -> Option<PolygonMesh3D> {
-    match PolygonMesh3D::from_polygons(FRAME, &faces) {
+/// Weld independent faces into one polygon mesh in `frame`.
+fn build_mesh(faces: Vec<Polygon3D>, frame: &CoordinateFrame) -> Option<PolygonMesh3D> {
+    match PolygonMesh3D::from_polygons(frame.clone(), &faces) {
         Ok(mesh) => Some(mesh),
         Err(e) => {
             tracing::warn!("citygml geometry: failed to weld mesh: {e}");
@@ -431,12 +481,12 @@ fn into_line_string(geometry: Euclidean3DGeometry) -> Option<LineString3D> {
 /// `Shell` boundary has already been assembled into a mesh by [`surface_mesh`], so
 /// this just unwraps it; a bare `Polygon` boundary is welded into a single-face
 /// mesh.
-fn into_shell(geometry: Euclidean3DGeometry) -> Option<Shell> {
+fn into_shell(geometry: Euclidean3DGeometry, frame: &CoordinateFrame) -> Option<Shell> {
     match geometry {
         Euclidean3DGeometry::PolygonMesh(mesh) => Some(Shell::PolygonMesh(mesh.into_data())),
         Euclidean3DGeometry::TriangularMesh(mesh) => Some(Shell::TriangularMesh(mesh.into_data())),
         Euclidean3DGeometry::Polygon(polygon) => {
-            build_mesh(vec![*polygon]).map(|mesh| Shell::PolygonMesh(mesh.into_data()))
+            build_mesh(vec![*polygon], frame).map(|mesh| Shell::PolygonMesh(mesh.into_data()))
         }
         _ => {
             tracing::warn!("citygml geometry: cannot use as a solid boundary, skipped");
@@ -449,6 +499,8 @@ fn into_shell(geometry: Euclidean3DGeometry) -> Option<Shell> {
 mod tests {
     use super::*;
     use reearth_flow_geometry::point::Point3D;
+
+    const FRAME: CoordinateFrame = CoordinateFrame::Euclidean;
 
     fn key(id: &str) -> RawNodeKey {
         ("file:///test.gml".to_string(), id.to_string())

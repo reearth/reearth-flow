@@ -5,8 +5,6 @@ use reearth_flow_geometry::polygon_mesh::PolygonMesh3D;
 use reearth_flow_geometry::solid::Shell;
 use reearth_flow_geometry::{Euclidean3DGeometry, Geometry};
 
-/// JGD2011 — temporary until the new-geometry CityGML reader parses srsName/EPSG.
-const ASSUMED_SOURCE_CRS: EpsgCode = EpsgCode::new(6697);
 /// WGS84, 3D geographic (lat, lon, height) — used for the tileset's bounding region.
 const WGS84_GEOGRAPHIC: EpsgCode = EpsgCode::new(4979);
 /// WGS84, geocentric (ECEF) — used for glTF vertex positions.
@@ -94,9 +92,9 @@ fn collect_geometry(geometry: &Geometry, out: &mut Vec<PolygonMesh3D>) {
 }
 
 /// Recurse through `Collection` members and unpack a `Solid`'s boundary
-/// shells, collecting every `PolygonMesh` found. A `Solid` shell has no
-/// `Coordinate` of its own, so a placeholder frame is used — this writer
-/// reprojects raw vertex buffers directly and ignores it anyway.
+/// shells, collecting every `PolygonMesh` found. A `Solid` shell is a
+/// coordinate-free mesh; its frame lives on the enclosing `Solid`, so each
+/// unpacked shell is re-paired with the solid's frame for reprojection.
 fn collect_euclidean3d(geometry: &Euclidean3DGeometry, out: &mut Vec<PolygonMesh3D>) {
     match geometry {
         Euclidean3DGeometry::Collection(c) => {
@@ -109,7 +107,7 @@ fn collect_euclidean3d(geometry: &Euclidean3DGeometry, out: &mut Vec<PolygonMesh
             for shell in std::iter::once(solid.exterior()).chain(solid.interiors()) {
                 match shell {
                     Shell::PolygonMesh(data) => {
-                        out.push(PolygonMesh3D::new(CoordinateFrame::Euclidean, data.clone()))
+                        out.push(PolygonMesh3D::new(solid.frame().clone(), data.clone()))
                     }
                     Shell::TriangularMesh(_) => tracing::warn!(
                         "Cesium3DTilesWriter: a Solid shell is a TriangularMesh; \
@@ -124,8 +122,23 @@ fn collect_euclidean3d(geometry: &Euclidean3DGeometry, out: &mut Vec<PolygonMesh
     }
 }
 
+/// The EPSG source CRS a mesh's coordinates are reprojected from. A mesh
+/// tagged with anything but a concrete `Crs` (e.g. `Euclidean`, meaning the
+/// reader found no srsName) cannot be placed on the globe, so it is skipped.
+fn source_crs(frame: &CoordinateFrame) -> Option<EpsgCode> {
+    match frame {
+        CoordinateFrame::Crs(epsg) => Some(*epsg),
+        other => {
+            tracing::warn!("Cesium3DTilesWriter: mesh has no geographic CRS ({other:?}); skipping");
+            None
+        }
+    }
+}
+
 /// Triangulate and reproject one `PolygonMesh`.
 fn extract_one(mut mesh: PolygonMesh3D, caches: &mut ReprojectCaches) -> Option<ExtractedMesh> {
+    let source_crs = source_crs(mesh.frame())?;
+
     let mut triangulation_cache = TriangulationCache::new();
     let result = mesh.triangulate_with_normals(&mut triangulation_cache);
     let (mesh, polygon_normals, polygon_tris) =
@@ -134,7 +147,7 @@ fn extract_one(mut mesh: PolygonMesh3D, caches: &mut ReprojectCaches) -> Option<
     let mut geographic_vertices = mesh.vertices().to_vec();
     if let Err(e) = transform_coords_3d(
         &mut caches.geographic,
-        ASSUMED_SOURCE_CRS,
+        source_crs,
         WGS84_GEOGRAPHIC,
         &mut geographic_vertices,
     ) {
@@ -145,7 +158,7 @@ fn extract_one(mut mesh: PolygonMesh3D, caches: &mut ReprojectCaches) -> Option<
     let mut ecef_vertices = mesh.vertices().to_vec();
     if let Err(e) = transform_coords_3d(
         &mut caches.geocentric,
-        ASSUMED_SOURCE_CRS,
+        source_crs,
         WGS84_GEOCENTRIC,
         &mut ecef_vertices,
     ) {

@@ -9,6 +9,7 @@
 
 use std::sync::Arc;
 
+use reearth_flow_geometry::coordinate::CoordinateFrame;
 use reearth_flow_geometry::line_string::LineString3D;
 use reearth_flow_geometry::point::Point3D;
 use reearth_flow_geometry::polygon::Polygon3D;
@@ -17,7 +18,7 @@ use reearth_flow_geometry::Euclidean3DGeometry;
 
 use super::parser::{raw_gml_id, RawChild, RawNode};
 use super::resolver::{
-    FaceIds, GeomNode, GeomRegistry, GmlGeometryType, LeafIds, Role, Unresolved, FRAME,
+    FaceIds, GeomNode, GeomRegistry, GmlGeometryType, LeafIds, Role, Unresolved,
 };
 use super::utils::{local_name, GML_NS_311_ID, GML_NS_ID};
 
@@ -54,11 +55,12 @@ fn owner_chain(mut owner: Option<&Owner>) -> Vec<String> {
 /// hoisted.
 pub(super) fn split_geometry(
     node: &Arc<RawNode>,
+    frame: &CoordinateFrame,
     registry: &mut GeomRegistry,
     track_owners: bool,
 ) -> (Arc<RawNode>, Vec<PendingGeom>) {
     let mut geoms = Vec::new();
-    let stripped = strip(node, None, registry, &mut geoms, track_owners);
+    let stripped = strip(node, frame, None, registry, &mut geoms, track_owners);
     (stripped, geoms)
 }
 
@@ -67,6 +69,7 @@ pub(super) fn split_geometry(
 /// `gml:id`s above `node`.
 fn strip(
     node: &Arc<RawNode>,
+    frame: &CoordinateFrame,
     owner: Option<&Owner>,
     registry: &mut GeomRegistry,
     geoms: &mut Vec<PendingGeom>,
@@ -95,7 +98,7 @@ fn strip(
         let lod = lod.filter(|_| is_geometry_property(e));
 
         if let Some(lod) = lod {
-            if let Some(gnode) = property_geometry(e, registry) {
+            if let Some(gnode) = property_geometry(e, frame, registry) {
                 let owner_ids = if track_owners {
                     owner_chain(owner)
                 } else {
@@ -111,7 +114,7 @@ fn strip(
                 new_children = Some(node.children[..i].to_vec());
             }
         } else {
-            let stripped_child = strip(e, owner, registry, geoms, track_owners);
+            let stripped_child = strip(e, frame, owner, registry, geoms, track_owners);
             match new_children {
                 None => {
                     if !Arc::ptr_eq(&stripped_child, e) {
@@ -160,11 +163,15 @@ fn is_geometry_property(prop: &RawNode) -> bool {
 
 /// Parse the single geometry element (or `xlink:href`) inside a `lod<N>…` / `tin`
 /// property into a [`GeomNode`].
-fn property_geometry(prop: &RawNode, registry: &mut GeomRegistry) -> Option<GeomNode> {
+fn property_geometry(
+    prop: &RawNode,
+    frame: &CoordinateFrame,
+    registry: &mut GeomRegistry,
+) -> Option<GeomNode> {
     for child in &prop.children {
         match child {
             RawChild::Ref(key) => return Some(GeomNode::Ref(key.clone())),
-            RawChild::Element(e) => return geometry_node(e, registry),
+            RawChild::Element(e) => return geometry_node(e, frame, registry),
             RawChild::Text(_) => {}
         }
     }
@@ -174,7 +181,11 @@ fn property_geometry(prop: &RawNode, registry: &mut GeomRegistry) -> Option<Geom
 /// Convert a geometry element into a [`GeomNode`]: an inline leaf is parsed to a
 /// concrete geometry, a container is left [`Unresolved`]. A node with a `gml:id`
 /// is moved into `registry` and replaced by a [`GeomNode::Ref`].
-fn geometry_node(node: &RawNode, registry: &mut GeomRegistry) -> Option<GeomNode> {
+fn geometry_node(
+    node: &RawNode,
+    frame: &CoordinateFrame,
+    registry: &mut GeomRegistry,
+) -> Option<GeomNode> {
     let Some(ty) = geometry_type(local_name(&node.name.0)) else {
         tracing::warn!(
             element = local_name(&node.name.0),
@@ -185,14 +196,14 @@ fn geometry_node(node: &RawNode, registry: &mut GeomRegistry) -> Option<GeomNode
     let id = raw_gml_id(node);
     let file = node.source_url.as_str().to_string();
     let geom = if ty.is_inline() {
-        let (geometry, faces) = build_leaf(node, &ty)?;
+        let (geometry, faces) = build_leaf(node, &ty, frame)?;
         GeomNode::Resolved(geometry, LeafIds { file, faces })
     } else {
         GeomNode::Unresolved(Unresolved {
             ty,
             id: id.clone(),
             file,
-            members: collect_members(node, registry),
+            members: collect_members(node, frame, registry),
         })
     };
     Some(register(node, id, geom, registry))
@@ -218,7 +229,11 @@ fn register(
 
 /// Collect a container's members, tagging each with the role of the property that
 /// owns it.
-fn collect_members(node: &RawNode, registry: &mut GeomRegistry) -> Vec<(Role, GeomNode)> {
+fn collect_members(
+    node: &RawNode,
+    frame: &CoordinateFrame,
+    registry: &mut GeomRegistry,
+) -> Vec<(Role, GeomNode)> {
     let mut members = Vec::new();
     for prop in element_children(node) {
         let role = property_role(local_name(&prop.name.0));
@@ -226,7 +241,7 @@ fn collect_members(node: &RawNode, registry: &mut GeomRegistry) -> Vec<(Role, Ge
             match child {
                 RawChild::Ref(key) => members.push((role, GeomNode::Ref(key.clone()))),
                 RawChild::Element(inner) => {
-                    if let Some(g) = geometry_node(inner, registry) {
+                    if let Some(g) = geometry_node(inner, frame, registry) {
                         members.push((role, g));
                     }
                 }
@@ -240,30 +255,39 @@ fn collect_members(node: &RawNode, registry: &mut GeomRegistry) -> Vec<(Role, Ge
 /// Parse an inline geometry leaf into a concrete geometry and the per-face gml:ids
 /// captured alongside it, dispatching on its type. Container types and unsupported
 /// leaves yield `None`.
-fn build_leaf(node: &RawNode, ty: &GmlGeometryType) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
+fn build_leaf(
+    node: &RawNode,
+    ty: &GmlGeometryType,
+    frame: &CoordinateFrame,
+) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
     match ty {
-        GmlGeometryType::Point => build_point(node),
-        GmlGeometryType::LineString => build_line_string(node),
+        GmlGeometryType::Point => build_point(node, frame),
+        GmlGeometryType::LineString => build_line_string(node, frame),
         // TODO: gml:Curve support is deferred. Its segments may be arcs or splines,
         // which cannot be handled by sweeping control points into a straight chain.
         GmlGeometryType::Curve => {
             tracing::warn!("citygml geometry: gml:Curve is not supported yet, skipped");
             None
         }
-        GmlGeometryType::LinearRing => build_ring_polygon(node),
-        GmlGeometryType::Polygon => build_polygon(node),
-        GmlGeometryType::TriangulatedSurface | GmlGeometryType::Tin => build_triangulated(node),
+        GmlGeometryType::LinearRing => build_ring_polygon(node, frame),
+        GmlGeometryType::Polygon => build_polygon(node, frame),
+        GmlGeometryType::TriangulatedSurface | GmlGeometryType::Tin => {
+            build_triangulated(node, frame)
+        }
         _ => None,
     }
 }
 
 /// Build a `Point` from the element's first coordinate; `None` if it carries none.
 /// A point has no faces, so no gml:ids are captured.
-fn build_point(node: &RawNode) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
+fn build_point(
+    node: &RawNode,
+    frame: &CoordinateFrame,
+) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
     let coords = gather_coords(node);
     coords.first().map(|&c| {
         (
-            Euclidean3DGeometry::Point(Point3D::new(FRAME, c)),
+            Euclidean3DGeometry::Point(Point3D::new(frame.clone(), c)),
             Vec::new(),
         )
     })
@@ -271,23 +295,29 @@ fn build_point(node: &RawNode) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
 
 /// Build a `LineString` from the element's coordinates; `None` if it carries none.
 /// A line has no faces, so no gml:ids are captured.
-fn build_line_string(node: &RawNode) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
+fn build_line_string(
+    node: &RawNode,
+    frame: &CoordinateFrame,
+) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
     let coords = gather_coords(node);
     if coords.is_empty() {
         return None;
     }
-    let line = Euclidean3DGeometry::LineString(LineString3D::from_coords(FRAME, coords));
+    let line = Euclidean3DGeometry::LineString(LineString3D::from_coords(frame.clone(), coords));
     Some((line, Vec::new()))
 }
 
 /// Build a single-ring `Polygon` from a `LinearRing`'s coordinates; `None` if it
 /// carries none. The one face's sole ring id is the `LinearRing`'s own gml:id.
-fn build_ring_polygon(node: &RawNode) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
+fn build_ring_polygon(
+    node: &RawNode,
+    frame: &CoordinateFrame,
+) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
     let exterior = gather_coords(node);
     if exterior.is_empty() {
         return None;
     }
-    let polygon = Polygon3D::from_rings(FRAME, exterior, Vec::<Vec<[f64; 3]>>::new());
+    let polygon = Polygon3D::from_rings(frame.clone(), exterior, Vec::<Vec<[f64; 3]>>::new());
     let face = FaceIds {
         surface: None,
         rings: vec![raw_gml_id(node)],
@@ -296,8 +326,11 @@ fn build_ring_polygon(node: &RawNode) -> Option<(Euclidean3DGeometry, Vec<FaceId
 }
 
 /// Build a `Polygon` from an element's exterior and interior ring properties.
-fn build_polygon(node: &RawNode) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
-    let (polygon, face) = polygon_from_rings(node)?;
+fn build_polygon(
+    node: &RawNode,
+    frame: &CoordinateFrame,
+) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
+    let (polygon, face) = polygon_from_rings(node, frame)?;
     Some((Euclidean3DGeometry::Polygon(Box::new(polygon)), vec![face]))
 }
 
@@ -306,7 +339,10 @@ fn build_polygon(node: &RawNode) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> 
 /// `FaceIds` per triangle, in triangle order: each face's surface id the whole
 /// surface's own gml:id (a texture drapes the surface, not a single triangle) and
 /// its sole ring id the triangle's exterior `LinearRing` gml:id.
-fn build_triangulated(node: &RawNode) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
+fn build_triangulated(
+    node: &RawNode,
+    frame: &CoordinateFrame,
+) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
     let surface = raw_gml_id(node);
     let mut soup: Vec<[f64; 3]> = Vec::new();
     let mut face_ids: Vec<FaceIds> = Vec::new();
@@ -327,8 +363,10 @@ fn build_triangulated(node: &RawNode) -> Option<(Euclidean3DGeometry, Vec<FaceId
     if soup.is_empty() {
         return None;
     }
-    let mesh =
-        Euclidean3DGeometry::TriangularMesh(Box::new(TriangularMesh3D::from_soup(FRAME, soup)));
+    let mesh = Euclidean3DGeometry::TriangularMesh(Box::new(TriangularMesh3D::from_soup(
+        frame.clone(),
+        soup,
+    )));
     Some((mesh, face_ids))
 }
 
@@ -343,7 +381,7 @@ fn triangle_ring_id(triangle: &RawNode) -> Option<String> {
 /// Build a polygon from an element's `exterior` / `interior` ring properties,
 /// capturing the element's own gml:id as the face's surface id and each
 /// `LinearRing`'s gml:id in exterior-first, holes-next order.
-fn polygon_from_rings(node: &RawNode) -> Option<(Polygon3D, FaceIds)> {
+fn polygon_from_rings(node: &RawNode, frame: &CoordinateFrame) -> Option<(Polygon3D, FaceIds)> {
     let mut exterior: Option<Ring> = None;
     let mut interiors: Vec<Ring> = Vec::new();
     for prop in element_children(node) {
@@ -373,7 +411,7 @@ fn polygon_from_rings(node: &RawNode) -> Option<(Polygon3D, FaceIds)> {
             ring.coords
         })
         .collect();
-    let polygon = Polygon3D::from_rings(FRAME, exterior.coords, interior_coords);
+    let polygon = Polygon3D::from_rings(frame.clone(), exterior.coords, interior_coords);
     let face = FaceIds {
         surface: raw_gml_id(node),
         rings,
@@ -551,7 +589,7 @@ mod tests {
         let url = Url::parse("file:///test.gml").unwrap();
         let mut parser = Parser::new();
         parser.parse(xml.as_bytes(), &url).unwrap();
-        let (pending, _raw, geom_registry, _app, _ns) = parser.finish();
+        let (pending, _raw, geom_registry, _app, _srs, _ns) = parser.finish();
         let feature = pending.into_iter().next().expect("one feature");
         (feature.root, feature.geoms, geom_registry)
     }
@@ -939,7 +977,7 @@ mod tests {
         parser
             .parse(xml.as_bytes(), &Url::parse("file:///test.gml").unwrap())
             .unwrap();
-        let (_pending, _raw, geom_registry, _app, _ns) = parser.finish();
+        let (_pending, _raw, geom_registry, _app, _srs, _ns) = parser.finish();
         let node = geom_registry
             .get(&("file:///test.gml".to_string(), "poly1".to_string()))
             .expect("polygon registered under its GML 3.1 gml:id");

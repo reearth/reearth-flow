@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
 use url::Url;
 
 pub(super) const GML_NS_32: &str = "http://www.opengis.net/gml/3.2";
@@ -95,6 +96,33 @@ pub(super) fn xlink_href_attr(attrs: &[(QName, String)]) -> Option<&str> {
         .iter()
         .find(|((q, ns), _)| local_name(q) == "href" && *ns == XLINK_NS_ID)
         .map(|(_, v)| v.as_str())
+}
+
+pub(super) fn srs_name_attr(attrs: &[(QName, String)]) -> Option<&str> {
+    attrs
+        .iter()
+        .find(|((q, _), _)| local_name(q) == "srsName")
+        .map(|(_, v)| v.as_str())
+}
+
+/// Parse the trailing EPSG code from a `srsName` URI, e.g.
+/// `http://www.opengis.net/def/crs/EPSG/0/6697` -> `6697`. `None` if the URI's
+/// last path segment isn't a plain number.
+pub(super) fn parse_epsg_from_srs_name(srs_name: &str) -> Option<EpsgCode> {
+    srs_name
+        .rsplit('/')
+        .next()
+        .and_then(|code| code.parse::<u16>().ok())
+        .map(EpsgCode::new)
+}
+
+/// The frame for geometry parsed from `file`: `Crs` if `srs_by_file` has an entry
+/// for it, `Euclidean` (no known CRS) otherwise.
+pub(super) fn frame_for(file: &str, srs_by_file: &HashMap<String, EpsgCode>) -> CoordinateFrame {
+    match srs_by_file.get(file) {
+        Some(&epsg) => CoordinateFrame::Crs(epsg),
+        None => CoordinateFrame::Euclidean,
+    }
 }
 
 #[cfg(test)]

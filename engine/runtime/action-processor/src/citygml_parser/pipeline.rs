@@ -156,6 +156,7 @@ pub use build_next::build_features;
 mod build_next {
     use std::collections::{HashMap, HashSet};
 
+    use reearth_flow_geometry::coordinate::EpsgCode;
     use reearth_flow_geometry::{Geometry, GeometryCollection};
     use reearth_flow_types::{
         AttributeValue, Attributes, Feature, CITYGML_PARENT_GML_ID_KEY, CITYGML_ROOT_GML_ID_KEY,
@@ -184,7 +185,7 @@ mod build_next {
         _flatten_single_child_objects: bool,
         _flatten_measure_types: bool,
     ) -> Vec<Feature> {
-        let (pending, raw_registry, geom_registry, appearance_members, ns_registry) =
+        let (pending, raw_registry, geom_registry, appearance_members, srs_by_file, ns_registry) =
             parser.finish();
         let appearance = appearance::build_index(&appearance_members, &raw_registry);
         assemble_features(
@@ -192,6 +193,7 @@ mod build_next {
             &raw_registry,
             &geom_registry,
             &appearance,
+            &srs_by_file,
             &ns_registry,
             extract_tags,
         )
@@ -205,6 +207,7 @@ mod build_next {
         raw_registry: &RawRegistry,
         geom_registry: &GeomRegistry,
         appearance: &AppearanceIndex,
+        srs_by_file: &HashMap<String, EpsgCode>,
         ns_registry: &NamespaceRegistry,
         extract_tags: &HashSet<String>,
     ) -> Vec<Feature> {
@@ -224,7 +227,7 @@ mod build_next {
 
             if extract_tags.is_empty() {
                 let mut feature = parser::to_feature(&feature_root);
-                attach_geometry(&mut feature, &geoms, geom_registry, appearance);
+                attach_geometry(&mut feature, &geoms, geom_registry, appearance, srs_by_file);
                 out.push(feature);
             } else {
                 let root_gml_id = gml_id_attr(&feature_root.attrs);
@@ -263,6 +266,7 @@ mod build_next {
                             gs.iter().copied(),
                             geom_registry,
                             appearance,
+                            srs_by_file,
                         );
                     }
                     out.push(feature);
@@ -279,12 +283,13 @@ mod build_next {
         geoms: impl IntoIterator<Item = &'a geometry::PendingGeom>,
         registry: &GeomRegistry,
         appearance: &AppearanceIndex,
+        srs_by_file: &HashMap<String, EpsgCode>,
     ) {
         // TODO: carry each geometry's LOD and gml:id in the collection's per-member attributes.
         let members: Vec<Geometry> = geoms
             .into_iter()
             .filter_map(|pending| {
-                resolver::resolve_root(&pending.node, registry, appearance)
+                resolver::resolve_root(&pending.node, registry, appearance, srs_by_file)
                     .map(Geometry::Euclidean3D)
             })
             .collect();
@@ -319,8 +324,14 @@ mod build_next {
             parser
                 .parse(xml.as_bytes(), &Url::parse("file:///test.gml").unwrap())
                 .unwrap();
-            let (pending, raw_registry, geom_registry, appearance_members, ns_registry) =
-                parser.finish();
+            let (
+                pending,
+                raw_registry,
+                geom_registry,
+                appearance_members,
+                srs_by_file,
+                ns_registry,
+            ) = parser.finish();
             let appearance = appearance::build_index(&appearance_members, &raw_registry);
             let tags: HashSet<String> = extract_tags.iter().map(|s| s.to_string()).collect();
             assemble_features(
@@ -328,6 +339,7 @@ mod build_next {
                 &raw_registry,
                 &geom_registry,
                 &appearance,
+                &srs_by_file,
                 &ns_registry,
                 &tags,
             )
