@@ -3173,20 +3173,20 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Feature Counter Parameters",
-        "description": "Configure how features are counted and grouped, and where to store the count",
+        "description": "Configure how features are numbered and grouped, and where to store the number",
         "type": "object",
         "required": [
           "outputAttribute"
         ],
         "properties": {
           "outputAttribute": {
-            "title": "Output Attribute",
+            "title": "Count Attribute",
             "description": "Name of the attribute where the count will be stored",
             "type": "string"
           },
           "countStart": {
             "title": "Start Count",
-            "description": "Starting value for the counter",
+            "description": "Value assigned to the first feature",
             "default": 1,
             "type": "integer",
             "format": "uint64",
