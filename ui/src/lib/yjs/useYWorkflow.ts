@@ -8,6 +8,8 @@ import {
   DEFAULT_EDGE_PORT,
   DEFAULT_ENTRY_GRAPH_ID,
   DEFAULT_ROUTING_PORT,
+  INPUT_ROUTER_ACTION,
+  OUTPUT_ROUTER_ACTION,
 } from "@flow/global-constants";
 import { fetcher } from "@flow/lib/fetch/transformers/useFetch";
 import { useT } from "@flow/lib/i18n";
@@ -44,8 +46,12 @@ export default ({
 
   const fetchRouterConfigs = useCallback(async () => {
     const [inputRouter, outputRouter] = await Promise.all([
-      fetcher<Action>(`${api}/actions/${encodeURIComponent("Input Router")}`),
-      fetcher<Action>(`${api}/actions/${encodeURIComponent("Output Router")}`),
+      fetcher<Action>(
+        `${api}/actions/${encodeURIComponent(INPUT_ROUTER_ACTION)}`,
+      ),
+      fetcher<Action>(
+        `${api}/actions/${encodeURIComponent(OUTPUT_ROUTER_ACTION)}`,
+      ),
     ]);
     return { inputRouter, outputRouter };
   }, [api]);

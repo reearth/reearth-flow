@@ -1,7 +1,11 @@
 import { Dispatch, SetStateAction, useCallback, useRef } from "react";
 import * as Y from "yjs";
 
-import { DEFAULT_ROUTING_PORT } from "@flow/global-constants";
+import {
+  DEFAULT_ROUTING_PORT,
+  INPUT_ROUTER_ACTION,
+  OUTPUT_ROUTER_ACTION,
+} from "@flow/global-constants";
 import type {
   Node,
   NodeChange,
@@ -48,8 +52,10 @@ export default ({
         }
 
         newNodes.forEach((newNode) => {
-          const isRouterInput = newNode.data.officialName === "Input Router";
-          const isRouterOutput = newNode.data.officialName === "Output Router";
+          const isRouterInput =
+            newNode.data.officialName === INPUT_ROUTER_ACTION;
+          const isRouterOutput =
+            newNode.data.officialName === OUTPUT_ROUTER_ACTION;
 
           if (isRouterInput || isRouterOutput) {
             const currentWorkflowId = currentYWorkflow
