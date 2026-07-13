@@ -31,6 +31,7 @@ pub struct Workflow {
     pub entry_graph_id: Id,
     pub with: Option<Parameter>,
     pub graphs: Vec<Graph>,
+    pub error_policy: Option<ErrorPolicy>,
 }
 
 impl TryFrom<&str> for Workflow {
@@ -135,6 +136,114 @@ impl Workflow {
     }
 }
 
+/// Workflow-level configuration for how diagnostics of severity `Fatal`
+/// are handled at run time, and per-selector overrides of the default
+/// disposition. Absent (`None`) behaves byte-identically to a workflow
+/// with no error-handling configuration at all — this type is additive.
+///
+/// Registry-aware rules (unknown diagnostic codes, codeless demotion of an
+/// authored-`Fatal` override, node-id existence in the graph) are enforced
+/// later, by the resolver that consumes this configuration — `validate`
+/// here only checks the structural rules that don't need the registry or
+/// graph.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct ErrorPolicy {
+    #[serde(default)]
+    pub on_fatal: OnFatal,
+    #[serde(default)]
+    pub treat_all_as_fatal: bool,
+    #[serde(default)]
+    pub allow_relax_internal: bool,
+    /// D7: switch that enables writing rejected features to a side file
+    /// instead of only counting/logging them. Consumed by a later task.
+    #[serde(default)]
+    pub side_file: bool,
+    #[serde(default)]
+    pub overrides: Vec<PolicyOverride>,
+}
+
+impl ErrorPolicy {
+    /// Structural validation only: checks that don't require the
+    /// diagnostic-code registry or the workflow graph. Each violation
+    /// produces one message naming the offending override's index and
+    /// selectors; all violations are collected rather than short-circuiting
+    /// on the first one.
+    pub fn validate(&self) -> Result<(), Vec<String>> {
+        let mut errors = Vec::new();
+        for (index, override_) in self.overrides.iter().enumerate() {
+            if override_.code.is_some() && override_.category.is_some() {
+                errors.push(format!(
+                    "overrides[{index}]: must not set both `code` and `category` \
+                     (category derives from code; pairing them adds no selectivity)"
+                ));
+            }
+            if override_.node.is_none() && override_.code.is_none() && override_.category.is_none()
+            {
+                errors.push(format!(
+                    "overrides[{index}]: must set at least one selector \
+                     (`node`, `code`, or `category`)"
+                ));
+            }
+        }
+        for i in 0..self.overrides.len() {
+            for j in (i + 1)..self.overrides.len() {
+                let a = &self.overrides[i];
+                let b = &self.overrides[j];
+                if a.node == b.node && a.code == b.code && a.category == b.category {
+                    errors.push(format!(
+                        "overrides[{i}] and overrides[{j}]: identical selectors \
+                         (node={:?}, code={:?}, category={:?}); duplicate overrides \
+                         are rejected",
+                        a.node, a.code, a.category
+                    ));
+                }
+            }
+        }
+        if errors.is_empty() {
+            Ok(())
+        } else {
+            Err(errors)
+        }
+    }
+}
+
+/// What to do when a `Fatal`-severity diagnostic is raised (after override
+/// resolution) and is not otherwise handled.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema, Default)]
+#[serde(rename_all = "snake_case")]
+pub enum OnFatal {
+    /// Stop the run. This is the safe default.
+    #[default]
+    Terminate,
+    /// Keep running, treating the diagnostic as non-terminating.
+    Continue,
+}
+
+/// Overrides the disposition of diagnostics matching the given selectors.
+/// At least one of `node`, `code`, `category` must be set, and `code` and
+/// `category` are mutually exclusive (see `ErrorPolicy::validate`).
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct PolicyOverride {
+    pub node: Option<String>,
+    pub code: Option<String>,
+    pub category: Option<String>,
+    pub disposition: PolicyDisposition,
+}
+
+/// How a matched diagnostic should be handled.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum PolicyDisposition {
+    /// Warn and drop the affected feature; the run continues.
+    WarnDrop,
+    /// Reject the affected feature (optionally to the D7 side file); the run continues.
+    Reject,
+    /// Treat as fatal, subject to `on_fatal`.
+    Fatal,
+}
+
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 pub struct NodeEntity {
     pub id: Id,
@@ -218,4 +327,186 @@ pub struct Graph {
     pub name: String,
     pub nodes: Vec<Node>,
     pub edges: Vec<Edge>,
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const MINIMAL_WORKFLOW_HEADER: &str = "\
+id: \"11111111-1111-1111-1111-111111111111\"
+name: \"test\"
+entryGraphId: \"22222222-2222-2222-2222-222222222222\"
+graphs: []
+";
+
+    #[test]
+    fn deserializes_full_error_policy_block() {
+        let yaml = format!(
+            "{MINIMAL_WORKFLOW_HEADER}\
+errorPolicy:
+  onFatal: continue
+  treatAllAsFatal: true
+  allowRelaxInternal: true
+  sideFile: true
+  overrides:
+    - node: \"node-a\"
+      disposition: warn_drop
+    - code: \"GEOM_INVALID\"
+      disposition: fatal
+"
+        );
+        let workflow = Workflow::try_from(yaml.as_str()).expect("workflow should parse");
+        let policy = workflow
+            .error_policy
+            .expect("errorPolicy block should be present");
+        assert_eq!(policy.on_fatal, OnFatal::Continue);
+        assert!(policy.treat_all_as_fatal);
+        assert!(policy.allow_relax_internal);
+        assert!(policy.side_file);
+        assert_eq!(
+            policy.overrides,
+            vec![
+                PolicyOverride {
+                    node: Some("node-a".to_string()),
+                    code: None,
+                    category: None,
+                    disposition: PolicyDisposition::WarnDrop,
+                },
+                PolicyOverride {
+                    node: None,
+                    code: Some("GEOM_INVALID".to_string()),
+                    category: None,
+                    disposition: PolicyDisposition::Fatal,
+                },
+            ]
+        );
+    }
+
+    #[test]
+    fn error_policy_is_none_when_block_absent() {
+        let workflow = Workflow::try_from(MINIMAL_WORKFLOW_HEADER).expect("workflow should parse");
+        assert!(workflow.error_policy.is_none());
+    }
+
+    #[test]
+    fn error_policy_defaults_when_block_empty() {
+        let yaml = format!("{MINIMAL_WORKFLOW_HEADER}errorPolicy: {{}}\n");
+        let workflow = Workflow::try_from(yaml.as_str()).expect("workflow should parse");
+        let policy = workflow
+            .error_policy
+            .expect("errorPolicy block should be present");
+        assert_eq!(policy, ErrorPolicy::default());
+        assert_eq!(policy.on_fatal, OnFatal::Terminate);
+        assert!(!policy.treat_all_as_fatal);
+        assert!(!policy.allow_relax_internal);
+        assert!(!policy.side_file);
+        assert!(policy.overrides.is_empty());
+    }
+
+    fn override_with(
+        node: Option<&str>,
+        code: Option<&str>,
+        category: Option<&str>,
+    ) -> PolicyOverride {
+        PolicyOverride {
+            node: node.map(String::from),
+            code: code.map(String::from),
+            category: category.map(String::from),
+            disposition: PolicyDisposition::WarnDrop,
+        }
+    }
+
+    #[test]
+    fn validate_rejects_override_with_both_code_and_category() {
+        let policy = ErrorPolicy {
+            overrides: vec![override_with(None, Some("GEOM_INVALID"), Some("geometry"))],
+            ..Default::default()
+        };
+        let errors = policy.validate().expect_err("should reject");
+        assert_eq!(errors.len(), 1);
+        assert!(errors[0].contains("overrides[0]"));
+        assert!(errors[0].contains("code") && errors[0].contains("category"));
+    }
+
+    #[test]
+    fn validate_allows_override_with_only_code() {
+        let policy = ErrorPolicy {
+            overrides: vec![override_with(None, Some("GEOM_INVALID"), None)],
+            ..Default::default()
+        };
+        assert!(policy.validate().is_ok());
+    }
+
+    #[test]
+    fn validate_rejects_override_with_no_selectors() {
+        let policy = ErrorPolicy {
+            overrides: vec![override_with(None, None, None)],
+            ..Default::default()
+        };
+        let errors = policy.validate().expect_err("should reject");
+        assert_eq!(errors.len(), 1);
+        assert!(errors[0].contains("overrides[0]"));
+        assert!(errors[0].contains("selector"));
+    }
+
+    #[test]
+    fn validate_allows_override_with_one_selector() {
+        let policy = ErrorPolicy {
+            overrides: vec![override_with(Some("node-a"), None, None)],
+            ..Default::default()
+        };
+        assert!(policy.validate().is_ok());
+    }
+
+    #[test]
+    fn validate_rejects_duplicate_selector_tuples() {
+        let policy = ErrorPolicy {
+            overrides: vec![
+                override_with(Some("node-a"), None, None),
+                override_with(Some("node-a"), None, None),
+            ],
+            ..Default::default()
+        };
+        let errors = policy.validate().expect_err("should reject");
+        assert_eq!(errors.len(), 1);
+        assert!(errors[0].contains("overrides[0]"));
+        assert!(errors[0].contains("overrides[1]"));
+        assert!(errors[0].contains("duplicate"));
+    }
+
+    #[test]
+    fn validate_allows_distinct_selector_tuples() {
+        let policy = ErrorPolicy {
+            overrides: vec![
+                override_with(Some("node-a"), None, None),
+                override_with(Some("node-b"), None, None),
+                override_with(None, Some("GEOM_INVALID"), None),
+            ],
+            ..Default::default()
+        };
+        assert!(policy.validate().is_ok());
+    }
+
+    #[test]
+    fn error_policy_round_trips_through_serde_json() {
+        let policy = ErrorPolicy {
+            on_fatal: OnFatal::Continue,
+            treat_all_as_fatal: true,
+            allow_relax_internal: true,
+            side_file: true,
+            overrides: vec![
+                override_with(Some("node-a"), None, None),
+                PolicyOverride {
+                    node: None,
+                    code: None,
+                    category: Some("geometry".to_string()),
+                    disposition: PolicyDisposition::Reject,
+                },
+            ],
+        };
+        let json = serde_json::to_string(&policy).expect("serialize");
+        let round_tripped: ErrorPolicy = serde_json::from_str(&json).expect("deserialize");
+        assert_eq!(policy, round_tripped);
+    }
 }
