@@ -1232,15 +1232,16 @@ dependencies = [
 
 [[package]]
 name = "draco-oxide"
-version = "0.1.0-alpha.7"
+version = "0.1.0-alpha.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9811854bc6180df947656afa5131b40367ce49109dc60a508a657cd5bd4daa1c"
+checksum = "3b1410f466053b59aae2f498732d346c3ba1f4563fdba25422b01c266c530b23"
 dependencies = [
  "draco-oxide-core",
  "enum_dispatch",
  "gltf 1.4.1 (registry+https://github.com/rust-lang/crates.io-index)",
  "image",
  "remain",
+ "serde",
  "serde_json",
  "thiserror 2.0.18",
  "tobj",
@@ -1248,9 +1249,9 @@ dependencies = [
 
 [[package]]
 name = "draco-oxide-core"
-version = "0.1.0-alpha.7"
+version = "0.1.0-alpha.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "918b965fe4b608267cc7a269af51cce6208b041829478cd35bd4fc12c26edb2a"
+checksum = "6a901844e75adb463393e6e05475e8363dc983fce0df855ad8d728f5aac9a485"
 dependencies = [
  "draco-nd-vector",
  "kiddo",
