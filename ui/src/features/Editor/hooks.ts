@@ -29,7 +29,7 @@ import {
   useYjsStore,
 } from "@flow/lib/yjs";
 import type { YWorkflow } from "@flow/lib/yjs/types";
-import useLegacyPortsMigration from "@flow/lib/yjs/useLegacyPortsMigration";
+import useLegacyMigrations from "@flow/lib/yjs/useLegacyMigrations";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
 import { useCurrentProject } from "@flow/stores";
 import type { Algorithm, Direction, Edge, Node } from "@flow/types";
@@ -218,10 +218,10 @@ export default ({
   });
 
   const {
-    showLegacyPortsDialog,
-    handleLegacyPortsMigrate,
-    handleLegacyPortsDialogClose,
-  } = useLegacyPortsMigration({
+    showLegacyMigrationDialog,
+    handleLegacyMigration,
+    handleLegacyMigrationDialogClose,
+  } = useLegacyMigrations({
     yWorkflows,
     onProjectSnapshotSave: handleProjectSnapshotSave,
   });
@@ -535,9 +535,9 @@ export default ({
     staleNodeIds,
     handleProjectLockChange,
     isLocked,
-    showLegacyPortsDialog,
-    handleLegacyPortsMigrate,
-    handleLegacyPortsDialogClose,
+    showLegacyMigrationDialog,
+    handleLegacyMigration,
+    handleLegacyMigrationDialogClose,
     handleSpotlightUserSelect,
     handleSpotlightUserDeselect,
     handlePaneClick,

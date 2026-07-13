@@ -10,6 +10,7 @@ import { useProject, useWorkflowVariables } from "@flow/lib/gql";
 import { useT } from "@flow/lib/i18n";
 import { yWorkflowConstructor } from "@flow/lib/yjs/conversions";
 import { YWorkflow } from "@flow/lib/yjs/types";
+import { markLegacyMigrationComplete } from "@flow/lib/yjs/utils/legacyMigrationVersion";
 import { useCurrentWorkspace } from "@flow/stores";
 import type { AnyWorkflowVariable } from "@flow/types";
 import {
@@ -21,6 +22,7 @@ import {
   isEngineWorkflow,
   type WorkflowVariable,
 } from "@flow/utils/fromEngineWorkflow/deconstructedEngineWorkflow";
+import { migrateLegacyEngineWorkflow } from "@flow/utils/fromEngineWorkflow/legacyEngineWorkflowMigration";
 
 export default () => {
   const { getAccessToken } = useAuth();
@@ -100,15 +102,21 @@ export default () => {
 
         await new Promise<void>((resolve) => {
           yWebSocketProvider.once("sync", () => {
-            const yWorkflows = yDoc.getMap<YWorkflow>("workflows");
-            canvasReadyWorkflows.workflows.forEach((w: any) => {
-              const yWorkflow = yWorkflowConstructor(
-                w.id,
-                w.name ?? "undefined",
-                w.nodes,
-                w.edges,
-              );
-              yWorkflows.set(w.id, yWorkflow);
+            yDoc.transact(() => {
+              const yWorkflows = yDoc.getMap<YWorkflow>("workflows");
+              canvasReadyWorkflows.workflows.forEach((w: any) => {
+                const yWorkflow = yWorkflowConstructor(
+                  w.id,
+                  w.name ?? "undefined",
+                  w.nodes,
+                  w.edges,
+                );
+                yWorkflows.set(w.id, yWorkflow);
+              });
+              // The imported file was already migrated before conversion, so
+              // the doc starts out current — stamp it so the editor's legacy
+              // migration scans never run for it.
+              markLegacyMigrationComplete(yDoc);
             });
 
             setIsWorkflowImporting(false);
@@ -190,6 +198,7 @@ export default () => {
           }
 
           if (currentWorkspace && isEngineWorkflow(resultsObject)) {
+            resultsObject = migrateLegacyEngineWorkflow(resultsObject);
             const canvasReadyWorkflows = await deconstructedEngineWorkflow({
               engineWorkflow: resultsObject,
             });

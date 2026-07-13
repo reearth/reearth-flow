@@ -5,6 +5,7 @@ import type { Direction } from "./layout";
 export type YDocMetadata = {
   initialized?: boolean;
   rollbackInProgress?: boolean;
+  legacyMigrationVersion?: number;
   isLocked?: boolean;
   sharingToken?: string | null;
   layoutDirection?: Direction;
