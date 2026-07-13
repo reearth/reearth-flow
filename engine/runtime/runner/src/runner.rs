@@ -39,6 +39,28 @@ fn reject_unsandboxed_sentinel(sandbox_root: &Uri) -> Result<(), crate::errors::
     Ok(())
 }
 
+/// Legacy-compat: callers of the unit-returning wrappers (`Runner::run`,
+/// `Runner::run_with_sandbox_root`, `AsyncRunner::run`,
+/// `AsyncRunner::run_with_sandbox_root`) treat any node failure as `Err`.
+///
+/// Defensive — dead code until onFatal: continue lands. Today
+/// `DagExecutorJoinHandle::join` still early-`Err`s on the first failed
+/// node thread, so `Ok(summary)` here always carries an empty
+/// `failed_nodes` (Task 5's invariant) and this always takes the `None`
+/// arm. It becomes load-bearing once that early-`Err` is removed and
+/// `Ok(summary)` starts being returned for runs with a non-empty
+/// `failed_nodes`.
+pub(crate) fn summary_into_unit_result(summary: RunSummary) -> Result<(), crate::errors::Error> {
+    match summary.failed_nodes.first() {
+        None => Ok(()),
+        Some(first) => Err(crate::errors::Error::FailedNodes(format!(
+            "{} node(s) failed; first: {}",
+            summary.failed_nodes.len(),
+            first.message
+        ))),
+    }
+}
+
 pub struct Runner;
 
 #[allow(clippy::too_many_arguments)]
@@ -63,8 +85,9 @@ impl Runner {
         let sandbox_root = Uri::from_str("file:///").expect("'file:///' is always a valid URI");
         // Bypass `run_with_sandbox_root`'s sentinel guard — this entrypoint
         // intentionally requests the unsandboxed mode.
-        // Given Task 5's invariant (`Ok(_)` implies `failed_nodes.is_empty()`),
-        // discarding the summary here preserves exact legacy semantics.
+        // Defensive — dead code until onFatal: continue lands (see
+        // `summary_into_unit_result`); today Task 5's invariant means
+        // `Ok(_)` here always implies `failed_nodes.is_empty()`.
         Self::run_with_event_handler(
             job_id,
             workflow,
@@ -77,7 +100,7 @@ impl Runner {
             vec![],
             sandbox_root,
         )
-        .map(|_summary| ())
+        .and_then(summary_into_unit_result)
     }
 
     /// Run a workflow with a sandboxed output path.
@@ -99,8 +122,9 @@ impl Runner {
         sandbox_root: Uri,
     ) -> Result<(), crate::errors::Error> {
         reject_unsandboxed_sentinel(&sandbox_root)?;
-        // Given Task 5's invariant (`Ok(_)` implies `failed_nodes.is_empty()`),
-        // discarding the summary here preserves exact legacy semantics.
+        // Defensive — dead code until onFatal: continue lands (see
+        // `summary_into_unit_result`); today Task 5's invariant means
+        // `Ok(_)` here always implies `failed_nodes.is_empty()`.
         Self::run_with_event_handler(
             job_id,
             workflow,
@@ -113,7 +137,7 @@ impl Runner {
             vec![],
             sandbox_root,
         )
-        .map(|_summary| ())
+        .and_then(summary_into_unit_result)
     }
 
     /// Like [`Runner::run_with_sandbox_root`], but returns the by-value
@@ -248,8 +272,9 @@ impl AsyncRunner {
         incremental_run_config: Option<IncrementalRunConfig>,
     ) -> Result<(), crate::errors::Error> {
         let sandbox_root = Uri::from_str("file:///").expect("'file:///' is always a valid URI");
-        // Given Task 5's invariant (`Ok(_)` implies `failed_nodes.is_empty()`),
-        // discarding the summary here preserves exact legacy semantics.
+        // Defensive — dead code until onFatal: continue lands (see
+        // `summary_into_unit_result`); today Task 5's invariant means
+        // `Ok(_)` here always implies `failed_nodes.is_empty()`.
         Self::run_with_event_handler(
             job_id,
             workflow,
@@ -263,7 +288,7 @@ impl AsyncRunner {
             sandbox_root,
         )
         .await
-        .map(|_summary| ())
+        .and_then(summary_into_unit_result)
     }
 
     /// Run a workflow with a sandboxed output path.
@@ -285,8 +310,9 @@ impl AsyncRunner {
         sandbox_root: Uri,
     ) -> Result<(), crate::errors::Error> {
         reject_unsandboxed_sentinel(&sandbox_root)?;
-        // Given Task 5's invariant (`Ok(_)` implies `failed_nodes.is_empty()`),
-        // discarding the summary here preserves exact legacy semantics.
+        // Defensive — dead code until onFatal: continue lands (see
+        // `summary_into_unit_result`); today Task 5's invariant means
+        // `Ok(_)` here always implies `failed_nodes.is_empty()`.
         Self::run_with_event_handler(
             job_id,
             workflow,
@@ -300,7 +326,7 @@ impl AsyncRunner {
             sandbox_root,
         )
         .await
-        .map(|_summary| ())
+        .and_then(summary_into_unit_result)
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -386,5 +412,42 @@ mod tests {
         assert!(reject_unsandboxed_sentinel(&uri).is_ok());
         let uri = Uri::from_str("gs://bucket/job").unwrap();
         assert!(reject_unsandboxed_sentinel(&uri).is_ok());
+    }
+
+    #[test]
+    fn summary_into_unit_result_ok_on_empty_failed_nodes() {
+        let summary = RunSummary {
+            failed_nodes: vec![],
+            aggregated_diagnostics: vec![],
+            dropped_event_count: 0,
+        };
+        assert!(summary_into_unit_result(summary).is_ok());
+    }
+
+    #[test]
+    fn summary_into_unit_result_err_on_one_failed_node() {
+        use reearth_flow_diagnostics::{Diagnostic, DiagnosticDraft, ErrorCode};
+
+        let failed = Diagnostic::from_draft(
+            DiagnosticDraft::new(ErrorCode::InternalInvariantViolation).with_message("boom"),
+            Some("node-1".to_string()),
+            Some("Some Action".to_string()),
+            None,
+        );
+        let summary = RunSummary {
+            failed_nodes: vec![failed],
+            aggregated_diagnostics: vec![],
+            dropped_event_count: 0,
+        };
+        let err = summary_into_unit_result(summary).unwrap_err();
+        let display = err.to_string();
+        assert!(
+            display.contains("boom"),
+            "expected error to contain the diagnostic message, got: {display}"
+        );
+        assert!(
+            display.contains('1'),
+            "expected error to contain the failed-node count, got: {display}"
+        );
     }
 }

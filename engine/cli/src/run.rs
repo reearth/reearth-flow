@@ -335,8 +335,28 @@ impl RunCliCommand {
         }
 
         result
-            .map(|_summary| ())
+            .and_then(Self::summary_into_unit_result)
             .map_err(|e| crate::errors::Error::Run(format!("Failed to run workflow: {e}")))
+    }
+
+    /// Defensive — dead code until onFatal: continue lands (mirrors
+    /// `reearth_flow_runner::runner::summary_into_unit_result`, which is
+    /// `pub(crate)` to the runner crate and so not reusable from here).
+    /// Today `Ok(summary)` always implies `summary.failed_nodes.is_empty()`
+    /// (Task 5's invariant enforced inside `DagExecutorJoinHandle::join`),
+    /// so this always takes the `None` arm; it becomes load-bearing once a
+    /// non-empty `failed_nodes` can accompany `Ok(_)`.
+    fn summary_into_unit_result(
+        summary: RunSummary,
+    ) -> Result<(), reearth_flow_runner::errors::Error> {
+        match summary.failed_nodes.first() {
+            None => Ok(()),
+            Some(first) => Err(reearth_flow_runner::errors::Error::FailedNodes(format!(
+                "{} node(s) failed; first: {}",
+                summary.failed_nodes.len(),
+                first.message
+            ))),
+        }
     }
 
     /// Render a run-end summary to stdout: aggregated (finish()-time)

@@ -41,4 +41,14 @@ pub enum Error {
         "sandbox_root `file:///` is reserved as the `Runner::run` (unsandboxed) sentinel and must not be used with `run_with_sandbox_root`"
     )]
     UnsandboxedSentinelRejected,
+    /// Legacy-compat representation of "the run completed but one or more
+    /// nodes failed", surfaced by the unit-returning `Runner`/`AsyncRunner`
+    /// wrappers (via `summary_into_unit_result`) and by CLI callers that map
+    /// a by-value `RunSummary` to the same Err/exit-1 path. Deliberately not
+    /// `ExecutionError::{Source,Processor,Sink}` — those name a specific
+    /// pipeline stage, which would misrepresent the failure's kind when
+    /// folding an arbitrary `RunSummary::failed_nodes` entry (the failure
+    /// could originate from any node kind, or be synthesized).
+    #[error("{0}")]
+    FailedNodes(String),
 }
