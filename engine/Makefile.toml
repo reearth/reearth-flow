@@ -138,6 +138,7 @@ script = [
 rm -rf "./schema/actions.json"
 cargo run --package reearth-flow-cli -- schema-action > ./schema/actions.json
 cargo run --package reearth-flow-cli -- scaffold-i18n --dir "$PWD/schema/i18n/actions"
+cargo run --package reearth-flow-cli -- schema-error-codes > ./schema/error-codes.json
 ''',
 ]
 

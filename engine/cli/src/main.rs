@@ -9,6 +9,7 @@ mod probe_schema;
 mod run;
 mod scaffold_i18n;
 mod schema_action;
+mod schema_error_codes;
 mod schema_workflow;
 mod utils;
 
