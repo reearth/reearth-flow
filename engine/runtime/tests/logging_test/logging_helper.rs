@@ -308,6 +308,7 @@ pub enum ActionLogLevel {
     Info,
     Warning,
     Error,
+    Critical,
 }
 
 #[derive(Debug, Deserialize, Eq)]

@@ -58,15 +58,14 @@ mod tests {
     }
 
     #[test]
-    fn from_draft_fatal_code_defaults_to_error_severity() {
-        // Severity::Fatal rendering (slog Critical) lands in Phase 2; Phase 1 renders fatals at ERROR.
+    fn from_draft_fatal_code_defaults_to_fatal_severity() {
         let d = Diagnostic::from_draft(
             DiagnosticDraft::new(ErrorCode::InternalInvariantViolation),
             None,
             None,
             None,
         );
-        assert_eq!(d.severity, Severity::Error);
+        assert_eq!(d.severity, Severity::Fatal);
     }
 
     #[test]

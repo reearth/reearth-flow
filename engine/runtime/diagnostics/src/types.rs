@@ -103,7 +103,7 @@ impl Diagnostic {
             code,
             category: code.category(),
             severity: draft.severity.unwrap_or(match default_disposition {
-                Disposition::Fatal => Severity::Error,
+                Disposition::Fatal => Severity::Fatal,
                 _ => Severity::Warn,
             }),
             default_disposition,
