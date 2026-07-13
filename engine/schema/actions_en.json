@@ -3414,7 +3414,7 @@
       "description": "Joins requestor and supplier features based on matching attribute values, with configurable join types.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureJoiner Parameters",
+        "title": "Feature Joiner Parameters",
         "description": "Configuration for joining requestor and supplier features based on matching attributes or expressions.",
         "type": "object",
         "required": [
@@ -3423,7 +3423,7 @@
         "properties": {
           "joinType": {
             "title": "Join Type",
-            "description": "Join type: inner, left, or full",
+            "description": "How unmatched features are handled: inner, left, or full.",
             "allOf": [
               {
                 "$ref": "#/definitions/JoinType"
@@ -3432,7 +3432,7 @@
           },
           "requestorAttribute": {
             "title": "Requestor Attributes",
-            "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue)",
+            "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue).",
             "type": [
               "array",
               "null"
@@ -3443,7 +3443,7 @@
           },
           "supplierAttribute": {
             "title": "Supplier Attributes",
-            "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue)",
+            "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue).",
             "type": [
               "array",
               "null"
@@ -3454,7 +3454,7 @@
           },
           "requestorAttributeValue": {
             "title": "Requestor Attribute Value",
-            "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute)",
+            "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute).",
             "type": [
               "object",
               "null"
@@ -3478,7 +3478,7 @@
           },
           "supplierAttributeValue": {
             "title": "Supplier Attribute Value",
-            "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute)",
+            "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute).",
             "type": [
               "object",
               "null"
@@ -3502,7 +3502,7 @@
           },
           "conflictResolution": {
             "title": "Conflict Resolution",
-            "description": "Attribute conflict resolution strategy when both requestor and supplier have the same attribute",
+            "description": "How to resolve conflicts when requestor and supplier features share the same attribute.",
             "anyOf": [
               {
                 "$ref": "#/definitions/ConflictResolution"
@@ -3518,7 +3518,7 @@
             "oneOf": [
               {
                 "title": "Inner",
-                "description": "Only emit features where a match exists",
+                "description": "Only emits features where a match exists.",
                 "type": "string",
                 "enum": [
                   "inner"
@@ -3526,7 +3526,7 @@
               },
               {
                 "title": "Left",
-                "description": "Emit all requestor features (default)",
+                "description": "Emits all requestor features, matched or not.",
                 "type": "string",
                 "enum": [
                   "left"
@@ -3534,7 +3534,7 @@
               },
               {
                 "title": "Full",
-                "description": "Emit all features from both sides",
+                "description": "Emits all features from both sides.",
                 "type": "string",
                 "enum": [
                   "full"
@@ -3549,7 +3549,7 @@
             "oneOf": [
               {
                 "title": "Requestor Wins",
-                "description": "Requestor attributes win on conflict",
+                "description": "Requestor attributes win on conflict.",
                 "type": "string",
                 "enum": [
                   "requestorWins"
@@ -3557,7 +3557,7 @@
               },
               {
                 "title": "Supplier Wins",
-                "description": "Supplier attributes win on conflict (default)",
+                "description": "Supplier attributes win on conflict (default).",
                 "type": "string",
                 "enum": [
                   "supplierWins"
@@ -3633,16 +3633,16 @@
     {
       "name": "Feature Merger",
       "type": "processor",
-      "description": "Merges features by attributes",
+      "description": "Merges requestor and supplier features based on matching attribute values.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureMerger Parameters",
+        "title": "Feature Merger Parameters",
         "description": "Configuration for merging requestor and supplier features based on matching attributes or expressions.",
         "type": "object",
         "properties": {
           "requestorAttribute": {
             "title": "Requestor Attributes",
-            "description": "Attributes from requestor features to use for matching (alternative to requestor_attribute_value)",
+            "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue).",
             "type": [
               "array",
               "null"
@@ -3653,7 +3653,7 @@
           },
           "supplierAttribute": {
             "title": "Supplier Attributes",
-            "description": "Attributes from supplier features to use for matching (alternative to supplier_attribute_value)",
+            "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue).",
             "type": [
               "array",
               "null"
@@ -3664,7 +3664,7 @@
           },
           "requestorAttributeValue": {
             "title": "Requestor Attribute Value",
-            "description": "Expression to evaluate for requestor feature matching values (alternative to requestor_attribute)",
+            "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute).",
             "type": [
               "object",
               "null"
@@ -3688,7 +3688,7 @@
           },
           "supplierAttributeValue": {
             "title": "Supplier Attribute Value",
-            "description": "Expression to evaluate for supplier feature matching values (alternative to supplier_attribute)",
+            "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute).",
             "type": [
               "object",
               "null"
@@ -3712,7 +3712,7 @@
           },
           "completeGrouped": {
             "title": "Complete Grouped",
-            "description": "Whether to complete grouped features before processing the next group",
+            "description": "Whether to complete grouped features before processing the next group.",
             "type": [
               "boolean",
               "null"
@@ -3742,10 +3742,10 @@
     {
       "name": "Feature Sorter",
       "type": "processor",
-      "description": "Sorts features by attributes",
+      "description": "Sorts features based on specified attributes in ascending or descending order.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureSorter Parameters",
+        "title": "Feature Sorter Parameters",
         "description": "Configuration for sorting features based on attribute values.",
         "type": "object",
         "required": [
@@ -3755,7 +3755,7 @@
         "properties": {
           "attributes": {
             "title": "Sort Attributes",
-            "description": "Attributes to use for sorting features (sort order based on attribute order)",
+            "description": "Attributes to sort by; earlier attributes take precedence.",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Attribute"
@@ -3763,7 +3763,7 @@
           },
           "order": {
             "title": "Sort Order",
-            "description": "Sorting order (ascending or descending)",
+            "description": "Whether features are sorted in ascending or descending order.",
             "allOf": [
               {
                 "$ref": "#/definitions/Order"
