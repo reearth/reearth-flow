@@ -2917,7 +2917,9 @@
       "categories": [
         "Debug"
       ],
-      "tags": []
+      "tags": [
+        "logging"
+      ]
     },
     {
       "name": "Echo Sink",
@@ -2932,7 +2934,9 @@
       "categories": [
         "Debug"
       ],
-      "tags": []
+      "tags": [
+        "logging"
+      ]
     },
     {
       "name": "Elevation Extractor",
@@ -3175,15 +3179,21 @@
         "description": "フィーチャーのカウント・グループ化方法と結果の格納先を設定する",
         "type": "object",
         "required": [
-          "countStart",
           "outputAttribute"
         ],
         "properties": {
+          "outputAttribute": {
+            "title": "出力属性",
+            "description": "カウント結果を格納する属性名",
+            "type": "string"
+          },
           "countStart": {
             "title": "カウント開始値",
             "description": "カウンターの開始値",
+            "default": 1,
             "type": "integer",
-            "format": "int64"
+            "format": "uint64",
+            "minimum": 0.0
           },
           "groupBy": {
             "title": "グループ化属性",
@@ -3195,11 +3205,6 @@
             "items": {
               "$ref": "#/definitions/Attribute"
             }
-          },
-          "outputAttribute": {
-            "title": "出力属性",
-            "description": "カウント結果を格納する属性名",
-            "type": "string"
           }
         },
         "definitions": {
@@ -3213,13 +3218,15 @@
         "features"
       ],
       "outputPorts": [
-        "features",
-        "rejected"
+        "features"
       ],
       "categories": [
         "Debug"
       ],
-      "tags": []
+      "tags": [
+        "aggregation",
+        "attribute"
+      ]
     },
     {
       "name": "Feature Creator",

@@ -2914,7 +2914,9 @@
       "categories": [
         "Debug"
       ],
-      "tags": []
+      "tags": [
+        "logging"
+      ]
     },
     {
       "name": "Echo Sink",
@@ -2929,7 +2931,9 @@
       "categories": [
         "Debug"
       ],
-      "tags": []
+      "tags": [
+        "logging"
+      ]
     },
     {
       "name": "Elevation Extractor",
@@ -3172,15 +3176,21 @@
         "description": "Configure how features are counted and grouped, and where to store the count",
         "type": "object",
         "required": [
-          "countStart",
           "outputAttribute"
         ],
         "properties": {
+          "outputAttribute": {
+            "title": "Output Attribute",
+            "description": "Name of the attribute where the count will be stored",
+            "type": "string"
+          },
           "countStart": {
             "title": "Start Count",
             "description": "Starting value for the counter",
+            "default": 1,
             "type": "integer",
-            "format": "int64"
+            "format": "uint64",
+            "minimum": 0.0
           },
           "groupBy": {
             "title": "Group By Attributes",
@@ -3192,11 +3202,6 @@
             "items": {
               "$ref": "#/definitions/Attribute"
             }
-          },
-          "outputAttribute": {
-            "title": "Output Attribute",
-            "description": "Name of the attribute where the count will be stored",
-            "type": "string"
           }
         },
         "definitions": {
@@ -3210,13 +3215,15 @@
         "features"
       ],
       "outputPorts": [
-        "features",
-        "rejected"
+        "features"
       ],
       "categories": [
         "Debug"
       ],
-      "tags": []
+      "tags": [
+        "aggregation",
+        "attribute"
+      ]
     },
     {
       "name": "Feature Creator",
