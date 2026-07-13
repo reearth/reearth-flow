@@ -3,3 +3,9 @@ code = "internal.invariant_violation"
 category = "internal"
 default_disposition = "fatal"
 message = "internal invariant violated"
+
+[[codes]]
+code = "internal.unclassified"
+category = "internal"
+default_disposition = "fatal"
+message = "node failed with an unclassified error"

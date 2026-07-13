@@ -65,6 +65,13 @@ pub struct SinkNode<F> {
     /// every `ExecutorContext`/`NodeContext` this node receives so
     /// process()/finish()-time reports are attributed to this node.
     diagnostics: crate::diagnostics::SharedNodeDiagnostics,
+    /// Sink for this node's finish()-time diagnostic summaries
+    /// (`emit_summaries`'s return value), written by `on_terminate` and read
+    /// by the spawning thread (`start_sink` in `dag_executor.rs`) after
+    /// `run()` returns. Exists to carry a `Vec<Diagnostic>` out of the
+    /// `ReceiverLoop`/`Node` traits' `Result<(), ExecutionError>`-only
+    /// return type without changing either trait's signature.
+    summaries_sink: Arc<parking_lot::Mutex<Vec<Diagnostic>>>,
 }
 
 impl<F: Future + Unpin + Debug> SinkNode<F> {
@@ -128,11 +135,19 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
             feature_state,
             incremental_mode,
             diagnostics,
+            summaries_sink: Arc::new(parking_lot::Mutex::new(Vec::new())),
         }
     }
 
     pub fn handle(&self) -> &NodeHandle {
         &self.node_handle
+    }
+
+    /// Clone of the handle `on_terminate` writes this node's drained
+    /// finish()-time summaries into. Call before consuming `self` via
+    /// `run()`/`receiver_loop()` so the summaries can still be read after.
+    pub fn summaries_sink(&self) -> Arc<parking_lot::Mutex<Vec<Diagnostic>>> {
+        self.summaries_sink.clone()
     }
 }
 
@@ -409,8 +424,10 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
         // whether finish() itself succeeded — reports recorded during
         // process()/finish() must not be silently dropped just because
         // finish() failed.
-        // Returned Vec is consumed by a later task (RunSummary, Task 5).
-        let _summaries = crate::diagnostics::emit_summaries(&self.event_hub, &self.diagnostics);
+        // Stashed in `summaries_sink` for the spawning thread to read after
+        // `run()` returns and fold into the run's `RunSummary` (Task 5).
+        let summaries = crate::diagnostics::emit_summaries(&self.event_hub, &self.diagnostics);
+        *self.summaries_sink.lock() = summaries;
         self.event_hub.send(Event::SinkFinished {
             node: self.node_handle.clone(),
             name: self.node_name.clone(),

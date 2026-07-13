@@ -46,5 +46,11 @@
     "category": "internal",
     "defaultDisposition": "fatal",
     "message": "internal invariant violated"
+  },
+  {
+    "code": "internal.unclassified",
+    "category": "internal",
+    "defaultDisposition": "fatal",
+    "message": "node failed with an unclassified error"
   }
 ]

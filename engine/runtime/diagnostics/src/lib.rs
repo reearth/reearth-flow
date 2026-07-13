@@ -30,7 +30,7 @@ mod tests {
             let _ = code.category();
             let _ = code.default_disposition();
         }
-        assert_eq!(ErrorCode::ALL.len(), 7);
+        assert_eq!(ErrorCode::ALL.len(), 8);
     }
 
     #[test]

@@ -182,3 +182,16 @@ impl DiagnosticDraft {
         self
     }
 }
+
+/// Terminal fold of a DAG run, produced by `DagExecutorJoinHandle::join`
+/// (engine/runtime/runtime) once every node thread has been collected.
+/// `failed_nodes` holds one `Diagnostic` per node whose thread returned
+/// `Err` (recovered from the structured fatal-backstop error where
+/// possible, else synthesized); `aggregated_diagnostics` holds every
+/// finish()-time summary emitted across all nodes, in collection order.
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
+pub struct RunSummary {
+    pub failed_nodes: Vec<Diagnostic>,
+    pub aggregated_diagnostics: Vec<Diagnostic>,
+    pub dropped_event_count: u64,
+}

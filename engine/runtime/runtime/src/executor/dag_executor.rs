@@ -9,6 +9,7 @@ use crossbeam::channel::Sender;
 use futures::Future;
 use petgraph::visit::EdgeRef;
 use petgraph::Direction;
+use reearth_flow_diagnostics::{Diagnostic, DiagnosticDraft, Disposition, ErrorCode, RunSummary};
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::workflow::Graph;
@@ -37,8 +38,21 @@ pub struct DagExecutor {
     options: ExecutorOptions,
 }
 
+/// Per-node-thread outcome, carried alongside the thread's terminal
+/// `Result<(), ExecutionError>` so `DagExecutorJoinHandle::join` can fold
+/// diagnostics from every node — including ones whose thread ultimately
+/// errored — into a `RunSummary`. Executor-internal wire type: lives in the
+/// runtime crate rather than `reearth_flow_diagnostics` because it only
+/// exists to get data across a `std::thread::JoinHandle` boundary.
+#[derive(Debug, Default)]
+pub struct NodeOutcome {
+    pub summaries: Vec<Diagnostic>,
+}
+
+type NodeThreadResult = (NodeOutcome, Result<(), ExecutionError>);
+
 pub struct DagExecutorJoinHandle {
-    join_handles: Vec<JoinHandle<Result<(), ExecutionError>>>,
+    join_handles: Vec<JoinHandle<NodeThreadResult>>,
     notify: Arc<Notify>,
     executor_id: uuid::Uuid,
 }
@@ -244,7 +258,7 @@ impl DagExecutor {
                         sandbox_root,
                     );
                     replay_inject(cfg, replay_groups, node_ctx);
-                    Ok::<(), ExecutionError>(())
+                    (NodeOutcome::default(), Ok::<(), ExecutionError>(()))
                 })
                 .map_err(ExecutionError::CannotSpawnWorkerThread)?;
 
@@ -268,8 +282,27 @@ async fn subscribe_event(
 }
 
 impl DagExecutorJoinHandle {
-    pub fn join(&mut self) -> Result<(), ExecutionError> {
-        loop {
+    /// Collects every node thread's `(NodeOutcome, Result<(), ExecutionError>)`
+    /// — never short-circuits on the first failure — then folds them into a
+    /// `RunSummary` via `fold_outcomes`. `cleanup_executor_cache` always runs
+    /// once every thread has been joined, on every exit path.
+    ///
+    /// Interim (Phase 2a Task 5) error semantics: collecting every thread
+    /// before deciding anything fixes the historical leaked-threads bug,
+    /// where the old fail-fast loop returned on the FIRST thread to error
+    /// while every other node thread kept running unjoined. But to keep
+    /// `run_dag_executor` and every golden logging scenario byte-identical
+    /// until Task 6 threads `RunSummary` all the way through the runner,
+    /// this still surfaces the first-completed thread's raw
+    /// `ExecutionError` via `Err(..)` — exactly what the old fail-fast loop
+    /// returned (it always returned whichever thread finished first, and
+    /// threads are discovered/collected here in that same order). Task 6
+    /// removes this branch, always returns `Ok(RunSummary)`, and leaves
+    /// fatality to be decided by the caller from `failed_nodes`.
+    pub fn join(&mut self) -> Result<RunSummary, ExecutionError> {
+        let mut results: Vec<NodeThreadResult> = Vec::with_capacity(self.join_handles.len());
+
+        while !self.join_handles.is_empty() {
             let Some(finished) = self
                 .join_handles
                 .iter()
@@ -281,22 +314,28 @@ impl DagExecutorJoinHandle {
                 continue;
             };
             let handle = self.join_handles.swap_remove(finished);
-            handle.join().unwrap()?;
-
-            if self.join_handles.is_empty() {
-                // `enhanced_flush(5000)` used to live here. Its early-break
-                // condition (`sender.receiver_count() == 0`) never fired in
-                // practice because broadcast subscribers stay attached for
-                // the lifetime of the workflow, so the call effectively
-                // waited the full 5 seconds on every workflow execution
-                // (~11+ minutes across the 141 workflow-tests). The runner-
-                // level shutdown sleep + the trailing settle in any caller
-                // that needs one provides enough of a drain window without
-                // this 5s tax.
-                cleanup_executor_cache(self.executor_id);
-                return Ok(());
-            }
+            // A panicked node thread is a bug, not a per-node failure — keep
+            // re-raising it here rather than folding it into `RunSummary`.
+            results.push(handle.join().unwrap());
         }
+
+        // `enhanced_flush(5000)` used to live here. Its early-break
+        // condition (`sender.receiver_count() == 0`) never fired in
+        // practice because broadcast subscribers stay attached for
+        // the lifetime of the workflow, so the call effectively
+        // waited the full 5 seconds on every workflow execution
+        // (~11+ minutes across the 141 workflow-tests). The runner-
+        // level shutdown sleep + the trailing settle in any caller
+        // that needs one provides enough of a drain window without
+        // this 5s tax.
+        cleanup_executor_cache(self.executor_id);
+
+        if let Some(pos) = results.iter().position(|(_, result)| result.is_err()) {
+            let (_, result) = results.remove(pos);
+            return Err(result.expect_err("position() above guarantees Err"));
+        }
+
+        Ok(fold_outcomes(results))
     }
 
     pub fn notify(&self) {
@@ -304,23 +343,79 @@ impl DagExecutorJoinHandle {
     }
 }
 
+/// Pure fold: turns every node thread's `(NodeOutcome, Result<(),
+/// ExecutionError>)` into one `RunSummary`. `aggregated_diagnostics` is
+/// every outcome's summaries, extended in collection order. Each `Err`
+/// becomes one `failed_nodes` entry, recovered from the structured
+/// `Processor`/`Sink`/`Source` fatal-backstop diagnostic when the boxed
+/// error downcasts to one, else synthesized under
+/// `ErrorCode::InternalUnclassified`. Every `failed_nodes` entry is stamped
+/// `effective_disposition = Some(Disposition::Fatal)`: reaching this fold
+/// at all means that node's thread returned `Err`, so the run is fatally
+/// broken by it regardless of the diagnostic's own registry default.
+fn fold_outcomes(results: Vec<NodeThreadResult>) -> RunSummary {
+    let mut aggregated_diagnostics = Vec::new();
+    let mut failed_nodes = Vec::new();
+
+    for (outcome, result) in results {
+        aggregated_diagnostics.extend(outcome.summaries);
+        if let Err(e) = result {
+            let mut diagnostic = diagnostic_from_execution_error(e);
+            diagnostic.effective_disposition = Some(Disposition::Fatal);
+            failed_nodes.push(diagnostic);
+        }
+    }
+
+    RunSummary {
+        failed_nodes,
+        aggregated_diagnostics,
+        dropped_event_count: 0, // Task 7 wires drop-event accounting through.
+    }
+}
+
+/// Recovers the original structured `Diagnostic` when `e` is the fatal
+/// backstop (`ExecutionError::Processor/Sink/Source(Box<Diagnostic>)`);
+/// otherwise synthesizes one under the catch-all unclassified code so every
+/// node failure — however it originated — becomes a `Diagnostic`.
+fn diagnostic_from_execution_error(e: ExecutionError) -> Diagnostic {
+    let rendered = e.to_string();
+    let boxed = match e {
+        ExecutionError::Processor(b) | ExecutionError::Sink(b) | ExecutionError::Source(b) => {
+            Some(b)
+        }
+        _ => None,
+    };
+    match boxed.map(|b| b.downcast::<Diagnostic>()) {
+        Some(Ok(diag)) => *diag,
+        _ => Diagnostic::from_draft(
+            DiagnosticDraft::new(ErrorCode::InternalUnclassified).with_message(rendered),
+            None,
+            None,
+            None,
+        ),
+    }
+}
+
 fn start_source<F: Send + 'static + Future + Unpin + Debug>(
     source: SourceNode<F>,
-) -> Result<JoinHandle<Result<(), ExecutionError>>, ExecutionError> {
+) -> Result<JoinHandle<NodeThreadResult>, ExecutionError> {
     let handle = Builder::new()
         .name("sources".into())
-        .spawn(move || match source.run() {
-            Ok(()) => Ok(()),
-            // Channel disconnection means the source listener has quit.
-            // Maybe it quit gracefully so we don't need to propagate the error.
-            Err(e) => {
-                if let ExecutionError::Source(e) = &e {
-                    if let Some(ExecutionError::CannotSendToChannel(_)) = e.downcast_ref() {
-                        return Ok(());
+        .spawn(move || {
+            let result = match source.run() {
+                Ok(()) => Ok(()),
+                // Channel disconnection means the source listener has quit.
+                // Maybe it quit gracefully so we don't need to propagate the error.
+                Err(e) => {
+                    if let ExecutionError::Source(e) = &e {
+                        if let Some(ExecutionError::CannotSendToChannel(_)) = e.downcast_ref() {
+                            return (NodeOutcome::default(), Ok(()));
+                        }
                     }
+                    Err(e)
                 }
-                Err(e)
-            }
+            };
+            (NodeOutcome::default(), result)
         })
         .map_err(ExecutionError::CannotSpawnWorkerThread)?;
 
@@ -329,24 +424,30 @@ fn start_source<F: Send + 'static + Future + Unpin + Debug>(
 
 fn start_processor<F: Send + 'static + Future + Unpin + Debug>(
     processor: ProcessorNode<F>,
-) -> Result<JoinHandle<Result<(), ExecutionError>>, ExecutionError> {
+) -> Result<JoinHandle<NodeThreadResult>, ExecutionError> {
+    let name = processor.handle().to_string();
+    let summaries_sink = processor.summaries_sink();
     Builder::new()
-        .name(processor.handle().to_string())
+        .name(name)
         .spawn(move || {
-            processor.run()?;
-            Ok(())
+            let result = processor.run();
+            let summaries = std::mem::take(&mut *summaries_sink.lock());
+            (NodeOutcome { summaries }, result)
         })
         .map_err(ExecutionError::CannotSpawnWorkerThread)
 }
 
 fn start_sink<F: Send + 'static + Future + Unpin + Debug>(
     sink: SinkNode<F>,
-) -> Result<JoinHandle<Result<(), ExecutionError>>, ExecutionError> {
+) -> Result<JoinHandle<NodeThreadResult>, ExecutionError> {
+    let name = sink.handle().to_string();
+    let summaries_sink = sink.summaries_sink();
     Builder::new()
-        .name(sink.handle().to_string())
-        .spawn(|| {
-            sink.run()?;
-            Ok(())
+        .name(name)
+        .spawn(move || {
+            let result = sink.run();
+            let summaries = std::mem::take(&mut *summaries_sink.lock());
+            (NodeOutcome { summaries }, result)
         })
         .map_err(ExecutionError::CannotSpawnWorkerThread)
 }
@@ -536,5 +637,183 @@ fn replay_inject(cfg: IncrementalRunConfig, groups: Vec<ReplayGroup>, node_ctx: 
         });
 
         tracing::info!("Replay inject done: sent {} op(s) and terminate", sent);
+    }
+}
+
+#[cfg(test)]
+mod fold_outcomes_tests {
+    use super::*;
+    use reearth_flow_diagnostics::Severity;
+
+    fn diagnostic(code: ErrorCode, message: &str) -> Diagnostic {
+        Diagnostic::from_draft(
+            DiagnosticDraft::new(code).with_message(message),
+            None,
+            None,
+            None,
+        )
+    }
+
+    fn outcome(summaries: Vec<Diagnostic>) -> NodeOutcome {
+        NodeOutcome { summaries }
+    }
+
+    #[test]
+    fn empty_input_returns_default_summary() {
+        let summary = fold_outcomes(vec![]);
+        assert!(summary.failed_nodes.is_empty());
+        assert!(summary.aggregated_diagnostics.is_empty());
+        assert_eq!(summary.dropped_event_count, 0);
+    }
+
+    #[test]
+    fn all_success_folds_summaries_with_empty_failed_nodes() {
+        let d1 = diagnostic(ErrorCode::GltfZeroFaceSolid, "d1");
+        let d2 = diagnostic(ErrorCode::Cesium3dtilesEmptyGeometry, "d2");
+        let results = vec![
+            (outcome(vec![d1.clone()]), Ok(())),
+            (outcome(vec![d2.clone()]), Ok(())),
+        ];
+
+        let summary = fold_outcomes(results);
+
+        assert!(summary.failed_nodes.is_empty());
+        assert_eq!(summary.aggregated_diagnostics.len(), 2);
+        assert_eq!(summary.aggregated_diagnostics[0].message, "d1");
+        assert_eq!(summary.aggregated_diagnostics[1].message, "d2");
+    }
+
+    #[test]
+    fn recovers_diagnostic_via_downcast_from_processor_error() {
+        let original = diagnostic(ErrorCode::InternalInvariantViolation, "boom");
+        let results = vec![(
+            outcome(vec![]),
+            Err(ExecutionError::Processor(Box::new(original))),
+        )];
+
+        let summary = fold_outcomes(results);
+
+        assert_eq!(summary.failed_nodes.len(), 1);
+        let recovered = &summary.failed_nodes[0];
+        assert_eq!(recovered.code, ErrorCode::InternalInvariantViolation);
+        assert_eq!(recovered.message, "boom");
+        assert_eq!(recovered.effective_disposition, Some(Disposition::Fatal));
+    }
+
+    #[test]
+    fn recovers_diagnostic_via_downcast_from_sink_error() {
+        let original = diagnostic(ErrorCode::InternalInvariantViolation, "sink boom");
+        let results = vec![(
+            outcome(vec![]),
+            Err(ExecutionError::Sink(Box::new(original))),
+        )];
+
+        let summary = fold_outcomes(results);
+
+        assert_eq!(summary.failed_nodes.len(), 1);
+        assert_eq!(summary.failed_nodes[0].message, "sink boom");
+        assert_eq!(
+            summary.failed_nodes[0].effective_disposition,
+            Some(Disposition::Fatal)
+        );
+    }
+
+    #[test]
+    fn recovers_diagnostic_via_downcast_from_source_error() {
+        let original = diagnostic(ErrorCode::InternalInvariantViolation, "source boom");
+        let boxed: crate::errors::BoxedError = Box::new(original);
+        let results = vec![(outcome(vec![]), Err(ExecutionError::Source(boxed)))];
+
+        let summary = fold_outcomes(results);
+
+        assert_eq!(summary.failed_nodes.len(), 1);
+        assert_eq!(summary.failed_nodes[0].message, "source boom");
+    }
+
+    #[test]
+    fn synthesizes_unclassified_for_non_diagnostic_boxed_error() {
+        // A `Processor` variant whose boxed error is NOT a `Diagnostic` —
+        // downcast fails, so the fold must synthesize instead of panicking.
+        let boxed: crate::errors::BoxedError = Box::new(std::io::Error::other("io boom"));
+        let results = vec![(outcome(vec![]), Err(ExecutionError::Processor(boxed)))];
+
+        let summary = fold_outcomes(results);
+
+        assert_eq!(summary.failed_nodes.len(), 1);
+        let synthesized = &summary.failed_nodes[0];
+        assert_eq!(synthesized.code, ErrorCode::InternalUnclassified);
+        assert_eq!(synthesized.effective_disposition, Some(Disposition::Fatal));
+        assert!(synthesized.message.contains("io boom"));
+        assert!(synthesized.message.contains("Processor error"));
+    }
+
+    #[test]
+    fn synthesizes_unclassified_for_non_structured_execution_error_variant() {
+        // A variant that never carries a `Diagnostic` at all (e.g. a channel
+        // failure) must also be synthesized, not dropped or panicked on.
+        let results = vec![(
+            outcome(vec![]),
+            Err(ExecutionError::CannotSendToChannel("channel boom".into())),
+        )];
+
+        let summary = fold_outcomes(results);
+
+        assert_eq!(summary.failed_nodes.len(), 1);
+        let synthesized = &summary.failed_nodes[0];
+        assert_eq!(synthesized.code, ErrorCode::InternalUnclassified);
+        assert_eq!(synthesized.severity, Severity::Fatal);
+        assert_eq!(synthesized.effective_disposition, Some(Disposition::Fatal));
+        assert!(synthesized.message.contains("channel boom"));
+    }
+
+    #[test]
+    fn mixed_outcomes_preserve_collection_order_for_both_vecs() {
+        let d_ok_1 = diagnostic(ErrorCode::GltfZeroFaceSolid, "ok-1");
+        let fatal_diag = diagnostic(ErrorCode::InternalInvariantViolation, "fatal-1");
+        let d_ok_2 = diagnostic(ErrorCode::Cesium3dtilesEmptyGeometry, "ok-2");
+
+        let results = vec![
+            (outcome(vec![d_ok_1.clone()]), Ok(())),
+            (
+                outcome(vec![]),
+                Err(ExecutionError::Processor(Box::new(fatal_diag))),
+            ),
+            (outcome(vec![d_ok_2.clone()]), Ok(())),
+            (
+                outcome(vec![]),
+                Err(ExecutionError::CannotReceiveFromChannel(
+                    "second boom".into(),
+                )),
+            ),
+        ];
+
+        let summary = fold_outcomes(results);
+
+        // aggregated_diagnostics: only from the two Ok entries, in order.
+        assert_eq!(summary.aggregated_diagnostics.len(), 2);
+        assert_eq!(summary.aggregated_diagnostics[0].message, "ok-1");
+        assert_eq!(summary.aggregated_diagnostics[1].message, "ok-2");
+
+        // failed_nodes: one recovered, one synthesized, in collection order.
+        assert_eq!(summary.failed_nodes.len(), 2);
+        assert_eq!(summary.failed_nodes[0].message, "fatal-1");
+        assert_eq!(
+            summary.failed_nodes[0].code,
+            ErrorCode::InternalInvariantViolation
+        );
+        assert_eq!(
+            summary.failed_nodes[1].code,
+            ErrorCode::InternalUnclassified
+        );
+        assert!(summary.failed_nodes[1].message.contains("second boom"));
+        for failed in &summary.failed_nodes {
+            assert_eq!(failed.effective_disposition, Some(Disposition::Fatal));
+        }
+    }
+
+    #[test]
+    fn dropped_event_count_defaults_to_zero_pending_task_7() {
+        let summary = fold_outcomes(vec![(outcome(vec![]), Ok(()))]);
+        assert_eq!(summary.dropped_event_count, 0);
     }
 }

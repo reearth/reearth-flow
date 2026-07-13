@@ -74,7 +74,14 @@ pub fn run_dag_executor(
         event_handlers,
         executor_id,
     ))?;
-    let result = join_handle.join().map_err(Error::ExecutionError);
+    // `join()` now collects every node thread and folds their diagnostics
+    // into a `RunSummary` (Phase 2a Task 5), but — as an interim measure —
+    // still returns `Err` with the same raw `ExecutionError` the old
+    // fail-fast loop would have returned when any node thread failed, so
+    // this call site (and every golden logging scenario) needs zero
+    // changes for now. A successful join can therefore never carry a
+    // non-empty `failed_nodes`.
+    let join_result = join_handle.join().map_err(Error::ExecutionError);
     // Settle delay between join completion and notify. The historical 1000ms
     // was a defensive value (likely waiting for in-flight async tasks / output
     // flushes to drain). 100ms is enough headroom in practice and turns the
@@ -84,5 +91,12 @@ pub fn run_dag_executor(
     // wall-clock cost without exposing the underlying race.
     std::thread::sleep(Duration::from_millis(100));
     join_handle.notify();
-    result
+    match join_result {
+        Ok(summary) => {
+            // Task 6 threads the summary through properly.
+            let _summary = summary;
+            Ok(())
+        }
+        Err(e) => Err(e),
+    }
 }
