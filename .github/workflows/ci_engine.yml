@@ -81,6 +81,8 @@ jobs:
       # not run here.
       - name: clippy
         run: cargo make clippy
+      - name: Check action tracing call sites
+        run: cargo make check-action-tracing
       - name: rustfmt
         run: cargo make format -- --check
       - name: taplo

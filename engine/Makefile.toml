@@ -101,6 +101,25 @@ git ls-files |grep -E '.rs$' |(! xargs grep 'unimplemented!')
 git ls-files |grep -E '.rs$' |(! xargs grep 'todo!')
 ''']
 
+[tasks.check-action-tracing]
+script = ['''
+#!/usr/bin/env bash -eu
+# Actions must report via ctx.report()/ctx.warn(), not raw tracing macros (spec: logs-error G3/G4).
+# The allowlist pins per-file counts of legacy call sites and must shrink to empty:
+# converting a site requires updating tools/action-tracing-allowlist.txt in the same commit.
+# (Qualified `tracing::` form only; imported `warn!`/`error!` macros are caught in review.)
+actual=$(mktemp)
+git ls-files 'runtime/action-*' | grep -E '\.rs$' \
+  | xargs grep -c -E 'tracing::(warn|error)!' 2>/dev/null \
+  | grep -v ':0$' | sort > "$actual" || true
+if ! diff -u tools/action-tracing-allowlist.txt "$actual"; then
+  echo "tracing::warn!/tracing::error! call sites in action crates changed."
+  echo "New sites are forbidden — use ctx.report()/ctx.warn()."
+  echo "If you converted sites, regenerate the allowlist with the command in this task."
+  exit 1
+fi
+''']
+
 # Generates actions.json (base English schema) and syncs i18n skeleton files.
 # Run this after adding or modifying any action. Then fill in translations and run schema-translated.
 [tasks.schema-base]
