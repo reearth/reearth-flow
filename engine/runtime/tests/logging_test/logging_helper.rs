@@ -353,7 +353,7 @@ impl Ord for ActionLogEntry {
 fn normalize_action_msg(msg: &str) -> String {
     static RE: Lazy<Regex> = Lazy::new(|| {
         Regex::new(
-            r#"elapsed = [^,"]+|avg = [^,"]+|stddev = [^,"]+|features = \d+|hash: \d+|feature id = [a-f0-9-]+"#,
+            r#"elapsed = [^,"]+|avg = [^,"]+|stddev = [^,"]+|features = \d+|hash: \d+|feature id = [a-f0-9-]+|Sample ids: [0-9a-f, -]+"#,
         )
         .unwrap()
     });

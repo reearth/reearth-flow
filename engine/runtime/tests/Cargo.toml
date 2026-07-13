@@ -110,3 +110,7 @@ path = "logging_test/08_workflow_definition_error.rs"
 [[test]]
 name = "test-logging-orphaned-sink"
 path = "logging_test/09_orphaned_sink.rs"
+
+[[test]]
+name = "10_warn_drop_aggregation"
+path = "logging_test/10_warn_drop_aggregation.rs"
