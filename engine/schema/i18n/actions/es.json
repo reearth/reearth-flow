@@ -1095,6 +1095,19 @@
       }
     },
     {
+      "name": "Feature GeoJSON Writer",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureGeoJsonWriter Parameters",
+          "description": "Configuration for writing features to GeoJSON files."
+        },
+        "output": {
+          "title": "Output",
+          "description": "Path (or expression evaluated per feature) of the GeoJSON file to write. Features sharing a resolved path are written to the same file, so the expression can split features across files by attribute value."
+        }
+      }
+    },
+    {
       "name": "Feature Joiner",
       "description": "Une entidades solicitantes y proveedoras basándose en valores de atributos coincidentes con tipos de unión configurables",
       "parameterI18n": {
