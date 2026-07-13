@@ -246,8 +246,8 @@ impl Parser {
 }
 
 /// The EPSG code declared by a `gml:boundedBy` element's `gml:Envelope/@srsName`.
-/// New-geometry only tracks EPSG CRSes; a present-but-unrecognized srsName is
-/// warned and treated as no declaration.
+/// New-geometry only tracks EPSG CRSes; a present-but-unrecognized srsName is an
+/// error and is treated as no declaration.
 fn envelope_epsg(bounded_by: &RawNode) -> Option<EpsgCode> {
     bounded_by.children.iter().find_map(|child| {
         let RawChild::Element(node) = child else {
@@ -259,7 +259,7 @@ fn envelope_epsg(bounded_by: &RawNode) -> Option<EpsgCode> {
         let srs_name = srs_name_attr(&node.attrs)?;
         let epsg = srsname::parse_epsg(srs_name);
         if epsg.is_none() {
-            tracing::warn!(
+            tracing::error!(
                 srs_name,
                 "citygml: gml:Envelope srsName is not a recognized EPSG CRS, ignored"
             );
