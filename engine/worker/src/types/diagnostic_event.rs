@@ -69,6 +69,10 @@ impl From<&AggregateInfo> for WireAggregateInfo {
 /// that string. Kept generic instead of hand-written per-enum `match`es so
 /// this mapping cannot silently fall out of sync with the diagnostics
 /// crate's own enum variants.
+///
+/// Only valid for unit-variant (C-like) enums that serialize to a bare JSON
+/// string; a non-unit-variant enum (struct/tuple variants, or `#[serde(tag =
+/// ..)]`) would serialize to an object/array and hit the `unreachable!` below.
 fn enum_to_string<T: Serialize>(value: &T) -> String {
     match serde_json::to_value(value) {
         Ok(serde_json::Value::String(s)) => s,

@@ -2,7 +2,13 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "NodeStatusEvent",
   "type": "object",
-  "required": ["workflowId", "jobId", "nodeId", "status", "timestamp"],
+  "required": [
+    "jobId",
+    "nodeId",
+    "status",
+    "timestamp",
+    "workflowId"
+  ],
   "properties": {
     "workflowId": {
       "type": "string",
@@ -19,7 +25,10 @@
       "$ref": "#/definitions/NodeStatus"
     },
     "featureId": {
-      "type": ["string", "null"],
+      "type": [
+        "string",
+        "null"
+      ],
       "format": "uuid"
     },
     "timestamp": {
@@ -30,7 +39,14 @@
   "definitions": {
     "NodeStatus": {
       "type": "string",
-      "enum": ["starting", "processing", "completed", "failed"]
+      "enum": [
+        "pending",
+        "starting",
+        "processing",
+        "idle",
+        "completed",
+        "failed"
+      ]
     }
   }
 }

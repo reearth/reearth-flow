@@ -2,8 +2,17 @@
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "JobCompleteEvent",
   "type": "object",
-  "required": ["jobId", "result", "timestamp", "workflowId"],
+  "required": [
+    "jobId",
+    "result",
+    "timestamp",
+    "workflowId"
+  ],
   "properties": {
+    "workflowId": {
+      "type": "string",
+      "format": "uuid"
+    },
     "jobId": {
       "type": "string",
       "format": "uuid"
@@ -15,15 +24,160 @@
       "type": "string",
       "format": "date-time"
     },
-    "workflowId": {
-      "type": "string",
-      "format": "uuid"
+    "failedNodes": {
+      "description": "Absent (not `null`) when there is no `RunSummary` to report (the runner returned `Err`), so old subscribers that don't know about these fields see exactly the pre-Task-10 wire shape.",
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/WireDiagnostic"
+      }
+    },
+    "aggregatedDiagnostics": {
+      "type": [
+        "array",
+        "null"
+      ],
+      "items": {
+        "$ref": "#/definitions/WireDiagnostic"
+      }
+    },
+    "droppedEventCount": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint64",
+      "minimum": 0.0
     }
   },
   "definitions": {
     "JobResult": {
       "type": "string",
-      "enum": ["success", "failed"]
+      "enum": [
+        "success",
+        "failed"
+      ]
+    },
+    "WireDiagnostic": {
+      "description": "Wire form of `Diagnostic`. Enums are carried as their `snake_case` string values rather than native/tagged JSON enums so unknown or newer values survive a Go round-trip verbatim instead of failing to deserialize (forward-compat requirement, spec diagnostic.v1 4.7).",
+      "type": "object",
+      "required": [
+        "category",
+        "code",
+        "message",
+        "severity"
+      ],
+      "properties": {
+        "code": {
+          "type": "string"
+        },
+        "category": {
+          "type": "string"
+        },
+        "severity": {
+          "type": "string"
+        },
+        "effectiveDisposition": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "nodeId": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "actionType": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "featureId": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "format": "uuid"
+        },
+        "message": {
+          "type": "string"
+        },
+        "help": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "sourceSpan": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/WireSourceSpan"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "aggregated": {
+          "anyOf": [
+            {
+              "$ref": "#/definitions/WireAggregateInfo"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "WireSourceSpan": {
+      "description": "Wire mirror of `reearth_flow_diagnostics::SourceSpan`.",
+      "type": "object",
+      "required": [
+        "offset"
+      ],
+      "properties": {
+        "offset": {
+          "type": "integer",
+          "format": "uint",
+          "minimum": 0.0
+        },
+        "length": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "format": "uint",
+          "minimum": 0.0
+        }
+      }
+    },
+    "WireAggregateInfo": {
+      "description": "Wire mirror of `reearth_flow_diagnostics::AggregateInfo`.",
+      "type": "object",
+      "required": [
+        "count",
+        "sampleFeatureIds"
+      ],
+      "properties": {
+        "count": {
+          "type": "integer",
+          "format": "uint64",
+          "minimum": 0.0
+        },
+        "sampleFeatureIds": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "format": "uuid"
+          }
+        }
+      }
     }
   }
 }
