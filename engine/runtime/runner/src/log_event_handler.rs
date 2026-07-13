@@ -158,17 +158,28 @@ mod tests {
 
     /// Sends a single `Event::Diagnostic(Arc::new(diagnostic))` through
     /// `LogEventHandler::on_event`, then flushes and returns the resulting
-    /// `all.log` contents.
+    /// per-job `{job_id}.log` contents.
     ///
-    /// `LoggerFactory::action_logger` wraps its drain in `slog_async::Async`
-    /// (see `action-log/src/split.rs`): writes are enqueued to a background
-    /// thread, not applied synchronously. `slog-async`'s `AsyncCore::drop`
-    /// only sends the flush/terminate message and joins that thread once
-    /// the *last* reference to the drain's `Arc` is dropped. `LogEventHandler`
-    /// is the sole owner of its `Arc<ActionLogger>` here (never cloned), so
-    /// dropping `handler` on this thread — never the background writer
-    /// thread itself — deterministically blocks until every enqueued record
-    /// has been written to disk, with no sleep/poll needed before reading.
+    /// `LoggerFactory::action_logger(&job_id.to_string())` (called from
+    /// `LogEventHandler::new`) names the per-job log file after the action
+    /// string it's given — `{job_id}.log` — and wraps its drain in
+    /// `slog_async::Async` (see `action-log/src/split.rs`): writes are
+    /// enqueued to a background thread, not applied synchronously.
+    /// `slog-async`'s `AsyncCore::drop` only sends the flush/terminate
+    /// message and joins that thread once the *last* reference to the
+    /// drain's `Arc` is dropped. `LogEventHandler` is the sole owner of its
+    /// `Arc<ActionLogger>` here (never cloned), so dropping `handler` on
+    /// this thread — never the background writer thread itself —
+    /// deterministically blocks until every record enqueued on the per-job
+    /// drain has been written to `{job_id}.log`, with no sleep/poll needed
+    /// before reading.
+    ///
+    /// We deliberately do NOT read `all.log` here: it's produced by
+    /// `factory::create_root_logger`, whose async drain is the shared
+    /// parent of every per-job logger and stays alive on `logger_factory`
+    /// after `handler` is dropped. Its background thread is never joined
+    /// by this test, so a read of `all.log` would depend on scheduling
+    /// luck rather than the deterministic drop-flush guaranteed above.
     fn render_diagnostic_to_action_log(diagnostic: Diagnostic) -> String {
         let tempdir = tempfile::tempdir().unwrap();
         let action_log_dir = tempdir.path().join("action-log");
@@ -177,8 +188,8 @@ mod tests {
         let root_logger = factory::create_root_logger(action_log_dir.clone());
         let logger_factory = Arc::new(LoggerFactory::new(root_logger, action_log_dir.clone()));
 
-        let handler =
-            LogEventHandler::new(uuid::Uuid::new_v4(), uuid::Uuid::new_v4(), logger_factory);
+        let job_id = uuid::Uuid::new_v4();
+        let handler = LogEventHandler::new(uuid::Uuid::new_v4(), job_id, logger_factory);
 
         let event = Event::Diagnostic(Arc::new(diagnostic));
         let rt = tokio::runtime::Runtime::new().unwrap();
@@ -188,8 +199,24 @@ mod tests {
         // here, before the read below.
         drop(handler);
 
-        fs::read_to_string(action_log_dir.join("all.log"))
-            .unwrap_or_else(|e| panic!("failed to read all.log: {e}"))
+        let job_log_path = action_log_dir.join(format!("{job_id}.log"));
+        fs::read_to_string(&job_log_path).unwrap_or_else(|e| {
+            let listing = fs::read_dir(&action_log_dir)
+                .map(|entries| {
+                    entries
+                        .filter_map(|entry| {
+                            entry
+                                .ok()
+                                .map(|e| e.file_name().to_string_lossy().into_owned())
+                        })
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default();
+            panic!(
+                "failed to read {}: {e}; action-log dir contains: {listing:?}",
+                job_log_path.display()
+            )
+        })
     }
 
     fn single_json_line(content: &str) -> serde_json::Value {
