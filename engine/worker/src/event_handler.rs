@@ -6,6 +6,7 @@ use reearth_flow_runtime::node::NodeStatus;
 use uuid::Uuid;
 
 use reearth_flow_worker::pubsub::Publisher;
+use reearth_flow_worker::types::diagnostic_event::{DiagnosticEvent, ENABLE_DIAGNOSTICS};
 use reearth_flow_worker::types::log_stream_event::LogStreamEvent;
 use reearth_flow_worker::types::node_status_event::{
     NodeStatus as PublishNodeStatus, NodeStatusEvent,
@@ -69,6 +70,29 @@ impl<P: Publisher> EventHandler<P> {
             workflow_id,
             job_id,
             publisher,
+        }
+    }
+
+    /// Publishes a `DiagnosticEvent` when `enabled`, otherwise no-ops.
+    ///
+    /// Takes the gate as an explicit `bool` instead of reading the
+    /// `ENABLE_DIAGNOSTICS` static directly: `Lazy` caches its first read
+    /// and the underlying env var is process-global, so flipping it inside
+    /// a test would race with every other test in this binary. `on_event`
+    /// (the only production caller) always passes `*ENABLE_DIAGNOSTICS`;
+    /// tests call this method directly with `true`/`false` to exercise both
+    /// branches deterministically.
+    async fn handle_diagnostic(
+        &self,
+        enabled: bool,
+        diagnostic: &reearth_flow_diagnostics::Diagnostic,
+    ) {
+        if !enabled {
+            return;
+        }
+        let diagnostic_event = DiagnosticEvent::new(self.workflow_id, self.job_id, diagnostic);
+        if let Err(e) = self.publisher.publish(diagnostic_event).await {
+            tracing::error!("Failed to publish diagnostic event: {}", e);
         }
     }
 }
@@ -146,6 +170,10 @@ impl<P: Publisher + 'static> reearth_flow_runtime::event::EventHandler for Event
                     }
                 }
             }
+            reearth_flow_runtime::event::Event::Diagnostic(diagnostic) => {
+                self.handle_diagnostic(*ENABLE_DIAGNOSTICS, diagnostic)
+                    .await;
+            }
             _ => {}
         }
     }
@@ -154,5 +182,100 @@ impl<P: Publisher + 'static> reearth_flow_runtime::event::EventHandler for Event
         tracing::info!("EventHandler shutting down. Closing publisher...");
         self.publisher.shutdown().await;
         tracing::info!("Publisher shutdown complete");
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use std::sync::atomic::{AtomicUsize, Ordering};
+
+    use reearth_flow_diagnostics::{Diagnostic, DiagnosticDraft, ErrorCode};
+    use reearth_flow_runtime::event::EventHandler as RuntimeEventHandler;
+    use reearth_flow_worker::pubsub::EncodableMessage;
+
+    use super::*;
+
+    /// `Publisher` test double that just counts calls, so gating tests can
+    /// assert "published N times" without a real pubsub backend.
+    #[derive(Debug, Default, Clone)]
+    struct CountingPublisher {
+        count: Arc<AtomicUsize>,
+    }
+
+    impl CountingPublisher {
+        fn count(&self) -> usize {
+            self.count.load(Ordering::SeqCst)
+        }
+    }
+
+    #[derive(Debug, thiserror::Error)]
+    #[error("counting publisher error")]
+    struct CountingPublisherError;
+
+    #[async_trait::async_trait]
+    impl Publisher for CountingPublisher {
+        type Error = CountingPublisherError;
+
+        async fn publish<M: EncodableMessage>(&self, _message: M) -> Result<(), Self::Error> {
+            self.count.fetch_add(1, Ordering::SeqCst);
+            Ok(())
+        }
+
+        async fn shutdown(&self) {}
+    }
+
+    fn sample_diagnostic() -> Diagnostic {
+        Diagnostic::from_draft(
+            DiagnosticDraft::new(ErrorCode::Cesium3dtilesEmptyGeometry),
+            Some("node-1".to_string()),
+            Some("Cesium 3D Tiles Writer".to_string()),
+            None,
+        )
+    }
+
+    #[tokio::test]
+    async fn handle_diagnostic_publishes_nothing_when_disabled() {
+        let publisher = CountingPublisher::default();
+        let handler = EventHandler::new(Uuid::new_v4(), Uuid::new_v4(), publisher.clone());
+
+        handler.handle_diagnostic(false, &sample_diagnostic()).await;
+
+        assert_eq!(publisher.count(), 0);
+    }
+
+    #[tokio::test]
+    async fn handle_diagnostic_publishes_once_when_enabled() {
+        let publisher = CountingPublisher::default();
+        let handler = EventHandler::new(Uuid::new_v4(), Uuid::new_v4(), publisher.clone());
+
+        handler.handle_diagnostic(true, &sample_diagnostic()).await;
+
+        assert_eq!(publisher.count(), 1);
+    }
+
+    /// Exercises the real `on_event` dispatch path (not just the private
+    /// helper) against the production default: `FLOW_WORKER_ENABLE_DIAGNOSTICS`
+    /// is unset in this process, so `ENABLE_DIAGNOSTICS` reads `false`.
+    #[tokio::test]
+    async fn on_event_diagnostic_publishes_nothing_with_flag_unset_by_default() {
+        let publisher = CountingPublisher::default();
+        let handler = EventHandler::new(Uuid::new_v4(), Uuid::new_v4(), publisher.clone());
+        let event = reearth_flow_runtime::event::Event::Diagnostic(Arc::new(sample_diagnostic()));
+
+        handler.on_event(&event).await;
+
+        assert_eq!(publisher.count(), 0);
+        assert!(!*ENABLE_DIAGNOSTICS, "flag must default to false");
+    }
+
+    #[tokio::test]
+    async fn on_event_non_diagnostic_events_are_unaffected_by_the_new_arm() {
+        let publisher = CountingPublisher::default();
+        let handler = EventHandler::new(Uuid::new_v4(), Uuid::new_v4(), publisher.clone());
+        let event = reearth_flow_runtime::event::Event::SourceFlushed;
+
+        handler.on_event(&event).await;
+
+        assert_eq!(publisher.count(), 0);
     }
 }
