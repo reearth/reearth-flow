@@ -139,7 +139,9 @@ impl std::fmt::Display for Diagnostic {
 impl std::error::Error for Diagnostic {}
 
 /// What a call site authors. Everything else is stamped from the registry
-/// and the executor context — no construction path can disagree with the registry.
+/// via `Diagnostic::from_draft` — the only construction path the runtime's
+/// reporting surfaces use, so diagnostics they emit cannot disagree with
+/// the registry.
 #[derive(Debug, Clone)]
 pub struct DiagnosticDraft {
     pub code: ErrorCode,
