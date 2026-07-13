@@ -21,7 +21,7 @@ use tracing::info_span;
 
 use crate::{
     builder_dag::NodeKind,
-    errors::ExecutionError,
+    errors::{to_node_error, ExecutionError, NodeErrorKind},
     event::{Event, EventHub},
     executor_operation::{ExecutorContext, ExecutorOptions, NodeContext},
     forwarder::ChannelManager,
@@ -228,10 +228,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                                     feature_id: None,
                                 });
 
-                                return Err(crate::errors::to_node_error(
-                                    e,
-                                    crate::errors::NodeErrorKind::Source,
-                                ));
+                                return Err(to_node_error(e, NodeErrorKind::Source));
                             }
                             Err(e) => {
                                 self.event_hub.send(Event::NodeStatusChanged {

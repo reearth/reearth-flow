@@ -289,4 +289,22 @@ mod sink_and_processor_error_shape_tests {
         );
         assert_eq!(error, "Attribute not found: nonexistentAttribute");
     }
+
+    /// Real production shape from pre-enrichment legacy logs: the sink log
+    /// line's `{}` formatted an `ExecutionError::CannotReceiveFromChannel`
+    /// whose Display is "Cannot receive from channel: {0}". This captures
+    /// the actual production Display output when an action's error is wrapped
+    /// with `format!("{e:?}")` inside the variant.
+    #[test]
+    fn sink_error_parses_real_legacy_channel_display_text() {
+        let parser = LogParser::new();
+        let msg = r#"MyWriter sink error: Cannot receive from channel: SinkError("boom")"#;
+
+        let pattern = parser.parse(msg).expect("sink_error must match");
+        let (node_name, node_id, error) = node_error(pattern);
+
+        assert_eq!(node_name, "MyWriter");
+        assert_eq!(node_id, None);
+        assert_eq!(error, r#"Cannot receive from channel: SinkError("boom")"#);
+    }
 }

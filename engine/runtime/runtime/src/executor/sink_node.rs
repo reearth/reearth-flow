@@ -20,7 +20,7 @@ use reearth_flow_diagnostics::Diagnostic;
 
 use crate::{
     builder_dag::NodeKind,
-    errors::ExecutionError,
+    errors::{to_node_error, ExecutionError, NodeErrorKind},
     event::{Event, EventHub},
     executor_operation::{ExecutorContext, ExecutorOperation, NodeContext},
     kvs::KvStore,
@@ -406,7 +406,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
         ctx.diagnostics = Some(self.diagnostics.clone());
         self.sink
             .process(ctx)
-            .map_err(|e| crate::errors::to_node_error(e, crate::errors::NodeErrorKind::Sink))
+            .map_err(|e| to_node_error(e, NodeErrorKind::Sink))
     }
 
     fn on_terminate(&mut self, ctx: NodeContext) -> Result<(), ExecutionError> {
@@ -419,7 +419,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
         let result = self
             .sink
             .finish(ctx)
-            .map_err(|e| crate::errors::to_node_error(e, crate::errors::NodeErrorKind::Sink));
+            .map_err(|e| to_node_error(e, NodeErrorKind::Sink));
         // Emit this node's aggregated warn/drop/reject summaries regardless of
         // whether finish() itself succeeded — reports recorded during
         // process()/finish() must not be silently dropped just because

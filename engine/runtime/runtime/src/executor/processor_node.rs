@@ -24,7 +24,7 @@ use crate::kvs::KvStore;
 use crate::node::NodeStatus;
 use crate::{
     builder_dag::NodeKind,
-    errors::ExecutionError,
+    errors::{to_node_error, ExecutionError, NodeErrorKind},
     forwarder::ChannelManager,
     node::{NodeHandle, Processor},
 };
@@ -499,7 +499,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
         let result = processor
             .write()
             .finish(ctx.clone(), channel_manager)
-            .map_err(|e| crate::errors::to_node_error(e, crate::errors::NodeErrorKind::Processor));
+            .map_err(|e| to_node_error(e, NodeErrorKind::Processor));
         // Emit this node's aggregated warn/drop/reject summaries regardless of
         // whether finish() itself succeeded — reports recorded during
         // process()/finish() must not be silently dropped just because
