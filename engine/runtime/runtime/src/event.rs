@@ -290,6 +290,12 @@ pub async fn subscribe_event(
                         // The hub sender is gone; treat it the same as an
                         // explicit shutdown notification so handlers still
                         // get a clean on_shutdown before we return.
+                        // Co-primary termination guarantee alongside the
+                        // `notify` permit above: even if a stray `Sender<Event>`
+                        // clone somehow outlives `join()` and no notify
+                        // permit is ever observed, every sender clone being
+                        // dropped still closes the channel and unblocks
+                        // `receiver.recv()` here.
                         run_shutdown(event_handlers).await;
                         return;
                     }
@@ -302,6 +308,7 @@ pub async fn subscribe_event(
 #[cfg(test)]
 mod subscribe_event_tests {
     use std::sync::Mutex;
+    use std::time::Duration;
 
     use super::*;
 
@@ -452,5 +459,43 @@ mod subscribe_event_tests {
 
         assert!(handler.shutdown_called());
         assert_eq!(handler.event_count(), 0);
+    }
+
+    /// Regression test for the `DagExecutorJoinHandle::notify()` bug fixed
+    /// alongside this test: production used to call `notify_waiters()`,
+    /// which stores no permit, so a notification fired before the
+    /// subscriber ever parked in its `select!` was lost, silently pushing
+    /// termination onto the broadcast `Closed` arm as the only backstop.
+    /// This reproduces that exact shape directly against `subscribe_event`
+    /// — `notify_one()` fires while nobody is waiting yet, i.e. before
+    /// `subscribe_event` is even called — and asserts it still terminates
+    /// promptly via the drain-then-shutdown path. Wrapped in a timeout so a
+    /// real regression (a lost wakeup) fails fast instead of hanging CI.
+    #[tokio::test]
+    async fn notify_fired_before_any_waiter_is_not_lost() {
+        let (sender, mut receiver) = tokio::sync::broadcast::channel::<Event>(4);
+        sender.send(log_event("early")).unwrap();
+
+        let handler = Arc::new(RecordingHandler::default());
+        let handlers: Vec<Arc<dyn EventHandler>> = vec![handler.clone()];
+        let notify = Arc::new(Notify::new());
+        // Stores a permit before `subscribe_event` is even running — the
+        // exact scenario `notify_waiters()` would silently drop.
+        notify.notify_one();
+        let dropped = Arc::new(AtomicU64::new(0));
+
+        let result = tokio::time::timeout(
+            Duration::from_secs(5),
+            subscribe_event(&mut receiver, notify, &handlers, dropped),
+        )
+        .await;
+
+        assert!(
+            result.is_ok(),
+            "subscribe_event must terminate promptly on a pre-stored notify permit, not hang"
+        );
+        assert_eq!(handler.event_count(), 1);
+        assert!(handler.shutdown_called());
+        assert!(handler.events_precede_shutdown());
     }
 }

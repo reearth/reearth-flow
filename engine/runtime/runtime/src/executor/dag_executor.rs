@@ -364,7 +364,17 @@ impl DagExecutorJoinHandle {
     }
 
     pub fn notify(&self) {
-        self.notify.notify_waiters();
+        // `notify_one`, not `notify_waiters`: `notify_waiters` only wakes a
+        // task that is ALREADY parked in `notified().await` at the instant
+        // this runs and stores no permit, so if the subscriber isn't
+        // parked yet the wakeup is lost forever. `notify_one` on a `Notify`
+        // with no current waiter stores a permit that the next
+        // `notified().await` consumes immediately, making this wakeup
+        // non-losable regardless of scheduling. The broadcast channel's
+        // `RecvError::Closed` arm in `subscribe_event` remains the backstop
+        // termination path if this notification is ever missed some other
+        // way.
+        self.notify.notify_one();
     }
 
     /// Takes the event-subscriber's tokio task, if it hasn't already been
