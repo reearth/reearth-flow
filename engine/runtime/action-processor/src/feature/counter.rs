@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     fmt::Debug,
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::atomic::{AtomicU64, Ordering},
 };
 
 use reearth_flow_runtime::{
@@ -21,7 +21,7 @@ use super::errors::FeatureProcessorError;
 #[derive(Debug)]
 struct AtomicCounterMap {
     start: u64,
-    inner: parking_lot::Mutex<HashMap<String, AtomicUsize>>,
+    inner: parking_lot::Mutex<HashMap<String, AtomicU64>>,
 }
 
 impl Clone for AtomicCounterMap {
@@ -29,7 +29,7 @@ impl Clone for AtomicCounterMap {
         let inner = self.inner.lock();
         let new_inner = inner
             .iter()
-            .map(|(k, v)| (k.clone(), AtomicUsize::new(v.load(Ordering::SeqCst))))
+            .map(|(k, v)| (k.clone(), AtomicU64::new(v.load(Ordering::SeqCst))))
             .collect();
         AtomicCounterMap {
             start: self.start,
@@ -50,9 +50,8 @@ impl AtomicCounterMap {
         let mut map = self.inner.lock();
         let counter = map
             .entry(key.to_string())
-            .or_insert_with(|| AtomicUsize::new(self.start as usize));
-        let result = counter.fetch_add(1, Ordering::SeqCst);
-        result as u64
+            .or_insert_with(|| AtomicU64::new(self.start));
+        counter.fetch_add(1, Ordering::SeqCst)
     }
 }
 
