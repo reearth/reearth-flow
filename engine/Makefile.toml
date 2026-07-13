@@ -115,9 +115,18 @@ git ls-files 'runtime/action-*' | grep -E '\.rs$' \
 if ! diff -u tools/action-tracing-allowlist.txt "$actual"; then
   echo "tracing::warn!/tracing::error! call sites in action crates changed."
   echo "New sites are forbidden — use ctx.report()/ctx.warn()."
-  echo "If you converted sites, regenerate the allowlist with the command in this task."
+  echo "If you converted sites, regenerate the allowlist: cargo make update-action-tracing-allowlist"
   exit 1
 fi
+''']
+
+[tasks.update-action-tracing-allowlist]
+script = ['''
+#!/usr/bin/env bash -eu
+git ls-files 'runtime/action-*' | grep -E '\.rs$' \
+  | xargs grep -c -E 'tracing::(warn|error)!' 2>/dev/null \
+  | grep -v ':0$' | sort > tools/action-tracing-allowlist.txt
+echo "wrote tools/action-tracing-allowlist.txt"
 ''']
 
 # Generates actions.json (base English schema) and syncs i18n skeleton files.
