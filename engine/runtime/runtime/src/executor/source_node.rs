@@ -228,7 +228,10 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                                     feature_id: None,
                                 });
 
-                                return Err(ExecutionError::Source(e));
+                                return Err(crate::errors::to_node_error(
+                                    e,
+                                    crate::errors::NodeErrorKind::Source,
+                                ));
                             }
                             Err(e) => {
                                 self.event_hub.send(Event::NodeStatusChanged {

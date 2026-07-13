@@ -203,3 +203,90 @@ impl LogParser {
         }
     }
 }
+
+#[cfg(test)]
+mod sink_and_processor_error_shape_tests {
+    //! Phase 2a Task 8 rewired `SinkNode`/`ProcessorNode` finish()/process()
+    //! failures to preserve structured diagnostics: the wrapping
+    //! `ExecutionError` variant changed from `CannotReceiveFromChannel`
+    //! (Display: "Cannot receive from channel: {0}") to `Sink`/`Processor`
+    //! (Display: "Sink error: {0}"/"Processor error: {0}"). These tests lock
+    //! in that `sink_error` still parses both the legacy Debug-wrapper shape
+    //! (kept matching for the deploy gap, per the migration posture) and the
+    //! new structured shape, and that `processor_error` — which matches an
+    //! unrelated per-feature `process()` log line, not the finish() path
+    //! Task 8 touched — is unaffected either way.
+    use super::*;
+
+    fn node_error(pattern: LogPattern) -> (String, Option<String>, String) {
+        match pattern {
+            LogPattern::NodeError {
+                node_name,
+                node_id,
+                error,
+            } => (node_name, node_id, error),
+            other => panic!("expected NodeError, got {other:?}"),
+        }
+    }
+
+    /// Legacy shape, from before Task 8: the sink log line's `{}` formatted
+    /// an `ExecutionError::CannotReceiveFromChannel(format!("{e:?}"))`,
+    /// whose Display is "Cannot receive from channel: {0}" — but the
+    /// unwrap's `CHANNEL_ERROR_PREFIX` check targets the *Debug* tuple-variant
+    /// syntax, `CannotReceiveFromChannel("...")`, matching an older log
+    /// format. Keeping this parseable maintains compatibility with any
+    /// still-running old-shape worker/engine build pairing during a
+    /// rolling deploy.
+    #[test]
+    fn sink_error_strips_legacy_debug_wrapper_when_present() {
+        let parser = LogParser::new();
+        let msg = r#"JSON Writer sink error: CannotReceiveFromChannel("boom")"#;
+
+        let pattern = parser.parse(msg).expect("sink_error must match");
+        let (node_name, node_id, error) = node_error(pattern);
+
+        assert_eq!(node_name, "JSON Writer");
+        assert_eq!(node_id, None);
+        assert_eq!(error, "boom");
+    }
+
+    /// New shape, post-Task-8: the sink log line's `{}` now formats
+    /// `ExecutionError::Sink(e)` directly, Display "Sink error: {0}". This
+    /// doesn't start with `CannotReceiveFromChannel("` so the legacy unwrap
+    /// is a no-op and the full structured text passes through untouched —
+    /// which is the desired, MORE informative user-facing message (no
+    /// longer mislabeled as a channel error).
+    #[test]
+    fn sink_error_passes_through_new_structured_shape_untouched() {
+        let parser = LogParser::new();
+        let msg = "JSON Writer sink error: Sink error: boom";
+
+        let pattern = parser.parse(msg).expect("sink_error must match");
+        let (node_name, node_id, error) = node_error(pattern);
+
+        assert_eq!(node_name, "JSON Writer");
+        assert_eq!(node_id, None);
+        assert_eq!(error, "Sink error: boom");
+    }
+
+    /// `processor_error` matches the per-feature `process()` failure log
+    /// line ("Error operation, processor node name = ..."), which is
+    /// produced independently of the `ExecutionError` enum Task 8 changed
+    /// (it Debug-formats the action's raw error directly). Confirms Task 8
+    /// left this pattern's behavior untouched.
+    #[test]
+    fn processor_error_shape_is_unaffected_by_the_executionerror_display_change() {
+        let parser = LogParser::new();
+        let msg = "Error operation, processor node name = Attribute Aggregator (ErrorProcessor), node_id = b1fa0a3e-61d3-48e2-a328-e7226c2ad1ae, feature id = None, error = \"Attribute not found: nonexistentAttribute\"";
+
+        let pattern = parser.parse(msg).expect("processor_error must match");
+        let (node_name, node_id, error) = node_error(pattern);
+
+        assert_eq!(node_name, "ErrorProcessor");
+        assert_eq!(
+            node_id.as_deref(),
+            Some("b1fa0a3e-61d3-48e2-a328-e7226c2ad1ae")
+        );
+        assert_eq!(error, "Attribute not found: nonexistentAttribute");
+    }
+}

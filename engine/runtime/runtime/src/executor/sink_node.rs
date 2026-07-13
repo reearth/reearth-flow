@@ -406,7 +406,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
         ctx.diagnostics = Some(self.diagnostics.clone());
         self.sink
             .process(ctx)
-            .map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{e:?}")))
+            .map_err(|e| crate::errors::to_node_error(e, crate::errors::NodeErrorKind::Sink))
     }
 
     fn on_terminate(&mut self, ctx: NodeContext) -> Result<(), ExecutionError> {
@@ -419,7 +419,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
         let result = self
             .sink
             .finish(ctx)
-            .map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{e:?}")));
+            .map_err(|e| crate::errors::to_node_error(e, crate::errors::NodeErrorKind::Sink));
         // Emit this node's aggregated warn/drop/reject summaries regardless of
         // whether finish() itself succeeded — reports recorded during
         // process()/finish() must not be silently dropped just because
