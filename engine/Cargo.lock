@@ -4814,6 +4814,7 @@ dependencies = [
  "reearth-flow-action-processor",
  "reearth-flow-atlas",
  "reearth-flow-common",
+ "reearth-flow-diagnostics",
  "reearth-flow-geometry",
  "reearth-flow-gltf",
  "reearth-flow-runtime",
