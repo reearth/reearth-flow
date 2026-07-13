@@ -1089,10 +1089,12 @@
       "definitionI18n": {
         "Condition": {
           "expr": {
-            "title": "条件式"
+            "title": "条件式",
+            "description": "Boolean expression evaluated against each feature; features for which it returns true are routed to this condition's output port."
           },
           "outputPort": {
-            "title": "出力ポート"
+            "title": "出力ポート",
+            "description": "Name of the output port that receives features matching this condition."
           }
         }
       }
@@ -1155,6 +1157,7 @@
           "description": "詳細レベル（LOD）に基づいてフィーチャーをフィルタリングする設定"
         },
         "filterKey": {
+          "title": "Filter Key",
           "description": "LOD フィルタリング用にフィーチャーをグループ化する属性"
         }
       }
@@ -1229,6 +1232,7 @@
           "description": "フィーチャータイプに基づいてフィーチャーをフィルタリングする設定"
         },
         "targetTypes": {
+          "title": "Target Feature Types",
           "description": "対象フィーチャータイプ"
         }
       }
@@ -2035,9 +2039,13 @@
       "description": "サブワークフローで最初のポートを転送するアクション",
       "parameterI18n": {
         "": {
-          "title": "InputRouter パラメータ"
+          "title": "InputRouter パラメータ",
+          "description": "Configuration for receiving features from the parent workflow."
         },
-        "routingPort": {}
+        "routingPort": {
+          "title": "Routing Port",
+          "description": "Name of the parent workflow port whose features enter the sub-workflow through this router."
+        }
       }
     },
     {
@@ -2448,9 +2456,13 @@
       "description": "サブワークフローで最後のポートを転送するアクション",
       "parameterI18n": {
         "": {
-          "title": "OutputRouter パラメータ"
+          "title": "OutputRouter パラメータ",
+          "description": "Configuration for returning features to the parent workflow."
         },
-        "routingPort": {}
+        "routingPort": {
+          "title": "Routing Port",
+          "description": "Name of the output port under which the sub-workflow's features are exposed to the parent workflow."
+        }
       }
     },
     {
