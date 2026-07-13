@@ -304,10 +304,8 @@ fn resolve_ref(
 /// type. Members that fail to resolve are dropped, so a container survives with
 /// whatever members did resolve. This container's own gml:id is prepended to
 /// `enclosing` for its members, so an appearance bound to the container reaches
-/// them. The container's own frame is `node.file`'s CRS, so a container welded
-/// here (a mesh, a solid, a ring-polygon) is tagged with the CRS of the file its
-/// own element lives in, regardless of what file any `xlink:href` member resolved
-/// from.
+/// them. The container's frame is `node.file`'s CRS; a member from a file in a
+/// different CRS is dropped with error rather than folded in.
 fn construct(
     node: &Unresolved,
     registry: &GeomRegistry,
@@ -320,10 +318,17 @@ fn construct(
     member_enclosing.extend(node.id.as_deref().map(|id| (node.file.as_str(), id)));
     member_enclosing.extend_from_slice(enclosing);
 
+    let frame = frame_for(&node.file, srs_by_file);
     let members: Vec<(Role, Euclidean3DGeometry)> = node
         .members
         .iter()
         .filter_map(|(role, child)| {
+            if frame_for(source_file(child), srs_by_file) != frame {
+                tracing::error!(
+                    "citygml geometry: member srsName disagrees with its parent, skipped"
+                );
+                return None;
+            }
             resolve(
                 child,
                 registry,
@@ -336,7 +341,6 @@ fn construct(
         })
         .collect();
 
-    let frame = frame_for(&node.file, srs_by_file);
     match node.ty {
         GmlGeometryType::MultiPoint
         | GmlGeometryType::MultiCurve
@@ -361,6 +365,15 @@ fn construct(
             tracing::warn!("citygml geometry: inline type deferred to pass 2, skipped");
             None
         }
+    }
+}
+
+/// The source file URL a child node's coordinates belong to.
+fn source_file(node: &GeomNode) -> &str {
+    match node {
+        GeomNode::Resolved(_, ids) => &ids.file,
+        GeomNode::Ref(key) => &key.0,
+        GeomNode::Unresolved(unresolved) => &unresolved.file,
     }
 }
 
@@ -460,7 +473,7 @@ fn build_mesh(faces: Vec<Polygon3D>, frame: &CoordinateFrame) -> Option<PolygonM
     match PolygonMesh3D::from_polygons(frame.clone(), &faces) {
         Ok(mesh) => Some(mesh),
         Err(e) => {
-            tracing::warn!("citygml geometry: failed to weld mesh: {e}");
+            tracing::error!("citygml geometry: failed to weld mesh: {e}");
             None
         }
     }
@@ -542,6 +555,48 @@ mod tests {
             file: String::new(),
             members,
         })
+    }
+
+    fn crs(code: u16) -> CoordinateFrame {
+        CoordinateFrame::Crs(EpsgCode::new(code))
+    }
+
+    fn triangle_in(frame: CoordinateFrame) -> Euclidean3DGeometry {
+        Euclidean3DGeometry::Polygon(Box::new(Polygon3D::from_rings(
+            frame,
+            [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            Vec::<Vec<[f64; 3]>>::new(),
+        )))
+    }
+
+    fn point_in(frame: CoordinateFrame) -> Euclidean3DGeometry {
+        Euclidean3DGeometry::Point(Point3D::new(frame, [1.0, 2.0, 3.0]))
+    }
+
+    fn resolved_in(file: &str, geometry: Euclidean3DGeometry) -> GeomNode {
+        GeomNode::Resolved(
+            geometry,
+            LeafIds {
+                file: file.to_string(),
+                faces: Vec::new(),
+            },
+        )
+    }
+
+    fn node_in(file: &str, ty: GmlGeometryType, members: Vec<(Role, GeomNode)>) -> GeomNode {
+        GeomNode::Unresolved(Unresolved {
+            ty,
+            id: None,
+            file: file.to_string(),
+            members,
+        })
+    }
+
+    fn srs(pairs: &[(&str, u16)]) -> HashMap<String, EpsgCode> {
+        pairs
+            .iter()
+            .map(|(file, code)| (file.to_string(), EpsgCode::new(*code)))
+            .collect()
     }
 
     fn collection_len(geometry: &Euclidean3DGeometry) -> usize {
@@ -692,5 +747,59 @@ mod tests {
         );
         let geometry = resolve_root_bare(&GeomNode::Ref(key("a")), &registry).unwrap();
         assert_eq!(collection_len(&geometry), 0);
+    }
+
+    fn resolve_root_srs(node: &GeomNode, srs: &HashMap<String, EpsgCode>) -> Euclidean3DGeometry {
+        resolve_root(node, &GeomRegistry::new(), &AppearanceIndex::default(), srs).unwrap()
+    }
+
+    #[test]
+    fn member_in_disagreeing_crs_is_dropped_from_weld() {
+        // The face from a different-CRS file is dropped; the rest still weld.
+        let n = node_in(
+            "a.gml",
+            GmlGeometryType::CompositeSurface,
+            vec![
+                (Role::Member, resolved_in("a.gml", triangle_in(crs(6668)))),
+                (Role::Member, resolved_in("a.gml", triangle_in(crs(6668)))),
+                (Role::Member, resolved_in("b.gml", triangle_in(crs(6697)))),
+            ],
+        );
+        match resolve_root_srs(&n, &srs(&[("a.gml", 6668), ("b.gml", 6697)])) {
+            Euclidean3DGeometry::PolygonMesh(mesh) => assert_eq!(mesh.num_faces(), 2),
+            other => panic!("expected PolygonMesh, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn member_in_same_crs_from_another_file_is_kept() {
+        // Same CRS from a different file still welds.
+        let n = node_in(
+            "a.gml",
+            GmlGeometryType::CompositeSurface,
+            vec![
+                (Role::Member, resolved_in("a.gml", triangle_in(crs(6668)))),
+                (Role::Member, resolved_in("c.gml", triangle_in(crs(6668)))),
+            ],
+        );
+        match resolve_root_srs(&n, &srs(&[("a.gml", 6668), ("c.gml", 6668)])) {
+            Euclidean3DGeometry::PolygonMesh(mesh) => assert_eq!(mesh.num_faces(), 2),
+            other => panic!("expected PolygonMesh, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn disagreeing_member_is_gated_for_non_welded_types_too() {
+        // The gate is uniform: a non-welded MultiPoint member is gated too.
+        let n = node_in(
+            "a.gml",
+            GmlGeometryType::MultiPoint,
+            vec![
+                (Role::Member, resolved_in("a.gml", point_in(crs(6668)))),
+                (Role::Member, resolved_in("b.gml", point_in(crs(6697)))),
+            ],
+        );
+        let geometry = resolve_root_srs(&n, &srs(&[("a.gml", 6668), ("b.gml", 6697)]));
+        assert_eq!(collection_len(&geometry), 1);
     }
 }
