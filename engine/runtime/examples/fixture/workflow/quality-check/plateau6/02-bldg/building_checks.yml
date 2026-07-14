@@ -267,6 +267,43 @@ nodes:
         type: string
         value: 02_建築物_LOD0面の交差.csv
 
+  # GeoJSON error-detail output for the same check. Coordinates stay in the
+  # inspection CRS (env "prcs"); the intersection-area polygon from
+  # AreaOnAreaOverlayer is the error geometry itself.
+  - id: e3e0a17b-e034-4a68-86df-ccf0f88264b6
+    name: AttributeMapperLod0SurfaceIntersectionGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: check
+          expr:
+            type: string
+            value: LOD0面の交差
+        - attribute: issue
+          valueAttribute: issue
+        - attribute: filename
+          valueAttribute: filename_a
+        - attribute: featureType
+          valueAttribute: feature_type_a
+        - attribute: gmlId
+          valueAttribute: gml_id_a
+        - attribute: relatedGmlId
+          valueAttribute: gml_id_b
+        - attribute: rootGmlId
+          valueAttribute: gml_id_a
+        - attribute: lod
+          valueAttribute: lod_a
+
+  - id: 8c34276b-9f20-42ab-a542-659819a5626e
+    name: FeatureGeoJsonWriterLod0SurfaceIntersection
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: string
+        value: error_geometry/02_建築物_LOD0面の交差.geojson
+
   # --- LOD0 surface orientation pipeline ---
   # SurfaceValidator2D emits LOD0 surfaces whose exterior ring is not
   # counter-clockwise on the inCorrectOrientation port. Keep only genuinely
@@ -2673,6 +2710,24 @@ edges:
   # Route the written LOD0 intersection CSV into the result zip.
   - id: 6d38927a-36c8-45af-93e8-083c2d233b7b
     from: acb7b8cf-9059-4c7f-9b51-45cf430be09a
+    to: 3730412c-8a45-417c-a669-fa10fec80028
+    fromPort: features
+    toPort: features
+  # Counter.complete -> GeoJSON attribute mapper (parallel to the CSV writer)
+  - id: 2cf00a25-3a9f-4006-ace8-c2895cc870db
+    from: 86da6c18-1b32-4443-9d24-9a0c3d6d060c
+    to: e3e0a17b-e034-4a68-86df-ccf0f88264b6
+    fromPort: complete
+    toPort: features
+  # GeoJSON attribute mapper -> GeoJSON writer
+  - id: 7ec0821e-35b9-4415-ba7c-a43283856e18
+    from: e3e0a17b-e034-4a68-86df-ccf0f88264b6
+    to: 8c34276b-9f20-42ab-a542-659819a5626e
+    fromPort: features
+    toPort: features
+  # Route the written LOD0 intersection GeoJSON into the result zip.
+  - id: 5fcf22da-e6c2-4e30-9aea-f8f91e01e068
+    from: 8c34276b-9f20-42ab-a542-659819a5626e
     to: 3730412c-8a45-417c-a669-fa10fec80028
     fromPort: features
     toPort: features

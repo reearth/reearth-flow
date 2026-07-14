@@ -443,7 +443,9 @@ impl TestContext {
 
     fn verify_file_based_on_extension(&self, output: &TestOutput, file_name: &str) -> Result<()> {
         // Determine file format based on extension
-        if file_name.ends_with(".json") {
+        if file_name.ends_with(".geojson") {
+            self.verify_geojson_file(file_name)?;
+        } else if file_name.ends_with(".json") {
             self.verify_json_file(file_name)?;
         } else if file_name.ends_with(".jsonl") {
             self.verify_jsonl_file(file_name)?;
@@ -455,7 +457,7 @@ impl TestContext {
             // Extract extension for error message
             let extension = file_name.rsplit('.').next().unwrap_or("unknown");
             anyhow::bail!(
-                "Unsupported file format '.{extension}'. Only json, jsonl, csv, and tsv files are supported."
+                "Unsupported file format '.{extension}'. Only json, geojson, jsonl, csv, and tsv files are supported."
             );
         }
         Ok(())
@@ -835,6 +837,32 @@ impl TestContext {
         assert_eq!(
             actual, expected,
             "JSON output mismatch for {}",
+            self.test_name
+        );
+        Ok(())
+    }
+
+    fn verify_geojson_file(&self, file_name: &str) -> Result<()> {
+        let expected_file = self.test_dir.join(file_name);
+        let actual_file = self.actual_output_dir.join(file_name);
+
+        if !actual_file.exists() {
+            anyhow::bail!("Output file not found at {actual_file:?}");
+        }
+
+        let mut expected: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&expected_file)?)?;
+        let mut actual: serde_json::Value =
+            serde_json::from_str(&fs::read_to_string(&actual_file)?)?;
+
+        // The GeoJSON writer stamps each feature's "id" with the engine's
+        // per-run feature UUID, so it differs on every execution.
+        strip_geojson_feature_ids(&mut expected);
+        strip_geojson_feature_ids(&mut actual);
+
+        assert_eq!(
+            actual, expected,
+            "GeoJSON output mismatch for {}",
             self.test_name
         );
         Ok(())
@@ -1352,6 +1380,18 @@ impl TestContext {
         }
 
         Ok(())
+    }
+}
+
+/// Remove the non-deterministic per-feature "id" members from a GeoJSON
+/// FeatureCollection before comparison
+fn strip_geojson_feature_ids(value: &mut serde_json::Value) {
+    if let Some(features) = value.get_mut("features").and_then(|f| f.as_array_mut()) {
+        for feature in features {
+            if let Some(obj) = feature.as_object_mut() {
+                obj.remove("id");
+            }
+        }
     }
 }
 
