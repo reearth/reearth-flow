@@ -2741,7 +2741,7 @@
     {
       "name": "Dimension Filter",
       "type": "processor",
-      "description": "Filter Features by Geometry Dimension",
+      "description": "Routes features to output ports based on the number of geometry dimensions.",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -3341,7 +3341,7 @@
     {
       "name": "Feature Filter",
       "type": "processor",
-      "description": "Filter Features Based on Custom Conditions",
+      "description": "Routes features to named output ports based on user-defined filter conditions.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Feature Filter Parameters",
@@ -3369,7 +3369,7 @@
             ],
             "properties": {
               "expr": {
-                "title": "Condition expression",
+                "title": "Condition Expression",
                 "description": "Boolean expression evaluated against each feature; features for which it returns true are routed to this condition's output port.",
                 "type": "object",
                 "format": "code",
@@ -3390,7 +3390,7 @@
                 }
               },
               "outputPort": {
-                "title": "Output port",
+                "title": "Output Port",
                 "description": "Name of the output port that receives features matching this condition.",
                 "allOf": [
                   {
@@ -3636,10 +3636,10 @@
     {
       "name": "Feature LOD Filter",
       "type": "processor",
-      "description": "Filters features by Level of Detail (LOD), routing them to appropriate output ports",
+      "description": "Filters features by Level of Detail (LOD), emitting each to the matching LOD output port.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureLodFilter Parameters",
+        "title": "Feature LOD Filter Parameters",
         "description": "Configuration for filtering features based on Level of Detail (LOD).",
         "type": "object",
         "required": [
@@ -3648,7 +3648,7 @@
         "properties": {
           "filterKey": {
             "title": "Filter Key",
-            "description": "Attribute used to group features for LOD filtering",
+            "description": "Attribute whose value groups features; the maximum available LOD is determined within each group.",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -3909,10 +3909,10 @@
     {
       "name": "Feature Type Filter",
       "type": "processor",
-      "description": "Filters features by feature type",
+      "description": "Filters CityGML features by their feature type.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureTypeFilter Parameters",
+        "title": "Feature Type Filter Parameters",
         "description": "Configuration for filtering features based on their feature type.",
         "type": "object",
         "required": [
@@ -3921,7 +3921,7 @@
         "properties": {
           "targetTypes": {
             "title": "Target Feature Types",
-            "description": "Target feature types",
+            "description": "List of CityGML feature type names to match, such as \"bldg:Building\" or \"tran:TrafficArea\".",
             "type": "array",
             "items": {
               "type": "string"
@@ -7323,10 +7323,10 @@
     {
       "name": "Input Router",
       "type": "processor",
-      "description": "Action for first port forwarding for sub-workflows.",
+      "description": "Forwards features from the parent workflow into a sub-workflow.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "InputRouter",
+        "title": "Input Router Parameters",
         "description": "Configuration for receiving features from the parent workflow.",
         "type": "object",
         "required": [
@@ -8666,10 +8666,10 @@
     {
       "name": "Output Router",
       "type": "processor",
-      "description": "Action for last port forwarding for sub-workflows.",
+      "description": "Forwards features from a sub-workflow back to the parent workflow.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "OutputRouter",
+        "title": "Output Router Parameters",
         "description": "Configuration for returning features to the parent workflow.",
         "type": "object",
         "required": [
@@ -11758,13 +11758,13 @@
       "description": "Filtre les entités par relation spatiale",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "SpatialFilter Parameters",
+        "title": "Spatial Filter Parameters",
         "description": "Configure spatial relationship testing between filter and candidate geometries",
         "type": "object",
         "properties": {
           "predicate": {
             "title": "Spatial Predicate",
-            "description": "The spatial relationship to test between filter and candidate geometries",
+            "description": "The spatial relationship to test between filter and candidate geometries.",
             "default": "intersects",
             "allOf": [
               {
@@ -11780,7 +11780,7 @@
           },
           "mergeFilterAttributes": {
             "title": "Merge Filter Attributes",
-            "description": "If true, copy attributes from matched filter feature(s) onto the candidate. Only applies to features routed to the passed port. In OR mode (pass_on_multiple_matches: true), only the first matching filter's attributes are merged. In AND mode, attributes from all matched filters are merged in order; if multiple filters share a key, the last filter's value wins.",
+            "description": "If true, copies attributes from the matched filter feature(s) onto passing candidates. When multiple matched filters share an attribute, the last filter's value wins.",
             "default": false,
             "type": "boolean"
           },
@@ -11795,7 +11795,7 @@
           },
           "outputMatchCountAttribute": {
             "title": "Output Match Count Attribute",
-            "description": "Optional attribute name to store the number of matching filters",
+            "description": "Optional attribute name to store the number of matching filters.",
             "default": null,
             "anyOf": [
               {

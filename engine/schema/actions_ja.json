@@ -2744,7 +2744,7 @@
     {
       "name": "Dimension Filter",
       "type": "processor",
-      "description": "地物を次元に基づいてフィルタリングする",
+      "description": "ジオメトリの次元数に基づいて地物を出力ポートに振り分ける",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -3344,11 +3344,11 @@
     {
       "name": "Feature Filter",
       "type": "processor",
-      "description": "条件に基づいて地物をフィルタリングする",
+      "description": "ユーザー定義のフィルター条件に基づいて地物を指定の出力ポートに振り分ける",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureFilter パラメータ",
-        "description": "式に基づいてフィーチャーをフィルタリングする条件と出力ポートを設定する",
+        "title": "Feature Filter パラメータ",
+        "description": "式に基づいて地物をフィルタリングする条件と出力ポートを設定する",
         "type": "object",
         "required": [
           "conditions"
@@ -3356,7 +3356,7 @@
         "properties": {
           "conditions": {
             "title": "フィルター条件",
-            "description": "フィルタリングされたフィーチャーをルーティングする条件と対応する出力ポートのリスト",
+            "description": "フィルタリングされた地物をルーティングする条件と対応する出力ポートのリスト",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Condition"
@@ -3373,7 +3373,7 @@
             "properties": {
               "expr": {
                 "title": "条件式",
-                "description": "Boolean expression evaluated against each feature; features for which it returns true are routed to this condition's output port.",
+                "description": "各地物に対して評価されるブール式。true を返した地物はこの条件の出力ポートに振り分けられる",
                 "type": "object",
                 "format": "code",
                 "required": [
@@ -3394,7 +3394,7 @@
               },
               "outputPort": {
                 "title": "出力ポート",
-                "description": "Name of the output port that receives features matching this condition.",
+                "description": "この条件に一致した地物を受け取る出力ポートの名前",
                 "allOf": [
                   {
                     "$ref": "#/definitions/Port"
@@ -3639,19 +3639,19 @@
     {
       "name": "Feature LOD Filter",
       "type": "processor",
-      "description": "詳細レベルに基づいてフィルタリングする",
+      "description": "地物を LOD（詳細レベル）でフィルタリングし、対応する LOD 出力ポートに出力する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureLodFilter パラメータ",
-        "description": "詳細レベル（LOD）に基づいてフィーチャーをフィルタリングする設定",
+        "title": "Feature LOD Filter パラメータ",
+        "description": "詳細レベル（LOD）に基づいて地物をフィルタリングする設定",
         "type": "object",
         "required": [
           "filterKey"
         ],
         "properties": {
           "filterKey": {
-            "title": "Filter Key",
-            "description": "LOD フィルタリング用にフィーチャーをグループ化する属性",
+            "title": "フィルターキー",
+            "description": "地物をグループ化する属性。グループごとに利用可能な最大 LOD が決定される",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"
@@ -3912,19 +3912,19 @@
     {
       "name": "Feature Type Filter",
       "type": "processor",
-      "description": "地物タイプに基づいて地物をフィルタリングする",
+      "description": "CityGML の地物を地物タイプでフィルタリングする",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureTypeFilter パラメータ",
-        "description": "フィーチャータイプに基づいてフィーチャーをフィルタリングする設定",
+        "title": "Feature Type Filter パラメータ",
+        "description": "地物タイプに基づいて地物をフィルタリングする設定",
         "type": "object",
         "required": [
           "targetTypes"
         ],
         "properties": {
           "targetTypes": {
-            "title": "Target Feature Types",
-            "description": "対象フィーチャータイプ",
+            "title": "対象地物タイプ",
+            "description": "一致させる CityGML 地物タイプ名のリスト（例: \"bldg:Building\"、\"tran:TrafficArea\"）",
             "type": "array",
             "items": {
               "type": "string"
@@ -7326,19 +7326,19 @@
     {
       "name": "Input Router",
       "type": "processor",
-      "description": "サブワークフローで最初のポートを転送するアクション",
+      "description": "親ワークフローからサブワークフローへ地物を転送する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "InputRouter パラメータ",
-        "description": "Configuration for receiving features from the parent workflow.",
+        "title": "Input Router パラメータ",
+        "description": "親ワークフローから地物を受け取るための設定",
         "type": "object",
         "required": [
           "routingPort"
         ],
         "properties": {
           "routingPort": {
-            "title": "Routing Port",
-            "description": "Name of the parent workflow port whose features enter the sub-workflow through this router.",
+            "title": "ルーティングポート",
+            "description": "このルーターを通じて地物がサブワークフローに入る、親ワークフロー側のポート名",
             "type": "string"
           }
         }
@@ -8669,19 +8669,19 @@
     {
       "name": "Output Router",
       "type": "processor",
-      "description": "サブワークフローで最後のポートを転送するアクション",
+      "description": "サブワークフローから親ワークフローへ地物を転送する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "OutputRouter パラメータ",
-        "description": "Configuration for returning features to the parent workflow.",
+        "title": "Output Router パラメータ",
+        "description": "親ワークフローへ地物を返すための設定",
         "type": "object",
         "required": [
           "routingPort"
         ],
         "properties": {
           "routingPort": {
-            "title": "Routing Port",
-            "description": "Name of the output port under which the sub-workflow's features are exposed to the parent workflow.",
+            "title": "ルーティングポート",
+            "description": "サブワークフローの地物を親ワークフローに公開する出力ポート名",
             "type": "string"
           }
         }
@@ -11758,10 +11758,10 @@
     {
       "name": "Spatial Filter",
       "type": "processor",
-      "description": "空間的な関係によって地物をフィルタリングする",
+      "description": "フィルタージオメトリとの空間的な関係に基づいて候補の地物をフィルタリングする",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "SpatialFilter パラメータ",
+        "title": "Spatial Filter パラメータ",
         "description": "フィルターと候補ジオメトリ間の空間関係テストを設定する",
         "type": "object",
         "properties": {
@@ -11777,19 +11777,19 @@
           },
           "passOnMultipleMatches": {
             "title": "複数マッチ時に通過",
-            "description": "true の場合、いずれかのフィルターが一致すれば通過（OR 論理）。false の場合、すべてのフィルターが一致した場合のみ通過（AND 論理）。",
+            "description": "true の場合、いずれかのフィルターが一致すれば通過（OR 論理）。false の場合、すべてのフィルターが一致した場合のみ通過（AND 論理）",
             "default": true,
             "type": "boolean"
           },
           "mergeFilterAttributes": {
             "title": "フィルター属性をマージ",
-            "description": "true の場合、一致したフィルターフィーチャーの属性を候補にコピーする。passed ポートにルーティングされたフィーチャーにのみ適用。OR モード（pass_on_multiple_matches: true）では最初に一致したフィルターの属性のみマージ。AND モードでは一致したすべてのフィルターの属性を順番にマージし、複数のフィルターが同じキーを共有する場合は最後のフィルターの値が優先される。",
+            "description": "true の場合、一致したフィルター地物の属性を通過した候補にコピーする。一致した複数のフィルターが同じ属性を持つ場合は最後のフィルターの値が優先される",
             "default": false,
             "type": "boolean"
           },
           "mergedAttributesPrefix": {
             "title": "マージ属性プレフィックス",
-            "description": "衝突を避けるためにマージされたフィルター属性名に付加する任意のプレフィックス。例: \"filter_\" を指定するとフィルター属性 \"zone\" が \"filter_zone\" になる。",
+            "description": "衝突を避けるためにマージされたフィルター属性名に付加する任意のプレフィックス。例: \"filter_\" を指定するとフィルター属性 \"zone\" が \"filter_zone\" になる",
             "default": null,
             "type": [
               "string",
