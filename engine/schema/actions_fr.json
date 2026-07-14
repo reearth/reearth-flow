@@ -2902,7 +2902,7 @@
     {
       "name": "Echo Processor",
       "type": "processor",
-      "description": "Debug Echo Features to Logs",
+      "description": "Echoes features to logs and passes them through unchanged.",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -2914,12 +2914,14 @@
       "categories": [
         "Debug"
       ],
-      "tags": []
+      "tags": [
+        "logging"
+      ]
     },
     {
       "name": "Echo Sink",
       "type": "sink",
-      "description": "Debug Echo Features to Logs",
+      "description": "Echoes features to logs and discards them.",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -2929,7 +2931,9 @@
       "categories": [
         "Debug"
       ],
-      "tags": []
+      "tags": [
+        "logging"
+      ]
     },
     {
       "name": "Elevation Extractor",
@@ -3165,22 +3169,28 @@
     {
       "name": "Feature Counter",
       "type": "processor",
-      "description": "Count Features and Add Counter to Attribute",
+      "description": "Assigns a sequential number to each feature, stored in an attribute and optionally grouped by attribute values.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Feature Counter Parameters",
-        "description": "Configure how features are counted and grouped, and where to store the count",
+        "description": "Configure how features are numbered and grouped, and where to store the number",
         "type": "object",
         "required": [
-          "countStart",
           "outputAttribute"
         ],
         "properties": {
+          "outputAttribute": {
+            "title": "Count Attribute",
+            "description": "Name of the attribute where the count will be stored",
+            "type": "string"
+          },
           "countStart": {
             "title": "Start Count",
-            "description": "Starting value for the counter",
+            "description": "Value assigned to the first feature",
+            "default": 1,
             "type": "integer",
-            "format": "int64"
+            "format": "uint64",
+            "minimum": 0.0
           },
           "groupBy": {
             "title": "Group By Attributes",
@@ -3192,11 +3202,6 @@
             "items": {
               "$ref": "#/definitions/Attribute"
             }
-          },
-          "outputAttribute": {
-            "title": "Output Attribute",
-            "description": "Name of the attribute where the count will be stored",
-            "type": "string"
           }
         },
         "definitions": {
@@ -3210,13 +3215,15 @@
         "features"
       ],
       "outputPorts": [
-        "features",
-        "rejected"
+        "features"
       ],
       "categories": [
         "Debug"
       ],
-      "tags": []
+      "tags": [
+        "aggregation",
+        "attribute"
+      ]
     },
     {
       "name": "Feature Creator",
@@ -3473,6 +3480,7 @@
         ],
         "properties": {
           "joinType": {
+            "title": "Join Type",
             "description": "Join type: inner, left, or full",
             "allOf": [
               {
@@ -3481,6 +3489,7 @@
             ]
           },
           "requestorAttribute": {
+            "title": "Requestor Attributes",
             "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue)",
             "type": [
               "array",
@@ -3491,6 +3500,7 @@
             }
           },
           "supplierAttribute": {
+            "title": "Supplier Attributes",
             "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue)",
             "type": [
               "array",
@@ -3501,6 +3511,7 @@
             }
           },
           "requestorAttributeValue": {
+            "title": "Requestor Attribute Value",
             "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute)",
             "type": [
               "object",
@@ -3524,6 +3535,7 @@
             }
           },
           "supplierAttributeValue": {
+            "title": "Supplier Attribute Value",
             "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute)",
             "type": [
               "object",
@@ -3547,6 +3559,7 @@
             }
           },
           "conflictResolution": {
+            "title": "Conflict Resolution",
             "description": "Attribute conflict resolution strategy when both requestor and supplier have the same attribute",
             "anyOf": [
               {
@@ -3562,6 +3575,7 @@
           "JoinType": {
             "oneOf": [
               {
+                "title": "Inner",
                 "description": "Only emit features where a match exists",
                 "type": "string",
                 "enum": [
@@ -3569,6 +3583,7 @@
                 ]
               },
               {
+                "title": "Left",
                 "description": "Emit all requestor features (default)",
                 "type": "string",
                 "enum": [
@@ -3576,6 +3591,7 @@
                 ]
               },
               {
+                "title": "Full",
                 "description": "Emit all features from both sides",
                 "type": "string",
                 "enum": [
@@ -3590,6 +3606,7 @@
           "ConflictResolution": {
             "oneOf": [
               {
+                "title": "Requestor Wins",
                 "description": "Requestor attributes win on conflict",
                 "type": "string",
                 "enum": [
@@ -3597,6 +3614,7 @@
                 ]
               },
               {
+                "title": "Supplier Wins",
                 "description": "Supplier attributes win on conflict (default)",
                 "type": "string",
                 "enum": [
@@ -3614,15 +3632,13 @@
       ],
       "outputPorts": [
         "joined",
-        "unjoinedRequestor",
-        "unjoinedSupplier"
+        "unjoined-requestor",
+        "unjoined-supplier"
       ],
       "categories": [
         "Merge"
       ],
-      "tags": [
-        "join"
-      ]
+      "tags": []
     },
     {
       "name": "Feature LOD Filter",
@@ -3683,6 +3699,7 @@
         "type": "object",
         "properties": {
           "requestorAttribute": {
+            "title": "Requestor Attributes",
             "description": "Attributes from requestor features to use for matching (alternative to requestor_attribute_value)",
             "type": [
               "array",
@@ -3693,6 +3710,7 @@
             }
           },
           "supplierAttribute": {
+            "title": "Supplier Attributes",
             "description": "Attributes from supplier features to use for matching (alternative to supplier_attribute_value)",
             "type": [
               "array",
@@ -3703,6 +3721,7 @@
             }
           },
           "requestorAttributeValue": {
+            "title": "Requestor Attribute Value",
             "description": "Expression to evaluate for requestor feature matching values (alternative to requestor_attribute)",
             "type": [
               "object",
@@ -3726,6 +3745,7 @@
             }
           },
           "supplierAttributeValue": {
+            "title": "Supplier Attribute Value",
             "description": "Expression to evaluate for supplier feature matching values (alternative to supplier_attribute)",
             "type": [
               "object",
@@ -3749,6 +3769,7 @@
             }
           },
           "completeGrouped": {
+            "title": "Complete Grouped",
             "description": "Whether to complete grouped features before processing the next group",
             "type": [
               "boolean",
@@ -3791,6 +3812,7 @@
         ],
         "properties": {
           "attributes": {
+            "title": "Sort Attributes",
             "description": "Attributes to use for sorting features (sort order based on attribute order)",
             "type": "array",
             "items": {
@@ -3798,6 +3820,7 @@
             }
           },
           "order": {
+            "title": "Sort Order",
             "description": "Sorting order (ascending or descending)",
             "allOf": [
               {
@@ -3829,9 +3852,7 @@
       "categories": [
         "Merge"
       ],
-      "tags": [
-        "sort"
-      ]
+      "tags": []
     },
     {
       "name": "Feature Transformer",
@@ -8167,7 +8188,7 @@
     {
       "name": "Noop Processor",
       "type": "processor",
-      "description": "No-Operation Pass-Through Processor",
+      "description": "Passes features through unchanged.",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -8184,7 +8205,7 @@
     {
       "name": "Noop Sink",
       "type": "sink",
-      "description": "No-Operation Sink (Discard Features)",
+      "description": "Discards all incoming features.",
       "parameter": null,
       "builtin": true,
       "inputPorts": [

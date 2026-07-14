@@ -940,11 +940,11 @@
     },
     {
       "name": "Echo Processor",
-      "description": "Debug Echo Features to Logs"
+      "description": "Echoes features to logs and passes them through unchanged."
     },
     {
       "name": "Echo Sink",
-      "description": "Debug Echo Features to Logs"
+      "description": "Echoes features to logs and discards them."
     },
     {
       "name": "Elevation Extractor",
@@ -1014,22 +1014,22 @@
     },
     {
       "name": "Feature Counter",
-      "description": "Count Features and Add Counter to Attribute",
+      "description": "Assigns a sequential number to each feature, stored in an attribute and optionally grouped by attribute values.",
       "parameterI18n": {
         "": {
           "title": "Feature Counter Parameters",
-          "description": "Configure how features are counted and grouped, and where to store the count"
+          "description": "Configure how features are numbered and grouped, and where to store the number"
         },
         "countStart": {
           "title": "Start Count",
-          "description": "Starting value for the counter"
+          "description": "Value assigned to the first feature"
         },
         "groupBy": {
           "title": "Group By Attributes",
           "description": "List of attribute names to group features by before counting"
         },
         "outputAttribute": {
-          "title": "Output Attribute",
+          "title": "Count Attribute",
           "description": "Name of the attribute where the count will be stored"
         }
       }
@@ -1116,41 +1116,52 @@
           "description": "Configuration for joining requestor and supplier features based on matching attributes or expressions."
         },
         "conflictResolution": {
+          "title": "Conflict Resolution",
           "description": "Attribute conflict resolution strategy when both requestor and supplier have the same attribute"
         },
         "joinType": {
+          "title": "Join Type",
           "description": "Join type: inner, left, or full"
         },
         "requestorAttribute": {
+          "title": "Requestor Attributes",
           "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue)"
         },
         "requestorAttributeValue": {
+          "title": "Requestor Attribute Value",
           "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute)"
         },
         "supplierAttribute": {
+          "title": "Supplier Attributes",
           "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue)"
         },
         "supplierAttributeValue": {
+          "title": "Supplier Attribute Value",
           "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute)"
         }
       },
       "enumI18n": {
         "ConflictResolution": {
           "requestorWins": {
+            "title": "Requestor Wins",
             "description": "Requestor attributes win on conflict"
           },
           "supplierWins": {
+            "title": "Supplier Wins",
             "description": "Supplier attributes win on conflict (default)"
           }
         },
         "JoinType": {
           "full": {
+            "title": "Full",
             "description": "Emit all features from both sides"
           },
           "inner": {
+            "title": "Inner",
             "description": "Only emit features where a match exists"
           },
           "left": {
+            "title": "Left",
             "description": "Emit all requestor features (default)"
           }
         }
@@ -1178,18 +1189,23 @@
           "description": "Configuration for merging requestor and supplier features based on matching attributes or expressions."
         },
         "completeGrouped": {
+          "title": "Complete Grouped",
           "description": "Whether to complete grouped features before processing the next group"
         },
         "requestorAttribute": {
+          "title": "Requestor Attributes",
           "description": "Attributes from requestor features to use for matching (alternative to requestor_attribute_value)"
         },
         "requestorAttributeValue": {
+          "title": "Requestor Attribute Value",
           "description": "Expression to evaluate for requestor feature matching values (alternative to requestor_attribute)"
         },
         "supplierAttribute": {
+          "title": "Supplier Attributes",
           "description": "Attributes from supplier features to use for matching (alternative to supplier_attribute_value)"
         },
         "supplierAttributeValue": {
+          "title": "Supplier Attribute Value",
           "description": "Expression to evaluate for supplier feature matching values (alternative to supplier_attribute)"
         }
       }
@@ -1203,9 +1219,11 @@
           "description": "Configuration for sorting features based on attribute values."
         },
         "attributes": {
+          "title": "Sort Attributes",
           "description": "Attributes to use for sorting features (sort order based on attribute order)"
         },
         "order": {
+          "title": "Sort Order",
           "description": "Sorting order (ascending or descending)"
         }
       }
@@ -2276,11 +2294,11 @@
     },
     {
       "name": "Noop Processor",
-      "description": "No-Operation Pass-Through Processor"
+      "description": "Passes features through unchanged."
     },
     {
       "name": "Noop Sink",
-      "description": "No-Operation Sink (Discard Features)"
+      "description": "Discards all incoming features."
     },
     {
       "name": "Null Attribute Mapper",

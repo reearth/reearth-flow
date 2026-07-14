@@ -1,6 +1,6 @@
 [package]
 name = "workflow-tests"
-version = "0.1.260"
+version = "0.1.262"
 edition = "2021"
 
 [[bin]]

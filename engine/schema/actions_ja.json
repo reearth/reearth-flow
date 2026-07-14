@@ -2905,7 +2905,7 @@
     {
       "name": "Echo Processor",
       "type": "processor",
-      "description": "地物をエコー出力する",
+      "description": "地物をログにエコー出力し、変更せずにそのまま通過させる",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -2917,12 +2917,14 @@
       "categories": [
         "Debug"
       ],
-      "tags": []
+      "tags": [
+        "logging"
+      ]
     },
     {
       "name": "Echo Sink",
       "type": "sink",
-      "description": "地物をエコー出力する",
+      "description": "地物をログにエコー出力し、破棄する",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -2932,7 +2934,9 @@
       "categories": [
         "Debug"
       ],
-      "tags": []
+      "tags": [
+        "logging"
+      ]
     },
     {
       "name": "Elevation Extractor",
@@ -3168,26 +3172,32 @@
     {
       "name": "Feature Counter",
       "type": "processor",
-      "description": "地物数をカウントする",
+      "description": "各地物に連番を割り当てて属性に格納する（属性値によるグループ化も可能）",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureCounter パラメータ",
-        "description": "フィーチャーのカウント・グループ化方法と結果の格納先を設定する",
+        "title": "Feature Counter パラメータ",
+        "description": "地物の番号付け・グループ化方法と番号の格納先を設定する",
         "type": "object",
         "required": [
-          "countStart",
           "outputAttribute"
         ],
         "properties": {
+          "outputAttribute": {
+            "title": "カウント属性",
+            "description": "カウント結果を格納する属性名",
+            "type": "string"
+          },
           "countStart": {
             "title": "カウント開始値",
-            "description": "カウンターの開始値",
+            "description": "最初の地物に割り当てる値",
+            "default": 1,
             "type": "integer",
-            "format": "int64"
+            "format": "uint64",
+            "minimum": 0.0
           },
           "groupBy": {
             "title": "グループ化属性",
-            "description": "カウント前にフィーチャーをグループ化する属性名のリスト",
+            "description": "カウント前に地物をグループ化する属性名のリスト",
             "type": [
               "array",
               "null"
@@ -3195,11 +3205,6 @@
             "items": {
               "$ref": "#/definitions/Attribute"
             }
-          },
-          "outputAttribute": {
-            "title": "出力属性",
-            "description": "カウント結果を格納する属性名",
-            "type": "string"
           }
         },
         "definitions": {
@@ -3213,13 +3218,15 @@
         "features"
       ],
       "outputPorts": [
-        "features",
-        "rejected"
+        "features"
       ],
       "categories": [
         "Debug"
       ],
-      "tags": []
+      "tags": [
+        "aggregation",
+        "attribute"
+      ]
     },
     {
       "name": "Feature Creator",
@@ -3468,15 +3475,16 @@
       "description": "設定可能な結合タイプで、一致する属性値に基づいてリクエスタとサプライヤの地物を結合する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureJoiner パラメータ",
-        "description": "属性値または式の一致に基づいてリクエスタとサプライヤのフィーチャーを結合する設定",
+        "title": "Feature Joiner パラメータ",
+        "description": "属性値または式の一致に基づいてリクエスタとサプライヤの地物を結合する設定",
         "type": "object",
         "required": [
           "joinType"
         ],
         "properties": {
           "joinType": {
-            "description": "結合タイプ: inner（内部結合）、left（左外部結合）、または full（完全外部結合）",
+            "title": "結合タイプ",
+            "description": "未マッチの地物の扱い方: inner（内部結合）、left（左外部結合）、または full（完全外部結合）",
             "allOf": [
               {
                 "$ref": "#/definitions/JoinType"
@@ -3484,7 +3492,8 @@
             ]
           },
           "requestorAttribute": {
-            "description": "照合に使用するリクエスタフィーチャーの属性（requestorAttributeValue の代替）",
+            "title": "リクエスタ属性",
+            "description": "照合に使用するリクエスタ地物の属性（requestorAttributeValue の代替）",
             "type": [
               "array",
               "null"
@@ -3494,7 +3503,8 @@
             }
           },
           "supplierAttribute": {
-            "description": "照合に使用するサプライヤフィーチャーの属性（supplierAttributeValue の代替）",
+            "title": "サプライヤ属性",
+            "description": "照合に使用するサプライヤ地物の属性（supplierAttributeValue の代替）",
             "type": [
               "array",
               "null"
@@ -3504,7 +3514,8 @@
             }
           },
           "requestorAttributeValue": {
-            "description": "リクエスタフィーチャーの照合値を評価する式（requestorAttribute の代替）",
+            "title": "リクエスタ属性値",
+            "description": "リクエスタ地物の照合値を評価する式（requestorAttribute の代替）",
             "type": [
               "object",
               "null"
@@ -3527,7 +3538,8 @@
             }
           },
           "supplierAttributeValue": {
-            "description": "サプライヤフィーチャーの照合値を評価する式（supplierAttribute の代替）",
+            "title": "サプライヤ属性値",
+            "description": "サプライヤ地物の照合値を評価する式（supplierAttribute の代替）",
             "type": [
               "object",
               "null"
@@ -3550,6 +3562,7 @@
             }
           },
           "conflictResolution": {
+            "title": "競合解決",
             "description": "リクエスタとサプライヤが同じ属性を持つ場合の競合解決戦略",
             "anyOf": [
               {
@@ -3565,21 +3578,24 @@
           "JoinType": {
             "oneOf": [
               {
-                "description": "一致するフィーチャーのみを出力する",
+                "title": "内部結合",
+                "description": "一致する地物のみを出力する",
                 "type": "string",
                 "enum": [
                   "inner"
                 ]
               },
               {
-                "description": "リクエスタのすべてのフィーチャーを出力する（デフォルト）",
+                "title": "左外部結合",
+                "description": "リクエスタのすべての地物を出力する（一致の有無を問わない）",
                 "type": "string",
                 "enum": [
                   "left"
                 ]
               },
               {
-                "description": "両側のすべてのフィーチャーを出力する",
+                "title": "完全外部結合",
+                "description": "両側のすべての地物を出力する",
                 "type": "string",
                 "enum": [
                   "full"
@@ -3593,6 +3609,7 @@
           "ConflictResolution": {
             "oneOf": [
               {
+                "title": "リクエスタ優先",
                 "description": "競合時はリクエスタの属性が優先される",
                 "type": "string",
                 "enum": [
@@ -3600,6 +3617,7 @@
                 ]
               },
               {
+                "title": "サプライヤ優先",
                 "description": "競合時はサプライヤの属性が優先される（デフォルト）",
                 "type": "string",
                 "enum": [
@@ -3617,15 +3635,13 @@
       ],
       "outputPorts": [
         "joined",
-        "unjoinedRequestor",
-        "unjoinedSupplier"
+        "unjoined-requestor",
+        "unjoined-supplier"
       ],
       "categories": [
         "Merge"
       ],
-      "tags": [
-        "join"
-      ]
+      "tags": []
     },
     {
       "name": "Feature LOD Filter",
@@ -3678,15 +3694,16 @@
     {
       "name": "Feature Merger",
       "type": "processor",
-      "description": "属性に基づいて地物をマージする",
+      "description": "一致する属性値に基づいてリクエスタとサプライヤの地物をマージする",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureMerger パラメータ",
-        "description": "属性値または式の一致に基づいてリクエスタとサプライヤのフィーチャーをマージする設定",
+        "title": "Feature Merger パラメータ",
+        "description": "属性値または式の一致に基づいてリクエスタとサプライヤの地物をマージする設定",
         "type": "object",
         "properties": {
           "requestorAttribute": {
-            "description": "照合に使用するリクエスタフィーチャーの属性（requestor_attribute_value の代替）",
+            "title": "リクエスタ属性",
+            "description": "照合に使用するリクエスタ地物の属性（requestorAttributeValue の代替）",
             "type": [
               "array",
               "null"
@@ -3696,7 +3713,8 @@
             }
           },
           "supplierAttribute": {
-            "description": "照合に使用するサプライヤフィーチャーの属性（supplier_attribute_value の代替）",
+            "title": "サプライヤ属性",
+            "description": "照合に使用するサプライヤ地物の属性（supplierAttributeValue の代替）",
             "type": [
               "array",
               "null"
@@ -3706,7 +3724,8 @@
             }
           },
           "requestorAttributeValue": {
-            "description": "リクエスタフィーチャーの照合値を評価する式（requestor_attribute の代替）",
+            "title": "リクエスタ属性値",
+            "description": "リクエスタ地物の照合値を評価する式（requestorAttribute の代替）",
             "type": [
               "object",
               "null"
@@ -3729,7 +3748,8 @@
             }
           },
           "supplierAttributeValue": {
-            "description": "サプライヤフィーチャーの照合値を評価する式（supplier_attribute の代替）",
+            "title": "サプライヤ属性値",
+            "description": "サプライヤ地物の照合値を評価する式（supplierAttribute の代替）",
             "type": [
               "object",
               "null"
@@ -3752,7 +3772,8 @@
             }
           },
           "completeGrouped": {
-            "description": "次のグループを処理する前に、グループ化されたフィーチャーを完了するか",
+            "title": "グループ完了処理",
+            "description": "次のグループを処理する前に、グループ化された地物を完了するか",
             "type": [
               "boolean",
               "null"
@@ -3782,11 +3803,11 @@
     {
       "name": "Feature Sorter",
       "type": "processor",
-      "description": "地物を属性でソートする",
+      "description": "指定した属性に基づいて、地物を昇順または降順でソートする",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureSorter パラメータ",
-        "description": "属性値に基づいてフィーチャーをソートする設定",
+        "title": "Feature Sorter パラメータ",
+        "description": "属性値に基づいて地物をソートする設定",
         "type": "object",
         "required": [
           "attributes",
@@ -3794,13 +3815,15 @@
         ],
         "properties": {
           "attributes": {
-            "description": "フィーチャーのソートに使用する属性（属性の順序でソート順が決まる）",
+            "title": "ソート属性",
+            "description": "ソートに使用する属性。先に指定した属性が優先される",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Attribute"
             }
           },
           "order": {
+            "title": "ソート順",
             "description": "ソート順（昇順または降順）",
             "allOf": [
               {
@@ -3832,9 +3855,7 @@
       "categories": [
         "Merge"
       ],
-      "tags": [
-        "sort"
-      ]
+      "tags": []
     },
     {
       "name": "Feature Transformer",
@@ -8170,7 +8191,7 @@
     {
       "name": "Noop Processor",
       "type": "processor",
-      "description": "地物に対して何も処理しない",
+      "description": "地物を変更せずにそのまま通過させる",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -8187,7 +8208,7 @@
     {
       "name": "Noop Sink",
       "type": "sink",
-      "description": "最終的な処理を行わない",
+      "description": "受け取ったすべての地物を破棄する",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
