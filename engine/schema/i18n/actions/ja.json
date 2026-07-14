@@ -943,11 +943,11 @@
     },
     {
       "name": "Echo Processor",
-      "description": "地物をエコー出力する"
+      "description": "地物をログにエコー出力し、変更せずにそのまま通過させる"
     },
     {
       "name": "Echo Sink",
-      "description": "地物をエコー出力する"
+      "description": "地物をログにエコー出力し、破棄する"
     },
     {
       "name": "Elevation Extractor",
@@ -1017,22 +1017,22 @@
     },
     {
       "name": "Feature Counter",
-      "description": "地物数をカウントする",
+      "description": "各地物に連番を割り当てて属性に格納する（属性値によるグループ化も可能）",
       "parameterI18n": {
         "": {
-          "title": "FeatureCounter パラメータ",
-          "description": "フィーチャーのカウント・グループ化方法と結果の格納先を設定する"
+          "title": "Feature Counter パラメータ",
+          "description": "地物の番号付け・グループ化方法と番号の格納先を設定する"
         },
         "countStart": {
           "title": "カウント開始値",
-          "description": "カウンターの開始値"
+          "description": "最初の地物に割り当てる値"
         },
         "groupBy": {
           "title": "グループ化属性",
-          "description": "カウント前にフィーチャーをグループ化する属性名のリスト"
+          "description": "カウント前に地物をグループ化する属性名のリスト"
         },
         "outputAttribute": {
-          "title": "出力属性",
+          "title": "カウント属性",
           "description": "カウント結果を格納する属性名"
         }
       }
@@ -2279,11 +2279,11 @@
     },
     {
       "name": "Noop Processor",
-      "description": "地物に対して何も処理しない"
+      "description": "地物を変更せずにそのまま通過させる"
     },
     {
       "name": "Noop Sink",
-      "description": "最終的な処理を行わない"
+      "description": "受け取ったすべての地物を破棄する"
     },
     {
       "name": "Null Attribute Mapper",

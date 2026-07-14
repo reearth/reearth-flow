@@ -1,7 +1,7 @@
 use std::{
     collections::HashMap,
     fmt::Debug,
-    sync::atomic::{AtomicUsize, Ordering},
+    sync::atomic::{AtomicU64, Ordering},
 };
 
 use reearth_flow_runtime::{
@@ -9,7 +9,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue};
 use schemars::JsonSchema;
@@ -20,8 +20,8 @@ use super::errors::FeatureProcessorError;
 
 #[derive(Debug)]
 struct AtomicCounterMap {
-    start: i64,
-    inner: parking_lot::Mutex<HashMap<String, AtomicUsize>>,
+    start: u64,
+    inner: parking_lot::Mutex<HashMap<String, AtomicU64>>,
 }
 
 impl Clone for AtomicCounterMap {
@@ -29,7 +29,7 @@ impl Clone for AtomicCounterMap {
         let inner = self.inner.lock();
         let new_inner = inner
             .iter()
-            .map(|(k, v)| (k.clone(), AtomicUsize::new(v.load(Ordering::SeqCst))))
+            .map(|(k, v)| (k.clone(), AtomicU64::new(v.load(Ordering::SeqCst))))
             .collect();
         AtomicCounterMap {
             start: self.start,
@@ -39,20 +39,19 @@ impl Clone for AtomicCounterMap {
 }
 
 impl AtomicCounterMap {
-    fn new(start: i64) -> Self {
+    fn new(start: u64) -> Self {
         AtomicCounterMap {
             start,
             inner: parking_lot::Mutex::new(HashMap::new()),
         }
     }
 
-    fn increment(&self, key: &str) -> i64 {
+    fn increment(&self, key: &str) -> u64 {
         let mut map = self.inner.lock();
         let counter = map
             .entry(key.to_string())
-            .or_insert_with(|| AtomicUsize::new(self.start as usize));
-        let result = counter.fetch_add(1, Ordering::SeqCst);
-        result as i64
+            .or_insert_with(|| AtomicU64::new(self.start));
+        counter.fetch_add(1, Ordering::SeqCst)
     }
 }
 
@@ -65,7 +64,7 @@ impl ProcessorFactory for FeatureCounterFactory {
     }
 
     fn description(&self) -> &str {
-        "Count Features and Add Counter to Attribute"
+        "Assigns a sequential number to each feature, stored in an attribute and optionally grouped by attribute values."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -76,12 +75,16 @@ impl ProcessorFactory for FeatureCounterFactory {
         &["Debug"]
     }
 
+    fn tags(&self) -> &[&'static str] {
+        &["aggregation", "attribute"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![FEATURES_PORT.clone(), REJECTED_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -123,20 +126,25 @@ struct FeatureCounter {
     params: FeatureCounterParam,
 }
 
+fn default_count_start() -> u64 {
+    1
+}
+
 /// # Feature Counter Parameters
-/// Configure how features are counted and grouped, and where to store the count
+/// Configure how features are numbered and grouped, and where to store the number
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct FeatureCounterParam {
+    /// # Count Attribute
+    /// Name of the attribute where the count will be stored
+    output_attribute: String,
     /// # Start Count
-    /// Starting value for the counter
-    count_start: i64,
+    /// Value assigned to the first feature
+    #[serde(default = "default_count_start")]
+    count_start: u64,
     /// # Group By Attributes
     /// List of attribute names to group features by before counting
     group_by: Option<Vec<Attribute>>,
-    /// # Output Attribute
-    /// Name of the attribute where the count will be stored
-    output_attribute: String,
 }
 
 impl Processor for FeatureCounter {

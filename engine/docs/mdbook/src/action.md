@@ -2831,7 +2831,7 @@ Dissolve Features by Grouping Attributes
 ### Type
 * processor
 ### Description
-Debug Echo Features to Logs
+Echoes features to logs and passes them through unchanged.
 ### Parameters
 * No parameters
 ### Input Ports
@@ -2845,7 +2845,7 @@ Debug Echo Features to Logs
 ### Type
 * sink
 ### Description
-Debug Echo Features to Logs
+Echoes features to logs and discards them.
 ### Parameters
 * No parameters
 ### Input Ports
@@ -3079,24 +3079,30 @@ Reads and processes features from CityGML files with optional flattening
 ### Type
 * processor
 ### Description
-Count Features and Add Counter to Attribute
+Assigns a sequential number to each feature, stored in an attribute and optionally grouped by attribute values.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Feature Counter Parameters",
-  "description": "Configure how features are counted and grouped, and where to store the count",
+  "description": "Configure how features are numbered and grouped, and where to store the number",
   "type": "object",
   "required": [
-    "countStart",
     "outputAttribute"
   ],
   "properties": {
+    "outputAttribute": {
+      "title": "Count Attribute",
+      "description": "Name of the attribute where the count will be stored",
+      "type": "string"
+    },
     "countStart": {
       "title": "Start Count",
-      "description": "Starting value for the counter",
+      "description": "Value assigned to the first feature",
+      "default": 1,
       "type": "integer",
-      "format": "int64"
+      "format": "uint64",
+      "minimum": 0.0
     },
     "groupBy": {
       "title": "Group By Attributes",
@@ -3108,11 +3114,6 @@ Count Features and Add Counter to Attribute
       "items": {
         "$ref": "#/definitions/Attribute"
       }
-    },
-    "outputAttribute": {
-      "title": "Output Attribute",
-      "description": "Name of the attribute where the count will be stored",
-      "type": "string"
     }
   },
   "definitions": {
@@ -3126,7 +3127,6 @@ Count Features and Add Counter to Attribute
 * features
 ### Output Ports
 * features
-* rejected
 ### Category
 * Debug
 
@@ -7976,7 +7976,7 @@ Finds the closest candidate features for each base feature based on spatial prox
 ### Type
 * processor
 ### Description
-No-Operation Pass-Through Processor
+Passes features through unchanged.
 ### Parameters
 * No parameters
 ### Input Ports
@@ -7990,7 +7990,7 @@ No-Operation Pass-Through Processor
 ### Type
 * sink
 ### Description
-No-Operation Sink (Discard Features)
+Discards all incoming features.
 ### Parameters
 * No parameters
 ### Input Ports
