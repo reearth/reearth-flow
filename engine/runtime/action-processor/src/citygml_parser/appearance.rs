@@ -786,7 +786,7 @@ fn target_key(reference: &str, base: &Url) -> Option<SurfaceKey> {
 
 #[cfg(test)]
 mod tests {
-    use crate::citygml_parser::parser::Parser;
+    use crate::citygml_parser::parser::{Parser, ParserOutput};
     use crate::citygml_parser::resolver::resolve_root;
     use reearth_flow_geometry::appearance::{
         Appearance, Material, Sampler, Side, ThemeId, UvSet, UvSource, WrapMode,
@@ -817,11 +817,18 @@ mod tests {
         parser
             .parse(xml.as_bytes(), &Url::parse("file:///dir/test.gml").unwrap())
             .unwrap();
-        let (pending, raw_registry, geom_registry, appearance_members, _ns) = parser.finish();
+        let ParserOutput {
+            pending,
+            raw_registry,
+            geom_registry,
+            appearance_members,
+            srs_by_file: srs,
+            ..
+        } = parser.finish();
         let appearance = super::build_index(&appearance_members, &raw_registry);
         assert!(!appearance.is_empty(), "appearance should be indexed");
         let feature = pending.into_iter().next().expect("one feature");
-        let geom = resolve_root(&feature.geoms[0].node, &geom_registry, &appearance)
+        let geom = resolve_root(&feature.geoms[0].node, &geom_registry, &appearance, &srs)
             .expect("geometry resolves");
         match geom {
             Euclidean3DGeometry::Collection(c) => match c.members().first().expect("one member") {
@@ -1461,10 +1468,17 @@ mod tests {
         parser
             .parse(xml.as_bytes(), &Url::parse("file:///dir/test.gml").unwrap())
             .unwrap();
-        let (pending, raw_registry, geom_registry, appearance_members, _ns) = parser.finish();
+        let ParserOutput {
+            pending,
+            raw_registry,
+            geom_registry,
+            appearance_members,
+            srs_by_file: srs,
+            ..
+        } = parser.finish();
         let appearance = super::build_index(&appearance_members, &raw_registry);
         let feature = pending.into_iter().next().expect("one feature");
-        let geom = resolve_root(&feature.geoms[0].node, &geom_registry, &appearance)
+        let geom = resolve_root(&feature.geoms[0].node, &geom_registry, &appearance, &srs)
             .expect("geometry resolves");
         match geom {
             Euclidean3DGeometry::TriangularMesh(m) => *m,
@@ -1697,10 +1711,17 @@ mod tests {
         parser
             .parse(xml.as_bytes(), &Url::parse("file:///dir/test.gml").unwrap())
             .unwrap();
-        let (pending, raw_registry, geom_registry, appearance_members, _ns) = parser.finish();
+        let ParserOutput {
+            pending,
+            raw_registry,
+            geom_registry,
+            appearance_members,
+            srs_by_file: srs,
+            ..
+        } = parser.finish();
         let appearance = super::build_index(&appearance_members, &raw_registry);
         let feature = pending.into_iter().next().expect("one feature");
-        let geom = resolve_root(&feature.geoms[0].node, &geom_registry, &appearance)
+        let geom = resolve_root(&feature.geoms[0].node, &geom_registry, &appearance, &srs)
             .expect("geometry resolves");
         match geom {
             Euclidean3DGeometry::PolygonMesh(m) => *m,
@@ -1799,14 +1820,31 @@ mod tests {
                 &Url::parse("file:///dir/b.gml").unwrap(),
             )
             .unwrap();
-        let (pending, raw_registry, geom_registry, appearance_members, _ns) = parser.finish();
+        let ParserOutput {
+            pending,
+            raw_registry,
+            geom_registry,
+            appearance_members,
+            srs_by_file: srs,
+            ..
+        } = parser.finish();
         let appearance = super::build_index(&appearance_members, &raw_registry);
         let features: Vec<_> = pending.into_iter().collect();
         assert_eq!(features.len(), 2);
-        let a = resolve_root(&features[0].geoms[0].node, &geom_registry, &appearance)
-            .expect("file a resolves");
-        let b = resolve_root(&features[1].geoms[0].node, &geom_registry, &appearance)
-            .expect("file b resolves");
+        let a = resolve_root(
+            &features[0].geoms[0].node,
+            &geom_registry,
+            &appearance,
+            &srs,
+        )
+        .expect("file a resolves");
+        let b = resolve_root(
+            &features[1].geoms[0].node,
+            &geom_registry,
+            &appearance,
+            &srs,
+        )
+        .expect("file b resolves");
         assert_eq!(diffuse(&a), [1.0, 0.0, 0.0], "file a keeps its own colour");
         assert_eq!(diffuse(&b), [0.0, 0.0, 1.0], "file b keeps its own colour");
     }
