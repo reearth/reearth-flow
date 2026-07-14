@@ -49,8 +49,10 @@ impl Cesium3DTilesWriter {
             schema_key: self.params.schema_key.as_deref(),
             skip_unexposed_attributes: self.params.skip_unexposed_attributes,
         };
+        // Matches the old writer's default (see `Cesium3DTilesWriterParam`).
+        let draco = self.params.draco_compression.unwrap_or(true);
         for ((output, _, _), features) in &self.buffer {
-            let built = build(features, options, self.params.max_zoom)?;
+            let built = build(features, options, self.params.max_zoom, draco)?;
 
             for (relative_path, bytes) in built.tiles.into_iter().chain(built.subtrees) {
                 crate::SinkOutput::new(
@@ -91,6 +93,7 @@ pub fn build(
     features: &[Feature],
     options: MetadataOptions,
     max_zoom: u8,
+    draco: bool,
 ) -> crate::errors::Result<BuiltTileset> {
     let mut caches = mesh::ExtractCaches::default();
     let extracted: Vec<(&Feature, mesh::ExtractedMesh)> = features
@@ -129,9 +132,10 @@ pub fn build(
         .map(|(cell, indices)| {
             let cell_members: Vec<&(&Feature, mesh::ExtractedMesh)> =
                 indices.iter().map(|&i| &extracted[i]).collect();
-            (content_path(cell), build_cell_glb(&cell_members, options))
+            let glb = build_cell_glb(&cell_members, options, draco)?;
+            Ok((content_path(cell), glb))
         })
-        .collect();
+        .collect::<crate::errors::Result<_>>()?;
 
     let tileset_bytes = render_tileset_json(&root, available_levels)?;
     let subtrees = subtree::build_all(&occupied)
@@ -183,11 +187,14 @@ fn subtree_path(cell: Cell) -> String {
 
 /// Merge one occupied cell's features into a single glb, index-offset
 /// concatenated, tagging each vertex with its feature's row in the cell's
-/// property table.
+/// property table. When `draco` is set the result is Draco-compressed, which
+/// also drops the stored normal values in favor of per-face prediction (see
+/// [`metadata`]'s sibling [`reearth_flow_gltf::next::draco`]).
 fn build_cell_glb(
     cell_members: &[&(&Feature, mesh::ExtractedMesh)],
     options: MetadataOptions,
-) -> Vec<u8> {
+    draco: bool,
+) -> crate::errors::Result<Vec<u8>> {
     let mut ecef_vertices: Vec<[f64; 3]> = Vec::new();
     let mut indices: Vec<[u32; 3]> = Vec::new();
     let mut feature_ids: Vec<u32> = Vec::new();
@@ -259,7 +266,14 @@ fn build_cell_glb(
         vec![normal],
     );
     metadata::encode(&table, &mut builder, primitive, &feature_ids);
-    builder.build(gltf_origin)
+    let glb = builder.build(gltf_origin);
+
+    if draco {
+        reearth_flow_gltf::next::draco::compress(&glb)
+            .map_err(|e| SinkError::Cesium3DTilesWriter(format!("draco compression failed: {e:?}")))
+    } else {
+        Ok(glb)
+    }
 }
 
 fn centroid(points: &[[f64; 3]]) -> [f64; 3] {

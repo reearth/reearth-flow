@@ -44,7 +44,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     println!("parsed {} feature(s)", features.len());
 
-    let built = next::build(&features, next::MetadataOptions::default(), 24)?;
+    let built = next::build(&features, next::MetadataOptions::default(), 24, true)?;
 
     std::fs::write(output_dir.join("tileset.json"), &built.tileset_json)?;
     for (relative_path, bytes) in built.tiles.iter().chain(&built.subtrees) {
