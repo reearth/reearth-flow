@@ -122,6 +122,12 @@ impl PolygonMesh3DData {
 }
 
 impl PolygonMesh3D {
+    /// The coordinate frame the mesh data is expressed in.
+    #[inline]
+    pub fn frame(&self) -> &CoordinateFrame {
+        &self.frame
+    }
+
     /// Borrow the appearance, if any.
     #[inline]
     pub fn appearance(&self) -> &Option<Appearance> {

@@ -92,7 +92,7 @@ mod tests {
     #[test]
     fn transform_round_trip_3d() {
         let mut cache = ReprojectionCache::new();
-        let p = [139.767, 35.681, 100.0];
+        let p = [35.681, 139.767, 100.0];
         let ecef = cache
             .transform(EpsgCode::new(4979), EpsgCode::new(4978), p)
             .unwrap();
@@ -105,13 +105,14 @@ mod tests {
     }
 
     #[test]
-    fn transform_axis_order_is_lon_lat() {
+    fn transform_uses_each_crs_own_axis_order() {
         let mut cache = ReprojectionCache::new();
+        // EPSG:4326 is officially (lat, lon); EPSG:3857 is (x, y) easting/northing.
         let out = cache
             .transform(
                 EpsgCode::new(4326),
                 EpsgCode::new(3857),
-                [139.767, 35.681, 0.0],
+                [35.681, 139.767, 0.0],
             )
             .unwrap();
         assert_relative_eq!(out[0], 1.5558e7, epsilon = 1e4);
@@ -131,7 +132,7 @@ mod tests {
     #[test]
     fn point3d_reproject_updates_position_and_frame() {
         let mut cache = ReprojectionCache::new();
-        let start = [139.767, 35.681, 100.0];
+        let start = [35.681, 139.767, 100.0];
         let expected = cache
             .transform(EpsgCode::new(4979), EpsgCode::new(4978), start)
             .unwrap();
@@ -151,11 +152,11 @@ mod tests {
             .transform(
                 EpsgCode::new(4326),
                 EpsgCode::new(3857),
-                [139.767, 35.681, 0.0],
+                [35.681, 139.767, 0.0],
             )
             .unwrap();
 
-        let mut p = Point2D::new(CoordinateFrame::Crs(EpsgCode::new(4326)), [139.767, 35.681]);
+        let mut p = Point2D::new(CoordinateFrame::Crs(EpsgCode::new(4326)), [35.681, 139.767]);
         p.reproject(EpsgCode::new(3857), &mut cache).unwrap();
         assert_eq!(
             p,
@@ -166,7 +167,7 @@ mod tests {
     #[test]
     fn linestring2d_reproject_carries_elevation() {
         let mut cache = ReprojectionCache::new();
-        let raw = [[139.7, 35.6, 10.0], [139.8, 35.7, 20.0]];
+        let raw = [[35.6, 139.7, 10.0], [35.7, 139.8, 20.0]];
         let expected: Vec<[f64; 3]> = raw
             .iter()
             .map(|&[x, y, z]| {
@@ -193,8 +194,8 @@ mod tests {
     #[test]
     fn collection_reproject_dispatches_to_each_member() {
         let mut cache = ReprojectionCache::new();
-        let a = [139.7, 35.6, 1.0];
-        let b = [140.0, 35.9, 2.0];
+        let a = [35.6, 139.7, 1.0];
+        let b = [35.9, 140.0, 2.0];
         let ea = cache
             .transform(EpsgCode::new(4979), EpsgCode::new(4978), a)
             .unwrap();
