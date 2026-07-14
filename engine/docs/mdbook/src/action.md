@@ -3315,6 +3315,54 @@ Filter Features Based on Custom Conditions
 ### Category
 * Filter
 
+## Feature GeoJSON Writer
+### Type
+* processor
+### Description
+Writes features to a GeoJSON file for each resolved output path.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "FeatureGeoJsonWriter Parameters",
+  "description": "Configuration for writing features to GeoJSON files.",
+  "type": "object",
+  "required": [
+    "output"
+  ],
+  "properties": {
+    "output": {
+      "title": "Output",
+      "description": "Path (or expression evaluated per feature) of the GeoJSON file to write. Features sharing a resolved path are written to the same file, so the expression can split features across files by attribute value.",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* features
+### Category
+* Feature
+
 ## Feature Joiner
 ### Type
 * processor

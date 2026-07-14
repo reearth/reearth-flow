@@ -8,6 +8,7 @@ use indexmap::IndexMap;
 use itertools::Itertools;
 use nusamai_projection::crs::{EPSG_WGS84_GEOGRAPHIC_2D, EPSG_WGS84_GEOGRAPHIC_3D};
 use reearth_flow_geometry::types::conversion::is_2d_geojson_value;
+use reearth_flow_geometry::types::point::Point3D;
 
 use crate::{
     error::{Error, Result},
@@ -110,6 +111,10 @@ impl From<GmlGeometry> for Vec<geojson::Value> {
             .map(|poly| poly.into())
             .collect::<Vec<_>>();
         values.extend(feature.line_strings.into_iter().map(|line| line.into()));
+        values.extend(feature.points.into_iter().map(|point| {
+            let point: Point3D<f64> = point.into();
+            point.into()
+        }));
         values
     }
 }
@@ -160,4 +165,92 @@ fn from_geojson_object_to_attribute_value_map(
     obj.iter()
         .map(|(k, v)| (Attribute::new(k), v.clone().into()))
         .collect()
+}
+
+#[cfg(all(test, not(feature = "new-geometry")))]
+mod tests {
+    use reearth_flow_geometry::types::coordinate::Coordinate3D;
+    use reearth_flow_geometry::types::line_string::LineString3D;
+    use reearth_flow_geometry::types::polygon::Polygon3D;
+
+    use super::*;
+    use crate::geometry::{CityGmlGeometry, Geometry, GeometryType};
+    use crate::Attributes;
+
+    fn sample_polygon() -> Polygon3D<f64> {
+        Polygon3D::new(
+            LineString3D::new(vec![
+                Coordinate3D::new__(0.0, 0.0, 0.0),
+                Coordinate3D::new__(1.0, 0.0, 0.0),
+                Coordinate3D::new__(0.0, 1.0, 0.0),
+                Coordinate3D::new__(0.0, 0.0, 0.0),
+            ]),
+            vec![],
+        )
+    }
+
+    fn sample_line_string() -> LineString3D<f64> {
+        LineString3D::new(vec![
+            Coordinate3D::new__(0.0, 0.0, 0.0),
+            Coordinate3D::new__(1.0, 1.0, 1.0),
+        ])
+    }
+
+    // Case 1: a Point-only GmlGeometry converts to a single Point value, preserving z.
+    #[test]
+    fn gml_geometry_with_only_points_converts_to_point_values() {
+        let gml_geometry = GmlGeometry {
+            points: vec![Coordinate3D::new__(137.32, 34.68, 12.5)],
+            len: 1,
+            ..GmlGeometry::new(GeometryType::Point, Some(0))
+        };
+
+        let values: Vec<geojson::Value> = gml_geometry.into();
+
+        assert_eq!(values.len(), 1);
+        assert_eq!(values[0], geojson::Value::Point(vec![137.32, 34.68, 12.5]));
+    }
+
+    // Case 2: polygon + line-string + point all convert, in the order polygons -> lines -> points.
+    #[test]
+    fn gml_geometry_mixed_converts_all_in_order() {
+        let gml_geometry = GmlGeometry {
+            polygons: vec![sample_polygon()],
+            line_strings: vec![sample_line_string()],
+            points: vec![Coordinate3D::new__(2.0, 3.0, 4.0)],
+            len: 1,
+            ..GmlGeometry::new(GeometryType::Surface, Some(0))
+        };
+
+        let values: Vec<geojson::Value> = gml_geometry.into();
+
+        assert_eq!(values.len(), 3);
+        assert!(matches!(values[0], geojson::Value::Polygon(_)));
+        assert!(matches!(values[1], geojson::Value::LineString(_)));
+        assert_eq!(values[2], geojson::Value::Point(vec![2.0, 3.0, 4.0]));
+    }
+
+    // A feature whose CityGML geometry contains only points converts to a
+    // GeoJSON feature with a Point geometry.
+    #[test]
+    fn feature_with_only_points_yields_at_least_one_geojson_feature() {
+        let gml_geometry = GmlGeometry {
+            points: vec![Coordinate3D::new__(137.32, 34.68, 12.5)],
+            len: 1,
+            ..GmlGeometry::new(GeometryType::Point, Some(0))
+        };
+        let citygml_geometry = CityGmlGeometry::new(vec![gml_geometry], Vec::new(), Vec::new());
+        let feature = Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry::with_value(GeometryValue::CityGmlGeometry(citygml_geometry)),
+        );
+
+        let geojson_features: Vec<geojson::Feature> = feature.try_into().unwrap();
+
+        assert_eq!(geojson_features.len(), 1);
+        assert!(matches!(
+            geojson_features[0].geometry.as_ref().map(|g| &g.value),
+            Some(geojson::Value::Point(_))
+        ));
+    }
 }
