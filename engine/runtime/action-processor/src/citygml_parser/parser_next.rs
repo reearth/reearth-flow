@@ -771,6 +771,31 @@ mod tests {
     }
 
     #[test]
+    fn parse_records_srs_from_envelope() {
+        let xml = br#"
+<core:CityModel
+  xmlns:core="http://www.opengis.net/citygml/3.0"
+  xmlns:bldg="http://www.opengis.net/citygml/building/3.0"
+  xmlns:gml="http://www.opengis.net/gml/3.2">
+  <gml:boundedBy>
+    <gml:Envelope srsName="urn:ogc:def:crs:EPSG::6697"/>
+  </gml:boundedBy>
+  <core:cityObjectMember>
+    <bldg:Building gml:id="bldg001"/>
+  </core:cityObjectMember>
+</core:CityModel>"#;
+
+        let mut parser = Parser::new();
+        parser.parse(xml, &dummy_url()).unwrap();
+        let ParserOutput { srs_by_file, .. } = parser.finish();
+
+        assert_eq!(
+            srs_by_file.get(&dummy_url().to_string()),
+            Some(&EpsgCode::new(6697))
+        );
+    }
+
+    #[test]
     fn parse_errors_on_truncated_citygml() {
         let xml = br#"
 <core:CityModel
