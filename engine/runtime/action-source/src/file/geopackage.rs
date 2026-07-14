@@ -31,6 +31,12 @@ use crate::{
     file::reader::runner::{get_content, FileReaderCommonParam, FileReaderCompiledParam},
 };
 
+// New-geometry WKB parsing lives in a sibling file, declared here as a child module
+// so it can reuse this module's private SQL/decoding helpers via `super::`.
+#[cfg(feature = "new-geometry")]
+#[path = "geopackage_next.rs"]
+mod geopackage_next;
+
 #[derive(Debug, Clone, Default)]
 pub(crate) struct GeoPackageReaderFactory;
 
@@ -182,6 +188,32 @@ impl Source for GeoPackageReader {
         let content = get_content(&self.params.common, storage_resolver).await?;
 
         let features = process_geopackage(content, &self.params).await?;
+
+        for feature in features {
+            sender
+                .send((
+                    FEATURES_PORT.clone(),
+                    IngestionMessage::OperationEvent { feature },
+                ))
+                .await
+                .map_err(|e| {
+                    SourceError::GeoPackageReader(format!("Failed to send feature: {e}"))
+                })?;
+        }
+
+        Ok(())
+    }
+
+    #[cfg(feature = "new-geometry")]
+    async fn start(
+        &mut self,
+        ctx: NodeContext,
+        sender: Sender<(Port, IngestionMessage)>,
+    ) -> Result<(), BoxedError> {
+        let storage_resolver = Arc::clone(&ctx.storage_resolver);
+        let content = get_content(&self.params.common, storage_resolver).await?;
+
+        let features = geopackage_next::read(content, &self.params).await?;
 
         for feature in features {
             sender
