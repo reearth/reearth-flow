@@ -3469,10 +3469,10 @@
     {
       "name": "Feature Joiner",
       "type": "processor",
-      "description": "Joins requestor and supplier features based on matching attribute values with configurable join types",
+      "description": "Joins requestor and supplier features based on matching attribute values, with configurable join types.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureJoiner Parameters",
+        "title": "Feature Joiner Parameters",
         "description": "Configuration for joining requestor and supplier features based on matching attributes or expressions.",
         "type": "object",
         "required": [
@@ -3480,7 +3480,8 @@
         ],
         "properties": {
           "joinType": {
-            "description": "Join type: inner, left, or full",
+            "title": "Join Type",
+            "description": "How unmatched features are handled: inner, left, or full.",
             "allOf": [
               {
                 "$ref": "#/definitions/JoinType"
@@ -3488,7 +3489,8 @@
             ]
           },
           "requestorAttribute": {
-            "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue)",
+            "title": "Requestor Attributes",
+            "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue).",
             "type": [
               "array",
               "null"
@@ -3498,7 +3500,8 @@
             }
           },
           "supplierAttribute": {
-            "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue)",
+            "title": "Supplier Attributes",
+            "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue).",
             "type": [
               "array",
               "null"
@@ -3508,7 +3511,8 @@
             }
           },
           "requestorAttributeValue": {
-            "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute)",
+            "title": "Requestor Attribute Value",
+            "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute).",
             "type": [
               "object",
               "null"
@@ -3531,7 +3535,8 @@
             }
           },
           "supplierAttributeValue": {
-            "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute)",
+            "title": "Supplier Attribute Value",
+            "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute).",
             "type": [
               "object",
               "null"
@@ -3554,7 +3559,8 @@
             }
           },
           "conflictResolution": {
-            "description": "Attribute conflict resolution strategy when both requestor and supplier have the same attribute",
+            "title": "Conflict Resolution",
+            "description": "How to resolve conflicts when requestor and supplier features share the same attribute.",
             "anyOf": [
               {
                 "$ref": "#/definitions/ConflictResolution"
@@ -3569,21 +3575,24 @@
           "JoinType": {
             "oneOf": [
               {
-                "description": "Only emit features where a match exists",
+                "title": "Inner",
+                "description": "Only emits features where a match exists.",
                 "type": "string",
                 "enum": [
                   "inner"
                 ]
               },
               {
-                "description": "Emit all requestor features (default)",
+                "title": "Left",
+                "description": "Emits all requestor features, matched or not.",
                 "type": "string",
                 "enum": [
                   "left"
                 ]
               },
               {
-                "description": "Emit all features from both sides",
+                "title": "Full",
+                "description": "Emits all features from both sides.",
                 "type": "string",
                 "enum": [
                   "full"
@@ -3597,14 +3606,16 @@
           "ConflictResolution": {
             "oneOf": [
               {
-                "description": "Requestor attributes win on conflict",
+                "title": "Requestor Wins",
+                "description": "Requestor attributes win on conflict.",
                 "type": "string",
                 "enum": [
                   "requestorWins"
                 ]
               },
               {
-                "description": "Supplier attributes win on conflict (default)",
+                "title": "Supplier Wins",
+                "description": "Supplier attributes win on conflict (default).",
                 "type": "string",
                 "enum": [
                   "supplierWins"
@@ -3621,15 +3632,13 @@
       ],
       "outputPorts": [
         "joined",
-        "unjoinedRequestor",
-        "unjoinedSupplier"
+        "unjoined-requestor",
+        "unjoined-supplier"
       ],
       "categories": [
         "Merge"
       ],
-      "tags": [
-        "join"
-      ]
+      "tags": []
     },
     {
       "name": "Feature LOD Filter",
@@ -3682,15 +3691,16 @@
     {
       "name": "Feature Merger",
       "type": "processor",
-      "description": "Merges requestor and supplier features based on matching attribute values",
+      "description": "Merges requestor and supplier features based on matching attribute values.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureMerger Parameters",
+        "title": "Feature Merger Parameters",
         "description": "Configuration for merging requestor and supplier features based on matching attributes or expressions.",
         "type": "object",
         "properties": {
           "requestorAttribute": {
-            "description": "Attributes from requestor features to use for matching (alternative to requestor_attribute_value)",
+            "title": "Requestor Attributes",
+            "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue).",
             "type": [
               "array",
               "null"
@@ -3700,7 +3710,8 @@
             }
           },
           "supplierAttribute": {
-            "description": "Attributes from supplier features to use for matching (alternative to supplier_attribute_value)",
+            "title": "Supplier Attributes",
+            "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue).",
             "type": [
               "array",
               "null"
@@ -3710,7 +3721,8 @@
             }
           },
           "requestorAttributeValue": {
-            "description": "Expression to evaluate for requestor feature matching values (alternative to requestor_attribute)",
+            "title": "Requestor Attribute Value",
+            "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute).",
             "type": [
               "object",
               "null"
@@ -3733,7 +3745,8 @@
             }
           },
           "supplierAttributeValue": {
-            "description": "Expression to evaluate for supplier feature matching values (alternative to supplier_attribute)",
+            "title": "Supplier Attribute Value",
+            "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute).",
             "type": [
               "object",
               "null"
@@ -3756,7 +3769,8 @@
             }
           },
           "completeGrouped": {
-            "description": "Whether to complete grouped features before processing the next group",
+            "title": "Complete Grouped",
+            "description": "Whether to complete grouped features before processing the next group.",
             "type": [
               "boolean",
               "null"
@@ -3786,10 +3800,10 @@
     {
       "name": "Feature Sorter",
       "type": "processor",
-      "description": "Sorts features based on specified attributes in ascending or descending order",
+      "description": "Sorts features based on specified attributes in ascending or descending order.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureSorter Parameters",
+        "title": "Feature Sorter Parameters",
         "description": "Configuration for sorting features based on attribute values.",
         "type": "object",
         "required": [
@@ -3798,14 +3812,16 @@
         ],
         "properties": {
           "attributes": {
-            "description": "Attributes to use for sorting features (sort order based on attribute order)",
+            "title": "Sort Attributes",
+            "description": "Attributes to sort by; earlier attributes take precedence.",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Attribute"
             }
           },
           "order": {
-            "description": "Sorting order (ascending or descending)",
+            "title": "Sort Order",
+            "description": "Whether features are sorted in ascending or descending order.",
             "allOf": [
               {
                 "$ref": "#/definitions/Order"
@@ -3836,9 +3852,7 @@
       "categories": [
         "Merge"
       ],
-      "tags": [
-        "sort"
-      ]
+      "tags": []
     },
     {
       "name": "Feature Transformer",

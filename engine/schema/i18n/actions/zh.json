@@ -1116,41 +1116,52 @@
           "description": "Configuration for joining requestor and supplier features based on matching attributes or expressions."
         },
         "conflictResolution": {
+          "title": "Conflict Resolution",
           "description": "Attribute conflict resolution strategy when both requestor and supplier have the same attribute"
         },
         "joinType": {
+          "title": "Join Type",
           "description": "Join type: inner, left, or full"
         },
         "requestorAttribute": {
+          "title": "Requestor Attributes",
           "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue)"
         },
         "requestorAttributeValue": {
+          "title": "Requestor Attribute Value",
           "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute)"
         },
         "supplierAttribute": {
+          "title": "Supplier Attributes",
           "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue)"
         },
         "supplierAttributeValue": {
+          "title": "Supplier Attribute Value",
           "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute)"
         }
       },
       "enumI18n": {
         "ConflictResolution": {
           "requestorWins": {
+            "title": "Requestor Wins",
             "description": "Requestor attributes win on conflict"
           },
           "supplierWins": {
+            "title": "Supplier Wins",
             "description": "Supplier attributes win on conflict (default)"
           }
         },
         "JoinType": {
           "full": {
+            "title": "Full",
             "description": "Emit all features from both sides"
           },
           "inner": {
+            "title": "Inner",
             "description": "Only emit features where a match exists"
           },
           "left": {
+            "title": "Left",
             "description": "Emit all requestor features (default)"
           }
         }
@@ -1178,18 +1189,23 @@
           "description": "Configuration for merging requestor and supplier features based on matching attributes or expressions."
         },
         "completeGrouped": {
+          "title": "Complete Grouped",
           "description": "Whether to complete grouped features before processing the next group"
         },
         "requestorAttribute": {
+          "title": "Requestor Attributes",
           "description": "Attributes from requestor features to use for matching (alternative to requestor_attribute_value)"
         },
         "requestorAttributeValue": {
+          "title": "Requestor Attribute Value",
           "description": "Expression to evaluate for requestor feature matching values (alternative to requestor_attribute)"
         },
         "supplierAttribute": {
+          "title": "Supplier Attributes",
           "description": "Attributes from supplier features to use for matching (alternative to supplier_attribute_value)"
         },
         "supplierAttributeValue": {
+          "title": "Supplier Attribute Value",
           "description": "Expression to evaluate for supplier feature matching values (alternative to supplier_attribute)"
         }
       }
@@ -1203,9 +1219,11 @@
           "description": "Configuration for sorting features based on attribute values."
         },
         "attributes": {
+          "title": "Sort Attributes",
           "description": "Attributes to use for sorting features (sort order based on attribute order)"
         },
         "order": {
+          "title": "Sort Order",
           "description": "Sorting order (ascending or descending)"
         }
       }

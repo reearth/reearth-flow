@@ -1100,46 +1100,57 @@
       "name": "Feature Joiner",
       "parameterI18n": {
         "": {
-          "title": "FeatureJoiner Parameters",
+          "title": "Feature Joiner Parameters",
           "description": "Configuration for joining requestor and supplier features based on matching attributes or expressions."
         },
         "conflictResolution": {
-          "description": "Attribute conflict resolution strategy when both requestor and supplier have the same attribute"
+          "title": "Conflict Resolution",
+          "description": "How to resolve conflicts when requestor and supplier features share the same attribute."
         },
         "joinType": {
-          "description": "Join type: inner, left, or full"
+          "title": "Join Type",
+          "description": "How unmatched features are handled: inner, left, or full."
         },
         "requestorAttribute": {
-          "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue)"
+          "title": "Requestor Attributes",
+          "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue)."
         },
         "requestorAttributeValue": {
-          "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute)"
+          "title": "Requestor Attribute Value",
+          "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute)."
         },
         "supplierAttribute": {
-          "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue)"
+          "title": "Supplier Attributes",
+          "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue)."
         },
         "supplierAttributeValue": {
-          "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute)"
+          "title": "Supplier Attribute Value",
+          "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute)."
         }
       },
       "enumI18n": {
         "ConflictResolution": {
           "requestorWins": {
-            "description": "Requestor attributes win on conflict"
+            "title": "Requestor Wins",
+            "description": "Requestor attributes win on conflict."
           },
           "supplierWins": {
-            "description": "Supplier attributes win on conflict (default)"
+            "title": "Supplier Wins",
+            "description": "Supplier attributes win on conflict (default)."
           }
         },
         "JoinType": {
           "full": {
-            "description": "Emit all features from both sides"
+            "title": "Full",
+            "description": "Emits all features from both sides."
           },
           "inner": {
-            "description": "Only emit features where a match exists"
+            "title": "Inner",
+            "description": "Only emits features where a match exists."
           },
           "left": {
-            "description": "Emit all requestor features (default)"
+            "title": "Left",
+            "description": "Emits all requestor features, matched or not."
           }
         }
       }
@@ -1159,42 +1170,47 @@
     },
     {
       "name": "Feature Merger",
-      "description": "Merges features by attributes",
       "parameterI18n": {
         "": {
-          "title": "FeatureMerger Parameters",
+          "title": "Feature Merger Parameters",
           "description": "Configuration for merging requestor and supplier features based on matching attributes or expressions."
         },
         "completeGrouped": {
-          "description": "Whether to complete grouped features before processing the next group"
+          "title": "Complete Grouped",
+          "description": "Whether to complete grouped features before processing the next group."
         },
         "requestorAttribute": {
-          "description": "Attributes from requestor features to use for matching (alternative to requestor_attribute_value)"
+          "title": "Requestor Attributes",
+          "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue)."
         },
         "requestorAttributeValue": {
-          "description": "Expression to evaluate for requestor feature matching values (alternative to requestor_attribute)"
+          "title": "Requestor Attribute Value",
+          "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute)."
         },
         "supplierAttribute": {
-          "description": "Attributes from supplier features to use for matching (alternative to supplier_attribute_value)"
+          "title": "Supplier Attributes",
+          "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue)."
         },
         "supplierAttributeValue": {
-          "description": "Expression to evaluate for supplier feature matching values (alternative to supplier_attribute)"
+          "title": "Supplier Attribute Value",
+          "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute)."
         }
       }
     },
     {
       "name": "Feature Sorter",
-      "description": "Sorts features by attributes",
       "parameterI18n": {
         "": {
-          "title": "FeatureSorter Parameters",
+          "title": "Feature Sorter Parameters",
           "description": "Configuration for sorting features based on attribute values."
         },
         "attributes": {
-          "description": "Attributes to use for sorting features (sort order based on attribute order)"
+          "title": "Sort Attributes",
+          "description": "Attributes to sort by; earlier attributes take precedence."
         },
         "order": {
-          "description": "Sorting order (ascending or descending)"
+          "title": "Sort Order",
+          "description": "Whether features are sorted in ascending or descending order."
         }
       }
     },

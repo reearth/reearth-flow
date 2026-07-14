@@ -329,42 +329,6 @@ Spatial Filter
 
 ---
 
-## Merge (3)
-
-<!-- Session 6 -->
-
-```
-Feature Joiner
-  params:  conflictResolution, joinType, requestorAttribute, requestorAttributeValue,
-             supplierAttribute, supplierAttributeValue — all missing title (§3.3)
-           ordering — required `joinType` is not first; suggest: joinType →
-             requestorAttribute → supplierAttribute → requestorAttributeValue →
-             supplierAttributeValue → conflictResolution (§3.5)
-  ports:   unjoinedRequestor, unjoinedSupplier — camelCase violates §4.1; rename to
-             unjoined-requestor, unjoined-supplier
-  tags:    ["join"] — `join` not in vocabulary; remove (0 tags acceptable — name is
-             self-describing within Merge category)
-
-Feature Merger
-  params:  completeGrouped, requestorAttribute, requestorAttributeValue, supplierAttribute,
-             supplierAttributeValue — all missing title (§3.3)
-           requestorAttribute, requestorAttributeValue, supplierAttribute,
-             supplierAttributeValue — descriptions reference internal snake_case names
-             (requestor_attribute_value, requestor_attribute, etc.) instead of camelCase
-             param names; update to match schema key names (§3.3)
-           ordering — suggest: requestorAttribute → supplierAttribute →
-             requestorAttributeValue → supplierAttributeValue → completeGrouped (§3.5)
-  tags:    empty — 0 tags acceptable
-
-Feature Sorter
-  params:  attributes, order — both missing title (§3.3)
-  ports:   inputPorts `default`, outputPorts `default` — global note; rename both to
-             `features`
-  tags:    ["sort"] — `sort` not in vocabulary; remove (0 tags acceptable)
-```
-
----
-
 ## Feature (1) · File (2) · Transform (4)
 
 <!-- Session 7 -->
