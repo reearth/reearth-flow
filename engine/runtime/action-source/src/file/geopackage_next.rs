@@ -128,13 +128,13 @@ fn err(msg: impl Into<String>) -> SourceError {
     SourceError::GeoPackageReader(msg.into())
 }
 
-/// Per-leaf coordinate frame for a GeoPackage SRS id. `srs_id <= 0` is "undefined"
-/// -> `Euclidean`. `EpsgCode` is `u16`, so codes are truncated (as the legacy reader did).
+/// Per-leaf coordinate frame for a GeoPackage SRS id. `EpsgCode` is `u16`, so a
+/// non-positive or out-of-range srs_id (e.g. an undefined `0`/`-1`, or a custom code
+/// above 65535) can't be a CRS and falls back to `Euclidean` rather than truncating.
 fn frame(srs_id: i32) -> CoordinateFrame {
-    if srs_id > 0 {
-        CoordinateFrame::Crs(EpsgCode::new(srs_id as u16))
-    } else {
-        CoordinateFrame::Euclidean
+    match u16::try_from(srs_id) {
+        Ok(code) if code > 0 => CoordinateFrame::Crs(EpsgCode::new(code)),
+        _ => CoordinateFrame::Euclidean,
     }
 }
 
@@ -158,8 +158,14 @@ pub(super) fn parse_geopackage_geometry(
         4 => 64,
         other => return Err(err(format!("Invalid envelope type: {other}"))),
     };
-    // GeoPackage header integers are little-endian (matching the legacy reader).
-    let gp_srs_id = i32::from_le_bytes([blob[4], blob[5], blob[6], blob[7]]);
+    // flags bit 0 sets the byte order of the header's srs_id (and envelope):
+    // 1 = little-endian, 0 = big-endian.
+    let srs_bytes = [blob[4], blob[5], blob[6], blob[7]];
+    let gp_srs_id = if flags & 0x01 == 0x01 {
+        i32::from_le_bytes(srs_bytes)
+    } else {
+        i32::from_be_bytes(srs_bytes)
+    };
     let wkb_start = 8 + envelope_len;
     if blob.len() < wkb_start {
         return Err(err("Invalid geometry blob: truncated envelope"));
@@ -195,9 +201,7 @@ fn parse_wkb_geometry(
     srs_id: i32,
     force_2d: bool,
 ) -> Result<Geometry, SourceError> {
-    let byte_order = cursor
-        .read_u8()
-        .map_err(|e| err(format!("byte order: {e}")))?;
+    let byte_order = read_byte_order(cursor)?;
     let wkb_type = read_u32(cursor, byte_order)?;
     let has_z = (wkb_type & 0x8000_0000) != 0;
     let has_m = (wkb_type & 0x4000_0000) != 0;
@@ -223,6 +227,18 @@ fn parse_wkb_geometry(
         ),
         7 => parse_geometrycollection(cursor, srs_id, force_2d, byte_order),
         other => Err(err(format!("Unsupported geometry type: {other}"))),
+    }
+}
+
+/// Read and validate a WKB byte-order byte: 0x00 (big-endian) or 0x01 (little-endian).
+/// Anything else is a corrupt/invalid blob and fails fast.
+fn read_byte_order(cursor: &mut std::io::Cursor<&[u8]>) -> Result<u8, SourceError> {
+    match cursor
+        .read_u8()
+        .map_err(|e| err(format!("byte order: {e}")))?
+    {
+        b @ (0x00 | 0x01) => Ok(b),
+        other => Err(err(format!("invalid WKB byte order: {other:#x}"))),
     }
 }
 
@@ -336,9 +352,7 @@ where
     let mut members_2d = Vec::new();
     let mut members_3d = Vec::new();
     for _ in 0..count {
-        let member_order = cursor
-            .read_u8()
-            .map_err(|e| err(format!("member byte order: {e}")))?;
+        let member_order = read_byte_order(cursor)?;
         let _member_type = read_u32(cursor, member_order)?; // header, dimensions come from the parent
         match read_leaf(cursor, has_z, has_m, three_d, srs_id, member_order)? {
             Leaf::D2(g) => members_2d.push(g),
@@ -387,6 +401,14 @@ mod tests {
     fn gp_blob(srs_id: i32, wkb: &[u8]) -> Vec<u8> {
         let mut b = vec![0x47, 0x50, 0x00, 0x01];
         b.extend_from_slice(&srs_id.to_le_bytes());
+        b.extend_from_slice(wkb);
+        b
+    }
+
+    /// GeoPackage blob with a big-endian header (flags bit 0 = 0), srs_id in BE.
+    fn gp_blob_be(srs_id: i32, wkb: &[u8]) -> Vec<u8> {
+        let mut b = vec![0x47, 0x50, 0x00, 0x00];
+        b.extend_from_slice(&srs_id.to_be_bytes());
         b.extend_from_slice(wkb);
         b
     }
@@ -634,6 +656,54 @@ mod tests {
                     std::iter::empty::<Vec<[f64; 2]>>(),
                 ))),
             ])))
+        );
+    }
+
+    // An srs_id beyond u16 range can't be an EpsgCode, so it falls back to Euclidean
+    // rather than silently truncating.
+    #[test]
+    fn srs_id_beyond_u16_range_falls_back_to_euclidean() {
+        let blob = gp_blob(900913, &wkb_point_2d(1.0, 2.0));
+
+        let geom = parse_geopackage_geometry(&blob, 900913, false).unwrap();
+
+        assert_eq!(
+            geom,
+            Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
+                CoordinateFrame::Euclidean,
+                [1.0, 2.0],
+            )))
+        );
+    }
+
+    // A big-endian GeoPackage header must have its srs_id read big-endian.
+    #[test]
+    fn big_endian_header_reads_srs_id() {
+        let blob = gp_blob_be(4326, &wkb_point_2d(1.0, 2.0));
+
+        // db srs_id 0 so the header's srs_id is what's used.
+        let geom = parse_geopackage_geometry(&blob, 0, false).unwrap();
+
+        assert_eq!(
+            geom,
+            Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
+                crs(4326),
+                [1.0, 2.0]
+            )))
+        );
+    }
+
+    // An invalid WKB byte-order byte fails fast rather than misparsing as big-endian.
+    #[test]
+    fn invalid_wkb_byte_order_is_rejected() {
+        let bad_wkb = vec![0x02, 1, 0, 0, 0]; // byte order 0x02 is neither BE nor LE
+        let blob = gp_blob(4326, &bad_wkb);
+
+        let e = parse_geopackage_geometry(&blob, 4326, false).unwrap_err();
+
+        assert!(
+            format!("{e}").to_lowercase().contains("byte order"),
+            "expected a byte-order error, got: {e}"
         );
     }
 
