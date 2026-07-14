@@ -187,7 +187,7 @@ pub fn write_geojson_to_storage(
     let feature_collection = geojson::FeatureCollection {
         bbox: None,
         features: geojson_features,
-        foreign_members: None,
+        foreign_members: crs_foreign_members(features),
     };
     let buffer = serde_json::to_vec(&feature_collection)
         .map_err(|e| SinkError::GeoJsonWriter(format!("{e}")))?;
@@ -203,4 +203,96 @@ pub fn write_geojson_to_storage(
         );
     }
     Ok(())
+}
+
+/// Build the `crs` foreign member for a `FeatureCollection` from the features'
+/// geometry EPSG codes.
+///
+/// This emits the legacy GeoJSON 2008 `crs` member so downstream desktop GIS
+/// tools (QGIS/GDAL) interpret the projected coordinates in the correct CRS
+/// instead of assuming WGS84. It is intentionally non-standard under RFC 7946,
+/// which fixes coordinates to WGS84; the quality-check error outputs keep the
+/// projected coordinates used during inspection and rely on this member.
+///
+/// Returns `None` (no `crs` member, preserving the previous behavior) when no
+/// feature carries an EPSG code. When multiple distinct EPSG codes are present,
+/// a warning is logged and the first one encountered is used.
+#[cfg(not(feature = "new-geometry"))]
+fn crs_foreign_members(features: &[Feature]) -> Option<geojson::JsonObject> {
+    let mut epsg: Option<u16> = None;
+    for feature in features {
+        let Some(code) = feature.geometry.epsg else {
+            continue;
+        };
+        match epsg {
+            None => epsg = Some(code),
+            Some(existing) if existing != code => {
+                tracing::warn!(
+                    first = existing,
+                    other = code,
+                    "GeoJSON features have mixed EPSG codes; using the first one for the `crs` member"
+                );
+            }
+            Some(_) => {}
+        }
+    }
+
+    let epsg = epsg?;
+    let mut properties = geojson::JsonObject::new();
+    properties.insert(
+        "name".to_string(),
+        Value::String(format!("urn:ogc:def:crs:EPSG::{epsg}")),
+    );
+    let mut crs = geojson::JsonObject::new();
+    crs.insert("type".to_string(), Value::String("name".to_string()));
+    crs.insert("properties".to_string(), Value::Object(properties));
+
+    let mut foreign_members = geojson::JsonObject::new();
+    foreign_members.insert("crs".to_string(), Value::Object(crs));
+    Some(foreign_members)
+}
+
+#[cfg(all(test, not(feature = "new-geometry")))]
+mod tests {
+    use super::*;
+    use reearth_flow_types::{Geometry, GeometryValue};
+
+    fn feature_with_epsg(epsg: Option<u16>) -> Feature {
+        Feature::new_with_attributes_and_geometry(
+            indexmap::IndexMap::new(),
+            Geometry {
+                epsg,
+                value: GeometryValue::None,
+            },
+        )
+    }
+
+    fn crs_name(members: &geojson::JsonObject) -> &str {
+        members["crs"]["properties"]["name"].as_str().unwrap()
+    }
+
+    #[test]
+    fn crs_member_from_single_epsg() {
+        let features = vec![feature_with_epsg(Some(6675))];
+        let members = crs_foreign_members(&features).expect("crs member expected");
+        assert_eq!(members["crs"]["type"], "name");
+        assert_eq!(crs_name(&members), "urn:ogc:def:crs:EPSG::6675");
+    }
+
+    #[test]
+    fn no_crs_member_when_all_epsg_missing() {
+        let features = vec![feature_with_epsg(None), feature_with_epsg(None)];
+        assert!(crs_foreign_members(&features).is_none());
+    }
+
+    #[test]
+    fn mixed_epsg_uses_first_encountered() {
+        let features = vec![
+            feature_with_epsg(None),
+            feature_with_epsg(Some(6675)),
+            feature_with_epsg(Some(6669)),
+        ];
+        let members = crs_foreign_members(&features).expect("crs member expected");
+        assert_eq!(crs_name(&members), "urn:ogc:def:crs:EPSG::6675");
+    }
 }
