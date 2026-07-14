@@ -4,7 +4,6 @@
 
 use std::sync::Arc;
 
-use nusamai_projection::crs::{EPSG_WGS84_GEOGRAPHIC_2D, EPSG_WGS84_GEOGRAPHIC_3D};
 use reearth_flow_geometry::types::conversion::{is_2d_geojson_value, is_3d_geojson_value};
 use reearth_flow_geometry::{
     collection::{Collection2D, Collection3D},
@@ -12,13 +11,18 @@ use reearth_flow_geometry::{
     line_string::{LineString2D, LineString3D},
     point::{Point2D, Point3D},
     polygon::{Polygon2D, Polygon3D},
-    Euclidean2DGeometry, Euclidean3DGeometry, Geometry,
+    Euclidean2DGeometry, Euclidean3DGeometry, Geometry, GeometryCollection,
 };
 
 use crate::{
     error::{Error, Result},
     Attribute, Attributes, Feature,
 };
+
+// WGS84 geographic CRS codes, defined here so this new-geometry module carries no
+// dependency on nusamai-projection (which is slated for removal after the migration).
+const EPSG_WGS84_GEOGRAPHIC_2D: u16 = 4326;
+const EPSG_WGS84_GEOGRAPHIC_3D: u16 = 4979;
 
 impl TryFrom<geojson::Feature> for Feature {
     type Error = Error;
@@ -68,15 +72,23 @@ fn wgs84_3d() -> CoordinateFrame {
 }
 
 fn geojson_value_to_geometry(value: geojson::Value) -> Result<Geometry> {
-    // Every coordinate must be uniformly 2D or uniformly 3D. Anything else
-    // (mixed dimensions, degenerate/short coords, GeometryCollection) is rejected
-    // rather than indexed into blindly, which would panic.
-    if is_2d_geojson_value(&value) {
-        Ok(Geometry::Euclidean2D(value_to_2d(value)?))
-    } else if is_3d_geojson_value(&value) {
-        Ok(Geometry::Euclidean3D(value_to_3d(value)?))
-    } else {
-        Err(unsupported(&value))
+    match value {
+        // A heterogeneous collection: each member converts on its own, so members
+        // may differ in dimension / coordinate frame.
+        geojson::Value::GeometryCollection(geometries) => {
+            let members = geometries
+                .into_iter()
+                .map(|g| geojson_value_to_geometry(g.value))
+                .collect::<Result<Vec<_>>>()?;
+            Ok(Geometry::GeometryCollection(GeometryCollection::new(
+                members,
+            )))
+        }
+        // A single geometry's coordinates must be uniformly 2D or 3D; mixed or
+        // degenerate coordinates are rejected rather than indexed into blindly.
+        value if is_2d_geojson_value(&value) => Ok(Geometry::Euclidean2D(value_to_2d(value)?)),
+        value if is_3d_geojson_value(&value) => Ok(Geometry::Euclidean3D(value_to_3d(value)?)),
+        _ => Err(mixed_dimensions()),
     }
 }
 
@@ -102,7 +114,7 @@ fn value_to_2d(value: geojson::Value) -> Result<Euclidean2DGeometry> {
                 Euclidean2DGeometry::Polygon(Box::new(polygon_2d(rings)))
             })))
         }
-        other => Err(unsupported(&other)),
+        _ => Err(mixed_dimensions()),
     }
 }
 
@@ -128,20 +140,15 @@ fn value_to_3d(value: geojson::Value) -> Result<Euclidean3DGeometry> {
                 Euclidean3DGeometry::Polygon(Box::new(polygon_3d(rings)))
             })))
         }
-        other => Err(unsupported(&other)),
+        _ => Err(mixed_dimensions()),
     }
 }
 
-fn unsupported(value: &geojson::Value) -> Error {
-    match value {
-        geojson::Value::GeometryCollection(_) => {
-            Error::unsupported_feature("GeoJSON GeometryCollection is not supported")
-        }
-        _ => Error::unsupported_feature(
-            "GeoJSON geometry has mixed or unsupported coordinate dimensions \
-             (every coordinate must be uniformly 2D or 3D)",
-        ),
-    }
+fn mixed_dimensions() -> Error {
+    Error::unsupported_feature(
+        "GeoJSON geometry has mixed or unsupported coordinate dimensions \
+         (every coordinate must be uniformly 2D or 3D)",
+    )
 }
 
 fn collection_2d(members: impl IntoIterator<Item = Euclidean2DGeometry>) -> Euclidean2DGeometry {
@@ -192,7 +199,7 @@ mod tests {
         line_string::{LineString2D, LineString3D},
         point::{Point2D, Point3D},
         polygon::{Polygon2D, Polygon3D},
-        Euclidean2DGeometry, Euclidean3DGeometry, Geometry,
+        Euclidean2DGeometry, Euclidean3DGeometry, Geometry, GeometryCollection,
     };
 
     use super::*;
@@ -429,16 +436,52 @@ mod tests {
         );
     }
 
-    // A GeoJSON GeometryCollection is not supported by the reader (parity with the old world).
+    // A GeometryCollection converts to the new GeometryCollection; its members may
+    // differ in dimension (each carries its own coordinate frame).
     #[test]
-    fn geometry_collection_is_unsupported() {
+    fn geometry_collection_converts_with_mixed_dimension_members() {
         let gj = geojson_feature(geojson::Value::GeometryCollection(vec![
             geojson::Geometry::new(geojson::Value::Point(vec![0.0, 0.0])),
+            geojson::Geometry::new(geojson::Value::Point(vec![1.0, 1.0, 2.0])),
         ]));
 
-        let result: Result<Feature> = gj.try_into();
+        let feature: Feature = gj.try_into().unwrap();
 
-        assert!(result.is_err());
+        assert_eq!(
+            *feature.geometry,
+            Geometry::GeometryCollection(GeometryCollection::new([
+                Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
+                    crs(4326),
+                    [0.0, 0.0],
+                ))),
+                Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+                    crs(4979),
+                    [1.0, 1.0, 2.0],
+                ))),
+            ]))
+        );
+    }
+
+    // A nested GeometryCollection recurses.
+    #[test]
+    fn nested_geometry_collection_converts() {
+        let inner = geojson::Value::GeometryCollection(vec![geojson::Geometry::new(
+            geojson::Value::Point(vec![3.0, 4.0]),
+        )]);
+        let gj = geojson_feature(geojson::Value::GeometryCollection(vec![
+            geojson::Geometry::new(inner),
+        ]));
+
+        let feature: Feature = gj.try_into().unwrap();
+
+        assert_eq!(
+            *feature.geometry,
+            Geometry::GeometryCollection(GeometryCollection::new([Geometry::GeometryCollection(
+                GeometryCollection::new([Geometry::Euclidean2D(Euclidean2DGeometry::Point(
+                    Point2D::new(crs(4326), [3.0, 4.0])
+                ),)])
+            ),]))
+        );
     }
 
     // Mixed-dimension coordinates are rejected, not panicked on.
