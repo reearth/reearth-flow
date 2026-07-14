@@ -2902,7 +2902,7 @@
     {
       "name": "Echo Processor",
       "type": "processor",
-      "description": "Debug Echo Features to Logs",
+      "description": "Echoes features to logs and passes them through unchanged.",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -2914,12 +2914,14 @@
       "categories": [
         "Debug"
       ],
-      "tags": []
+      "tags": [
+        "logging"
+      ]
     },
     {
       "name": "Echo Sink",
       "type": "sink",
-      "description": "Debug Echo Features to Logs",
+      "description": "Echoes features to logs and discards them.",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -2929,7 +2931,9 @@
       "categories": [
         "Debug"
       ],
-      "tags": []
+      "tags": [
+        "logging"
+      ]
     },
     {
       "name": "Elevation Extractor",
@@ -3165,22 +3169,28 @@
     {
       "name": "Feature Counter",
       "type": "processor",
-      "description": "Count Features and Add Counter to Attribute",
+      "description": "Assigns a sequential number to each feature, stored in an attribute and optionally grouped by attribute values.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Feature Counter Parameters",
-        "description": "Configure how features are counted and grouped, and where to store the count",
+        "description": "Configure how features are numbered and grouped, and where to store the number",
         "type": "object",
         "required": [
-          "countStart",
           "outputAttribute"
         ],
         "properties": {
+          "outputAttribute": {
+            "title": "Count Attribute",
+            "description": "Name of the attribute where the count will be stored",
+            "type": "string"
+          },
           "countStart": {
             "title": "Start Count",
-            "description": "Starting value for the counter",
+            "description": "Value assigned to the first feature",
+            "default": 1,
             "type": "integer",
-            "format": "int64"
+            "format": "uint64",
+            "minimum": 0.0
           },
           "groupBy": {
             "title": "Group By Attributes",
@@ -3192,11 +3202,6 @@
             "items": {
               "$ref": "#/definitions/Attribute"
             }
-          },
-          "outputAttribute": {
-            "title": "Output Attribute",
-            "description": "Name of the attribute where the count will be stored",
-            "type": "string"
           }
         },
         "definitions": {
@@ -3210,13 +3215,15 @@
         "features"
       ],
       "outputPorts": [
-        "features",
-        "rejected"
+        "features"
       ],
       "categories": [
         "Debug"
       ],
-      "tags": []
+      "tags": [
+        "aggregation",
+        "attribute"
+      ]
     },
     {
       "name": "Feature Creator",
@@ -8181,7 +8188,7 @@
     {
       "name": "Noop Processor",
       "type": "processor",
-      "description": "No-Operation Pass-Through Processor",
+      "description": "Passes features through unchanged.",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -8198,7 +8205,7 @@
     {
       "name": "Noop Sink",
       "type": "sink",
-      "description": "No-Operation Sink (Discard Features)",
+      "description": "Discards all incoming features.",
       "parameter": null,
       "builtin": true,
       "inputPorts": [

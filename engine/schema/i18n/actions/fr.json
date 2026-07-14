@@ -940,11 +940,11 @@
     },
     {
       "name": "Echo Processor",
-      "description": "Debug Echo Features to Logs"
+      "description": "Echoes features to logs and passes them through unchanged."
     },
     {
       "name": "Echo Sink",
-      "description": "Debug Echo Features to Logs"
+      "description": "Echoes features to logs and discards them."
     },
     {
       "name": "Elevation Extractor",
@@ -1014,22 +1014,22 @@
     },
     {
       "name": "Feature Counter",
-      "description": "Count Features and Add Counter to Attribute",
+      "description": "Assigns a sequential number to each feature, stored in an attribute and optionally grouped by attribute values.",
       "parameterI18n": {
         "": {
           "title": "Feature Counter Parameters",
-          "description": "Configure how features are counted and grouped, and where to store the count"
+          "description": "Configure how features are numbered and grouped, and where to store the number"
         },
         "countStart": {
           "title": "Start Count",
-          "description": "Starting value for the counter"
+          "description": "Value assigned to the first feature"
         },
         "groupBy": {
           "title": "Group By Attributes",
           "description": "List of attribute names to group features by before counting"
         },
         "outputAttribute": {
-          "title": "Output Attribute",
+          "title": "Count Attribute",
           "description": "Name of the attribute where the count will be stored"
         }
       }
@@ -2294,11 +2294,11 @@
     },
     {
       "name": "Noop Processor",
-      "description": "No-Operation Pass-Through Processor"
+      "description": "Passes features through unchanged."
     },
     {
       "name": "Noop Sink",
-      "description": "No-Operation Sink (Discard Features)"
+      "description": "Discards all incoming features."
     },
     {
       "name": "Null Attribute Mapper",
