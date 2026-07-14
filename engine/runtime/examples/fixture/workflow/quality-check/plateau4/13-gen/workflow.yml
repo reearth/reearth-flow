@@ -28,7 +28,7 @@ graphs:
       - id: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e90
         name: FeatureCreator
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
           creator:
             type: flowExpr
@@ -47,7 +47,7 @@ graphs:
       - id: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8f9b
         name: DirectoryDecompressor
         type: action
-        action: DirectoryDecompressor
+        action: Directory Decompressor
         with:
           archiveAttributes:
             - codelists
@@ -68,7 +68,7 @@ graphs:
       - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a0c
         name: FeatureFilePathExtractor
         type: action
-        action: FeatureFilePathExtractor
+        action: Feature File Path Extractor
         with:
           sourceDataset:
             type: flowExpr
@@ -79,7 +79,7 @@ graphs:
       - id: f6a7b8c9-d0e1-2f3a-4b5c-6d7e8f9a0b1d
         name: FeatureFilterByGml
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -90,7 +90,7 @@ graphs:
       - id: a7b8c9d0-e1f2-3a4b-5c6d-7e8f9a0b1c2e
         name: FeatureCounterFileIndex
         type: action
-        action: FeatureCounter
+        action: Feature Counter
         with:
           countStart: 1
           outputAttribute: fileIndex
@@ -109,7 +109,7 @@ graphs:
       - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13
         name: FeatureFilterByPackage
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
           - expr:
@@ -120,7 +120,7 @@ graphs:
       - id: c9d0e1f2-a3b4-5c6d-7e8f-9a0b1c2d3e40
         name: AttributeMapperGmlPathAndFilename
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: gmlPath
@@ -143,7 +143,7 @@ graphs:
       - id: d0e1f2a3-b4c5-6d7e-8f9a-0b1c2d3e4f5b
         name: FeatureCityGmlReader
         type: action
-        action: FeatureCityGmlReader
+        action: Feature CityGML Reader
         with:
           codelistsPath:
             type: flowExpr
@@ -155,7 +155,7 @@ graphs:
       - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6c
         name: HorizontalReprojector
         type: action
-        action: HorizontalReprojector
+        action: Horizontal Reprojector
         with:
           targetEpsgCode:
             type: flowExpr
@@ -164,7 +164,7 @@ graphs:
       - id: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b7d
         name: FeatureSorter
         type: action
-        action: FeatureSorter
+        action: Feature Sorter
         with:
           attributes: [fileIndex]
           order: ascending
@@ -172,7 +172,7 @@ graphs:
       - id: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8e
         name: FeatureCounterFeatureIndex
         type: action
-        action: FeatureCounter
+        action: Feature Counter
         with:
           countStart: 0
           outputAttribute: featureIndex
@@ -188,7 +188,7 @@ graphs:
       - id: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e10
         name: FileInfoExtractor
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: index
@@ -209,12 +209,11 @@ graphs:
       - id: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f1b
         name: GeometryRemoverForErrorSummary
         type: action
-        action: GeometryRemover
-
+        action: Geometry Remover
       - id: e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a2c
         name: ErrorSummaryMerger
         type: action
-        action: FeatureMerger
+        action: Feature Merger
         with:
           requestorAttributeValue:
             type: flowExpr
@@ -227,7 +226,7 @@ graphs:
       - id: f8a9b0c1-d2e3-4f5a-6b7c-8d9e0f1a2b3d
         name: InstanceCountCalculator
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           groupBy:
             - gmlFilename
@@ -244,7 +243,7 @@ graphs:
       - id: b0c1d2e3-f4a5-6b7c-8d9e-0f1a2b3c4d5f
         name: SummaryAttributeMapper
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: Index
@@ -304,7 +303,7 @@ graphs:
       - id: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7b
         name: StatisticsCalculator
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           calculations:
             - newAttribute: 面のエラー
@@ -367,7 +366,7 @@ graphs:
       - id: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9e
         name: StatisticsCalculatorTotalErrors
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           calculations:
             - newAttribute: totalErrorCount
@@ -378,7 +377,7 @@ graphs:
       - id: a5b6c7d8-e9f0-1a2b-3c4d-5e6f7a8b9c0f
         name: FeatureFilterNoErrors
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -389,7 +388,7 @@ graphs:
       - id: b6c7d8e9-f0a1-2b3c-4d5e-6f7a8b9c0d10
         name: FileWriterQcResultOk
         type: action
-        action: JsonWriter
+        action: JSON Writer
         with:
           converter:
             type: flowExpr
@@ -402,7 +401,7 @@ graphs:
       - id: dd0e1f2a-b4c5-6d7e-8f9a-0b1c2d3e4f51
         name: ZipFileWriter
         type: action
-        action: ZipFileWriter
+        action: Zip File Writer
         with:
           output:
             type: flowExpr

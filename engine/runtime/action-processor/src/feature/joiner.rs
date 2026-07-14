@@ -25,19 +25,19 @@ use crate::ACCUMULATOR_BUFFER_BYTE_THRESHOLD;
 static REQUESTOR_PORT: Lazy<Port> = Lazy::new(|| Port::new("requestor"));
 static SUPPLIER_PORT: Lazy<Port> = Lazy::new(|| Port::new("supplier"));
 static JOINED_PORT: Lazy<Port> = Lazy::new(|| Port::new("joined"));
-static UNJOINED_REQUESTOR_PORT: Lazy<Port> = Lazy::new(|| Port::new("unjoinedRequestor"));
-static UNJOINED_SUPPLIER_PORT: Lazy<Port> = Lazy::new(|| Port::new("unjoinedSupplier"));
+static UNJOINED_REQUESTOR_PORT: Lazy<Port> = Lazy::new(|| Port::new("unjoined-requestor"));
+static UNJOINED_SUPPLIER_PORT: Lazy<Port> = Lazy::new(|| Port::new("unjoined-supplier"));
 
 #[derive(Debug, Clone, Default)]
 pub(super) struct FeatureJoinerFactory;
 
 impl ProcessorFactory for FeatureJoinerFactory {
     fn name(&self) -> &str {
-        "FeatureJoiner"
+        "Feature Joiner"
     }
 
     fn description(&self) -> &str {
-        "Joins requestor and supplier features based on matching attribute values with configurable join types"
+        "Joins requestor and supplier features based on matching attribute values, with configurable join types."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -46,10 +46,6 @@ impl ProcessorFactory for FeatureJoinerFactory {
 
     fn categories(&self) -> &[&'static str] {
         &["Merge"]
-    }
-
-    fn tags(&self) -> &[&'static str] {
-        &["join"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -155,43 +151,54 @@ impl ProcessorFactory for FeatureJoinerFactory {
     }
 }
 
-/// # FeatureJoiner Parameters
+/// # Feature Joiner Parameters
 ///
 /// Configuration for joining requestor and supplier features based on matching attributes or expressions.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct FeatureJoinerParam {
-    /// Join type: inner, left, or full
+    /// # Join Type
+    /// How unmatched features are handled: inner, left, or full.
     join_type: JoinType,
-    /// Attributes from requestor features to use for matching (alternative to requestorAttributeValue)
+    /// # Requestor Attributes
+    /// Attributes from requestor features to use for matching (alternative to requestorAttributeValue).
     requestor_attribute: Option<Vec<Attribute>>,
-    /// Attributes from supplier features to use for matching (alternative to supplierAttributeValue)
+    /// # Supplier Attributes
+    /// Attributes from supplier features to use for matching (alternative to supplierAttributeValue).
     supplier_attribute: Option<Vec<Attribute>>,
-    /// Expression to evaluate for requestor feature matching values (alternative to requestorAttribute)
+    /// # Requestor Attribute Value
+    /// Expression to evaluate for requestor feature matching values (alternative to requestorAttribute).
     requestor_attribute_value: Option<Code<{ CodeType::FlowExpr as u32 }>>,
-    /// Expression to evaluate for supplier feature matching values (alternative to supplierAttribute)
+    /// # Supplier Attribute Value
+    /// Expression to evaluate for supplier feature matching values (alternative to supplierAttribute).
     supplier_attribute_value: Option<Code<{ CodeType::FlowExpr as u32 }>>,
-    /// Attribute conflict resolution strategy when both requestor and supplier have the same attribute
+    /// # Conflict Resolution
+    /// How to resolve conflicts when requestor and supplier features share the same attribute.
     conflict_resolution: Option<ConflictResolution>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 enum JoinType {
-    /// Only emit features where a match exists
+    /// # Inner
+    /// Only emits features where a match exists.
     Inner,
-    /// Emit all requestor features (default)
+    /// # Left
+    /// Emits all requestor features, matched or not.
     Left,
-    /// Emit all features from both sides
+    /// # Full
+    /// Emits all features from both sides.
     Full,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 enum ConflictResolution {
-    /// Requestor attributes win on conflict
+    /// # Requestor Wins
+    /// Requestor attributes win on conflict.
     RequestorWins,
-    /// Supplier attributes win on conflict (default)
+    /// # Supplier Wins
+    /// Supplier attributes win on conflict (default).
     SupplierWins,
 }
 
@@ -213,7 +220,7 @@ pub struct FeatureJoiner {
 
 impl std::fmt::Debug for FeatureJoiner {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("FeatureJoiner")
+        f.debug_struct("Feature Joiner")
             .field("requestor_keys", &self.requestor_key_map.len())
             .field("supplier_keys", &self.supplier_key_map.len())
             .field("join_type", &self.params.join_type)
@@ -590,6 +597,6 @@ impl Processor for FeatureJoiner {
     }
 
     fn name(&self) -> &str {
-        "FeatureJoiner"
+        "Feature Joiner"
     }
 }

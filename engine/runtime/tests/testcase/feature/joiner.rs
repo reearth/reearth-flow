@@ -30,7 +30,7 @@ fn get_feature_count(path: &Path) -> usize {
 #[test]
 fn test_joiner_left() {
     // Left join: 4 matched features → joined
-    //            1 unmatched requestor → unjoinedRequestor
+    //            1 unmatched requestor → unjoined-requestor
     //            0 unmatched supplier (left join discards these)
     let tempdir = execute("feature/joiner", vec![]).expect("Workflow should complete successfully");
     let temp_path = tempdir.path();
@@ -152,8 +152,8 @@ fn test_joiner_inner() {
 #[test]
 fn test_joiner_full() {
     // Full join: 2 matched features → joined
-    //            1 unmatched requestor → unjoinedRequestor
-    //            1 unmatched supplier → unjoinedSupplier
+    //            1 unmatched requestor → unjoined-requestor
+    //            1 unmatched supplier → unjoined-supplier
     let tempdir = execute("feature/joiner_full", vec![])
         .expect("Full join workflow should complete successfully");
     let temp_path = tempdir.path();

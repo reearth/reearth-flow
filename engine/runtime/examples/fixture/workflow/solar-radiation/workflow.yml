@@ -79,7 +79,7 @@ graphs:
       - id: 00000001-0000-0000-0000-000000000001
         name: BldgFeatureCreator
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
           creator:
             type: flowExpr
@@ -106,7 +106,7 @@ graphs:
       - id: 00000002-0000-0000-0000-000000000001
         name: DEMFeatureCreator
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
           creator:
             type: flowExpr
@@ -124,7 +124,7 @@ graphs:
       - id: 00000002-0000-0000-0000-000000000002
         name: DEMDirectoryDecompressor
         type: action
-        action: DirectoryDecompressor
+        action: Directory Decompressor
         with:
           archiveAttributes:
             - codelists
@@ -133,7 +133,7 @@ graphs:
       - id: 00000002-0000-0000-0000-000000000003
         name: DEMFeatureFilePathExtractor
         type: action
-        action: FeatureFilePathExtractor
+        action: Feature File Path Extractor
         with:
           sourceDataset:
             type: flowExpr
@@ -144,7 +144,7 @@ graphs:
       - id: 00000002-0000-0000-0000-000000000004
         name: DEMFeatureFilterByGml
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -176,7 +176,7 @@ graphs:
       - id: 00000001-0000-0000-0000-000000000002
         name: CityGmlReader
         type: action
-        action: FeatureCityGmlReader
+        action: Feature CityGML Reader
         with:
           codelistsPath:
             type: flowExpr
@@ -189,7 +189,7 @@ graphs:
       - id: 00000001-0000-0000-0000-00000000003a
         name: LodFilter
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -213,7 +213,7 @@ graphs:
       - id: 00000001-0000-0000-0000-00000000003b
         name: KeepFeatureType
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
           - attribute: featureType
@@ -224,13 +224,12 @@ graphs:
       - id: 00000001-0000-0000-0000-000000000004
         name: GeometryPartExtractor
         type: action
-        action: GeometryPartExtractor
-
+        action: Geometry Part Extractor
       # Assign stable surfaceId per geometry part (before pipeline splits)
       - id: 00000001-0000-0000-0000-000000000041
         name: SurfaceIdCounter
         type: action
-        action: FeatureCounter
+        action: Feature Counter
         with:
           countStart: 0
           outputAttribute: surfaceId
@@ -238,7 +237,7 @@ graphs:
       - id: 00000001-0000-0000-0000-000000000005
         name: HorizontalReprojector
         type: action
-        action: HorizontalReprojector
+        action: Horizontal Reprojector
         with:
           targetEpsgCode:
             type: flowExpr
@@ -251,7 +250,7 @@ graphs:
       - id: 00000004-0000-0000-0000-000000000001
         name: RoofFilterShapefileReader
         type: action
-        action: ShapefileReader
+        action: Shapefile Reader
         with:
           dataset:
             type: flowExpr
@@ -262,7 +261,7 @@ graphs:
       - id: 00000004-0000-0000-0000-000000000002
         name: RoofFilterReprojector
         type: action
-        action: HorizontalReprojector
+        action: Horizontal Reprojector
         with:
           sourceEpsgCode:
             type: flowExpr
@@ -274,14 +273,14 @@ graphs:
       - id: 00000004-0000-0000-0000-000000000003
         name: AreaSpatialFilter
         type: action
-        action: SpatialFilter
+        action: Spatial Filter
         with:
           predicate: intersects
 
       - id: 00000004-0000-0000-0000-000000000004
         name: OccluderSurfaceFilter
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
           - expr:
@@ -292,7 +291,7 @@ graphs:
       - id: 00000001-0000-0000-0000-000000000006
         name: GeometrySplitter
         type: action
-        action: GeometrySplitter
+        action: Geometry Splitter
         with:
           splitLevel: polygon
 
@@ -306,12 +305,11 @@ graphs:
       - id: 00000001-0000-0000-0000-000000000008
         name: PolygonNormalExtractor
         type: action
-        action: PolygonNormalExtractor
-
+        action: Polygon Normal Extractor
       - id: 00000001-0000-0000-0000-000000000009
         name: GridDivider
         type: action
-        action: GridDivider
+        action: Grid Divider
         with:
           unitSquareSize: 1.0
           keepSquareOnly: true
@@ -319,7 +317,7 @@ graphs:
       - id: 00000001-0000-0000-0000-00000000000a
         name: FilterRoofSurfaces
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -331,7 +329,7 @@ graphs:
       - id: 00000001-0000-0000-0000-000000000029
         name: GridCellIdCounter
         type: action
-        action: FeatureCounter
+        action: Feature Counter
         with:
           countStart: 0
           outputAttribute: cellId
@@ -365,7 +363,7 @@ graphs:
       - id: 00000001-0000-0000-0000-000000000040
         name: ConvertDateTimeToIntegers
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: year
@@ -396,7 +394,7 @@ graphs:
       - id: 00000001-0000-0000-0000-00000000000c
         name: AreaCalculator
         type: action
-        action: AreaCalculator
+        action: Area Calculator
         with:
           areaType: slopedArea
           outputAttribute: cellArea
@@ -405,13 +403,12 @@ graphs:
       - id: 00000001-0000-0000-0000-000000000031
         name: GeometryRemover
         type: action
-        action: GeometryRemover
-
+        action: Geometry Remover
       # Restrict attributes before the ray port to reduce feature payload
       - id: 00000001-0000-0000-0000-000000000032
         name: PreRayAttributeMapper
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: gmlId
@@ -476,7 +473,7 @@ graphs:
       - id: 00000001-0000-0000-0000-000000000010
         name: RayIntersectorShadow
         type: action
-        action: RayIntersector
+        action: Ray Intersector
         with:
           # All rays are checked with all geometries
           pairId:
@@ -508,7 +505,7 @@ graphs:
       - id: 00000003-0000-0000-0000-000000000001
         name: SnowCSVReader
         type: action
-        action: CsvReader
+        action: CSV Reader
         with:
           format: csv
           dataset:
@@ -520,7 +517,7 @@ graphs:
       - id: 00000003-0000-0000-0000-000000000002
         name: SnowFeatureFilter
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -531,7 +528,7 @@ graphs:
       - id: 00000003-0000-0000-0000-000000000003
         name: SnowAttributeMapper
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: month
@@ -551,7 +548,7 @@ graphs:
       - id: 00000003-0000-0000-0000-000000000004
         name: SnowFactorMerger
         type: action
-        action: FeatureMerger
+        action: Feature Merger
         with:
           requestorAttribute:
             - month
@@ -568,7 +565,7 @@ graphs:
       - id: 00000001-0000-0000-0000-000000000011
         name: ComputeCosTheta
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             # cos(theta) = solar_dir · normal (dot product of unit vectors)
@@ -591,7 +588,7 @@ graphs:
       - id: 00000001-0000-0000-0000-00000000001d
         name: ComputeRadiation
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: radiationSunny
@@ -652,7 +649,7 @@ graphs:
       - id: 00000001-0000-0000-0000-000000000051
         name: MonthlyDTAggregator
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           groupBy:
             - year
@@ -677,7 +674,7 @@ graphs:
       - id: 00000001-0000-0000-0000-000000000052
         name: CloudFactorDTMerger
         type: action
-        action: FeatureMerger
+        action: Feature Merger
         with:
           requestorAttribute:
             - year
@@ -690,7 +687,7 @@ graphs:
       - id: 00000001-0000-0000-0000-000000000053
         name: CalcradiationPerMonth
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: radiationPerMonth
@@ -711,7 +708,7 @@ graphs:
       - id: 00000001-0000-0000-0000-000000000071
         name: TotalRadiationAggregator
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           groupBy:
             - cellId
@@ -734,7 +731,7 @@ graphs:
       - id: 00000001-0000-0000-0000-000000000074
         name: SurfaceRadiationAggregator
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           groupBy:
             - surfaceId
@@ -765,7 +762,7 @@ graphs:
       - id: 00000001-0000-0000-0000-000000000075
         name: SolarAttributeMerger
         type: action
-        action: FeatureMerger
+        action: Feature Merger
         with:
           requestorAttribute:
             - surfaceId
@@ -776,7 +773,7 @@ graphs:
       - id: 00000001-0000-0000-0000-000000000073
         name: AddSolarSchemaAttributes
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: 予測日射量
@@ -808,7 +805,7 @@ graphs:
       - id: 00000001-0000-0000-0000-000000000070
         name: NormalizeRadiationForColorMapping
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: normalizedRadiation
@@ -845,13 +842,12 @@ graphs:
       - id: 00000001-0000-0000-0000-00000000005f
         name: CellTwoDimensionForcer
         type: action
-        action: TwoDimensionForcer
-
+        action: Two Dimension Forcer
       # Convert radiationPerMonth to RGB colors for rasterization
       - id: 00000001-0000-0000-0000-000000000060
         name: RadiationToColorMapper
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             # Map normalized radiation t in [0,1] to blue-cyan-yellow-red color gradient
@@ -891,7 +887,7 @@ graphs:
       - id: 00000001-0000-0000-0000-000000000068
         name: CellGeometryMerger
         type: action
-        action: FeatureMerger
+        action: Feature Merger
         with:
           requestorAttribute:
             - cellId
@@ -902,7 +898,7 @@ graphs:
       - id: 00000001-0000-0000-0000-000000000069
         name: CellBoundsExtractor
         type: action
-        action: BoundsExtractor
+        action: Bounds Extractor
         with:
           zmax: maxZ
 
@@ -910,7 +906,7 @@ graphs:
       - id: 00000001-0000-0000-0000-00000000006c
         name: TextureBuildingFilter
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -922,7 +918,7 @@ graphs:
       - id: 00000001-0000-0000-0000-00000000006a
         name: FilterRoofForTexture
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -934,7 +930,7 @@ graphs:
       - id: 00000001-0000-0000-0000-000000000061
         name: ImageRasterizer
         type: action
-        action: ImageRasterizer
+        action: Image Rasterizer
         with:
           imageWidth: 2048
           saveTo:
@@ -949,7 +945,7 @@ graphs:
       - id: 00000001-0000-0000-0000-000000000062
         name: TexturedHorizontalReprojector
         type: action
-        action: HorizontalReprojector
+        action: Horizontal Reprojector
         with:
           sourceEpsgCode:
             type: flowExpr
@@ -962,7 +958,7 @@ graphs:
       - id: 00000001-0000-0000-0000-000000000063
         name: TexturedBoundsExtractor
         type: action
-        action: BoundsExtractor
+        action: Bounds Extractor
         with:
           xmin: _xmin
           xmax: _xmax
@@ -975,7 +971,7 @@ graphs:
       - id: 00000001-0000-0000-0000-000000000064
         name: TexturedCenterCoords
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: _x
@@ -993,7 +989,7 @@ graphs:
       - id: 00000001-0000-0000-0000-000000000065
         name: TexturedVerticalReprojector
         type: action
-        action: VerticalReprojector
+        action: Vertical Reprojector
         with:
           reprojectorType: jgd2011ToWgs84
 
@@ -1001,7 +997,7 @@ graphs:
       - id: 00000001-0000-0000-0000-000000000066
         name: Textured3DTilesWriter
         type: action
-        action: Cesium3DTilesWriter
+        action: Cesium 3D Tiles Writer
         with:
           schemaKey: __citygml_feature_type
           minZoom: 15
@@ -1022,7 +1018,7 @@ graphs:
       - id: 00000004-0000-0000-0000-000000000010
         name: ReflectionOutputFilter
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -1033,7 +1029,7 @@ graphs:
       - id: 00000001-0000-0000-0000-000000000013
         name: ComputeReflection
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             # Reflection direction: R = I - 2(I·N)N where I is incident direction (opposite of solar)
@@ -1057,7 +1053,7 @@ graphs:
       - id: 00000001-0000-0000-0000-000000000014
         name: RayIntersectorReflect
         type: action
-        action: RayIntersector
+        action: Ray Intersector
         with:
           # All rays are checked with all geometries
           pairId:
@@ -1087,7 +1083,7 @@ graphs:
       - id: 00000001-0000-0000-0000-00000000001b
         name: ReflectionBoundsExtractor
         type: action
-        action: BoundsExtractor
+        action: Bounds Extractor
         with:
           xmin: reflectHitX
           ymin: reflectHitY
@@ -1099,7 +1095,7 @@ graphs:
       - id: 00000001-0000-0000-0000-000000000016
         name: ReflectionWriter
         type: action
-        action: CsvWriter
+        action: CSV Writer
         with:
           format: csv
           output:
@@ -1114,7 +1110,7 @@ graphs:
       - id: 00000001-0000-0000-0000-0000000000d0
         name: RoofAreaCalculator
         type: action
-        action: AreaCalculator
+        action: Area Calculator
         with:
           areaType: slopedArea
           outputAttribute: surfaceArea
@@ -1124,7 +1120,7 @@ graphs:
       - id: 00000001-0000-0000-0000-0000000000d1
         name: SurfaceAreaAggregator
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           groupBy:
             - surfaceId
@@ -1139,7 +1135,7 @@ graphs:
       - id: 00000001-0000-0000-0000-0000000000d2
         name: BuildingAreaAggregator
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           groupBy:
             - gmlId
@@ -1153,7 +1149,7 @@ graphs:
       - id: 00000001-0000-0000-0000-0000000000d3
         name: BuildingAreaMerger
         type: action
-        action: FeatureMerger
+        action: Feature Merger
         with:
           requestorAttribute:
             - gmlId
@@ -1164,7 +1160,7 @@ graphs:
       - id: 00000001-0000-0000-0000-0000000000d4
         name: SurfaceAreaMerger
         type: action
-        action: FeatureMerger
+        action: Feature Merger
         with:
           requestorAttribute:
             - surfaceId
@@ -1179,7 +1175,7 @@ graphs:
       - id: 00000001-0000-0000-0000-0000000000c0
         name: BuildingRadiationAggregator
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           groupBy:
             - gmlId
@@ -1209,7 +1205,7 @@ graphs:
       - id: 00000001-0000-0000-0000-0000000000c5
         name: BuildingPotentialMapper
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: 建物ID
@@ -1237,7 +1233,7 @@ graphs:
       - id: 00000001-0000-0000-0000-0000000000c1
         name: BuildingPotentialWriter
         type: action
-        action: CsvWriter
+        action: CSV Writer
         with:
           format: csv
           output:
@@ -1252,7 +1248,7 @@ graphs:
       - id: 00000001-0000-0000-0000-0000000000c6
         name: SurfaceRadiationMapper
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: 建物ID
@@ -1276,7 +1272,7 @@ graphs:
       - id: 00000001-0000-0000-0000-0000000000c2
         name: SurfaceRadiationWriter
         type: action
-        action: CsvWriter
+        action: CSV Writer
         with:
           format: csv
           output:
@@ -1290,7 +1286,7 @@ graphs:
       - id: 00000001-0000-0000-0000-0000000000c7
         name: ReflectionMapper
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: 建物/土地ID
@@ -1324,7 +1320,7 @@ graphs:
       - id: 00000001-0000-0000-0000-0000000000c3
         name: AreaAggregator
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           groupBy: []
           calculations:
@@ -1349,7 +1345,7 @@ graphs:
       - id: 00000001-0000-0000-0000-0000000000c8
         name: AreaAggregationMapper
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: 対象範囲内建物数
@@ -1367,7 +1363,7 @@ graphs:
       - id: 00000001-0000-0000-0000-0000000000c4
         name: AreaAggregationWriter
         type: action
-        action: CsvWriter
+        action: CSV Writer
         with:
           format: csv
           output:
@@ -1382,7 +1378,7 @@ graphs:
       - id: 00000001-0000-0000-0000-0000000000a0
         name: BoundsExtractorByLod1
         type: action
-        action: BoundsExtractor
+        action: Bounds Extractor
         with:
           xmin: _xmin
           ymin: _ymin
@@ -1394,7 +1390,7 @@ graphs:
       - id: 00000001-0000-0000-0000-0000000000a1
         name: AttributeManagerXYByLod1
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: _x
@@ -1411,14 +1407,14 @@ graphs:
       - id: 00000001-0000-0000-0000-0000000000a2
         name: VerticalReprojectorByLod1
         type: action
-        action: VerticalReprojector
+        action: Vertical Reprojector
         with:
           reprojectorType: jgd2011ToWgs84
 
       - id: 00000001-0000-0000-0000-0000000000a3
         name: Cesium3DTilesWriterByLod1
         type: action
-        action: Cesium3DTilesWriter
+        action: Cesium 3D Tiles Writer
         with:
           schemaKey: __citygml_feature_type
           minZoom: 15
@@ -1436,7 +1432,7 @@ graphs:
       - id: 00000001-0000-0000-0000-0000000000a4
         name: BoundsExtractorByLod3
         type: action
-        action: BoundsExtractor
+        action: Bounds Extractor
         with:
           xmin: _xmin
           ymin: _ymin
@@ -1448,7 +1444,7 @@ graphs:
       - id: 00000001-0000-0000-0000-0000000000a5
         name: AttributeManagerXYByLod3
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: _x
@@ -1465,14 +1461,14 @@ graphs:
       - id: 00000001-0000-0000-0000-0000000000a6
         name: VerticalReprojectorByLod3
         type: action
-        action: VerticalReprojector
+        action: Vertical Reprojector
         with:
           reprojectorType: jgd2011ToWgs84
 
       - id: 00000001-0000-0000-0000-0000000000a7
         name: Cesium3DTilesWriterByLod3
         type: action
-        action: Cesium3DTilesWriter
+        action: Cesium 3D Tiles Writer
         with:
           schemaKey: __citygml_feature_type
           minZoom: 15
@@ -1490,7 +1486,7 @@ graphs:
       - id: 00000001-0000-0000-0000-0000000000a8
         name: BoundsExtractorByLod4
         type: action
-        action: BoundsExtractor
+        action: Bounds Extractor
         with:
           xmin: _xmin
           ymin: _ymin
@@ -1502,7 +1498,7 @@ graphs:
       - id: 00000001-0000-0000-0000-0000000000a9
         name: AttributeManagerXYByLod4
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: _x
@@ -1519,14 +1515,14 @@ graphs:
       - id: 00000001-0000-0000-0000-0000000000aa
         name: VerticalReprojectorByLod4
         type: action
-        action: VerticalReprojector
+        action: Vertical Reprojector
         with:
           reprojectorType: jgd2011ToWgs84
 
       - id: 00000001-0000-0000-0000-0000000000ab
         name: Cesium3DTilesWriterByLod4
         type: action
-        action: Cesium3DTilesWriter
+        action: Cesium 3D Tiles Writer
         with:
           schemaKey: __citygml_feature_type
           minZoom: 15
@@ -1571,7 +1567,7 @@ graphs:
       - id: 00000001-0000-0000-0000-0000000000e1
         name: CityGmlZipFileWriter
         type: action
-        action: ZipFileWriter
+        action: Zip File Writer
         with:
           output:
             type: string
@@ -1585,7 +1581,7 @@ graphs:
       - id: 00000005-0000-0000-0000-000000000001
         name: BuildingFeatureFilter
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -1597,7 +1593,7 @@ graphs:
       - id: 00000005-0000-0000-0000-000000000002
         name: BuildingAttrExtractor
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: gmlId
@@ -1659,7 +1655,7 @@ graphs:
       - id: 00000002-0000-0000-0000-000000000013
         name: DEMConsiderFilter
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -1671,13 +1667,12 @@ graphs:
       - id: 00000002-0000-0000-0000-000000000007
         name: DEMGeometrySplitter
         type: action
-        action: GeometrySplitter
-
+        action: Geometry Splitter
       # Assign featureType and gmlId for DEM triangle features
       - id: 00000002-0000-0000-0000-000000000008
         name: DEMFeatureTypeAssigner
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: featureType
@@ -1695,7 +1690,7 @@ graphs:
       - id: 00000002-0000-0000-0000-000000000009
         name: DEMTriangleReprojector
         type: action
-        action: HorizontalReprojector
+        action: Horizontal Reprojector
         with:
           targetEpsgCode:
             type: flowExpr
@@ -1711,7 +1706,7 @@ graphs:
       - id: 00000005-0000-0000-0000-000000000020
         name: AzimuthDirectionFlags
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: dirMatch1
@@ -1758,7 +1753,7 @@ graphs:
       - id: 00000002-0000-0000-0000-00000000000b
         name: FeatureTypeRouter
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -1774,7 +1769,7 @@ graphs:
       - id: 00000002-0000-0000-0000-00000000000a
         name: DEMGridDivider
         type: action
-        action: GridDivider
+        action: Grid Divider
         with:
           unitSquareSize: 5.0
           keepSquareOnly: false
@@ -1783,7 +1778,7 @@ graphs:
       - id: 00000002-0000-0000-0000-00000000000c
         name: TotalRadiationTypeRouter
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -1799,7 +1794,7 @@ graphs:
       - id: 00000002-0000-0000-0000-00000000000d
         name: DEMGridKeyAssigner
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: _dem_grid_key
@@ -1812,7 +1807,7 @@ graphs:
       - id: 00000002-0000-0000-0000-00000000000e
         name: DEMCellRadiationMerger
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           groupBy:
             - _dem_grid_key
@@ -1831,7 +1826,7 @@ graphs:
       - id: 00000002-0000-0000-0000-00000000000f
         name: GridCellTypeRouter
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -1847,7 +1842,7 @@ graphs:
       - id: 00000002-0000-0000-0000-000000000010
         name: DEMGridKeyAssigner2
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: _dem_grid_key
@@ -1860,7 +1855,7 @@ graphs:
       - id: 00000002-0000-0000-0000-000000000011
         name: DEMColorTypeRouter
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -1876,7 +1871,7 @@ graphs:
       - id: 00000002-0000-0000-0000-000000000012
         name: DEMCellGeometryMerger
         type: action
-        action: FeatureMerger
+        action: Feature Merger
         with:
           requestorAttribute:
             - _dem_grid_key
@@ -1891,7 +1886,7 @@ graphs:
       - id: 00000006-0000-0000-0000-000000000001
         name: LandAreaSeparator
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:

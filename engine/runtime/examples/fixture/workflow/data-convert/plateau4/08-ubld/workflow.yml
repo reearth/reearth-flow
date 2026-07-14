@@ -21,7 +21,7 @@ graphs:
       - id: 29140f72-79e9-456b-9f38-7861c1c56299
         name: FeatureCreator
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
           creator:
             type: flowExpr
@@ -43,7 +43,7 @@ graphs:
       - id: f0484368-e52c-40ca-ad21-e98f60786c50
         name: FeatureReaderByCityGml
         type: action
-        action: FeatureCityGmlReader
+        action: Feature CityGML Reader
         with:
           codelistsPath:
             type: flowExpr
@@ -55,7 +55,7 @@ graphs:
       - id: 35f39a3b-24b8-4673-9f59-ca5a0b3b8e4c
         name: TargetPackagesFilter
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -66,7 +66,7 @@ graphs:
       - id: a04c645b-4651-4f7f-b6b5-0565428ef445
         name: AttributeManagerPreFlattener
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: meshcode
@@ -102,7 +102,7 @@ graphs:
       - id: b20bfd2f-ef35-41b6-919a-3387d0d96cb0
         name: FeatureTypeFilterLod4
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -113,14 +113,14 @@ graphs:
       - id: 35fa118f-c8dd-456e-abc0-1fb6319c3931
         name: VerticalReprojector
         type: action
-        action: VerticalReprojector
+        action: Vertical Reprojector
         with:
           reprojectorType: jgd2011ToWgs84
 
       - id: 20489caa-c78b-4be4-808e-a8e8881c8847
         name: AttributeManager
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: cityCode
@@ -137,7 +137,7 @@ graphs:
       - id: 1ad1a773-2954-4fbf-8556-8ad0079927ad
         name: FeatureSorter
         type: action
-        action: FeatureSorter
+        action: Feature Sorter
         with:
           attributes:
             - package
@@ -147,7 +147,7 @@ graphs:
       - id: 1a042641-7a90-413e-adc8-2dfaf269de35
         name: Cesium3DTilesWriter
         type: action
-        action: Cesium3DTilesWriter
+        action: Cesium 3D Tiles Writer
         with:
           schemaKey: __citygml_feature_type
           minZoom: 15

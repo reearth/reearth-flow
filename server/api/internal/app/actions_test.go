@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-const testActionsJSON = `{"actions":[{"name":"CsvReader","type":"source","description":"Reads features from a CSV file","inputPorts":[],"outputPorts":["output"],"categories":["File"],"tags":[],"parameter":{},"builtin":false}]}`
+const testActionsJSON = `{"actions":[{"name":"CSV Reader","type":"source","description":"Reads features from a CSV file","inputPorts":[],"outputPorts":["output"],"categories":["File"],"tags":[],"parameter":{},"builtin":false}]}`
 
 // fakeActionsReader serves testActionsJSON, or err if set.
 type fakeActionsReader struct{ err error }
@@ -36,7 +36,7 @@ func TestLoadActionsData_FromBucket(t *testing.T) {
 	resetTestData()
 	data, err := loadActionsData("")
 	assert.NoError(t, err)
-	assert.Equal(t, "CsvReader", data.Actions[0].Name)
+	assert.Equal(t, "CSV Reader", data.Actions[0].Name)
 }
 
 func TestLoadActionsData_FallbackToHTTP(t *testing.T) {
@@ -119,9 +119,9 @@ func TestListActions(t *testing.T) {
 }
 
 func TestListActionsHiddenFilter(t *testing.T) {
-	// "CsvReader" is in baseActions; "PLATEAU4.SolarPositionCalculator" is not.
+	// "CSV Reader" is in baseActions; "PLATEAU4.SolarPositionCalculator" is not.
 	testActions := []Action{
-		{Name: "CsvReader", Type: ActionTypeSource, Description: "visible", Categories: []string{"File"}},
+		{Name: "CSV Reader", Type: ActionTypeSource, Description: "visible", Categories: []string{"File"}},
 		{Name: "PLATEAU4.SolarPositionCalculator", Type: ActionTypeProcessor, Description: "not in allow-list", Categories: []string{"PLATEAU"}},
 	}
 
@@ -141,13 +141,13 @@ func TestListActionsHiddenFilter(t *testing.T) {
 	err = json.Unmarshal(rec.Body.Bytes(), &response)
 	assert.NoError(t, err)
 	assert.Len(t, response, 1)
-	assert.Equal(t, "CsvReader", response[0].Name)
+	assert.Equal(t, "CSV Reader", response[0].Name)
 }
 
 func TestGetSegregatedActions(t *testing.T) {
 	testActions := []Action{
 		{
-			Name:        "CsvWriter",
+			Name:        "CSV Writer",
 			Type:        ActionTypeSink,
 			Description: "Writes features to a CSV file",
 			Categories:  []string{"File"},
@@ -205,7 +205,7 @@ func TestGetSegregatedActions(t *testing.T) {
 
 func TestGetActionDetails(t *testing.T) {
 	testAction := Action{
-		Name:        "CsvReader",
+		Name:        "CSV Reader",
 		Type:        ActionTypeSource,
 		Description: "Test action description",
 		Categories:  []string{"File"},

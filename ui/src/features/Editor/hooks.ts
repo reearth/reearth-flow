@@ -280,14 +280,14 @@ export default ({
 
         for (const node of nodes) {
           const officalName = node.data.officialName;
-          if (officalName !== "InputRouter" && officalName !== "OutputRouter")
+          if (officalName !== "Input Router" && officalName !== "Output Router")
             continue;
           const isDeleting = deletingIds.has(node.id);
 
-          if (officalName === "InputRouter") {
+          if (officalName === "Input Router") {
             totalInputRouters++;
             if (!isDeleting) remainingInputRouters++;
-          } else if (officalName === "OutputRouter") {
+          } else if (officalName === "Output Router") {
             totalOutputRouters++;
             if (!isDeleting) remainingOutputRouters++;
           }

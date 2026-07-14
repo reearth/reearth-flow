@@ -362,7 +362,7 @@ mod tests {
 
     impl ProcessorFactory for RouterStub {
         fn name(&self) -> &str {
-            "OutputRouter"
+            "Output Router"
         }
         fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
             None
@@ -436,7 +436,7 @@ mod tests {
             NodeKind::Processor(Box::new(AdderProc)),
         );
         m.insert(
-            "OutputRouter".to_string(),
+            "Output Router".to_string(),
             NodeKind::Processor(Box::new(RouterStub)),
         );
         m
@@ -530,7 +530,7 @@ mod tests {
                 action_node_with(
                     router_id,
                     "router",
-                    "OutputRouter",
+                    "Output Router",
                     serde_json::json!({ "routingPort": "myroute" }),
                 ),
             ],

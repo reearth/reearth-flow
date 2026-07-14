@@ -20,7 +20,7 @@ pub(crate) struct XmlWriterFactory;
 
 impl SinkFactory for XmlWriterFactory {
     fn name(&self) -> &str {
-        "XmlWriter"
+        "XML Writer"
     }
 
     fn description(&self) -> &str {
@@ -96,7 +96,7 @@ pub(super) struct XmlWriterParam {
 
 impl Sink for XmlWriter {
     fn name(&self) -> &str {
-        "XmlWriter"
+        "XML Writer"
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {

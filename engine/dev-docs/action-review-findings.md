@@ -14,56 +14,19 @@ Phase 3 quality review of the 73 base actions against [action-standard.md](actio
 
 ---
 
-## Debug (5)
-
-<!-- Session 1 -->
-
-```
-EchoProcessor
-  name:    → "Echo Processor"
-  desc:    not imperative — "Debug Echo Features to Logs"; suggest "Echo features to logs and pass them through unchanged."
-  tags:    empty — `debug` duplicates category (§6); no other established vocabulary terms apply; consider proposing `logging`
-
-EchoSink
-  name:    → "Echo Sink"
-  desc:    not imperative — identical to EchoProcessor; suggest "Echo features to logs and discard them."
-  tags:    empty — same constraint as EchoProcessor
-
-FeatureCounter
-  name:    → "Feature Counter"
-  params:  countStart — marked required but has a sensible default (0 or 1); should be optional with a schema default (§3.2)
-           outputAttribute — title "Output Attribute" is generic; suggest "Count Attribute" (§3.3)
-           ordering — `groupBy` (optional) is defined between two required params; once countStart is made optional, correct order: outputAttribute → countStart → groupBy (§3.5)
-  tags:    empty — suggest ["aggregation", "attribute"]; `debug` duplicates category (§6)
-
-NoopProcessor
-  name:    → "Noop Processor"
-  desc:    noun phrase — "No-Operation Pass-Through Processor"; suggest "Pass features through unchanged."
-  tags:    empty — `debug` duplicates category (§6); no other established vocabulary terms apply
-
-NoopSink
-  name:    → "Noop Sink"
-  desc:    noun phrase with parenthetical — "No-Operation Sink (Discard Features)"; suggest "Discard all incoming features."
-  tags:    empty — same constraint as NoopProcessor
-```
-
----
-
 ## Input (10)
 
 <!-- Session 2 -->
 
 ```
-CityGmlReader
-  name:    → "CityGML Reader"
+CityGML Reader
   params:  flatten — missing title and description (§3.3)
            dataset — description example "data.csv" copy-pasted from CsvReader; should
              reference a .gml file (§3.3)
            ordering — `flatten` sits between `dataset` and `inline`; correct order:
              dataset → inline → flatten (§3.5)
 
-CsvReader
-  name:    → "CSV Reader"
+CSV Reader
   desc:    title-case — "Read Features from CSV or TSV File"; suggest "Reads features
              from CSV and TSV files."
   params:  ordering — `format` is required but is 3rd in properties (after dataset,
@@ -72,8 +35,7 @@ CsvReader
            headerRows — description exceeds 2 sentences (§3.3)
   tags:    ["csv"] — 1 tag; suggest adding `file`
 
-FeatureCreator
-  name:    → "Feature Creator"
+Feature Creator
   desc:    title-case — "Generate Custom Features Using Scripts"; suggest "Creates
              features from a script expression that returns one or more attribute maps."
   params:  creator — description opens with imperative "Write a script expression…";
@@ -81,19 +43,16 @@ FeatureCreator
              (single feature) or an array of maps (multiple features)."
   tags:    empty — no fitting established vocabulary terms; consider proposing `scripting`
 
-FilePathExtractor
-  name:    → "File Path Extractor"
+File Path Extractor
   tags:    ["file-system"] — not in established vocabulary; replace with `file`; 1 tag
              acceptable (no strong second candidate)
 
-GeoJsonReader
-  name:    → "GeoJSON Reader"
+GeoJSON Reader
   params:  dataset — description example "data.csv" copy-pasted; should reference a
              .geojson file (§3.3)
   tags:    ["geojson"] — 1 tag; suggest adding `vector`
 
-GeoPackageReader
-  name:    → "GeoPackage Reader"
+GeoPackage Reader
   params:  schema-level description missing (§3.3)
            attributeFilter, batchSize, force2D, includeMetadata, layerName, readMode,
              spatialFilter, tileFormat — all missing title and/or description (§3.3)
@@ -109,12 +68,10 @@ GeoPackageReader
   tags:    ["geopackage"] — 1 tag; suggest adding `vector` (and `raster` if tile reading
              is a primary use case)
 
-JsonReader
-  name:    → "JSON Reader"
+JSON Reader
   tags:    ["json"] — 1 tag; acceptable (no strong second candidate)
 
-ShapefileReader
-  name:    → "Shapefile Reader"
+Shapefile Reader
   params:  allowEmptyPath — description mentions "Rhai `()`"; remove implementation
              detail; suggest "If true, a null dataset path produces zero features instead
              of an error."
@@ -126,14 +83,12 @@ ShapefileReader
              inline → encoding → force2D → allowEmptyPath (§3.5)
   tags:    ["shapefile"] — 1 tag; suggest adding `vector`
 
-SqlReader
-  name:    → "SQL Reader"
+SQL Reader
   desc:    title-case — "Read Features from SQL Database"; suggest "Reads features from
              a SQL database."
   tags:    ["database"] — 1 tag; acceptable (no strong second candidate)
 
-FeatureCityGmlReader
-  name:    → "Feature CityGML Reader"
+Feature CityGML Reader
   desc:    "Reads and processes features from CityGML files with optional flattening" —
              "reads and processes" is redundant; suggest "Reads CityGML features from a
              file path stored in the incoming feature, optionally flattening nested
@@ -151,8 +106,7 @@ FeatureCityGmlReader
 <!-- Session 3 -->
 
 ```
-Cesium3DTilesWriter
-  name:    → "Cesium 3D Tiles Writer"
+Cesium 3D Tiles Writer
   desc:    title-case — "Export Features as Cesium 3D Tiles for Web Visualization"; suggest
              "Writes features to Cesium 3D Tiles format for 3D web visualization."
   params:  schema-level description missing (§3.3)
@@ -162,28 +116,24 @@ Cesium3DTilesWriter
              dracoCompression → schemaKey → skipUnexposedAttributes → compressOutput (§3.5)
   tags:    ["3d-tiles", "3d"] — `3d-tiles` not in vocabulary; suggest ["3d", "tiling"]
 
-CityGmlWriter
-  name:    → "CityGML Writer"
+CityGML Writer
   params:  schema-level description missing (§3.3)
            epsgCode, lodFilter, output, prettyPrint — all missing title (§3.3)
            ordering — required `output` is 3rd; correct order: output → prettyPrint →
              lodFilter → epsgCode (§3.5)
 
-CsvWriter
-  name:    → "CSV Writer"
+CSV Writer
   params:  format, output — missing title (§3.3)
            ordering — `geometry` (optional) sits between two required params; correct order:
              format → output → geometry (§3.5)
   tags:    ["csv"] — 1 tag; suggest adding `file`
 
-GeoJsonWriter
-  name:    → "GeoJSON Writer"
+GeoJSON Writer
   params:  groupBy, output — missing title (§3.3)
            ordering — required `output` is last; correct order: output → groupBy (§3.5)
   tags:    ["geojson"] — 1 tag; suggest adding `vector`
 
-GeoPackageWriter
-  name:    → "GeoPackage Writer"
+GeoPackage Writer
   desc:    "with proper SQLite structure, spatial indexing, and metadata tables" —
              implementation detail; suggest "Writes features to a GeoPackage (.gpkg) file."
   params:  createSpatialIndex, geometryColumn, geometryType, output, overwrite, srsId,
@@ -192,13 +142,11 @@ GeoPackageWriter
              geometryColumn → srsId → overwrite → createSpatialIndex (§3.5)
   tags:    ["geopackage"] — 1 tag; suggest adding `vector`
 
-JsonWriter
-  name:    → "JSON Writer"
+JSON Writer
   params:  converter, output — missing title (§3.3)
            ordering — required `output` is last; correct order: output → converter (§3.5)
 
-MVTWriter
-  name:    → "MVT Writer"
+MVT Writer
   desc:    "with TileJSON 3.0.0 metadata" — version detail; suggest "Writes features to
              Mapbox Vector Tiles (MVT) format."
   params:  schema-level description contains implementation details (internal file paths,
@@ -211,18 +159,15 @@ MVTWriter
              extent (§3.5)
   tags:    ["mvt"] — not in vocabulary; suggest ["vector", "tiling"]
 
-ShapefileWriter
-  name:    → "Shapefile Writer"
+Shapefile Writer
   params:  groupBy, output — missing title (§3.3)
            ordering — required `output` is last; correct order: output → groupBy (§3.5)
   tags:    ["shapefile"] — 1 tag; suggest adding `vector`
 
-XmlWriter
-  name:    → "XML Writer"
+XML Writer
   params:  output — missing title (§3.3)
 
-ZipFileWriter
-  name:    → "Zip File Writer"
+Zip File Writer
   params:  output — missing title (§3.3); description "Output path" too brief — should
              describe the accepted expression types
   tags:    ["file-system", "compression"] — `file-system` not in vocabulary; replace with
@@ -236,8 +181,7 @@ ZipFileWriter
 <!-- Session 4 -->
 
 ```
-AttributeAggregator
-  name:    → "Attribute Aggregator"
+Attribute Aggregator
   desc:    title-case — "Group and Aggregate Features by Attributes"; suggest "Groups
              features by attributes and aggregates values within each group."
   params:  aggregateAttributes, calculation, calculationAttribute, calculationValue, method
@@ -246,8 +190,7 @@ AttributeAggregator
              aggregateAttributes → calculationAttribute → calculationValue → calculation (§3.5)
   tags:    ["aggregate"] — not in vocabulary; replace with `aggregation`
 
-AttributeConversionTable
-  name:    → "Attribute Conversion Table"
+Attribute Conversion Table
   desc:    title-case — "Transform Feature Attributes Using Lookup Tables"; suggest
              "Transforms attributes using rules defined in a lookup table (CSV, TSV, or JSON)."
   params:  schema-level description missing (§3.3)
@@ -257,16 +200,14 @@ AttributeConversionTable
              format → rules → dataset → inline (§3.5)
   tags:    ["mapping"] — now in vocabulary; 1 tag acceptable (no strong second candidate)
 
-AttributeFlattener
-  name:    → "Attribute Flattener"
+Attribute Flattener
   desc:    title-case — "Flatten Nested Object Attributes into Top-Level Attributes"; suggest
              "Flattens nested map attributes into individual top-level attributes."
   params:  schema-level description missing (§3.3)
   tags:    ["hierarchy"] — not in vocabulary; no established alternative; remove tag
              (0 tags acceptable — name and description provide sufficient discovery)
 
-AttributeManager
-  name:    → "Attribute Manager"
+Attribute Manager
   desc:    title-case — "Create, Convert, Rename, and Remove Feature Attributes"; suggest
              "Creates, converts, renames, or removes feature attributes based on a
              configurable list of operations."
@@ -277,16 +218,14 @@ AttributeManager
   tags:    empty — `attribute` duplicates category (§6); no other established vocabulary
              terms apply; 0 tags acceptable
 
-AttributeMapper
-  name:    → "Attribute Mapper"
+Attribute Mapper
   desc:    title-case — "Transform Feature Attributes Using Expressions and Mappings";
              suggest "Maps or transforms feature attributes using expressions and value
              assignments."
   params:  schema-level description missing (§3.3)
   tags:    ["mapping"] — now in vocabulary; 1 tag acceptable
 
-BulkAttributeRenamer
-  name:    → "Bulk Attribute Renamer"
+Bulk Attribute Renamer
   desc:    title-case — "Rename Feature Attributes in Bulk"; suggest "Renames feature
              attributes in bulk by adding or removing a prefix or suffix, or replacing text."
   params:  RenameAction enum values PascalCase — AddPrefix, AddSuffix, RemovePrefix,
@@ -301,8 +240,7 @@ BulkAttributeRenamer
   tags:    empty — `attribute` duplicates category (§6); no other established vocabulary
              terms apply; 0 tags acceptable
 
-NullAttributeMapper
-  name:    → "Null Attribute Mapper"
+Null Attribute Mapper
   desc:    "Replace" should be "Replaces" (verb-first present tense, third-person singular)
   params:  schema-level description "NullAttributeMapper parameters" is a name restatement
              — replace with a meaningful summary (§3.3)
@@ -317,8 +255,7 @@ NullAttributeMapper
              nullDefinition → routeNullFeatures (§3.5)
   tags:    ["mapping"] — now in vocabulary; 1 tag acceptable
 
-StatisticsCalculator
-  name:    → "Statistics Calculator"
+Statistics Calculator
   params:  groupBy — title "Group by" should be "Group By"
            groupId — title "Group id" should be "Group ID"
   tags:    ["statistics", "aggregate"] — `aggregate` not in vocabulary; replace with
@@ -333,23 +270,20 @@ StatisticsCalculator
 <!-- Session 5 -->
 
 ```
-DimensionFilter
-  name:    → "Dimension Filter"
+Dimension Filter
   desc:    title-case — "Filter Features by Geometry Dimension"; suggest "Routes features
              to output ports based on the number of geometry dimensions."
   ports:   inputPorts `default` — global note
   tags:    ["2d", "3d"] — `2d` not in vocabulary; suggest ["3d", "geometry"]
 
-FeatureFilter
-  name:    → "Feature Filter"
+Feature Filter
   desc:    title-case — "Filter Features Based on Custom Conditions"; suggest "Routes
              features to named output ports based on user-defined filter conditions."
   params:  Condition.expr — title present, description missing (§3.3)
            Condition.outputPort — title present, description missing (§3.3)
   tags:    empty — 0 tags acceptable
 
-FeatureLodFilter
-  name:    → "Feature LOD Filter"
+Feature LOD Filter
   desc:    "routing them to appropriate output ports" references port behavior; suggest
              "Filters features by Level of Detail (LOD), emitting each to the matching
              LOD output port."
@@ -359,8 +293,7 @@ FeatureLodFilter
              to up-to-lod0 through up-to-lod4
   tags:    ["lod", "citygml"] — `lod` not in vocabulary; suggest ["citygml"]
 
-FeatureTypeFilter
-  name:    → "Feature Type Filter"
+Feature Type Filter
   desc:    not third-person singular — "Filter CityGML features by feature type"; suggest
              "Filters CityGML features by their feature type."
   params:  targetTypes — missing title (§3.3); description "Target feature types" too
@@ -369,24 +302,21 @@ FeatureTypeFilter
            outputPorts `default` (matched features) — needs semantic name; suggest `matched`
   tags:    empty — suggest ["citygml"] (CityGML-specific action)
 
-InputRouter
-  name:    → "Input Router"
+Input Router
   desc:    not verb-first — "Action for first port forwarding for sub-workflows."; suggest
              "Forwards features from the parent workflow into a sub-workflow."
   params:  schema-level description missing (§3.3)
            routingPort — missing title and description (§3.3)
   ports:   outputPorts `default` — global note
 
-OutputRouter
-  name:    → "Output Router"
+Output Router
   desc:    not verb-first — "Action for last port forwarding for sub-workflows."; suggest
              "Forwards features from a sub-workflow back to the parent workflow."
   params:  schema-level description missing (§3.3)
            routingPort — missing title and description (§3.3)
   ports:   inputPorts `default` — global note
 
-SpatialFilter
-  name:    → "Spatial Filter"
+Spatial Filter
   desc:    title-case — "Filter Features by Spatial Relationship"; suggest "Filters
              candidate features based on their spatial relationship to filter geometry."
   params:  mergeFilterAttributes — description spans multiple conditional clauses covering
@@ -399,52 +329,12 @@ SpatialFilter
 
 ---
 
-## Merge (3)
-
-<!-- Session 6 -->
-
-```
-FeatureJoiner
-  name:    → "Feature Joiner"
-  params:  conflictResolution, joinType, requestorAttribute, requestorAttributeValue,
-             supplierAttribute, supplierAttributeValue — all missing title (§3.3)
-           ordering — required `joinType` is not first; suggest: joinType →
-             requestorAttribute → supplierAttribute → requestorAttributeValue →
-             supplierAttributeValue → conflictResolution (§3.5)
-  ports:   unjoinedRequestor, unjoinedSupplier — camelCase violates §4.1; rename to
-             unjoined-requestor, unjoined-supplier
-  tags:    ["join"] — `join` not in vocabulary; remove (0 tags acceptable — name is
-             self-describing within Merge category)
-
-FeatureMerger
-  name:    → "Feature Merger"
-  params:  completeGrouped, requestorAttribute, requestorAttributeValue, supplierAttribute,
-             supplierAttributeValue — all missing title (§3.3)
-           requestorAttribute, requestorAttributeValue, supplierAttribute,
-             supplierAttributeValue — descriptions reference internal snake_case names
-             (requestor_attribute_value, requestor_attribute, etc.) instead of camelCase
-             param names; update to match schema key names (§3.3)
-           ordering — suggest: requestorAttribute → supplierAttribute →
-             requestorAttributeValue → supplierAttributeValue → completeGrouped (§3.5)
-  tags:    empty — 0 tags acceptable
-
-FeatureSorter
-  name:    → "Feature Sorter"
-  params:  attributes, order — both missing title (§3.3)
-  ports:   inputPorts `default`, outputPorts `default` — global note; rename both to
-             `features`
-  tags:    ["sort"] — `sort` not in vocabulary; remove (0 tags acceptable)
-```
-
----
-
 ## Feature (1) · File (2) · Transform (4)
 
 <!-- Session 7 -->
 
 ```
-FeatureFilePathExtractor
-  name:    → "Feature File Path Extractor"
+Feature File Path Extractor
   desc:    title-case — "Extract File Paths from Dataset to Features"; suggest "Extracts
              file paths from a dataset source and creates one feature per path."
   params:  extractArchive — required but is a boolean with an obvious false default;
@@ -457,8 +347,7 @@ FeatureFilePathExtractor
              clarifying during Phase 4
   tags:    ["file", "path"] — `path` not in vocabulary; suggest ["file"]
 
-DirectoryDecompressor
-  name:    → "Directory Decompressor"
+Directory Decompressor
   desc:    "from specified attributes" is slightly implementation-leaky; suggest
              "Decompresses archive files referenced in feature attributes and emits the
              extracted paths."
@@ -469,29 +358,25 @@ DirectoryDecompressor
   tags:    ["file-system", "compression"] — `file-system` not in vocabulary; replace with
              `file`; `compression` in vocabulary; suggest ["file", "compression"]
 
-FilePropertyExtractor
-  name:    → "File Property Extractor"
+File Property Extractor
   params:  filePathAttribute — missing title (§3.3)
   ports:   inputPorts `default` — global note
            outputPorts `default` — needs semantic name; `rejected` ✓
   tags:    ["file-system"] — not in vocabulary; replace with `file`
 
-FeatureTransformer
-  name:    → "Feature Transformer"
+Feature Transformer
   params:  transformers — missing title (§3.3)
            Transform.expr — missing title (§3.3)
   ports:   inputPorts `default`, outputPorts `default` — global note; rename both to
              `features`
   tags:    empty — 0 tags acceptable
 
-ListExploder
-  name:    → "List Exploder"
+List Exploder
   params:  sourceAttribute — missing title (§3.3)
   ports:   inputPorts `default`, outputPorts `default` — global note
   tags:    ["list"] — in vocabulary ✓
 
-XMLFragmenter
-  name:    → "XML Fragmenter"
+XML Fragmenter
   desc:    suggest "Splits an XML document into features by matching element patterns,
              emitting each matched element as a separate feature."
   params:  oneOf with a single variant suggests incomplete design — other source types
@@ -502,8 +387,7 @@ XMLFragmenter
              `rejected` for malformed XML (§4.3)
   tags:    ["xml"] — in vocabulary ✓
 
-XMLValidator
-  name:    → "XML Validator"
+XML Validator
   desc:    "against XSD schemas" inaccurate for syntax/namespace modes; "with
              success/failure routing" references port behavior; suggest "Validates XML
              documents for syntax, namespace conformance, or XSD schema compliance."
@@ -528,12 +412,10 @@ XMLValidator
 <!-- Session 8 — AppearanceRemover through ImageRasterizer -->
 
 ```
-AppearanceRemover
-  name:    → "Appearance Remover"
+Appearance Remover
   ports:   inputPorts `default` — global note; outputPorts `default` — global note
 
-AreaCalculator
-  name:    → "Area Calculator"
+Area Calculator
   params:  areaType — missing title (§3.3); description references "PlaneArea"/"SlopedArea" in
              PascalCase but actual enum values are camelCase (misleading)
            multiplier — missing title (§3.3)
@@ -544,8 +426,7 @@ AreaCalculator
              whether non-polygon features need a rejected route (§4.3)
   tags:    ["area", "measurement"] — neither in vocabulary; remove (0 tags acceptable)
 
-BoundsExtractor
-  name:    → "Bounds Extractor"
+Bounds Extractor
   desc:    title-case — "Extract Bounding Box Coordinates from Feature Geometry"; suggest
              "Extracts the bounding box coordinates of a feature's geometry and stores them as
              named attributes."
@@ -570,8 +451,7 @@ Clipper
   ports:   inputPorts `clipper`, `candidate` ✓; outputPorts `inside`, `outside`, `rejected` ✓
   tags:    ["2d"] — not in vocabulary; replace with ["spatial"]
 
-ElevationExtractor
-  name:    → "Elevation Extractor"
+Elevation Extractor
   desc:    title-case — "Extract Z-Coordinate Elevation to Attribute"; suggest "Extracts the
              Z-coordinate elevation from a feature's geometry and stores it in a named
              attribute."
@@ -585,24 +465,21 @@ Extruder
   ports:   inputPorts `default` — global note; outputPorts `default` — global note; no
              `rejected` — evaluate for non-polygon inputs (§4.3)
 
-FootprintReplacer
-  name:    → "Footprint Replacer"
+Footprint Replacer
   desc:    parenthetical "(supports solids, surfaces, and CityGML)" leaks implementation
              details; compound "Projects... and computes" obscures user-visible result; suggest
              "Replaces a feature's 3D geometry with its 2D footprint projected onto the XY
              plane."
   ports:   inputPorts `default` — global note; outputPorts `footprint` ✓, `rejected` ✓
 
-GeometryExtractor
-  name:    → "Geometry Extractor"
+Geometry Extractor
   desc:    title-case — "Extract Geometry Data to Attribute"; suggest "Serializes the feature's
              geometry to a compressed JSON representation and stores it in a named attribute."
   ports:   inputPorts `default` — global note; outputPorts `default` — global note; no
              `rejected` — evaluate for features with no geometry (§4.3)
   tags:    [] — `geometry` duplicates category (§6); 0 tags acceptable
 
-GeometryPartExtractor
-  name:    → "Geometry Part Extractor"
+Geometry Part Extractor
   desc:    imperative not verb-first — "Extract geometry parts (surfaces) from 3D geometries as
              separate features"; suggest "Extracts geometry parts from 3D geometries, emitting
              each part as a separate feature."
@@ -614,12 +491,10 @@ GeometryPartExtractor
   tags:    ["geometry", "decompose"] — `decompose` not in vocabulary; `geometry` duplicates
              category (§6); replace with ["3d"]
 
-GeometryRemover
-  name:    → "Geometry Remover"
+Geometry Remover
   ports:   inputPorts `default`, outputPorts `default` — global note
 
-ImageRasterizer
-  name:    → "Image Rasterizer"
+Image Rasterizer
   desc:    imperative not verb-first — "Convert vector geometries to raster image format";
              suggest "Converts vector geometries to a raster image using configurable overlap
              resolution."
@@ -649,15 +524,13 @@ ImageRasterizer
 <!-- Session 9 — GeometryReplacer through VerticalReprojector -->
 
 ```
-GeometryReplacer
-  name:    → "Geometry Replacer"
+Geometry Replacer
   desc:    title-case — "Replace Feature Geometry from Attribute"; suggest "Replaces a
              feature's geometry with the compressed geometry data stored in a named attribute."
   ports:   inputPorts `default` — global note; outputPorts `default` — global note; no
              `rejected` — evaluate for missing or malformed attribute value (§4.3)
 
-GeometrySplitter
-  name:    → "Geometry Splitter"
+Geometry Splitter
   desc:    title-case — "Split Multi-Geometries into Individual Features"; suggest "Splits
              multi-part geometries into individual single-geometry features."
   params:  schema-level description "Parameters for GeometrySplitter" is an internal name
@@ -670,8 +543,7 @@ GeometrySplitter
   tags:    ["split", "geometry"] — `split` not in vocabulary; `geometry` duplicates category
              (§6); remove both → 0 tags acceptable
 
-GeometryValidator
-  name:    → "Geometry Validator"
+Geometry Validator
   desc:    title-case — "Validate Feature Geometry Quality"; suggest "Validates feature
              geometry for issues such as duplicate points, corrupt geometry, or
              self-intersection."
@@ -686,8 +558,7 @@ GeometryValidator
              `rejected` ✓
   tags:    ["validate"] — not in vocabulary; `validation` is; correct to ["validation"]
 
-GridDivider
-  name:    → "Grid Divider"
+Grid Divider
   desc:    title-case — "Divide Polygons into Regular Grid Cells"; suggest "Divides polygon
              geometries into a regular grid of equal-sized cells."
   params:  schema-level description missing (§3.3)
@@ -696,8 +567,7 @@ GridDivider
   ports:   inputPorts `default` — global note; outputPorts `default` + `rejected` ✓
   tags:    ["2d"] — not in vocabulary; replace with ["spatial"]
 
-HorizontalReprojector
-  name:    → "Horizontal Reprojector"
+Horizontal Reprojector
   desc:    title-case — "Reproject Geometry to Different Coordinate System"; suggest
              "Reprojects feature geometry from one horizontal coordinate system to another
              using EPSG codes."
@@ -708,8 +578,7 @@ HorizontalReprojector
              `rejected` — evaluate for invalid EPSG codes or reprojection failure (§4.3)
   tags:    ["projection", "2d"] — neither in vocabulary; replace with ["coordinate-system"]
 
-PolygonNormalExtractor
-  name:    → "Polygon Normal Extractor"
+Polygon Normal Extractor
   desc:    imperative not verb-first — "Extract normal vectors and other properties for
              polygon features"; "other properties" is vague; suggest "Extracts the normal
              vector and geometric properties from polygon features and stores them as
@@ -718,8 +587,7 @@ PolygonNormalExtractor
              `rejected` — evaluate for non-polygon features (§4.3)
   tags:    ["normal", "3d"] — `normal` not in vocabulary; remove → ["3d"]
 
-RayIntersector
-  name:    → "Ray Intersector"
+Ray Intersector
   params:  schema-level description "RayIntersector Parameters" is an internal name, not a
              description (§3.3); suggest "Configure how rays and geometries are paired and
              how intersection results are output."
@@ -741,14 +609,14 @@ Refiner
   ports:   inputPorts `default` — global note; outputPorts `remain` — suggest rename to
              `remaining` for natural English; `default` — global note
 
-ThreeDimensionForcer
+Three Dimension Forcer
   name:    → "Three Dimension Forcer" — "Dimension" should be plural or adjectival; suggest
              "Three Dimensions Forcer" or "Three-Dimensional Forcer"
   desc:    title-case — "Convert 2D Geometry to 3D by Adding Z-Coordinates"; suggest "Adds
              Z-coordinates to 2D geometries to produce 3D output."
   ports:   inputPorts `default`, outputPorts `default` — global note
 
-TwoDimensionForcer
+Two Dimension Forcer
   name:    → "Two Dimension Forcer" — same English issue as ThreeDimensionForcer; suggest
              "Two Dimensions Forcer" or "Two-Dimensional Forcer"
   desc:    title-case — "Force 3D Geometry to 2D by Removing Z-Coordinates"; suggest
@@ -757,8 +625,7 @@ TwoDimensionForcer
   tags:    ["2d"] — not in vocabulary; `geometry` duplicates category (§6); remove both
              → 0 tags acceptable
 
-VerticalReprojector
-  name:    → "Vertical Reprojector"
+Vertical Reprojector
   desc:    title-case — "Reproject Vertical Coordinates Between Datums"; suggest "Reprojects
              the vertical coordinate of feature geometry between vertical datums."
   params:  VerticalReprojectorType plain enum — single value `jgd2011ToWgs84` only

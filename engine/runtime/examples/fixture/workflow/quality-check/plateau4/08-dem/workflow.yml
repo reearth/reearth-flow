@@ -24,7 +24,7 @@ graphs:
       - id: 6da8eb15-70c8-4f4a-bce6-b700d90d51e4
         name: FeatureCreator
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
           creator:
             type: flowExpr
@@ -54,7 +54,7 @@ graphs:
       - id: 624d1039-4317-4699-8e0e-0b749abeb033
         name: DirectoryDecompressor
         type: action
-        action: DirectoryDecompressor
+        action: Directory Decompressor
         with:
           archiveAttributes:
             - codelists
@@ -63,7 +63,7 @@ graphs:
       - id: 3c4dc9be-6fb0-48e5-8d32-0eda4fdd5069
         name: FeatureFilePathExtractor
         type: action
-        action: FeatureFilePathExtractor
+        action: Feature File Path Extractor
         with:
           sourceDataset:
             type: flowExpr
@@ -74,7 +74,7 @@ graphs:
       - id: 35779453-0f57-44fb-bca8-0e21b286cbbd
         name: FeatureFilterByGml
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -85,7 +85,7 @@ graphs:
       - id: 6a08f964-a46d-4226-a4dc-2c283136e157
         name: FeatureCounterFileIndex
         type: action
-        action: FeatureCounter
+        action: Feature Counter
         with:
           countStart: 1
           outputAttribute: fileIndex
@@ -104,7 +104,7 @@ graphs:
       - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13
         name: FeatureFilterByPackage
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
           - expr:
@@ -126,7 +126,7 @@ graphs:
       - id: 21bb4a5e-5975-443b-8a38-6332789681dd
         name: AttributeMapperIncorrectNumVertices
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: Index
@@ -139,7 +139,7 @@ graphs:
       - id: 27619dc0-ace9-490a-a63d-57b2ecb4f326
         name: ShapefileWriterIncorrectNumVertices
         type: action
-        action: ShapefileWriter
+        action: Shapefile Writer
         with:
           output:
             type: string
@@ -148,7 +148,7 @@ graphs:
       - id: 02c49104-bf18-40de-9ffe-4fbaef2165f9
         name: StatisticsCalculatorForIncorrectNumVertices
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           groupBy:
             - fileIndex
@@ -164,7 +164,7 @@ graphs:
       - id: b66b8ba8-f685-4d01-83ef-2aaddebbc9eb
         name: AttributeMapperNotClosed
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: Index
@@ -177,7 +177,7 @@ graphs:
       - id: 090638b2-4923-4bd8-8b9c-4e1869612694
         name: ShapefileWriterNotClosed
         type: action
-        action: ShapefileWriter
+        action: Shapefile Writer
         with:
           output:
             type: string
@@ -186,7 +186,7 @@ graphs:
       - id: 06bb5316-b980-497c-8ba1-d83953b6f6b8
         name: StatisticsCalculatorForNotClosedErrors
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           groupBy:
             - fileIndex
@@ -202,7 +202,7 @@ graphs:
       - id: 17f4fa99-a555-4d8a-b705-8b951c324d8d
         name: AttributeMapperWrongOrientation
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: Index
@@ -215,7 +215,7 @@ graphs:
       - id: f364a079-e834-47f8-a53f-530a0fee07d4
         name: ShapefileWriterWrongOrientation
         type: action
-        action: ShapefileWriter
+        action: Shapefile Writer
         with:
           output:
             type: string
@@ -224,7 +224,7 @@ graphs:
       - id: 21bf6d61-9924-4f74-8eca-224ad4207c3c
         name: StatisticsCalculatorForWrongOrientation
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           groupBy:
             - fileIndex
@@ -240,7 +240,7 @@ graphs:
       - id: 793402b8-8abc-4a86-b92d-873d6072f76e
         name: GeometryValidator
         type: action
-        action: GeometryValidator
+        action: Geometry Validator
         with:
           validationTypes:
             - corruptGeometry: 0.01
@@ -249,7 +249,7 @@ graphs:
       - id: 38b40d0a-42a8-43e5-8978-898a723fddc8
         name: AttributeMapperCorruptGeometry
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: Index
@@ -262,7 +262,7 @@ graphs:
       - id: 961aadd4-8178-4c26-8c15-b326b0d39573
         name: ShapefileWriterCorruptGeometry
         type: action
-        action: ShapefileWriter
+        action: Shapefile Writer
         with:
           output:
             type: string
@@ -271,7 +271,7 @@ graphs:
       - id: ab08b17d-d8a8-4185-a9f0-454432765edd
         name: StatisticsCalculatorForCorruptGeometry
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           groupBy:
             - fileIndex
@@ -292,8 +292,7 @@ graphs:
       - id: 1e969309-8ff7-46d2-bb7a-7b3666ac7a4e
         name: GeometrySplitter
         type: action
-        action: GeometrySplitter
-
+        action: Geometry Splitter
       - id: 78ae3a54-822a-468d-9265-b60667b802ba
         name: VertexCounter
         type: action
@@ -304,7 +303,7 @@ graphs:
       - id: c17052ea-528b-4277-ad85-fbca4aa5755d
         name: FeatureSorter
         type: action
-        action: FeatureSorter
+        action: Feature Sorter
         with:
           attributes:
             - vertexCount
@@ -313,7 +312,7 @@ graphs:
       - id: c4d87d82-e83b-4c14-b16e-4d9ae7752bd0
         name: FeatureCounterBoundaryIndex
         type: action
-        action: FeatureCounter
+        action: Feature Counter
         with:
           countStart: 1
           outputAttribute: boundaryIndex
@@ -321,7 +320,7 @@ graphs:
       - id: f3bafcc7-addb-4b6b-b30f-f2acf0da3044
         name: FeatureFilterInvalidBoundaries
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -332,7 +331,7 @@ graphs:
       - id: 057a1995-8af0-4a8e-8699-cbb77e1ed374
         name: AttributeMapperInvalidBoundaries
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: Index
@@ -345,7 +344,7 @@ graphs:
       - id: b4f15900-e2e3-4df0-a3a4-6cbf2d3eefaf
         name: ShapefileWriterInvalidBoundaries
         type: action
-        action: ShapefileWriter
+        action: Shapefile Writer
         with:
           output:
             type: string
@@ -354,7 +353,7 @@ graphs:
       - id: e0ebe5cc-8666-4a24-8516-91454d781892
         name: StatisticsCalculatorForInvalidBoundaries
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           groupBy:
             - fileIndex
@@ -370,7 +369,7 @@ graphs:
       - id: fb152eb6-3a92-403f-96ce-bf38a420ec51
         name: ErrorSummaryMerger
         type: action
-        action: FeatureMerger
+        action: Feature Merger
         with:
           requestorAttributeValue:
             type: flowExpr
@@ -383,7 +382,7 @@ graphs:
       - id: 6fac13ad-7487-4441-afd9-0812922bd4b8
         name: SummaryAttributeMapper
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: Index
@@ -430,7 +429,7 @@ graphs:
       - id: 9fad8d36-c64d-47c2-9221-43e86524c8e5
         name: StatisticsCalculatorJSON
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           calculations:
             - newAttribute: "不正な頂点の数"
@@ -486,7 +485,7 @@ graphs:
       - id: 5225b8e5-71db-4945-a23b-cc98ae4c0e1b
         name: StatisticsCalculatorTotalErrors
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           calculations:
             - newAttribute: totalErrorCount
@@ -498,7 +497,7 @@ graphs:
       - id: 51c9e2d8-5bdc-4fce-9177-d2e650c011b0
         name: FeatureFilterNoErrors
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -510,7 +509,7 @@ graphs:
       - id: fc5b71bd-e34b-4381-b8f4-83919b5966df
         name: JsonWriterQcResultOk
         type: action
-        action: JsonWriter
+        action: JSON Writer
         with:
           converter:
             type: flowExpr
@@ -523,7 +522,7 @@ graphs:
       - id: b65d1e91-37a8-489a-87e3-fed91e5de294
         name: ZipFileWriter
         type: action
-        action: ZipFileWriter
+        action: Zip File Writer
         with:
           output:
             type: flowExpr

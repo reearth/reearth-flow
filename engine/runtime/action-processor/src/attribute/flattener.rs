@@ -19,7 +19,7 @@ pub(super) struct AttributeFlattenerFactory;
 
 impl ProcessorFactory for AttributeFlattenerFactory {
     fn name(&self) -> &str {
-        "AttributeFlattener"
+        "Attribute Flattener"
     }
 
     fn description(&self) -> &str {
@@ -124,7 +124,7 @@ impl Processor for AttributeFlattener {
     }
 
     fn name(&self) -> &str {
-        "AttributeFlattener"
+        "Attribute Flattener"
     }
 }
 

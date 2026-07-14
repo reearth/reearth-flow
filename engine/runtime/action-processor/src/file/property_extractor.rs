@@ -20,7 +20,7 @@ pub(super) struct FilePropertyExtractorFactory;
 
 impl ProcessorFactory for FilePropertyExtractorFactory {
     fn name(&self) -> &str {
-        "FilePropertyExtractor"
+        "File Property Extractor"
     }
 
     fn description(&self) -> &str {
@@ -198,7 +198,7 @@ impl Processor for FilePropertyExtractor {
     }
 
     fn name(&self) -> &str {
-        "FilePropertyExtractor"
+        "File Property Extractor"
     }
 }
 

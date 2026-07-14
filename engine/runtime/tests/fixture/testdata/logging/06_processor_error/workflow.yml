@@ -7,9 +7,9 @@ graphs:
     name: main_graph
     nodes:
       - id: a1fa0a3e-61d3-48e2-a328-e7226c2ad1ae
-        name: FeatureCreator
+        name: Feature Creator
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
           creator:
             type: flowExpr
@@ -17,7 +17,7 @@ graphs:
       - id: b1fa0a3e-61d3-48e2-a328-e7226c2ad1ae
         name: ErrorProcessor
         type: action
-        action: AttributeAggregator
+        action: Attribute Aggregator
         with:
           aggregateAttributes:
             - newAttribute: groupKey
@@ -26,9 +26,9 @@ graphs:
           calculationAttribute: totalCount
           method: count
       - id: c1fa0a3e-61d3-48e2-a328-e7226c2ad1ae
-        name: JsonWriter
+        name: JSON Writer
         type: action
-        action: JsonWriter
+        action: JSON Writer
         with:
           output:
             type: string

@@ -20,7 +20,7 @@ pub(crate) struct GeoPackageWriterFactory;
 
 impl SinkFactory for GeoPackageWriterFactory {
     fn name(&self) -> &str {
-        "GeoPackageWriter"
+        "GeoPackage Writer"
     }
 
     fn description(&self) -> &str {
@@ -205,7 +205,7 @@ impl AttributeType {
 
 impl Sink for GeoPackageWriter {
     fn name(&self) -> &str {
-        "GeoPackageWriter"
+        "GeoPackage Writer"
     }
 
     #[cfg(not(feature = "new-geometry"))]

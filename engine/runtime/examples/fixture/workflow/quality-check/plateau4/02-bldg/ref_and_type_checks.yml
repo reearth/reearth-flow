@@ -4,7 +4,7 @@ nodes:
   - id: ab309f69-4758-491b-831c-75ea5c0f05fe
     name: InputRouter
     type: action
-    action: InputRouter
+    action: Input Router
     with:
       routingPort: features
 
@@ -18,12 +18,11 @@ nodes:
   - id: 691a328a-f39b-403e-b62f-7525771b6f14
     name: L-bldg-Summary
     type: action
-    action: NoopSink
-
+    action: Noop Sink
   - id: 88c90fea-04d6-4e54-8ab1-4dc6386f6699
     name: AttributeManagerFrom
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: Attribute
@@ -45,7 +44,7 @@ nodes:
   - id: 2d024ca7-cb00-47bb-aa50-12a395a6c8b8
     name: AttributeManagerTo
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: Attribute
@@ -67,7 +66,7 @@ nodes:
   - id: 7c7dd820-2c7e-4e79-ab3f-1566fc4bd2ca
     name: AttributeMapperL-bldg-06
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: Index
@@ -98,7 +97,7 @@ nodes:
   - id: 99d8e9f0-1a2b-3c4d-5e6f-7a8b9c0d1e2f
     name: AttributeManagerLbldg06
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: gmlFilename
@@ -116,7 +115,7 @@ nodes:
   - id: 77a1b2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
     name: Lbldg06ErrorCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
       - gmlFilename
@@ -129,7 +128,7 @@ nodes:
   - id: 88b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
     name: ErrorCount-Lbldg06
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: errorCountLbldg06
 
@@ -142,7 +141,7 @@ nodes:
   - id: 690f9475-1821-4f50-8315-f00f53251a00
     name: FeatureFilterByBuildingInstallationGeometryType
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -153,7 +152,7 @@ nodes:
   - id: 38b305d1-d716-48da-b578-419e15f66b4b
     name: AttributeMapperT-bldg-02
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: Index
@@ -181,7 +180,7 @@ nodes:
   - id: 35e0e6d2-44f4-4e75-abce-5280c2b80a5d
     name: StatisticsCalculatorT-bldg-02
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
       - "cityGmlPath"
@@ -194,12 +193,11 @@ nodes:
   - id: 630081e4-0ea1-4fd3-ba31-8154b2980258
     name: NoopT-bldg-02
     type: action
-    action: NoopSink
-
+    action: Noop Sink
   - id: 99a1b2c3-4d5e-6f7a-8b9c-0d1e2f3a4b5c
     name: InvalidBldgInstGeomTypeCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
       - gmlFilename
@@ -212,14 +210,14 @@ nodes:
   - id: 88d2c3e4-5f6a-7b8c-9d0e-1f2a3b4c5d6e
     name: ErrorCount-InvalidBldgInstGeomType
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: errorCountInvalidBldgInstGeomType
 
   - id: aab0c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d
     name: FileOutputRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: fileOutput
 

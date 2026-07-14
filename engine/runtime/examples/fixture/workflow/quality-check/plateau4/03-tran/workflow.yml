@@ -31,7 +31,7 @@ graphs:
       - id: f9248705-3024-40b0-b729-66507ca6640d
         name: FeatureCreator
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
           creator:
             type: flowExpr
@@ -50,7 +50,7 @@ graphs:
       - id: 613c6d22-bf1c-4bbb-ba97-d85dd78d81ce
         name: DirectoryDecompressor
         type: action
-        action: DirectoryDecompressor
+        action: Directory Decompressor
         with:
           archiveAttributes:
             - codelists
@@ -70,7 +70,7 @@ graphs:
       - id: 01c49595-446f-482f-94db-5027f390b6cd
         name: FeatureFilePathExtractor
         type: action
-        action: FeatureFilePathExtractor
+        action: Feature File Path Extractor
         with:
           sourceDataset:
             type: flowExpr
@@ -81,7 +81,7 @@ graphs:
       - id: 24286bb9-1c30-49b7-afd8-e8dc73c85ed0
         name: FeatureFilterByGml
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -92,7 +92,7 @@ graphs:
       - id: c29be788-be8d-43a2-97bf-3e15228a72a1
         name: FeatureCounterFileIndex
         type: action
-        action: FeatureCounter
+        action: Feature Counter
         with:
           countStart: 1
           outputAttribute: fileIndex
@@ -111,7 +111,7 @@ graphs:
       - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13
         name: FeatureFilterByPackage
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
           - expr:
@@ -122,7 +122,7 @@ graphs:
       - id: 242e339a-c7df-4be4-82f7-3223a6ed2145
         name: FeatureCityGmlReader
         type: action
-        action: FeatureCityGmlReader
+        action: Feature CityGML Reader
         with:
           codelistsPath:
             type: flowExpr
@@ -134,7 +134,7 @@ graphs:
       - id: 10df06f3-cafa-4abd-ba94-04ac71dae467
         name: HorizontalReprojector
         type: action
-        action: HorizontalReprojector
+        action: Horizontal Reprojector
         with:
           targetEpsgCode:
             type: flowExpr
@@ -154,7 +154,7 @@ graphs:
       - id: 95a3af4f-4004-422b-bf86-d64181861bd5
         name: XlinkAttributeMapper
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: Folder
@@ -218,7 +218,7 @@ graphs:
       - id: d44341fa-7de4-41f5-abfd-7e0a3b1d9be8
         name: SurfaceValidationAttributeMapper
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: Folder
@@ -270,7 +270,7 @@ graphs:
       - id: 1c385359-698d-40df-aed8-e8b9b0eaac67
         name: FilterIncorrectOrientation
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -282,7 +282,7 @@ graphs:
       - id: 0740c8ce-3c27-416f-9a13-5b2086090426
         name: AttributeMapper
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: Folder
@@ -342,7 +342,7 @@ graphs:
       - id: ce7f18e8-c2cb-42e9-9b2e-9dd72f5ad964
         name: FeatureFilterExcludeRwy
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -354,8 +354,7 @@ graphs:
       - id: b4d2d577-28a0-43a3-8a23-0ae562be1d04
         name: TwoDimensionForcer
         type: action
-        action: TwoDimensionForcer
-
+        action: Two Dimension Forcer
       # Dissolve geometries by feature ID to get boundaries
       - id: c93837eb-e050-46f3-9c97-66d7273fe1e5
         name: Dissolver
@@ -373,7 +372,7 @@ graphs:
       - id: 0c979585-82b2-41aa-909c-00d9b8d017d0
         name: FeatureSorter
         type: action
-        action: FeatureSorter
+        action: Feature Sorter
         with:
           attributes: ["package"]
           order: ascending
@@ -382,7 +381,7 @@ graphs:
       - id: 37e634aa-67c0-4f70-8fdc-939854a3cc21
         name: GeometryExtractor
         type: action
-        action: GeometryExtractor
+        action: Geometry Extractor
         with:
           outputAttribute: 2d_geometry
 
@@ -398,7 +397,7 @@ graphs:
       - id: effce2ee-bc3b-4256-8efb-27622e141f05
         name: FeatureFilterLOD
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -436,7 +435,7 @@ graphs:
       - id: b03dfe7a-a32a-4334-90a1-23c7486576dc
         name: FilterOverlaps
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -448,7 +447,7 @@ graphs:
       - id: db59af73-a1b7-49d3-92c3-e8485cb047bd
         name: OverlapCounter
         type: action
-        action: FeatureCounter
+        action: Feature Counter
         with:
           countStart: 1
           outputAttribute: overlapIndex
@@ -457,7 +456,7 @@ graphs:
       - id: 227427f0-9267-4faa-ac6e-76e81f3ca5c2
         name: ListExploderForLineOverlaps
         type: action
-        action: ListExploder
+        action: List Exploder
         with:
           sourceAttribute: overlaidLists
 
@@ -473,7 +472,7 @@ graphs:
       - id: 2261a5c9-46a4-45ce-a292-d277a3dc0ebc
         name: GeometryReplacer
         type: action
-        action: GeometryReplacer
+        action: Geometry Replacer
         with:
           sourceAttribute: 2d_geometry
 
@@ -494,7 +493,7 @@ graphs:
       - id: b0568e70-1c73-4ee0-8bae-8db3687e3d7d
         name: FilterAreaOverlaps
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -506,7 +505,7 @@ graphs:
       - id: ee3e5022-7f8c-4b9b-ab71-cba35cab287b
         name: AreaOverlapCounter
         type: action
-        action: FeatureCounter
+        action: Feature Counter
         with:
           countStart: 0
           outputAttribute: areaOverlapIndex
@@ -534,7 +533,7 @@ graphs:
       - id: 2ccf00f0-202b-4bf5-b2a1-0c27a0e82a37
         name: ListExploderForAreaOverlaps
         type: action
-        action: ListExploder
+        action: List Exploder
         with:
           sourceAttribute: areaOverlapList
 
@@ -542,7 +541,7 @@ graphs:
       - id: 787f4304-c435-4d76-bd66-1fe3fb4ffc80
         name: OverlapAttributeMapper
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: Folder
@@ -601,7 +600,7 @@ graphs:
       - id: eac6a0cc-0785-4a12-852c-50cdd6f94f13
         name: FileInfoExtractor
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: Index
@@ -614,7 +613,7 @@ graphs:
       - id: f34d9a25-1b29-4ead-93ea-873cc5589bf1
         name: XlinkErrorCounter
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           groupBy:
           - Filename
@@ -628,7 +627,7 @@ graphs:
       - id: bb0de8b2-31f1-44ba-b996-0c8559deb61a
         name: OrientationErrorCounter
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           groupBy:
           - Filename
@@ -642,7 +641,7 @@ graphs:
       - id: 63c507b8-49e4-4e4c-a498-e997eba27e09
         name: OverlapErrorCounter
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           groupBy:
           - Filename
@@ -656,7 +655,7 @@ graphs:
       - id: 2ca88ff0-efc6-43ca-8c2b-f17606314754
         name: SurfaceValidationErrorCounter
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           groupBy:
           - Filename
@@ -670,7 +669,7 @@ graphs:
       - id: 71fde7fe-d34a-4318-893a-4d648c09361d
         name: ErrorSummaryMerger
         type: action
-        action: FeatureMerger
+        action: Feature Merger
         with:
           requestorAttributeValue:
             type: flowExpr
@@ -683,7 +682,7 @@ graphs:
       - id: 47d5cc94-c05c-4a37-bf8a-6e1eb118b44f
         name: SummaryAttributeMapper
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: Index
@@ -723,7 +722,7 @@ graphs:
       - id: 9068494f-dee6-41ca-aef2-3e493441ece2
         name: StatisticsCalculator
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           calculations:
             # Domain-specific error columns
@@ -770,7 +769,7 @@ graphs:
       - id: 8afa5b80-2470-4ecf-a7b9-ae9d6185e8fb
         name: StatisticsCalculatorTotalErrors
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           calculations:
             - newAttribute: totalErrorCount
@@ -782,7 +781,7 @@ graphs:
       - id: c105a305-322f-4710-b999-0c8c044f264a
         name: FeatureFilterNoErrors
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -794,7 +793,7 @@ graphs:
       - id: 6f05d51b-3587-4625-8b9d-5f0ca614eed5
         name: FileWriterQcResultOk
         type: action
-        action: JsonWriter
+        action: JSON Writer
         with:
           converter:
             type: flowExpr
@@ -807,7 +806,7 @@ graphs:
       - id: 02fb12bf-a5fc-4b0e-a568-178f5f3a3992
         name: ZipFileWriter
         type: action
-        action: ZipFileWriter
+        action: Zip File Writer
         with:
           output:
             type: flowExpr

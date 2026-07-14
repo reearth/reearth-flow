@@ -54,7 +54,7 @@ pub struct GeometrySplitterFactory;
 
 impl ProcessorFactory for GeometrySplitterFactory {
     fn name(&self) -> &str {
-        "GeometrySplitter"
+        "Geometry Splitter"
     }
 
     fn description(&self) -> &str {
@@ -174,7 +174,7 @@ impl Processor for GeometrySplitter {
     }
 
     fn name(&self) -> &str {
-        "GeometrySplitter"
+        "Geometry Splitter"
     }
 }
 

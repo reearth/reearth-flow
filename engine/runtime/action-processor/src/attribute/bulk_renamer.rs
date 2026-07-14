@@ -17,7 +17,7 @@ pub(super) struct BulkAttributeRenamerFactory;
 
 impl ProcessorFactory for BulkAttributeRenamerFactory {
     fn name(&self) -> &str {
-        "BulkAttributeRenamer"
+        "Bulk Attribute Renamer"
     }
 
     fn description(&self) -> &str {
@@ -172,7 +172,7 @@ impl Processor for BulkAttributeRenamer {
     }
 
     fn name(&self) -> &str {
-        "BulkAttributeRenamer"
+        "Bulk Attribute Renamer"
     }
 }
 

@@ -20,7 +20,7 @@ pub struct SqlReaderFactory;
 
 impl SourceFactory for SqlReaderFactory {
     fn name(&self) -> &str {
-        "SqlReader"
+        "SQL Reader"
     }
 
     fn description(&self) -> &str {
@@ -122,7 +122,7 @@ impl Source for SqlReader {
     async fn initialize(&self, _ctx: NodeContext) {}
 
     fn name(&self) -> &str {
-        "SqlReader"
+        "SQL Reader"
     }
 
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {

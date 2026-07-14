@@ -4,7 +4,7 @@ nodes:
   - id: 00f42e7e-080b-4927-933b-70fc8d8136b8
     name: InputRouter
     type: action
-    action: InputRouter
+    action: Input Router
     with:
       routingPort: features
 
@@ -18,7 +18,7 @@ nodes:
   - id: c760d4d3-7b61-4451-878e-58783cfcbf30
     name: FeatureFilePathExtractor
     type: action
-    action: FeatureFilePathExtractor
+    action: Feature File Path Extractor
     with:
       sourceDataset:
         type: flowExpr
@@ -29,7 +29,7 @@ nodes:
   - id: 5389e28d-e2fa-420d-97b9-a8e09c74afc4
     name: FeatureFilterByGml
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -51,7 +51,7 @@ nodes:
   - id: e86300b4-59a7-4714-ad89-3aa18ef201d8
     name: XMLFragmenter
     type: action
-    action: XMLFragmenter
+    action: XML Fragmenter
     with:
       source: url
       elementsToMatch:
@@ -65,7 +65,7 @@ nodes:
   - id: 5490fef1-320b-4789-9f5b-5401a9b99e41
     name: FeatureCounter
     type: action
-    action: FeatureCounter
+    action: Feature Counter
     with:
       countStart: 0
       outputAttribute: featureIndex
@@ -100,7 +100,7 @@ nodes:
   - id: a4b8150a-6241-46ac-849d-39be21d39d1b
     name: AttributeMapperRequired
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: package
@@ -134,7 +134,7 @@ nodes:
   - id: f70fe4c6-9dcf-4657-80fb-3edb59eae80d
     name: AttributeMapperTarget
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: package
@@ -158,7 +158,7 @@ nodes:
   - id: 8f12a3b4-c5d6-4e78-9f01-2a3b4c5d6e7f
     name: AttributeMapperC07
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: package
@@ -192,7 +192,7 @@ nodes:
   - id: a134b5c6-e7f8-4a90-b123-4c5d6e7f8a9b
     name: AttributeMapperC08
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: package
@@ -226,7 +226,7 @@ nodes:
   - id: 6b8c9d0e-7f8a-4b90-9c1d-2e3f4a5b6c7d
     name: AttributeManagerTotalErrorCount
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: totalErrorCount
@@ -251,14 +251,14 @@ nodes:
   - id: da1eaeee-4a50-4b6b-afee-3cfaf4887613
     name: OutputRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: features
 
   - id: 7d8e9f0a-1b2c-4d3e-5f6a-7b8c9d0e1f2a
     name: OutputRouterSummary
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: summaryOutput
 
@@ -266,7 +266,7 @@ nodes:
   - id: 1c2d3e4f-5a6b-7c8d-9e0f-1a2b3c4d5e6f
     name: StatisticsCalculatorC05PerFile
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - filename
@@ -280,7 +280,7 @@ nodes:
   - id: 2d3e4f5a-6b7c-8d9e-0f1a-2b3c4d5e6f7a
     name: StatisticsCalculatorC07PerFile
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - filename
@@ -294,7 +294,7 @@ nodes:
   - id: 3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b
     name: StatisticsCalculatorC08PerFile
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - filename
@@ -307,7 +307,7 @@ nodes:
   - id: 7c8d9e0f-1a2b-3c4d-5e6f-7a8b9c0d1e2f
     name: OutputRouterPerFile
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: perFileOutput
 

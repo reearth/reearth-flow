@@ -20,7 +20,7 @@ graphs:
       - id: 550e8400-e29b-41d4-a716-446655440020
         name: Generate-Post-Data
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
           creator:
             type: flowExpr
@@ -132,7 +132,7 @@ graphs:
       - id: 550e8400-e29b-41d4-a716-446655440040
         name: Save-Success
         type: action
-        action: JsonWriter
+        action: JSON Writer
         with:
           output:
             type: flowExpr
@@ -142,7 +142,7 @@ graphs:
       - id: 550e8400-e29b-41d4-a716-446655440050
         name: Save-Errors
         type: action
-        action: JsonWriter
+        action: JSON Writer
         with:
           output:
             type: flowExpr

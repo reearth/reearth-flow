@@ -19,7 +19,7 @@ pub(super) struct FeatureTransformerFactory;
 
 impl ProcessorFactory for FeatureTransformerFactory {
     fn name(&self) -> &str {
-        "FeatureTransformer"
+        "Feature Transformer"
     }
 
     fn description(&self) -> &str {
@@ -131,7 +131,7 @@ impl Processor for FeatureTransformer {
     }
 
     fn name(&self) -> &str {
-        "FeatureTransformer"
+        "Feature Transformer"
     }
 }
 

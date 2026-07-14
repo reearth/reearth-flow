@@ -4,7 +4,7 @@ nodes:
   - id: dfcdb977-e929-41b9-a3de-e368d158b5b9
     name: InputRouter
     type: action
-    action: InputRouter
+    action: Input Router
     with:
       routingPort: features
 
@@ -20,7 +20,7 @@ nodes:
   - id: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     name: FeatureFilterByFlag
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -63,70 +63,70 @@ nodes:
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d0
     name: SummaryRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: summary
 
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d1
     name: CodeValidationRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: codeValidation
 
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d8
     name: InCorrectCodeSpaceRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: inCorrectCodeSpace
 
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d2
     name: ExtentsValidationRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: extentsValidation
 
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d3
     name: GmlIdNotWellFormedRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: gmlIdNotWellFormed
 
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d4
     name: GmlIdNotUniqueRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: gmlIdNotUnique
 
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d5
     name: XlinkNoReferenceRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: xlinkNoReference
 
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d6
     name: XlinkInvalidObjectTypeRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: xlinkInvalidObjectType
 
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d7
     name: InvalidLodXGeometryRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: invalidLodXGeometry
 
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d9
     name: FileStatsRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: fileStats
 

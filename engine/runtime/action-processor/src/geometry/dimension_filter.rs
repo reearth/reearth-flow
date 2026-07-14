@@ -19,7 +19,7 @@ pub struct DimensionFilterFactory;
 
 impl ProcessorFactory for DimensionFilterFactory {
     fn name(&self) -> &str {
-        "DimensionFilter"
+        "Dimension Filter"
     }
 
     fn description(&self) -> &str {
@@ -125,6 +125,6 @@ impl Processor for DimensionFilter {
     }
 
     fn name(&self) -> &str {
-        "DimensionFilter"
+        "Dimension Filter"
     }
 }

@@ -11,11 +11,11 @@ pub struct EchoSinkFactory;
 
 impl SinkFactory for EchoSinkFactory {
     fn name(&self) -> &str {
-        "EchoSink"
+        "Echo Sink"
     }
 
     fn description(&self) -> &str {
-        "Debug Echo Features to Logs"
+        "Echoes features to logs and discards them."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -24,6 +24,10 @@ impl SinkFactory for EchoSinkFactory {
 
     fn categories(&self) -> &[&'static str] {
         &["Debug"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["logging"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -50,7 +54,7 @@ pub struct EchoSink;
 
 impl Sink for EchoSink {
     fn name(&self) -> &str {
-        "EchoSink"
+        "Echo Sink"
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {

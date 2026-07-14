@@ -19,7 +19,7 @@ pub struct ElevationExtractorFactory;
 
 impl ProcessorFactory for ElevationExtractorFactory {
     fn name(&self) -> &str {
-        "ElevationExtractor"
+        "Elevation Extractor"
     }
 
     fn description(&self) -> &str {
@@ -167,6 +167,6 @@ impl Processor for ElevationExtractor {
     }
 
     fn name(&self) -> &str {
-        "ElevationExtractor"
+        "Elevation Extractor"
     }
 }

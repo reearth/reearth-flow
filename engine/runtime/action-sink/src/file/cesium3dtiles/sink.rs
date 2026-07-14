@@ -27,7 +27,7 @@ pub struct Cesium3DTilesSinkFactory;
 
 impl SinkFactory for Cesium3DTilesSinkFactory {
     fn name(&self) -> &str {
-        "Cesium3DTilesWriter"
+        "Cesium 3D Tiles Writer"
     }
 
     fn description(&self) -> &str {
@@ -165,7 +165,7 @@ pub struct Cesium3DTilesWriterCompiledParam {
 
 impl Sink for Cesium3DTilesWriter {
     fn name(&self) -> &str {
-        "Cesium3DTilesWriter"
+        "Cesium 3D Tiles Writer"
     }
 
     #[cfg(not(feature = "new-geometry"))]

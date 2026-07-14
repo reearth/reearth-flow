@@ -44,8 +44,8 @@ export default ({
 
   const fetchRouterConfigs = useCallback(async () => {
     const [inputRouter, outputRouter] = await Promise.all([
-      fetcher<Action>(`${api}/actions/InputRouter`),
-      fetcher<Action>(`${api}/actions/OutputRouter`),
+      fetcher<Action>(`${api}/actions/${encodeURIComponent("Input Router")}`),
+      fetcher<Action>(`${api}/actions/${encodeURIComponent("Output Router")}`),
     ]);
     return { inputRouter, outputRouter };
   }, [api]);

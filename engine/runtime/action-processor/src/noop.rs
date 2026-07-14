@@ -14,11 +14,11 @@ pub struct NoopProcessorFactory;
 
 impl ProcessorFactory for NoopProcessorFactory {
     fn name(&self) -> &str {
-        "NoopProcessor"
+        "Noop Processor"
     }
 
     fn description(&self) -> &str {
-        "No-Operation Pass-Through Processor"
+        "Passes features through unchanged."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -70,6 +70,6 @@ impl Processor for NoopProcessor {
     }
 
     fn name(&self) -> &str {
-        "NoopProcessor"
+        "Noop Processor"
     }
 }
