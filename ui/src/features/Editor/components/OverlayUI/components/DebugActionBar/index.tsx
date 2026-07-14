@@ -72,6 +72,7 @@ const DebugActionBar: React.FC<Props> = ({
   refetchWorkflowVariables,
 }) => {
   const t = useT();
+  const { getNodes } = useReactFlow();
   const {
     showOverlayElement,
     debugRunStarted,
@@ -93,6 +94,27 @@ const DebugActionBar: React.FC<Props> = ({
     customDebugRunWorkflowVariables,
   });
 
+  const selectedNode = useMemo(
+    () =>
+      selectedNodeIds.length === 1
+        ? (getNodes().find((node) => node.id === selectedNodeIds[0]) as
+            | Node
+            | undefined)
+        : undefined,
+    [selectedNodeIds, getNodes],
+  );
+
+  const canRunDebugFromSelected =
+    !isSaving &&
+    !!selectedNode &&
+    selectedNode.type !== "batch" &&
+    selectedNode.type !== "note" &&
+    selectedNode.type !== "writer" &&
+    selectedNode.type !== "subworkflow" &&
+    getConnectedEdges([selectedNode], edges ?? []).length > 0 &&
+    !!debugJob &&
+    jobStatus === "completed";
+
   useHotkeys(DEBUG_HOT_KEYS, (event, handler) => {
     const hasModifier = event.metaKey || event.ctrlKey;
     const hasShift = event.shiftKey;
@@ -100,14 +122,18 @@ const DebugActionBar: React.FC<Props> = ({
     switch (handler.keys?.join("")) {
       case "enter":
         event.preventDefault();
-        if (hasModifier) {
-          onDebugRunStart();
+        if (hasModifier && hasShift) {
+          if (canRunDebugFromSelected) {
+            onDebugRunStartFromSelectedNode?.(selectedNode);
+          }
+        } else if (hasModifier) {
+          handleDebugRunStart();
         }
         break;
 
       case "escape":
         event.preventDefault();
-        onDebugRunStop();
+        handleDebugRunStop();
         break;
       case "backspace":
         event.preventDefault();

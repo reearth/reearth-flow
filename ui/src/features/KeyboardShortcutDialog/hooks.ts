@@ -84,6 +84,10 @@ export default () => {
         description: t("Paste the Copied Actions"),
       },
       {
+        keyBinding: CanvasKeyBindings["deleteNode"],
+        description: t("Delete the Selected Actions"),
+      },
+      {
         keyBinding: CanvasKeyBindings["spreadNodes"],
         description: t("Spread the Selected Actions"),
       },

@@ -22,7 +22,9 @@ export const GLOBAL_HOT_KEYS = [
 
 export const DEBUG_HOT_KEYS = [
   "meta+enter",
-  "ctrl+enter+r",
+  "ctrl+enter",
+  "shift+meta+enter",
+  "shift+ctrl+enter",
   "escape",
   "shift+meta+backspace",
   "shift+ctrl+backspace",

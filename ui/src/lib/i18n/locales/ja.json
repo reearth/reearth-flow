@@ -512,6 +512,7 @@
   "Copy the Selected Actions": "選択したアクションをコピー",
   "Cut the Selected Actions": "選択したアクションをカット",
   "Paste the Copied Actions": "コピーしたアクションを貼り付け",
+  "Delete the Selected Actions": "選択したアクションを削除",
   "Spread the Selected Actions": "選択したアクションを展開",
   "Compress the Selected Actions": "選択したアクションを圧縮",
   "Undo the Last Action": "最後のアクションを元に戻す",

@@ -512,6 +512,7 @@
   "Copy the Selected Actions": "复制所选操作",
   "Cut the Selected Actions": "剪切所选操作",
   "Paste the Copied Actions": "粘贴已复制的操作",
+  "Delete the Selected Actions": "删除所选操作",
   "Spread the Selected Actions": "展开所选操作",
   "Compress the Selected Actions": "压缩所选操作",
   "Undo the Last Action": "撤销上一步操作",

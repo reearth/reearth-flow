@@ -31,7 +31,8 @@ export type CanvasKeys =
   | "+" // zoom in
   | "=" // zoom in (alternative - depends on keyboard layout)
   | "-" // zoom out
-  | "0"; // fit view
+  | "0" // fit view
+  | "Backspace"; // delete selected nodes (handled by react flow's default deleteKeyCode)
 
 export type DebugKeys = "Enter" | "Escape" | "Backspace";
 
@@ -47,6 +48,7 @@ type PossibleActions =
   | "copy"
   | "cut"
   | "paste"
+  | "deleteNode"
   | "undo"
   | "redo"
   | "disableNode"
@@ -65,7 +67,6 @@ type PossibleActions =
   | "startDebugRun"
   | "runDebugFromSelected"
   | "cancelDebugRun"
-  | "openDebugRuns"
   | "clearDebugResults";
 
 export type KeyBinding<K extends PossibleKeys = PossibleKeys> = {
@@ -114,6 +115,7 @@ export const CanvasKeyBindings: Partial<
   copy: { key: "c", commandKey: true },
   cut: { key: "x", commandKey: true },
   paste: { key: "v", commandKey: true },
+  deleteNode: { key: "Backspace" },
   undo: { key: "z", commandKey: true },
   redo: { key: "z", commandKey: true, shiftKey: true },
   disableNode: { key: "e", commandKey: true },

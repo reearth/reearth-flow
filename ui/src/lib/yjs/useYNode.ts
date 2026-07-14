@@ -402,7 +402,7 @@ export default ({
     [currentYWorkflow, undoTrackerActionWrapper],
   );
 
-  const handleYNodesSelectAllNodes = useCallback(() => {
+  const handleYNodesSelectAll = useCallback(() => {
     const yNodes = currentYWorkflow?.get("nodes") as YNodesMap | undefined;
     if (!yNodes) return;
 
@@ -413,7 +413,7 @@ export default ({
   return {
     handleYNodesAdd,
     handleYNodesChange,
-    handleYNodesSelectAllNodes,
+    handleYNodesSelectAll,
     handleYNodesDataUpdate,
     handleYNodeSchemaUpdate,
   };
