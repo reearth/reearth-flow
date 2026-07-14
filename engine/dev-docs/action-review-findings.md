@@ -14,36 +14,6 @@ Phase 3 quality review of the 73 base actions against [action-standard.md](actio
 
 ---
 
-## Debug (5)
-
-<!-- Session 1 -->
-
-```
-Echo Processor
-  desc:    not imperative — "Debug Echo Features to Logs"; suggest "Echo features to logs and pass them through unchanged."
-  tags:    empty — `debug` duplicates category (§6); no other established vocabulary terms apply; consider proposing `logging`
-
-Echo Sink
-  desc:    not imperative — identical to EchoProcessor; suggest "Echo features to logs and discard them."
-  tags:    empty — same constraint as EchoProcessor
-
-Feature Counter
-  params:  countStart — marked required but has a sensible default (0 or 1); should be optional with a schema default (§3.2)
-           outputAttribute — title "Output Attribute" is generic; suggest "Count Attribute" (§3.3)
-           ordering — `groupBy` (optional) is defined between two required params; once countStart is made optional, correct order: outputAttribute → countStart → groupBy (§3.5)
-  tags:    empty — suggest ["aggregation", "attribute"]; `debug` duplicates category (§6)
-
-Noop Processor
-  desc:    noun phrase — "No-Operation Pass-Through Processor"; suggest "Pass features through unchanged."
-  tags:    empty — `debug` duplicates category (§6); no other established vocabulary terms apply
-
-Noop Sink
-  desc:    noun phrase with parenthetical — "No-Operation Sink (Discard Features)"; suggest "Discard all incoming features."
-  tags:    empty — same constraint as NoopProcessor
-```
-
----
-
 ## Input (10)
 
 <!-- Session 2 -->

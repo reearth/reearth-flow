@@ -18,7 +18,7 @@ impl ProcessorFactory for NoopProcessorFactory {
     }
 
     fn description(&self) -> &str {
-        "No-Operation Pass-Through Processor"
+        "Passes features through unchanged."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
