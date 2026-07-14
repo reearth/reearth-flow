@@ -5,7 +5,7 @@
 use std::sync::Arc;
 
 use nusamai_projection::crs::{EPSG_WGS84_GEOGRAPHIC_2D, EPSG_WGS84_GEOGRAPHIC_3D};
-use reearth_flow_geometry::types::conversion::is_2d_geojson_value;
+use reearth_flow_geometry::types::conversion::{is_2d_geojson_value, is_3d_geojson_value};
 use reearth_flow_geometry::{
     collection::{Collection2D, Collection3D},
     coordinate::{CoordinateFrame, EpsgCode},
@@ -68,12 +68,15 @@ fn wgs84_3d() -> CoordinateFrame {
 }
 
 fn geojson_value_to_geometry(value: geojson::Value) -> Result<Geometry> {
+    // Every coordinate must be uniformly 2D or uniformly 3D. Anything else
+    // (mixed dimensions, degenerate/short coords, GeometryCollection) is rejected
+    // rather than indexed into blindly, which would panic.
     if is_2d_geojson_value(&value) {
         Ok(Geometry::Euclidean2D(value_to_2d(value)?))
-    } else {
-        // GeometryCollection and mixed-dimension values fall here; unsupported ones
-        // error in `value_to_3d`, matching the old reader.
+    } else if is_3d_geojson_value(&value) {
         Ok(Geometry::Euclidean3D(value_to_3d(value)?))
+    } else {
+        Err(unsupported(&value))
     }
 }
 
@@ -130,11 +133,15 @@ fn value_to_3d(value: geojson::Value) -> Result<Euclidean3DGeometry> {
 }
 
 fn unsupported(value: &geojson::Value) -> Error {
-    let name = match value {
-        geojson::Value::GeometryCollection(_) => "GeometryCollection",
-        _ => "geometry",
-    };
-    Error::unsupported_feature(format!("unsupported GeoJSON {name}"))
+    match value {
+        geojson::Value::GeometryCollection(_) => {
+            Error::unsupported_feature("GeoJSON GeometryCollection is not supported")
+        }
+        _ => Error::unsupported_feature(
+            "GeoJSON geometry has mixed or unsupported coordinate dimensions \
+             (every coordinate must be uniformly 2D or 3D)",
+        ),
+    }
 }
 
 fn collection_2d(members: impl IntoIterator<Item = Euclidean2DGeometry>) -> Euclidean2DGeometry {
@@ -428,6 +435,29 @@ mod tests {
         let gj = geojson_feature(geojson::Value::GeometryCollection(vec![
             geojson::Geometry::new(geojson::Value::Point(vec![0.0, 0.0])),
         ]));
+
+        let result: Result<Feature> = gj.try_into();
+
+        assert!(result.is_err());
+    }
+
+    // Mixed-dimension coordinates are rejected, not panicked on.
+    #[test]
+    fn mixed_dimension_multi_point_is_unsupported() {
+        let gj = geojson_feature(geojson::Value::MultiPoint(vec![
+            vec![0.0, 0.0],      // 2D
+            vec![1.0, 1.0, 1.0], // 3D
+        ]));
+
+        let result: Result<Feature> = gj.try_into();
+
+        assert!(result.is_err());
+    }
+
+    // A degenerate coordinate (fewer than 2 elements) is rejected, not panicked on.
+    #[test]
+    fn degenerate_coordinate_is_unsupported() {
+        let gj = geojson_feature(geojson::Value::Point(vec![0.0]));
 
         let result: Result<Feature> = gj.try_into();
 
