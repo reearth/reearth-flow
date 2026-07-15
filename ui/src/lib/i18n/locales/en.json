@@ -446,7 +446,6 @@
   "Feature attribute map — throws if key is missing": "",
   "Feature attribute map — returns fallback/null if key is missing": "",
   "Read an environment variable": "",
-  "Construct a URL/path value": "",
   "Convert to string": "",
   "Convert to integer": "",
   "Convert to float": "",

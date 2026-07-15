@@ -170,13 +170,6 @@ export const getFlowExprAutocompleteSuggestions = (
     detail: 'env["VAR_NAME"] → string',
   },
   {
-    label: "Url",
-    insertText: "Url({{cursor}})",
-    type: "function",
-    description: t("Construct a URL/path value"),
-    detail: "Url(path: string) → Url",
-  },
-  {
     label: "str",
     insertText: "str({{cursor}})",
     type: "function",

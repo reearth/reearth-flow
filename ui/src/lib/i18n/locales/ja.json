@@ -446,7 +446,6 @@
   "Feature attribute map — throws if key is missing": "フィーチャー属性マップ — キーが存在しない場合は例外をスロー",
   "Feature attribute map — returns fallback/null if key is missing": "フィーチャー属性マップ — キーが存在しない場合はフォールバック/ヌルを返す",
   "Read an environment variable": "環境変数を読み取る",
-  "Construct a URL/path value": "URL/パスの値を構築する",
   "Convert to string": "文字列に変換",
   "Convert to integer": "整数に変換",
   "Convert to float": "浮動小数点に変換",

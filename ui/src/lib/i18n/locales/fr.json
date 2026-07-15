@@ -446,7 +446,6 @@
   "Feature attribute map — throws if key is missing": "Carte des attributs de fonctionnalité : lance une erreur si la clé est manquante",
   "Feature attribute map — returns fallback/null if key is missing": "Carte des attributs de fonctionnalité : renvoie une valeur de repli/nulle si la clé est manquante",
   "Read an environment variable": "Lire une variable d'environnement",
-  "Construct a URL/path value": "Construire une valeur d'URL/chemin",
   "Convert to string": "Convertir en chaîne",
   "Convert to integer": "Convertir en entier",
   "Convert to float": "Convertir en flottant",

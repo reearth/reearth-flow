@@ -446,7 +446,6 @@
   "Feature attribute map — throws if key is missing": "特征属性映射 — 如果键缺失则抛出异常",
   "Feature attribute map — returns fallback/null if key is missing": "特征属性映射 — 如果键缺失则返回备用值/空值",
   "Read an environment variable": "读取环境变量",
-  "Construct a URL/path value": "构建URL/路径值",
   "Convert to string": "转换为字符串",
   "Convert to integer": "转换为整数",
   "Convert to float": "转换为浮点数",
