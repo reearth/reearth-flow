@@ -860,6 +860,11 @@ impl TestContext {
         strip_geojson_feature_ids(&mut expected);
         strip_geojson_feature_ids(&mut actual);
 
+        // Reprojected coordinates differ in the last bits across platforms and
+        // PROJ builds; round them before comparing.
+        round_geojson_coordinates(&mut expected);
+        round_geojson_coordinates(&mut actual);
+
         // Features may arrive in a non-deterministic order when several parallel
         // branches feed one writer; compare order-independently.
         sort_geojson_features(&mut expected);
@@ -1400,6 +1405,42 @@ fn strip_geojson_feature_ids(value: &mut serde_json::Value) {
     }
 }
 
+/// Number of decimal places kept when comparing GeoJSON geometry coordinates.
+const GEOJSON_COORDINATE_DECIMALS: i32 = 6;
+
+/// Round every number inside each feature's "geometry" so the comparison
+/// tolerates platform-dependent floating-point differences.
+fn round_geojson_coordinates(value: &mut serde_json::Value) {
+    if let Some(features) = value.get_mut("features").and_then(|f| f.as_array_mut()) {
+        for feature in features {
+            if let Some(geometry) = feature.get_mut("geometry") {
+                round_json_numbers(geometry);
+            }
+        }
+    }
+}
+
+fn round_json_numbers(value: &mut serde_json::Value) {
+    match value {
+        serde_json::Value::Number(n) => {
+            if let Some(v) = n.as_f64() {
+                let scale = 10f64.powi(GEOJSON_COORDINATE_DECIMALS);
+                let mut rounded = (v * scale).round() / scale;
+                if rounded == 0.0 {
+                    // Normalize -0.0 so it serializes identically to 0.0.
+                    rounded = 0.0;
+                }
+                if let Some(rounded) = serde_json::Number::from_f64(rounded) {
+                    *n = rounded;
+                }
+            }
+        }
+        serde_json::Value::Array(values) => values.iter_mut().for_each(round_json_numbers),
+        serde_json::Value::Object(map) => map.values_mut().for_each(round_json_numbers),
+        _ => {}
+    }
+}
+
 /// Sort the `features` array by a canonical serialization so the comparison
 /// ignores non-deterministic feature order.
 fn sort_geojson_features(value: &mut serde_json::Value) {
@@ -1423,6 +1464,7 @@ include!(concat!(env!("OUT_DIR"), "/generated_tests.rs"));
 #[cfg(test)]
 mod tests {
     use super::*;
+    use pretty_assertions::{assert_eq, assert_ne};
     use std::path::PathBuf;
     use tempfile::TempDir;
     use walkdir::WalkDir;
@@ -1540,6 +1582,48 @@ mod tests {
         assert!(parsed.get("id").is_some());
         assert!(parsed.get("attributes").is_some());
         assert!(parsed.get("geometry").is_none());
+        Ok(())
+    }
+
+    #[test]
+    fn test_round_geojson_coordinates() -> Result<()> {
+        let mut expected: serde_json::Value = serde_json::json!({
+            "type": "FeatureCollection",
+            "features": [{
+                "type": "Feature",
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [[
+                        [14515.572361112912, -146047.138111462, -5.560003417810943e-18],
+                        [14515.572361114655, -146047.13811035294, 5.560003631216896e-18]
+                    ]]
+                },
+                "properties": {"lod": "2"}
+            }]
+        });
+        let mut actual: serde_json::Value = serde_json::json!({
+            "type": "FeatureCollection",
+            "features": [{
+                "type": "Feature",
+                "geometry": {
+                    "type": "Polygon",
+                    "coordinates": [[
+                        [14515.57236111293, -146047.13811146157, -5.560003418924753e-18],
+                        [14515.572361114673, -146047.13811035265, 5.560003632330706e-18]
+                    ]]
+                },
+                "properties": {"lod": "2"}
+            }]
+        });
+
+        assert_ne!(actual, expected);
+        round_geojson_coordinates(&mut expected);
+        round_geojson_coordinates(&mut actual);
+        assert_eq!(actual, expected);
+
+        // Tiny values of opposite signs must both normalize to plain 0.0.
+        let z = &actual["features"][0]["geometry"]["coordinates"][0][0][2];
+        assert_eq!(z.to_string(), "0.0");
         Ok(())
     }
 
