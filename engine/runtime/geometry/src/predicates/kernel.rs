@@ -400,16 +400,25 @@ pub fn coord_pos_relative_to_ring(coord: [f64; 2], ring: &[[f64; 2]]) -> CoordPo
             CoordPos::Outside
         };
     }
+    coord_pos_relative_to_edges(coord, ring.windows(2).map(|e| (e[0], e[1])))
+}
 
+/// Point-in-ring by winding number over a directed edge iterator — the same
+/// algorithm as [`coord_pos_relative_to_ring`] but over any edge source, so
+/// indexed mesh rings feed it without a contiguous copy. The edges must form
+/// one or more closed loops; a zero-length edge contributes nothing (unless the
+/// coordinate sits on it, which is on-boundary).
+pub fn coord_pos_relative_to_edges(
+    coord: [f64; 2],
+    edges: impl Iterator<Item = ([f64; 2], [f64; 2])>,
+) -> CoordPos {
     // Winding number with the standard edge-crossing rules:
     //   1. an upward edge includes its start, excludes its end;
     //   2. a downward edge excludes its start, includes its end;
     //   3. horizontal edges are ignored;
     //   4. the crossing must be strictly right of `coord`.
     let mut winding_number: i32 = 0;
-    for edge in ring.windows(2) {
-        let start = edge[0];
-        let end = edge[1];
+    for (start, end) in edges {
         if start[1] <= coord[1] {
             if end[1] >= coord[1] {
                 let o = orient2d(start, end, coord);
@@ -436,6 +445,32 @@ pub fn coord_pos_relative_to_ring(coord: [f64; 2], ring: &[[f64; 2]]) -> CoordPo
     } else {
         CoordPos::Inside
     }
+}
+
+/// Whether `p` lies on the closed segment `[a, b]`: robustly collinear and
+/// within the segment's bounding box.
+#[inline]
+pub fn point_on_segment(p: [f64; 2], a: [f64; 2], b: [f64; 2]) -> bool {
+    orient2d(a, b, p) == Orientation::Collinear && point_in_bbox(p, a, b)
+}
+
+/// Whether the rays `origin -> u` and `origin -> w` point in the same direction:
+/// robustly collinear with matching per-axis difference signs. The sign of an
+/// IEEE subtraction is exact, so this is exact for distinct endpoints.
+#[inline]
+pub fn same_direction(origin: [f64; 2], u: [f64; 2], w: [f64; 2]) -> bool {
+    fn sign(v: f64) -> i8 {
+        if v > 0.0 {
+            1
+        } else if v < 0.0 {
+            -1
+        } else {
+            0
+        }
+    }
+    orient2d(origin, u, w) == Orientation::Collinear
+        && sign(u[0] - origin[0]) == sign(w[0] - origin[0])
+        && sign(u[1] - origin[1]) == sign(w[1] - origin[1])
 }
 
 // --- small numeric helpers (ports of legacy `intersects`/`utils`) -----------
