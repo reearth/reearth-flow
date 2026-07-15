@@ -1790,7 +1790,7 @@
       "description": "将实体写入文件",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "Cesium3DTilesWriter Parameters",
+        "title": "Cesium3DTilesWriter 参数",
         "type": "object",
         "required": [
           "maxZoom",
@@ -1799,8 +1799,8 @@
         ],
         "properties": {
           "output": {
-            "title": "Output Path",
-            "description": "Directory path where the 3D tiles will be written",
+            "title": "输出路径",
+            "description": "写入 3D Tiles 的目录路径",
             "type": "object",
             "format": "code",
             "required": [
@@ -1821,30 +1821,30 @@
             }
           },
           "minZoom": {
-            "title": "Minimum Zoom Level",
-            "description": "Minimum zoom level for tile generation (0-24)",
+            "title": "最小缩放级别",
+            "description": "瓦片生成的最小缩放级别（0-24）",
             "type": "integer",
             "format": "uint8",
             "minimum": 0.0
           },
           "maxZoom": {
-            "title": "Maximum Zoom Level",
-            "description": "Maximum zoom level for tile generation (0-24)",
+            "title": "最大缩放级别",
+            "description": "瓦片生成的最大缩放级别（0-24）",
             "type": "integer",
             "format": "uint8",
             "minimum": 0.0
           },
           "attachTexture": {
-            "title": "Attach Textures",
-            "description": "Whether to include texture information in the generated tiles",
+            "title": "附加纹理",
+            "description": "是否在生成的瓦片中包含纹理信息",
             "type": [
               "boolean",
               "null"
             ]
           },
           "compressOutput": {
-            "title": "Compressed Output Path",
-            "description": "Optional path for compressed archive output",
+            "title": "压缩输出路径",
+            "description": "压缩归档输出的可选路径",
             "type": [
               "object",
               "null"
@@ -1868,24 +1868,32 @@
             }
           },
           "dracoCompression": {
-            "title": "Draco Compression",
-            "description": "Use draco compression. Defaults to true.",
+            "title": "Draco 压缩",
+            "description": "使用 Draco 压缩。默认为 true。",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "computeFlatNormal": {
+            "title": "计算平面法线",
+            "description": "为光照计算逐多边形的平面法线。默认为 true。禁用时不写入法线，网格更小，但瓦片不包含光照数据（查看器需自行推导平面法线）。",
             "type": [
               "boolean",
               "null"
             ]
           },
           "skipUnexposedAttributes": {
-            "title": "Skip unexposed Attributes",
-            "description": "Skip attributes with double underscore prefix",
+            "title": "跳过未公开属性",
+            "description": "跳过带有双下划线前缀的属性",
             "type": [
               "boolean",
               "null"
             ]
           },
           "schemaKey": {
-            "title": "Schema Key",
-            "description": "Attribute key whose value identifies the schema type and determines the output filename: all features sharing the same value are written to the same file. This attribute is excluded from output.",
+            "title": "模式键",
+            "description": "其值用于标识模式类型并决定输出文件名的属性键：所有具有相同值的实体都写入同一文件。该属性会从输出中排除。",
             "type": [
               "string",
               "null"

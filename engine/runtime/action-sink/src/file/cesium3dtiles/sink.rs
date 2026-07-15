@@ -102,6 +102,8 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
                 attach_texture: params.attach_texture,
                 compress_output,
                 draco_compression: params.draco_compression,
+                #[cfg(feature = "new-geometry")]
+                compute_flat_normal: params.compute_flat_normal,
                 skip_unexposed_attributes: params.skip_unexposed_attributes.unwrap_or(false),
                 schema_key: params.schema_key,
             },
@@ -141,6 +143,11 @@ pub struct Cesium3DTilesWriterParam {
     /// # Draco Compression
     /// Use draco compression. Defaults to true.
     pub(super) draco_compression: Option<bool>,
+    /// # Compute Flat Normals
+    /// Compute per-polygon flat normals for lighting. Defaults to true.
+    /// When disabled, no normals are written and the mesh is smaller, but the
+    /// tile carries no lighting data (a viewer must derive flat normals itself).
+    pub(super) compute_flat_normal: Option<bool>,
     /// # Skip unexposed Attributes
     /// Skip attributes with double underscore prefix
     pub(super) skip_unexposed_attributes: Option<bool>,
@@ -159,6 +166,8 @@ pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) attach_texture: Option<bool>,
     pub(super) compress_output: Option<CompiledCode>,
     pub(super) draco_compression: Option<bool>,
+    #[cfg(feature = "new-geometry")]
+    pub(super) compute_flat_normal: Option<bool>,
     pub(super) skip_unexposed_attributes: bool,
     pub(super) schema_key: Option<String>,
 }

@@ -616,6 +616,10 @@
           "title": "圧縮出力パス",
           "description": "圧縮アーカイブ出力の出力先パス（任意）"
         },
+        "computeFlatNormal": {
+          "title": "フラット法線を計算",
+          "description": "ライティング用にポリゴンごとのフラット法線を計算する。デフォルトは true。無効にすると法線は出力されずメッシュは小さくなるが、タイルにライティング情報が含まれないため、ビューアー側でフラット法線を導出する必要がある。"
+        },
         "dracoCompression": {
           "title": "Draco 圧縮",
           "description": "Draco 圧縮を使用する。デフォルトは true。"
