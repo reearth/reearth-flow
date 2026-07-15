@@ -604,10 +604,12 @@ mod diagnostics_tests {
     #[test]
     fn empty_geometry_feature_is_reported_not_warned() {
         let handle = Arc::new(NodeDiagnosticsHandle::new(
+            "n1".to_string(),
             test_node_handle("n1"),
             "writer".into(),
             "Cesium 3D Tiles Writer".into(),
             Arc::default(),
+            Arc::new(reearth_flow_diagnostics::DispositionPolicy::default()),
         ));
         let node_ctx = NodeContext::default();
         let mut ctx = ExecutorContext::new_with_node_context_feature_and_port(

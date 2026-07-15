@@ -442,10 +442,12 @@ mod diagnostics_tests {
         let storage_resolver = Arc::new(StorageResolver::new());
 
         let handle = Arc::new(NodeDiagnosticsHandle::new(
+            "n1".to_string(),
             test_node_handle("n1"),
             "writer".into(),
             "CityGML Writer".into(),
             Arc::default(),
+            Arc::new(reearth_flow_diagnostics::DispositionPolicy::default()),
         ));
 
         // `Feature::from` on an empty attribute map carries `GeometryValue::None`,

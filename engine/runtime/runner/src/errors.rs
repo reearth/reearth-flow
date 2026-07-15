@@ -51,4 +51,15 @@ pub enum Error {
     /// could originate from any node kind, or be synthesized).
     #[error("{0}")]
     FailedNodes(String),
+    /// The workflow's `errorPolicy` block failed structural validation
+    /// (`ErrorPolicy::validate`), registry-aware compilation
+    /// (`DispositionPolicy::compile`), or load-time node-selector matching
+    /// (`policy::validate_node_selectors`) — every message collected, one
+    /// per line. Surfaced by `Orchestrator::run_apps` before DAG
+    /// construction (validate/compile) or right after (node matching),
+    /// aborting the run the same way a workflow-parse failure aborts it
+    /// upstream in the worker, just via this crate's `Error` type rather
+    /// than `Workflow::try_from`'s.
+    #[error("workflow errorPolicy is invalid:\n{0}")]
+    PolicyValidationError(String),
 }

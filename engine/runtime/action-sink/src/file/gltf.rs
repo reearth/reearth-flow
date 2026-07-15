@@ -764,10 +764,12 @@ mod diagnostics_tests {
     #[test]
     fn zero_face_solid_is_reported_not_silently_dropped() {
         let handle = Arc::new(NodeDiagnosticsHandle::new(
+            "n1".to_string(),
             test_node_handle("n1"),
             "writer".into(),
             "GltfWriter".into(),
             Arc::default(),
+            Arc::new(reearth_flow_diagnostics::DispositionPolicy::default()),
         ));
         let node_ctx = NodeContext::default();
         let feature = Feature::from(IndexMap::<String, AttributeValue>::new());

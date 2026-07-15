@@ -37,6 +37,26 @@ pub struct NodeType {
     /// True for OutputRouter nodes inside subgraphs: port-based intermediate
     /// data is named `<prefix>.<port>` rather than `<prefix>.<node_id>.<port>`.
     pub is_subgraph_output: bool,
+    /// The action string this node was built from, propagated from
+    /// `builder_dag::NodeType::action`. Persisted for the same `kind`-is-
+    /// `take()`n reason as `is_source` above: node loops need it after
+    /// `kind` is gone, for diagnostics attribution and policy resolution.
+    pub action: String,
+}
+
+impl NodeType {
+    /// The node's identity for diagnostics/logging/policy resolution.
+    /// Mirrors `builder_dag::NodeType::composed_id` exactly (same dotted
+    /// `"{subgraph_prefix}.{handle.id}"` convention) — duplicated rather
+    /// than shared because this is a distinct struct from
+    /// `builder_dag::NodeType` (see the module doc on why `ExecutionDag`
+    /// keeps its own `NodeType`); keep the two in sync.
+    pub fn composed_id(&self) -> String {
+        match &self.subgraph_prefix {
+            Some(prefix) => format!("{prefix}.{}", self.handle.id),
+            None => self.handle.id.to_string(),
+        }
+    }
 }
 
 #[derive(Clone)]
@@ -132,6 +152,7 @@ impl ExecutionDag {
                 output_ports: node.output_ports.clone(),
                 subgraph_prefix: node.subgraph_prefix.clone(),
                 is_subgraph_output: node.is_subgraph_output,
+                action: node.action.clone(),
             },
             |edge_index, _| {
                 edges[edge_index.index()]

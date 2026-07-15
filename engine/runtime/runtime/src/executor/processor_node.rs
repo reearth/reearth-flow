@@ -95,6 +95,7 @@ pub struct ProcessorNode<F> {
 }
 
 impl<F: Future + Unpin + Debug> ProcessorNode<F> {
+    #[allow(clippy::too_many_arguments)]
     pub async fn new(
         ctx: NodeContext,
         dag: &mut ExecutionDag,
@@ -103,16 +104,31 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
         runtime: Arc<Handle>,
         incremental_mode: bool,
         warn_once: reearth_flow_diagnostics::WarnOnceSet,
+        disposition_policy: Arc<reearth_flow_diagnostics::DispositionPolicy>,
     ) -> Self {
         let node = dag.node_weight_mut(node_index);
+        let node_handle = node.handle.clone();
+        let node_name = node.name.clone();
+        let composed_id = node.composed_id();
+        let action = node.action.clone();
         let Some(kind) = node.kind.take() else {
             panic!("Must pass in a node")
         };
-        let node_handle = node.handle.clone();
-        let node_name = node.name.clone();
         let NodeKind::Processor(processor) = kind else {
             panic!("Must pass in a processor node");
         };
+        // NOTE: `action` is NOT asserted equal to `processor.name()` here.
+        // `builder_dag.rs`'s `ActionNameMismatch` check validates the
+        // *factory's* `ProcessorFactory::name()` against `node.node.action()`
+        // at build time — that's `action`'s provenance. The *built instance*'s
+        // `Processor::name()` (`processor` here) is a different trait and is
+        // not guaranteed to match: e.g. `UDXFolderExtractorFactory::name()`
+        // returns a PLATEAU-profile-namespaced key ("PLATEAU6.
+        // UDXFolderExtractor", the registry/action-selection identity) while
+        // the built `UDXFolderExtractor::name()` hardcodes the generic
+        // "UDXFolderExtractor" (a display label shared across profiles) — a
+        // real, intentional divergence discovered by an earlier (now-removed)
+        // assertion here against the quality-check workflow fixtures.
         let (node_handles, receivers) = dag.collect_receivers(node_index);
 
         let senders = dag.collect_senders(node_index);
@@ -133,7 +149,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             "otel.name" = processor.name(),
             "otel.kind" = "Processor Node",
             "workflow.id" = dag.id.to_string().as_str(),
-            "node.id" = node_handle.id.to_string().as_str(),
+            "node.id" = composed_id.as_str(),
             "node.name" = node_name.as_str(),
         );
 
@@ -148,10 +164,12 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
         let feature_state = dag.feature_state();
 
         let diagnostics = Arc::new(crate::diagnostics::NodeDiagnosticsHandle::new(
+            composed_id,
             node_handle.clone(),
             node_name.clone(),
-            processor.name().to_string(),
+            action,
             warn_once,
+            disposition_policy,
         ));
 
         Self {
@@ -195,6 +213,18 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
     /// `run()`/`receiver_loop()` so the summaries can still be read after.
     pub fn summaries_sink(&self) -> Arc<parking_lot::Mutex<Vec<Diagnostic>>> {
         self.summaries_sink.clone()
+    }
+
+    /// This node's `(composed_id, action)`, read off the same diagnostics
+    /// handle every `report()`/`report_drop()` call resolves against.
+    /// `start_processor` (`dag_executor.rs`) carries this alongside the
+    /// spawned thread's `JoinHandle` so the collect-all fold can attribute a
+    /// synthesized failure diagnostic to this node.
+    pub fn node_meta(&self) -> super::dag_executor::NodeMeta {
+        super::dag_executor::NodeMeta {
+            composed_id: self.diagnostics.inner.node_id().to_string(),
+            action: self.diagnostics.inner.action_type().to_string(),
+        }
     }
 
     /// Wait until the thread pool has capacity to accept a new task.

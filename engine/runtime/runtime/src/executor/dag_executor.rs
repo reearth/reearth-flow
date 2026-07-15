@@ -52,8 +52,21 @@ pub struct NodeOutcome {
 
 type NodeThreadResult = (NodeOutcome, Result<(), ExecutionError>);
 
+/// A node thread's identity, carried alongside its `JoinHandle` so the
+/// collect-all fold (`fold_outcomes`) can attribute a synthesized failure
+/// diagnostic — `node_id`/`action_type` on `Diagnostic` — to the node whose
+/// thread produced it, even when the underlying `ExecutionError` doesn't
+/// carry a recoverable structured `Diagnostic` of its own. `composed_id` is
+/// `builder_dag::NodeType::composed_id()` (subgraph-prefixed where
+/// applicable); `action` is the builder's validated action string.
+#[derive(Debug, Clone)]
+pub struct NodeMeta {
+    pub composed_id: String,
+    pub action: String,
+}
+
 pub struct DagExecutorJoinHandle {
-    join_handles: Vec<JoinHandle<NodeThreadResult>>,
+    join_handles: Vec<(NodeMeta, JoinHandle<NodeThreadResult>)>,
     notify: Arc<Notify>,
     executor_id: uuid::Uuid,
     /// The event-subscriber's own tokio task, retained so callers can await
@@ -94,6 +107,21 @@ impl DagExecutor {
         })
     }
 
+    /// `(composed_id, raw_id)` for every node in the built DAG, before
+    /// `start()` consumes `self`. The runner's load-time policy-override
+    /// node-matching check (spec 4.2 — every override's `node` value must
+    /// name a composed id in the flattened DAG, and a RAW id that names more
+    /// than one composed id, i.e. a multiply-instantiated subgraph, is
+    /// ambiguous) needs both halves: `composed_id` to check membership,
+    /// `raw_id` to detect the ambiguous case.
+    pub fn node_identities(&self) -> Vec<(String, String)> {
+        self.builder_dag
+            .graph()
+            .node_weights()
+            .map(|n| (n.composed_id(), n.handle.id.to_string()))
+            .collect()
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub async fn start<F: Send + 'static + Future + Unpin + Debug + Clone>(
         self,
@@ -110,6 +138,7 @@ impl DagExecutor {
     ) -> Result<DagExecutorJoinHandle, ExecutionError> {
         // Extract fields from options before partial moves.
         let sandbox_root = self.options.sandbox_root.clone();
+        let disposition_policy = self.options.disposition_policy.clone();
 
         // Construct execution dag.
         let mut execution_dag = ExecutionDag::new(
@@ -212,6 +241,7 @@ impl DagExecutor {
                         runtime.clone(),
                         incremental_run_config.is_some(),
                         warn_once.clone(),
+                        disposition_policy.clone(),
                     )
                     .await;
                     join_handles.push(start_processor(processor_node)?);
@@ -232,6 +262,7 @@ impl DagExecutor {
                         runtime.clone(),
                         incremental_run_config.is_some(),
                         warn_once.clone(),
+                        disposition_policy.clone(),
                     );
                     join_handles.push(start_sink(sink_node)?);
                 }
@@ -278,7 +309,11 @@ impl DagExecutor {
                 })
                 .map_err(ExecutionError::CannotSpawnWorkerThread)?;
 
-            join_handles.push(injector_handle);
+            let injector_meta = NodeMeta {
+                composed_id: "replay-injector".to_string(),
+                action: "replay-injector".to_string(),
+            };
+            join_handles.push((injector_meta, injector_handle));
         }
 
         Ok(DagExecutorJoinHandle {
@@ -325,23 +360,24 @@ impl DagExecutorJoinHandle {
     /// later task removes it and leaves fatality to be decided by the
     /// caller from `failed_nodes`.
     pub fn join(&mut self) -> Result<RunSummary, ExecutionError> {
-        let mut results: Vec<NodeThreadResult> = Vec::with_capacity(self.join_handles.len());
+        let mut results: Vec<(NodeMeta, NodeThreadResult)> =
+            Vec::with_capacity(self.join_handles.len());
 
         while !self.join_handles.is_empty() {
             let Some(finished) = self
                 .join_handles
                 .iter()
                 .enumerate()
-                .find_map(|(i, handle)| handle.is_finished().then_some(i))
+                .find_map(|(i, (_, handle))| handle.is_finished().then_some(i))
             else {
                 std::thread::sleep(Duration::from_millis(250));
 
                 continue;
             };
-            let handle = self.join_handles.swap_remove(finished);
+            let (meta, handle) = self.join_handles.swap_remove(finished);
             // A panicked node thread is a bug, not a per-node failure — keep
             // re-raising it here rather than folding it into `RunSummary`.
-            results.push(handle.join().unwrap());
+            results.push((meta, handle.join().unwrap()));
         }
 
         // `enhanced_flush(5000)` used to live here. Its early-break
@@ -355,8 +391,8 @@ impl DagExecutorJoinHandle {
         // this 5s tax.
         cleanup_executor_cache(self.executor_id);
 
-        if let Some(pos) = results.iter().position(|(_, result)| result.is_err()) {
-            let (_, result) = results.remove(pos);
+        if let Some(pos) = results.iter().position(|(_, (_, result))| result.is_err()) {
+            let (_, (_, result)) = results.remove(pos);
             return Err(result.expect_err("position() above guarantees Err"));
         }
 
@@ -407,14 +443,14 @@ impl DagExecutorJoinHandle {
 /// `run_dag_executor` (engine/runtime/runner) fills that field in
 /// afterwards from `DagExecutorJoinHandle::dropped_events()` once it has
 /// awaited the subscriber's drain (Phase 2a Task 7).
-fn fold_outcomes(results: Vec<NodeThreadResult>) -> RunSummary {
+fn fold_outcomes(results: Vec<(NodeMeta, NodeThreadResult)>) -> RunSummary {
     let mut aggregated_diagnostics = Vec::new();
     let mut failed_nodes = Vec::new();
 
-    for (outcome, result) in results {
+    for (meta, (outcome, result)) in results {
         aggregated_diagnostics.extend(outcome.summaries);
         if let Err(e) = result {
-            let mut diagnostic = diagnostic_from_execution_error(e);
+            let mut diagnostic = diagnostic_from_execution_error(e, &meta);
             diagnostic.effective_disposition = Some(Disposition::Fatal);
             failed_nodes.push(diagnostic);
         }
@@ -430,8 +466,11 @@ fn fold_outcomes(results: Vec<NodeThreadResult>) -> RunSummary {
 /// Recovers the original structured `Diagnostic` when `e` is the fatal
 /// backstop (`ExecutionError::Processor/Sink/Source(Box<Diagnostic>)`);
 /// otherwise synthesizes one under the catch-all unclassified code so every
-/// node failure — however it originated — becomes a `Diagnostic`.
-fn diagnostic_from_execution_error(e: ExecutionError) -> Diagnostic {
+/// node failure — however it originated — becomes a `Diagnostic`. The
+/// recovered case already carries its own `node_id`/`action_type` (stamped
+/// at `report()` time off the composed id), so `meta` is only stamped onto
+/// the synthesized fallback.
+fn diagnostic_from_execution_error(e: ExecutionError, meta: &NodeMeta) -> Diagnostic {
     let rendered = e.to_string();
     let boxed = match e {
         ExecutionError::Processor(b) | ExecutionError::Sink(b) | ExecutionError::Source(b) => {
@@ -443,8 +482,8 @@ fn diagnostic_from_execution_error(e: ExecutionError) -> Diagnostic {
         Some(Ok(diag)) => *diag,
         _ => Diagnostic::from_draft(
             DiagnosticDraft::new(ErrorCode::InternalUnclassified).with_message(rendered),
-            None,
-            None,
+            Some(meta.composed_id.clone()),
+            Some(meta.action.clone()),
             None,
         ),
     }
@@ -452,7 +491,8 @@ fn diagnostic_from_execution_error(e: ExecutionError) -> Diagnostic {
 
 fn start_source<F: Send + 'static + Future + Unpin + Debug>(
     source: SourceNode<F>,
-) -> Result<JoinHandle<NodeThreadResult>, ExecutionError> {
+) -> Result<(NodeMeta, JoinHandle<NodeThreadResult>), ExecutionError> {
+    let meta = source.node_meta();
     let handle = Builder::new()
         .name("sources".into())
         .spawn(move || {
@@ -473,37 +513,41 @@ fn start_source<F: Send + 'static + Future + Unpin + Debug>(
         })
         .map_err(ExecutionError::CannotSpawnWorkerThread)?;
 
-    Ok(handle)
+    Ok((meta, handle))
 }
 
 fn start_processor<F: Send + 'static + Future + Unpin + Debug>(
     processor: ProcessorNode<F>,
-) -> Result<JoinHandle<NodeThreadResult>, ExecutionError> {
+) -> Result<(NodeMeta, JoinHandle<NodeThreadResult>), ExecutionError> {
     let name = processor.handle().to_string();
+    let meta = processor.node_meta();
     let summaries_sink = processor.summaries_sink();
-    Builder::new()
+    let handle = Builder::new()
         .name(name)
         .spawn(move || {
             let result = processor.run();
             let summaries = std::mem::take(&mut *summaries_sink.lock());
             (NodeOutcome { summaries }, result)
         })
-        .map_err(ExecutionError::CannotSpawnWorkerThread)
+        .map_err(ExecutionError::CannotSpawnWorkerThread)?;
+    Ok((meta, handle))
 }
 
 fn start_sink<F: Send + 'static + Future + Unpin + Debug>(
     sink: SinkNode<F>,
-) -> Result<JoinHandle<NodeThreadResult>, ExecutionError> {
+) -> Result<(NodeMeta, JoinHandle<NodeThreadResult>), ExecutionError> {
     let name = sink.handle().to_string();
+    let meta = sink.node_meta();
     let summaries_sink = sink.summaries_sink();
-    Builder::new()
+    let handle = Builder::new()
         .name(name)
         .spawn(move || {
             let result = sink.run();
             let summaries = std::mem::take(&mut *summaries_sink.lock());
             (NodeOutcome { summaries }, result)
         })
-        .map_err(ExecutionError::CannotSpawnWorkerThread)
+        .map_err(ExecutionError::CannotSpawnWorkerThread)?;
+    Ok((meta, handle))
 }
 
 /// Collects nodes that should be executed in incremental run.
@@ -712,6 +756,20 @@ mod fold_outcomes_tests {
         NodeOutcome { summaries }
     }
 
+    fn meta(composed_id: &str, action: &str) -> NodeMeta {
+        NodeMeta {
+            composed_id: composed_id.to_string(),
+            action: action.to_string(),
+        }
+    }
+
+    /// Every test below stamps the same meta on every entry unless the test
+    /// is specifically about attributing distinct nodes — the fold doesn't
+    /// care which meta goes with which entry beyond pairing them 1:1.
+    fn some_meta() -> NodeMeta {
+        meta("writer-1", "Cesium 3D Tiles Writer")
+    }
+
     #[test]
     fn empty_input_returns_default_summary() {
         let summary = fold_outcomes(vec![]);
@@ -725,8 +783,8 @@ mod fold_outcomes_tests {
         let d1 = diagnostic(ErrorCode::GltfZeroFaceSolid, "d1");
         let d2 = diagnostic(ErrorCode::Cesium3dtilesEmptyGeometry, "d2");
         let results = vec![
-            (outcome(vec![d1.clone()]), Ok(())),
-            (outcome(vec![d2.clone()]), Ok(())),
+            (some_meta(), (outcome(vec![d1.clone()]), Ok(()))),
+            (some_meta(), (outcome(vec![d2.clone()]), Ok(()))),
         ];
 
         let summary = fold_outcomes(results);
@@ -741,8 +799,11 @@ mod fold_outcomes_tests {
     fn recovers_diagnostic_via_downcast_from_processor_error() {
         let original = diagnostic(ErrorCode::InternalInvariantViolation, "boom");
         let results = vec![(
-            outcome(vec![]),
-            Err(ExecutionError::Processor(Box::new(original))),
+            some_meta(),
+            (
+                outcome(vec![]),
+                Err(ExecutionError::Processor(Box::new(original))),
+            ),
         )];
 
         let summary = fold_outcomes(results);
@@ -758,8 +819,11 @@ mod fold_outcomes_tests {
     fn recovers_diagnostic_via_downcast_from_sink_error() {
         let original = diagnostic(ErrorCode::InternalInvariantViolation, "sink boom");
         let results = vec![(
-            outcome(vec![]),
-            Err(ExecutionError::Sink(Box::new(original))),
+            some_meta(),
+            (
+                outcome(vec![]),
+                Err(ExecutionError::Sink(Box::new(original))),
+            ),
         )];
 
         let summary = fold_outcomes(results);
@@ -776,7 +840,10 @@ mod fold_outcomes_tests {
     fn recovers_diagnostic_via_downcast_from_source_error() {
         let original = diagnostic(ErrorCode::InternalInvariantViolation, "source boom");
         let boxed: crate::errors::BoxedError = Box::new(original);
-        let results = vec![(outcome(vec![]), Err(ExecutionError::Source(boxed)))];
+        let results = vec![(
+            some_meta(),
+            (outcome(vec![]), Err(ExecutionError::Source(boxed))),
+        )];
 
         let summary = fold_outcomes(results);
 
@@ -785,11 +852,45 @@ mod fold_outcomes_tests {
     }
 
     #[test]
+    fn recovered_diagnostic_keeps_its_own_identity_not_the_thread_meta() {
+        // A recovered (downcast-succeeded) diagnostic already carries the
+        // node_id/action_type it was stamped with at report() time (off the
+        // composed id) — the fold must not clobber that with the thread's
+        // NodeMeta, which can legitimately differ (e.g. a swallowed fatal
+        // recorded before the thread name was known).
+        let mut original = diagnostic(ErrorCode::InternalInvariantViolation, "boom");
+        original.node_id = Some("original-composed-id".to_string());
+        original.action_type = Some("Original Action".to_string());
+        let results = vec![(
+            meta("thread-meta-id", "Thread Meta Action"),
+            (
+                outcome(vec![]),
+                Err(ExecutionError::Processor(Box::new(original))),
+            ),
+        )];
+
+        let summary = fold_outcomes(results);
+
+        assert_eq!(summary.failed_nodes.len(), 1);
+        assert_eq!(
+            summary.failed_nodes[0].node_id.as_deref(),
+            Some("original-composed-id")
+        );
+        assert_eq!(
+            summary.failed_nodes[0].action_type.as_deref(),
+            Some("Original Action")
+        );
+    }
+
+    #[test]
     fn synthesizes_unclassified_for_non_diagnostic_boxed_error() {
         // A `Processor` variant whose boxed error is NOT a `Diagnostic` —
         // downcast fails, so the fold must synthesize instead of panicking.
         let boxed: crate::errors::BoxedError = Box::new(std::io::Error::other("io boom"));
-        let results = vec![(outcome(vec![]), Err(ExecutionError::Processor(boxed)))];
+        let results = vec![(
+            some_meta(),
+            (outcome(vec![]), Err(ExecutionError::Processor(boxed))),
+        )];
 
         let summary = fold_outcomes(results);
 
@@ -802,12 +903,39 @@ mod fold_outcomes_tests {
     }
 
     #[test]
+    fn synthesized_diagnostic_is_stamped_with_the_thread_meta_identity() {
+        // The fold-identity contract this task adds: a synthesized (not
+        // recovered) diagnostic must carry the failed thread's composed id
+        // and action, not None/None as before.
+        let boxed: crate::errors::BoxedError = Box::new(std::io::Error::other("io boom"));
+        let results = vec![(
+            meta("prefix-a.node-7", "Some Writer"),
+            (outcome(vec![]), Err(ExecutionError::Sink(boxed))),
+        )];
+
+        let summary = fold_outcomes(results);
+
+        assert_eq!(summary.failed_nodes.len(), 1);
+        assert_eq!(
+            summary.failed_nodes[0].node_id.as_deref(),
+            Some("prefix-a.node-7")
+        );
+        assert_eq!(
+            summary.failed_nodes[0].action_type.as_deref(),
+            Some("Some Writer")
+        );
+    }
+
+    #[test]
     fn synthesizes_unclassified_for_non_structured_execution_error_variant() {
         // A variant that never carries a `Diagnostic` at all (e.g. a channel
         // failure) must also be synthesized, not dropped or panicked on.
         let results = vec![(
-            outcome(vec![]),
-            Err(ExecutionError::CannotSendToChannel("channel boom".into())),
+            some_meta(),
+            (
+                outcome(vec![]),
+                Err(ExecutionError::CannotSendToChannel("channel boom".into())),
+            ),
         )];
 
         let summary = fold_outcomes(results);
@@ -827,17 +955,23 @@ mod fold_outcomes_tests {
         let d_ok_2 = diagnostic(ErrorCode::Cesium3dtilesEmptyGeometry, "ok-2");
 
         let results = vec![
-            (outcome(vec![d_ok_1.clone()]), Ok(())),
+            (some_meta(), (outcome(vec![d_ok_1.clone()]), Ok(()))),
             (
-                outcome(vec![]),
-                Err(ExecutionError::Processor(Box::new(fatal_diag))),
+                some_meta(),
+                (
+                    outcome(vec![]),
+                    Err(ExecutionError::Processor(Box::new(fatal_diag))),
+                ),
             ),
-            (outcome(vec![d_ok_2.clone()]), Ok(())),
+            (some_meta(), (outcome(vec![d_ok_2.clone()]), Ok(()))),
             (
-                outcome(vec![]),
-                Err(ExecutionError::CannotReceiveFromChannel(
-                    "second boom".into(),
-                )),
+                meta("node-second", "Second Action"),
+                (
+                    outcome(vec![]),
+                    Err(ExecutionError::CannotReceiveFromChannel(
+                        "second boom".into(),
+                    )),
+                ),
             ),
         ];
 
@@ -860,6 +994,10 @@ mod fold_outcomes_tests {
             ErrorCode::InternalUnclassified
         );
         assert!(summary.failed_nodes[1].message.contains("second boom"));
+        assert_eq!(
+            summary.failed_nodes[1].node_id.as_deref(),
+            Some("node-second")
+        );
         for failed in &summary.failed_nodes {
             assert_eq!(failed.effective_disposition, Some(Disposition::Fatal));
         }
@@ -871,7 +1009,7 @@ mod fold_outcomes_tests {
         // subscriber's lagged-event tally is folded in separately by
         // run_dag_executor (engine/runtime/runner) after it awaits the
         // subscriber's drain.
-        let summary = fold_outcomes(vec![(outcome(vec![]), Ok(()))]);
+        let summary = fold_outcomes(vec![(some_meta(), (outcome(vec![]), Ok(())))]);
         assert_eq!(summary.dropped_event_count, 0);
     }
 }

@@ -86,6 +86,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
             let span = self.span.clone();
             let event_hub = self.event_hub.clone();
             let source_node_handle = self.sources[index].channel_manager.owner().clone();
+            let source_composed_id = self.sources[index].composed_id.clone();
 
             self.event_hub.send(Event::NodeStatusChanged {
                 node_handle: source_node_handle.clone(),
@@ -101,7 +102,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                 let node_span = info_span!(
                     parent: &span,
                     "source_node",
-                    "node.id" = source_node_handle.id.to_string().as_str(),
+                    "node.id" = source_composed_id.as_str(),
                     "node.name" = node_name.as_str(),
                 );
 
@@ -277,6 +278,35 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
     }
 }
 
+impl<F> SourceNode<F> {
+    /// This thread's node identity for the fold's synthesized diagnostics
+    /// (`start_source` in `dag_executor.rs` carries this alongside the
+    /// spawned thread's `JoinHandle`). A single `SourceNode` thread can run
+    /// more than one source node (`self.sources: Vec<RunningSource>`), so
+    /// there is no single composed id to report in general: with exactly
+    /// one source, its own identity is used; with zero or several, a
+    /// best-effort summary is reported instead — this is only ever consumed
+    /// by the catch-all diagnostic-synthesis path (a source thread failure
+    /// that isn't a recoverable structured `Diagnostic`), not by
+    /// `report()`/`resolve()`, which sources do not call.
+    pub fn node_meta(&self) -> super::dag_executor::NodeMeta {
+        match self.sources.as_slice() {
+            [only] => super::dag_executor::NodeMeta {
+                composed_id: only.composed_id.clone(),
+                action: only.action.clone(),
+            },
+            many => super::dag_executor::NodeMeta {
+                composed_id: many
+                    .iter()
+                    .map(|s| s.composed_id.as_str())
+                    .collect::<Vec<_>>()
+                    .join(","),
+                action: "source".to_string(),
+            },
+        }
+    }
+}
+
 #[derive(Debug)]
 struct RunningSource {
     channel_manager: ChannelManager,
@@ -284,6 +314,13 @@ struct RunningSource {
     #[allow(dead_code)]
     node_name: String,
     features_produced: Arc<AtomicU64>,
+    /// This source's composed id (`execution_dag::NodeType::composed_id`)
+    /// and action string, captured before `kind.take()` moves the
+    /// `Box<dyn Source>` out of the execution DAG. Used for the per-source
+    /// tracing span (spec 4.3: logs must agree with diagnostic identity)
+    /// and, aggregated across every source in this thread, `node_meta()`.
+    composed_id: String,
+    action: String,
 }
 
 #[derive(Debug)]
@@ -336,10 +373,20 @@ pub async fn create_source_node<F>(
         let node = dag.node_weight_mut(node_index);
         let node_handle = node.handle.clone();
         let node_name = node.name.clone();
+        let composed_id = node.composed_id();
+        let action = node.action.clone();
         let NodeKind::Source(source) = node.kind.take().unwrap() else {
             continue;
         };
-
+        // NOTE: `action` is NOT asserted equal to `source.name()` here. See
+        // the matching note in `processor_node.rs::ProcessorNode::new`:
+        // `builder_dag.rs`'s `ActionNameMismatch` check validates the
+        // *factory's* `SourceFactory::name()` against `node.node.action()` at
+        // build time (`action`'s provenance) — the *built instance*'s
+        // `Source::name()` is a different trait and can legitimately diverge
+        // (e.g. profile-namespaced factory keys vs. a generic instance
+        // display name), as proven for the processor case by the
+        // quality-check workflow fixtures.
         let senders = dag.collect_senders(node_index);
         let port_writers = dag.collect_port_writers(node_index);
         let channel_manager = ChannelManager::new(
@@ -356,6 +403,8 @@ pub async fn create_source_node<F>(
             state: SourceState::NotStarted,
             node_name: node_name.clone(),
             features_produced: features_produced.clone(),
+            composed_id,
+            action,
         });
 
         let (sender, receiver) = channel(options.channel_buffer_sz);

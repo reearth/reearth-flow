@@ -236,3 +236,146 @@ fn warn_drop_aggregation_diagnostic_is_delivered_by_value() {
         .expect("finish()-time summary diagnostic should carry AggregateInfo");
     assert_eq!(aggregated.count, 3);
 }
+
+// ---------------------------------------------------------------------------
+// Phase 2a-policy Task 3: composed node ids + policy threading, end to end.
+//
+// Reuses scenario-10's workflow shape (Feature Creator -> Cesium 3D Tiles
+// Writer, 3 features dropped for empty geometry) but injects an `errorPolicy`
+// directly on the parsed `Workflow` in Rust rather than editing the golden
+// fixture — the golden fixture must stay policy-free so the existing
+// `10_warn_drop_aggregation` test keeps proving zero-policy == zero
+// behavior change. The writer node's id, `42a900a6-0f2a-4364-a4d2-
+// dd8fa63d3dd0`, is read straight out of `logging/10_warn_drop_aggregation/
+// workflow.yml`; since that fixture has no subgraphs, composed id == raw id.
+// ---------------------------------------------------------------------------
+
+const SCENARIO_10_WRITER_NODE_ID: &str = "42a900a6-0f2a-4364-a4d2-dd8fa63d3dd0";
+
+/// The reject-override runner test (spec 4.2/4.7, this task's binding
+/// end-to-end proof): overriding `cesium3dtiles.empty_geometry` to `reject`
+/// on the writer node must resolve through `NodeDiagnosticsHandle::resolve`
+/// at `report()` time instead of the registry default (`warn_drop`) — the
+/// run still succeeds (`Ok`, no failed nodes; Reject in a sink with no
+/// side-file just aggregates at this task's point, see the brief's Task 5
+/// note), but the aggregated summary's `effective_disposition` is `Reject`,
+/// not `WarnDrop`, proving the resolve() ladder is live end to end, not just
+/// unit-tested in isolation.
+#[test]
+fn reject_override_promotes_disposition_through_resolve_end_to_end() {
+    use reearth_flow_diagnostics::Disposition;
+    use reearth_flow_types::{ErrorPolicy, PolicyDisposition, PolicyOverride};
+
+    let mut p = prepare_run("10_warn_drop_aggregation");
+    p.workflow.error_policy = Some(ErrorPolicy {
+        overrides: vec![PolicyOverride {
+            node: Some(SCENARIO_10_WRITER_NODE_ID.to_string()),
+            code: Some("cesium3dtiles.empty_geometry".to_string()),
+            category: None,
+            disposition: PolicyDisposition::Reject,
+        }],
+        ..Default::default()
+    });
+
+    let summary = Runner::run_with_event_handler(
+        p.job_id,
+        p.workflow,
+        BUILTIN_ACTION_FACTORIES.clone(),
+        p.logger_factory,
+        p.storage_resolver,
+        p.ingress_state,
+        p.feature_state,
+        None,
+        vec![],
+        p.sandbox_root,
+    )
+    .expect("reject-override run is expected to succeed (Reject, not fatal)");
+
+    assert!(summary.failed_nodes.is_empty());
+    assert_eq!(summary.aggregated_diagnostics.len(), 1);
+    let diagnostic = &summary.aggregated_diagnostics[0];
+    assert_eq!(diagnostic.effective_disposition, Some(Disposition::Reject));
+    let aggregated = diagnostic
+        .aggregated
+        .as_ref()
+        .expect("finish()-time summary diagnostic should carry AggregateInfo");
+    assert_eq!(aggregated.count, 3);
+}
+
+/// An `errorPolicy` that fails `DispositionPolicy::compile` (here: an
+/// unknown error code) must abort the run before DAG construction, as a
+/// `PolicyValidationError` naming the bad code — never silently fall back
+/// to the registry default.
+#[test]
+fn unknown_error_code_in_policy_aborts_before_dag_construction() {
+    use reearth_flow_types::{ErrorPolicy, PolicyDisposition, PolicyOverride};
+
+    let mut p = prepare_run("10_warn_drop_aggregation");
+    p.workflow.error_policy = Some(ErrorPolicy {
+        overrides: vec![PolicyOverride {
+            node: None,
+            code: Some("not.a.real.code".to_string()),
+            category: None,
+            disposition: PolicyDisposition::Reject,
+        }],
+        ..Default::default()
+    });
+
+    let err = Runner::run_with_event_handler(
+        p.job_id,
+        p.workflow,
+        BUILTIN_ACTION_FACTORIES.clone(),
+        p.logger_factory,
+        p.storage_resolver,
+        p.ingress_state,
+        p.feature_state,
+        None,
+        vec![],
+        p.sandbox_root,
+    )
+    .expect_err("an unknown error code in errorPolicy must abort the run");
+    let rendered = err.to_string();
+    assert!(
+        rendered.contains("not.a.real.code"),
+        "unexpected error text: {rendered}"
+    );
+}
+
+/// An override naming a node id absent from the workflow graph must abort
+/// the run once the DAG has been built (load-time node matching, spec 4.2) —
+/// this exercises the path that needs the flattened DAG, distinct from the
+/// compile-time check above.
+#[test]
+fn unmatched_node_selector_aborts_after_dag_construction() {
+    use reearth_flow_types::{ErrorPolicy, PolicyDisposition, PolicyOverride};
+
+    let mut p = prepare_run("10_warn_drop_aggregation");
+    p.workflow.error_policy = Some(ErrorPolicy {
+        overrides: vec![PolicyOverride {
+            node: Some("node-that-does-not-exist".to_string()),
+            code: None,
+            category: None,
+            disposition: PolicyDisposition::Reject,
+        }],
+        ..Default::default()
+    });
+
+    let err = Runner::run_with_event_handler(
+        p.job_id,
+        p.workflow,
+        BUILTIN_ACTION_FACTORIES.clone(),
+        p.logger_factory,
+        p.storage_resolver,
+        p.ingress_state,
+        p.feature_state,
+        None,
+        vec![],
+        p.sandbox_root,
+    )
+    .expect_err("an override naming an unknown node id must abort the run");
+    let rendered = err.to_string();
+    assert!(
+        rendered.contains("node-that-does-not-exist"),
+        "unexpected error text: {rendered}"
+    );
+}

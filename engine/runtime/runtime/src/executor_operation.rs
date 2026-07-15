@@ -3,7 +3,7 @@ use std::sync::Arc;
 
 use reearth_flow_common::uri::Uri;
 use reearth_flow_diagnostics::{
-    Diagnostic, DiagnosticDraft, DiagnosticKind, Disposition, ErrorCode,
+    Diagnostic, DiagnosticDraft, DiagnosticKind, Disposition, DispositionPolicy, ErrorCode,
 };
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::Feature;
@@ -261,8 +261,17 @@ impl ExecutorContext {
         let (node_id, action_type) = self.diagnostic_identity();
         let mut diagnostic =
             Diagnostic::from_draft(draft, node_id, action_type, Some(self.feature.id));
-        // Phase 1: effective = registry default; the policy resolve() ladder lands in Phase 2.
-        let effective = diagnostic.default_disposition;
+        // The compiled policy's resolve() ladder decides the effective
+        // disposition when this context has a diagnostics handle (i.e. a
+        // real node context); a handle-less context (tests/legacy paths)
+        // has no composed node id or policy to resolve against, so it
+        // falls back to the registry default — matching `Default::default()`
+        // for `DispositionPolicy`, which always resolves every code to its
+        // registry default anyway.
+        let effective = match &self.diagnostics {
+            Some(handle) => handle.resolve(diagnostic.code),
+            None => diagnostic.default_disposition,
+        };
         diagnostic.effective_disposition = Some(effective);
         match effective {
             Disposition::Fatal => {
@@ -453,6 +462,15 @@ pub struct ExecutorOptions {
     /// callers that do not set it via the builder will get the permissive
     /// `file:///` sentinel through `ExecutorOptions::default()`.
     pub sandbox_root: Uri,
+    /// The workflow's compiled `errorPolicy` (`DispositionPolicy::compile`,
+    /// done once at load by the runner before DAG construction — see
+    /// `reearth_flow_runner::orchestrator`). `DagExecutor::start` clones this
+    /// into every node's `NodeDiagnosticsHandle`, which resolves against it
+    /// on every `report()`/`report_drop()` call. Defaults to
+    /// `DispositionPolicy::default()`, the empty policy that resolves every
+    /// code to its registry default — i.e. byte-identical to Phase 1 for any
+    /// workflow with no `errorPolicy` block.
+    pub disposition_policy: std::sync::Arc<DispositionPolicy>,
 }
 
 impl Default for ExecutorOptions {
@@ -466,6 +484,7 @@ impl Default for ExecutorOptions {
             // Production callers must override this with the real artifact URI.
             sandbox_root: std::str::FromStr::from_str("file:///")
                 .expect("'file:///' is always a valid URI"),
+            disposition_policy: std::sync::Arc::new(DispositionPolicy::default()),
         }
     }
 }
@@ -475,19 +494,31 @@ mod diagnostics_tests {
     use std::sync::Arc;
 
     use indexmap::IndexMap;
-    use reearth_flow_diagnostics::{DiagnosticDraft, Disposition, ErrorCode};
+    use reearth_flow_diagnostics::{
+        DiagnosticDraft, Disposition, DispositionPolicy, ErrorCode, OverrideInput, PolicyInput,
+    };
     use reearth_flow_types::{AttributeValue, Feature};
 
     use crate::diagnostics::NodeDiagnosticsHandle;
     use crate::executor_operation::{ExecutorContext, NodeContext};
     use crate::node::{NodeHandle, NodeId, FEATURES_PORT};
 
+    const COMPOSED_ID: &str = "node-1";
+
     fn ctx_with_handle() -> (ExecutorContext, crate::diagnostics::SharedNodeDiagnostics) {
+        ctx_with_policy(Arc::default())
+    }
+
+    fn ctx_with_policy(
+        disposition_policy: Arc<DispositionPolicy>,
+    ) -> (ExecutorContext, crate::diagnostics::SharedNodeDiagnostics) {
         let handle = Arc::new(NodeDiagnosticsHandle::new(
+            COMPOSED_ID.to_string(),
             NodeHandle::new(NodeId::new("node-1".to_string())),
             "writer-1".to_string(),
             "Cesium 3D Tiles Writer".to_string(),
             Arc::default(),
+            disposition_policy,
         ));
         let node_ctx = NodeContext::default();
         let mut ctx = ExecutorContext::new_with_node_context_feature_and_port(
@@ -497,6 +528,15 @@ mod diagnostics_tests {
         );
         ctx.diagnostics = Some(handle.clone());
         (ctx, handle)
+    }
+
+    fn override_node_code(code: &str, disposition: Disposition) -> OverrideInput {
+        OverrideInput {
+            node: Some(COMPOSED_ID.to_string()),
+            code: Some(code.to_string()),
+            category: None,
+            disposition,
+        }
     }
 
     #[test]
@@ -525,6 +565,48 @@ mod diagnostics_tests {
         let fatal = handle.inner.take_fatal().expect("fatal slot must be set");
         assert_eq!(fatal.effective_disposition, Some(Disposition::Fatal));
         assert_eq!(fatal.feature_id, Some(ctx.feature.id));
+    }
+
+    #[test]
+    fn report_resolves_a_promoting_override_to_reject_instead_of_the_registry_default() {
+        let policy = DispositionPolicy::compile(PolicyInput {
+            overrides: vec![override_node_code(
+                "cesium3dtiles.empty_geometry",
+                Disposition::Reject,
+            )],
+            ..Default::default()
+        })
+        .expect("policy should compile");
+        let (ctx, handle) = ctx_with_policy(Arc::new(policy));
+        let disp = ctx
+            .report(DiagnosticDraft::new(ErrorCode::Cesium3dtilesEmptyGeometry))
+            .unwrap();
+        assert_eq!(disp, Disposition::Reject);
+        let summaries = handle.inner.drain_summaries();
+        assert_eq!(summaries.len(), 1);
+        assert_eq!(
+            summaries[0].effective_disposition,
+            Some(Disposition::Reject)
+        );
+    }
+
+    #[test]
+    fn report_resolves_a_promoting_override_to_fatal_and_records_the_slot() {
+        let policy = DispositionPolicy::compile(PolicyInput {
+            overrides: vec![override_node_code(
+                "cesium3dtiles.empty_geometry",
+                Disposition::Fatal,
+            )],
+            ..Default::default()
+        })
+        .expect("policy should compile");
+        let (ctx, handle) = ctx_with_policy(Arc::new(policy));
+        let err = ctx
+            .report(DiagnosticDraft::new(ErrorCode::Cesium3dtilesEmptyGeometry))
+            .expect_err("resolved Fatal must return Err");
+        assert_eq!(err.effective_disposition, Some(Disposition::Fatal));
+        let fatal = handle.inner.take_fatal().expect("fatal slot must be set");
+        assert_eq!(fatal.code, ErrorCode::Cesium3dtilesEmptyGeometry);
     }
 
     #[test]
@@ -562,6 +644,48 @@ mod diagnostics_tests {
             summaries[0].effective_disposition,
             Some(Disposition::WarnDrop)
         );
+    }
+
+    #[test]
+    fn report_drop_resolves_a_promoting_override_to_reject_via_node_context() {
+        let policy = DispositionPolicy::compile(PolicyInput {
+            overrides: vec![override_node_code(
+                "citygml.empty_geometry",
+                Disposition::Reject,
+            )],
+            ..Default::default()
+        })
+        .expect("policy should compile");
+        let (ctx, handle) = ctx_with_policy(Arc::new(policy));
+        let node_ctx: NodeContext = ctx.into();
+        node_ctx.report_drop(ErrorCode::CitygmlEmptyGeometry, None);
+        let summaries = handle.inner.drain_summaries();
+        assert_eq!(summaries.len(), 1);
+        assert_eq!(
+            summaries[0].effective_disposition,
+            Some(Disposition::Reject)
+        );
+        assert!(handle.inner.take_fatal().is_none());
+    }
+
+    #[test]
+    fn report_drop_resolves_a_promoting_override_to_fatal_via_node_context() {
+        let policy = DispositionPolicy::compile(PolicyInput {
+            overrides: vec![override_node_code(
+                "citygml.empty_geometry",
+                Disposition::Fatal,
+            )],
+            ..Default::default()
+        })
+        .expect("policy should compile");
+        let (ctx, handle) = ctx_with_policy(Arc::new(policy));
+        let node_ctx: NodeContext = ctx.into();
+        node_ctx.report_drop(ErrorCode::CitygmlEmptyGeometry, None);
+        // the drain-end backstop's slot is populated, not the aggregation bucket
+        assert!(handle.inner.drain_summaries().is_empty());
+        let fatal = handle.inner.take_fatal().expect("fatal slot must be set");
+        assert_eq!(fatal.effective_disposition, Some(Disposition::Fatal));
+        assert_eq!(fatal.code, ErrorCode::CitygmlEmptyGeometry);
     }
 
     #[test]

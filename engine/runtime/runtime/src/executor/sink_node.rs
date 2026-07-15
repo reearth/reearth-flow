@@ -75,6 +75,7 @@ pub struct SinkNode<F> {
 }
 
 impl<F: Future + Unpin + Debug> SinkNode<F> {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         ctx: NodeContext,
         dag: &mut ExecutionDag,
@@ -83,17 +84,28 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
         runtime: Arc<Handle>,
         incremental_mode: bool,
         warn_once: reearth_flow_diagnostics::WarnOnceSet,
+        disposition_policy: Arc<reearth_flow_diagnostics::DispositionPolicy>,
     ) -> Self {
         let node = dag.node_weight_mut(node_index);
+        let node_handle = node.handle.clone();
+        let node_name = node.name.clone();
+        let composed_id = node.composed_id();
+        let action = node.action.clone();
         let Some(kind) = node.kind.take() else {
             panic!("Must pass in a node")
         };
-        let node_handle = node.handle.clone();
-        let node_name = node.name.clone();
         let NodeKind::Sink(sink) = kind else {
             panic!("Must pass in a sink node");
         };
-
+        // NOTE: `action` is NOT asserted equal to `sink.name()` here. See the
+        // matching note in `processor_node.rs::ProcessorNode::new`:
+        // `builder_dag.rs`'s `ActionNameMismatch` check validates the
+        // *factory's* `SinkFactory::name()` against `node.node.action()` at
+        // build time (`action`'s provenance) — the *built instance*'s
+        // `Sink::name()` is a different trait and can legitimately diverge
+        // (e.g. profile-namespaced factory keys vs. a generic instance
+        // display name), as proven for the processor case by the
+        // quality-check workflow fixtures.
         let (node_handles, receivers) = dag.collect_receivers(node_index);
 
         let source_intermediate_recorder =
@@ -107,14 +119,16 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
             "otel.name" = sink.name(),
             "otel.kind" = "Sink Node",
             "workflow.id" = dag.id.to_string().as_str(),
-            "node.id" = node_handle.id.to_string().as_str(),
+            "node.id" = composed_id.as_str(),
             "node.name" = node_name.as_str(),
         );
         let diagnostics = Arc::new(crate::diagnostics::NodeDiagnosticsHandle::new(
+            composed_id,
             node_handle.clone(),
             node_name.clone(),
-            sink.name().to_string(),
+            action,
             warn_once,
+            disposition_policy,
         ));
         Self {
             node_handle,
@@ -148,6 +162,18 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
     /// `run()`/`receiver_loop()` so the summaries can still be read after.
     pub fn summaries_sink(&self) -> Arc<parking_lot::Mutex<Vec<Diagnostic>>> {
         self.summaries_sink.clone()
+    }
+
+    /// This node's `(composed_id, action)`, read off the same diagnostics
+    /// handle every `report()`/`report_drop()` call resolves against.
+    /// `start_sink` (`dag_executor.rs`) carries this alongside the spawned
+    /// thread's `JoinHandle` so the collect-all fold can attribute a
+    /// synthesized failure diagnostic to this node.
+    pub fn node_meta(&self) -> super::dag_executor::NodeMeta {
+        super::dag_executor::NodeMeta {
+            composed_id: self.diagnostics.inner.node_id().to_string(),
+            action: self.diagnostics.inner.action_type().to_string(),
+        }
     }
 }
 

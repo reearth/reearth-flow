@@ -21,6 +21,19 @@ use crate::{
 pub struct NodeType {
     pub handle: NodeHandle,
     pub name: String,
+    /// The action string this node was built from (`node.node.action()` in
+    /// the description DAG), e.g. "Cesium 3D Tiles Writer". Validated equal
+    /// to the *factory*'s `SourceFactory::name()`/`ProcessorFactory::
+    /// name()`/`SinkFactory::name()` at build time (see the
+    /// `ActionNameMismatch` checks below) — NOT necessarily equal to the
+    /// *built instance*'s `Source::name()`/`Processor::name()`/`Sink::
+    /// name()` (a different trait; some factories intentionally return a
+    /// profile-namespaced key from the factory while the built instance
+    /// returns a generic display name, e.g. PLATEAU's `UDXFolderExtractor`).
+    /// Kept here so identity (composed id + action) survives past the point
+    /// where `kind` is later `take()`n by the node loops, for diagnostics
+    /// attribution and the policy resolver.
+    pub action: String,
     pub kind: NodeKind,
     /// Output ports for this node: factory-declared ports merged with
     /// dynamically-derived ports (e.g. FeatureFilter conditions, OutputRouter routingPort).
@@ -42,14 +55,28 @@ impl PartialEq for NodeType {
 }
 
 impl NodeType {
-    pub fn new(id: NodeId, name: String, kind: NodeKind) -> Self {
+    pub fn new(id: NodeId, name: String, action: String, kind: NodeKind) -> Self {
         Self {
             handle: NodeHandle { id },
             name,
+            action,
             kind,
             output_ports: vec![],
             subgraph_prefix: None,
             is_subgraph_output: false,
+        }
+    }
+
+    /// The node's identity for diagnostics/logging/policy resolution (spec
+    /// 4.2/4.3): `"{subgraph_prefix}.{handle.id}"` when this node lives
+    /// inside one or more instantiated subgraphs, else just `handle.id`.
+    /// Mirrors the dotted-prefix convention `dag_schemas.rs` already builds
+    /// for `subgraph_prefix` itself (`"{parent_prefix}.{entity_id}"`) — the
+    /// two must be kept in sync.
+    pub fn composed_id(&self) -> String {
+        match &self.subgraph_prefix {
+            Some(prefix) => format!("{prefix}.{}", self.handle.id),
+            None => self.handle.id.to_string(),
         }
     }
 }
@@ -178,6 +205,7 @@ impl BuilderDag {
                 let new_node_index = graph.add_node(NodeType {
                     handle: handle.clone(),
                     name: node.name.clone(),
+                    action: node.node.action().to_string(),
                     kind: NodeKind::Sink(sink),
                     output_ports: vec![],
                     subgraph_prefix: node.subgraph_prefix.clone(),
@@ -241,6 +269,7 @@ impl BuilderDag {
                     NodeType {
                         handle: node.handle,
                         name: node.name,
+                        action: node.node.action().to_string(),
                         kind: NodeKind::Source(source),
                         output_ports,
                         subgraph_prefix: node.subgraph_prefix,
@@ -323,9 +352,11 @@ impl BuilderDag {
                         })?;
                     let is_subgraph_output = node.subgraph_prefix.is_some()
                         && node.node.action() == OUTPUT_ROUTING_ACTION;
+                    let action = node.node.action().to_string();
                     NodeType {
                         handle: node.handle,
                         name: node.name,
+                        action,
                         kind: NodeKind::Processor(processor),
                         output_ports,
                         subgraph_prefix: node.subgraph_prefix,
