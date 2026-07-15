@@ -23,20 +23,44 @@
 //! The 2D leaves' optional per-vertex elevation is ignored throughout. The
 //! constructed counterparts, boolean overlay, line clipping, segment
 //! intersection points, live in [`overlay`](crate::overlay) over the same
-//! views and kernel. Ray casting and 3D pairs are not yet supported.
+//! views and kernel.
+//!
+//! The 3D family covers intersection *tests* and queries, not a volumetric
+//! DE-9IM:
+//!
+//! - [`intersects()`] also takes 3D × 3D pairs, through the exact
+//!   [`kernel3d`] primitives over triangle-set views ([`view3d`]); a `Solid`
+//!   is volumetric (containment without shell contact intersects).
+//! - [`point_position_3d`]: coordinate vs. 3D geometry, including exact
+//!   ray-parity **point-in-solid**.
+//! - [`ray_cast`] / [`closest_ray_hit`]: [`Ray3D`] casting against every
+//!   surface, with Möller–Trumbore semantics.
+//!
+//! `contains` / `covers` / `relate` remain 2D-only; `Csg` and `PointCloud`
+//! leaves are not supported by the 3D operations.
 
 pub mod contains;
 mod edge_set;
 pub mod intersects;
+pub mod intersects3d;
 pub mod kernel;
+pub mod kernel3d;
 pub mod position;
+pub mod position3d;
+pub mod ray;
 pub mod relate;
+#[cfg(test)]
+pub(crate) mod test3d;
 pub mod view;
+pub mod view3d;
 
 pub use contains::{contains, covers};
 pub use intersects::intersects;
+pub use intersects3d::intersects_3d;
 pub use kernel::CoordPos;
 pub use position::point_position_2d;
+pub use position3d::point_position_3d;
+pub use ray::{closest_ray_hit, ray_cast, Ray3D, RayHit};
 pub use relate::{relate, Dimensions, IntersectionMatrix};
 
 use crate::coordinate::CoordinateFrame;
@@ -67,6 +91,12 @@ pub enum PredicateError {
         /// The right operand's concrete type name.
         right: &'static str,
     },
+    /// The operation is not defined for a concrete geometry type an operand
+    /// contains (a `Csg` or `PointCloud` leaf in the 3D operations).
+    Unsupported {
+        /// The offending concrete type name.
+        geometry: &'static str,
+    },
 }
 
 impl core::fmt::Display for PredicateError {
@@ -83,6 +113,9 @@ impl core::fmt::Display for PredicateError {
             }
             PredicateError::UnsupportedPair { left, right } => {
                 write!(f, "operation is not defined for `{left}` and `{right}`")
+            }
+            PredicateError::Unsupported { geometry } => {
+                write!(f, "operation is not defined for `{geometry}`")
             }
         }
     }
@@ -104,11 +137,13 @@ pub fn require_same_frame(a: &CoordinateFrame, b: &CoordinateFrame) -> Result<()
     }
 }
 
-/// Flatten both operands of a binary 2D operation into their 2D leaves under
-/// the shared dimension policy: a 2D × 3D pair is
-/// [`CrossDimension`](PredicateError::CrossDimension), a purely 3D pair is
-/// [`UnsupportedPair`](PredicateError::UnsupportedPair). `Geometry::None` and
-/// empty collections flatten to no leaves.
+/// Flatten both operands of a **2D-only** binary operation (`contains`,
+/// `relate`, the overlays) into their 2D leaves under the shared dimension
+/// policy: a 2D × 3D pair is
+/// [`CrossDimension`](PredicateError::CrossDimension), a purely 3D pair
+/// [`UnsupportedPair`](PredicateError::UnsupportedPair): these operations
+/// have no 3D counterpart (there is no volumetric DE-9IM or overlay).
+/// `Geometry::None` and empty collections flatten to no leaves.
 pub(crate) fn flatten_2d_pair<'a>(
     a: &'a Geometry,
     b: &'a Geometry,
@@ -152,5 +187,7 @@ mod tests {
             right: "Solid",
         };
         assert!(up.to_string().contains("Point2D") && up.to_string().contains("Solid"));
+        let u = PredicateError::Unsupported { geometry: "Csg" };
+        assert!(u.to_string().contains("Csg"));
     }
 }

@@ -21,6 +21,8 @@ mod ops;
 #[cfg(feature = "new-geometry")]
 mod validation;
 
+pub(crate) use ops::build_open_rings;
+
 /// A connected, vertex-sharing polygon mesh in 2D space, with optional
 /// per-vertex elevation.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -183,6 +185,12 @@ impl PolygonMesh3D {
         self.data
     }
 
+    /// Borrow the coordinate-free mesh data, for the predicate views.
+    #[inline]
+    pub(crate) fn data(&self) -> &PolygonMesh3DData {
+        &self.data
+    }
+
     /// The number of faces.
     #[inline]
     pub fn num_faces(&self) -> usize {
@@ -205,6 +213,17 @@ impl PolygonMesh3DData {
         } else {
             self.face_offsets.len() + 1
         }
+    }
+
+    /// The CSR ring buffers `(face_indices, face_offsets, interior_offsets)`,
+    /// for the predicate views to decode.
+    #[inline]
+    pub(crate) fn csr_buffers(&self) -> (&IndexBuffer<1>, &IndexBuffer<1>, &IndexBuffer<1>) {
+        (
+            &self.face_indices,
+            &self.face_offsets,
+            &self.interior_offsets,
+        )
     }
 }
 

@@ -126,6 +126,12 @@ impl TriangularMesh3DData {
 }
 
 impl TriangularMesh3D {
+    /// The coordinate frame the mesh data is expressed in.
+    #[inline]
+    pub fn frame(&self) -> &CoordinateFrame {
+        &self.frame
+    }
+
     /// The number of triangles in the mesh.
     #[inline]
     pub fn num_triangles(&self) -> usize {
@@ -156,6 +162,12 @@ impl TriangularMesh3D {
     #[inline]
     pub fn into_data(self) -> TriangularMesh3DData {
         self.data
+    }
+
+    /// Borrow the coordinate-free mesh data, for the predicate views.
+    #[inline]
+    pub(crate) fn data(&self) -> &TriangularMesh3DData {
+        &self.data
     }
 
     /// The shared vertex pool.
