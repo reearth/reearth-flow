@@ -86,6 +86,36 @@ pub(crate) fn flatten_3d<'a>(
     }
 }
 
+/// Flatten a [`Geometry`](crate::Geometry) into its 3D leaves, recursing into
+/// `GeometryCollection`s. Returns the leaves, the first 2D leaf's presence,
+/// and the first unsupported 3D leaf kind (`Csg`, `PointCloud`).
+pub(crate) fn flatten_geometry_3d(
+    geometry: &crate::Geometry,
+) -> (Vec<Leaf3D<'_>>, bool, Option<&'static str>) {
+    fn walk<'a>(
+        geometry: &'a crate::Geometry,
+        out: &mut Vec<Leaf3D<'a>>,
+        saw_2d: &mut bool,
+        unsupported: &mut Option<&'static str>,
+    ) {
+        match geometry {
+            crate::Geometry::None => {}
+            crate::Geometry::Euclidean2D(_) => *saw_2d = true,
+            crate::Geometry::Euclidean3D(g) => flatten_3d(g, out, unsupported),
+            crate::Geometry::GeometryCollection(c) => {
+                for member in c.members() {
+                    walk(member, out, saw_2d, unsupported);
+                }
+            }
+        }
+    }
+    let mut leaves = Vec::new();
+    let mut saw_2d = false;
+    let mut unsupported = None;
+    walk(geometry, &mut leaves, &mut saw_2d, &mut unsupported);
+    (leaves, saw_2d, unsupported)
+}
+
 /// Require every leaf across both slices to share one coordinate frame.
 pub(crate) fn require_common_frame_3d(a: &[Leaf3D<'_>], b: &[Leaf3D<'_>]) -> super::Result<()> {
     let mut frames = a.iter().chain(b.iter()).map(Leaf3D::frame);
