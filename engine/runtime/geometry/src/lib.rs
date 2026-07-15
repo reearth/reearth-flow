@@ -37,6 +37,7 @@ pub mod point;
 pub mod point_cloud;
 pub mod polygon;
 pub mod polygon_mesh;
+pub mod predicates;
 pub mod solid;
 pub mod triangular_mesh;
 #[cfg(feature = "new-geometry")]
