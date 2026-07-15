@@ -274,11 +274,7 @@ fn build_cell_glb(
         gltf_positions,
         indices,
         material,
-        if compute_flat_normal {
-            &polygon_tris
-        } else {
-            &[]
-        },
+        &polygon_tris,
         &[],
         dedup_attrs,
     );
