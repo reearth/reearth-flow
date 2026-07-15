@@ -10,11 +10,14 @@
 //!
 //! # Orientation sign
 //!
-//! For CRS coordinate systems, a north-first order is a reflection of an east-first one,
-//! so the sign of every face normal depends on the frame.
+//! For CRS coordinate systems, the stored axis basis is either right-handed or a
+//! reflection of one (for example, a north-first order reflects an east-first one), so
+//! the sign of every face normal depends on the frame.
 //! [`CoordinateFrame::orientation_sign`] is the sign function that is used to determine
 //! the orientation of a ring, and is given by the following rules:
-//!    1. CRS frame: the sign is determined by the CRS's axis order and directions.
+//!    1. CRS frame: for geographic CRSs and projected CRSs the sign is determined by the
+//!       CRS's axis order and directions. A geocentric (ECEF) CRS is right-handed in 
+//!       `(X, Y, Z)` order, so `+1`.
 //!    2. Euclidean frame: the sign is always `+1`.
 //!    3. Tangent frame: the sign is derived from the base frame.
 //!
