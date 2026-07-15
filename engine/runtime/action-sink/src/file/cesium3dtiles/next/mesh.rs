@@ -1,30 +1,36 @@
 use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
 use reearth_flow_geometry::ops::reproject::transform_coords_3d;
-use reearth_flow_geometry::ops::{triangulation::Cache as TriangulationCache, ReprojectionCache};
+use reearth_flow_geometry::ops::{
+    triangulation::Cache as TriangulationCache, Reproject, ReprojectionCache,
+};
 use reearth_flow_geometry::polygon_mesh::PolygonMesh3D;
 use reearth_flow_geometry::solid::Shell;
 use reearth_flow_geometry::{Euclidean3DGeometry, Geometry};
 
-/// JGD2011 — temporary until the new-geometry CityGML reader parses srsName/EPSG.
-const ASSUMED_SOURCE_CRS: EpsgCode = EpsgCode::new(6697);
-/// WGS84, 3D geographic (lon, lat, height) — used for the tileset's bounding region.
+/// WGS84, 3D geographic (lat, lon, height) — used for the tileset's bounding region.
 const WGS84_GEOGRAPHIC: EpsgCode = EpsgCode::new(4979);
 /// WGS84, geocentric (ECEF) — used for glTF vertex positions.
 const WGS84_GEOCENTRIC: EpsgCode = EpsgCode::new(4978);
 
-/// One `ReprojectionCache` per target CRS: each cache only ever sees a
-/// single (from, to) pair, so its cached PROJ transform is never evicted
-/// (a cache handed both target CRSes would thrash between them every call).
+/// Per-file scratch shared across every mesh, so repeated extraction amortizes
+/// its PROJ setup and earcut allocations.
+///
+/// One `ReprojectionCache` per target CRS: each only ever sees a single
+/// (from, to) pair, so its cached PROJ transform is never evicted (a cache
+/// handed both target CRSes would thrash between them every call). The
+/// triangulation cache reuses earcut's arenas and index/vertex scratch across
+/// meshes.
 #[derive(Default)]
-pub(super) struct ReprojectCaches {
+pub(super) struct ExtractCaches {
     geographic: ReprojectionCache,
     geocentric: ReprojectionCache,
+    triangulation: TriangulationCache,
 }
 
 pub(super) struct ExtractedMesh {
     /// Vertex positions in ECEF (WGS84 geocentric), metres.
     pub(super) ecef_vertices: Vec<[f64; 3]>,
-    /// The same vertices in WGS84 geographic (lon, lat, height); degrees/metres.
+    /// The same vertices in WGS84 geographic (lat, lon, height); degrees/metres.
     pub(super) geographic_vertices: Vec<[f64; 3]>,
     /// Triangle index triples, parallel to both vertex arrays above.
     pub(super) indices: Vec<[u32; 3]>,
@@ -41,7 +47,7 @@ pub(super) struct ExtractedMesh {
 ///
 /// Returns `None` when nothing was found, or everything found failed to
 /// triangulate/reproject (each failure is `tracing::warn!`ed individually).
-pub(super) fn extract(geometry: &Geometry, caches: &mut ReprojectCaches) -> Option<ExtractedMesh> {
+pub(super) fn extract(geometry: &Geometry, caches: &mut ExtractCaches) -> Option<ExtractedMesh> {
     let mut meshes = Vec::new();
     collect_geometry(geometry, &mut meshes);
 
@@ -94,9 +100,9 @@ fn collect_geometry(geometry: &Geometry, out: &mut Vec<PolygonMesh3D>) {
 }
 
 /// Recurse through `Collection` members and unpack a `Solid`'s boundary
-/// shells, collecting every `PolygonMesh` found. A `Solid` shell has no
-/// `Coordinate` of its own, so a placeholder frame is used — this writer
-/// reprojects raw vertex buffers directly and ignores it anyway.
+/// shells, collecting every `PolygonMesh` found. A `Solid` shell is a
+/// coordinate-free mesh; its frame lives on the enclosing `Solid`, so each
+/// unpacked shell is re-paired with the solid's frame for reprojection.
 fn collect_euclidean3d(geometry: &Euclidean3DGeometry, out: &mut Vec<PolygonMesh3D>) {
     match geometry {
         Euclidean3DGeometry::Collection(c) => {
@@ -109,7 +115,7 @@ fn collect_euclidean3d(geometry: &Euclidean3DGeometry, out: &mut Vec<PolygonMesh
             for shell in std::iter::once(solid.exterior()).chain(solid.interiors()) {
                 match shell {
                     Shell::PolygonMesh(data) => {
-                        out.push(PolygonMesh3D::new(CoordinateFrame::Euclidean, data.clone()))
+                        out.push(PolygonMesh3D::new(solid.frame().clone(), data.clone()))
                     }
                     Shell::TriangularMesh(_) => tracing::warn!(
                         "Cesium3DTilesWriter: a Solid shell is a TriangularMesh; \
@@ -124,17 +130,27 @@ fn collect_euclidean3d(geometry: &Euclidean3DGeometry, out: &mut Vec<PolygonMesh
     }
 }
 
+/// The EPSG source CRS a mesh's coordinates are reprojected from. A mesh
+/// tagged with anything but a concrete `Crs` (e.g. `Euclidean`, meaning the
+/// reader found no srsName) cannot be placed on the globe, so it is skipped.
+fn source_crs(frame: &CoordinateFrame) -> Option<EpsgCode> {
+    match frame {
+        CoordinateFrame::Crs(epsg) => Some(*epsg),
+        other => {
+            tracing::warn!("Cesium3DTilesWriter: mesh has no geographic CRS ({other:?}); skipping");
+            None
+        }
+    }
+}
+
 /// Triangulate and reproject one `PolygonMesh`.
-fn extract_one(mut mesh: PolygonMesh3D, caches: &mut ReprojectCaches) -> Option<ExtractedMesh> {
-    let mut triangulation_cache = TriangulationCache::new();
-    let result = mesh.triangulate_with_normals(&mut triangulation_cache);
-    let (mesh, polygon_normals, polygon_tris) =
-        (result.mesh, result.polygon_normals, result.polygon_tris);
+fn extract_one(mut mesh: PolygonMesh3D, caches: &mut ExtractCaches) -> Option<ExtractedMesh> {
+    let source_crs = source_crs(mesh.frame())?;
 
     let mut geographic_vertices = mesh.vertices().to_vec();
     if let Err(e) = transform_coords_3d(
         &mut caches.geographic,
-        ASSUMED_SOURCE_CRS,
+        source_crs,
         WGS84_GEOGRAPHIC,
         &mut geographic_vertices,
     ) {
@@ -142,22 +158,68 @@ fn extract_one(mut mesh: PolygonMesh3D, caches: &mut ReprojectCaches) -> Option<
         return None;
     }
 
-    let mut ecef_vertices = mesh.vertices().to_vec();
-    if let Err(e) = transform_coords_3d(
-        &mut caches.geocentric,
-        ASSUMED_SOURCE_CRS,
-        WGS84_GEOCENTRIC,
-        &mut ecef_vertices,
-    ) {
+    if let Err(e) = mesh.reproject(WGS84_GEOCENTRIC, &mut caches.geocentric) {
         tracing::warn!("Cesium3DTilesWriter: failed to reproject to ECEF: {e:?}");
         return None;
     }
 
+    let result = match mesh.triangulate_with_normals(&mut caches.triangulation) {
+        Ok(result) => result,
+        Err(e) => {
+            tracing::warn!("Cesium3DTilesWriter: failed to triangulate mesh: {e:?}");
+            return None;
+        }
+    };
+
     Some(ExtractedMesh {
-        ecef_vertices,
+        ecef_vertices: result.mesh.vertices().to_vec(),
         geographic_vertices,
-        indices: mesh.triangles().collect(),
-        polygon_normals,
-        polygon_tris,
+        indices: result.mesh.triangles().collect(),
+        polygon_normals: result.polygon_normals,
+        polygon_tris: result.polygon_tris,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use reearth_flow_geometry::polygon_mesh::{PolygonMesh3D, PolygonMesh3DData};
+
+    use super::*;
+
+    fn dot(a: [f64; 3], b: [f64; 3]) -> f64 {
+        a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+    }
+
+    // A face whose canonical orientation is outward, stored in a lat-first frame
+    // (EPSG:4979, orientation sign -1), must emit an ECEF normal that points away
+    // from the earth's centre. Triangulating in ECEF gives this for free: the
+    // reflected source winding is cancelled by the reprojection, so the
+    // right-hand-rule normal comes out outward.
+    #[test]
+    fn outward_face_in_lat_first_frame_emits_outward_ecef_normal() {
+        // Vertices stored (lat, lon, height). In real ENU at this location the ring
+        // A -> B -> C turns counter-clockwise seen from above (an upward, outward
+        // face); its right-hand-rule normal in stored order points the opposite way,
+        // and reprojection into right-handed ECEF flips it back to outward.
+        let a = [35.0, 139.0, 0.0];
+        let b = [35.0, 139.001, 0.0];
+        let c = [35.001, 139.0, 0.0];
+        let data = PolygonMesh3DData::from_parts(vec![a, b, c], [[0u32, 1, 2]]).unwrap();
+        let mesh = PolygonMesh3D::new(CoordinateFrame::Crs(EpsgCode::new(4979)), data);
+        let geometry = Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(Box::new(mesh)));
+
+        let mut caches = ExtractCaches::default();
+        let extracted = extract(&geometry, &mut caches).expect("mesh extracts");
+
+        assert_eq!(extracted.polygon_normals.len(), 1);
+        // The ECEF position of a point on the ellipsoid surface is itself an outward
+        // radial direction, so an outward normal has a positive dot with it.
+        let normal = extracted.polygon_normals[0];
+        for &vertex in &extracted.ecef_vertices {
+            assert!(
+                dot(normal, vertex) > 0.0,
+                "normal {normal:?} should point outward at {vertex:?}"
+            );
+        }
+    }
 }

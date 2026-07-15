@@ -725,17 +725,21 @@ fn signed_area_2d(ring: &[[f64; 2]]) -> f64 {
 }
 
 /// Report a [`ValidationType::Orientation`] problem when a 2D ring winds the
-/// wrong way. Flow's convention is counter-clockwise: an exterior ring must be
-/// counter-clockwise, a hole clockwise. A zero-area (degenerate / collinear) ring
-/// has no meaningful winding and is left to the degeneracy check. The position is
-/// the offending ring.
+/// wrong way. Flow's convention is counter-clockwise in canonical orientation: an
+/// exterior ring must be counter-clockwise, a hole clockwise, after the stored
+/// signed area is multiplied by the frame's orientation sign (see
+/// [`crate::coordinate`]). `sign` is that orientation sign, computed once for the
+/// whole geometry by the caller. A zero-area (degenerate / collinear) ring has no
+/// meaningful winding and is left to the degeneracy check. The position is the
+/// offending ring.
 pub(crate) fn check_ring_orientation_2d(
     frame: &CoordinateFrame,
+    sign: i8,
     ring: &[[f64; 2]],
     is_exterior: bool,
     report: &mut ValidationReport,
 ) {
-    let area = signed_area_2d(ring);
+    let area = signed_area_2d(ring) * sign as f64;
     let wrong = if is_exterior { area < 0.0 } else { area > 0.0 };
     if wrong {
         report.push(Geometry::Euclidean2D(Euclidean2DGeometry::LineString(
