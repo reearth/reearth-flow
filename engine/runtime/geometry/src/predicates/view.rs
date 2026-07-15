@@ -459,6 +459,19 @@ pub(crate) fn require_common_frame(a: &Operand2D<'_>, b: &Operand2D<'_>) -> supe
     Ok(())
 }
 
+/// [`require_common_frame`] over flattened leaf slices, for callers that have
+/// not built [`Operand2D`]s.
+pub(crate) fn require_common_frame_leaves(a: &[Leaf2D<'_>], b: &[Leaf2D<'_>]) -> super::Result<()> {
+    let mut frames = a.iter().chain(b.iter()).map(Leaf2D::frame);
+    let Some(first) = frames.next() else {
+        return Ok(());
+    };
+    for frame in frames {
+        super::require_same_frame(first, frame)?;
+    }
+    Ok(())
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
