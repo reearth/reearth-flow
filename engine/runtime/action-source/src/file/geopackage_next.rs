@@ -170,8 +170,12 @@ pub(super) fn parse_geopackage_geometry(
     if blob.len() < wkb_start {
         return Err(err("Invalid geometry blob: truncated envelope"));
     }
+    let wkb = &blob[wkb_start..];
+    if wkb.is_empty() {
+        return Err(err("Invalid geometry blob: missing WKB body"));
+    }
     let final_srs_id = if gp_srs_id != 0 { gp_srs_id } else { srs_id };
-    parse_wkb(&blob[wkb_start..], final_srs_id, force_2d)
+    parse_wkb(wkb, final_srs_id, force_2d)
 }
 
 /// A single geometry leaf in one of the two embedding dimensions. The WKB header's
@@ -213,9 +217,11 @@ fn parse_wkb_geometry(
         2 => Ok(line_leaf(cursor, has_z, has_m, three_d, srs_id, byte_order)?.into_geometry()),
         3 => Ok(polygon_leaf(cursor, has_z, has_m, three_d, srs_id, byte_order)?.into_geometry()),
         4 => parse_multi(
-            cursor, has_z, has_m, three_d, srs_id, byte_order, point_leaf,
+            cursor, has_z, has_m, three_d, srs_id, byte_order, 1, point_leaf,
         ),
-        5 => parse_multi(cursor, has_z, has_m, three_d, srs_id, byte_order, line_leaf),
+        5 => parse_multi(
+            cursor, has_z, has_m, three_d, srs_id, byte_order, 2, line_leaf,
+        ),
         6 => parse_multi(
             cursor,
             has_z,
@@ -223,6 +229,7 @@ fn parse_wkb_geometry(
             three_d,
             srs_id,
             byte_order,
+            3,
             polygon_leaf,
         ),
         7 => parse_geometrycollection(cursor, srs_id, force_2d, byte_order),
@@ -336,6 +343,7 @@ fn polygon_leaf(
 
 /// A Multi* geometry: `num` embedded WKB members (each with its own byte-order + type
 /// header), all the same kind, collected into a homogeneous `Collection`.
+#[allow(clippy::too_many_arguments)]
 fn parse_multi<F>(
     cursor: &mut std::io::Cursor<&[u8]>,
     has_z: bool,
@@ -343,6 +351,7 @@ fn parse_multi<F>(
     three_d: bool,
     srs_id: i32,
     byte_order: u8,
+    expected_type: u32,
     read_leaf: F,
 ) -> Result<Geometry, SourceError>
 where
@@ -353,7 +362,19 @@ where
     let mut members_3d = Vec::new();
     for _ in 0..count {
         let member_order = read_byte_order(cursor)?;
-        let _member_type = read_u32(cursor, member_order)?; // header, dimensions come from the parent
+        // Each member must be the corresponding single type with the same Z/M as the
+        // enclosing Multi*; a mismatch means a malformed blob, so fail fast rather than
+        // misread the byte stream.
+        let member_type = read_u32(cursor, member_order)?;
+        let member_base = member_type & 0x1FFF_FFFF;
+        let member_has_z = (member_type & 0x8000_0000) != 0;
+        let member_has_m = (member_type & 0x4000_0000) != 0;
+        if member_base != expected_type || member_has_z != has_z || member_has_m != has_m {
+            return Err(err(format!(
+                "Multi* member type mismatch: expected type {expected_type} (z={has_z}, m={has_m}), \
+                 got type {member_base} (z={member_has_z}, m={member_has_m})"
+            )));
+        }
         match read_leaf(cursor, has_z, has_m, three_d, srs_id, member_order)? {
             Leaf::D2(g) => members_2d.push(g),
             Leaf::D3(g) => members_3d.push(g),
@@ -704,6 +725,36 @@ mod tests {
         assert!(
             format!("{e}").to_lowercase().contains("byte order"),
             "expected a byte-order error, got: {e}"
+        );
+    }
+
+    // A blob with a valid header but no WKB body gets a clear error, not a raw IO error.
+    #[test]
+    fn empty_wkb_body_is_rejected() {
+        let blob = gp_blob(4326, &[]);
+
+        let e = parse_geopackage_geometry(&blob, 4326, false).unwrap_err();
+
+        assert!(
+            format!("{e}").to_lowercase().contains("wkb body"),
+            "expected a missing-WKB-body error, got: {e}"
+        );
+    }
+
+    // A Multi* whose member's base type doesn't match the enclosing kind fails fast.
+    #[test]
+    fn multi_with_mismatched_member_type_is_rejected() {
+        // MultiPoint (type 4) whose sole member is a LineString body.
+        let blob = gp_blob(
+            4326,
+            &wkb_multi(4, &[wkb_linestring_2d(&[[0.0, 0.0], [1.0, 1.0]])]),
+        );
+
+        let e = parse_geopackage_geometry(&blob, 4326, false).unwrap_err();
+
+        assert!(
+            format!("{e}").to_lowercase().contains("member type"),
+            "expected a member-type mismatch error, got: {e}"
         );
     }
 
