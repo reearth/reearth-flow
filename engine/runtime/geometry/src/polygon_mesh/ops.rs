@@ -283,7 +283,9 @@ impl PolygonMesh3D {
     /// polygon's flat normal and its output triangle count, in polygon order
     /// (see [`PolygonMesh3DData::triangulate`]), for a caller that wants to
     /// attach flat normals as a mesh attribute without this crate's geometry
-    /// types ever carrying a normal field themselves.
+    /// types ever carrying a normal field themselves. The normals follow the
+    /// right-hand rule in this mesh's frame; reproject the mesh into a
+    /// right-handed render frame (e.g. ECEF) first for outward render normals.
     pub fn triangulate_with_normals(
         &mut self,
         cache: &mut Cache,

@@ -1,8 +1,12 @@
 //! PROJ-backed coordinate transformation for the reprojection ops.
 
+use std::collections::HashMap;
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
 use std::ptr;
+use std::sync::OnceLock;
+
+use parking_lot::RwLock;
 
 use crate::coordinate::EpsgCode;
 use proj_sys::{
@@ -144,10 +148,33 @@ unsafe fn ctx_errno_string(ctx: *mut PJ_CONTEXT) -> String {
     errno_string(ctx, proj_context_errno(ctx))
 }
 
+/// Process-wide memoization of computed orientation signs, keyed by EPSG code.
+/// The sign is a fixed property of a CRS, so a value cached once stays valid for
+/// the life of the process. Only successful lookups are cached; an unknown or
+/// unsupported CRS is a rare error path not worth memoizing.
+fn sign_cache() -> &'static RwLock<HashMap<EpsgCode, i8>> {
+    static CACHE: OnceLock<RwLock<HashMap<EpsgCode, i8>>> = OnceLock::new();
+    CACHE.get_or_init(|| RwLock::new(HashMap::new()))
+}
+
 /// The orientation sign of `epsg`: `+1` when the CRS's declared axis basis is
 /// right-handed in canonical `(East, North[, Up])` order, `-1` when reflected.
 /// Errors when the CRS is unknown or its axes are not aligned to those directions.
+///
+/// Memoized per EPSG code: the first call for a CRS pays the PROJ lookup, later
+/// calls read the cached sign.
 pub(crate) fn axis_order_sign(epsg: EpsgCode) -> Result<i8> {
+    if let Some(&sign) = sign_cache().read().get(&epsg) {
+        return Ok(sign);
+    }
+    let sign = axis_order_sign_uncached(epsg)?;
+    sign_cache().write().insert(epsg, sign);
+    Ok(sign)
+}
+
+/// Compute the orientation sign of `epsg` directly from PROJ, without consulting
+/// or populating the cache.
+fn axis_order_sign_uncached(epsg: EpsgCode) -> Result<i8> {
     // SAFETY: each PROJ object is null-checked before use and every path frees
     // the objects it created; the axis-direction strings are owned by `cs` and
     // read while it is alive.
@@ -311,5 +338,15 @@ mod tests {
     #[test]
     fn unknown_crs_errors() {
         assert!(axis_order_sign(EpsgCode::new(1)).is_err());
+    }
+
+    #[test]
+    fn sign_is_memoized_per_code() {
+        let code = EpsgCode::new(32633);
+        let computed = axis_order_sign(code).unwrap();
+        // The first call stored the sign under this code, and a second call
+        // returns the same value from the cache rather than recomputing it.
+        assert_eq!(sign_cache().read().get(&code), Some(&computed));
+        assert_eq!(axis_order_sign(code).unwrap(), computed);
     }
 }

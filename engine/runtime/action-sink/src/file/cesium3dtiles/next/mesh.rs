@@ -1,6 +1,8 @@
 use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
 use reearth_flow_geometry::ops::reproject::transform_coords_3d;
-use reearth_flow_geometry::ops::{triangulation::Cache as TriangulationCache, ReprojectionCache};
+use reearth_flow_geometry::ops::{
+    triangulation::Cache as TriangulationCache, Reproject, ReprojectionCache,
+};
 use reearth_flow_geometry::polygon_mesh::PolygonMesh3D;
 use reearth_flow_geometry::solid::Shell;
 use reearth_flow_geometry::{Euclidean3DGeometry, Geometry};
@@ -136,21 +138,11 @@ fn source_crs(frame: &CoordinateFrame) -> Option<EpsgCode> {
 }
 
 /// Triangulate and reproject one `PolygonMesh`.
-///
-/// Reprojection into ECEF (a right-handed frame) carries the source winding into
-/// its canonical, CCW-outward orientation on its own: a reflected source frame
-/// (lat/northing-first) reprojects with a reversed orientation that cancels its
-/// reflected winding. So the reprojected triangles are already CCW-front for glTF,
-/// and the flat normals are recomputed from that ECEF geometry rather than carried
-/// from the source frame (where they point inward for a reflected frame and would
-/// need a separate source-to-ECEF rotation).
 fn extract_one(mut mesh: PolygonMesh3D, caches: &mut ReprojectCaches) -> Option<ExtractedMesh> {
     let source_crs = source_crs(mesh.frame())?;
 
-    let mut triangulation_cache = TriangulationCache::new();
-    let result = mesh.triangulate_with_normals(&mut triangulation_cache);
-    let (mesh, polygon_tris) = (result.mesh, result.polygon_tris);
-
+    // WGS84 geographic vertices for the bounding region, taken before the mesh
+    // is moved into ECEF.
     let mut geographic_vertices = mesh.vertices().to_vec();
     if let Err(e) = transform_coords_3d(
         &mut caches.geographic,
@@ -162,73 +154,21 @@ fn extract_one(mut mesh: PolygonMesh3D, caches: &mut ReprojectCaches) -> Option<
         return None;
     }
 
-    let mut ecef_vertices = mesh.vertices().to_vec();
-    if let Err(e) = transform_coords_3d(
-        &mut caches.geocentric,
-        source_crs,
-        WGS84_GEOCENTRIC,
-        &mut ecef_vertices,
-    ) {
+    if let Err(e) = mesh.reproject(WGS84_GEOCENTRIC, &mut caches.geocentric) {
         tracing::warn!("Cesium3DTilesWriter: failed to reproject to ECEF: {e:?}");
         return None;
     }
 
-    let indices: Vec<[u32; 3]> = mesh.triangles().collect();
-    let polygon_normals = ecef_polygon_normals(&ecef_vertices, &indices, &polygon_tris);
+    let mut triangulation_cache = TriangulationCache::new();
+    let result = mesh.triangulate_with_normals(&mut triangulation_cache);
 
     Some(ExtractedMesh {
-        ecef_vertices,
+        ecef_vertices: result.mesh.vertices().to_vec(),
         geographic_vertices,
-        indices,
-        polygon_normals,
-        polygon_tris,
+        indices: result.mesh.triangles().collect(),
+        polygon_normals: result.polygon_normals,
+        polygon_tris: result.polygon_tris,
     })
-}
-
-/// One outward unit normal per source polygon, taken from the first ECEF triangle
-/// of each; a degenerate polygon (zero triangles) gets a placeholder that is never
-/// repeated into the output. `polygon_tris` gives each polygon's triangle count in
-/// polygon order, and `triangles` are grouped by polygon in that same order.
-fn ecef_polygon_normals(
-    vertices: &[[f64; 3]],
-    triangles: &[[u32; 3]],
-    polygon_tris: &[u32],
-) -> Vec<[f64; 3]> {
-    let mut normals = Vec::with_capacity(polygon_tris.len());
-    let mut base = 0usize;
-    for &count in polygon_tris {
-        let normal = if count == 0 {
-            [0.0, 0.0, 1.0]
-        } else {
-            let [a, b, c] = triangles[base];
-            face_normal(
-                vertices[a as usize],
-                vertices[b as usize],
-                vertices[c as usize],
-            )
-        };
-        normals.push(normal);
-        base += count as usize;
-    }
-    normals
-}
-
-/// Unit right-hand-rule normal of triangle `a, b, c`; `+Z` when the triangle is
-/// degenerate.
-fn face_normal(a: [f64; 3], b: [f64; 3], c: [f64; 3]) -> [f64; 3] {
-    let u = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
-    let v = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
-    let n = [
-        u[1] * v[2] - u[2] * v[1],
-        u[2] * v[0] - u[0] * v[2],
-        u[0] * v[1] - u[1] * v[0],
-    ];
-    let len = (n[0] * n[0] + n[1] * n[1] + n[2] * n[2]).sqrt();
-    if len > 0.0 {
-        [n[0] / len, n[1] / len, n[2] / len]
-    } else {
-        [0.0, 0.0, 1.0]
-    }
 }
 
 #[cfg(test)]
@@ -241,38 +181,11 @@ mod tests {
         a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
     }
 
-    #[test]
-    fn face_normal_of_ccw_xy_triangle_points_up() {
-        let n = face_normal([0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]);
-        assert_eq!(n, [0.0, 0.0, 1.0]);
-    }
-
-    #[test]
-    fn face_normal_of_degenerate_triangle_falls_back_to_up() {
-        let n = face_normal([0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [2.0, 0.0, 0.0]);
-        assert_eq!(n, [0.0, 0.0, 1.0]);
-    }
-
-    #[test]
-    fn ecef_polygon_normals_groups_by_polygon_and_placeholders_degenerate() {
-        // Polygon 0: one triangle in the z = 1 plane, CCW -> +Z normal.
-        // Polygon 1: zero triangles (degenerate) -> placeholder, not read from `triangles`.
-        let vertices = vec![[0.0, 0.0, 1.0], [1.0, 0.0, 1.0], [0.0, 1.0, 1.0]];
-        let triangles = vec![[0u32, 1, 2]];
-        let polygon_tris = vec![1u32, 0];
-
-        let normals = ecef_polygon_normals(&vertices, &triangles, &polygon_tris);
-
-        assert_eq!(normals.len(), 2);
-        assert_eq!(normals[0], [0.0, 0.0, 1.0]);
-        assert_eq!(normals[1], [0.0, 0.0, 1.0]);
-    }
-
     // A face whose canonical orientation is outward, stored in a lat-first frame
     // (EPSG:4979, orientation sign -1), must emit an ECEF normal that points away
-    // from the earth's centre. This fails if the normal is carried from the source
-    // frame (where it points inward for a reflected frame) instead of recomputed
-    // from the reprojected ECEF geometry.
+    // from the earth's centre. Triangulating in ECEF gives this for free: the
+    // reflected source winding is cancelled by the reprojection, so the
+    // right-hand-rule normal comes out outward.
     #[test]
     fn outward_face_in_lat_first_frame_emits_outward_ecef_normal() {
         // Vertices stored (lat, lon, height). In real ENU at this location the ring
