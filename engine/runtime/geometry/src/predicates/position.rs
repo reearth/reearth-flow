@@ -5,18 +5,18 @@
 //! [`OnBoundary`](CoordPos::OnBoundary), or [`Outside`](CoordPos::Outside),
 //! with OGC point-set semantics per leaf:
 //!
-//! - **Point** — the interior is the point itself; the boundary is empty.
-//! - **LineString** — the interior is the chain minus its endpoints; the
+//! - **Point**: the interior is the point itself; the boundary is empty.
+//! - **LineString**: the interior is the chain minus its endpoints; the
 //!   endpoints are the boundary, unless the chain is closed (then everything
 //!   is interior).
-//! - **Polygon / meshes** — faces are treated as a point-set union. A
+//! - **Polygon / meshes**: faces are treated as a point-set union. A
 //!   coordinate on a ring edge shared by two faces (or on a mesh vertex whose
 //!   incident faces cover a full disk) is *interior* to the union, not on its
 //!   boundary; the refinement is an exact angular-coverage test around the
 //!   coordinate. It assumes valid winding (exteriors CCW, holes CW) and
 //!   non-overlapping face interiors; on invalid input and on degenerate
 //!   (all-equal) rings it degrades to `OnBoundary`, never to a false `Inside`.
-//! - **Collections** — the union of the members: the highest member
+//! - **Collections**: the union of the members, the highest member
 //!   classification wins (`Inside` > `OnBoundary` > `Outside`), with the
 //!   line-endpoint boundary counted mod 2 across all line members.
 //!

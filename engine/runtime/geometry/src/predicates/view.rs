@@ -1,19 +1,19 @@
 //! Zero-copy coordinate views feeding the [`kernel`].
 //!
-//! The predicates operate over lightweight borrows of the new leaves' flat
+//! The predicates operate over lightweight borrows of the leaves' flat
 //! buffers rather than over the leaf types directly, so a `Polygon` ring, a
 //! `PolygonMesh` face, and a `TriangularMesh` triangle can all reach the same
 //! kernel code without copying coordinates.
 //!
 //! Three layers:
 //!
-//! - [`RingView`] — one boundary ring, contiguous (`Polygon`) or indexed into a
+//! - [`RingView`]: one boundary ring, contiguous (`Polygon`) or indexed into a
 //!   vertex pool (meshes).
-//! - [`FaceView`] / [`AreaView`] — a face as its rings (exterior first), and an
+//! - [`FaceView`] / [`AreaView`]: a face as its rings (exterior first), and an
 //!   areal leaf as its faces. A `Polygon` is one face; the meshes are face sets.
 //!   Mesh views decode the packed CSR index buffers once (indices only, never
 //!   coordinates).
-//! - [`Leaf2D`] — a flattened, collection-free borrow of a 2D geometry: the
+//! - [`Leaf2D`]: a flattened, collection-free borrow of a 2D geometry, the
 //!   normal form the binary predicates dispatch over.
 
 use super::kernel::{self, Orientation};
@@ -26,13 +26,13 @@ use crate::polygon_mesh::PolygonMesh2D;
 use crate::triangular_mesh::TriangularMesh2D;
 use crate::Euclidean2DGeometry;
 
-/// The rings of a 2D polygon — exterior first, then each interior (hole) — as
+/// The rings of a 2D polygon, exterior first then each interior (hole), as
 /// borrowed slices over the polygon's own buffer.
 pub fn polygon2d_rings(polygon: &Polygon2D) -> impl Iterator<Item = &[[f64; 2]]> {
     core::iter::once(polygon.exterior()).chain(polygon.interiors())
 }
 
-/// The rings of a 3D polygon — exterior first, then each interior — as borrowed
+/// The rings of a 3D polygon, exterior first then each interior, as borrowed
 /// slices over the polygon's own buffer.
 pub fn polygon3d_rings(polygon: &Polygon3D) -> impl Iterator<Item = &[[f64; 3]]> {
     core::iter::once(polygon.exterior()).chain(polygon.interiors())

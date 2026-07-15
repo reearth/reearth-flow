@@ -1,9 +1,9 @@
 //! Pairwise segment × segment intersections between two polyline sets.
 //!
-//! The substrate for `LineOnLineOverlayer`: every segment of one operand is
-//! tested against every bbox-overlapping segment of the other via an
-//! rstar-indexed candidate sweep, and each hit goes through the robust
-//! phase-1 [`kernel::segment_intersection`](segment_intersection).
+//! Every segment of one operand is tested against every bbox-overlapping
+//! segment of the other via an rstar-indexed candidate sweep, and each hit
+//! goes through the robust
+//! [`kernel::segment_intersection`](segment_intersection).
 
 use std::cmp::Ordering;
 
@@ -30,7 +30,7 @@ impl rstar::RTreeObject for Segment {
 }
 
 /// The segments of the line leaves. Zero-length segments (repeated vertices)
-/// are dropped — they carry no direction and no crossing. Errs with the leaf's
+/// are dropped: they carry no direction and no crossing. Errs with the leaf's
 /// type name on the first non-line leaf.
 pub(super) fn leaf_segments(leaves: &[Leaf2D<'_>]) -> Result<Vec<Segment>, &'static str> {
     let mut segments = Vec::new();

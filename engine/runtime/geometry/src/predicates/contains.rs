@@ -1,7 +1,7 @@
 //! The `contains` and `covers` predicates, with OGC point-set semantics.
 //!
 //! `covers(a, b)`: every point of `b` lies in the closure of `a`.
-//! `contains(a, b)`: `covers(a, b)` **and** the interiors intersect — so a
+//! `contains(a, b)`: `covers(a, b)` **and** the interiors intersect, so a
 //! geometry lying entirely on `a`'s boundary is covered but not contained.
 //!
 //! The evaluation is split-based rather than heuristic: every boundary segment
@@ -9,13 +9,13 @@
 //! entirely in one region of `a` and its midpoint classifies the whole piece.
 //! Three checks compose the answer:
 //!
-//! 1. **Boundary coverage** — every piece midpoint of `b`'s segments and ring
+//! 1. **Boundary coverage**: every piece midpoint of `b`'s segments and ring
 //!    edges must not be outside `a`.
-//! 2. **Face interiors** — every face of an areal `b` contributes one interior
+//! 2. **Face interiors**: every face of an areal `b` contributes one interior
 //!    sample point, which must be strictly inside `a`'s areal union. Since a
 //!    face interior that never meets `a`'s boundary lies in a single region,
 //!    one sample decides it (check 3 guarantees the premise).
-//! 3. **Reverse leak** — no piece of `a`'s areal boundary may run strictly
+//! 3. **Reverse leak**: no piece of `a`'s areal boundary may run strictly
 //!    inside `b`'s areal interior while being true union boundary of `a` (a
 //!    hole or gap of `a` swallowed by `b`'s interior). Internal shared mesh
 //!    edges of `a` classify as interior and pass.

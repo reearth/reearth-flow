@@ -94,13 +94,9 @@ impl std::cmp::Ord for EdgeEndKey {
 }
 
 impl EdgeEndKey {
-    /// JTS `EdgeEnd::compareDirection`: same quadrant ties break on the robust
-    /// orientation of this end's direction point against the other end's ray.
-    ///
-    /// Note: the legacy in-tree copy routes this through a four-point
-    /// `orient3d` with `z` defaulted to `0`, which degenerates to `Collinear`
-    /// for all-2D input and over-bundles same-quadrant edge ends; this port
-    /// restores the JTS/georust three-point `orient2d`.
+    /// Compares the directions of two edge ends (JTS `EdgeEnd::compareDirection`):
+    /// same-quadrant ties break on the robust orientation of this end's
+    /// direction point against the other end's ray.
     pub(crate) fn compare_direction(&self, other: &EdgeEndKey) -> std::cmp::Ordering {
         use std::cmp::Ordering;
         if self.delta == other.delta {

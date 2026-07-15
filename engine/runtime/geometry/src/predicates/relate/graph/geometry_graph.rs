@@ -12,9 +12,8 @@ use std::rc::Rc;
 
 /// One operand's topology graph: its components as labeled nodes and edges.
 ///
-/// The legacy version consumed a `GeometryCow`; this one is built from a
-/// [`RelateOperand`] — flattened leaves, with mesh leaves contributing their
-/// union-boundary rings rather than raw faces.
+/// Built from a [`RelateOperand`]: flattened leaves, with mesh leaves
+/// contributing their union-boundary rings rather than raw faces.
 pub(crate) struct GeometryGraph<'a> {
     arg_index: usize,
     parent_geometry: &'a RelateOperand<'a>,
@@ -305,8 +304,7 @@ enum WindingOrder {
 }
 
 /// The winding order of a closed ring, by robust orientation at its
-/// lexicographically least vertex; a port of the legacy `Winding` for
-/// `LineString`. `None` for open or degenerate rings.
+/// lexicographically least vertex. `None` for open or degenerate rings.
 fn ring_winding_order(ring: &[[f64; 2]]) -> Option<WindingOrder> {
     // If the ring has at most 3 coords, it is either not closed, or is at
     // most two distinct points. Either way, the winding is unspecified.

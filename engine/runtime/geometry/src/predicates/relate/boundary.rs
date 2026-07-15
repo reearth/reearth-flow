@@ -7,14 +7,14 @@
 //! mesh to the directed boundary rings of its face union:
 //!
 //! 1. collect every directed ring edge of every face (holes included);
-//! 2. cancel pairs that occur in both directions — internal shared edges;
+//! 2. cancel pairs that occur in both directions (internal shared edges);
 //! 3. stitch the survivors into closed loops.
 //!
 //! Directions are preserved throughout, so with Flow's validated winding
-//! (exteriors CCW, holes CW — face interior locally *left* of every directed
-//! edge) each output ring has the union interior on its left, and can be fed
-//! to the graph with fixed `On = Boundary, Left = Inside, Right = Outside`
-//! labels — no winding recomputation.
+//! (exteriors CCW, holes CW, with face interior locally *left* of every
+//! directed edge) each output ring has the union interior on its left, and can
+//! be fed to the graph with fixed `On = Boundary, Left = Inside, Right =
+//! Outside` labels, with no winding recomputation.
 //!
 //! Assumes a valid mesh (non-overlapping face interiors, consistent winding),
 //! like the rest of the predicates; on invalid input where a walk cannot
@@ -79,7 +79,7 @@ pub(crate) fn union_boundary_rings(area: &AreaView<'_>) -> Vec<Vec<[f64; 2]>> {
     // Stitch loops by walking outgoing edges. Whenever the walk revisits a
     // vertex already on the current path, the piece since that visit is a
     // closed loop: split it off as its own ring. This keeps every output ring
-    // simple — a walk through a pinch vertex yields one ring per wedge, never
+    // simple: a walk through a pinch vertex yields one ring per wedge, never
     // a figure eight.
     let mut rings = Vec::new();
     while let Some((&start, _)) = outgoing.iter().next() {

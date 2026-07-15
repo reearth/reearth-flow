@@ -1,10 +1,10 @@
 //! The operand facade the relate graphs are built from.
 //!
-//! [`RelateOperand`] replaces the legacy `GeometryCow`: a flattened 2D operand
-//! (the phase-1 [`Operand2D`]) plus everything `RelateOperation` asks of a
-//! whole geometry — dimensions, union point position, bounding box — and the
-//! per-mesh union-boundary rings the graph input layer consumes instead of raw
-//! mesh faces (see [`boundary`](super::boundary)).
+//! [`RelateOperand`] is a flattened 2D operand (the [`Operand2D`]) plus
+//! everything `RelateOperation` asks of a whole geometry (dimensions, union
+//! point position, bounding box) and the per-mesh union-boundary rings the
+//! graph input layer consumes instead of raw mesh faces (see
+//! [`boundary`](super::boundary)).
 
 use crate::ops::Aabb;
 use crate::predicates::kernel::CoordPos;
