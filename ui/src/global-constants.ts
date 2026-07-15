@@ -20,10 +20,22 @@ export const GLOBAL_HOT_KEYS = [
   "ctrl+f", // fullscreen win
 ];
 
+export const DEBUG_HOT_KEYS = [
+  "meta+enter",
+  "ctrl+enter",
+  "shift+meta+enter",
+  "shift+ctrl+enter",
+  "escape",
+  "shift+meta+backspace",
+  "shift+ctrl+backspace",
+];
+
 export const CANVAS_HOT_KEYS = [
   "r", // reader dialog
   "t", // transformer dialog
   "w", //  writer dialog
+  "meta+a", // select all nodes mac
+  "ctrl+a", // select all nodes win
   "meta+c", // copy mac
   "ctrl+c", // copy win
   "meta+x", // cut mac

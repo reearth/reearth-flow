@@ -9,6 +9,7 @@ import {
 } from "@phosphor-icons/react";
 import { getConnectedEdges, useReactFlow } from "@xyflow/react";
 import { memo, useMemo, useState } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
 
 import {
   DropdownMenu,
@@ -21,6 +22,7 @@ import {
   PopoverTrigger,
 } from "@flow/components";
 import { useEditorContext } from "@flow/features/Editor/editorContext";
+import { DEBUG_HOT_KEYS } from "@flow/global-constants";
 import { useSubscription } from "@flow/lib/gql/subscriptions/useSubscription";
 import { useT } from "@flow/lib/i18n";
 import { useIndexedDB } from "@flow/lib/indexedDB";
@@ -70,6 +72,7 @@ const DebugActionBar: React.FC<Props> = ({
   refetchWorkflowVariables,
 }) => {
   const t = useT();
+  const { getNodes } = useReactFlow();
   const {
     showOverlayElement,
     debugRunStarted,
@@ -90,6 +93,58 @@ const DebugActionBar: React.FC<Props> = ({
     refetchWorkflowVariables,
     customDebugRunWorkflowVariables,
   });
+
+  const selectedNode = useMemo(
+    () =>
+      selectedNodeIds.length === 1
+        ? (getNodes().find((node) => node.id === selectedNodeIds[0]) as
+            | Node
+            | undefined)
+        : undefined,
+    [selectedNodeIds, getNodes],
+  );
+
+  const canRunDebugFromSelected =
+    !isSaving &&
+    !!selectedNode &&
+    selectedNode.type !== "batch" &&
+    selectedNode.type !== "note" &&
+    selectedNode.type !== "writer" &&
+    selectedNode.type !== "subworkflow" &&
+    getConnectedEdges([selectedNode], edges ?? []).length > 0 &&
+    !!debugJob &&
+    jobStatus === "completed";
+
+  useHotkeys(DEBUG_HOT_KEYS, (event, handler) => {
+    const hasModifier = event.metaKey || event.ctrlKey;
+    const hasShift = event.shiftKey;
+
+    switch (handler.keys?.join("")) {
+      case "enter":
+        event.preventDefault();
+        if (hasModifier && hasShift) {
+          if (canRunDebugFromSelected) {
+            onDebugRunStartFromSelectedNode?.(selectedNode);
+          }
+        } else if (hasModifier) {
+          handleDebugRunStart();
+        }
+        break;
+
+      case "escape":
+        if (!debugRunStarted) break;
+        event.preventDefault();
+        handleDebugRunStop();
+        break;
+      case "backspace":
+        event.preventDefault();
+        if (hasModifier && hasShift) {
+          handleDebugRunReset();
+        }
+        break;
+    }
+  });
+
   return (
     <div className="flex items-center gap-2 align-middle">
       <StartButton

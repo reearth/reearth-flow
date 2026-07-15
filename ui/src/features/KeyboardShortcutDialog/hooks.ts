@@ -7,6 +7,8 @@ import {
   CanvasKeys,
   EditorKeys,
   GeneralKeys,
+  DebugKeys,
+  DebugKeyBindings,
 } from "@flow/types";
 
 export default () => {
@@ -57,7 +59,7 @@ export default () => {
       },
       {
         keyBinding: EditorKeyBindings["groupToSubWorkFlow"],
-        description: t("Group Selected Actions into a Sub-Workflow"),
+        description: t("Sub-Workflow from Selection"),
       },
     ],
   };
@@ -65,6 +67,10 @@ export default () => {
   const canvasShortcuts: Shortcuts<CanvasKeys> = {
     title: t("Canvas Shortcuts"),
     shortcuts: [
+      {
+        keyBinding: CanvasKeyBindings["selectAll"],
+        description: t("Select All Actions"),
+      },
       {
         keyBinding: CanvasKeyBindings["copy"],
         description: t("Copy the Selected Actions"),
@@ -76,6 +82,10 @@ export default () => {
       {
         keyBinding: CanvasKeyBindings["paste"],
         description: t("Paste the Copied Actions"),
+      },
+      {
+        keyBinding: CanvasKeyBindings["deleteNode"],
+        description: t("Delete the Selected Actions"),
       },
       {
         keyBinding: CanvasKeyBindings["spreadNodes"],
@@ -112,10 +122,33 @@ export default () => {
     ],
   };
 
+  const debugShortcuts: Shortcuts<DebugKeys> = {
+    title: t("Debug Shortcuts"),
+    shortcuts: [
+      {
+        keyBinding: DebugKeyBindings["startDebugRun"],
+        description: t("Run Debug Workflow"),
+      },
+      {
+        keyBinding: DebugKeyBindings["runDebugFromSelected"],
+        description: t("Run Debug from Selected"),
+      },
+      {
+        keyBinding: DebugKeyBindings["cancelDebugRun"],
+        description: t("Stop Debug Workflow"),
+      },
+      {
+        keyBinding: DebugKeyBindings["clearDebugResults"],
+        description: t("Clear Debug Results"),
+      },
+    ],
+  };
+
   return {
     title,
     generalShortcuts,
     editorShortcuts,
     canvasShortcuts,
+    debugShortcuts,
   };
 };

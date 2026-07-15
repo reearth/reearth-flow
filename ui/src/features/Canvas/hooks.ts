@@ -19,6 +19,7 @@ type Props = {
   readonly?: boolean;
   onWorkflowAdd?: (position?: XYPosition) => void;
   onNodesAdd?: (newNode: Node[]) => void;
+  onNodesSelectAll?: () => void;
   onNodesChange?: (changes: NodeChange<Node>[]) => void;
   onNodeSettings?: (e: MouseEvent | undefined, nodeId: string) => void;
   onNodesDisable?: (nodes?: Node[]) => void;
@@ -58,6 +59,7 @@ export default ({
   readonly,
   onWorkflowAdd,
   onNodesAdd,
+  onNodesSelectAll,
   onNodesChange,
   onNodeSettings,
   onEdgesAdd,
@@ -238,6 +240,12 @@ export default ({
         event.preventDefault();
         if (isMainWorkflow && !readonly)
           onNodePickerOpen?.({ x: 0, y: 0 }, "writer", true);
+        break;
+      case "a":
+        if (hasModifier) {
+          event.preventDefault();
+          onNodesSelectAll?.();
+        }
         break;
       case "c":
         if (hasModifier || !readonly) onCopy?.();

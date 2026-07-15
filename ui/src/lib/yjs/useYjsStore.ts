@@ -48,6 +48,7 @@ export default ({
   const {
     handleYNodesAdd,
     handleYNodesChange,
+    handleYNodesSelectAll,
     handleYNodesDataUpdate,
     handleYNodeSchemaUpdate,
   } = useYNode({
@@ -85,6 +86,7 @@ export default ({
     handleYWorkflowUpdate,
     handleYNodesAdd,
     handleYNodesChange,
+    handleYNodesSelectAll,
     handleYNodesDataUpdate,
     handleYNodeSchemaUpdate,
     handleYEdgesAdd,

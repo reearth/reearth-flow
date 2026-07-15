@@ -7,11 +7,11 @@ type Props = {
 const os = window.navigator.userAgent.toLowerCase();
 
 const Shortcuts: React.FC<Props> = ({ shortcuts }) => (
-  <ul className="flex flex-col">
+  <ul className="flex flex-col flex-wrap gap-1">
     {shortcuts.map(({ keyBinding, description }, idx) => (
       <li
         key={`${keyBinding?.key}${keyBinding?.commandKey}${keyBinding?.shiftKey}${keyBinding?.altKey}`}
-        className={`flex items-center justify-between rounded-md p-1 ${idx % 2 === 0 ? "bg-primary/50" : undefined}`}>
+        className={`flex items-center justify-between gap-6 rounded-md p-1 ${idx % 2 === 0 ? "bg-primary/50" : undefined}`}>
         <p className="text-sm dark:font-extralight">{description}</p>
         <div className="flex gap-1">
           <Shortcut keyBinding={keyBinding} />

@@ -22,6 +22,7 @@ export type EditorKeys =
   | "k"; // Open Search
 
 export type CanvasKeys =
+  | "a" // select all nodes
   | "c" // w CMD = Copy, wout CMD = left panel canvas navigator
   | "x" // cut
   | "v" // paste
@@ -30,9 +31,12 @@ export type CanvasKeys =
   | "+" // zoom in
   | "=" // zoom in (alternative - depends on keyboard layout)
   | "-" // zoom out
-  | "0"; // fit view
+  | "0" // fit view
+  | "Backspace"; // delete selected nodes (handled by react flow's default deleteKeyCode)
 
-export type PossibleKeys = GeneralKeys | EditorKeys | CanvasKeys;
+export type DebugKeys = "Enter" | "Escape" | "Backspace";
+
+export type PossibleKeys = GeneralKeys | EditorKeys | CanvasKeys | DebugKeys;
 
 type PossibleActions =
   | "zoomIn"
@@ -40,9 +44,11 @@ type PossibleActions =
   | "compressNodes"
   | "spreadNodes"
   | "fitView"
+  | "selectAll"
   | "copy"
   | "cut"
   | "paste"
+  | "deleteNode"
   | "undo"
   | "redo"
   | "disableNode"
@@ -57,7 +63,11 @@ type PossibleActions =
   | "leftPanelActionsList"
   | "leftPanelResources"
   | "groupToSubWorkFlow"
-  | "openSearch";
+  | "openSearch"
+  | "startDebugRun"
+  | "runDebugFromSelected"
+  | "cancelDebugRun"
+  | "clearDebugResults";
 
 export type KeyBinding<K extends PossibleKeys = PossibleKeys> = {
   key: K;
@@ -101,9 +111,11 @@ export const EditorKeyBindings: Partial<
 export const CanvasKeyBindings: Partial<
   Record<PossibleActions, KeyBinding<CanvasKeys>>
 > = {
+  selectAll: { key: "a", commandKey: true },
   copy: { key: "c", commandKey: true },
   cut: { key: "x", commandKey: true },
   paste: { key: "v", commandKey: true },
+  deleteNode: { key: "Backspace" },
   undo: { key: "z", commandKey: true },
   redo: { key: "z", commandKey: true, shiftKey: true },
   disableNode: { key: "e", commandKey: true },
@@ -112,4 +124,26 @@ export const CanvasKeyBindings: Partial<
   compressNodes: { key: "-", shiftKey: true },
   spreadNodes: { key: "+", shiftKey: true },
   fitView: { key: "0", commandKey: true },
+};
+
+export const DebugKeyBindings: Partial<
+  Record<PossibleActions, KeyBinding<DebugKeys>>
+> = {
+  startDebugRun: {
+    key: "Enter",
+    commandKey: true,
+  },
+  runDebugFromSelected: {
+    key: "Enter",
+    commandKey: true,
+    shiftKey: true,
+  },
+  cancelDebugRun: {
+    key: "Escape",
+  },
+  clearDebugResults: {
+    key: "Backspace",
+    commandKey: true,
+    shiftKey: true,
+  },
 };

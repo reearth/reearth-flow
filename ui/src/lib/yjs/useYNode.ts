@@ -402,9 +402,18 @@ export default ({
     [currentYWorkflow, undoTrackerActionWrapper],
   );
 
+  const handleYNodesSelectAll = useCallback(() => {
+    const yNodes = currentYWorkflow?.get("nodes") as YNodesMap | undefined;
+    if (!yNodes) return;
+
+    const allNodeIds = Array.from(yNodes.keys());
+    setSelectedNodeIds(allNodeIds);
+  }, [currentYWorkflow, setSelectedNodeIds]);
+
   return {
     handleYNodesAdd,
     handleYNodesChange,
+    handleYNodesSelectAll,
     handleYNodesDataUpdate,
     handleYNodeSchemaUpdate,
   };
