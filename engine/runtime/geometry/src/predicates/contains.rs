@@ -30,7 +30,7 @@ use super::intersects::type_name_3d;
 use super::kernel::{segment_intersection, CoordPos, SegmentIntersection};
 use super::position::{areal_union_position, face_position, union_position};
 use super::view::{flatten_2d, require_common_frame, FaceView, Leaf2D, Operand2D};
-use super::{PredicateError, Result};
+use super::Result;
 use crate::ops::Aabb;
 use crate::Geometry;
 
@@ -48,15 +48,7 @@ pub fn covers(a: &Geometry, b: &Geometry) -> Result<bool> {
 }
 
 fn containment(a: &Geometry, b: &Geometry, need_witness: bool) -> Result<bool> {
-    let (a_leaves, a_3d) = flatten_geometry(a);
-    let (b_leaves, b_3d) = flatten_geometry(b);
-    match (a_3d, b_3d) {
-        (None, None) => {}
-        (Some(left), Some(right)) if a_leaves.is_empty() && b_leaves.is_empty() => {
-            return Err(PredicateError::UnsupportedPair { left, right })
-        }
-        _ => return Err(PredicateError::CrossDimension),
-    }
+    let (a_leaves, b_leaves) = super::flatten_2d_pair(a, b)?;
     let a = Operand2D::from_leaves(a_leaves);
     let b = Operand2D::from_leaves(b_leaves);
     require_common_frame(&a, &b)?;
@@ -307,6 +299,7 @@ mod tests {
     use crate::point::Point2D;
     use crate::polygon::Polygon2D;
     use crate::polygon_mesh::PolygonMesh2D;
+    use crate::predicates::PredicateError;
     use crate::{Euclidean2DGeometry, Geometry};
     use pretty_assertions::assert_eq;
 

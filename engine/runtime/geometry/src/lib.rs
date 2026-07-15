@@ -33,6 +33,7 @@ pub mod csg;
 pub mod index;
 pub mod line_string;
 pub mod ops;
+pub mod overlay;
 pub mod point;
 pub mod point_cloud;
 pub mod polygon;

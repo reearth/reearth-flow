@@ -21,8 +21,10 @@
 //!   patterns can be read; meshes relate as their dissolved face union.
 //!
 //! The 2D leaves' optional per-vertex elevation is ignored throughout. The
-//! remaining families (boolean overlay, ray casting, 3D pairs) build on the
-//! same kernel and views in later phases.
+//! constructed counterparts — boolean overlay, line clipping, segment
+//! intersection points — live in [`overlay`](crate::overlay) over the same
+//! views and kernel; the remaining families (ray casting, 3D pairs) come in
+//! later phases.
 
 pub mod contains;
 pub mod intersects;
@@ -38,6 +40,8 @@ pub use position::point_position_2d;
 pub use relate::{relate, Dimensions, IntersectionMatrix};
 
 use crate::coordinate::CoordinateFrame;
+use crate::Geometry;
+use view::Leaf2D;
 
 /// Why a binary predicate or overlay could not be evaluated.
 ///
@@ -97,6 +101,26 @@ pub fn require_same_frame(a: &CoordinateFrame, b: &CoordinateFrame) -> Result<()
         Ok(())
     } else {
         Err(PredicateError::MixedFrames)
+    }
+}
+
+/// Flatten both operands of a binary 2D operation into their 2D leaves under
+/// the shared dimension policy: a 2D × 3D pair is
+/// [`CrossDimension`](PredicateError::CrossDimension), a purely 3D pair
+/// [`UnsupportedPair`](PredicateError::UnsupportedPair) until the 3D phases
+/// land. `Geometry::None` and empty collections flatten to no leaves.
+pub(crate) fn flatten_2d_pair<'a>(
+    a: &'a Geometry,
+    b: &'a Geometry,
+) -> Result<(Vec<Leaf2D<'a>>, Vec<Leaf2D<'a>>)> {
+    let (a_leaves, a_3d) = contains::flatten_geometry(a);
+    let (b_leaves, b_3d) = contains::flatten_geometry(b);
+    match (a_3d, b_3d) {
+        (None, None) => Ok((a_leaves, b_leaves)),
+        (Some(left), Some(right)) if a_leaves.is_empty() && b_leaves.is_empty() => {
+            Err(PredicateError::UnsupportedPair { left, right })
+        }
+        _ => Err(PredicateError::CrossDimension),
     }
 }
 
