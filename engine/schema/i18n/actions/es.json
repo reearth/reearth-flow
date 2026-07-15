@@ -603,39 +603,43 @@
       "description": "Escribe las entidades en un archivo",
       "parameterI18n": {
         "": {
-          "title": "Cesium3DTilesWriter Parameters"
+          "title": "Parámetros de Cesium3DTilesWriter"
         },
         "attachTexture": {
-          "title": "Attach Textures",
-          "description": "Whether to include texture information in the generated tiles"
+          "title": "Adjuntar Texturas",
+          "description": "Si se debe incluir información de textura en los mosaicos generados"
         },
         "compressOutput": {
-          "title": "Compressed Output Path",
-          "description": "Optional path for compressed archive output"
+          "title": "Ruta de Salida Comprimida",
+          "description": "Ruta opcional para la salida del archivo comprimido"
+        },
+        "computeFlatNormal": {
+          "title": "Calcular Normales Planas",
+          "description": "Calcula normales planas por polígono para la iluminación. Verdadero por defecto. Cuando se desactiva, no se escriben normales y la malla es más pequeña, pero el mosaico no incluye datos de iluminación (el visor debe derivar las normales planas por sí mismo)."
         },
         "dracoCompression": {
-          "title": "Draco Compression",
-          "description": "Use draco compression. Defaults to true."
+          "title": "Compresión Draco",
+          "description": "Usar compresión Draco. Verdadero por defecto."
         },
         "maxZoom": {
-          "title": "Maximum Zoom Level",
-          "description": "Maximum zoom level for tile generation (0-24)"
+          "title": "Nivel de Zoom Máximo",
+          "description": "Nivel de zoom máximo para la generación de mosaicos (0-24)"
         },
         "minZoom": {
-          "title": "Minimum Zoom Level",
-          "description": "Minimum zoom level for tile generation (0-24)"
+          "title": "Nivel de Zoom Mínimo",
+          "description": "Nivel de zoom mínimo para la generación de mosaicos (0-24)"
         },
         "output": {
-          "title": "Output Path",
-          "description": "Directory path where the 3D tiles will be written"
+          "title": "Ruta de Salida",
+          "description": "Ruta del directorio donde se escribirán los 3D Tiles"
         },
         "schemaKey": {
-          "title": "Schema Key",
-          "description": "Attribute key whose value identifies the schema type and determines the output filename: all features sharing the same value are written to the same file. This attribute is excluded from output."
+          "title": "Clave de Esquema",
+          "description": "Clave de atributo cuyo valor identifica el tipo de esquema y determina el nombre del archivo de salida: todas las entidades que comparten el mismo valor se escriben en el mismo archivo. Este atributo se excluye de la salida."
         },
         "skipUnexposedAttributes": {
-          "title": "Skip unexposed Attributes",
-          "description": "Skip attributes with double underscore prefix"
+          "title": "Omitir Atributos no Expuestos",
+          "description": "Omitir atributos con prefijo de doble guion bajo"
         }
       }
     },

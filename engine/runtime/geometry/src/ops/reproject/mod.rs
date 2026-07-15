@@ -5,6 +5,7 @@ use crate::error::{Error, Result};
 
 mod ffi;
 
+pub(crate) use ffi::axis_order_sign;
 pub use ffi::ReprojectionCache;
 
 /// Reproject a geometry's coordinates to a target CRS.
