@@ -7,9 +7,8 @@ use std::ptr;
 use crate::coordinate::EpsgCode;
 use proj_sys::{
     proj_context_create, proj_context_destroy, proj_context_errno, proj_context_errno_string,
-    proj_create_crs_to_crs, proj_destroy, proj_errno, proj_errno_reset,
-    proj_normalize_for_visualization, proj_trans, PJ, PJ_CONTEXT, PJ_COORD, PJ_DIRECTION_PJ_FWD,
-    PJ_XYZT,
+    proj_create_crs_to_crs, proj_destroy, proj_errno, proj_errno_reset, proj_trans, PJ, PJ_CONTEXT,
+    PJ_COORD, PJ_DIRECTION_PJ_FWD, PJ_XYZT,
 };
 
 use crate::error::{Error, Result};
@@ -122,22 +121,7 @@ impl Entry {
                 )));
             }
 
-            let pj_norm = proj_normalize_for_visualization(ctx, pj);
-            proj_destroy(pj);
-            if pj_norm.is_null() {
-                let msg = ctx_errno_string(ctx);
-                proj_context_destroy(ctx);
-                return Err(Error::projection(format!(
-                    "failed to normalize transform EPSG:{from}->EPSG:{to}: {msg}"
-                )));
-            }
-
-            Ok(Self {
-                from,
-                to,
-                ctx,
-                pj: pj_norm,
-            })
+            Ok(Self { from, to, ctx, pj })
         }
     }
 }
