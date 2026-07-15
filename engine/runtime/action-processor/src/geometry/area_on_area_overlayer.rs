@@ -145,9 +145,8 @@ struct AreaOnAreaOverlayer {
     // Disk-backed state
     group_map: HashMap<AttributeValue, usize>,
     /// Per-group CRS carried over from the inputs onto the overlay outputs.
-    /// The overlay result is in the same plane as its inputs, so a group with a
-    /// single EPSG stamps it on its outputs; a group with mixed EPSGs (which is
-    /// geometrically meaningless) falls back to no CRS.
+    /// A missing EPSG means unknown, not conflicting; only differing known
+    /// EPSGs drop the CRS.
     group_epsg: HashMap<usize, GroupEpsg>,
     group_count: usize,
     temp_dir: Option<PathBuf>,
@@ -161,9 +160,10 @@ struct AreaOnAreaOverlayer {
 /// Tracks the CRS of the features accumulated into a single overlay group.
 #[derive(Clone, Copy)]
 enum GroupEpsg {
-    /// All features seen so far share this EPSG (possibly `None`).
+    /// The single EPSG known so far (`None` while only EPSG-less features
+    /// have been seen).
     Uniform(Option<EpsgCode>),
-    /// Features with differing EPSGs were seen; no CRS is carried over.
+    /// Two differing known EPSGs were seen; no CRS is carried over.
     Mixed,
 }
 
@@ -171,8 +171,10 @@ impl GroupEpsg {
     /// Fold another feature's EPSG into the group's running state.
     fn observe(&mut self, epsg: Option<EpsgCode>) {
         if let GroupEpsg::Uniform(existing) = self {
-            if *existing != epsg {
-                *self = GroupEpsg::Mixed;
+            match (*existing, epsg) {
+                (Some(a), Some(b)) if a != b => *self = GroupEpsg::Mixed,
+                (None, Some(_)) => *existing = epsg,
+                _ => {}
             }
         }
     }
@@ -947,10 +949,17 @@ mod tests {
     }
 
     #[test]
-    fn group_epsg_some_and_none_is_mixed() {
+    fn group_epsg_missing_code_does_not_conflict_with_known_code() {
         let mut state = GroupEpsg::Uniform(Some(6675));
         state.observe(None);
-        assert_eq!(state.resolve(), None);
+        assert_eq!(state.resolve(), Some(6675));
+    }
+
+    #[test]
+    fn group_epsg_known_code_upgrades_missing_state() {
+        let mut state = GroupEpsg::Uniform(None);
+        state.observe(Some(6675));
+        assert_eq!(state.resolve(), Some(6675));
     }
 
     #[cfg(not(feature = "new-geometry"))]

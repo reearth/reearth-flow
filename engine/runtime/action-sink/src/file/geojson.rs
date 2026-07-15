@@ -172,11 +172,15 @@ pub fn write_geojson_to_storage(
     features: &[Feature],
 ) -> Result<(), SinkError> {
     let mut geojson_features: Vec<geojson::Feature> = Vec::with_capacity(features.len());
+    let mut emitted: Vec<Feature> = Vec::with_capacity(features.len());
     let mut failed = 0usize;
 
     for feature in features {
         match TryInto::<Vec<geojson::Feature>>::try_into(feature.clone()) {
-            Ok(mut converted) => geojson_features.append(&mut converted),
+            Ok(mut converted) => {
+                geojson_features.append(&mut converted);
+                emitted.push(feature.clone());
+            }
             Err(e) => {
                 failed += 1;
                 tracing::warn!(feature_id = %feature.id, error = %e, "failed to convert feature to GeoJSON; omitting it");
@@ -187,7 +191,7 @@ pub fn write_geojson_to_storage(
     let feature_collection = geojson::FeatureCollection {
         bbox: None,
         features: geojson_features,
-        foreign_members: crs_foreign_members(features),
+        foreign_members: crs_foreign_members(&emitted),
     };
     let buffer = serde_json::to_vec(&feature_collection)
         .map_err(|e| SinkError::GeoJsonWriter(format!("{e}")))?;
@@ -205,8 +209,8 @@ pub fn write_geojson_to_storage(
     Ok(())
 }
 
-/// Build the `crs` foreign member for a `FeatureCollection` from the features'
-/// geometry EPSG codes.
+/// Build the `crs` foreign member for a `FeatureCollection` from the geometry
+/// EPSG codes of the features actually emitted to the output.
 ///
 /// Used by quality-check error detail files. Quality checks run on a non-WGS84
 /// CRS and output the source coordinates as-is, so the CRS must be recorded via
