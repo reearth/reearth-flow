@@ -76,12 +76,16 @@ pub fn run_dag_executor(
         executor_id,
     ))?;
     // `join()` collects every node thread and folds their diagnostics into a
-    // `RunSummary` (Phase 2a Task 5), but — as an interim measure — still
-    // returns `Err` with the same raw `ExecutionError` the old fail-fast loop
-    // would have returned when any node thread failed, so every golden
-    // logging scenario stays byte-identical through this call site. A
-    // successful join can therefore never carry a non-empty `failed_nodes`
-    // (Phase 2a Task 5/6 invariant; a later task relaxes it).
+    // `RunSummary` (Phase 2a Task 5), then forks on the workflow's compiled
+    // `errorPolicy.onFatal` (Phase 2a-policy Task 4): under the default
+    // `Terminate`, it still returns `Err` with the same raw `ExecutionError`
+    // the old fail-fast loop would have returned when any node thread
+    // failed, so every golden logging scenario stays byte-identical through
+    // this call site, and a successful join can never carry a non-empty
+    // `failed_nodes`. Under `Continue`, every thread's outcome — including
+    // failed ones — is folded into `Ok(summary)` instead, so independent
+    // branches that finished cleanly are reported as such even when a
+    // sibling branch's node thread failed (spec D8).
     let mut join_result = join_handle.join().map_err(Error::ExecutionError);
     join_handle.notify();
     // Deterministic replacement for the old fixed 100ms "settle" sleep

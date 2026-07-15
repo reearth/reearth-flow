@@ -47,7 +47,23 @@ impl LogParser {
             source_error: Regex::new(r#"([\w][\w ]*) source error: (.+)"#).unwrap(),
             sink_error: Regex::new(r#"([\w][\w ]*) sink error: (.+)"#).unwrap(),
             workflow_failed: Regex::new(r"Failed nodes:").unwrap(),
-            workflow_completed: Regex::new(r"Finish workflow = .* \((success|failed)\)").unwrap(),
+            // Phase 2a-policy Task 4: `errorPolicy: { onFatal: continue }`
+            // reworded the engine's "N failed node(s)" completion line from
+            // `(success, N failed node(s))` to `(completed with N failed
+            // node(s))` — a failure-accurate label, since that line is now
+            // reachable for a run that finished with per-node failures
+            // rather than a clean success. Both the old and new forms must
+            // keep matching (old-shape engines may still be in a rolling
+            // deploy), and either still yields `LogPattern::WorkflowCompleted`
+            // here — `UserFacingLogHandler` derives success/failure from the
+            // `workflow_error_occurred` flag (set by prior `NodeError`/
+            // `WorkflowFailed` events), not from this regex's capture, so a
+            // "completed with N failed node(s)" line is already reported to
+            // users as a failure via that flag, not via this pattern.
+            workflow_completed: Regex::new(
+                r"Finish workflow = .* \((success|failed|completed with \d+ failed node\(s\))\)",
+            )
+            .unwrap(),
             factory_error: Regex::new(r#"Failed to workflow: ExecutionError\(Factory \{ node_id: "([^"]+)", node_name: "([^"]+)", error: ([^(]+)\("#).unwrap(),
         }
     }
@@ -201,6 +217,59 @@ impl LogParser {
             "µs" => Duration::from_secs_f64(value / 1_000_000.0),
             _ => Duration::from_secs_f64(value),
         }
+    }
+}
+
+#[cfg(test)]
+mod workflow_completed_shape_tests {
+    //! Phase 2a-policy Task 4: `onFatal: continue` made the engine's
+    //! "N failed node(s)" completion line reachable (previously dead code
+    //! under the old fail-fast `join()`). The line's wording changed from
+    //! `(success, N failed node(s))` to the failure-accurate `(completed
+    //! with N failed node(s))`; `workflow_completed` must keep matching the
+    //! pre-existing `(success)`/`(failed)` forms AND the new one.
+    use super::*;
+
+    #[test]
+    fn matches_legacy_success_form() {
+        let parser = LogParser::new();
+        let msg = r#"Finish workflow = "My Workflow" (success), duration = 1.2s"#;
+        assert!(matches!(
+            parser.parse(msg),
+            Some(LogPattern::WorkflowCompleted)
+        ));
+    }
+
+    #[test]
+    fn matches_legacy_failed_form() {
+        let parser = LogParser::new();
+        let msg = r#"Finish workflow = "My Workflow" (failed), duration = 1.2s"#;
+        assert!(matches!(
+            parser.parse(msg),
+            Some(LogPattern::WorkflowCompleted)
+        ));
+    }
+
+    #[test]
+    fn matches_new_completed_with_failed_nodes_form() {
+        let parser = LogParser::new();
+        let msg =
+            r#"Finish workflow = "My Workflow" (completed with 2 failed node(s)), duration = 1.2s"#;
+        assert!(matches!(
+            parser.parse(msg),
+            Some(LogPattern::WorkflowCompleted)
+        ));
+    }
+
+    #[test]
+    fn matches_new_form_with_a_single_failed_node() {
+        let parser = LogParser::new();
+        let msg =
+            r#"Finish workflow = "My Workflow" (completed with 1 failed node(s)), duration = 1.2s"#;
+        assert!(matches!(
+            parser.parse(msg),
+            Some(LogPattern::WorkflowCompleted)
+        ));
     }
 }
 

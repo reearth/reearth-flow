@@ -10,7 +10,10 @@ use crossbeam::channel::Sender;
 use futures::Future;
 use petgraph::visit::EdgeRef;
 use petgraph::Direction;
-use reearth_flow_diagnostics::{Diagnostic, DiagnosticDraft, Disposition, ErrorCode, RunSummary};
+use reearth_flow_diagnostics::{
+    Diagnostic, DiagnosticDraft, Disposition, DispositionPolicy, ErrorCode, OnFatalInput,
+    RunSummary,
+};
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::workflow::Graph;
@@ -76,6 +79,13 @@ pub struct DagExecutorJoinHandle {
     /// Events the broadcast ring dropped (`RecvError::Lagged`) before the
     /// subscriber could dispatch them, tallied live by `subscribe_event`.
     dropped_events: Arc<AtomicU64>,
+    /// The workflow's compiled `errorPolicy` (see `ExecutorOptions::disposition_policy`),
+    /// carried from `DagExecutor::start` so `join()` can decide, per
+    /// `DispositionPolicy::on_fatal()`, whether a node thread's `Err` should
+    /// still short-circuit the whole run (`Terminate`, the default) or be
+    /// folded into `RunSummary::failed_nodes` alongside every other thread's
+    /// outcome (`Continue` — spec D8, best-effort branch completion).
+    disposition_policy: Arc<DispositionPolicy>,
 }
 
 impl DagExecutor {
@@ -322,6 +332,7 @@ impl DagExecutor {
             executor_id,
             subscriber: Some(subscriber),
             dropped_events,
+            disposition_policy,
         })
     }
 }
@@ -344,21 +355,29 @@ impl DagExecutorJoinHandle {
     /// if a node thread itself panicked, which skips cleanup entirely (a
     /// panicked node thread is already a bug at that point).
     ///
-    /// Interim (Phase 2a Task 5) error semantics: collecting every thread
-    /// before deciding anything fixes the historical leaked-threads bug,
-    /// where the old fail-fast loop returned on the FIRST thread to error
-    /// while every other node thread kept running unjoined. But to keep
-    /// `run_dag_executor` and every golden logging scenario byte-identical,
-    /// this still surfaces the first-completed thread's raw
-    /// `ExecutionError` via `Err(..)` — exactly what the old fail-fast loop
-    /// returned (it always returned whichever thread finished first, and
-    /// threads are discovered/collected here in that same order). Phase 2a
-    /// Task 6 threads the resulting `RunSummary` by value through
-    /// `run_dag_executor` and the runner/orchestrator call chain, but this
-    /// early-`Err` branch — and the invariant it guarantees today,
-    /// `Ok(_)` implies `failed_nodes.is_empty()` — is unchanged here; a
-    /// later task removes it and leaves fatality to be decided by the
-    /// caller from `failed_nodes`.
+    /// Error semantics fork on `self.disposition_policy.on_fatal()`, decided
+    /// only after every thread has been collected (fixing the historical
+    /// leaked-threads bug, where the old fail-fast loop returned on the
+    /// FIRST thread to error while every other node thread kept running
+    /// unjoined):
+    ///
+    /// - `OnFatalInput::Terminate` (the default): UNCHANGED from Phase 2a
+    ///   Task 5/6 — surfaces the first-collected thread's raw
+    ///   `ExecutionError` via `Err(..)`, exactly what the old fail-fast loop
+    ///   returned (it always returned whichever thread finished first, and
+    ///   threads are discovered/collected here in that same order). Every
+    ///   golden logging scenario stays byte-identical through this branch.
+    ///   Under `Terminate`, `Ok(_)` still implies `failed_nodes.is_empty()`
+    ///   — that invariant is scoped to this branch ONLY as of this task.
+    /// - `OnFatalInput::Continue` (spec D8, best-effort branch completion):
+    ///   every thread's outcome — including `Err`s — is folded into the
+    ///   returned `RunSummary` via `fold_outcomes` and `Ok(..)` is always
+    ///   returned, so independent branches that finished cleanly are
+    ///   reported as such even when a sibling branch's node thread failed.
+    ///   `Ok(_)` here can carry a non-empty `failed_nodes`; callers that
+    ///   still need all-or-nothing unit semantics go through
+    ///   `summary_into_unit_result` (`reearth_flow_runner::runner`), whose
+    ///   defensive mapping is load-bearing for exactly this case.
     pub fn join(&mut self) -> Result<RunSummary, ExecutionError> {
         let mut results: Vec<(NodeMeta, NodeThreadResult)> =
             Vec::with_capacity(self.join_handles.len());
@@ -391,9 +410,11 @@ impl DagExecutorJoinHandle {
         // this 5s tax.
         cleanup_executor_cache(self.executor_id);
 
-        if let Some(pos) = results.iter().position(|(_, (_, result))| result.is_err()) {
-            let (_, (_, result)) = results.remove(pos);
-            return Err(result.expect_err("position() above guarantees Err"));
+        if self.disposition_policy.on_fatal() == OnFatalInput::Terminate {
+            if let Some(pos) = results.iter().position(|(_, (_, result))| result.is_err()) {
+                let (_, (_, result)) = results.remove(pos);
+                return Err(result.expect_err("position() above guarantees Err"));
+            }
         }
 
         Ok(fold_outcomes(results))

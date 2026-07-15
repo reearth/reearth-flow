@@ -162,6 +162,22 @@ impl EventHub {
         });
     }
 
+    pub fn warn_log_with_node_info<T: ToString>(
+        &self,
+        span: Option<Span>,
+        node_handle: NodeHandle,
+        node_name: String,
+        message: T,
+    ) {
+        self.send(Event::Log {
+            level: Level::WARN,
+            span,
+            node_handle: Some(node_handle),
+            node_name: Some(node_name),
+            message: message.to_string(),
+        });
+    }
+
     pub fn error_log<T: ToString>(&self, span: Option<Span>, message: T) {
         self.send(Event::Log {
             level: Level::ERROR,

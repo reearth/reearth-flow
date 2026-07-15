@@ -401,12 +401,33 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                         // NodeStatusChanged{Failed|Completed} is emitted below, from
                         // the single reconciled outcome.
                         let fatal = self.diagnostics.inner.take_fatal();
-                        let (final_result, node_failed) = reconcile_sink_terminate_result(
-                            first_error,
-                            terminate_result,
-                            fatal,
-                            has_failed,
-                        );
+                        let (final_result, node_failed, superseded_fatal) =
+                            reconcile_sink_terminate_result(
+                                first_error,
+                                terminate_result,
+                                fatal,
+                                has_failed,
+                            );
+
+                        // 2a-core T1 ledger item: a swallowed-fatal `report()`
+                        // that loses precedence to a real returned error must
+                        // not vanish silently — warn once, naming the
+                        // superseded diagnostic's code, so operators can see
+                        // both failures happened even though only one wins
+                        // the final `Result`.
+                        if let Some(superseded) = superseded_fatal {
+                            self.event_hub.warn_log_with_node_info(
+                                Some(span.clone()),
+                                self.node_handle.clone(),
+                                self.node_name.clone(),
+                                format!(
+                                    "{} sink: swallowed fatal diagnostic ({}) superseded by a \
+                                     real error and dropped from the final result",
+                                    self.sink.name(),
+                                    superseded.code
+                                ),
+                            );
+                        }
 
                         self.event_hub.send(Event::NodeStatusChanged {
                             node_handle: self.node_handle.clone(),
@@ -465,18 +486,28 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
 /// Unified failure precedence for the sink drain end: a real returned error
 /// wins; the fatal slot is only a backstop for swallowed `report()` fatals.
 /// Precedence: `first_error` (from process()) > `terminate_result` Err
-/// (from finish()/terminate-send) > fatal slot. Returns (final_result, node_failed).
+/// (from finish()/terminate-send) > fatal slot.
+///
+/// Returns `(final_result, node_failed, superseded_fatal)`. `superseded_fatal`
+/// is `Some(diag)` exactly when a swallowed fatal was present but lost
+/// precedence to a real returned error (the first two match arms) — i.e. it
+/// was recorded via `ctx.fatal()`/`report()` but never surfaces in
+/// `final_result`. The 2a-core T1 ledger item: this must not vanish
+/// silently, so the call site (`receiver_loop`) warns once using this
+/// indicator. It is `None` both when there is no fatal to begin with and
+/// when the fatal slot itself wins (it's already reflected in
+/// `final_result` there, so nothing was superseded).
 fn reconcile_sink_terminate_result(
     first_error: Option<ExecutionError>,
     terminate_result: Result<(), ExecutionError>,
     fatal: Option<Diagnostic>,
     has_failed: bool,
-) -> (Result<(), ExecutionError>, bool) {
+) -> (Result<(), ExecutionError>, bool, Option<Diagnostic>) {
     match (first_error, terminate_result, fatal) {
-        (Some(e), _, _) => (Err(e), true),
-        (None, Err(e), _) => (Err(e), true),
-        (None, Ok(()), Some(diag)) => (Err(ExecutionError::Sink(Box::new(diag))), true),
-        (None, Ok(()), None) => (Ok(()), has_failed),
+        (Some(e), _, fatal) => (Err(e), true, fatal),
+        (None, Err(e), fatal) => (Err(e), true, fatal),
+        (None, Ok(()), Some(diag)) => (Err(ExecutionError::Sink(Box::new(diag))), true, None),
+        (None, Ok(()), None) => (Ok(()), has_failed, None),
     }
 }
 
@@ -505,17 +536,18 @@ mod reconcile_tests {
     #[test]
     fn no_errors_no_fatal_result_is_ok_and_node_failed_tracks_has_failed() {
         for has_failed in [false, true] {
-            let (result, node_failed) =
+            let (result, node_failed, superseded) =
                 reconcile_sink_terminate_result(None, Ok(()), None, has_failed);
             assert!(result.is_ok());
             assert_eq!(node_failed, has_failed);
+            assert!(superseded.is_none());
         }
     }
 
     #[test]
     fn fatal_backstop_fires_only_when_nothing_else_failed() {
         for has_failed in [false, true] {
-            let (result, node_failed) = reconcile_sink_terminate_result(
+            let (result, node_failed, superseded) = reconcile_sink_terminate_result(
                 None,
                 Ok(()),
                 Some(dummy_diagnostic("fatal")),
@@ -526,6 +558,9 @@ mod reconcile_tests {
                 Err(ExecutionError::Sink(e)) => assert!(e.to_string().contains("fatal")),
                 other => panic!("expected the fatal backstop to fire, got {other:?}"),
             }
+            // The fatal slot itself won here (it's reflected in `result`),
+            // so nothing was superseded — no WARN should fire for this case.
+            assert!(superseded.is_none());
         }
     }
 
@@ -534,7 +569,7 @@ mod reconcile_tests {
         for fatal_present in [false, true] {
             for has_failed in [false, true] {
                 let fatal = fatal_present.then(|| dummy_diagnostic("fatal"));
-                let (result, node_failed) = reconcile_sink_terminate_result(
+                let (result, node_failed, superseded) = reconcile_sink_terminate_result(
                     None,
                     Err(term_err("terminate boom")),
                     fatal,
@@ -549,6 +584,9 @@ mod reconcile_tests {
                         "expected the real terminate error, not the fatal backstop, got {other:?}"
                     ),
                 }
+                // A real terminate error superseded the fatal slot whenever
+                // one was actually present.
+                assert_eq!(superseded.is_some(), fatal_present);
             }
         }
     }
@@ -564,7 +602,7 @@ mod reconcile_tests {
                         Ok(())
                     };
                     let fatal = fatal_present.then(|| dummy_diagnostic("fatal"));
-                    let (result, node_failed) = reconcile_sink_terminate_result(
+                    let (result, node_failed, superseded) = reconcile_sink_terminate_result(
                         Some(first_err("first boom")),
                         terminate_result,
                         fatal,
@@ -577,8 +615,29 @@ mod reconcile_tests {
                         }
                         other => panic!("expected first_error to win, got {other:?}"),
                     }
+                    // `first_error` superseded the fatal slot whenever one
+                    // was actually present, regardless of terminate_result.
+                    assert_eq!(superseded.is_some(), fatal_present);
                 }
             }
         }
+    }
+
+    /// The 2a-core T1 ledger item, unit-tested directly on the reconcile
+    /// helper: when a swallowed fatal loses to a real error, the returned
+    /// indicator must carry the SAME diagnostic that was superseded (not
+    /// just `Some(_)`) so the call site's WARN can name its code.
+    #[test]
+    fn superseded_fatal_indicator_carries_the_original_diagnostic() {
+        let fatal = dummy_diagnostic("fatal");
+        let (_, _, superseded) = reconcile_sink_terminate_result(
+            Some(first_err("first boom")),
+            Ok(()),
+            Some(fatal),
+            false,
+        );
+        let superseded = superseded.expect("fatal was present and lost to first_error");
+        assert_eq!(superseded.code, ErrorCode::InternalInvariantViolation);
+        assert_eq!(superseded.message, "fatal");
     }
 }

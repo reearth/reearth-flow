@@ -339,13 +339,15 @@ impl RunCliCommand {
             .map_err(|e| crate::errors::Error::Run(format!("Failed to run workflow: {e}")))
     }
 
-    /// Defensive — dead code until onFatal: continue lands (mirrors
-    /// `reearth_flow_runner::runner::summary_into_unit_result`, which is
-    /// `pub(crate)` to the runner crate and so not reusable from here).
-    /// Today `Ok(summary)` always implies `summary.failed_nodes.is_empty()`
-    /// (Task 5's invariant enforced inside `DagExecutorJoinHandle::join`),
-    /// so this always takes the `None` arm; it becomes load-bearing once a
-    /// non-empty `failed_nodes` can accompany `Ok(_)`.
+    /// Mirrors `reearth_flow_runner::runner::summary_into_unit_result`,
+    /// which is `pub(crate)` to the runner crate and so not reusable from
+    /// here. Under the default `Terminate` policy, `Ok(summary)` still
+    /// always implies `summary.failed_nodes.is_empty()` (enforced inside
+    /// `DagExecutorJoinHandle::join`), so this always takes the `None` arm.
+    /// Load-bearing under `errorPolicy: { onFatal: continue }`: `join`
+    /// folds every thread's outcome into `Ok(summary)` there, including a
+    /// non-empty `failed_nodes`, and this mapping turns that back into
+    /// `Err` for this unit-returning entrypoint.
     fn summary_into_unit_result(
         summary: RunSummary,
     ) -> Result<(), reearth_flow_runner::errors::Error> {
@@ -361,10 +363,9 @@ impl RunCliCommand {
 
     /// Render a run-end summary to stdout: aggregated (finish()-time)
     /// diagnostics, failed nodes, and dropped event count — each only when
-    /// non-empty. Under the current by-value `RunSummary` invariant (Task 5:
-    /// `Ok(_)` implies `failed_nodes.is_empty()`), the failed-node list is
-    /// dead today but kept ready for when a later task relaxes that
-    /// invariant.
+    /// non-empty. Under the default `Terminate` policy, `Ok(_)` still
+    /// implies `failed_nodes.is_empty()`, so the failed-node list only ever
+    /// prints for `errorPolicy: { onFatal: continue }` runs.
     fn print_run_summary(summary: &RunSummary) {
         // Intentionally terse: prints only `diagnostic.message`, not
         // `Diagnostic`'s fuller `Display` (severity/location/etc.) — this is

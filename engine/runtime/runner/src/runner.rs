@@ -43,13 +43,15 @@ fn reject_unsandboxed_sentinel(sandbox_root: &Uri) -> Result<(), crate::errors::
 /// `Runner::run_with_sandbox_root`, `AsyncRunner::run`,
 /// `AsyncRunner::run_with_sandbox_root`) treat any node failure as `Err`.
 ///
-/// Defensive — dead code until onFatal: continue lands. Today
-/// `DagExecutorJoinHandle::join` still early-`Err`s on the first failed
-/// node thread, so `Ok(summary)` here always carries an empty
-/// `failed_nodes` (Task 5's invariant) and this always takes the `None`
-/// arm. It becomes load-bearing once that early-`Err` is removed and
-/// `Ok(summary)` starts being returned for runs with a non-empty
-/// `failed_nodes`.
+/// Load-bearing under `errorPolicy: { onFatal: continue }` (Phase 2a-policy
+/// Task 4): `DagExecutorJoinHandle::join` folds every thread's outcome into
+/// `Ok(summary)` under `Continue`, including runs with a non-empty
+/// `failed_nodes` — this mapping is what turns that `Ok(summary)` back into
+/// the `Err` these unit-returning wrappers have always promised their
+/// callers. Under the default `Terminate` policy, `join` still early-`Err`s
+/// on the first failed node thread, so `Ok(summary)` there always carries an
+/// empty `failed_nodes` and this always takes the `None` arm — unchanged
+/// from before this task.
 pub(crate) fn summary_into_unit_result(summary: RunSummary) -> Result<(), crate::errors::Error> {
     match summary.failed_nodes.first() {
         None => Ok(()),
@@ -85,9 +87,12 @@ impl Runner {
         let sandbox_root = Uri::from_str("file:///").expect("'file:///' is always a valid URI");
         // Bypass `run_with_sandbox_root`'s sentinel guard — this entrypoint
         // intentionally requests the unsandboxed mode.
-        // Defensive — dead code until onFatal: continue lands (see
-        // `summary_into_unit_result`); today Task 5's invariant means
-        // `Ok(_)` here always implies `failed_nodes.is_empty()`.
+        // Routed through `summary_into_unit_result`, which is now
+        // load-bearing under `errorPolicy: { onFatal: continue }`: `Ok(_)`
+        // here only implies `failed_nodes.is_empty()` under the default
+        // `Terminate` policy — under `Continue`, `Ok(summary)` can carry a
+        // non-empty `failed_nodes`, and `summary_into_unit_result` turns
+        // that back into `Err` to preserve this wrapper's legacy semantics.
         Self::run_with_event_handler(
             job_id,
             workflow,
@@ -122,9 +127,12 @@ impl Runner {
         sandbox_root: Uri,
     ) -> Result<(), crate::errors::Error> {
         reject_unsandboxed_sentinel(&sandbox_root)?;
-        // Defensive — dead code until onFatal: continue lands (see
-        // `summary_into_unit_result`); today Task 5's invariant means
-        // `Ok(_)` here always implies `failed_nodes.is_empty()`.
+        // Routed through `summary_into_unit_result`, which is now
+        // load-bearing under `errorPolicy: { onFatal: continue }`: `Ok(_)`
+        // here only implies `failed_nodes.is_empty()` under the default
+        // `Terminate` policy — under `Continue`, `Ok(summary)` can carry a
+        // non-empty `failed_nodes`, and `summary_into_unit_result` turns
+        // that back into `Err` to preserve this wrapper's legacy semantics.
         Self::run_with_event_handler(
             job_id,
             workflow,
@@ -240,7 +248,7 @@ impl Runner {
                 info!(parent: &span, "Finish workflow = {:?} (failed), duration = {:?}", workflow_name.as_str(), start.elapsed());
             }
             Ok(summary) if !summary.failed_nodes.is_empty() => {
-                info!(parent: &span, "Finish workflow = {:?} (success, {} failed node(s)), duration = {:?}", workflow_name.as_str(), summary.failed_nodes.len(), start.elapsed());
+                info!(parent: &span, "Finish workflow = {:?} (completed with {} failed node(s)), duration = {:?}", workflow_name.as_str(), summary.failed_nodes.len(), start.elapsed());
             }
             Ok(_) => {
                 info!(parent: &span, "Finish workflow = {:?} (success), duration = {:?}", workflow_name.as_str(), start.elapsed());
@@ -272,9 +280,12 @@ impl AsyncRunner {
         incremental_run_config: Option<IncrementalRunConfig>,
     ) -> Result<(), crate::errors::Error> {
         let sandbox_root = Uri::from_str("file:///").expect("'file:///' is always a valid URI");
-        // Defensive — dead code until onFatal: continue lands (see
-        // `summary_into_unit_result`); today Task 5's invariant means
-        // `Ok(_)` here always implies `failed_nodes.is_empty()`.
+        // Routed through `summary_into_unit_result`, which is now
+        // load-bearing under `errorPolicy: { onFatal: continue }`: `Ok(_)`
+        // here only implies `failed_nodes.is_empty()` under the default
+        // `Terminate` policy — under `Continue`, `Ok(summary)` can carry a
+        // non-empty `failed_nodes`, and `summary_into_unit_result` turns
+        // that back into `Err` to preserve this wrapper's legacy semantics.
         Self::run_with_event_handler(
             job_id,
             workflow,
@@ -310,9 +321,12 @@ impl AsyncRunner {
         sandbox_root: Uri,
     ) -> Result<(), crate::errors::Error> {
         reject_unsandboxed_sentinel(&sandbox_root)?;
-        // Defensive — dead code until onFatal: continue lands (see
-        // `summary_into_unit_result`); today Task 5's invariant means
-        // `Ok(_)` here always implies `failed_nodes.is_empty()`.
+        // Routed through `summary_into_unit_result`, which is now
+        // load-bearing under `errorPolicy: { onFatal: continue }`: `Ok(_)`
+        // here only implies `failed_nodes.is_empty()` under the default
+        // `Terminate` policy — under `Continue`, `Ok(summary)` can carry a
+        // non-empty `failed_nodes`, and `summary_into_unit_result` turns
+        // that back into `Err` to preserve this wrapper's legacy semantics.
         Self::run_with_event_handler(
             job_id,
             workflow,
@@ -383,7 +397,7 @@ impl AsyncRunner {
                 info!(parent: &span, "Finish workflow = {:?} (failed), duration = {:?}", workflow_name.as_str(), start.elapsed());
             }
             Ok(summary) if !summary.failed_nodes.is_empty() => {
-                info!(parent: &span, "Finish workflow = {:?} (success, {} failed node(s)), duration = {:?}", workflow_name.as_str(), summary.failed_nodes.len(), start.elapsed());
+                info!(parent: &span, "Finish workflow = {:?} (completed with {} failed node(s)), duration = {:?}", workflow_name.as_str(), summary.failed_nodes.len(), start.elapsed());
             }
             Ok(_) => {
                 info!(parent: &span, "Finish workflow = {:?} (success), duration = {:?}", workflow_name.as_str(), start.elapsed());
