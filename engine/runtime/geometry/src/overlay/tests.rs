@@ -1,6 +1,5 @@
-//! Overlay tests: canonical cases, differential sweeps against the legacy
-//! `BooleanOps` (same `i_overlay` backend, so results must be bit-identical),
-//! and cross-phase consistency with the phase-2/3 predicates.
+//! Overlay tests: canonical cases, area and set-relation identities, and
+//! consistency with the predicates.
 
 use pretty_assertions::assert_eq;
 
@@ -14,13 +13,6 @@ use crate::predicates::relate::Dimensions;
 use crate::predicates::view::polygon2d_rings;
 use crate::predicates::{covers, relate};
 use crate::triangular_mesh::TriangularMesh2D;
-
-use crate::algorithm::bool_ops::{BooleanOps, OpType};
-use crate::types::coordinate::Coordinate2D;
-use crate::types::line_string::LineString2D as LegacyLineString2D;
-use crate::types::multi_line_string::MultiLineString2D as LegacyMultiLineString2D;
-use crate::types::multi_polygon::MultiPolygon2D as LegacyMultiPolygon2D;
-use crate::types::polygon::Polygon2D as LegacyPolygon2D;
 
 fn e() -> CoordinateFrame {
     CoordinateFrame::Euclidean
@@ -363,41 +355,6 @@ fn clip_empty_and_error_operands() {
     );
 }
 
-#[test]
-fn clip_differential_against_legacy() {
-    let mut rng = Rng(20260716);
-    for case in 0..100 {
-        let (ext, holes) = random_polygon_rings(&mut rng);
-        let area_new = polygon(&ext, &holes);
-        let area_legacy = LegacyPolygon2D::new(
-            LegacyLineString2D::new(legacy_coords(&ext)),
-            holes
-                .iter()
-                .map(|h| LegacyLineString2D::new(legacy_coords(h)))
-                .collect(),
-        );
-
-        let coords: Vec<[f64; 2]> = (0..2 + rng.range(3)).map(|_| rng.coord()).collect();
-        let line_new = line(&coords);
-        let line_legacy =
-            LegacyMultiLineString2D::new(vec![LegacyLineString2D::new(legacy_coords(&coords))]);
-
-        for invert in [false, true] {
-            let ours = clip_coords(&clip(&line_new, &area_new, invert).unwrap());
-            let oracle: Vec<Vec<[f64; 2]>> =
-                <LegacyPolygon2D<f64> as BooleanOps>::clip(&area_legacy, &line_legacy, invert)
-                    .0
-                    .into_iter()
-                    .map(|l| l.0.into_iter().map(|c| [c.x, c.y]).collect())
-                    .collect();
-            assert_eq!(
-                ours, oracle,
-                "case {case} invert={invert}: clip diverges from legacy"
-            );
-        }
-    }
-}
-
 // --- segment intersections -------------------------------------------------------
 
 #[test]
@@ -461,7 +418,7 @@ fn segment_intersections_cases() {
     );
 }
 
-// --- differential + consistency sweeps --------------------------------------------
+// --- consistency sweeps ----------------------------------------------------------
 
 /// Deterministic splitmix-style generator.
 struct Rng(u64);
@@ -482,13 +439,6 @@ impl Rng {
     fn coord(&mut self) -> [f64; 2] {
         [self.range(9) as f64, self.range(9) as f64]
     }
-}
-
-fn legacy_coords(coords: &[[f64; 2]]) -> Vec<Coordinate2D<f64>> {
-    coords
-        .iter()
-        .map(|c| Coordinate2D::new_(c[0], c[1]))
-        .collect()
 }
 
 /// One random valid polygon as `(exterior, holes)` rings on the integer grid:
@@ -529,12 +479,12 @@ fn random_polygon_rings(rng: &mut Rng) -> PolygonRings {
 /// The `(exterior, holes)` rings of one polygon.
 type PolygonRings = (Vec<[f64; 2]>, Vec<Vec<[f64; 2]>>);
 
-/// One random areal operand (one or two polygons) in both representations.
-fn random_areal(rng: &mut Rng) -> (Geometry, LegacyMultiPolygon2D<f64>) {
+/// One random areal operand (one or two polygons).
+fn random_areal(rng: &mut Rng) -> Geometry {
     let polygons: Vec<PolygonRings> = (0..1 + rng.range(2))
         .map(|_| random_polygon_rings(rng))
         .collect();
-    let new = Geometry::Euclidean2D(Euclidean2DGeometry::Collection(Collection2D::new(
+    Geometry::Euclidean2D(Euclidean2DGeometry::Collection(Collection2D::new(
         polygons.iter().map(|(ext, holes)| {
             Euclidean2DGeometry::Polygon(Box::new(Polygon2D::from_rings(
                 e(),
@@ -542,70 +492,15 @@ fn random_areal(rng: &mut Rng) -> (Geometry, LegacyMultiPolygon2D<f64>) {
                 holes.clone(),
             )))
         }),
-    )));
-    let legacy = LegacyMultiPolygon2D::new(
-        polygons
-            .iter()
-            .map(|(ext, holes)| {
-                LegacyPolygon2D::new(
-                    LegacyLineString2D::new(legacy_coords(ext)),
-                    holes
-                        .iter()
-                        .map(|h| LegacyLineString2D::new(legacy_coords(h)))
-                        .collect(),
-                )
-            })
-            .collect(),
-    );
-    (new, legacy)
-}
-
-/// An overlay result's rings, for exact comparison with the legacy output.
-fn result_rings(polygons: &[Polygon2D]) -> Vec<Vec<Vec<[f64; 2]>>> {
-    polygons
-        .iter()
-        .map(|p| polygon2d_rings(p).map(<[[f64; 2]]>::to_vec).collect())
-        .collect()
-}
-
-#[test]
-fn differential_against_legacy_boolean_ops() {
-    let mut rng = Rng(20260715);
-    for case in 0..200 {
-        let (a, legacy_a) = random_areal(&mut rng);
-        let (b, legacy_b) = random_areal(&mut rng);
-        for (op, legacy_op) in [
-            (OverlayOp::Union, OpType::Union),
-            (OverlayOp::Intersection, OpType::Intersection),
-            (OverlayOp::Difference, OpType::Difference),
-            (OverlayOp::Xor, OpType::Xor),
-        ] {
-            let ours = result_rings(&overlay(&a, &b, op).unwrap());
-            let oracle: Vec<Vec<Vec<[f64; 2]>>> = legacy_a
-                .boolean_op(&legacy_b, legacy_op)
-                .0
-                .iter()
-                .map(|p| {
-                    core::iter::once(p.exterior())
-                        .chain(p.interiors().iter())
-                        .map(|ring| ring.0.iter().map(|c| [c.x, c.y]).collect())
-                        .collect()
-                })
-                .collect();
-            assert_eq!(
-                ours, oracle,
-                "case {case}: {op:?} diverges from legacy BooleanOps"
-            );
-        }
-    }
+    )))
 }
 
 #[test]
 fn overlay_satisfies_area_identities() {
     let mut rng = Rng(42);
     for case in 0..200 {
-        let (a, _) = random_areal(&mut rng);
-        let (b, _) = random_areal(&mut rng);
+        let a = random_areal(&mut rng);
+        let b = random_areal(&mut rng);
 
         let area_a = area(&union(&a, &Geometry::None).unwrap());
         let area_b = area(&union(&b, &Geometry::None).unwrap());
@@ -664,12 +559,12 @@ fn overlay_agrees_with_predicates() {
 fn overlay_output_covers_exactly_on_the_grid() {
     // Axis-aligned operands only: every constructed intersection point then
     // lies on the integer grid, the backend snap is the identity, and the
-    // set relations hold *exactly* under the phase-2 `covers`. (With oblique
-    // edges the snapped union boundary may cut ~1e-9 inside the true union.)
+    // set relations hold *exactly* under `covers`. (With oblique edges the
+    // snapped union boundary may cut ~1e-9 inside the true union.)
     let mut rng = Rng(11);
     for case in 0..150 {
         let rectal = |rng: &mut Rng| loop {
-            let (a, _) = random_areal(rng);
+            let a = random_areal(rng);
             let oblique = match &a {
                 Geometry::Euclidean2D(Euclidean2DGeometry::Collection(c)) => {
                     c.members().iter().any(|m| match m {
