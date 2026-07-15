@@ -132,6 +132,7 @@ const DebugActionBar: React.FC<Props> = ({
         break;
 
       case "escape":
+        if (!debugRunStarted) break;
         event.preventDefault();
         handleDebugRunStop();
         break;

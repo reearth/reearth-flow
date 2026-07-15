@@ -59,7 +59,7 @@ const KeyboardShortcutDialog: React.FC<Props> = ({ isOpen, onOpenChange }) => {
         </div>
         <Tabs value={tabValue} onValueChange={setTabValue}>
           <div className="flex w-full">
-            <TabsList className="align-center mb-4 flex w-full justify-center gap-2">
+            <TabsList className="mb-4 flex w-full justify-center gap-2">
               <TabsTrigger value="general">
                 {generalShortcuts.title}
               </TabsTrigger>

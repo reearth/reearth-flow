@@ -406,7 +406,7 @@ export default ({
     const yNodes = currentYWorkflow?.get("nodes") as YNodesMap | undefined;
     if (!yNodes) return;
 
-    const allNodeIds = Object.keys(yNodes.toJSON());
+    const allNodeIds = Array.from(yNodes.keys());
     setSelectedNodeIds(allNodeIds);
   }, [currentYWorkflow, setSelectedNodeIds]);
 
