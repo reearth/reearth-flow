@@ -1,6 +1,5 @@
-//! Relate test suites: canonical DE-9IM matrices, mesh union semantics,
-//! differential parity with the legacy in-tree relate, and consistency with
-//! the phase-2 fast-path predicates.
+//! Relate test suites: canonical DE-9IM matrices, mesh union semantics, and
+//! consistency with the fast-path predicates.
 
 use pretty_assertions::assert_eq;
 
@@ -14,25 +13,12 @@ use crate::predicates::{contains, covers, intersects, relate};
 use crate::triangular_mesh::TriangularMesh2D;
 use crate::{Euclidean2DGeometry, Geometry};
 
-use crate::algorithm::relate::Relate as LegacyRelate;
-use crate::types::coordinate::Coordinate2D;
-use crate::types::geometry::Geometry2D as LegacyGeometry2D;
-use crate::types::line_string::LineString2D as LegacyLineString2D;
-use crate::types::point::Point2D as LegacyPoint2D;
-use crate::types::polygon::Polygon2D as LegacyPolygon2D;
-
 fn e() -> CoordinateFrame {
     CoordinateFrame::Euclidean
 }
 
-/// The 9-char DE-9IM string of a new-path matrix.
+/// The 9-char DE-9IM string of a matrix.
 fn m(im: &super::IntersectionMatrix) -> String {
-    let debug = format!("{im:?}");
-    debug["IntersectionMatrix(".len()..debug.len() - 1].to_string()
-}
-
-/// The 9-char DE-9IM string of a legacy matrix.
-fn legacy_m(im: &crate::algorithm::relate::IntersectionMatrix) -> String {
     let debug = format!("{im:?}");
     debug["IntersectionMatrix(".len()..debug.len() - 1].to_string()
 }
@@ -63,31 +49,6 @@ fn rect(x0: f64, y0: f64, x1: f64, y1: f64) -> Vec<[f64; 2]> {
 /// A clockwise rect ring (hole orientation).
 fn rect_cw(x0: f64, y0: f64, x1: f64, y1: f64) -> Vec<[f64; 2]> {
     vec![[x0, y0], [x0, y1], [x1, y1], [x1, y0], [x0, y0]]
-}
-
-fn legacy_coords(coords: &[[f64; 2]]) -> Vec<Coordinate2D<f64>> {
-    coords
-        .iter()
-        .map(|c| Coordinate2D::new_(c[0], c[1]))
-        .collect()
-}
-
-fn legacy_point(p: [f64; 2]) -> LegacyGeometry2D<f64> {
-    LegacyGeometry2D::Point(LegacyPoint2D::from(Coordinate2D::new_(p[0], p[1])))
-}
-
-fn legacy_line(coords: &[[f64; 2]]) -> LegacyGeometry2D<f64> {
-    LegacyGeometry2D::LineString(LegacyLineString2D::new(legacy_coords(coords)))
-}
-
-fn legacy_polygon(exterior: &[[f64; 2]], holes: &[Vec<[f64; 2]>]) -> LegacyGeometry2D<f64> {
-    LegacyGeometry2D::Polygon(LegacyPolygon2D::new(
-        LegacyLineString2D::new(legacy_coords(exterior)),
-        holes
-            .iter()
-            .map(|h| LegacyLineString2D::new(legacy_coords(h)))
-            .collect(),
-    ))
 }
 
 // --- canonical matrices -------------------------------------------------------
@@ -243,50 +204,37 @@ fn two_quad_mesh() -> Geometry {
 #[test]
 fn mesh_relates_as_its_dissolved_union() {
     let mesh = two_quad_mesh();
-    let dissolved = rect(0.0, 0.0, 4.0, 2.0);
-    let legacy_dissolved = legacy_polygon(&dissolved, &[]);
+    let dissolved = polygon(&rect(0.0, 0.0, 4.0, 2.0), &[]);
 
-    let others: Vec<(Geometry, LegacyGeometry2D<f64>)> = vec![
+    let others: Vec<Geometry> = vec![
         // Crossing the internal shared edge: interior contact, not boundary.
-        (
-            polygon(&rect(1.0, 0.5, 3.0, 1.5), &[]),
-            legacy_polygon(&rect(1.0, 0.5, 3.0, 1.5), &[]),
-        ),
+        polygon(&rect(1.0, 0.5, 3.0, 1.5), &[]),
         // Equal to the union.
-        (polygon(&dissolved, &[]), legacy_polygon(&dissolved, &[])),
+        polygon(&rect(0.0, 0.0, 4.0, 2.0), &[]),
         // Touching the union's outer boundary.
-        (
-            polygon(&rect(4.0, 0.0, 6.0, 2.0), &[]),
-            legacy_polygon(&rect(4.0, 0.0, 6.0, 2.0), &[]),
-        ),
+        polygon(&rect(4.0, 0.0, 6.0, 2.0), &[]),
         // A line along the internal shared edge is interior to the union.
-        (
-            line(&[[2.0, 0.5], [2.0, 1.5]]),
-            legacy_line(&[[2.0, 0.5], [2.0, 1.5]]),
-        ),
+        line(&[[2.0, 0.5], [2.0, 1.5]]),
         // A point on the internal shared edge.
-        (point([2.0, 1.0]), legacy_point([2.0, 1.0])),
+        point([2.0, 1.0]),
         // Overlapping one face only.
-        (
-            polygon(&rect(-1.0, 0.5, 1.0, 1.5), &[]),
-            legacy_polygon(&rect(-1.0, 0.5, 1.0, 1.5), &[]),
-        ),
+        polygon(&rect(-1.0, 0.5, 1.0, 1.5), &[]),
         // Disjoint.
-        (point([9.0, 9.0]), legacy_point([9.0, 9.0])),
+        point([9.0, 9.0]),
     ];
 
-    for (other, legacy_other) in &others {
+    for other in &others {
         let ours = relate(&mesh, other).unwrap();
-        let oracle = legacy_dissolved.relate(legacy_other);
+        let dissolved_union = relate(&dissolved, other).unwrap();
         assert_eq!(
             m(&ours),
-            legacy_m(&oracle),
+            m(&dissolved_union),
             "mesh relate diverges from dissolved-union relate for {other:?}"
         );
         // And in the flipped argument order.
         let ours = relate(other, &mesh).unwrap();
-        let oracle = legacy_other.relate(&legacy_dissolved);
-        assert_eq!(m(&ours), legacy_m(&oracle), "flipped order for {other:?}");
+        let dissolved_union = relate(other, &dissolved).unwrap();
+        assert_eq!(m(&ours), m(&dissolved_union), "flipped order for {other:?}");
     }
 }
 
@@ -346,7 +294,7 @@ fn mesh_specific_matrices() {
     assert!(relate(&annulus, &holey).unwrap().is_equal_topo());
 }
 
-// --- differential + consistency sweeps ----------------------------------------
+// --- consistency sweeps -------------------------------------------------------
 
 /// Deterministic splitmix-style generator.
 struct Rng(u64);
@@ -369,32 +317,32 @@ impl Rng {
     }
 }
 
-/// One random geometry in both representations.
-fn random_pair(rng: &mut Rng) -> (Geometry, LegacyGeometry2D<f64>) {
+/// One random geometry.
+fn random_geometry(rng: &mut Rng) -> Geometry {
     match rng.range(7) {
         0 => {
             let p = rng.coord();
-            (point(p), legacy_point(p))
+            point(p)
         }
         1 => {
             let coords = [rng.coord(), rng.coord()];
-            (line(&coords), legacy_line(&coords))
+            line(&coords)
         }
         2 => {
             let coords = [rng.coord(), rng.coord(), rng.coord(), rng.coord()];
-            (line(&coords), legacy_line(&coords))
+            line(&coords)
         }
         3 => {
             // Closed chain.
             let (a, b, c) = (rng.coord(), rng.coord(), rng.coord());
             let coords = [a, b, c, a];
-            (line(&coords), legacy_line(&coords))
+            line(&coords)
         }
         4 => {
             let (x0, y0) = (rng.range(6) as f64, rng.range(6) as f64);
             let (w, h) = (1 + rng.range(3), 1 + rng.range(3));
             let ring = rect(x0, y0, x0 + w as f64, y0 + h as f64);
-            (polygon(&ring, &[]), legacy_polygon(&ring, &[]))
+            polygon(&ring, &[])
         }
         5 => {
             // Rect with a hole strictly inside.
@@ -405,10 +353,7 @@ fn random_pair(rng: &mut Rng) -> (Geometry, LegacyGeometry2D<f64>) {
             );
             let hole = rect_cw(x0 + 1.0, y0 + 1.0, x1 - 1.0, y1 - 1.0);
             let ring = rect(x0, y0, x1, y1);
-            (
-                polygon(&ring, std::slice::from_ref(&hole)),
-                legacy_polygon(&ring, &[hole]),
-            )
+            polygon(&ring, std::slice::from_ref(&hole))
         }
         _ => {
             // Triangle, arbitrary winding; regenerate until non-collinear.
@@ -417,7 +362,7 @@ fn random_pair(rng: &mut Rng) -> (Geometry, LegacyGeometry2D<f64>) {
                 let doubled_area = (b[0] - a[0]) * (c[1] - a[1]) - (c[0] - a[0]) * (b[1] - a[1]);
                 if doubled_area != 0.0 {
                     let ring = [a, b, c, a];
-                    return (polygon(&ring, &[]), legacy_polygon(&ring, &[]));
+                    return polygon(&ring, &[]);
                 }
             }
         }
@@ -425,27 +370,11 @@ fn random_pair(rng: &mut Rng) -> (Geometry, LegacyGeometry2D<f64>) {
 }
 
 #[test]
-fn differential_against_legacy_relate() {
-    let mut rng = Rng(20260715);
-    for case in 0..500 {
-        let (a, legacy_a) = random_pair(&mut rng);
-        let (b, legacy_b) = random_pair(&mut rng);
-        let ours = relate(&a, &b).unwrap();
-        let oracle = legacy_a.relate(&legacy_b);
-        assert_eq!(
-            m(&ours),
-            legacy_m(&oracle),
-            "case {case}: relate({a:?}, {b:?}) diverges from legacy"
-        );
-    }
-}
-
-#[test]
 fn matrix_agrees_with_fast_path_predicates() {
     let mut rng = Rng(42);
     for case in 0..300 {
-        let (a, _) = random_pair(&mut rng);
-        let (b, _) = random_pair(&mut rng);
+        let a = random_geometry(&mut rng);
+        let b = random_geometry(&mut rng);
         let im = relate(&a, &b).unwrap();
         assert_eq!(
             im.is_intersects(),
@@ -484,7 +413,7 @@ fn mesh_matrix_agrees_with_fast_path_predicates() {
         )
         .unwrap();
         let a = Geometry::Euclidean2D(Euclidean2DGeometry::PolygonMesh(Box::new(mesh)));
-        let (b, _) = random_pair(&mut rng);
+        let b = random_geometry(&mut rng);
         for (left, right) in [(&a, &b), (&b, &a)] {
             let im = relate(left, right).unwrap();
             assert_eq!(
@@ -520,9 +449,8 @@ fn square_collection(rects: &[[f64; 4]]) -> Geometry {
 
 #[test]
 fn collections_of_disjoint_members_relate_as_unions() {
-    // Note: the legacy relate cannot take collections at all (GeometryCow
-    // panics `unimplemented!` on `Geometry::GeometryCollection`); the new path
-    // flattens them into one operand.
+    // A collection flattens into one operand and relates as the union of its
+    // members.
     let two_squares = square_collection(&[[0.0, 0.0, 2.0, 2.0], [6.0, 0.0, 8.0, 2.0]]);
 
     let in_first = relate(&two_squares, &line(&[[0.5, 1.0], [1.5, 1.0]])).unwrap();
@@ -549,7 +477,7 @@ fn collection_with_edge_adjacent_members_is_jts_limited() {
     assert!(im.is_intersects());
     assert!(!im.is_contains()); // JTS limitation, documented in relate/mod.rs
 
-    // The phase-2 split-based predicate is exact on the same input.
+    // The split-based predicate is exact on the same input.
     assert_eq!(contains(&adjacent, &spanning), Ok(true));
 
     // The equivalent mesh gets the union answer from relate as well.
