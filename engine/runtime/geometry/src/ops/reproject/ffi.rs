@@ -297,6 +297,9 @@ unsafe fn axis_sign_from_cs(ctx: *mut PJ_CONTEXT, cs: *const PJ, epsg: EpsgCode)
 
 /// Map a PROJ axis direction to its `(row, sign)` in the canonical
 /// `(East, North, Up)` basis, or `None` if it is not aligned to an axis.
+///
+/// Geocentric (ECEF) axes are treated as a right-handed basis in `X, Y, Z`
+/// order, so a geocentric CRS resolves to orientation sign `+1`.
 fn canonical_axis(direction: &str) -> Option<(usize, f64)> {
     match direction.to_ascii_lowercase().as_str() {
         "east" => Some((0, 1.0)),
@@ -305,6 +308,9 @@ fn canonical_axis(direction: &str) -> Option<(usize, f64)> {
         "south" => Some((1, -1.0)),
         "up" => Some((2, 1.0)),
         "down" => Some((2, -1.0)),
+        "geocentricx" => Some((0, 1.0)),
+        "geocentricy" => Some((1, 1.0)),
+        "geocentricz" => Some((2, 1.0)),
         _ => None,
     }
 }
@@ -333,6 +339,11 @@ mod tests {
     fn easting_first_projected_is_positive() {
         assert_eq!(sign(3857), 1); // Web Mercator (easting, northing)
         assert_eq!(sign(32633), 1); // UTM 33N (easting, northing)
+    }
+
+    #[test]
+    fn geocentric_is_positive() {
+        assert_eq!(sign(4978), 1); // WGS84 geocentric (ECEF), right-handed X/Y/Z
     }
 
     #[test]

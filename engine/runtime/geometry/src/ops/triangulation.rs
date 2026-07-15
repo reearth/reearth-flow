@@ -27,11 +27,6 @@ impl Cache {
 /// count, both in polygon order.
 pub struct Triangulated<M> {
     pub mesh: M,
-    /// Each source polygon's right-hand-rule flat normal, in the mesh's own
-    /// coordinate frame. In a right-handed frame (Euclidean, or a reprojected
-    /// frame such as ECEF) this is the outward normal of a canonically-oriented
-    /// face; a caller that needs an outward render normal should triangulate in
-    /// such a frame.
     pub polygon_normals: Vec<[f64; 3]>,
     pub polygon_tris: Vec<u32>,
 }
@@ -246,21 +241,14 @@ impl Projector {
 /// Newell's-method unit normal of a planar ring, following the winding by the
 /// right-hand rule; `None` if degenerate (fewer than three vertices, or a
 /// near-zero normal). Ported from `earcut::utils3d`.
-///
-/// The ring is centered on its first vertex before summing so the `prev + p`
-/// term stays small even when the coordinates have a large magnitude (e.g. raw
-/// ECEF metres), which keeps the method well-conditioned. Centering is a pure
-/// translation and leaves the normal unchanged.
 pub(crate) fn normal(vertices: &[[f64; 3]]) -> Option<[f64; 3]> {
+    let (&last, _) = vertices.split_last()?;
     if vertices.len() < 3 {
         return None;
     }
-    let origin = vertices[0];
-    let centered = |p: [f64; 3]| [p[0] - origin[0], p[1] - origin[1], p[2] - origin[2]];
     let mut sum = [0.0f64; 3];
-    let mut prev = centered(vertices[vertices.len() - 1]);
-    for &v in vertices {
-        let [x, y, z] = centered(v);
+    let mut prev = last;
+    for &[x, y, z] in vertices {
         // sum += (prev - p) x (prev + p)
         let a = [prev[0] - x, prev[1] - y, prev[2] - z];
         let b = [prev[0] + x, prev[1] + y, prev[2] + z];

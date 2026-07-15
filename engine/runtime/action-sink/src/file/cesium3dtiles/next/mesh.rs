@@ -163,7 +163,13 @@ fn extract_one(mut mesh: PolygonMesh3D, caches: &mut ExtractCaches) -> Option<Ex
         return None;
     }
 
-    let result = mesh.triangulate_with_normals(&mut caches.triangulation);
+    let result = match mesh.triangulate_with_normals(&mut caches.triangulation) {
+        Ok(result) => result,
+        Err(e) => {
+            tracing::warn!("Cesium3DTilesWriter: failed to triangulate mesh: {e:?}");
+            return None;
+        }
+    };
 
     Some(ExtractedMesh {
         ecef_vertices: result.mesh.vertices().to_vec(),

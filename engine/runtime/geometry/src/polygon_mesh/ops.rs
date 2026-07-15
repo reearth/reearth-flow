@@ -283,19 +283,27 @@ impl PolygonMesh3D {
     /// polygon's flat normal and its output triangle count, in polygon order
     /// (see [`PolygonMesh3DData::triangulate`]), for a caller that wants to
     /// attach flat normals as a mesh attribute without this crate's geometry
-    /// types ever carrying a normal field themselves. The normals follow the
-    /// right-hand rule in this mesh's frame; reproject the mesh into a
-    /// right-handed render frame (e.g. ECEF) first for outward render normals.
+    /// types ever carrying a normal field themselves.
+    ///
+    /// Each normal is the polygon's canonical outward normal (see
+    /// [`crate::coordinate`]). Errors when the frame's orientation sign cannot
+    /// be determined (e.g. an unknown or non-axis-aligned CRS).
     pub fn triangulate_with_normals(
         &mut self,
         cache: &mut Cache,
-    ) -> Triangulated<TriangularMesh3D> {
+    ) -> crate::error::Result<Triangulated<TriangularMesh3D>> {
+        let sign = self.frame.orientation_sign()? as f64;
         let result = self.data.triangulate(cache);
-        Triangulated {
+        let polygon_normals = result
+            .polygon_normals
+            .into_iter()
+            .map(|[x, y, z]| [x * sign, y * sign, z * sign])
+            .collect();
+        Ok(Triangulated {
             mesh: TriangularMesh3D::new(self.frame.clone(), result.mesh),
-            polygon_normals: result.polygon_normals,
+            polygon_normals,
             polygon_tris: result.polygon_tris,
-        }
+        })
     }
 }
 
@@ -358,7 +366,7 @@ fn push_open_ring(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::coordinate::CoordinateFrame;
+    use crate::coordinate::{CoordinateFrame, EpsgCode};
 
     #[test]
     fn polygon_mesh2d_box_spans_vertex_pool() {
@@ -442,6 +450,40 @@ mod tests {
         };
         assert_eq!(tm.num_triangles(), 2);
         assert_eq!(g.bounding_box().unwrap(), mesh_box);
+    }
+
+    #[test]
+    fn triangulate_with_normals_orients_normal_by_frame_sign() {
+        // A quad wound CCW in the z = 0 plane: its right-hand-rule normal is +Z.
+        let vertices = vec![
+            [0.0, 0.0, 0.0],
+            [2.0, 0.0, 0.0],
+            [2.0, 2.0, 0.0],
+            [0.0, 2.0, 0.0],
+        ];
+        let build = |frame| {
+            PolygonMesh3D::from_parts(frame, vertices.clone(), vec![vec![0u32, 1, 2, 3]]).unwrap()
+        };
+
+        // A right-handed (Euclidean) frame keeps the raw +Z as the outward normal.
+        let mut mesh = build(CoordinateFrame::Euclidean);
+        assert_eq!(
+            mesh.triangulate_with_normals(&mut Cache::new())
+                .unwrap()
+                .polygon_normals,
+            vec![[0.0, 0.0, 1.0]]
+        );
+
+        // EPSG:6697 is lat-first (orientation sign -1), so the same winding is
+        // canonically the opposite orientation: the normal comes out flipped,
+        // without the caller reprojecting into a right-handed frame first.
+        let mut mesh = build(CoordinateFrame::Crs(EpsgCode::new(6697)));
+        assert_eq!(
+            mesh.triangulate_with_normals(&mut Cache::new())
+                .unwrap()
+                .polygon_normals,
+            vec![[0.0, 0.0, -1.0]]
+        );
     }
 
     #[test]
