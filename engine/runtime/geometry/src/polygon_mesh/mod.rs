@@ -32,8 +32,10 @@ pub struct PolygonMesh2D {
     /// `Some`, `z.len() == vertices.len()`. `None` = pure 2D.
     z: Option<Box<[f64]>>,
     /// All rings of all faces concatenated; each face is its exterior ring then
-    /// its hole rings. A valid face has the exterior wound CCW and interiors CW.
-    /// Width from `vertices.len() - 1`.
+    /// its hole rings. A valid face has the exterior wound counter-clockwise and
+    /// interiors clockwise in canonical orientation (see [`crate::coordinate`]:
+    /// winding is judged after applying the frame's orientation sign, not in stored
+    /// coordinate order). Width from `vertices.len() - 1`.
     face_indices: IndexBuffer<1>,
     /// Internal face boundaries into `face_indices`: `len() = n_faces - 1`, no
     /// leading 0. `face_offsets[i]` is where face `i+1` begins; face `i` spans
@@ -62,8 +64,9 @@ pub struct PolygonMesh2D {
 pub struct PolygonMesh3DData {
     vertices: Vec<[f64; 3]>,
     /// All rings of all faces concatenated; each face is its exterior ring then
-    /// its hole rings. Each face's normal is determined by the right-hand rule
-    /// with respect to exterior. A valid face has exterior and interior rings wound
+    /// its hole rings. Each face's canonical outward normal is its exterior's
+    /// right-hand-rule normal times the frame's orientation sign (see
+    /// [`crate::coordinate`]). A valid face has exterior and interior rings wound
     /// opposite to each other. Width from `vertices.len() - 1`.
     face_indices: IndexBuffer<1>,
     /// Internal face boundaries into `face_indices`: `len() = n_faces - 1`, no
