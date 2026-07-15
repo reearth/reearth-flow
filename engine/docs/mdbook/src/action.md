@@ -1837,6 +1837,14 @@ Export Features as Cesium 3D Tiles for Web Visualization
         "null"
       ]
     },
+    "computeFlatNormal": {
+      "title": "Compute Flat Normals",
+      "description": "Compute per-polygon flat normals for lighting. Defaults to true. When disabled, no normals are written and the mesh is smaller, but the tile carries no lighting data (a viewer must derive flat normals itself).",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
     "skipUnexposedAttributes": {
       "title": "Skip unexposed Attributes",
       "description": "Skip attributes with double underscore prefix",
