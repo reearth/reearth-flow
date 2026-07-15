@@ -161,10 +161,28 @@ jobs:
             gsutil cp ./allure-report/widgets/summary.json "gs://$BUCKET/runs/$RUN_ID/summary.json"
           fi
 
-      - name: Publish latest report to bucket root
+      - name: Point bucket root at latest report
         if: ${{ !cancelled() && steps.check-results.outputs.has_results == 'true' }}
+        env:
+          RUN_ID: ${{ steps.run-id.outputs.run_id }}
         run: |
-          gsutil -h "Cache-Control:no-cache" cp ./allure-report/index.html "gs://$BUCKET/index.html"
+          # The report links its assets (styles-*.css, app-*.js, fonts) relatively,
+          # so the root must redirect into runs/$RUN_ID/ where those assets live.
+          # Copying the report's own index.html here would 404 every asset because
+          # they are not uploaded to the bucket root.
+          if ! gsutil -q stat "gs://$BUCKET/runs/${RUN_ID}/index.html"; then
+            echo "Report not found in GCS, keeping existing root index.html"
+            exit 0
+          fi
+          cat > /tmp/root-index.html <<EOF
+          <!doctype html>
+          <meta charset="utf-8">
+          <meta http-equiv="refresh" content="0; url=runs/${RUN_ID}/">
+          <title>Re:Earth Flow E2E</title>
+          <a href="runs/${RUN_ID}/">Latest report</a>
+          EOF
+          gsutil -h "Content-Type:text/html" -h "Cache-Control:no-cache" \
+            cp /tmp/root-index.html "gs://$BUCKET/index.html"
 
       - name: Update dashboard index.json
         if: ${{ !cancelled() && steps.check-results.outputs.has_results == 'true' }}
