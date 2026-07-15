@@ -10,27 +10,32 @@
 //! Available predicates, all 2D (collections are point-set unions of their
 //! members; every leaf pair takes a bounding-box quick reject first):
 //!
-//! - [`intersects`] — whether two geometries share at least one point.
-//! - [`contains`] / [`covers`] — split-based containment with OGC semantics;
+//! - [`intersects()`] — whether two geometries share at least one point.
+//! - [`contains()`] / [`covers`] — split-based containment with OGC semantics;
 //!   see [`contains`](contains()) for the algorithm.
 //! - [`point_position_2d`] — coordinate vs. geometry classification
 //!   (`Inside` / `OnBoundary` / `Outside`), with exact shared-edge and
 //!   surrounded-vertex refinement on meshes.
+//! - [`relate()`] — the full DE-9IM [`IntersectionMatrix`], from which every
+//!   named predicate (touches, crosses, overlaps, ...) and arbitrary DE-9IM
+//!   patterns can be read; meshes relate as their dissolved face union.
 //!
 //! The 2D leaves' optional per-vertex elevation is ignored throughout. The
-//! remaining families (`relate`, boolean overlay, ray casting, 3D pairs) build
-//! on the same kernel and views in later phases.
+//! remaining families (boolean overlay, ray casting, 3D pairs) build on the
+//! same kernel and views in later phases.
 
 pub mod contains;
 pub mod intersects;
 pub mod kernel;
 pub mod position;
+pub mod relate;
 pub mod view;
 
 pub use contains::{contains, covers};
 pub use intersects::intersects;
 pub use kernel::CoordPos;
 pub use position::point_position_2d;
+pub use relate::{relate, Dimensions, IntersectionMatrix};
 
 use crate::coordinate::CoordinateFrame;
 
