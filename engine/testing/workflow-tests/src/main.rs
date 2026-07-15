@@ -1400,11 +1400,8 @@ fn strip_geojson_feature_ids(value: &mut serde_json::Value) {
     }
 }
 
-/// Sort the `features` array by a canonical serialization so comparison ignores
-/// feature order. A single GeoJSON file can be fed by several parallel branches
-/// (e.g. LOD2 and LOD3 boundary-surface checks merge into one writer), whose
-/// arrival order is non-deterministic. This mirrors the row-order-independent
-/// CSV comparison used elsewhere in this harness.
+/// Sort the `features` array by a canonical serialization so the comparison
+/// ignores non-deterministic feature order.
 fn sort_geojson_features(value: &mut serde_json::Value) {
     if let Some(features) = value.get_mut("features").and_then(|f| f.as_array_mut()) {
         features.sort_by_cached_key(|f| f.to_string());
