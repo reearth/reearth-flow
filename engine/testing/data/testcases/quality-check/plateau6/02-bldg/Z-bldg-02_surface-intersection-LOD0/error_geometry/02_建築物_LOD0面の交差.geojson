@@ -1,0 +1,38 @@
+{
+  "type": "FeatureCollection",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6675"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "MultiPolygon",
+        "coordinates": [
+          [
+            [
+              [-10191.374874677815, 71805.43986040869],
+              [-10191.375533456288, 71804.88506036208],
+              [-10190.928471234001, 71804.88452953615],
+              [-10190.927812483467, 71805.43932955855],
+              [-10191.374874677815, 71805.43986040869]
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "check": "LOD0面の交差",
+        "issue": "Surface Intersection",
+        "filename": "54370053_bldg_6697_op.gml",
+        "featureType": "bldg:Building",
+        "gmlId": "bldg_8f724a11-6de8-42c1-8f5d-8b2ccda58f47",
+        "relatedGmlId": "bldg_4d583b00-4ce9-49b5-9540-9d1bbca48e46",
+        "rootGmlId": "bldg_8f724a11-6de8-42c1-8f5d-8b2ccda58f47",
+        "lod": "0"
+      }
+    }
+  ]
+}

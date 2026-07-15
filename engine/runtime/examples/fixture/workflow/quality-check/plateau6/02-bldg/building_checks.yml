@@ -267,6 +267,43 @@ nodes:
         type: string
         value: 02_建築物_LOD0面の交差.csv
 
+  # GeoJSON error-detail output for the same check. Coordinates stay in the
+  # inspection CRS (env "prcs"); the intersection-area polygon from
+  # AreaOnAreaOverlayer is the error geometry itself.
+  - id: e3e0a17b-e034-4a68-86df-ccf0f88264b6
+    name: AttributeMapperLod0SurfaceIntersectionGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: check
+          expr:
+            type: string
+            value: LOD0面の交差
+        - attribute: issue
+          valueAttribute: issue
+        - attribute: filename
+          valueAttribute: filename_a
+        - attribute: featureType
+          valueAttribute: feature_type_a
+        - attribute: gmlId
+          valueAttribute: gml_id_a
+        - attribute: relatedGmlId
+          valueAttribute: gml_id_b
+        - attribute: rootGmlId
+          valueAttribute: gml_id_a
+        - attribute: lod
+          valueAttribute: lod_a
+
+  - id: 8c34276b-9f20-42ab-a542-659819a5626e
+    name: FeatureGeoJsonWriterLod0SurfaceIntersection
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: string
+        value: error_geometry/02_建築物_LOD0面の交差.geojson
+
   # --- LOD0 surface orientation pipeline ---
   # SurfaceValidator2D emits LOD0 surfaces whose exterior ring is not
   # counter-clockwise on the inCorrectOrientation port. Keep only genuinely
@@ -1175,6 +1212,92 @@ nodes:
       output:
         type: string
         value: 02_建築物_LOD2以上境界面のエラー.csv
+
+  # GeoJSON error-detail output for the LOD2/LOD3 boundary-surface check.
+  # The CityGML reader already emits each con:*Surface (wall/roof/ground) as its
+  # own feature, so the geometry pinpoints the offending boundary surface rather
+  # than the whole building. Coordinates stay in the inspection CRS (env "prcs");
+  # the validator rotates near-horizontal surfaces by ~identity, so the emitted
+  # ground-surface geometry matches the real-world footprint. LOD2 and LOD3 share
+  # one writer and merge into a single GeoJSON, mirroring the combined CSV.
+  - id: 8047c601-56d5-42c0-8854-a6d35c631f2f
+    name: AttributeMapperLod2InvalidSurfaceGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: check
+          expr:
+            type: string
+            value: LOD2以上境界面のエラー
+        - attribute: issue
+          expr:
+            type: flowExpr
+            value: |
+              vr = attributes.get("validationResult");
+              if vr != null and "details" in vr {
+                vr["details"][0][0]
+              } else if "issue" in attributes {
+                attributes["issue"]
+              } else {
+                "UnknownError"
+              }
+        - attribute: filename
+          valueAttribute: name
+        - attribute: featureType
+          valueAttribute: __citygml_feature_type
+        - attribute: gmlId
+          valueAttribute: __citygml_gml_id
+        - attribute: parentGmlId
+          valueAttribute: __citygml_parent_gml_id
+        - attribute: rootGmlId
+          valueAttribute: __citygml_root_gml_id
+        - attribute: lod
+          valueAttribute: lod
+
+  - id: 223edd04-27c5-4e61-a524-313b7cd9303f
+    name: AttributeMapperLod3InvalidSurfaceGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: check
+          expr:
+            type: string
+            value: LOD2以上境界面のエラー
+        - attribute: issue
+          expr:
+            type: flowExpr
+            value: |
+              vr = attributes.get("validationResult");
+              if vr != null and "details" in vr {
+                vr["details"][0][0]
+              } else if "issue" in attributes {
+                attributes["issue"]
+              } else {
+                "UnknownError"
+              }
+        - attribute: filename
+          valueAttribute: name
+        - attribute: featureType
+          valueAttribute: __citygml_feature_type
+        - attribute: gmlId
+          valueAttribute: __citygml_gml_id
+        - attribute: parentGmlId
+          valueAttribute: __citygml_parent_gml_id
+        - attribute: rootGmlId
+          valueAttribute: __citygml_root_gml_id
+        - attribute: lod
+          valueAttribute: lod
+
+  - id: 84bf2d44-a30e-436b-b0ca-3fa81504ab49
+    name: FeatureGeoJsonWriterLod23InvalidSurface
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: string
+        value: error_geometry/02_建築物_LOD2以上境界面のエラー.geojson
 
   # --- LOD2 solid-boundary validation pipeline (L14) ---
   - id: f2cfc80d-26e2-43e9-9038-89f698e84147
@@ -2676,6 +2799,24 @@ edges:
     to: 3730412c-8a45-417c-a669-fa10fec80028
     fromPort: features
     toPort: features
+  # Counter.complete -> GeoJSON attribute mapper (parallel to the CSV writer)
+  - id: 2cf00a25-3a9f-4006-ace8-c2895cc870db
+    from: 86da6c18-1b32-4443-9d24-9a0c3d6d060c
+    to: e3e0a17b-e034-4a68-86df-ccf0f88264b6
+    fromPort: complete
+    toPort: features
+  # GeoJSON attribute mapper -> GeoJSON writer
+  - id: 7ec0821e-35b9-4415-ba7c-a43283856e18
+    from: e3e0a17b-e034-4a68-86df-ccf0f88264b6
+    to: 8c34276b-9f20-42ab-a542-659819a5626e
+    fromPort: features
+    toPort: features
+  # Route the written LOD0 intersection GeoJSON into the result zip.
+  - id: 5fcf22da-e6c2-4e30-9aea-f8f91e01e068
+    from: 8c34276b-9f20-42ab-a542-659819a5626e
+    to: 3730412c-8a45-417c-a669-fa10fec80028
+    fromPort: features
+    toPort: features
 
   # LOD0 surface orientation pipeline (taps inCorrectOrientation surfaces).
   - id: 8712059f-8e80-4cb6-ba77-12c294035546
@@ -3185,6 +3326,37 @@ edges:
   # Route the combined LOD2/LOD3 boundary CSV into the result zip.
   - id: 927a80f0-8583-4675-8323-ee333d256c7d
     from: 9989e9e9-6b77-41f9-a1ee-3fd3f58ee5a3
+    to: 3730412c-8a45-417c-a669-fa10fec80028
+    fromPort: features
+    toPort: features
+  # GeoJSON error-detail branch (parallel to the CSV writers).
+  # LOD2 counter.complete -> LOD2 GeoJSON attribute mapper
+  - id: 16bb53a6-c03d-4a14-ac1e-4667ab7afc17
+    from: bd42447c-1efd-4ebb-813b-3cd44d174272
+    to: 8047c601-56d5-42c0-8854-a6d35c631f2f
+    fromPort: complete
+    toPort: features
+  # LOD2 GeoJSON mapper -> shared GeoJSON writer
+  - id: 873720f1-a260-497c-8e73-9067cd7c9ea0
+    from: 8047c601-56d5-42c0-8854-a6d35c631f2f
+    to: 84bf2d44-a30e-436b-b0ca-3fa81504ab49
+    fromPort: features
+    toPort: features
+  # LOD3 counter.complete -> LOD3 GeoJSON attribute mapper
+  - id: 4fac2cb4-ebac-48a7-abd3-a6d51d61c5f5
+    from: 95cbdea7-0b8b-406f-bd8b-b0ad53139e53
+    to: 223edd04-27c5-4e61-a524-313b7cd9303f
+    fromPort: complete
+    toPort: features
+  # LOD3 GeoJSON mapper -> shared GeoJSON writer
+  - id: 9cae6b29-e7ef-4dcd-bafb-712c7e963149
+    from: 223edd04-27c5-4e61-a524-313b7cd9303f
+    to: 84bf2d44-a30e-436b-b0ca-3fa81504ab49
+    fromPort: features
+    toPort: features
+  # Route the combined LOD2/LOD3 boundary GeoJSON into the result zip.
+  - id: 43333752-31af-4fc6-95ab-c69f7614da4a
+    from: 84bf2d44-a30e-436b-b0ca-3fa81504ab49
     to: 3730412c-8a45-417c-a669-fa10fec80028
     fromPort: features
     toPort: features
