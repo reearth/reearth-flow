@@ -208,15 +208,13 @@ pub fn write_geojson_to_storage(
 /// Build the `crs` foreign member for a `FeatureCollection` from the features'
 /// geometry EPSG codes.
 ///
-/// This emits the legacy GeoJSON 2008 `crs` member so downstream desktop GIS
-/// tools (QGIS/GDAL) interpret the projected coordinates in the correct CRS
-/// instead of assuming WGS84. It is intentionally non-standard under RFC 7946,
-/// which fixes coordinates to WGS84; the quality-check error outputs keep the
-/// projected coordinates used during inspection and rely on this member.
+/// Used by quality-check error detail files. Quality checks run on a non-WGS84
+/// CRS and output the source coordinates as-is, so the CRS must be recorded via
+/// this legacy GeoJSON 2008 `crs` member (non-standard under RFC 7946, which
+/// fixes coordinates to WGS84).
 ///
-/// Returns `None` (no `crs` member, preserving the previous behavior) when no
-/// feature carries an EPSG code. When multiple distinct EPSG codes are present,
-/// a warning is logged and the first one encountered is used.
+/// Returns `None` when no feature carries an EPSG code, or when features carry
+/// multiple distinct codes (no single correct CRS).
 #[cfg(not(feature = "new-geometry"))]
 fn crs_foreign_members(features: &[Feature]) -> Option<geojson::JsonObject> {
     let mut epsg: Option<u16> = None;
@@ -230,8 +228,9 @@ fn crs_foreign_members(features: &[Feature]) -> Option<geojson::JsonObject> {
                 tracing::warn!(
                     first = existing,
                     other = code,
-                    "GeoJSON features have mixed EPSG codes; using the first one for the `crs` member"
+                    "GeoJSON features have mixed EPSG codes; omitting the `crs` member"
                 );
+                return None;
             }
             Some(_) => {}
         }
@@ -286,13 +285,12 @@ mod tests {
     }
 
     #[test]
-    fn mixed_epsg_uses_first_encountered() {
+    fn no_crs_member_when_epsg_mixed() {
         let features = vec![
             feature_with_epsg(None),
             feature_with_epsg(Some(6675)),
             feature_with_epsg(Some(6669)),
         ];
-        let members = crs_foreign_members(&features).expect("crs member expected");
-        assert_eq!(crs_name(&members), "urn:ogc:def:crs:EPSG::6675");
+        assert!(crs_foreign_members(&features).is_none());
     }
 }

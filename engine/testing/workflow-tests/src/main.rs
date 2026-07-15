@@ -1407,7 +1407,7 @@ fn strip_geojson_feature_ids(value: &mut serde_json::Value) {
 /// CSV comparison used elsewhere in this harness.
 fn sort_geojson_features(value: &mut serde_json::Value) {
     if let Some(features) = value.get_mut("features").and_then(|f| f.as_array_mut()) {
-        features.sort_by_key(|f| f.to_string());
+        features.sort_by_cached_key(|f| f.to_string());
     }
 }
 
