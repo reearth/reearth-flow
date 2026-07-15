@@ -1,5 +1,5 @@
 {
-  "description": "Test quality check L07 (boundary-surface errors) for LOD2/LOD3 on plateau6 (CityGML 3.0 + i-UR 4.0).",
+  "description": "Demo: a LOD2 box building with six boundary surfaces where only the west wall is non-planar. Exactly that one con:WallSurface is reported under 'LOD2以上境界面のエラー', showing surface-level error identification.",
   "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
   "workflowVariables": [
     {
@@ -47,15 +47,13 @@
     "errorCountSummary": {
       "expectedFile": "summary_bldg.json",
       "includeFields": [
-        "LOD2 境界面のエラー",
-        "LOD3 境界面のエラー"
+        "LOD2 境界面のエラー"
       ]
     },
     "fileErrorSummary": {
       "expectedFile": "02_建築物_検査結果一覧.csv",
       "includeColumns": [
-        "LOD2 境界面のエラー",
-        "LOD3 境界面のエラー"
+        "LOD2 境界面のエラー"
       ]
     }
   },
