@@ -610,6 +610,7 @@ mod diagnostics_tests {
             "Cesium 3D Tiles Writer".into(),
             Arc::default(),
             Arc::new(reearth_flow_diagnostics::DispositionPolicy::default()),
+            true,
         ));
         let node_ctx = NodeContext::default();
         let mut ctx = ExecutorContext::new_with_node_context_feature_and_port(

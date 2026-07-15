@@ -1,12 +1,97 @@
-use std::sync::Arc;
+use std::sync::atomic::{AtomicU64, Ordering};
+use std::sync::{Arc, Mutex};
 
 use reearth_flow_diagnostics::{
     Diagnostic, DiagnosticDraft, DiagnosticKind, Disposition, DispositionPolicy, ErrorCode,
     NodeDiagnostics,
 };
+use uuid::Uuid;
 
 use crate::event::EventHub;
 use crate::node::NodeHandle;
+
+/// D7 (spec §7 / Task 5): hard cap on buffered reject rows per node before
+/// the side-file flush degrades to counting-only. Rows beyond the cap are
+/// never buffered — only counted — so a pathological run can't grow this
+/// unboundedly in memory; the residual count surfaces as one overflow
+/// marker row at flush time (see `render_reject_jsonl`).
+pub const REJECT_ROW_CAP: usize = 10_000;
+
+/// One row of the D7 sink reject side-file (`rejected/{composed_id}.jsonl`,
+/// flushed by `SinkNode::on_terminate`). PII-minimal by design: only the
+/// feature id, whether it had geometry, and the diagnostic code — no
+/// feature attributes (opt-in attribute capture is deferred, see Task 5's
+/// brief).
+#[derive(Debug, Clone)]
+pub struct RejectRow {
+    pub feature_id: Option<Uuid>,
+    pub has_geometry: bool,
+    pub code: ErrorCode,
+}
+
+/// Sink-only buffer for D7 reject rows, owned by `NodeDiagnosticsHandle`
+/// (`Some` only when constructed for a sink node under a `side_file()`
+/// policy — see `NodeDiagnosticsHandle::new`). Hard-capped at
+/// `REJECT_ROW_CAP` rows.
+#[derive(Debug, Default)]
+struct RejectCapture {
+    rows: Mutex<Vec<RejectRow>>,
+    overflow: AtomicU64,
+}
+
+impl RejectCapture {
+    fn record(&self, feature_id: Option<Uuid>, has_geometry: bool, code: ErrorCode) {
+        let mut rows = self.rows.lock().unwrap();
+        if rows.len() < REJECT_ROW_CAP {
+            rows.push(RejectRow {
+                feature_id,
+                has_geometry,
+                code,
+            });
+        } else {
+            self.overflow.fetch_add(1, Ordering::Relaxed);
+        }
+    }
+
+    /// Drains buffered rows plus the residual overflow count. `None` when
+    /// there is nothing to flush (no `Reject` was ever captured).
+    fn drain(&self) -> Option<(Vec<RejectRow>, u64)> {
+        let rows = std::mem::take(&mut *self.rows.lock().unwrap());
+        let overflow = self.overflow.swap(0, Ordering::Relaxed);
+        if rows.is_empty() && overflow == 0 {
+            None
+        } else {
+            Some((rows, overflow))
+        }
+    }
+}
+
+/// Render buffered D7 reject rows as newline-delimited JSON — one object
+/// per row (`{"featureId":...,"hasGeometry":...,"code":"..."}`), plus one
+/// trailing overflow-marker row when `overflow > 0` (spec: "an overflow
+/// marker row at flush notes the residual count"). Pure/no I/O so the cap
+/// and shape are directly unit-testable.
+pub fn render_reject_jsonl(rows: &[RejectRow], overflow: u64) -> Vec<u8> {
+    let mut buf = Vec::new();
+    for row in rows {
+        let obj = serde_json::json!({
+            "featureId": row.feature_id,
+            "hasGeometry": row.has_geometry,
+            "code": row.code,
+        });
+        buf.extend_from_slice(obj.to_string().as_bytes());
+        buf.push(b'\n');
+    }
+    if overflow > 0 {
+        let marker = serde_json::json!({
+            "overflow": true,
+            "count": overflow,
+        });
+        buf.extend_from_slice(marker.to_string().as_bytes());
+        buf.push(b'\n');
+    }
+    buf
+}
 
 /// Runtime-side wrapper pairing the crate-agnostic aggregator with the
 /// runtime identities needed to emit `Event::Diagnostic`s.
@@ -31,6 +116,10 @@ pub struct NodeDiagnosticsHandle {
     pub node_name: String,
     pub inner: Arc<NodeDiagnostics>,
     disposition_policy: Arc<DispositionPolicy>,
+    /// D7 (Task 5): `Some` only when this handle was constructed for a sink
+    /// node (`is_sink: true`) under a `side_file()` policy — see `new`.
+    /// Everywhere else `record_reject_row`/`drain_reject_rows` are no-ops.
+    reject_capture: Option<RejectCapture>,
 }
 
 pub type SharedNodeDiagnostics = Arc<NodeDiagnosticsHandle>;
@@ -44,13 +133,35 @@ impl NodeDiagnosticsHandle {
         action_type: String,
         warn_once: reearth_flow_diagnostics::WarnOnceSet,
         disposition_policy: Arc<DispositionPolicy>,
+        is_sink: bool,
     ) -> Self {
+        let reject_capture =
+            (is_sink && disposition_policy.side_file()).then(RejectCapture::default);
         Self {
             node_handle,
             node_name,
             inner: Arc::new(NodeDiagnostics::new(composed_id, action_type, warn_once)),
             disposition_policy,
+            reject_capture,
         }
+    }
+
+    /// D7: buffer one rejected-feature row for the sink side-file flush
+    /// (`SinkNode::on_terminate`). No-op unless this handle was constructed
+    /// for a sink node under a `side_file()` policy (see `new`) — the
+    /// buffer simply doesn't exist otherwise, so this never allocates for a
+    /// no-policy or non-sink node.
+    pub fn record_reject_row(&self, feature_id: Option<Uuid>, has_geometry: bool, code: ErrorCode) {
+        if let Some(capture) = &self.reject_capture {
+            capture.record(feature_id, has_geometry, code);
+        }
+    }
+
+    /// Drain buffered D7 reject rows for flush (see `record_reject_row`).
+    /// `None` when reject capture isn't enabled for this node, or nothing
+    /// was ever captured.
+    pub fn drain_reject_rows(&self) -> Option<(Vec<RejectRow>, u64)> {
+        self.reject_capture.as_ref().and_then(RejectCapture::drain)
     }
 
     /// Resolves the effective disposition for `code` at this node
@@ -91,6 +202,18 @@ impl NodeDiagnosticsHandle {
                     DiagnosticKind::Reject
                 };
                 self.inner.record(kind, code, feature_id);
+                // D7 (Task 5): deliberately NOT calling `record_reject_row`
+                // here. This branch has no `Feature` to derive `has_geometry`
+                // from — only a bare `feature_id` — and hardcoding `false`
+                // would write wrong data to the side file. Today no caller
+                // resolves to `Reject` via this finish()-time path (the two
+                // real `report_drop` call sites, in
+                // `action-sink/src/file/citygml.rs`, both currently land on
+                // `WarnDrop`-default codes with no test overriding them to
+                // `Reject`), so the seam is left minimal rather than
+                // threading a `has_geometry` bool through a signature no one
+                // needs yet. If a finish()-time `Reject` caller appears,
+                // extend this branch (and `report_drop`'s signature) then.
             }
         }
     }
@@ -128,6 +251,13 @@ mod tests {
     }
 
     fn handle_with_policy(disposition_policy: Arc<DispositionPolicy>) -> NodeDiagnosticsHandle {
+        handle_with_policy_and_sink(disposition_policy, false)
+    }
+
+    fn handle_with_policy_and_sink(
+        disposition_policy: Arc<DispositionPolicy>,
+        is_sink: bool,
+    ) -> NodeDiagnosticsHandle {
         NodeDiagnosticsHandle::new(
             COMPOSED_ID.to_string(),
             NodeHandle::new(NodeId::new("node-1".to_string())),
@@ -135,6 +265,17 @@ mod tests {
             "Cesium 3D Tiles Writer".to_string(),
             Arc::default(),
             disposition_policy,
+            is_sink,
+        )
+    }
+
+    fn side_file_policy() -> Arc<DispositionPolicy> {
+        Arc::new(
+            DispositionPolicy::compile(PolicyInput {
+                side_file: true,
+                ..Default::default()
+            })
+            .expect("policy should compile"),
         )
     }
 
@@ -276,5 +417,121 @@ mod tests {
         assert_eq!(fatal.code, ErrorCode::CitygmlEmptyGeometry);
         assert_eq!(fatal.node_id.as_deref(), Some(COMPOSED_ID));
         assert_eq!(fatal.feature_id, Some(uuid::Uuid::nil()));
+    }
+
+    // -----------------------------------------------------------------
+    // D7 (Task 5): reject-row capture (`record_reject_row`/
+    // `drain_reject_rows`) and the JSONL flush rendering.
+    // -----------------------------------------------------------------
+
+    #[test]
+    fn record_reject_row_is_a_no_op_without_side_file_policy() {
+        // is_sink: true, but the default policy has side_file() == false.
+        let handle = handle_with_policy_and_sink(Arc::default(), true);
+        handle.record_reject_row(
+            Some(uuid::Uuid::nil()),
+            true,
+            ErrorCode::CitygmlEmptyGeometry,
+        );
+        assert!(handle.drain_reject_rows().is_none());
+    }
+
+    #[test]
+    fn record_reject_row_is_a_no_op_for_a_non_sink_handle_even_with_side_file_policy() {
+        let handle = handle_with_policy_and_sink(side_file_policy(), false);
+        handle.record_reject_row(
+            Some(uuid::Uuid::nil()),
+            true,
+            ErrorCode::CitygmlEmptyGeometry,
+        );
+        assert!(handle.drain_reject_rows().is_none());
+    }
+
+    #[test]
+    fn record_reject_row_buffers_when_sink_and_side_file_both_apply() {
+        let handle = handle_with_policy_and_sink(side_file_policy(), true);
+        let id = uuid::Uuid::new_v4();
+        handle.record_reject_row(Some(id), true, ErrorCode::CitygmlEmptyGeometry);
+        handle.record_reject_row(None, false, ErrorCode::GltfZeroFaceSolid);
+        let (rows, overflow) = handle.drain_reject_rows().expect("rows should be buffered");
+        assert_eq!(overflow, 0);
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0].feature_id, Some(id));
+        assert!(rows[0].has_geometry);
+        assert_eq!(rows[0].code, ErrorCode::CitygmlEmptyGeometry);
+        assert_eq!(rows[1].feature_id, None);
+        assert!(!rows[1].has_geometry);
+        assert_eq!(rows[1].code, ErrorCode::GltfZeroFaceSolid);
+    }
+
+    #[test]
+    fn drain_reject_rows_empties_the_buffer_and_a_second_drain_is_none() {
+        let handle = handle_with_policy_and_sink(side_file_policy(), true);
+        handle.record_reject_row(None, false, ErrorCode::CitygmlEmptyGeometry);
+        assert!(handle.drain_reject_rows().is_some());
+        assert!(handle.drain_reject_rows().is_none());
+    }
+
+    /// Cap behavior (Task 5 brief): 10_001 records -> 10_000 buffered rows
+    /// plus an overflow count of 1, never growing the buffer past the cap.
+    #[test]
+    fn record_reject_row_caps_at_reject_row_cap_and_counts_the_residual() {
+        let handle = handle_with_policy_and_sink(side_file_policy(), true);
+        for _ in 0..(REJECT_ROW_CAP + 1) {
+            handle.record_reject_row(None, false, ErrorCode::CitygmlEmptyGeometry);
+        }
+        let (rows, overflow) = handle.drain_reject_rows().expect("rows should be buffered");
+        assert_eq!(rows.len(), REJECT_ROW_CAP);
+        assert_eq!(overflow, 1);
+    }
+
+    #[test]
+    fn render_reject_jsonl_emits_one_json_object_per_row_with_no_overflow_marker() {
+        let id = uuid::Uuid::new_v4();
+        let rows = vec![
+            RejectRow {
+                feature_id: Some(id),
+                has_geometry: true,
+                code: ErrorCode::CitygmlEmptyGeometry,
+            },
+            RejectRow {
+                feature_id: None,
+                has_geometry: false,
+                code: ErrorCode::GltfZeroFaceSolid,
+            },
+        ];
+        let bytes = render_reject_jsonl(&rows, 0);
+        let text = String::from_utf8(bytes).unwrap();
+        let lines: Vec<&str> = text.lines().collect();
+        assert_eq!(lines.len(), 2);
+        let first: serde_json::Value = serde_json::from_str(lines[0]).unwrap();
+        assert_eq!(first["featureId"], serde_json::json!(id));
+        assert_eq!(first["hasGeometry"], serde_json::json!(true));
+        assert_eq!(first["code"], serde_json::json!("citygml.empty_geometry"));
+        let second: serde_json::Value = serde_json::from_str(lines[1]).unwrap();
+        assert_eq!(second["featureId"], serde_json::Value::Null);
+        assert_eq!(second["hasGeometry"], serde_json::json!(false));
+    }
+
+    #[test]
+    fn render_reject_jsonl_appends_an_overflow_marker_row_when_capped() {
+        let rows = vec![RejectRow {
+            feature_id: None,
+            has_geometry: false,
+            code: ErrorCode::CitygmlEmptyGeometry,
+        }];
+        let bytes = render_reject_jsonl(&rows, 42);
+        let text = String::from_utf8(bytes).unwrap();
+        let lines: Vec<&str> = text.lines().collect();
+        assert_eq!(lines.len(), 2, "expected 1 data row + 1 overflow marker");
+        let marker: serde_json::Value = serde_json::from_str(lines[1]).unwrap();
+        assert_eq!(marker["overflow"], serde_json::json!(true));
+        assert_eq!(marker["count"], serde_json::json!(42));
+    }
+
+    #[test]
+    fn render_reject_jsonl_of_empty_rows_and_zero_overflow_is_empty() {
+        let bytes = render_reject_jsonl(&[], 0);
+        assert!(bytes.is_empty());
     }
 }

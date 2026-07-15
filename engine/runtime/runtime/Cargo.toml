@@ -20,6 +20,7 @@ reearth-flow-types.workspace = true
 
 async-stream.workspace = true
 async-trait.workspace = true
+bytes.workspace = true
 chrono.workspace = true
 crossbeam.workspace = true
 futures.workspace = true
@@ -42,6 +43,5 @@ uuid.workspace = true
 zstd.workspace = true
 
 [dev-dependencies]
-bytes.workspace = true
 reearth-flow-action-source.workspace = true
 tempfile.workspace = true

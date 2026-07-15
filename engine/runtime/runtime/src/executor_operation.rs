@@ -290,7 +290,22 @@ impl ExecutorContext {
                     Some(handle) => {
                         handle
                             .inner
-                            .record(kind, diagnostic.code, Some(self.feature.id))
+                            .record(kind, diagnostic.code, Some(self.feature.id));
+                        // D7 (Task 5): capture a side-file row alongside the
+                        // aggregation bucket above. `record_reject_row` is a
+                        // no-op unless this handle belongs to a sink node
+                        // under a `side_file()` policy, so this is free on
+                        // every other path. `self.feature` is live here (this
+                        // is the per-feature report() path, unlike
+                        // finish()-time `report_drop`), so `has_geometry` is
+                        // computed for real rather than guessed.
+                        if effective == Disposition::Reject {
+                            handle.record_reject_row(
+                                Some(self.feature.id),
+                                self.feature.has_geometry(),
+                                diagnostic.code,
+                            );
+                        }
                     }
                     // never silent, even on a context without a handle (tests/legacy paths)
                     None => self.emit_immediate_warn(&diagnostic),
@@ -512,6 +527,13 @@ mod diagnostics_tests {
     fn ctx_with_policy(
         disposition_policy: Arc<DispositionPolicy>,
     ) -> (ExecutorContext, crate::diagnostics::SharedNodeDiagnostics) {
+        ctx_with_policy_and_sink(disposition_policy, false)
+    }
+
+    fn ctx_with_policy_and_sink(
+        disposition_policy: Arc<DispositionPolicy>,
+        is_sink: bool,
+    ) -> (ExecutorContext, crate::diagnostics::SharedNodeDiagnostics) {
         let handle = Arc::new(NodeDiagnosticsHandle::new(
             COMPOSED_ID.to_string(),
             NodeHandle::new(NodeId::new("node-1".to_string())),
@@ -519,6 +541,7 @@ mod diagnostics_tests {
             "Cesium 3D Tiles Writer".to_string(),
             Arc::default(),
             disposition_policy,
+            is_sink,
         ));
         let node_ctx = NodeContext::default();
         let mut ctx = ExecutorContext::new_with_node_context_feature_and_port(
@@ -588,6 +611,79 @@ mod diagnostics_tests {
             summaries[0].effective_disposition,
             Some(Disposition::Reject)
         );
+    }
+
+    /// D7 (Task 5): a resolved `Reject` under a sink handle with
+    /// `side_file()` enabled captures a row (feature id + has_geometry +
+    /// code), not just the aggregation bucket.
+    #[test]
+    fn report_resolves_a_promoting_override_to_reject_and_captures_a_side_file_row() {
+        let policy = DispositionPolicy::compile(PolicyInput {
+            side_file: true,
+            overrides: vec![override_node_code(
+                "cesium3dtiles.empty_geometry",
+                Disposition::Reject,
+            )],
+            ..Default::default()
+        })
+        .expect("policy should compile");
+        let (ctx, handle) = ctx_with_policy_and_sink(Arc::new(policy), true);
+        let disp = ctx
+            .report(DiagnosticDraft::new(ErrorCode::Cesium3dtilesEmptyGeometry))
+            .unwrap();
+        assert_eq!(disp, Disposition::Reject);
+        let (rows, overflow) = handle
+            .drain_reject_rows()
+            .expect("a reject row should have been captured");
+        assert_eq!(overflow, 0);
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].feature_id, Some(ctx.feature.id));
+        // ctx_with_policy's feature has no geometry set.
+        assert!(!rows[0].has_geometry);
+        assert_eq!(rows[0].code, ErrorCode::Cesium3dtilesEmptyGeometry);
+    }
+
+    /// Same promoting override, but without `side_file()` — the aggregation
+    /// bucket still records `Reject` (unchanged, pre-Task-5 behavior); no
+    /// row is captured since there's nowhere configured to flush it.
+    #[test]
+    fn report_resolves_a_promoting_override_to_reject_without_side_file_captures_no_row() {
+        let policy = DispositionPolicy::compile(PolicyInput {
+            overrides: vec![override_node_code(
+                "cesium3dtiles.empty_geometry",
+                Disposition::Reject,
+            )],
+            ..Default::default()
+        })
+        .expect("policy should compile");
+        let (ctx, handle) = ctx_with_policy_and_sink(Arc::new(policy), true);
+        let disp = ctx
+            .report(DiagnosticDraft::new(ErrorCode::Cesium3dtilesEmptyGeometry))
+            .unwrap();
+        assert_eq!(disp, Disposition::Reject);
+        assert!(handle.drain_reject_rows().is_none());
+    }
+
+    /// A `WarnDrop` resolution never captures a side-file row, even under a
+    /// sink + `side_file()` handle — only `Reject` does.
+    #[test]
+    fn report_warn_drop_never_captures_a_side_file_row_even_with_side_file_policy() {
+        let (ctx, handle) = ctx_with_policy_and_sink(side_file_only_policy(), true);
+        let disp = ctx
+            .report(DiagnosticDraft::new(ErrorCode::Cesium3dtilesEmptyGeometry))
+            .unwrap();
+        assert_eq!(disp, Disposition::WarnDrop);
+        assert!(handle.drain_reject_rows().is_none());
+    }
+
+    fn side_file_only_policy() -> Arc<DispositionPolicy> {
+        Arc::new(
+            DispositionPolicy::compile(PolicyInput {
+                side_file: true,
+                ..Default::default()
+            })
+            .expect("policy should compile"),
+        )
     }
 
     #[test]

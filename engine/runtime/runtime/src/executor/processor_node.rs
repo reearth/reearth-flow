@@ -170,6 +170,10 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             action,
             warn_once,
             disposition_policy,
+            // D7 (Task 5): reject-row capture is sink-only — a processor
+            // routes rejected features via the `rejected` output port
+            // instead (see the runner's load-time validation).
+            false,
         ));
 
         Self {

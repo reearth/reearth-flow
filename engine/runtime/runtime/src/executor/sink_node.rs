@@ -129,6 +129,9 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
             action,
             warn_once,
             disposition_policy,
+            // D7 (Task 5): every SinkNode may capture reject rows — the
+            // handle itself gates capture further on `side_file()`.
+            true,
         ));
         Self {
             node_handle,
@@ -463,7 +466,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
         // so finish()-time drops are attributed to this node, not the sender.
         let mut ctx = ctx;
         ctx.diagnostics = Some(self.diagnostics.clone());
-        let result = self
+        let mut result = self
             .sink
             .finish(ctx)
             .map_err(|e| to_node_error(e, NodeErrorKind::Sink));
@@ -475,12 +478,132 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
         // `run()` returns and fold into the run's `RunSummary` (Task 5).
         let summaries = crate::diagnostics::emit_summaries(&self.event_hub, &self.diagnostics);
         *self.summaries_sink.lock() = summaries;
+
+        // D7 (Task 5): flush any buffered reject rows to this node's side-
+        // file shard, alongside emit_summaries above — same "always run,
+        // never silently skip" shape. `drain_reject_rows` is `None` unless
+        // reject capture was enabled for this node (`policy.side_file()` at
+        // construction time), so this is a no-op for every no-policy or
+        // side_file-disabled run. A flush failure doesn't override a real
+        // finish() error (that failure already has precedence downstream in
+        // `reconcile_sink_terminate_result`), but if finish() itself
+        // succeeded, a flush failure still fails the node — rejected-row
+        // evidence must not vanish silently.
+        if let Some((rows, overflow)) = self.diagnostics.drain_reject_rows() {
+            if let Err(e) = self.flush_reject_shard(rows, overflow) {
+                if result.is_ok() {
+                    result = Err(e);
+                }
+            }
+        }
+
         self.event_hub.send(Event::SinkFinished {
             node: self.node_handle.clone(),
             name: self.node_name.clone(),
         });
         result
     }
+}
+
+impl<F> SinkNode<F> {
+    /// Write this node's D7 reject-shard side file
+    /// (`rejected/{composed_id}.jsonl`, spec §7) under `self.sandbox_root`.
+    /// `put`/overwrite-only, one shard per node — the composed id keys the
+    /// path, so distinct sink nodes never clobber each other's shard even
+    /// when they share a run.
+    fn flush_reject_shard(
+        &self,
+        rows: Vec<crate::diagnostics::RejectRow>,
+        overflow: u64,
+    ) -> Result<(), ExecutionError> {
+        let relative_path = reject_shard_relative_path(self.diagnostics.inner.node_id());
+        let bytes = crate::diagnostics::render_reject_jsonl(&rows, overflow);
+        write_sandboxed_reject_shard(
+            &self.sandbox_root,
+            &relative_path,
+            &self.storage_resolver,
+            bytes::Bytes::from(bytes),
+        )
+    }
+}
+
+/// The D7 reject-shard's path, relative to `sandbox_root` (spec §7:
+/// `rejected/{composed_id}.jsonl`). Pure/no I/O — the composed-id-keying
+/// invariant (distinct nodes never share a shard) is directly unit-testable
+/// without a sandbox.
+fn reject_shard_relative_path(composed_id: &str) -> String {
+    format!("rejected/{composed_id}.jsonl")
+}
+
+/// Minimal, runtime-crate-local re-implementation of the sandbox-join-and-
+/// put invariant `action-sink::SinkOutput` (its full API, including request
+/// validation only meaningful for user-authored paths) already implements
+/// for every other sink write — duplicated rather than reused because
+/// `action-sink` depends on this crate (`reearth-flow-runtime`, for the
+/// `Sink`/`Processor`/`Source` traits every action implements), so a
+/// `runtime -> action-sink` dependency the other way would be circular. The
+/// *invariant* is the requirement (put/overwrite-only, resolves strictly
+/// under `sandbox_root`, no `..` escape survives the join) — not the
+/// specific `SinkOutput` type — so this reimplements only that: no leading-
+/// `/`/`~`/whitespace/empty-path hygiene checks, since `relative_path` here
+/// is always program-built (`reject_shard_relative_path`), never directly
+/// user-authored.
+fn write_sandboxed_reject_shard(
+    sandbox_root: &Uri,
+    relative_path: &str,
+    resolver: &StorageResolver,
+    bytes: bytes::Bytes,
+) -> Result<(), ExecutionError> {
+    let resolved = sandbox_root.join(relative_path).map_err(|e| {
+        ExecutionError::Sink(
+            format!("reject side-file: failed to join {relative_path:?} with sandbox_root: {e}")
+                .into(),
+        )
+    })?;
+    ensure_under_sandbox(sandbox_root, &resolved)?;
+    let storage = resolver.resolve(&resolved).map_err(|e| {
+        ExecutionError::Sink(
+            format!("reject side-file: failed to resolve storage for {resolved}: {e}").into(),
+        )
+    })?;
+    storage
+        .put_sync(resolved.path().as_path(), bytes)
+        .map_err(|e| {
+            ExecutionError::Sink(
+                format!("reject side-file: failed to write {resolved}: {e}").into(),
+            )
+        })?;
+    Ok(())
+}
+
+/// Segment-aligned "resolved is under sandbox_root" check, mirroring
+/// `action-sink::sandbox::ensure_under` (see `write_sandboxed_reject_shard`
+/// for why this is duplicated rather than reused). `file:///` is treated as
+/// "no sandbox" — same permissive sentinel `NodeContext::default()`/
+/// `ExecutorOptions::default()` use for tests — otherwise any `..` segment
+/// surviving the join, or a resolved URI that isn't a same-scheme/authority
+/// prefix of `sandbox_root`, is rejected.
+fn ensure_under_sandbox(sandbox_root: &Uri, resolved: &Uri) -> Result<(), ExecutionError> {
+    if sandbox_root.as_str() == "file:///" || sandbox_root.as_str() == resolved.as_str() {
+        return Ok(());
+    }
+    let root_prefix = sandbox_root.as_str().trim_end_matches('/');
+    let candidate_str = resolved.as_str();
+    let after_prefix = candidate_str.strip_prefix(root_prefix).ok_or_else(|| {
+        ExecutionError::Sink(
+            format!("reject side-file {resolved} is outside the sandbox root {sandbox_root}")
+                .into(),
+        )
+    })?;
+    let escapes = (!after_prefix.is_empty() && !after_prefix.starts_with('/'))
+        || after_prefix.split('/').any(|segment| segment == "..");
+    if escapes {
+        return Err(ExecutionError::Sink(
+            format!("reject side-file {resolved} is outside the sandbox root {sandbox_root}")
+                .into(),
+        ));
+    }
+    Ok(())
 }
 
 /// Unified failure precedence for the sink drain end: a real returned error
@@ -508,6 +631,101 @@ fn reconcile_sink_terminate_result(
         (None, Err(e), fatal) => (Err(e), true, fatal),
         (None, Ok(()), Some(diag)) => (Err(ExecutionError::Sink(Box::new(diag))), true, None),
         (None, Ok(()), None) => (Ok(()), has_failed, None),
+    }
+}
+
+#[cfg(test)]
+mod reject_shard_tests {
+    use std::str::FromStr;
+
+    use tempfile::tempdir;
+
+    use super::*;
+
+    /// Composed-id keying (Task 5 brief): two distinct composed ids produce
+    /// two distinct shard paths, each keyed under `rejected/`.
+    #[test]
+    fn reject_shard_relative_path_keys_by_composed_id() {
+        assert_eq!(
+            reject_shard_relative_path("writer-a"),
+            "rejected/writer-a.jsonl"
+        );
+        assert_eq!(
+            reject_shard_relative_path("prefix.writer-b"),
+            "rejected/prefix.writer-b.jsonl"
+        );
+        assert_ne!(
+            reject_shard_relative_path("writer-a"),
+            reject_shard_relative_path("prefix.writer-b")
+        );
+    }
+
+    fn file_uri(path: &std::path::Path) -> Uri {
+        Uri::from_str(&format!("file://{}", path.display())).unwrap()
+    }
+
+    #[test]
+    fn write_sandboxed_reject_shard_writes_under_the_sandbox_root() {
+        let tmp = tempdir().unwrap();
+        let root = file_uri(tmp.path());
+        let resolver = StorageResolver::new();
+        write_sandboxed_reject_shard(
+            &root,
+            "rejected/node-a.jsonl",
+            &resolver,
+            bytes::Bytes::from_static(b"{\"featureId\":null}\n"),
+        )
+        .expect("write should succeed under the sandbox root");
+        let content = std::fs::read_to_string(tmp.path().join("rejected/node-a.jsonl")).unwrap();
+        assert_eq!(content, "{\"featureId\":null}\n");
+    }
+
+    /// Two distinct shard paths under the same sandbox never clobber each
+    /// other — the reject-shard no-clobber invariant at the write-helper
+    /// level (the runner-level test covers it end to end through a real
+    /// two-sink run).
+    #[test]
+    fn write_sandboxed_reject_shard_does_not_clobber_a_sibling_shard() {
+        let tmp = tempdir().unwrap();
+        let root = file_uri(tmp.path());
+        let resolver = StorageResolver::new();
+        write_sandboxed_reject_shard(
+            &root,
+            &reject_shard_relative_path("writer-a"),
+            &resolver,
+            bytes::Bytes::from_static(b"a\n"),
+        )
+        .unwrap();
+        write_sandboxed_reject_shard(
+            &root,
+            &reject_shard_relative_path("writer-b"),
+            &resolver,
+            bytes::Bytes::from_static(b"b\n"),
+        )
+        .unwrap();
+        assert_eq!(
+            std::fs::read_to_string(tmp.path().join("rejected/writer-a.jsonl")).unwrap(),
+            "a\n"
+        );
+        assert_eq!(
+            std::fs::read_to_string(tmp.path().join("rejected/writer-b.jsonl")).unwrap(),
+            "b\n"
+        );
+    }
+
+    #[test]
+    fn write_sandboxed_reject_shard_rejects_traversal_outside_the_sandbox() {
+        let tmp = tempdir().unwrap();
+        let root = file_uri(tmp.path());
+        let resolver = StorageResolver::new();
+        let err = write_sandboxed_reject_shard(
+            &root,
+            "../../escape.jsonl",
+            &resolver,
+            bytes::Bytes::from_static(b"x\n"),
+        )
+        .expect_err("a path escaping the sandbox root must be rejected");
+        assert!(matches!(err, ExecutionError::Sink(_)));
     }
 }
 

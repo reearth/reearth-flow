@@ -21,11 +21,12 @@ use tokio::task::JoinHandle;
 
 use crate::errors::Error;
 use crate::executor::{run_dag_executor, Executor};
-use crate::policy::{map_error_policy, validate_node_selectors};
+use crate::policy::{map_error_policy, validate_node_selectors, validate_reject_routing};
 
 /// Joins a `Vec<String>` of validation messages (`ErrorPolicy::validate`,
-/// `DispositionPolicy::compile`, `validate_node_selectors`) into the single
-/// `Error::PolicyValidationError` line, one message per line.
+/// `DispositionPolicy::compile`, `validate_node_selectors`,
+/// `validate_reject_routing`) into the single `Error::PolicyValidationError`
+/// line, one message per line.
 fn policy_validation_error(errors: Vec<String>) -> Error {
     Error::PolicyValidationError(errors.join("\n"))
 }
@@ -91,8 +92,10 @@ impl Orchestrator {
         // whole document.
         let error_policy: ErrorPolicy = workflow.error_policy.clone().unwrap_or_default();
         error_policy.validate().map_err(policy_validation_error)?;
-        let disposition_policy = DispositionPolicy::compile(map_error_policy(&error_policy))
-            .map_err(policy_validation_error)?;
+        let disposition_policy = Arc::new(
+            DispositionPolicy::compile(map_error_policy(&error_policy))
+                .map_err(policy_validation_error)?,
+        );
 
         let executor = Executor {};
         let options = ExecutorOptions {
@@ -101,7 +104,7 @@ impl Orchestrator {
             thread_pool_size: *THREAD_POOL_SIZE,
             feature_flush_threshold: *FEATURE_FLUSH_THRESHOLD,
             sandbox_root,
-            disposition_policy: Arc::new(disposition_policy),
+            disposition_policy: disposition_policy.clone(),
         };
         let env_vars = Arc::new(workflow.with.clone().unwrap_or_default());
         let kv_store = Arc::new(create_kv_store());
@@ -122,6 +125,12 @@ impl Orchestrator {
         // DAG, so this runs after `create_dag_executor`, unlike the
         // structural/compile checks above.
         validate_node_selectors(&error_policy, &dag_executor.node_identities())
+            .map_err(policy_validation_error)?;
+
+        // Load-time Reject-routing validation (spec 4.4, Task 5): colocated
+        // with the node-selector check above — same window (needs the built
+        // DAG's node kinds/ports/wiring), same abort shape.
+        validate_reject_routing(&disposition_policy, &dag_executor.reject_routing_info())
             .map_err(policy_validation_error)?;
 
         // Generate unique executor ID for cache isolation between concurrent executions

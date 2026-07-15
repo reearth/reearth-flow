@@ -770,6 +770,7 @@ mod diagnostics_tests {
             "GltfWriter".into(),
             Arc::default(),
             Arc::new(reearth_flow_diagnostics::DispositionPolicy::default()),
+            true,
         ));
         let node_ctx = NodeContext::default();
         let feature = Feature::from(IndexMap::<String, AttributeValue>::new());

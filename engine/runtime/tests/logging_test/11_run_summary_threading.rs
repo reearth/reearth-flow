@@ -394,11 +394,16 @@ const SCENARIO_10_WRITER_NODE_ID: &str = "42a900a6-0f2a-4364-a4d2-dd8fa63d3dd0";
 /// end-to-end proof): overriding `cesium3dtiles.empty_geometry` to `reject`
 /// on the writer node must resolve through `NodeDiagnosticsHandle::resolve`
 /// at `report()` time instead of the registry default (`warn_drop`) — the
-/// run still succeeds (`Ok`, no failed nodes; Reject in a sink with no
-/// side-file just aggregates at this task's point, see the brief's Task 5
-/// note), but the aggregated summary's `effective_disposition` is `Reject`,
-/// not `WarnDrop`, proving the resolve() ladder is live end to end, not just
-/// unit-tested in isolation.
+/// run still succeeds (`Ok`, no failed nodes), and the aggregated summary's
+/// `effective_disposition` is `Reject`, not `WarnDrop`, proving the
+/// resolve() ladder is live end to end, not just unit-tested in isolation.
+///
+/// Phase 2a-policy Task 5 update: `sideFile: true` is now required for a
+/// Reject-promoting override on a sink to load at all (spec 4.4's load-time
+/// validation, see the two tests below) — this test adds it and additionally
+/// asserts the D7 side-file shard (`rejected/{node}.jsonl`) was written with
+/// one row per rejected feature, closing the loop this test's own doc
+/// comment used to defer to "Task 5".
 #[test]
 fn reject_override_promotes_disposition_through_resolve_end_to_end() {
     use reearth_flow_diagnostics::Disposition;
@@ -406,6 +411,7 @@ fn reject_override_promotes_disposition_through_resolve_end_to_end() {
 
     let mut p = prepare_run("10_warn_drop_aggregation");
     p.workflow.error_policy = Some(ErrorPolicy {
+        side_file: true,
         overrides: vec![PolicyOverride {
             node: Some(SCENARIO_10_WRITER_NODE_ID.to_string()),
             code: Some("cesium3dtiles.empty_geometry".to_string()),
@@ -414,6 +420,7 @@ fn reject_override_promotes_disposition_through_resolve_end_to_end() {
         }],
         ..Default::default()
     });
+    let sandbox_path = p.sandbox_root.path();
 
     let summary = Runner::run_with_event_handler(
         p.job_id,
@@ -438,6 +445,377 @@ fn reject_override_promotes_disposition_through_resolve_end_to_end() {
         .as_ref()
         .expect("finish()-time summary diagnostic should carry AggregateInfo");
     assert_eq!(aggregated.count, 3);
+
+    // D7: the side-file shard exists with one JSONL row per rejected
+    // feature, matching the aggregator's bucket count above.
+    let shard_path = sandbox_path.join(format!("rejected/{SCENARIO_10_WRITER_NODE_ID}.jsonl"));
+    let shard_content = std::fs::read_to_string(&shard_path)
+        .unwrap_or_else(|e| panic!("failed to read {}: {e}", shard_path.display()));
+    let lines: Vec<&str> = shard_content.lines().collect();
+    assert_eq!(lines.len(), 3, "expected 3 reject rows, got: {lines:?}");
+    for line in lines {
+        let row: serde_json::Value = serde_json::from_str(line).unwrap();
+        assert_eq!(
+            row["code"],
+            serde_json::json!("cesium3dtiles.empty_geometry")
+        );
+        assert_eq!(row["hasGeometry"], serde_json::json!(false));
+        assert!(row["featureId"].is_string());
+    }
+}
+
+/// Negative counterpart (spec 4.4, Task 5): the same Reject-promoting
+/// override on the same sink, but WITHOUT `sideFile: true`, must abort the
+/// run before DAG construction ever starts a node thread — a sink with a
+/// possible `Reject` needs somewhere configured to route it.
+#[test]
+fn reject_promoting_override_on_a_sink_without_side_file_aborts_the_run() {
+    use reearth_flow_types::{ErrorPolicy, PolicyDisposition, PolicyOverride};
+
+    let mut p = prepare_run("10_warn_drop_aggregation");
+    p.workflow.error_policy = Some(ErrorPolicy {
+        overrides: vec![PolicyOverride {
+            node: Some(SCENARIO_10_WRITER_NODE_ID.to_string()),
+            code: Some("cesium3dtiles.empty_geometry".to_string()),
+            category: None,
+            disposition: PolicyDisposition::Reject,
+        }],
+        ..Default::default()
+    });
+
+    let err = Runner::run_with_event_handler(
+        p.job_id,
+        p.workflow,
+        BUILTIN_ACTION_FACTORIES.clone(),
+        p.logger_factory,
+        p.storage_resolver,
+        p.ingress_state,
+        p.feature_state,
+        None,
+        vec![],
+        p.sandbox_root,
+    )
+    .expect_err("a reject-promoting override on a sink without sideFile must abort the run");
+    let rendered = err.to_string();
+    assert!(
+        rendered.contains(SCENARIO_10_WRITER_NODE_ID),
+        "unexpected error text: {rendered}"
+    );
+    assert!(
+        rendered.contains("errorPolicy.sideFile"),
+        "unexpected error text: {rendered}"
+    );
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2a-policy Task 5: load-time Reject-routing validation for processor
+// nodes (spec 4.4) — a processor must declare the `rejected` output port AND
+// have it wired, or a Reject-promoting override on it aborts the run.
+// "Geometry Validator" already declares `rejected` among its output ports
+// (`runtime/action-processor/src/geometry/validator.rs`), so it's a real
+// action rather than a synthetic fixture; the override's code doesn't need
+// to be one the action would ever actually emit — this validation is
+// structural (spec 4.4's conservative over-approximation), not behavioral.
+// ---------------------------------------------------------------------------
+
+const PROCESSOR_REJECT_SOURCE_ID: &str = "5e96c308-75c7-4d43-81f7-7d7f5be4ae9b";
+const PROCESSOR_REJECT_VALIDATOR_ID: &str = "5336c448-2933-4581-977e-5970d5d8e6d4";
+const PROCESSOR_REJECT_SUCCESS_WRITER_ID: &str = "905c1f85-93f6-4737-b5b6-9c620f71d0f9";
+const PROCESSOR_REJECT_REJECTED_WRITER_ID: &str = "9171d021-305a-4bd7-be13-9bf2cbfbbb02";
+
+/// `wire_rejected`: whether an edge from the Geometry Validator's `rejected`
+/// port to a second JSON Writer is included.
+fn processor_reject_workflow_yaml(wire_rejected: bool) -> String {
+    let rejected_writer_node = if wire_rejected {
+        format!(
+            r#"
+      - id: {PROCESSOR_REJECT_REJECTED_WRITER_ID}
+        name: Rejected Writer
+        type: action
+        action: JSON Writer
+        with:
+          output:
+            type: string
+            value: rejected_output.json"#
+        )
+    } else {
+        String::new()
+    };
+    let rejected_edge = if wire_rejected {
+        format!(
+            r#"
+      - id: 5a01558f-a478-4f12-8bd4-47b7b4bd1a79
+        from: {PROCESSOR_REJECT_VALIDATOR_ID}
+        to: {PROCESSOR_REJECT_REJECTED_WRITER_ID}
+        fromPort: rejected
+        toPort: features"#
+        )
+    } else {
+        String::new()
+    };
+    format!(
+        r#"
+id: 01b1918e-cb47-48f2-9fca-38751af1556f
+name: "Processor Reject Routing Test"
+entryGraphId: dc15f659-079a-4527-9c9f-4646ab132380
+with:
+graphs:
+  - id: dc15f659-079a-4527-9c9f-4646ab132380
+    name: main_graph
+    nodes:
+      - id: {PROCESSOR_REJECT_SOURCE_ID}
+        name: Feature Creator
+        type: action
+        action: Feature Creator
+        with:
+          creator:
+            type: flowExpr
+            value: '[{{"id": 1}}]'
+      - id: {PROCESSOR_REJECT_VALIDATOR_ID}
+        name: Geometry Validator
+        type: action
+        action: Geometry Validator
+        with:
+          validationTypes:
+            - duplicatePoints
+      - id: {PROCESSOR_REJECT_SUCCESS_WRITER_ID}
+        name: Success Writer
+        type: action
+        action: JSON Writer
+        with:
+          output:
+            type: string
+            value: success_output.json{rejected_writer_node}
+    edges:
+      - id: b29806b9-5f20-4395-a1ee-4a11e22b8dc3
+        from: {PROCESSOR_REJECT_SOURCE_ID}
+        to: {PROCESSOR_REJECT_VALIDATOR_ID}
+        fromPort: features
+        toPort: features
+      - id: d3107574-7066-408a-bf46-89002ec0985c
+        from: {PROCESSOR_REJECT_VALIDATOR_ID}
+        to: {PROCESSOR_REJECT_SUCCESS_WRITER_ID}
+        fromPort: success
+        toPort: features{rejected_edge}
+"#
+    )
+}
+
+fn processor_reject_error_policy() -> reearth_flow_types::ErrorPolicy {
+    use reearth_flow_types::{PolicyDisposition, PolicyOverride};
+    reearth_flow_types::ErrorPolicy {
+        overrides: vec![PolicyOverride {
+            node: Some(PROCESSOR_REJECT_VALIDATOR_ID.to_string()),
+            code: Some("gltf.zero_face_solid".to_string()),
+            category: None,
+            disposition: PolicyDisposition::Reject,
+        }],
+        ..Default::default()
+    }
+}
+
+/// A processor with `rejected` declared but NOT wired: the reject-promoting
+/// override must abort the run at load time.
+#[test]
+fn reject_promoting_override_on_a_processor_with_unwired_rejected_port_aborts_the_run() {
+    let mut p = prepare_run_from_yaml(&processor_reject_workflow_yaml(false));
+    p.workflow.error_policy = Some(processor_reject_error_policy());
+
+    let err = Runner::run_with_event_handler(
+        p.job_id,
+        p.workflow,
+        BUILTIN_ACTION_FACTORIES.clone(),
+        p.logger_factory,
+        p.storage_resolver,
+        p.ingress_state,
+        p.feature_state,
+        None,
+        vec![],
+        p.sandbox_root,
+    )
+    .expect_err(
+        "a reject-promoting override on a processor with an unwired rejected port must abort",
+    );
+    let rendered = err.to_string();
+    assert!(
+        rendered.contains(PROCESSOR_REJECT_VALIDATOR_ID),
+        "unexpected error text: {rendered}"
+    );
+    assert!(
+        rendered.contains("rejected"),
+        "unexpected error text: {rendered}"
+    );
+}
+
+/// Same override, but with `rejected` wired to a second sink: the run must
+/// load and complete successfully.
+#[test]
+fn reject_promoting_override_on_a_processor_with_wired_rejected_port_succeeds() {
+    let mut p = prepare_run_from_yaml(&processor_reject_workflow_yaml(true));
+    p.workflow.error_policy = Some(processor_reject_error_policy());
+
+    let summary = Runner::run_with_event_handler(
+        p.job_id,
+        p.workflow,
+        BUILTIN_ACTION_FACTORIES.clone(),
+        p.logger_factory,
+        p.storage_resolver,
+        p.ingress_state,
+        p.feature_state,
+        None,
+        vec![],
+        p.sandbox_root,
+    )
+    .expect("wiring the rejected port must let the run load and complete");
+    assert!(summary.failed_nodes.is_empty());
+}
+
+// ---------------------------------------------------------------------------
+// Phase 2a-policy Task 5: reject-shard no-clobber (spec §7). Two independent
+// branches, each with its own reject-promoting sink, prove the two sinks'
+// `rejected/{composed_id}.jsonl` shards land at distinct paths and neither
+// clobbers the other's rows.
+// ---------------------------------------------------------------------------
+
+const REJECT_NO_CLOBBER_SINK_A_ID: &str = "a84c1737-48bf-431b-9723-8146bc8975b5";
+const REJECT_NO_CLOBBER_SINK_B_ID: &str = "67e1e7a4-4c50-445d-8a63-7b5438bb2ce7";
+
+const REJECT_NO_CLOBBER_WORKFLOW_YAML: &str = r#"
+id: bb97151b-e00f-4e7e-b765-cdbc12880430
+name: "Reject Shard No Clobber Test"
+entryGraphId: 4e522009-85aa-46cc-b710-45c32e4be935
+with:
+graphs:
+  - id: 4e522009-85aa-46cc-b710-45c32e4be935
+    name: main_graph
+    nodes:
+      - id: 56220bc9-588a-4245-8d43-8c5b2ce075f5
+        name: Feature Creator A
+        type: action
+        action: Feature Creator
+        with:
+          creator:
+            type: flowExpr
+            value: |
+              let features = [];
+              for i in range(1, 4) {
+                features.append({"id": i});
+              }
+              features
+      - id: a84c1737-48bf-431b-9723-8146bc8975b5
+        name: Cesium 3D Tiles Writer A
+        type: action
+        action: Cesium 3D Tiles Writer
+        with:
+          output:
+            type: string
+            value: cesium_output_a
+          minZoom: 15
+          maxZoom: 18
+      - id: 787f935c-228e-4504-8d08-3c8ab351f602
+        name: Feature Creator B
+        type: action
+        action: Feature Creator
+        with:
+          creator:
+            type: flowExpr
+            value: |
+              let features = [];
+              for i in range(1, 6) {
+                features.append({"id": i});
+              }
+              features
+      - id: 67e1e7a4-4c50-445d-8a63-7b5438bb2ce7
+        name: Cesium 3D Tiles Writer B
+        type: action
+        action: Cesium 3D Tiles Writer
+        with:
+          output:
+            type: string
+            value: cesium_output_b
+          minZoom: 15
+          maxZoom: 18
+    edges:
+      - id: b647aeb9-f915-41fa-ab81-e3879b6717bf
+        from: 56220bc9-588a-4245-8d43-8c5b2ce075f5
+        to: a84c1737-48bf-431b-9723-8146bc8975b5
+        fromPort: features
+        toPort: features
+      - id: 8ee7fbc3-2f98-4d30-a246-19e32325b6e6
+        from: 787f935c-228e-4504-8d08-3c8ab351f602
+        to: 67e1e7a4-4c50-445d-8a63-7b5438bb2ce7
+        fromPort: features
+        toPort: features
+"#;
+
+#[test]
+fn reject_shards_for_two_sinks_do_not_clobber_each_other() {
+    use reearth_flow_types::{ErrorPolicy, PolicyDisposition, PolicyOverride};
+
+    let mut p = prepare_run_from_yaml(REJECT_NO_CLOBBER_WORKFLOW_YAML);
+    p.workflow.error_policy = Some(ErrorPolicy {
+        side_file: true,
+        // Codeless-by-node selector: applies uniformly to both sinks
+        // without needing two separate overrides.
+        overrides: vec![PolicyOverride {
+            node: None,
+            code: Some("cesium3dtiles.empty_geometry".to_string()),
+            category: None,
+            disposition: PolicyDisposition::Reject,
+        }],
+        ..Default::default()
+    });
+    let sandbox_path = p.sandbox_root.path();
+
+    let summary = Runner::run_with_event_handler(
+        p.job_id,
+        p.workflow,
+        BUILTIN_ACTION_FACTORIES.clone(),
+        p.logger_factory,
+        p.storage_resolver,
+        p.ingress_state,
+        p.feature_state,
+        None,
+        vec![],
+        p.sandbox_root,
+    )
+    .expect("two-sink reject-shard run is expected to succeed");
+    assert!(summary.failed_nodes.is_empty());
+
+    let bucket_count_for = |node_id: &str| -> u64 {
+        summary
+            .aggregated_diagnostics
+            .iter()
+            .find(|d| d.node_id.as_deref() == Some(node_id))
+            .and_then(|d| d.aggregated.as_ref())
+            .map(|a| a.count)
+            .unwrap_or_else(|| panic!("no aggregated diagnostic for node {node_id}"))
+    };
+
+    let read_shard = |node_id: &str| -> Vec<String> {
+        let path = sandbox_path.join(format!("rejected/{node_id}.jsonl"));
+        std::fs::read_to_string(&path)
+            .unwrap_or_else(|e| panic!("failed to read {}: {e}", path.display()))
+            .lines()
+            .map(String::from)
+            .collect()
+    };
+
+    let shard_a = read_shard(REJECT_NO_CLOBBER_SINK_A_ID);
+    let shard_b = read_shard(REJECT_NO_CLOBBER_SINK_B_ID);
+
+    assert_eq!(
+        shard_a.len() as u64,
+        bucket_count_for(REJECT_NO_CLOBBER_SINK_A_ID)
+    );
+    assert_eq!(
+        shard_b.len() as u64,
+        bucket_count_for(REJECT_NO_CLOBBER_SINK_B_ID)
+    );
+    assert_eq!(shard_a.len(), 3, "Writer A: 3 features created");
+    assert_eq!(shard_b.len(), 5, "Writer B: 5 features created");
+    // Neither shard's rows leaked into the other's file.
+    assert_ne!(shard_a, shard_b);
 }
 
 /// An `errorPolicy` that fails `DispositionPolicy::compile` (here: an

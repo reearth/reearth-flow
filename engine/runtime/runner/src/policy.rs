@@ -3,19 +3,24 @@
 //! and validates policy-override `node` selectors against the flattened,
 //! composed-id DAG once it has been built (spec 4.2's load-time
 //! node-matching rule, plus the multiply-instantiated-subgraph ambiguity
-//! rule).
+//! rule), plus the load-time Reject-routing validation (spec 4.4, Task 5).
 //!
 //! This is the runner's half of the Task 3 policy-threading contract: the
 //! diagnostics crate (`reearth_flow_diagnostics::policy`) deliberately has
 //! no dependency on `reearth_flow_types`, so this module is where the two
 //! seams meet. `Orchestrator::run_apps` calls `map_error_policy` +
 //! `DispositionPolicy::compile` once at load, before DAG construction, and
-//! `validate_node_selectors` once the DAG exists (`DagExecutor::
-//! node_identities`).
+//! `validate_node_selectors` + `validate_reject_routing` once the DAG
+//! exists (`DagExecutor::node_identities` / `DagExecutor::
+//! reject_routing_info`).
 
 use std::collections::{HashMap, HashSet};
 
-use reearth_flow_diagnostics::{Disposition, OnFatalInput, OverrideInput, PolicyInput};
+use reearth_flow_diagnostics::{
+    Disposition, DispositionPolicy, ErrorCode, OnFatalInput, OverrideInput, PolicyInput,
+};
+use reearth_flow_runtime::executor::dag_executor::{NodeKindTag, RejectRoutingInfo};
+use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_types::{ErrorPolicy, OnFatal, PolicyDisposition, PolicyOverride};
 
 /// Pure field-by-field mapping from the workflow-level `ErrorPolicy` (types
@@ -109,6 +114,101 @@ pub fn validate_node_selectors(
     } else {
         Err(errors)
     }
+}
+
+/// Load-time Reject-routing validation (spec 4.4, Task 5): for every
+/// non-source node, if any error code could resolve to `Reject` for it
+/// under the compiled policy, the workflow must declare where those
+/// rejected features go, or fail to load:
+///   - a processor must declare `REJECTED_PORT` among its output ports
+///     AND have at least one edge wired from it;
+///   - a sink must have `policy.side_file()` set.
+///
+/// Source nodes are skipped — sources don't report `Reject`. With zero
+/// authored-`Reject` registry codes (checked as of Task 5), only an
+/// override can trigger this, so a no-policy workflow never hits it —
+/// zero behavior change, per this task's binding constraint.
+///
+/// `rejecting_codes` combines the node-agnostic `may_resolve_to_reject`
+/// fast gate with the node-aware `resolve` ladder: `may_resolve_to_reject`
+/// is node-agnostic *by design* (T2's accessor contract — it proves a
+/// `Reject` is possible *somewhere* in the policy, not at which node), so
+/// used alone per-node it would over-flag every node in the DAG the moment
+/// any single override anywhere promotes to `Reject`. `resolve` already
+/// implements the full node+code/category/default ladder (spec 4.2), so
+/// layering it on top is what actually scopes the requirement to the node(s)
+/// an override targets — this is the follow-up test the T2 review requested
+/// (see `validate_reject_routing_only_flags_the_overridden_node` below),
+/// applied at this validation layer rather than to the node-agnostic
+/// accessor itself.
+pub fn validate_reject_routing(
+    policy: &DispositionPolicy,
+    nodes: &[RejectRoutingInfo],
+) -> Result<(), Vec<String>> {
+    let mut errors = Vec::new();
+    for node in nodes {
+        if node.kind == NodeKindTag::Source {
+            continue;
+        }
+        let codes = rejecting_codes(policy, &node.composed_id);
+        if codes.is_empty() {
+            continue;
+        }
+        let code_list = codes
+            .iter()
+            .map(ErrorCode::as_str)
+            .collect::<Vec<_>>()
+            .join(", ");
+        match node.kind {
+            NodeKindTag::Processor => {
+                let declares_port = node.output_ports.contains(&REJECTED_PORT);
+                if !declares_port || !node.rejected_port_wired {
+                    let problem = if !declares_port {
+                        "does not declare a `rejected` output port"
+                    } else {
+                        "declares `rejected` but has no edge wired from it"
+                    };
+                    errors.push(format!(
+                        "node `{}`: a policy override may resolve code(s) [{code_list}] to \
+                         `reject` here, but this processor {problem} — wire an edge from \
+                         `rejected` to route rejected features somewhere",
+                        node.composed_id
+                    ));
+                }
+            }
+            NodeKindTag::Sink => {
+                if !policy.side_file() {
+                    errors.push(format!(
+                        "node `{}`: a policy override may resolve code(s) [{code_list}] to \
+                         `reject` here, but `errorPolicy.sideFile` is not enabled; set \
+                         `errorPolicy.sideFile: true` to capture rejected features",
+                        node.composed_id
+                    ));
+                }
+            }
+            NodeKindTag::Source => unreachable!("source nodes are skipped above"),
+        }
+    }
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(errors)
+    }
+}
+
+/// Every registry `ErrorCode` that could resolve to `Reject` specifically
+/// at `composed_id` under `policy`. See `validate_reject_routing`'s doc
+/// comment for why this needs both `may_resolve_to_reject` (fast, but
+/// node-agnostic) and `resolve` (node-aware, the actual decision).
+fn rejecting_codes(policy: &DispositionPolicy, composed_id: &str) -> Vec<ErrorCode> {
+    ErrorCode::ALL
+        .iter()
+        .copied()
+        .filter(|&code| {
+            policy.may_resolve_to_reject(code)
+                && policy.resolve(composed_id, code) == Disposition::Reject
+        })
+        .collect()
 }
 
 /// Simple Levenshtein edit distance, used only to surface "nearest match"
@@ -327,6 +427,216 @@ mod tests {
         };
         let ids = identities(&[("node-a", "node-a")]);
         let errors = validate_node_selectors(&policy, &ids).expect_err("should reject");
+        assert_eq!(errors.len(), 2);
+    }
+
+    // -----------------------------------------------------------------
+    // validate_reject_routing (spec 4.4, Task 5)
+    // -----------------------------------------------------------------
+
+    fn diag_override(
+        node: Option<&str>,
+        code: Option<&str>,
+        disposition: Disposition,
+    ) -> OverrideInput {
+        OverrideInput {
+            node: node.map(String::from),
+            code: code.map(String::from),
+            category: None,
+            disposition,
+        }
+    }
+
+    fn compile_policy(overrides: Vec<OverrideInput>, side_file: bool) -> DispositionPolicy {
+        DispositionPolicy::compile(PolicyInput {
+            side_file,
+            overrides,
+            ..Default::default()
+        })
+        .expect("policy should compile")
+    }
+
+    fn processor(
+        composed_id: &str,
+        output_ports: &[&str],
+        rejected_port_wired: bool,
+    ) -> RejectRoutingInfo {
+        RejectRoutingInfo {
+            composed_id: composed_id.to_string(),
+            kind: NodeKindTag::Processor,
+            output_ports: output_ports
+                .iter()
+                .map(|p| reearth_flow_runtime::node::Port::new(*p))
+                .collect(),
+            rejected_port_wired,
+        }
+    }
+
+    fn sink(composed_id: &str) -> RejectRoutingInfo {
+        RejectRoutingInfo {
+            composed_id: composed_id.to_string(),
+            kind: NodeKindTag::Sink,
+            output_ports: vec![],
+            rejected_port_wired: false,
+        }
+    }
+
+    fn source(composed_id: &str) -> RejectRoutingInfo {
+        RejectRoutingInfo {
+            composed_id: composed_id.to_string(),
+            kind: NodeKindTag::Source,
+            output_ports: vec![],
+            rejected_port_wired: false,
+        }
+    }
+
+    #[test]
+    fn validate_reject_routing_passes_under_the_default_policy() {
+        let policy = compile_policy(vec![], false);
+        let nodes = vec![
+            source("src"),
+            processor("proc", &["features"], false),
+            sink("sink-a"),
+        ];
+        assert!(validate_reject_routing(&policy, &nodes).is_ok());
+    }
+
+    #[test]
+    fn validate_reject_routing_flags_a_sink_without_side_file() {
+        let policy = compile_policy(
+            vec![diag_override(
+                Some("sink-a"),
+                Some("cesium3dtiles.empty_geometry"),
+                Disposition::Reject,
+            )],
+            false,
+        );
+        let nodes = vec![sink("sink-a")];
+        let errors = validate_reject_routing(&policy, &nodes).expect_err("should reject");
+        assert_eq!(errors.len(), 1);
+        assert!(errors[0].contains("sink-a"));
+        assert!(errors[0].contains("errorPolicy.sideFile"));
+        assert!(errors[0].contains("cesium3dtiles.empty_geometry"));
+    }
+
+    #[test]
+    fn validate_reject_routing_passes_a_sink_with_side_file() {
+        let policy = compile_policy(
+            vec![diag_override(
+                Some("sink-a"),
+                Some("cesium3dtiles.empty_geometry"),
+                Disposition::Reject,
+            )],
+            true,
+        );
+        let nodes = vec![sink("sink-a")];
+        assert!(validate_reject_routing(&policy, &nodes).is_ok());
+    }
+
+    #[test]
+    fn validate_reject_routing_flags_a_processor_missing_the_rejected_port_declaration() {
+        let policy = compile_policy(
+            vec![diag_override(
+                Some("proc"),
+                Some("gltf.zero_face_solid"),
+                Disposition::Reject,
+            )],
+            false,
+        );
+        let nodes = vec![processor("proc", &["features"], false)];
+        let errors = validate_reject_routing(&policy, &nodes).expect_err("should reject");
+        assert_eq!(errors.len(), 1);
+        assert!(errors[0].contains("proc"));
+        assert!(errors[0].contains("does not declare"));
+        assert!(errors[0].contains("gltf.zero_face_solid"));
+    }
+
+    #[test]
+    fn validate_reject_routing_flags_a_processor_with_an_unwired_rejected_port() {
+        let policy = compile_policy(
+            vec![diag_override(
+                Some("proc"),
+                Some("gltf.zero_face_solid"),
+                Disposition::Reject,
+            )],
+            false,
+        );
+        let nodes = vec![processor("proc", &["features", "rejected"], false)];
+        let errors = validate_reject_routing(&policy, &nodes).expect_err("should reject");
+        assert_eq!(errors.len(), 1);
+        assert!(errors[0].contains("proc"));
+        assert!(errors[0].contains("no edge wired"));
+    }
+
+    #[test]
+    fn validate_reject_routing_passes_a_processor_with_a_wired_rejected_port() {
+        let policy = compile_policy(
+            vec![diag_override(
+                Some("proc"),
+                Some("gltf.zero_face_solid"),
+                Disposition::Reject,
+            )],
+            false,
+        );
+        let nodes = vec![processor("proc", &["features", "rejected"], true)];
+        assert!(validate_reject_routing(&policy, &nodes).is_ok());
+    }
+
+    #[test]
+    fn validate_reject_routing_skips_source_nodes_even_under_a_matching_override() {
+        let policy = compile_policy(
+            vec![diag_override(
+                Some("src"),
+                Some("gltf.zero_face_solid"),
+                Disposition::Reject,
+            )],
+            false,
+        );
+        let nodes = vec![source("src")];
+        assert!(validate_reject_routing(&policy, &nodes).is_ok());
+    }
+
+    /// The T2-review follow-up (see `validate_reject_routing`'s doc
+    /// comment): `may_resolve_to_reject` is node-agnostic by design, so this
+    /// exercises the *validation layer's* node scoping instead — a
+    /// Reject-promoting override that targets one sink must not require
+    /// side-file routing on an unrelated sink in the same workflow.
+    #[test]
+    fn validate_reject_routing_only_flags_the_overridden_node() {
+        let policy = compile_policy(
+            vec![diag_override(
+                Some("sink-a"),
+                Some("cesium3dtiles.empty_geometry"),
+                Disposition::Reject,
+            )],
+            false,
+        );
+        let nodes = vec![sink("sink-a"), sink("sink-b")];
+        let errors = validate_reject_routing(&policy, &nodes).expect_err("should reject");
+        assert_eq!(
+            errors.len(),
+            1,
+            "only the overridden node should be flagged: {errors:?}"
+        );
+        assert!(errors[0].contains("sink-a"));
+        assert!(!errors[0].contains("sink-b"));
+    }
+
+    #[test]
+    fn validate_reject_routing_collects_every_problem_without_short_circuiting() {
+        let policy = compile_policy(
+            vec![diag_override(
+                None,
+                Some("gltf.zero_face_solid"),
+                Disposition::Reject,
+            )],
+            false,
+        );
+        let nodes = vec![
+            sink("sink-a"),
+            processor("proc", &["features", "rejected"], false),
+        ];
+        let errors = validate_reject_routing(&policy, &nodes).expect_err("should reject");
         assert_eq!(errors.len(), 2);
     }
 }

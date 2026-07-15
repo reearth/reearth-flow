@@ -448,6 +448,7 @@ mod diagnostics_tests {
             "CityGML Writer".into(),
             Arc::default(),
             Arc::new(reearth_flow_diagnostics::DispositionPolicy::default()),
+            true,
         ));
 
         // `Feature::from` on an empty attribute map carries `GeometryValue::None`,

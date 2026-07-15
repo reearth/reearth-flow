@@ -31,7 +31,7 @@ use crate::event::{Event, EventHandler, EventHub};
 use crate::executor_operation::{ExecutorOperation, ExecutorOptions, NodeContext};
 use crate::incremental::IncrementalRunConfig;
 use crate::kvs::KvStore;
-use crate::node::{EdgeId, NodeId, Port};
+use crate::node::{EdgeId, NodeId, Port, REJECTED_PORT};
 
 use super::execution_dag::ExecutionDag;
 use super::source_node::{create_source_node, SourceNode};
@@ -66,6 +66,29 @@ type NodeThreadResult = (NodeOutcome, Result<(), ExecutionError>);
 pub struct NodeMeta {
     pub composed_id: String,
     pub action: String,
+}
+
+/// Node kind tag for the runner's load-time Reject-routing validation
+/// (spec 4.4, Task 5) — coarser than `builder_dag::NodeKind` (doesn't carry
+/// the boxed trait object), since that validation only needs to branch on
+/// which structural rule applies.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum NodeKindTag {
+    Source,
+    Processor,
+    Sink,
+}
+
+/// Per-node info needed by the runner's load-time Reject-routing
+/// validation (spec 4.4, Task 5): composed id (the policy-resolution
+/// identity), node kind, declared output ports, and whether at least one
+/// edge is wired from `REJECTED_PORT`. See `DagExecutor::reject_routing_info`.
+#[derive(Debug, Clone)]
+pub struct RejectRoutingInfo {
+    pub composed_id: String,
+    pub kind: NodeKindTag,
+    pub output_ports: Vec<Port>,
+    pub rejected_port_wired: bool,
 }
 
 pub struct DagExecutorJoinHandle {
@@ -129,6 +152,36 @@ impl DagExecutor {
             .graph()
             .node_weights()
             .map(|n| (n.composed_id(), n.handle.id.to_string()))
+            .collect()
+    }
+
+    /// Per-node info the runner's load-time Reject-routing validation
+    /// (spec 4.4, Task 5) needs, built from the same flattened DAG
+    /// `node_identities` reads (same call-site window: after
+    /// `create_dag_executor`, before `start`). Sibling method rather than a
+    /// `node_identities` extension since not every caller of the latter
+    /// needs the extra fields.
+    pub fn reject_routing_info(&self) -> Vec<RejectRoutingInfo> {
+        let graph = self.builder_dag.graph();
+        graph
+            .node_indices()
+            .map(|idx| {
+                let node = &graph[idx];
+                let kind = match &node.kind {
+                    NodeKind::Source(_) => NodeKindTag::Source,
+                    NodeKind::Processor(_) => NodeKindTag::Processor,
+                    NodeKind::Sink(_) => NodeKindTag::Sink,
+                };
+                let rejected_port_wired = graph
+                    .edges_directed(idx, Direction::Outgoing)
+                    .any(|edge| edge.weight().from == *REJECTED_PORT);
+                RejectRoutingInfo {
+                    composed_id: node.composed_id(),
+                    kind,
+                    output_ports: node.output_ports.clone(),
+                    rejected_port_wired,
+                }
+            })
             .collect()
     }
 
