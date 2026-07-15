@@ -600,42 +600,46 @@
     },
     {
       "name": "Cesium 3D Tiles Writer",
-      "description": "Export Features as Cesium 3D Tiles for Web Visualization",
+      "description": "Écrit les entités dans un fichier",
       "parameterI18n": {
         "": {
-          "title": "Cesium3DTilesWriter Parameters"
+          "title": "Paramètres de Cesium3DTilesWriter"
         },
         "attachTexture": {
-          "title": "Attach Textures",
-          "description": "Whether to include texture information in the generated tiles"
+          "title": "Joindre les Textures",
+          "description": "Indique s'il faut inclure les informations de texture dans les tuiles générées"
         },
         "compressOutput": {
-          "title": "Compressed Output Path",
-          "description": "Optional path for compressed archive output"
+          "title": "Chemin de Sortie Compressé",
+          "description": "Chemin optionnel pour la sortie de l'archive compressée"
+        },
+        "computeFlatNormal": {
+          "title": "Calculer les Normales Plates",
+          "description": "Calcule des normales plates par polygone pour l'éclairage. Vrai par défaut. Lorsqu'elle est désactivée, aucune normale n'est écrite et le maillage est plus petit, mais la tuile ne contient aucune donnée d'éclairage (le visualiseur doit dériver lui-même les normales plates)."
         },
         "dracoCompression": {
-          "title": "Draco Compression",
-          "description": "Use draco compression. Defaults to true."
+          "title": "Compression Draco",
+          "description": "Utiliser la compression Draco. Vrai par défaut."
         },
         "maxZoom": {
-          "title": "Maximum Zoom Level",
-          "description": "Maximum zoom level for tile generation (0-24)"
+          "title": "Niveau de Zoom Maximum",
+          "description": "Niveau de zoom maximum pour la génération de tuiles (0-24)"
         },
         "minZoom": {
-          "title": "Minimum Zoom Level",
-          "description": "Minimum zoom level for tile generation (0-24)"
+          "title": "Niveau de Zoom Minimum",
+          "description": "Niveau de zoom minimum pour la génération de tuiles (0-24)"
         },
         "output": {
-          "title": "Output Path",
-          "description": "Directory path where the 3D tiles will be written"
+          "title": "Chemin de Sortie",
+          "description": "Chemin du répertoire où les 3D Tiles seront écrits"
         },
         "schemaKey": {
-          "title": "Schema Key",
-          "description": "Attribute key whose value identifies the schema type and determines the output filename: all features sharing the same value are written to the same file. This attribute is excluded from output."
+          "title": "Clé de Schéma",
+          "description": "Clé d'attribut dont la valeur identifie le type de schéma et détermine le nom du fichier de sortie : toutes les entités partageant la même valeur sont écrites dans le même fichier. Cet attribut est exclu de la sortie."
         },
         "skipUnexposedAttributes": {
-          "title": "Skip unexposed Attributes",
-          "description": "Skip attributes with double underscore prefix"
+          "title": "Ignorer les Attributs non Exposés",
+          "description": "Ignorer les attributs avec un préfixe de double trait de soulignement"
         }
       }
     },

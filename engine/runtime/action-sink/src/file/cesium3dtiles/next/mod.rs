@@ -51,14 +51,14 @@ impl Cesium3DTilesWriter {
         };
         // Both default to true (see `Cesium3DTilesWriterParam`).
         let draco = self.params.draco_compression.unwrap_or(true);
-        let compute_normal = self.params.compute_normal.unwrap_or(true);
+        let compute_flat_normal = self.params.compute_flat_normal.unwrap_or(true);
         for ((output, _, _), features) in &self.buffer {
             let built = build(
                 features,
                 options,
                 self.params.max_zoom,
                 draco,
-                compute_normal,
+                compute_flat_normal,
             )?;
 
             for (relative_path, bytes) in built.tiles.into_iter().chain(built.subtrees) {
@@ -101,7 +101,7 @@ pub fn build(
     options: MetadataOptions,
     max_zoom: u8,
     draco: bool,
-    compute_normal: bool,
+    compute_flat_normal: bool,
 ) -> crate::errors::Result<BuiltTileset> {
     let mut caches = mesh::ExtractCaches::default();
     let extracted: Vec<(&Feature, mesh::ExtractedMesh)> = features
@@ -140,7 +140,7 @@ pub fn build(
         .map(|(cell, indices)| {
             let cell_members: Vec<&(&Feature, mesh::ExtractedMesh)> =
                 indices.iter().map(|&i| &extracted[i]).collect();
-            let glb = build_cell_glb(&cell_members, options, draco, compute_normal)?;
+            let glb = build_cell_glb(&cell_members, options, draco, compute_flat_normal)?;
             Ok((content_path(cell), glb))
         })
         .collect::<crate::errors::Result<_>>()?;
@@ -195,13 +195,13 @@ fn subtree_path(cell: Cell) -> String {
 
 /// Merge one occupied cell's features into a single glb, index-offset
 /// concatenated, tagging each vertex with its feature's row in the cell's
-/// property table. `compute_normal` attaches per-polygon flat normals; `draco`
+/// property table. `compute_flat_normal` attaches per-polygon flat normals; `draco`
 /// Draco-compresses the output.
 fn build_cell_glb(
     cell_members: &[&(&Feature, mesh::ExtractedMesh)],
     options: MetadataOptions,
     draco: bool,
-    compute_normal: bool,
+    compute_flat_normal: bool,
 ) -> crate::errors::Result<Vec<u8>> {
     let mut ecef_vertices: Vec<[f64; 3]> = Vec::new();
     let mut indices: Vec<[u32; 3]> = Vec::new();
@@ -260,7 +260,7 @@ fn build_cell_glb(
     };
     // The per-polygon normal is also the dedup key that splits vertices at hard
     // edges, so omitting it dedups on position alone: no `NORMAL`, no seams.
-    let dedup_attrs = if compute_normal {
+    let dedup_attrs = if compute_flat_normal {
         // Same axis swap as position, no translation (a normal is a direction).
         let normal_values: Vec<[f32; 3]> = polygon_normals
             .iter()
@@ -274,7 +274,7 @@ fn build_cell_glb(
         gltf_positions,
         indices,
         material,
-        if compute_normal { &polygon_tris } else { &[] },
+        if compute_flat_normal { &polygon_tris } else { &[] },
         &[],
         dedup_attrs,
     );
