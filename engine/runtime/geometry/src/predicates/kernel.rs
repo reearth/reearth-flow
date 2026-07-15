@@ -1,20 +1,18 @@
-//! Robust geometric kernel for the new geometry predicates.
+//! Robust geometric kernel for the geometry predicates.
 //!
-//! Pure-Rust ports of the load-bearing legacy primitives, re-hosted over the new
-//! flat `[f64; 2]` / `[f64; 3]` coordinate layout instead of the generic
-//! `Coordinate<T, Z>`:
+//! The load-bearing primitives over the flat `[f64; 2]` / `[f64; 3]` coordinate
+//! layout:
 //!
-//! - [`orient2d`] / [`orient3d`] — robust orientation signs (wrapping the
+//! - [`orient2d`] / [`orient3d`]: robust orientation signs (wrapping the
 //!   `robust` crate's adaptive-precision predicates).
-//! - [`segment_intersection`] — robust 2D segment × segment intersection,
-//!   preserving the JTS central-endpoint conditioning of the legacy
-//!   `line_intersection`.
-//! - [`segment_intersection_3d`] — 3D segment × segment (coplanar) intersection.
-//! - [`coord_pos_relative_to_ring`] — winding-number point-in-ring with an
+//! - [`segment_intersection`]: robust 2D segment × segment intersection, using
+//!   the JTS central-endpoint conditioning.
+//! - [`segment_intersection_3d`]: 3D segment × segment (coplanar) intersection.
+//! - [`coord_pos_relative_to_ring`]: winding-number point-in-ring with an
 //!   on-boundary short-circuit.
 //!
 //! All sign decisions go through the robust predicates; only *constructed* points
-//! (the intersection coordinates) are f64-rounded, matching legacy behavior.
+//! (the intersection coordinates) are f64-rounded.
 
 use robust::{orient2d as robust_orient2d, orient3d as robust_orient3d, Coord, Coord3D};
 
@@ -31,8 +29,8 @@ pub enum Orientation {
 }
 
 impl Orientation {
-    /// Map the robust predicate's signed value to an [`Orientation`], using the
-    /// same sign convention as the legacy kernel: positive is counter-clockwise.
+    /// Map the robust predicate's signed value to an [`Orientation`]: positive
+    /// is counter-clockwise.
     #[inline]
     fn from_sign(value: f64) -> Orientation {
         if value < 0.0 {
@@ -121,11 +119,11 @@ impl SegmentIntersection {
     }
 }
 
-/// Robust 2D segment × segment intersection.
+/// Robust 2D segment × segment intersection (the JTS `RobustLineIntersector`
+/// algorithm).
 ///
-/// A direct port of the legacy `line_intersection` (a JTS `RobustLineIntersector`
-/// port): robust orientation short-circuits, exact endpoint copying when the
-/// crossing is at an endpoint (for coordinate exactness), and central-endpoint
+/// Robust orientation short-circuits, exact endpoint copying when the crossing
+/// is at an endpoint (for coordinate exactness), and central-endpoint
 /// conditioning for the proper-crossing coordinate. Returns `None` when the
 /// segments are disjoint.
 pub fn segment_intersection(
@@ -208,7 +206,7 @@ pub fn segment_intersection(
     }
 }
 
-/// Overlap of two collinear segments; a port of the legacy `collinear_intersection`.
+/// Overlap of two collinear segments.
 fn collinear_intersection(
     p_start: [f64; 2],
     p_end: [f64; 2],
@@ -243,7 +241,7 @@ fn collinear_intersection(
 }
 
 /// The homogeneous-coordinate segment crossing with central-endpoint
-/// conditioning; a port of the legacy `raw_line_intersection` (2D projection).
+/// conditioning (2D projection).
 fn raw_line_intersection(
     p_start: [f64; 2],
     p_end: [f64; 2],
@@ -301,8 +299,8 @@ fn raw_line_intersection(
     }
 }
 
-/// The endpoint of either segment nearest to the other segment; the legacy
-/// `nearest_endpoint` fallback for the central-endpoint heuristic.
+/// The endpoint of either segment nearest to the other segment; the fallback
+/// for the central-endpoint heuristic.
 fn nearest_endpoint(
     p_start: [f64; 2],
     p_end: [f64; 2],
@@ -330,8 +328,7 @@ fn nearest_endpoint(
 }
 
 /// The proper (interior) crossing point, falling back to the nearest endpoint
-/// when the raw computation lands outside both segments' boxes; a port of the
-/// legacy `proper_intersection`.
+/// when the raw computation lands outside both segments' boxes.
 fn proper_intersection(
     p_start: [f64; 2],
     p_end: [f64; 2],
@@ -346,10 +343,9 @@ fn proper_intersection(
     pt
 }
 
-/// 3D segment × segment intersection, for coplanar, non-parallel segments; a
-/// port of the legacy `line_intersection3d`. Returns the crossing point when it
-/// lies within both segments, `None` for skew, parallel, or non-overlapping
-/// segments.
+/// 3D segment × segment intersection, for coplanar, non-parallel segments.
+/// Returns the crossing point when it lies within both segments, `None` for
+/// skew, parallel, or non-overlapping segments.
 pub fn segment_intersection_3d(
     p_start: [f64; 3],
     p_end: [f64; 3],
@@ -398,12 +394,11 @@ pub enum CoordPos {
     Outside,
 }
 
-/// Point-in-ring by winding number, with an on-boundary short-circuit; a port of
-/// the legacy `coord_pos_relative_to_ring`.
+/// Point-in-ring by winding number, with an on-boundary short-circuit.
 ///
 /// `ring` is a closed ring (first vertex == last), the storage convention of the
-/// new [`Polygon`](mod@crate::polygon) leaves. The `z` of any 2.5D ring is ignored:
-/// the test is the XY-projection algorithm, matching legacy 2D semantics.
+/// [`Polygon`](mod@crate::polygon) leaves. The `z` of any 2.5D ring is ignored:
+/// the test is the XY-projection algorithm.
 pub fn coord_pos_relative_to_ring(coord: [f64; 2], ring: &[[f64; 2]]) -> CoordPos {
     if ring.is_empty() {
         return CoordPos::Outside;
@@ -418,7 +413,7 @@ pub fn coord_pos_relative_to_ring(coord: [f64; 2], ring: &[[f64; 2]]) -> CoordPo
     coord_pos_relative_to_edges(coord, ring.windows(2).map(|e| (e[0], e[1])))
 }
 
-/// Point-in-ring by winding number over a directed edge iterator — the same
+/// Point-in-ring by winding number over a directed edge iterator: the same
 /// algorithm as [`coord_pos_relative_to_ring`] but over any edge source, so
 /// indexed mesh rings feed it without a contiguous copy. The edges must form
 /// one or more closed loops; a zero-length edge contributes nothing (unless the
@@ -488,7 +483,7 @@ pub fn same_direction(origin: [f64; 2], u: [f64; 2], w: [f64; 2]) -> bool {
         && sign(u[1] - origin[1]) == sign(w[1] - origin[1])
 }
 
-// --- small numeric helpers (ports of legacy `intersects`/`utils`) -----------
+// --- small numeric helpers ---------------------------------------------------
 
 /// Whether `value` lies within `[min(a, b), max(a, b)]` (inclusive).
 #[inline]
@@ -524,8 +519,7 @@ fn segments_bbox_overlap(
     p_min_x <= q_max_x && q_min_x <= p_max_x && p_min_y <= q_max_y && q_min_y <= p_max_y
 }
 
-/// Euclidean distance from a 2D point to a segment; a port of the legacy
-/// `line_segment_distance`.
+/// Euclidean distance from a 2D point to a segment.
 fn point_segment_distance(point: [f64; 2], start: [f64; 2], end: [f64; 2]) -> f64 {
     if start == end {
         return (point[0] - start[0]).hypot(point[1] - start[1]);
@@ -648,9 +642,8 @@ mod tests {
         }
     }
 
-    // JTS/GEOS central-endpoint heuristic cases carried over from the legacy
-    // `line_intersection` test suite (the intersection coordinate must match
-    // exactly to preserve robustness parity).
+    // JTS/GEOS central-endpoint heuristic cases (the intersection coordinate
+    // must match exactly to preserve robustness).
     #[test]
     fn jts_central_endpoint_heuristic_failure_1() {
         let x = segment_intersection(

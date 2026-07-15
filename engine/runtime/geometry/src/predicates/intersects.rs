@@ -1,14 +1,14 @@
 //! The `intersects` predicate: whether two geometries share at least one point.
 //!
-//! Boundary contact counts — a shared vertex, a T-junction, or a segment lying
+//! Boundary contact counts: a shared vertex, a T-junction, or a segment lying
 //! along a ring all intersect. Collections are point-set unions (any member
 //! pair intersecting suffices). Every leaf pair goes through a bounding-box
 //! quick reject first.
 //!
-//! Phase-2 scope: 2D × 2D pairs. A 2D × 3D pair is a
+//! Scope: 2D × 2D pairs. A 2D × 3D pair is a
 //! [`CrossDimension`](PredicateError::CrossDimension) error, a 3D × 3D pair an
-//! [`UnsupportedPair`](PredicateError::UnsupportedPair) until the 3D phases
-//! land. `Geometry::None` intersects nothing.
+//! [`UnsupportedPair`](PredicateError::UnsupportedPair). `Geometry::None`
+//! intersects nothing.
 
 use super::kernel::segment_intersection;
 use super::kernel::CoordPos;

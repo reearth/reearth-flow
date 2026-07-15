@@ -1,8 +1,6 @@
 //! Binary geometric predicates and their supporting robust kernels.
 //!
-//! Unlike the unary [`ops`](crate::ops) traits, binary operations do not fit the
-//! `enum_dispatch` single-dispatch pattern: `predicate(a, b)` is a double
-//! dispatch over two geometry enums. They therefore live here as free functions
+//! The predicates are available as free functions
 //! with internal pair-matching, over lightweight coordinate **views** (see
 //! [`view`]) so a `Polygon`, a `PolygonMesh` face, and a `TriangularMesh`
 //! triangle all feed the same [`kernel`] with zero copying.
@@ -10,21 +8,20 @@
 //! Available predicates, all 2D (collections are point-set unions of their
 //! members; every leaf pair takes a bounding-box quick reject first):
 //!
-//! - [`intersects()`] — whether two geometries share at least one point.
-//! - [`contains()`] / [`covers`] — split-based containment with OGC semantics;
+//! - [`intersects()`]: whether two geometries share at least one point.
+//! - [`contains()`] / [`covers`]: split-based containment with OGC semantics;
 //!   see [`contains`](contains()) for the algorithm.
-//! - [`point_position_2d`] — coordinate vs. geometry classification
+//! - [`point_position_2d`]: coordinate vs. geometry classification
 //!   (`Inside` / `OnBoundary` / `Outside`), with exact shared-edge and
 //!   surrounded-vertex refinement on meshes.
-//! - [`relate()`] — the full DE-9IM [`IntersectionMatrix`], from which every
+//! - [`relate()`]: the full DE-9IM [`IntersectionMatrix`], from which every
 //!   named predicate (touches, crosses, overlaps, ...) and arbitrary DE-9IM
 //!   patterns can be read; meshes relate as their dissolved face union.
 //!
 //! The 2D leaves' optional per-vertex elevation is ignored throughout. The
-//! constructed counterparts — boolean overlay, line clipping, segment
-//! intersection points — live in [`overlay`](crate::overlay) over the same
-//! views and kernel; the remaining families (ray casting, 3D pairs) come in
-//! later phases.
+//! constructed counterparts, boolean overlay, line clipping, segment
+//! intersection points, live in [`overlay`](crate::overlay) over the same
+//! views and kernel. Ray casting and 3D pairs are not yet supported.
 
 pub mod contains;
 pub mod intersects;
@@ -106,9 +103,9 @@ pub fn require_same_frame(a: &CoordinateFrame, b: &CoordinateFrame) -> Result<()
 
 /// Flatten both operands of a binary 2D operation into their 2D leaves under
 /// the shared dimension policy: a 2D × 3D pair is
-/// [`CrossDimension`](PredicateError::CrossDimension), a purely 3D pair
-/// [`UnsupportedPair`](PredicateError::UnsupportedPair) until the 3D phases
-/// land. `Geometry::None` and empty collections flatten to no leaves.
+/// [`CrossDimension`](PredicateError::CrossDimension), a purely 3D pair is
+/// [`UnsupportedPair`](PredicateError::UnsupportedPair). `Geometry::None` and
+/// empty collections flatten to no leaves.
 pub(crate) fn flatten_2d_pair<'a>(
     a: &'a Geometry,
     b: &'a Geometry,

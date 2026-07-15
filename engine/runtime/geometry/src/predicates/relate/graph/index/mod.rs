@@ -1,10 +1,8 @@
 //! Noding support: finding the intersections among the graph's edges.
 //!
-//! The legacy `EdgeSetIntersector` trait and its `Simple` implementation are
-//! gone — the rstar-backed edge-set sweep is the only implementation, exposed
-//! as free functions — and [`SegmentIntersector`] calls the phase-1
-//! [`kernel`](crate::predicates::kernel) directly instead of going through a
-//! boxed `LineIntersector`.
+//! The rstar-backed edge-set sweep is exposed as free functions, and
+//! [`SegmentIntersector`] calls the
+//! [`kernel`](crate::predicates::kernel) directly.
 
 mod rstar_edge_set_intersector;
 mod segment_intersector;

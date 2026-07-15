@@ -30,9 +30,8 @@ impl LabeledEdgeEndBundleStar {
     fn compute_labeling(&mut self, graph_a: &GeometryGraph<'_>, graph_b: &GeometryGraph<'_>) {
         self.propagate_side_labels(0);
         self.propagate_side_labels(1);
-        // Note: JTS ORs this flag across the bundles; the georust port (and the
-        // legacy in-tree copy) overwrite it, so the last bundle wins. Kept
-        // as-is for differential parity with the in-tree legacy relate.
+        // Note: JTS ORs this flag across the bundles; here it is overwritten, so
+        // the last bundle wins.
         let mut has_dimensional_collapse_edge = [false, false];
         for edge_end in self.edges.iter() {
             let label = edge_end.label();

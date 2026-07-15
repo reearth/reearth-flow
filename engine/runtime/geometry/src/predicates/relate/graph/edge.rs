@@ -155,10 +155,8 @@ impl Edge {
 }
 
 /// The relative position of `intersection` along the segment `start -> end`,
-/// measured on the segment's dominant axis; a port of the legacy
-/// `RobustLineIntersector::compute_edge_distance`. Not a true distance —
-/// only its ordering along the segment matters (it keys
-/// [`EdgeIntersection`]'s sort).
+/// measured on the segment's dominant axis. Not a true distance: only its
+/// ordering along the segment matters (it keys [`EdgeIntersection`]'s sort).
 fn compute_edge_distance(intersection: [f64; 2], start: [f64; 2], end: [f64; 2]) -> f64 {
     let dx = (end[0] - start[0]).abs();
     let dy = (end[1] - start[1]).abs();

@@ -1,17 +1,15 @@
 //! Conversions between the flattened leaf views and `i_overlay`'s shape model.
 //!
-//! `i_overlay` works over `Shapes` — a list of shapes, each a list of contours
-//! (paths), each an *implicitly closed* list of `[f64; 2]` — and `Paths` for
-//! open polylines. The direct template is the legacy
-//! `algorithm/bool_ops/ioverlap_bridge.rs`, minus its `FlowCoord` newtype:
-//! the new leaves' `[f64; 2]` layout is `FloatPointCompatible` as-is, so both
-//! directions are plain buffer reshuffles.
+//! `i_overlay` works over `Shapes`, a list of shapes, each a list of contours
+//! (paths), each an *implicitly closed* list of `[f64; 2]`, and `Paths` for
+//! open polylines. The leaves' `[f64; 2]` layout is `FloatPointCompatible`
+//! as-is, so both directions are plain buffer reshuffles.
 //!
 //! Mesh leaves do not enter face by face: their faces dissolve to
 //! union-boundary rings first (see
 //! [`boundary`](crate::predicates::relate::boundary)), which cancels shared
-//! internal edges exactly — before `i_overlay`'s snap to its integer grid —
-//! and preserves the interior-left direction of every surviving ring.
+//! internal edges exactly (before `i_overlay`'s snap to its integer grid) and
+//! preserves the interior-left direction of every surviving ring.
 
 use crate::coordinate::CoordinateFrame;
 use crate::line_string::LineString2D;
@@ -80,7 +78,7 @@ pub(super) fn line_paths(leaves: &[Leaf2D<'_>]) -> Result<Vec<Path>, &'static st
 
 /// Convert `i_overlay` result shapes back into polygons in `frame`, closing
 /// each ring. The backend emits the outer contour first (CCW) and holes after
-/// (CW) — Flow's winding convention — so rings pass through verbatim.
+/// (CW), Flow's winding convention, so rings pass through verbatim.
 pub(super) fn shapes_to_polygons(shapes: Vec<Shape>, frame: &CoordinateFrame) -> Vec<Polygon2D> {
     shapes
         .into_iter()

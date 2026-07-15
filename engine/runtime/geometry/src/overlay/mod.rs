@@ -1,28 +1,27 @@
-//! 2D boolean overlay and linear clipping for the new geometry model.
+//! 2D boolean overlay and linear clipping for the geometry model.
 //!
-//! Phase 4 of the predicates plan: the *constructed* binary operations. They
-//! share the [`predicates`](crate::predicates) substrate — flattened
-//! [`Leaf2D`] views, the frame and dimension policy, [`PredicateError`] — but
-//! return geometry instead of answering a question:
+//! The *constructed* binary operations. They share the
+//! [`predicates`](crate::predicates) substrate (flattened [`Leaf2D`] views, the
+//! frame and dimension policy, [`PredicateError`]) but return geometry instead
+//! of answering a question:
 //!
 //! - [`overlay()`] and its [`union()`] / [`intersection()`] / [`difference()`]
-//!   / [`xor()`] shorthands — areal boolean overlay, backed by `i_overlay`
-//!   (the same pure-Rust backend as the legacy `BooleanOps`).
-//! - [`clip()`] — the portion of a set of polylines inside (or, inverted,
+//!   / [`xor()`] shorthands: areal boolean overlay, backed by the `i_overlay`
+//!   pure-Rust backend.
+//! - [`clip()`]: the portion of a set of polylines inside (or, inverted,
 //!   outside) an areal geometry.
-//! - [`segment_intersections()`] — the pairwise segment × segment
+//! - [`segment_intersections()`]: the pairwise segment × segment
 //!   intersections between two polyline sets.
 //!
 //! The operand policy is the predicates': both operands in one coordinate
 //! frame ([`MixedFrames`](PredicateError::MixedFrames) otherwise, reprojection
 //! is the caller's step), a 2D × 3D pair is
 //! [`CrossDimension`](PredicateError::CrossDimension), a purely 3D pair
-//! [`UnsupportedPair`](PredicateError::UnsupportedPair) until the 3D phases
-//! land. Collections flatten to their leaves; `Geometry::None` and empty
-//! collections are the empty geometry. Beyond that, each operation constrains
-//! the leaf kinds it accepts — an areal operand takes `Polygon`,
-//! `PolygonMesh`, and `TriangularMesh` leaves, a polyline operand takes
-//! `LineString` leaves, and any other leaf is an
+//! [`UnsupportedPair`](PredicateError::UnsupportedPair). Collections flatten to
+//! their leaves; `Geometry::None` and empty collections are the empty geometry.
+//! Beyond that, each operation constrains the leaf kinds it accepts: an areal
+//! operand takes `Polygon`, `PolygonMesh`, and `TriangularMesh` leaves, a
+//! polyline operand takes `LineString` leaves, and any other leaf is an
 //! [`UnsupportedPair`](PredicateError::UnsupportedPair) naming it.
 //!
 //! Semantics and caveats:
@@ -34,15 +33,14 @@
 //!   edges cancel before the backend ever snaps a coordinate. Unlike
 //!   [`relate`](crate::predicates::relate()), such operands are *not* a
 //!   limitation here.
-//! - Valid ring winding is assumed (exteriors CCW, holes CW — Flow's
+//! - Valid ring winding is assumed (exteriors CCW, holes CW, Flow's
 //!   convention, checked by `Validate`): under the non-zero rule a mis-wound
 //!   hole reads as filled area. Results follow the same convention.
 //! - Constructed output is **not exact**: `i_overlay` snaps input to an
 //!   adaptive integer grid, so vertices can move by a relative epsilon,
 //!   degenerate slivers are dropped, collinear vertices are removed, and
 //!   chained overlays can drift. Segment intersection points are f64-rounded
-//!   robust-kernel constructions (no grid snap). Same trade-offs as the
-//!   legacy backends.
+//!   robust-kernel constructions (no grid snap).
 //! - Output is pure 2D: any per-vertex elevation on the inputs is ignored and
 //!   dropped, and appearance does not propagate.
 
@@ -130,7 +128,7 @@ pub fn overlay_2d(
     overlay_leaves(&a_leaves, &b_leaves, op)
 }
 
-/// The portion of the polylines of `lines` inside the areal geometry `area` —
+/// The portion of the polylines of `lines` inside the areal geometry `area`,
 /// or, with `invert`, the portion outside it. Points exactly on `area`'s
 /// boundary count as inside either way.
 pub fn clip(lines: &Geometry, area: &Geometry, invert: bool) -> Result<Vec<LineString2D>> {
@@ -275,8 +273,8 @@ fn unsupported_pair(
     }
 }
 
-/// The operands' shared frame — the first leaf's, all being equal after
-/// [`require_common_frame_leaves`] — or `None` when both are empty.
+/// The operands' shared frame (the first leaf's, all being equal after
+/// [`require_common_frame_leaves`]), or `None` when both are empty.
 fn common_frame<'l>(a: &[Leaf2D<'l>], b: &[Leaf2D<'l>]) -> Option<&'l CoordinateFrame> {
     a.first().or_else(|| b.first()).map(Leaf2D::frame)
 }

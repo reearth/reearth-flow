@@ -1,11 +1,8 @@
 //! The geometry graph underlying [`relate`](super): nodes and edges labeled
 //! with their topological positions relative to both operands.
 //!
-//! A port of the legacy `algorithm/relate/geomgraph/` (a georust/geo port of
-//! JTS 1.18) with the `<T, Z>` generics dropped in favor of concrete
-//! `[f64; 2]` coordinates, `Rc<RefCell<Edge>>` instead of `Arc<RwLock<Edge>>`
-//! (a relate call owns its graphs; nothing crosses threads), and the phase-1
-//! [`kernel`](crate::predicates::kernel) as the one robust line intersector.
+//! Follows the structure of JTS 1.18 `relate/geomgraph/`, using the
+//! [`kernel`](crate::predicates::kernel) as the robust line intersector.
 
 pub(crate) use super::intersection_matrix::IntersectionMatrix;
 pub(crate) use edge::Edge;

@@ -1,8 +1,6 @@
 //! The DE-9IM [`IntersectionMatrix`] and the [`Dimensions`] recorded in it.
 //!
-//! A port of the legacy `algorithm/relate/geomgraph/intersection_matrix.rs`
-//! (itself a JTS port via georust/geo) with the `<T, Z>` generics dropped: the
-//! new relate is 2D-only, so [`Dimensions`] tops out at
+//! This relate is 2D-only, so [`Dimensions`] tops out at
 //! [`TwoDimensional`](Dimensions::TwoDimensional).
 
 use std::str::FromStr;
