@@ -160,7 +160,7 @@ fn collection_3d(members: impl IntoIterator<Item = Euclidean3DGeometry>) -> Eucl
 }
 
 // GeoJSON coordinates are (lon, lat[, height]) per RFC 7946, but the WGS84 frames
-// they are tagged with declare (lat, lon[, height]) axis order, so the horizontal
+// they are tagged with declared (lat, lon[, height]) axis order, so the horizontal
 // pair is swapped on read. The swap also flips ring winding, which the frame's
 // orientation sign accounts for, keeping the canonical orientation intact.
 
