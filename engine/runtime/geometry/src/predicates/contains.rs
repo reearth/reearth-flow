@@ -65,7 +65,7 @@ fn containment(a: &Geometry, b: &Geometry, need_witness: bool) -> Result<bool> {
 
 /// Flatten a `Geometry` into its 2D leaves; the second value names the first
 /// 3D leaf encountered, if any.
-fn flatten_geometry(geometry: &Geometry) -> (Vec<Leaf2D<'_>>, Option<&'static str>) {
+pub(crate) fn flatten_geometry(geometry: &Geometry) -> (Vec<Leaf2D<'_>>, Option<&'static str>) {
     fn walk<'a>(
         geometry: &'a Geometry,
         leaves: &mut Vec<Leaf2D<'a>>,

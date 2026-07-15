@@ -106,6 +106,21 @@ pub enum SegmentIntersection {
     },
 }
 
+impl SegmentIntersection {
+    /// Whether this is a proper crossing: a single point interior to both
+    /// segments. Collinear overlaps are never proper.
+    #[inline]
+    pub fn is_proper(&self) -> bool {
+        matches!(
+            self,
+            SegmentIntersection::SinglePoint {
+                is_proper: true,
+                ..
+            }
+        )
+    }
+}
+
 /// Robust 2D segment × segment intersection.
 ///
 /// A direct port of the legacy `line_intersection` (a JTS `RobustLineIntersector`
@@ -387,7 +402,7 @@ pub enum CoordPos {
 /// the legacy `coord_pos_relative_to_ring`.
 ///
 /// `ring` is a closed ring (first vertex == last), the storage convention of the
-/// new [`Polygon`](crate::polygon) leaves. The `z` of any 2.5D ring is ignored:
+/// new [`Polygon`](mod@crate::polygon) leaves. The `z` of any 2.5D ring is ignored:
 /// the test is the XY-projection algorithm, matching legacy 2D semantics.
 pub fn coord_pos_relative_to_ring(coord: [f64; 2], ring: &[[f64; 2]]) -> CoordPos {
     if ring.is_empty() {

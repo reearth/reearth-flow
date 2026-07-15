@@ -1,4 +1,4 @@
-//! Zero-copy coordinate views feeding the [`kernel`](super::kernel).
+//! Zero-copy coordinate views feeding the [`kernel`].
 //!
 //! The predicates operate over lightweight borrows of the new leaves' flat
 //! buffers rather than over the leaf types directly, so a `Polygon` ring, a
