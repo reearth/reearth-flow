@@ -1,14 +1,15 @@
 //! PROJ-backed coordinate transformation for the reprojection ops.
 
 use std::ffi::{CStr, CString};
-use std::os::raw::c_int;
+use std::os::raw::{c_char, c_int};
 use std::ptr;
 
 use crate::coordinate::EpsgCode;
 use proj_sys::{
     proj_context_create, proj_context_destroy, proj_context_errno, proj_context_errno_string,
-    proj_create_crs_to_crs, proj_destroy, proj_errno, proj_errno_reset, proj_trans, PJ, PJ_CONTEXT,
-    PJ_COORD, PJ_DIRECTION_PJ_FWD, PJ_XYZT,
+    proj_create, proj_create_crs_to_crs, proj_crs_get_coordinate_system, proj_crs_get_sub_crs,
+    proj_cs_get_axis_count, proj_cs_get_axis_info, proj_destroy, proj_errno, proj_errno_reset,
+    proj_trans, PJ, PJ_CONTEXT, PJ_COORD, PJ_DIRECTION_PJ_FWD, PJ_XYZT,
 };
 
 use crate::error::{Error, Result};
@@ -141,4 +142,174 @@ unsafe fn errno_string(ctx: *mut PJ_CONTEXT, errno: c_int) -> String {
 // SAFETY: `ctx` must be a valid, non-null PROJ context.
 unsafe fn ctx_errno_string(ctx: *mut PJ_CONTEXT) -> String {
     errno_string(ctx, proj_context_errno(ctx))
+}
+
+/// The orientation sign of `epsg`: `+1` when the CRS's declared axis basis is
+/// right-handed in canonical `(East, North[, Up])` order, `-1` when reflected.
+/// Errors when the CRS is unknown or its axes are not aligned to those directions.
+pub(crate) fn axis_order_sign(epsg: EpsgCode) -> Result<i8> {
+    // SAFETY: each PROJ object is null-checked before use and every path frees
+    // the objects it created; the axis-direction strings are owned by `cs` and
+    // read while it is alive.
+    unsafe {
+        let ctx = proj_context_create();
+        if ctx.is_null() {
+            return Err(Error::projection("proj_context_create returned null"));
+        }
+        let def = CString::new(format!("EPSG:{epsg}")).map_err(Error::projection)?;
+        let crs = proj_create(ctx, def.as_ptr());
+        if crs.is_null() {
+            let msg = ctx_errno_string(ctx);
+            proj_context_destroy(ctx);
+            return Err(Error::projection(format!(
+                "failed to create CRS EPSG:{epsg}: {msg}"
+            )));
+        }
+        let result = axis_sign_for_crs(ctx, crs, epsg);
+
+        proj_destroy(crs);
+        proj_context_destroy(ctx);
+        result
+    }
+}
+
+/// The orientation sign of a CRS, descending into a compound CRS's horizontal
+/// sub-CRS (index 0) when the CRS has no single coordinate system of its own.
+// SAFETY: `ctx` and `crs` must be valid, non-null PROJ objects.
+unsafe fn axis_sign_for_crs(ctx: *mut PJ_CONTEXT, crs: *const PJ, epsg: EpsgCode) -> Result<i8> {
+    let cs = proj_crs_get_coordinate_system(ctx, crs);
+    if !cs.is_null() {
+        let result = axis_sign_from_cs(ctx, cs, epsg);
+        proj_destroy(cs);
+        return result;
+    }
+
+    let horizontal = proj_crs_get_sub_crs(ctx, crs, 0);
+    if horizontal.is_null() {
+        return Err(Error::projection(format!(
+            "EPSG:{epsg} has no coordinate system: {}",
+            ctx_errno_string(ctx)
+        )));
+    }
+    let cs = proj_crs_get_coordinate_system(ctx, horizontal);
+    let result = if cs.is_null() {
+        Err(Error::projection(format!(
+            "EPSG:{epsg} horizontal sub-CRS has no coordinate system: {}",
+            ctx_errno_string(ctx)
+        )))
+    } else {
+        let sign = axis_sign_from_cs(ctx, cs, epsg);
+        proj_destroy(cs);
+        sign
+    };
+    proj_destroy(horizontal);
+    result
+}
+
+/// The orientation sign of a coordinate system, from its axis directions.
+// SAFETY: `ctx` and `cs` must be valid, non-null PROJ objects.
+unsafe fn axis_sign_from_cs(ctx: *mut PJ_CONTEXT, cs: *const PJ, epsg: EpsgCode) -> Result<i8> {
+    let n = proj_cs_get_axis_count(ctx, cs);
+    if !(2..=3).contains(&n) {
+        return Err(Error::projection(format!(
+            "EPSG:{epsg} has an unsupported axis count ({n})"
+        )));
+    }
+    let n = n as usize;
+
+    // Each axis contributes a canonical unit column vector; the sign of the
+    // determinant of those columns is the frame's orientation sign.
+    let mut axes: Vec<[f64; 3]> = Vec::with_capacity(n);
+    for i in 0..n {
+        let mut direction: *const c_char = ptr::null();
+        let ok = proj_cs_get_axis_info(
+            ctx,
+            cs,
+            i as c_int,
+            ptr::null_mut(),
+            ptr::null_mut(),
+            &mut direction,
+            ptr::null_mut(),
+            ptr::null_mut(),
+            ptr::null_mut(),
+            ptr::null_mut(),
+        );
+        if ok == 0 || direction.is_null() {
+            return Err(Error::projection(format!(
+                "EPSG:{epsg} axis {i} has no direction"
+            )));
+        }
+        let dir = CStr::from_ptr(direction).to_string_lossy();
+        let (row, sign) = canonical_axis(dir.as_ref()).ok_or_else(|| {
+            Error::projection(format!(
+                "EPSG:{epsg} axis {i} direction `{dir}` is not axis-aligned"
+            ))
+        })?;
+        let mut axis = [0.0f64; 3];
+        axis[row] = sign;
+        axes.push(axis);
+    }
+
+    let det = if n == 2 {
+        axes[0][0] * axes[1][1] - axes[0][1] * axes[1][0]
+    } else {
+        let (a, b, c) = (axes[0], axes[1], axes[2]);
+        a[0] * (b[1] * c[2] - b[2] * c[1]) - a[1] * (b[0] * c[2] - b[2] * c[0])
+            + a[2] * (b[0] * c[1] - b[1] * c[0])
+    };
+    if det > 0.0 {
+        Ok(1)
+    } else if det < 0.0 {
+        Ok(-1)
+    } else {
+        Err(Error::projection(format!(
+            "EPSG:{epsg} axes are not orthonormal in the (East, North, Up) basis"
+        )))
+    }
+}
+
+/// Map a PROJ axis direction to its `(row, sign)` in the canonical
+/// `(East, North, Up)` basis, or `None` if it is not aligned to an axis.
+fn canonical_axis(direction: &str) -> Option<(usize, f64)> {
+    match direction.to_ascii_lowercase().as_str() {
+        "east" => Some((0, 1.0)),
+        "west" => Some((0, -1.0)),
+        "north" => Some((1, 1.0)),
+        "south" => Some((1, -1.0)),
+        "up" => Some((2, 1.0)),
+        "down" => Some((2, -1.0)),
+        _ => None,
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn sign(code: u16) -> i8 {
+        axis_order_sign(EpsgCode::new(code)).unwrap()
+    }
+
+    #[test]
+    fn latitude_first_geographic_is_negative() {
+        assert_eq!(sign(4326), -1); // WGS84 2D (lat, lon)
+        assert_eq!(sign(4979), -1); // WGS84 3D (lat, lon, height)
+        assert_eq!(sign(6697), -1); // JGD2011 + height (lat, lon, height)
+    }
+
+    #[test]
+    fn northing_first_projected_is_negative() {
+        assert_eq!(sign(6669), -1); // JGD2011 plane rectangular I (northing, easting)
+    }
+
+    #[test]
+    fn easting_first_projected_is_positive() {
+        assert_eq!(sign(3857), 1); // Web Mercator (easting, northing)
+        assert_eq!(sign(32633), 1); // UTM 33N (easting, northing)
+    }
+
+    #[test]
+    fn unknown_crs_errors() {
+        assert!(axis_order_sign(EpsgCode::new(1)).is_err());
+    }
 }

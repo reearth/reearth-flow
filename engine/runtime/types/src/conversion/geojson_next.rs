@@ -61,12 +61,12 @@ fn geojson_object_to_attributes(obj: &geojson::JsonObject) -> Attributes {
         .collect()
 }
 
-/// WGS84 geographic frame for 2D coordinates (lon, lat).
+/// WGS84 geographic frame for 2D coordinates, stored (lat, lon) per EPSG:4326.
 fn wgs84_2d() -> CoordinateFrame {
     CoordinateFrame::Crs(EpsgCode::new(EPSG_WGS84_GEOGRAPHIC_2D))
 }
 
-/// WGS84 geographic frame for 3D coordinates (lon, lat, height).
+/// WGS84 geographic frame for 3D coordinates, stored (lat, lon, height) per EPSG:4979.
 fn wgs84_3d() -> CoordinateFrame {
     CoordinateFrame::Crs(EpsgCode::new(EPSG_WGS84_GEOGRAPHIC_3D))
 }
@@ -159,26 +159,31 @@ fn collection_3d(members: impl IntoIterator<Item = Euclidean3DGeometry>) -> Eucl
     Euclidean3DGeometry::Collection(Collection3D::new(members))
 }
 
+// GeoJSON coordinates are (lon, lat[, height]) per RFC 7946, but the WGS84 frames
+// they are tagged with declare (lat, lon[, height]) axis order, so the horizontal
+// pair is swapped on read. The swap also flips ring winding, which the frame's
+// orientation sign accounts for, keeping the canonical orientation intact.
+
 fn point_2d(p: &[f64]) -> Point2D {
-    Point2D::new(wgs84_2d(), [p[0], p[1]])
+    Point2D::new(wgs84_2d(), [p[1], p[0]])
 }
 
 fn point_3d(p: &[f64]) -> Point3D {
-    Point3D::new(wgs84_3d(), [p[0], p[1], p[2]])
+    Point3D::new(wgs84_3d(), [p[1], p[0], p[2]])
 }
 
 fn line_string_2d(coords: &[Vec<f64>]) -> LineString2D {
-    LineString2D::from_coords(wgs84_2d(), coords.iter().map(|c| [c[0], c[1]]))
+    LineString2D::from_coords(wgs84_2d(), coords.iter().map(|c| [c[1], c[0]]))
 }
 
 fn line_string_3d(coords: &[Vec<f64>]) -> LineString3D {
-    LineString3D::from_coords(wgs84_3d(), coords.iter().map(|c| [c[0], c[1], c[2]]))
+    LineString3D::from_coords(wgs84_3d(), coords.iter().map(|c| [c[1], c[0], c[2]]))
 }
 
 fn polygon_2d(rings: &[Vec<Vec<f64>>]) -> Polygon2D {
     let mut rings = rings
         .iter()
-        .map(|r| r.iter().map(|c| [c[0], c[1]]).collect::<Vec<_>>());
+        .map(|r| r.iter().map(|c| [c[1], c[0]]).collect::<Vec<_>>());
     let exterior = rings.next().unwrap_or_default();
     Polygon2D::from_rings(wgs84_2d(), exterior, rings)
 }
@@ -186,7 +191,7 @@ fn polygon_2d(rings: &[Vec<Vec<f64>>]) -> Polygon2D {
 fn polygon_3d(rings: &[Vec<Vec<f64>>]) -> Polygon3D {
     let mut rings = rings
         .iter()
-        .map(|r| r.iter().map(|c| [c[0], c[1], c[2]]).collect::<Vec<_>>());
+        .map(|r| r.iter().map(|c| [c[1], c[0], c[2]]).collect::<Vec<_>>());
     let exterior = rings.next().unwrap_or_default();
     Polygon3D::from_rings(wgs84_3d(), exterior, rings)
 }
@@ -219,7 +224,7 @@ mod tests {
         }
     }
 
-    // A 2D GeoJSON Point becomes a Euclidean2D Point in the WGS84 geographic frame.
+    // A 2D GeoJSON Point (lon, lat) becomes a Euclidean2D Point stored (lat, lon).
     #[test]
     fn point_2d_converts_to_euclidean_2d_wgs84() {
         let gj = geojson_feature(geojson::Value::Point(vec![139.7, 35.6]));
@@ -230,12 +235,12 @@ mod tests {
             *feature.geometry,
             Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
                 crs(4326),
-                [139.7, 35.6],
+                [35.6, 139.7],
             )))
         );
     }
 
-    // A 3D GeoJSON Point becomes a Euclidean3D Point in the WGS84 3D geographic frame.
+    // A 3D GeoJSON Point (lon, lat, h) becomes a Euclidean3D Point stored (lat, lon, h).
     #[test]
     fn point_3d_converts_to_euclidean_3d_wgs84() {
         let gj = geojson_feature(geojson::Value::Point(vec![139.7, 35.6, 12.5]));
@@ -246,7 +251,7 @@ mod tests {
             *feature.geometry,
             Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
                 crs(4979),
-                [139.7, 35.6, 12.5],
+                [35.6, 139.7, 12.5],
             )))
         );
     }
@@ -264,7 +269,7 @@ mod tests {
             *feature.geometry,
             Geometry::Euclidean2D(Euclidean2DGeometry::LineString(LineString2D::from_coords(
                 crs(4326),
-                [[0.0, 0.0], [1.0, 2.0]],
+                [[0.0, 0.0], [2.0, 1.0]],
             )))
         );
     }
@@ -282,7 +287,7 @@ mod tests {
             *feature.geometry,
             Geometry::Euclidean3D(Euclidean3DGeometry::LineString(LineString3D::from_coords(
                 crs(4979),
-                [[0.0, 0.0, 1.0], [1.0, 2.0, 3.0]],
+                [[0.0, 0.0, 1.0], [2.0, 1.0, 3.0]],
             )))
         );
     }
@@ -311,11 +316,42 @@ mod tests {
             Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
                 Polygon2D::from_rings(
                     crs(4326),
-                    [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 0.0]],
-                    [[[1.0, 1.0], [2.0, 1.0], [1.0, 2.0], [1.0, 1.0]]],
+                    [[0.0, 0.0], [0.0, 4.0], [4.0, 4.0], [0.0, 0.0]],
+                    [[[1.0, 1.0], [1.0, 2.0], [2.0, 1.0], [1.0, 1.0]]],
                 )
             )))
         );
+    }
+
+    /// Shoelace signed area of a closed ring in its stored coordinate order.
+    fn signed_area(ring: &[[f64; 2]]) -> f64 {
+        ring.windows(2)
+            .map(|w| w[0][0] * w[1][1] - w[1][0] * w[0][1])
+            .sum::<f64>()
+            / 2.0
+    }
+
+    // A GeoJSON exterior wound CCW in (lon, lat) is stored CW in the (lat, lon) frame:
+    // the axis swap flips the raw winding, and the frame's orientation sign (-1 for
+    // EPSG:4326) flips it back, so the canonical orientation stays CCW.
+    #[test]
+    fn ccw_geojson_exterior_is_stored_clockwise() {
+        // (0,0) -> (4,0) -> (4,4) -> (0,0): CCW in (lon, lat), positive area.
+        let exterior = vec![
+            vec![0.0, 0.0],
+            vec![4.0, 0.0],
+            vec![4.0, 4.0],
+            vec![0.0, 0.0],
+        ];
+        let gj = geojson_feature(geojson::Value::Polygon(vec![exterior]));
+
+        let feature: Feature = gj.try_into().unwrap();
+
+        let Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(polygon)) = &*feature.geometry
+        else {
+            panic!("expected a 2D polygon");
+        };
+        assert!(signed_area(polygon.exterior()) < 0.0);
     }
 
     // A 3D Polygon exterior ring keeps z.
@@ -338,7 +374,7 @@ mod tests {
                     crs(4979),
                     [
                         [0.0, 0.0, 1.0],
-                        [4.0, 0.0, 1.0],
+                        [0.0, 4.0, 1.0],
                         [4.0, 4.0, 1.0],
                         [0.0, 0.0, 1.0]
                     ],
@@ -429,7 +465,7 @@ mod tests {
             Geometry::Euclidean2D(Euclidean2DGeometry::Collection(Collection2D::new([
                 Euclidean2DGeometry::Polygon(Box::new(Polygon2D::from_rings(
                     crs(4326),
-                    [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [0.0, 0.0]],
+                    [[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [0.0, 0.0]],
                     std::iter::empty::<Vec<[f64; 2]>>(),
                 ))),
             ])))
@@ -467,7 +503,7 @@ mod tests {
     fn nested_geometry_collection_converts() {
         let inner = geojson::Value::GeometryCollection(vec![geojson::Geometry::new(
             geojson::Value::Point(vec![3.0, 4.0]),
-        )]);
+        )]); // (lon, lat) -> stored (lat, lon) = [4.0, 3.0]
         let gj = geojson_feature(geojson::Value::GeometryCollection(vec![
             geojson::Geometry::new(inner),
         ]));
@@ -478,7 +514,7 @@ mod tests {
             *feature.geometry,
             Geometry::GeometryCollection(GeometryCollection::new([Geometry::GeometryCollection(
                 GeometryCollection::new([Geometry::Euclidean2D(Euclidean2DGeometry::Point(
-                    Point2D::new(crs(4326), [3.0, 4.0])
+                    Point2D::new(crs(4326), [4.0, 3.0])
                 ),)])
             ),]))
         );
