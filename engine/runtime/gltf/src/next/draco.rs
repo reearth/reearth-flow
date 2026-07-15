@@ -1,12 +1,13 @@
 //! Draco compression of an already-assembled GLB, tuned for this writer's
 //! flat-shaded meshes.
 //!
-//! The input GLB still carries a `NORMAL` attribute, but only its *seams* (the
-//! per-polygon vertex splits [`super::glb`] produces) matter here:
+//! When the input GLB carries a `NORMAL` attribute, only its *seams* (the
+//! per-polygon vertex splits [`super::glb`] produces) matter:
 //! [`NormalEncoding::PredictedOnly`] discards the normal values and emits an
 //! all-zero correction stream, so Draco reconstructs each face's normal from
-//! the geometry on decode. Normals therefore cost effectively nothing in the
-//! compressed output while flat shading is preserved.
+//! the geometry on decode — normals cost effectively nothing while flat
+//! shading is preserved. A GLB with no `NORMAL` is compressed as-is (the
+//! setting is a no-op with no normal attribute to apply it to).
 
 use draco_oxide::core::types::ConfigType;
 use draco_oxide::encode::{Config, NormalEncoding};

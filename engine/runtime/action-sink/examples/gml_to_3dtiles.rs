@@ -4,8 +4,10 @@
 //!
 //! ```sh
 //! cargo run -p reearth-flow-action-sink --features new-geometry \
-//!     --example gml_to_3dtiles -- <input.gml> <output_dir>
+//!     --example gml_to_3dtiles -- <input.gml> <output_dir> [draco] [compute_normal]
 //! ```
+//!
+//! `draco` and `compute_normal` are optional `1`/`0` flags, both default `1`.
 
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
@@ -18,9 +20,12 @@ use url::Url;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = std::env::args_os().skip(1);
     let (Some(input), Some(output)) = (args.next(), args.next()) else {
-        eprintln!("usage: gml_to_3dtiles <input.gml> <output_dir>");
+        eprintln!("usage: gml_to_3dtiles <input.gml> <output_dir> [draco] [compute_normal]");
         std::process::exit(1);
     };
+    let flag = |arg: Option<std::ffi::OsString>| arg.is_none_or(|a| a != "0");
+    let draco = flag(args.next());
+    let compute_normal = flag(args.next());
 
     let input_path = PathBuf::from(input);
     let output_dir = PathBuf::from(output);
@@ -44,7 +49,13 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     );
     println!("parsed {} feature(s)", features.len());
 
-    let built = next::build(&features, next::MetadataOptions::default(), 24, true)?;
+    let built = next::build(
+        &features,
+        next::MetadataOptions::default(),
+        24,
+        draco,
+        compute_normal,
+    )?;
 
     std::fs::write(output_dir.join("tileset.json"), &built.tileset_json)?;
     for (relative_path, bytes) in built.tiles.iter().chain(&built.subtrees) {
