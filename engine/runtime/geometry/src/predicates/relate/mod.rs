@@ -41,9 +41,12 @@ use relate_operation::RelateOperation;
 /// ([`MixedFrames`](super::PredicateError::MixedFrames) otherwise) and both be
 /// 2D: a 2D × 3D pair is
 /// [`CrossDimension`](super::PredicateError::CrossDimension), a 3D × 3D pair
-/// [`UnsupportedPair`](super::PredicateError::UnsupportedPair). `Geometry::None`
-/// and empty collections relate as the empty geometry (every predicate against
-/// them is false except `is_disjoint`).
+/// [`UnsupportedPair`](super::PredicateError::UnsupportedPair) (there is no
+/// volumetric DE-9IM; the 3D family offers
+/// [`intersects`](super::intersects()) and
+/// [`point_position_3d`](super::point_position_3d) instead). `Geometry::None`
+/// and empty collections relate as the empty geometry (every predicate
+/// against them is false except `is_disjoint`).
 pub fn relate(a: &Geometry, b: &Geometry) -> Result<IntersectionMatrix> {
     let (a_leaves, b_leaves) = crate::predicates::flatten_2d_pair(a, b)?;
     require_common_frame_leaves(&a_leaves, &b_leaves)?;
