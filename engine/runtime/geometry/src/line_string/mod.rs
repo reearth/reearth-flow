@@ -34,6 +34,20 @@ pub struct LineString3D {
     coords: Box<[[f64; 3]]>,
 }
 
+impl LineString2D {
+    /// The coordinate frame these coords are expressed in.
+    #[inline]
+    pub fn frame(&self) -> &CoordinateFrame {
+        &self.frame
+    }
+
+    /// The chain's vertices in order.
+    #[inline]
+    pub fn coords(&self) -> &[[f64; 2]] {
+        &self.coords
+    }
+}
+
 impl LineString3D {
     /// The chain's vertices in order.
     #[inline]

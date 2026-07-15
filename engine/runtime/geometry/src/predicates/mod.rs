@@ -7,13 +7,30 @@
 //! [`view`]) so a `Polygon`, a `PolygonMesh` face, and a `TriangularMesh`
 //! triangle all feed the same [`kernel`] with zero copying.
 //!
-//! This module is the phase-1 foundation: the robust kernel, the views, and the
-//! error and frame-policy plumbing. The predicates themselves (`intersects`,
-//! `contains`, `relate`, boolean overlay, ray casting) build on top in later
-//! phases.
+//! Available predicates, all 2D (collections are point-set unions of their
+//! members; every leaf pair takes a bounding-box quick reject first):
+//!
+//! - [`intersects`] — whether two geometries share at least one point.
+//! - [`contains`] / [`covers`] — split-based containment with OGC semantics;
+//!   see [`contains`](contains()) for the algorithm.
+//! - [`point_position_2d`] — coordinate vs. geometry classification
+//!   (`Inside` / `OnBoundary` / `Outside`), with exact shared-edge and
+//!   surrounded-vertex refinement on meshes.
+//!
+//! The 2D leaves' optional per-vertex elevation is ignored throughout. The
+//! remaining families (`relate`, boolean overlay, ray casting, 3D pairs) build
+//! on the same kernel and views in later phases.
 
+pub mod contains;
+pub mod intersects;
 pub mod kernel;
+pub mod position;
 pub mod view;
+
+pub use contains::{contains, covers};
+pub use intersects::intersects;
+pub use kernel::CoordPos;
+pub use position::point_position_2d;
 
 use crate::coordinate::CoordinateFrame;
 
