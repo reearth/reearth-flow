@@ -465,8 +465,11 @@ impl Processor for ImageRasterizer {
                 // through — consistent with those existing report_drop call
                 // sites, none of which preserve per-call detail either. The
                 // run and the node's `finish()` both still return `Ok`.
+                // `has_geometry: None` — this drop isn't about any single
+                // feature's geometry at all (a whole-image save failure), so
+                // there's nothing honest to report either way.
                 if let Some(diagnostics) = ctx.diagnostics.as_deref() {
-                    diagnostics.report_drop(ErrorCode::RasterImageSaveFailed, None);
+                    diagnostics.report_drop(ErrorCode::RasterImageSaveFailed, None, None);
                 }
             }
         }

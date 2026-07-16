@@ -189,7 +189,14 @@ pub fn write_citygml_to_storage(
         for feature in features {
             let GeometryValue::CityGmlGeometry(ref geom) = feature.geometry.value else {
                 if let Some(diagnostics) = diagnostics {
-                    diagnostics.report_drop(ErrorCode::CitygmlNonCitygmlGeometry, Some(feature.id));
+                    // The feature's geometry is present but of the wrong
+                    // kind (not `GeometryValue::None`) -- `has_geometry()`
+                    // reports that honestly rather than guessing `false`.
+                    diagnostics.report_drop(
+                        ErrorCode::CitygmlNonCitygmlGeometry,
+                        Some(feature.id),
+                        Some(feature.has_geometry()),
+                    );
                 }
                 continue;
             };
@@ -203,7 +210,14 @@ pub fn write_citygml_to_storage(
             let (geometries, appearance) = convert_citygml_geometry(geom, lod_mask);
             if geometries.is_empty() {
                 if let Some(diagnostics) = diagnostics {
-                    diagnostics.report_drop(ErrorCode::CitygmlEmptyGeometry, Some(feature.id));
+                    // The source geometry exists (it matched
+                    // `GeometryValue::CityGmlGeometry` above) but converted
+                    // to zero entries -- `has_geometry()` is `true` here.
+                    diagnostics.report_drop(
+                        ErrorCode::CitygmlEmptyGeometry,
+                        Some(feature.id),
+                        Some(feature.has_geometry()),
+                    );
                 }
                 continue;
             }
@@ -416,6 +430,7 @@ mod diagnostics_tests {
 
     use indexmap::IndexMap;
     use reearth_flow_common::uri::Uri;
+    use reearth_flow_diagnostics::{Disposition, DispositionPolicy, OverrideInput, PolicyInput};
     use reearth_flow_runtime::diagnostics::NodeDiagnosticsHandle;
     use reearth_flow_runtime::node::NodeHandle;
     use reearth_flow_storage::resolve::StorageResolver;
@@ -474,6 +489,95 @@ mod diagnostics_tests {
         assert!(summaries[0]
             .message
             .contains("citygml.non_citygml_geometry"));
+    }
+
+    /// Final-review fix round, Item 1: a `citygml.empty_geometry` drop
+    /// promoted to `reject` by an `errorPolicy` override must reach the
+    /// side-file capture too, not just the aggregation bucket — previously
+    /// this finish()-time `report_drop` call site counted the rejection but
+    /// wrote no shard row at all. This exercises the real production call
+    /// site (this function's second `report_drop`, the "source geometry
+    /// exists but converts empty" lane) end to end via
+    /// `write_citygml_to_storage`, not just the isolated
+    /// `NodeDiagnosticsHandle` API.
+    #[test]
+    fn empty_geometry_feature_reject_override_captures_a_side_file_row_matching_the_bucket() {
+        let tmp = tempdir().unwrap();
+        let sandbox_root = Uri::from_str(&format!("file://{}", tmp.path().display())).unwrap();
+        let output = Uri::from_str(&format!("file://{}/out.gml", tmp.path().display())).unwrap();
+        let storage_resolver = Arc::new(StorageResolver::new());
+
+        let policy = DispositionPolicy::compile(PolicyInput {
+            side_file: true,
+            overrides: vec![OverrideInput {
+                node: Some("n1".to_string()),
+                code: Some("citygml.empty_geometry".to_string()),
+                category: None,
+                disposition: Disposition::Reject,
+            }],
+            ..Default::default()
+        })
+        .expect("policy should compile");
+
+        let handle = Arc::new(NodeDiagnosticsHandle::new(
+            "n1".to_string(),
+            test_node_handle("n1"),
+            "writer".into(),
+            "CityGML Writer".into(),
+            Arc::default(),
+            Arc::new(policy),
+            true,
+        ));
+
+        // A feature whose geometry IS a `CityGmlGeometry` (so it clears the
+        // non-CityGML-geometry lane above) but has zero `gml_geometries`, so
+        // `convert_citygml_geometry` yields zero entries -- this hits the
+        // *second* report_drop call site (empty-converted), not the first.
+        let geometry = reearth_flow_types::Geometry::new_with(
+            4326,
+            GeometryValue::CityGmlGeometry(reearth_flow_types::CityGmlGeometry::default()),
+        );
+        let features = vec![Feature::new_with_attributes_and_geometry(
+            reearth_flow_types::Attributes::new(),
+            geometry,
+        )];
+        let feature_id = features[0].id;
+
+        write_citygml_to_storage(
+            &output,
+            &sandbox_root,
+            &features,
+            &LodMask::all(),
+            None,
+            false,
+            &storage_resolver,
+            Some(&handle),
+        )
+        .unwrap();
+
+        let summaries = handle.inner.drain_summaries();
+        assert_eq!(summaries.len(), 1);
+        assert_eq!(
+            summaries[0].effective_disposition,
+            Some(Disposition::Reject)
+        );
+        let bucket_count = summaries[0].aggregated.as_ref().unwrap().count;
+        assert_eq!(bucket_count, 1);
+
+        let (rows, overflow) = handle
+            .drain_reject_rows()
+            .expect("a reject row should have been captured -- Item 1 regression");
+        assert_eq!(overflow, 0);
+        assert_eq!(
+            rows.len() as u64,
+            bucket_count,
+            "side-file row count must match the aggregation bucket count"
+        );
+        assert_eq!(rows[0].feature_id, Some(feature_id));
+        // The source geometry IS present (a CityGmlGeometry, just one that
+        // converts to zero entries), so has_geometry is honestly `true`.
+        assert_eq!(rows[0].has_geometry, Some(true));
+        assert_eq!(rows[0].code, ErrorCode::CitygmlEmptyGeometry);
     }
 }
 

@@ -296,13 +296,17 @@ impl ExecutorContext {
                         // no-op unless this handle belongs to a sink node
                         // under a `side_file()` policy, so this is free on
                         // every other path. `self.feature` is live here (this
-                        // is the per-feature report() path, unlike
-                        // finish()-time `report_drop`), so `has_geometry` is
-                        // computed for real rather than guessed.
+                        // is the per-feature report() path), so
+                        // `has_geometry` is always known (`Some`, computed
+                        // for real rather than guessed). Finish()-time
+                        // `report_drop` (`NodeContext::report_drop` below)
+                        // threads the same tri-state field through, but its
+                        // callers often have no live `Feature` and may pass
+                        // `None` instead.
                         if effective == Disposition::Reject {
                             handle.record_reject_row(
                                 Some(self.feature.id),
-                                self.feature.has_geometry(),
+                                Some(self.feature.has_geometry()),
                                 diagnostic.code,
                             );
                         }
@@ -452,9 +456,18 @@ impl NodeContext {
 
 impl NodeContext {
     /// finish()-time drop reporting (sinks run finish with only a NodeContext).
-    pub fn report_drop(&self, code: ErrorCode, feature_id: Option<uuid::Uuid>) {
+    /// `has_geometry` threads through to `NodeDiagnosticsHandle::report_drop`
+    /// verbatim (tri-state: `None` = unknown, not `false` — see
+    /// `RejectRow`'s doc comment); the no-handle fallback below doesn't need
+    /// it, since it never captures a side-file row.
+    pub fn report_drop(
+        &self,
+        code: ErrorCode,
+        feature_id: Option<uuid::Uuid>,
+        has_geometry: Option<bool>,
+    ) {
         match &self.diagnostics {
-            Some(handle) => handle.report_drop(code, feature_id),
+            Some(handle) => handle.report_drop(code, feature_id, has_geometry),
             None => {
                 // Never silent even on a context without a handle
                 // (tests/legacy paths), same guarantee as `report()`.
@@ -639,7 +652,7 @@ mod diagnostics_tests {
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].feature_id, Some(ctx.feature.id));
         // ctx_with_policy's feature has no geometry set.
-        assert!(!rows[0].has_geometry);
+        assert_eq!(rows[0].has_geometry, Some(false));
         assert_eq!(rows[0].code, ErrorCode::Cesium3dtilesEmptyGeometry);
     }
 
@@ -733,7 +746,7 @@ mod diagnostics_tests {
     fn report_drop_on_node_context_feeds_warn_drop_bucket() {
         let (ctx, handle) = ctx_with_handle();
         let node_ctx: NodeContext = ctx.into();
-        node_ctx.report_drop(ErrorCode::CitygmlEmptyGeometry, None);
+        node_ctx.report_drop(ErrorCode::CitygmlEmptyGeometry, None, None);
         let summaries = handle.inner.drain_summaries();
         assert_eq!(summaries.len(), 1);
         assert_eq!(
@@ -754,7 +767,7 @@ mod diagnostics_tests {
         .expect("policy should compile");
         let (ctx, handle) = ctx_with_policy(Arc::new(policy));
         let node_ctx: NodeContext = ctx.into();
-        node_ctx.report_drop(ErrorCode::CitygmlEmptyGeometry, None);
+        node_ctx.report_drop(ErrorCode::CitygmlEmptyGeometry, None, None);
         let summaries = handle.inner.drain_summaries();
         assert_eq!(summaries.len(), 1);
         assert_eq!(
@@ -762,6 +775,52 @@ mod diagnostics_tests {
             Some(Disposition::Reject)
         );
         assert!(handle.inner.take_fatal().is_none());
+    }
+
+    /// Final-review fix round, Item 1: the same promoting override, but
+    /// through a sink handle under `side_file()` — proves
+    /// `NodeContext::report_drop` threads `has_geometry` all the way to a
+    /// captured side-file row matching the bucket count, not just the
+    /// aggregation bucket. This is the exact call shape the production
+    /// `citygml.rs`/`image_rasterizer.rs` call sites use (they call
+    /// `NodeDiagnosticsHandle::report_drop` directly, but
+    /// `NodeContext::report_drop` above is a thin, behavior-preserving
+    /// pass-through to it).
+    #[test]
+    fn report_drop_resolves_a_promoting_override_to_reject_and_captures_a_side_file_row_via_node_context(
+    ) {
+        let policy = DispositionPolicy::compile(PolicyInput {
+            side_file: true,
+            overrides: vec![override_node_code(
+                "citygml.empty_geometry",
+                Disposition::Reject,
+            )],
+            ..Default::default()
+        })
+        .expect("policy should compile");
+        let (ctx, handle) = ctx_with_policy_and_sink(Arc::new(policy), true);
+        let feature_id = ctx.feature.id;
+        let node_ctx: NodeContext = ctx.into();
+        node_ctx.report_drop(
+            ErrorCode::CitygmlEmptyGeometry,
+            Some(feature_id),
+            Some(true),
+        );
+
+        let summaries = handle.inner.drain_summaries();
+        assert_eq!(summaries.len(), 1);
+        let bucket_count = summaries[0].aggregated.as_ref().unwrap().count;
+        let (rows, overflow) = handle
+            .drain_reject_rows()
+            .expect("a reject row should have been captured");
+        assert_eq!(overflow, 0);
+        assert_eq!(
+            rows.len() as u64,
+            bucket_count,
+            "side-file row count must match the aggregation bucket count"
+        );
+        assert_eq!(rows[0].feature_id, Some(feature_id));
+        assert_eq!(rows[0].has_geometry, Some(true));
     }
 
     #[test]
@@ -776,7 +835,7 @@ mod diagnostics_tests {
         .expect("policy should compile");
         let (ctx, handle) = ctx_with_policy(Arc::new(policy));
         let node_ctx: NodeContext = ctx.into();
-        node_ctx.report_drop(ErrorCode::CitygmlEmptyGeometry, None);
+        node_ctx.report_drop(ErrorCode::CitygmlEmptyGeometry, None, None);
         // the drain-end backstop's slot is populated, not the aggregation bucket
         assert!(handle.inner.drain_summaries().is_empty());
         let fatal = handle.inner.take_fatal().expect("fatal slot must be set");
@@ -808,7 +867,7 @@ mod diagnostics_tests {
     fn report_drop_on_no_handle_node_context_emits_diagnostic_only() {
         let node_ctx = NodeContext::default();
         let mut receiver = node_ctx.event_hub.sender.subscribe();
-        node_ctx.report_drop(ErrorCode::CitygmlEmptyGeometry, None);
+        node_ctx.report_drop(ErrorCode::CitygmlEmptyGeometry, None, None);
         let first = receiver.try_recv().expect("one immediate diagnostic event");
         assert!(matches!(first, crate::event::Event::Diagnostic(_)));
         assert!(receiver.try_recv().is_err());
