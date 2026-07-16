@@ -21,7 +21,7 @@ graphs:
       - id: 6935ea45-2f34-4047-a33d-e8c34416e328
         name: FeatureCreator
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
           creator:
             type: flowExpr
@@ -55,7 +55,7 @@ graphs:
       - id: f6d97a01-5ad8-4f17-a1e9-d6e818b41619
         name: TargetPackagesFilter
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -66,7 +66,7 @@ graphs:
       - id: e2441531-649a-4dcd-916f-ac59f7d56de3
         name: AttributeManagerPreFlattener
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: meshcode
@@ -102,14 +102,14 @@ graphs:
       - id: 8ad0bccc-3957-40bd-9a3f-5aeb0e1f9006
         name: VerticalReprojectorLod1
         type: action
-        action: VerticalReprojector
+        action: Vertical Reprojector
         with:
           reprojectorType: jgd2011ToWgs84
 
       - id: d032eab0-4358-4141-a3cd-35c2448fa304
         name: AttributeManagerByLod1
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: cityCode
@@ -126,7 +126,7 @@ graphs:
       - id: 123e1a65-7cad-4412-9336-91f37694aa08
         name: FeatureSorter
         type: action
-        action: FeatureSorter
+        action: Feature Sorter
         with:
           attributes:
             - package
@@ -135,12 +135,11 @@ graphs:
       - id: b1c2d3e4-f5a6-7b8c-9d0e-1f2a3b4c5d6e
         name: TwoDimensionForcerLod0
         type: action
-        action: TwoDimensionForcer
-
+        action: Two Dimension Forcer
       - id: c2d3e4f5-a6b7-8c9d-0e1f-2a3b4c5d6e7f
         name: AttributeManagerByLod0
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: cityCode
@@ -157,7 +156,7 @@ graphs:
       - id: d3e4f5a6-b7c8-9d0e-1f2a-3b4c5d6e7f8a
         name: MVTWriterLod0
         type: action
-        action: MVTWriter
+        action: MVT Writer
         with:
           schemaKey: __citygml_feature_type
           layerName:
@@ -180,7 +179,7 @@ graphs:
       - id: 674b22f7-ffb7-4594-b569-4c4f780326ce
         name: Cesium3DTilesWriterLod1
         type: action
-        action: Cesium3DTilesWriter
+        action: Cesium 3D Tiles Writer
         with:
           schemaKey: __citygml_feature_type
           minZoom: 15

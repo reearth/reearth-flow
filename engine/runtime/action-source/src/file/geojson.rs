@@ -20,7 +20,7 @@ pub(crate) struct GeoJsonReaderFactory;
 
 impl SourceFactory for GeoJsonReaderFactory {
     fn name(&self) -> &str {
-        "GeoJsonReader"
+        "GeoJSON Reader"
     }
 
     fn description(&self) -> &str {
@@ -95,14 +95,13 @@ impl Source for GeoJsonReader {
     async fn initialize(&self, _ctx: NodeContext) {}
 
     fn name(&self) -> &str {
-        "GeoJsonReader"
+        "GeoJSON Reader"
     }
 
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {
         Ok(vec![])
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     async fn start(
         &mut self,
         ctx: NodeContext,

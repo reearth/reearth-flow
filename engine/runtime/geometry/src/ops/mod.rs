@@ -11,6 +11,7 @@
 pub mod reproject;
 pub mod triangulation;
 
+pub(crate) use reproject::axis_order_sign;
 pub use reproject::{Reproject, ReprojectionCache};
 
 /// Returned by an operation a given geometry type does not support. Carries the

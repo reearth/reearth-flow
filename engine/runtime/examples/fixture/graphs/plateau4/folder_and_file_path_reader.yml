@@ -4,14 +4,14 @@ nodes:
   - id: 35038d96-5e81-4a21-a0e0-72f67eb71db5
     name: InputRouter
     type: action
-    action: InputRouter
+    action: Input Router
     with:
       routingPort: features
 
   - id: c7315341-26b3-4405-9d02-039d721cd225
     name: DirectoryDecompressor
     type: action
-    action: DirectoryDecompressor
+    action: Directory Decompressor
     with:
       archiveAttributes:
         - codelists
@@ -20,7 +20,7 @@ nodes:
   - id: c73fbb78-74ca-490e-8dc9-e9fa1729bea0
     name: FeatureFilePathExtractor
     type: action
-    action: FeatureFilePathExtractor
+    action: Feature File Path Extractor
     with:
       sourceDataset:
         type: flowExpr
@@ -31,7 +31,7 @@ nodes:
   - id: 9d04983e-e84e-4622-b0c6-827d7afad720
     name: FeatureFilter
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -53,7 +53,7 @@ nodes:
   - id: f3465c78-59fa-4307-bc02-67c46c2ddd98
     name: FeatureCounterByUdxDirs
     type: action
-    action: FeatureCounter
+    action: Feature Counter
     with:
       countStart: 1
       groupBy:
@@ -71,7 +71,7 @@ nodes:
   - id: 9fccbcdb-ab58-4fda-9a47-05a45c84a7fb
     name: OutputRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: features
 

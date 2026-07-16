@@ -27,7 +27,7 @@ pub struct Cesium3DTilesSinkFactory;
 
 impl SinkFactory for Cesium3DTilesSinkFactory {
     fn name(&self) -> &str {
-        "Cesium3DTilesWriter"
+        "Cesium 3D Tiles Writer"
     }
 
     fn description(&self) -> &str {
@@ -102,6 +102,8 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
                 attach_texture: params.attach_texture,
                 compress_output,
                 draco_compression: params.draco_compression,
+                #[cfg(feature = "new-geometry")]
+                compute_flat_normal: params.compute_flat_normal,
                 skip_unexposed_attributes: params.skip_unexposed_attributes.unwrap_or(false),
                 schema_key: params.schema_key,
             },
@@ -141,6 +143,11 @@ pub struct Cesium3DTilesWriterParam {
     /// # Draco Compression
     /// Use draco compression. Defaults to true.
     pub(super) draco_compression: Option<bool>,
+    /// # Compute Flat Normals
+    /// Compute per-polygon flat normals for lighting. Defaults to true.
+    /// When disabled, no normals are written and the mesh is smaller, but the
+    /// tile carries no lighting data (a viewer must derive flat normals itself).
+    pub(super) compute_flat_normal: Option<bool>,
     /// # Skip unexposed Attributes
     /// Skip attributes with double underscore prefix
     pub(super) skip_unexposed_attributes: Option<bool>,
@@ -159,13 +166,15 @@ pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) attach_texture: Option<bool>,
     pub(super) compress_output: Option<CompiledCode>,
     pub(super) draco_compression: Option<bool>,
+    #[cfg(feature = "new-geometry")]
+    pub(super) compute_flat_normal: Option<bool>,
     pub(super) skip_unexposed_attributes: bool,
     pub(super) schema_key: Option<String>,
 }
 
 impl Sink for Cesium3DTilesWriter {
     fn name(&self) -> &str {
-        "Cesium3DTilesWriter"
+        "Cesium 3D Tiles Writer"
     }
 
     #[cfg(not(feature = "new-geometry"))]
@@ -185,6 +194,18 @@ impl Sink for Cesium3DTilesWriter {
     #[cfg(not(feature = "new-geometry"))]
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
         self.flush_buffer(ctx.as_context())?;
+        Ok(())
+    }
+
+    #[cfg(feature = "new-geometry")]
+    fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
+        self.process_new_geometry(&ctx)?;
+        Ok(())
+    }
+
+    #[cfg(feature = "new-geometry")]
+    fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
+        self.finish_new_geometry(ctx)?;
         Ok(())
     }
 }

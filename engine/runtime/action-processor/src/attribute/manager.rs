@@ -20,7 +20,7 @@ pub(super) struct AttributeManagerFactory;
 
 impl ProcessorFactory for AttributeManagerFactory {
     fn name(&self) -> &str {
-        "AttributeManager"
+        "Attribute Manager"
     }
 
     fn description(&self) -> &str {
@@ -216,7 +216,7 @@ impl Processor for AttributeManager {
     }
 
     fn name(&self) -> &str {
-        "AttributeManager"
+        "Attribute Manager"
     }
 }
 

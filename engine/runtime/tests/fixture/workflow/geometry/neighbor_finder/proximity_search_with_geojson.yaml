@@ -18,7 +18,7 @@ graphs:
       - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
         name: GeoJsonReader
         type: action
-        action: GeoJsonReader
+        action: GeoJSON Reader
         with:
           dataset:
             type: string
@@ -27,7 +27,7 @@ graphs:
       - id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
         name: FilterByType
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -54,7 +54,7 @@ graphs:
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         name: JsonWriter
         type: action
-        action: JsonWriter
+        action: JSON Writer
         with:
           output:
             type: flowExpr

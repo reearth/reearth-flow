@@ -21,7 +21,7 @@ nodes:
   - id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
     name: DailySunDataReader
     type: action
-    action: CsvReader
+    action: CSV Reader
     with:
       format: tsv
       dataset:
@@ -34,7 +34,7 @@ nodes:
   - id: b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e
     name: ParseDateAndCalcDayTime
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         # Parse year from 年月日 (format "YYYY/MM/DD")
@@ -81,7 +81,7 @@ nodes:
   - id: c3d4e5f6-a7b8-4c9d-0e1f-2a3b4c5d6e7f
     name: MonthlyDayTimeAggregator
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - year
@@ -98,7 +98,7 @@ nodes:
   - id: d4e5f6a7-b8c9-4d0e-1f2a-3b4c5d6e7f8a
     name: MonthlyWeatherDataReader
     type: action
-    action: CsvReader
+    action: CSV Reader
     with:
       format: csv
       encoding: Shift-JIS
@@ -114,7 +114,7 @@ nodes:
   - id: e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b
     name: PrepareWeatherDataForMerge
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         # Copy 年 to year for merge compatibility
@@ -133,7 +133,7 @@ nodes:
   - id: f6a7b8c9-d0e1-4f2a-3b4c-5d6e7f8a9b0c
     name: MergeMonthlyData
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttribute:
         - year
@@ -148,7 +148,7 @@ nodes:
   - id: a7b8c9d0-e1f2-4a3b-4c5d-6e7f8a9b0c1d
     name: CalcSunnyRatio
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: sunnyRatio
@@ -170,7 +170,7 @@ nodes:
   - id: b8c9d0e1-f2a3-4b4c-5d6e-7f8a9b0c1d2e
     name: CloudFactorOutput
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: features
 

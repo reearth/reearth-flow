@@ -25,7 +25,7 @@ pub(super) struct FeatureFilePathExtractorFactory;
 
 impl ProcessorFactory for FeatureFilePathExtractorFactory {
     fn name(&self) -> &str {
-        "FeatureFilePathExtractor"
+        "Feature File Path Extractor"
     }
 
     fn description(&self) -> &str {
@@ -227,7 +227,7 @@ impl Processor for FeatureFilePathExtractor {
     }
 
     fn name(&self) -> &str {
-        "FeatureFilePathExtractor"
+        "Feature File Path Extractor"
     }
 }
 

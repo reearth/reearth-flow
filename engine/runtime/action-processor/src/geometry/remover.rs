@@ -16,7 +16,7 @@ pub struct GeometryRemoverFactory;
 
 impl ProcessorFactory for GeometryRemoverFactory {
     fn name(&self) -> &str {
-        "GeometryRemover"
+        "Geometry Remover"
     }
 
     fn description(&self) -> &str {
@@ -76,6 +76,6 @@ impl Processor for GeometryRemover {
     }
 
     fn name(&self) -> &str {
-        "GeometryRemover"
+        "Geometry Remover"
     }
 }

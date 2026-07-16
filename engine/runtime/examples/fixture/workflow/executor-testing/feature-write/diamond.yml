@@ -10,14 +10,14 @@ graphs:
       - id: 40000000-0000-0000-0000-000000000031
         name: InputRouter
         type: action
-        action: InputRouter
+        action: Input Router
         with:
           routingPort: features
 
       - id: 40000000-0000-0000-0000-000000000032
         name: FeatureFilter
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -32,14 +32,14 @@ graphs:
       - id: 40000000-0000-0000-0000-000000000033
         name: OutputRouterOut1
         type: action
-        action: OutputRouter
+        action: Output Router
         with:
           routingPort: out1
 
       - id: 40000000-0000-0000-0000-000000000034
         name: OutputRouterOut2
         type: action
-        action: OutputRouter
+        action: Output Router
         with:
           routingPort: out2
 
@@ -66,7 +66,7 @@ graphs:
       - id: 40000000-0000-0000-0000-000000000021
         name: InputRouter
         type: action
-        action: InputRouter
+        action: Input Router
         with:
           routingPort: features
 
@@ -78,7 +78,7 @@ graphs:
       - id: 40000000-0000-0000-0000-000000000023
         name: OutputRouterOut1
         type: action
-        action: OutputRouter
+        action: Output Router
         with:
           routingPort: out1
 
@@ -100,7 +100,7 @@ graphs:
       - id: 40000000-0000-0000-0000-000000000041
         name: InputRouter
         type: action
-        action: InputRouter
+        action: Input Router
         with:
           routingPort: features
 
@@ -112,7 +112,7 @@ graphs:
       - id: 40000000-0000-0000-0000-000000000043
         name: OutputRouterOut1
         type: action
-        action: OutputRouter
+        action: Output Router
         with:
           routingPort: out1
 
@@ -134,7 +134,7 @@ graphs:
       - id: 40000000-0000-0000-0000-000000000011
         name: FeatureCreator
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
           creator:
             type: flowExpr
@@ -158,7 +158,7 @@ graphs:
       - id: 40000000-0000-0000-0000-000000000014
         name: CsvWriter
         type: action
-        action: CsvWriter
+        action: CSV Writer
         with:
           output:
             type: string

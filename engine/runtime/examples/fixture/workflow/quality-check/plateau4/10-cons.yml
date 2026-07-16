@@ -19,13 +19,13 @@ graphs:
   - id: 1c0e21d1-cc12-48bd-b761-d5e943f5006f
     name: InputRouter
     type: action
-    action: InputRouter
+    action: Input Router
     with:
       routingPort: features
   - id: 6da2ce36-9a86-44ac-8f9f-b427bdb50097
     name: XMLValidatorSyntaxAndNamespace
     type: action
-    action: XMLValidator
+    action: XML Validator
     with:
       attribute: path
       inputType: file
@@ -33,7 +33,7 @@ graphs:
   - id: b51e43bd-1d67-4e9e-9b42-2e91aef79f6f
     name: XMLValidatorSyntaxAndSchema
     type: action
-    action: XMLValidator
+    action: XML Validator
     with:
       attribute: path
       inputType: file
@@ -41,7 +41,7 @@ graphs:
   - id: 14225ce7-1d9f-44bc-8b41-3aa06d4275cd
     name: AttributeManagerCreateValid
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: status
@@ -52,7 +52,7 @@ graphs:
   - id: 9293ff92-7cde-422d-a157-011d54b23cf0
     name: AttributeManagerCreateNotWellFormed
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: status
@@ -63,7 +63,7 @@ graphs:
   - id: 6c235d0b-26fb-47dd-a3df-709fa961855c
     name: AttributeManagerCreateInvalid
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: status
@@ -74,19 +74,19 @@ graphs:
   - id: 8d18c9ee-8473-4294-9a83-07dc00c14dc5
     name: SummaryRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: summary
   - id: abd4320c-aa7c-445a-af78-4c4f1f9a35c7
     name: InvalidRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: invalid
   - id: 3c0724c6-263e-43b9-8532-e46c7584323a
     name: NotWellFormedRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: notWellFormed
   edges:
@@ -146,7 +146,7 @@ graphs:
   - id: dfcdb977-e929-41b9-a3de-e368d158b5b9
     name: InputRouter
     type: action
-    action: InputRouter
+    action: Input Router
     with:
       routingPort: features
   - id: 747d2fa3-2527-4324-b630-92fba84a548c
@@ -160,7 +160,7 @@ graphs:
   - id: 6f53b8d5-c238-471f-95c5-4987f1c315f2
     name: FeatureFilterByFlag
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
       - expr:
@@ -202,61 +202,61 @@ graphs:
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d0
     name: SummaryRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: summary
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d1
     name: CodeValidationRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: codeValidation
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d8
     name: InCorrectCodeSpaceRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: inCorrectCodeSpace
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d2
     name: ExtentsValidationRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: extentsValidation
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d3
     name: GmlIdNotWellFormedRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: gmlIdNotWellFormed
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d4
     name: GmlIdNotUniqueRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: gmlIdNotUnique
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d5
     name: XlinkNoReferenceRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: xlinkNoReference
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d6
     name: XlinkInvalidObjectTypeRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: xlinkInvalidObjectType
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d7
     name: InvalidLodXGeometryRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: invalidLodXGeometry
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d9
     name: FileStatsRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: fileStats
   edges:
@@ -326,13 +326,13 @@ graphs:
   - id: 3a85e550-49e8-4b67-bc92-908430ef6eee
     name: InputRouter
     type: action
-    action: InputRouter
+    action: Input Router
     with:
       routingPort: features
   - id: 2aaa4ac9-2e79-479f-aa50-6543f461a76e
     name: FeatureFilePathExtractor
     type: action
-    action: FeatureFilePathExtractor
+    action: Feature File Path Extractor
     with:
       sourceDataset:
         type: flowExpr
@@ -342,7 +342,7 @@ graphs:
   - id: 0daf7972-4d58-4ccd-a576-f3dfc418f749
     name: FeatureFilterByGml
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
       - expr:
@@ -352,7 +352,7 @@ graphs:
   - id: 4b5c6d7e-8f9a-4b5c-9d0e-1f2a3b4c5d6e
     name: FeatureSorterByName
     type: action
-    action: FeatureSorter
+    action: Feature Sorter
     with:
       attributes:
       - name
@@ -360,14 +360,14 @@ graphs:
   - id: 151fbadf-1b40-4264-a003-f6f11f6af2d6
     name: FeatureCounterIndex
     type: action
-    action: FeatureCounter
+    action: Feature Counter
     with:
       countStart: 1
       outputAttribute: index
   - id: 8939cb8a-9748-4955-9fa6-0bc79b1d4e0e
     name: FilePropertyExtractor
     type: action
-    action: FilePropertyExtractor
+    action: File Property Extractor
     with:
       filePathAttribute: path
   - id: 7e833060-f8c4-458b-a8cc-8c817527f25b
@@ -387,7 +387,7 @@ graphs:
   - id: aa7828b4-54f5-41c7-9ab7-15653010200c
     name: AttributeManagerL01AndL02Errors
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: L01Errors
@@ -413,7 +413,7 @@ graphs:
   - id: a5b4c3d2-1e0f-4a9b-8c7d-6e5f4a3b2c1d
     name: AttributeMapperNotWellFormedXml
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: Index
@@ -442,7 +442,7 @@ graphs:
   - id: b3f2e7a5-8d19-4c9a-91f6-4a8b5c7e2f3d
     name: AttributeMapperInvalidXml
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: Index
@@ -479,7 +479,7 @@ graphs:
   - id: 2936b715-609c-498f-8803-486c889dea31
     name: FeatureMerger01
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -490,7 +490,7 @@ graphs:
   - id: d71b0796-97a2-4e65-92df-635fc3b0a92f
     name: FeatureMerger02
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -501,7 +501,7 @@ graphs:
   - id: f19638b9-679a-4dd9-9a39-3cf2a82c6ff5
     name: AttributeMapper
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: Index
@@ -605,7 +605,7 @@ graphs:
   - id: 9e34709d-b8d1-4080-8ebf-bebe4641e681
     name: StatisticsCalculator
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       calculations:
       - newAttribute: L01エラー
@@ -682,7 +682,7 @@ graphs:
   - id: 4f2a8b1e-3c7d-4e9f-a2b5-8f6c9d3e1a7b
     name: AttributeMapperGmlIdNotWellFormed
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: Index
@@ -707,7 +707,7 @@ graphs:
   - id: 5e4f3a2b-1c0d-4e9f-a2b5-8f6c9d3e1a7b
     name: AttributeMapperGmlIdNotUnique
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: Index
@@ -732,7 +732,7 @@ graphs:
   - id: 0cf15acc-f7d1-4fbd-a502-97f766cff6d2
     name: AttributeMapperExtentsValidation
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: Index
@@ -779,7 +779,7 @@ graphs:
   - id: 6c8d9e2f-4a5b-4c7d-8e9f-2a3b4c5d6e7f
     name: AttributeMapperCodeValidation
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: Index
@@ -810,7 +810,7 @@ graphs:
   - id: 8e7f0a3b-6c5d-4e8f-9f0a-4b5c6d7e8f9a
     name: AttributeMapperInCorrectCodeSpace
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: Index
@@ -841,7 +841,7 @@ graphs:
   - id: a1b2c3d4-5e6f-7a8b-9c0d-1e2f3a4b5c6d
     name: AttributeMapperFileStats
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: flag
@@ -863,7 +863,7 @@ graphs:
   - id: b4c5d6e7-8f9a-0b1c-2d3e-4f5a6b7c8d9e
     name: AttributeMapperXlinkNoReference
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: Index
@@ -890,7 +890,7 @@ graphs:
   - id: d6e7f8a9-0b1c-2d3e-4f5a-6b7c8d9e0f1a
     name: AttributeMapperXlinkInvalidObjectType
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: Index
@@ -923,7 +923,7 @@ graphs:
   - id: f8a9b0c1-2d3e-4f5a-6b7c-8d9e0f1a2b3c
     name: AttributeMapperInvalidLodXGeometry
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: Index
@@ -952,7 +952,7 @@ graphs:
   - id: c3d4e5f6-7a8b-9c0d-1e2f-3a4b5c6d7e8f
     name: FeatureMerger03
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -963,7 +963,7 @@ graphs:
   - id: 3e6f8a9b-4c5d-4e7f-9a1b-2c3d4e5f6a7b
     name: AttributeManagerTotalErrorCount
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: totalErrorCount
@@ -982,19 +982,19 @@ graphs:
   - id: f9359716-5c5a-43e5-b197-d1df171d5684
     name: OutputRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: features
   - id: 6a7b8c9d-0e1f-4a2b-3c4d-5e6f7a8b9c0d
     name: OutputRouterSummary
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: summaryOutput
   - id: 7b8c9d0e-1f2a-4b3c-5d6e-7f8a9b0c1d2e
     name: OutputRouterPerFile
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: perFileOutput
   edges:
@@ -1279,7 +1279,7 @@ graphs:
   - id: 00f42e7e-080b-4927-933b-70fc8d8136b8
     name: InputRouter
     type: action
-    action: InputRouter
+    action: Input Router
     with:
       routingPort: features
   - id: c790e59a-4283-452f-bc24-9cc966c3ec79
@@ -1291,7 +1291,7 @@ graphs:
   - id: c760d4d3-7b61-4451-878e-58783cfcbf30
     name: FeatureFilePathExtractor
     type: action
-    action: FeatureFilePathExtractor
+    action: Feature File Path Extractor
     with:
       sourceDataset:
         type: flowExpr
@@ -1301,7 +1301,7 @@ graphs:
   - id: 5389e28d-e2fa-420d-97b9-a8e09c74afc4
     name: FeatureFilterByGml
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
       - expr:
@@ -1321,7 +1321,7 @@ graphs:
   - id: e86300b4-59a7-4714-ad89-3aa18ef201d8
     name: XMLFragmenter
     type: action
-    action: XMLFragmenter
+    action: XML Fragmenter
     with:
       source: url
       elementsToMatch:
@@ -1334,7 +1334,7 @@ graphs:
   - id: 5490fef1-320b-4789-9f5b-5401a9b99e41
     name: FeatureCounter
     type: action
-    action: FeatureCounter
+    action: Feature Counter
     with:
       countStart: 0
       outputAttribute: featureIndex
@@ -1366,7 +1366,7 @@ graphs:
   - id: a4b8150a-6241-46ac-849d-39be21d39d1b
     name: AttributeMapperRequired
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: package
@@ -1398,7 +1398,7 @@ graphs:
   - id: f70fe4c6-9dcf-4657-80fb-3edb59eae80d
     name: AttributeMapperTarget
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: package
@@ -1420,7 +1420,7 @@ graphs:
   - id: 8f12a3b4-c5d6-4e78-9f01-2a3b4c5d6e7f
     name: AttributeMapperC07
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: package
@@ -1452,7 +1452,7 @@ graphs:
   - id: a134b5c6-e7f8-4a90-b123-4c5d6e7f8a9b
     name: AttributeMapperC08
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: package
@@ -1484,7 +1484,7 @@ graphs:
   - id: 6b8c9d0e-7f8a-4b90-9c1d-2e3f4a5b6c7d
     name: AttributeManagerTotalErrorCount
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: totalErrorCount
@@ -1508,19 +1508,19 @@ graphs:
   - id: da1eaeee-4a50-4b6b-afee-3cfaf4887613
     name: OutputRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: features
   - id: 7d8e9f0a-1b2c-4d3e-5f6a-7b8c9d0e1f2a
     name: OutputRouterSummary
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: summaryOutput
   - id: 1c2d3e4f-5a6b-7c8d-9e0f-1a2b3c4d5e6f
     name: StatisticsCalculatorC05PerFile
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
       - filename
@@ -1532,7 +1532,7 @@ graphs:
   - id: 2d3e4f5a-6b7c-8d9e-0f1a-2b3c4d5e6f7a
     name: StatisticsCalculatorC07PerFile
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
       - filename
@@ -1544,7 +1544,7 @@ graphs:
   - id: 3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b
     name: StatisticsCalculatorC08PerFile
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
       - filename
@@ -1556,7 +1556,7 @@ graphs:
   - id: 7c8d9e0f-1a2b-3c4d-5e6f-7a8b9c0d1e2f
     name: OutputRouterPerFile
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: perFileOutput
   edges:
@@ -1711,13 +1711,13 @@ graphs:
   - id: 5848465e-828f-4646-874e-e2f182b73714
     name: InputRouter
     type: action
-    action: InputRouter
+    action: Input Router
     with:
       routingPort: features
   - id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
     name: DmGeometricAttributeFilter
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
       - expr:
@@ -1733,7 +1733,7 @@ graphs:
   - id: 1787b15c-19b5-4386-a0ff-f0e58f477d07
     name: FeatureFilterByExceptSplit
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
       - expr:
@@ -1743,11 +1743,11 @@ graphs:
   - id: 8fe1a102-e3f3-40dd-b235-66e9c148830f
     name: GeometrySplitter
     type: action
-    action: GeometrySplitter
+    action: Geometry Splitter
   - id: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
     name: FeatureFilterByLod
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
       - expr:
@@ -1773,37 +1773,37 @@ graphs:
   - id: b1c2d3e4-f5a6-7890-bcde-f12345678901
     name: DmGeometricAttributeRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: DmGeometricAttribute
   - id: dab9d3b6-594e-40cc-9f6b-c605005e3320
     name: Lod0Router
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: lod0
   - id: dab9d3b6-594e-40cc-9f6b-c605005e3321
     name: Lod1Router
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: lod1
   - id: dab9d3b6-594e-40cc-9f6b-c605005e3322
     name: Lod2Router
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: lod2
   - id: dab9d3b6-594e-40cc-9f6b-c605005e3323
     name: Lod3Router
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: lod3
   - id: dab9d3b6-594e-40cc-9f6b-c605005e3324
     name: Lod4Router
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: lod4
   edges:
@@ -1873,27 +1873,27 @@ graphs:
   - id: 2f8a4b1c-5e9d-4c2a-8b6e-3f7a9b2c5d8e
     name: InputRouter
     type: action
-    action: InputRouter
+    action: Input Router
     with:
       routingPort: features
   - id: 4c7a2b5e-8f1d-4a6c-9e2b-7a4c8e1b3f6d
     name: Noop
     type: action
-    action: NoopProcessor
+    action: Noop Processor
   - id: 6e3b8a1c-f4d7-4b9e-a2c5-8f1b4e6a9c3d
     name: SurfaceRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: features
   - id: 1a9c4e7b-2f5d-4e8a-b3c6-9f2a5e8b1c4d
     name: GeometryPartExtractor
     type: action
-    action: GeometryPartExtractor
+    action: Geometry Part Extractor
   - id: 3d6f9a2c-5b8e-4a1d-c7f4-2e5a8c3b6f9d
     name: TwoDimensionForcer
     type: action
-    action: TwoDimensionForcer
+    action: Two Dimension Forcer
   - id: 5c2a7f4b-8e1d-4f9c-a6e3-4b7f2a5c8e1d
     name: OrientationExtractor
     type: action
@@ -1903,7 +1903,7 @@ graphs:
   - id: 7f4a1c6e-b9d2-4c5a-e8f1-6a3c7f4b9e2d
     name: FeatureFilterByOrientation
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
       - expr:
@@ -1913,19 +1913,19 @@ graphs:
   - id: 9e2b5f8a-1c4d-4a7e-f2b5-8a1e4b7c2f5d
     name: GeometryReplacer
     type: action
-    action: GeometryReplacer
+    action: Geometry Replacer
     with:
       sourceAttribute: dumpGeometry
   - id: 2a5c8f1b-4e7d-4b2c-a9f6-1c4e7a2b5f8d
     name: InCorrectOrientationRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: inCorrectOrientation
   - id: 4f8b3e6a-7d1c-4e5a-c2f9-3a6f9b4e7c1d
     name: GeometryValidator
     type: action
-    action: GeometryValidator
+    action: Geometry Validator
     with:
       validationTypes:
       - corruptGeometry: 0.01
@@ -1966,7 +1966,7 @@ graphs:
   - id: 8c5f2a9d-1b4e-4f7c-a3d8-5e2c8f1b4a7d
     name: FeatureCounter
     type: action
-    action: FeatureCounter
+    action: Feature Counter
     with:
       countStart: 0
       outputAttribute: surfaceId
@@ -1979,7 +1979,7 @@ graphs:
   - id: 3b9f6a2d-5c8e-4d1a-f7c4-2e5b8a3f6d9c
     name: FeatureFilterByHole
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
       - expr:
@@ -1993,7 +1993,7 @@ graphs:
   - id: 5d2c7f4a-8b1e-4c6d-a9f2-4a7d2c5f8b1e
     name: GeometryValidatorSelfIntersection
     type: action
-    action: GeometryValidator
+    action: Geometry Validator
     with:
       validationTypes:
       - duplicateConsecutivePoints: 0.0099
@@ -2001,7 +2001,7 @@ graphs:
   - id: 6b2e9a4f-1c5d-4b8e-a3f7-2e5b8c1d4a7f
     name: AttributeManagerSelfIntersection
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: issue
@@ -2034,7 +2034,7 @@ graphs:
   - id: 6f3b1a8e-9c4d-4a7f-e2c9-3b6f1a8e4c7d
     name: ElevationExtractorHole
     type: action
-    action: ElevationExtractor
+    action: Elevation Extractor
     with:
       outputAttribute: elevation
   - id: 8e7c4a1f-2d5b-4f8e-a6c3-7f4e1c8a5b2d
@@ -2052,7 +2052,7 @@ graphs:
   - id: 3f5a8c1d-7e4b-4c9f-a2e7-6f3a8c1d4e7b
     name: FeatureCounterHole
     type: action
-    action: FeatureCounter
+    action: Feature Counter
     with:
       countStart: 1
       groupBy:
@@ -2061,7 +2061,7 @@ graphs:
   - id: 5b8d1f4a-9c6e-4f2b-c8d5-1f4b8d5a9c2e
     name: FeatureMergerIntersectionbetweenInteriorAndExterior
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttribute:
       - surfaceId
@@ -2099,7 +2099,7 @@ graphs:
   - id: 4e1b7c5a-6f9d-4c2e-b8a5-1c4e7b5a6f9d
     name: FeatureFilterByAreaOnAreaOverlap
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
       - expr:
@@ -2109,7 +2109,7 @@ graphs:
   - id: 5a3b7e9c-2f4d-4a6e-b8c1-3e7a5b9c2f4d
     name: AttributeManagerIntersectionInterior
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: issue
@@ -2126,7 +2126,7 @@ graphs:
   - id: 8f2a5c7d-3e6b-4a9f-c1d4-2a8f5c7d3e6b
     name: FeatureMergerIncorrectInterior
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttribute:
       - surfaceId
@@ -2136,7 +2136,7 @@ graphs:
   - id: 1a4d7c2f-9e5b-4d8a-f6c3-4d1a7c2f9e5b
     name: FeatureFilterByIncorrectInteriorOrientation
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
       - expr:
@@ -2146,7 +2146,7 @@ graphs:
   - id: 4b8e2a7d-3f6c-4a1e-b9d5-7a4b8e2d3f6c
     name: AttributeManagerIncorrectInteriorOrientation
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: issue
@@ -2157,7 +2157,7 @@ graphs:
   - id: 3c6f9a1e-8d4b-4f3c-a7e2-6f3c9a1e8d4b
     name: InvalidSurfaceRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: invalidSurface
   edges:
@@ -2387,7 +2387,7 @@ graphs:
   - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c70
     name: InputRouter
     type: action
-    action: InputRouter
+    action: Input Router
     with:
       routingPort: features
   - id: b2c3d4e5-f6a7-8b9c-0d1e-2f3a4b5c6d70
@@ -2431,7 +2431,7 @@ graphs:
   - id: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
     name: AttributeMapperSurfaceErrors
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: Folder
@@ -2486,7 +2486,7 @@ graphs:
   - id: f1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6a
     name: SurfaceErrorCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
       - Filename
@@ -2500,7 +2500,7 @@ graphs:
   - id: 14a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c6
     name: OutputRouterSurfaceErrors
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: errorCountSurfaceErrors
   - id: a101a2b3-c4d5-e6f7-a8b9-c0d1e2f3a4b5
@@ -2514,7 +2514,7 @@ graphs:
   - id: a102b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6
     name: FeatureFilterNotClosed
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
       - expr:
@@ -2524,7 +2524,7 @@ graphs:
   - id: a103c4d5-e6f7-a8b9-c0d1-e2f3a4b5c6d7
     name: AttributeMapperNotClosed
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: filename
@@ -2553,7 +2553,7 @@ graphs:
   - id: a105e6f7-a8b9-c0d1-e2f3-a4b5c6d7e8f9
     name: NotClosedErrorCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
       - filename
@@ -2567,13 +2567,13 @@ graphs:
   - id: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d90
     name: OutputRouterNotClosed
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: errorCountNotClosedSolid
   - id: a119d1e2-f3a4-b5c6-d7e8-e9f0a1b2c3d4
     name: AttributeMapperSolidIssues
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: filename
@@ -2602,7 +2602,7 @@ graphs:
   - id: a121f3a4-b5c6-d7e8-f9a0-a1b2c3d4e5f6
     name: SolidIssuesErrorCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
       - filename
@@ -2616,7 +2616,7 @@ graphs:
   - id: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7d
     name: AttributeMapperOrientationErrors
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: Folder
@@ -2667,7 +2667,7 @@ graphs:
   - id: 15a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c7
     name: OrientationErrorCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
       - Filename
@@ -2681,25 +2681,25 @@ graphs:
   - id: 16a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5c8
     name: OutputRouterOrientationErrors
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: errorCountOrientationErrors
   - id: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8b9a
     name: OutputRouterFileOutputOrientationErrors
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: fileOutput
   - id: 18a5b5c5-d5e5-f5a5-b5c5-d5e5f5a5b5d0
     name: OutputRouterSolidErrors
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: errorCountSolidErrors
   - id: a9b0c1d2-e3f4-5a6b-7c8d-9e0f1a2b3c50
     name: OutputRouterFileOutput
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: fileOutput
   edges:
@@ -2901,7 +2901,7 @@ graphs:
   - id: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7ea0
     name: FeatureCreator
     type: action
-    action: FeatureCreator
+    action: Feature Creator
     with:
       creator:
         type: flowExpr
@@ -2919,7 +2919,7 @@ graphs:
   - id: d4e5f6a7-b8c9-0d1e-2f3a-4b5c6d7e8fa0
     name: DirectoryDecompressor
     type: action
-    action: DirectoryDecompressor
+    action: Directory Decompressor
     with:
       archiveAttributes:
       - codelists
@@ -2935,7 +2935,7 @@ graphs:
   - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a10
     name: FeatureFilePathExtractor
     type: action
-    action: FeatureFilePathExtractor
+    action: Feature File Path Extractor
     with:
       sourceDataset:
         type: flowExpr
@@ -2945,7 +2945,7 @@ graphs:
   - id: f6a7b8c9-d0e1-2f3a-4b5c-6d7e8f9a0b20
     name: FeatureFilterByGml
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
       - expr:
@@ -2955,7 +2955,7 @@ graphs:
   - id: a7b8c9d0-e1f2-3a4b-5c6d-7e8f9a0b1c30
     name: FeatureCounterFileIndex
     type: action
-    action: FeatureCounter
+    action: Feature Counter
     with:
       countStart: 1
       outputAttribute: fileIndex
@@ -2972,7 +2972,7 @@ graphs:
   - id: a1554a74-3caa-4880-a4a3-6dc4ab526a14
     name: FeatureFilterByPackage
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
       - expr:
@@ -2982,7 +2982,7 @@ graphs:
   - id: c9d0e1f2-a3b4-5c6d-7e8f-9a0b1c2d3e50
     name: AttributeMapperGmlPathAndFilename
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: gmlPath
@@ -3004,7 +3004,7 @@ graphs:
   - id: d0e1f2a3-b4c5-6d7e-8f9a-0b1c2d3e4f60
     name: FeatureCityGmlReader
     type: action
-    action: FeatureCityGmlReader
+    action: Feature CityGML Reader
     with:
       codelistsPath:
         type: flowExpr
@@ -3016,7 +3016,7 @@ graphs:
   - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a70
     name: HorizontalReprojector
     type: action
-    action: HorizontalReprojector
+    action: Horizontal Reprojector
     with:
       targetEpsgCode:
         type: flowExpr
@@ -3024,7 +3024,7 @@ graphs:
   - id: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b80
     name: FeatureSorter
     type: action
-    action: FeatureSorter
+    action: Feature Sorter
     with:
       attributes:
       - fileIndex
@@ -3032,14 +3032,14 @@ graphs:
   - id: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c90
     name: FeatureCounterFeatureIndex
     type: action
-    action: FeatureCounter
+    action: Feature Counter
     with:
       countStart: 0
       outputAttribute: featureIndex
   - id: a4b5c6d7-e8f9-0a1b-2c3d-4e5f6a7b8c90
     name: FeatureTypeNameExtractor
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: featureTypeName
@@ -3061,7 +3061,7 @@ graphs:
   - id: a5b6c7d8-e9f0-1a2b-3c4d-5e6f7a8b9c91
     name: GeometrySplitterForCount
     type: action
-    action: GeometrySplitter
+    action: Geometry Splitter
   - id: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8da0
     name: CONSValidation
     type: subGraph
@@ -3069,7 +3069,7 @@ graphs:
   - id: f8a9b0c1-d2e3-4f5a-6b7c-8d9e0f1a2b40
     name: InstanceCountCalculator
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
       - gmlFilename
@@ -3086,7 +3086,7 @@ graphs:
   - id: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e20
     name: FileInfoExtractor
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: index
@@ -3108,11 +3108,11 @@ graphs:
   - id: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f20
     name: GeometryRemoverForErrorSummary
     type: action
-    action: GeometryRemover
+    action: Geometry Remover
   - id: e7f8a9b0-c1d2-3e4f-5a6b-7c8d9e0f1a30
     name: ErrorSummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -3123,7 +3123,7 @@ graphs:
   - id: b0c1d2e3-f4a5-6b7c-8d9e-0f1a2b3c4d60
     name: SummaryAttributeMapper
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
       - attribute: Folder
@@ -3176,7 +3176,7 @@ graphs:
   - id: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f80
     name: StatisticsCalculator
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       calculations:
       - newAttribute: 面のエラー
@@ -3231,7 +3231,7 @@ graphs:
   - id: f4a5b6c7-d8e9-0f1a-2b3c-4d5e6f7a8ba0
     name: StatisticsCalculatorTotalErrors
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       calculations:
       - newAttribute: totalErrorCount
@@ -3241,7 +3241,7 @@ graphs:
   - id: a5b6c7d8-e9f0-1a2b-3c4d-5e6f7a8b9c10
     name: FeatureFilterNoErrors
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
       - expr:
@@ -3251,7 +3251,7 @@ graphs:
   - id: b6c7d8e9-f0a1-2b3c-4d5e-6f7a8b9c0d20
     name: FileWriterQcResultOk
     type: action
-    action: JsonWriter
+    action: JSON Writer
     with:
       converter:
         type: flowExpr
@@ -3262,7 +3262,7 @@ graphs:
   - id: dd0e1f2a-b4c5-6d7e-8f9a-0b1c2d3e4f60
     name: ZipFileWriter
     type: action
-    action: ZipFileWriter
+    action: Zip File Writer
     with:
       output:
         type: flowExpr

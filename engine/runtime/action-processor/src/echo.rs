@@ -14,11 +14,11 @@ pub struct EchoProcessorFactory;
 
 impl ProcessorFactory for EchoProcessorFactory {
     fn name(&self) -> &str {
-        "EchoProcessor"
+        "Echo Processor"
     }
 
     fn description(&self) -> &str {
-        "Debug Echo Features to Logs"
+        "Echoes features to logs and passes them through unchanged."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -27,6 +27,10 @@ impl ProcessorFactory for EchoProcessorFactory {
 
     fn categories(&self) -> &[&'static str] {
         &["Debug"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["logging"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -79,6 +83,6 @@ impl Processor for EchoProcessor {
     }
 
     fn name(&self) -> &str {
-        "EchoProcessor"
+        "Echo Processor"
     }
 }

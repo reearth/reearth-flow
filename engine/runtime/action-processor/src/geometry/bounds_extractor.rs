@@ -60,7 +60,7 @@ pub(super) struct BoundsExtractorFactory;
 
 impl ProcessorFactory for BoundsExtractorFactory {
     fn name(&self) -> &str {
-        "BoundsExtractor"
+        "Bounds Extractor"
     }
 
     fn description(&self) -> &str {
@@ -206,7 +206,7 @@ impl Processor for BoundsExtractor {
     }
 
     fn name(&self) -> &str {
-        "BoundsExtractor"
+        "Bounds Extractor"
     }
 }
 

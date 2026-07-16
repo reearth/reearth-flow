@@ -29,7 +29,7 @@ import type { AwarenessUser, NodeData, NodeParams } from "@flow/types";
 
 import { extractDescriptions } from "../../utils/extractDescriptions";
 import { FieldContext } from "../../utils/fieldUtils";
-import { schemaKeysMatch } from "../../utils/schemaFingerprint";
+import { schemasMatch } from "../../utils/schemaFingerprint";
 
 import SchemaMigrationView from "./SchemaMigrationView";
 
@@ -95,7 +95,7 @@ const ParamEditor: React.FC<Props> = ({
 
   const needsMigration =
     !!createdAction?.parameter &&
-    !schemaKeysMatch(nodeMeta.paramsSchema, createdAction.parameter);
+    !schemasMatch(nodeMeta.paramsSchema, createdAction.parameter);
 
   const [migrationComplete, setMigrationComplete] = useState(false);
 
@@ -190,105 +190,115 @@ const ParamEditor: React.FC<Props> = ({
             <p>{t("Details")}</p>
           </TabsTrigger>
         </TabsList>
-        <TabsContent className="px-4 pb-2" value="params" asChild>
-          <div
-            className="flex size-full min-h-0 min-w-0 flex-col justify-between gap-4"
-            onKeyDown={handleFormKeyDown}>
-            <div className="min-h-0 min-w-0 overflow-scroll rounded px-2">
-              {!createdAction?.parameter && (
-                <BasicBoiler
-                  text={t("No Parameters Available")}
-                  className="size-4 pt-16 [&>div>p]:text-sm"
-                  icon={<FlowLogo className="size-12 text-accent" />}
-                />
-              )}
-              {createdAction && (
-                <SchemaForm
-                  readonly={readonly}
-                  schema={originalSchema}
-                  actionName={nodeMeta.officialName}
-                  defaultFormData={nodeParams}
-                  fieldFocusMap={fieldFocusMap}
-                  onFieldFocus={onParamFieldFocus}
-                  onChange={onParamsUpdate}
-                  onValidationChange={handleParamsValidationChange}
-                  onEditorOpen={onValueEditorOpen}
-                  onPythonEditorOpen={onPythonEditorOpen}
-                  onFlowExprEditorOpen={onFlowExprEditorOpen}
-                />
-              )}
-            </div>
-            <Button
-              className="shrink-0 self-end"
-              size="lg"
-              onClick={handleUpdate}
-              disabled={readonly || !isCurrentTabValid}>
-              {t("Update")}
-            </Button>
+        <TabsContent
+          className="px-4 pb-2"
+          value="params"
+          render={
+            <div
+              className="flex size-full min-h-0 min-w-0 flex-col justify-between gap-4"
+              onKeyDown={handleFormKeyDown}
+            />
+          }>
+          <div className="min-h-0 min-w-0 overflow-scroll rounded px-2">
+            {!createdAction?.parameter && (
+              <BasicBoiler
+                text={t("No Parameters Available")}
+                className="size-4 pt-16 [&>div>p]:text-sm"
+                icon={<FlowLogo className="size-12 text-accent" />}
+              />
+            )}
+            {createdAction && (
+              <SchemaForm
+                readonly={readonly}
+                schema={originalSchema}
+                actionName={nodeMeta.officialName}
+                defaultFormData={nodeParams}
+                fieldFocusMap={fieldFocusMap}
+                onFieldFocus={onParamFieldFocus}
+                onChange={onParamsUpdate}
+                onValidationChange={handleParamsValidationChange}
+                onEditorOpen={onValueEditorOpen}
+                onPythonEditorOpen={onPythonEditorOpen}
+                onFlowExprEditorOpen={onFlowExprEditorOpen}
+              />
+            )}
           </div>
+          <Button
+            className="shrink-0 self-end"
+            size="lg"
+            onClick={handleUpdate}
+            disabled={readonly || !isCurrentTabValid}>
+            {t("Update")}
+          </Button>
         </TabsContent>
-        <TabsContent className="px-4 pb-2" value="customizations" asChild>
-          <div
-            className="flex size-full min-h-0 min-w-0 flex-col justify-between gap-4"
-            onKeyDown={handleFormKeyDown}>
-            <div className="min-h-0 min-w-0 overflow-scroll rounded px-2">
-              {!createdAction?.customizations && (
-                <BasicBoiler
-                  text={t("No Customizations Available")}
-                  className="size-4 pt-16 [&>div>p]:text-sm"
-                  icon={<FlowLogo className="size-12 text-accent" />}
-                />
-              )}
-              {createdAction && (
-                <div>
-                  <div className="mb-1 flex items-center gap-1">
-                    <p className="text-sm font-bold">
-                      {t("Customization Options")}
-                    </p>
-                    <Tooltip>
-                      <TooltipTrigger asChild>
+        <TabsContent
+          className="px-4 pb-2"
+          value="customizations"
+          render={
+            <div
+              className="flex size-full min-h-0 min-w-0 flex-col justify-between gap-4"
+              onKeyDown={handleFormKeyDown}
+            />
+          }>
+          <div className="min-h-0 min-w-0 overflow-scroll rounded px-2">
+            {!createdAction?.customizations && (
+              <BasicBoiler
+                text={t("No Customizations Available")}
+                className="size-4 pt-16 [&>div>p]:text-sm"
+                icon={<FlowLogo className="size-12 text-accent" />}
+              />
+            )}
+            {createdAction && (
+              <div>
+                <div className="mb-1 flex items-center gap-1">
+                  <p className="text-sm font-bold">
+                    {t("Customization Options")}
+                  </p>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
                         <div className="cursor-pointer p-1">
                           <QuestionIcon className="h-5 w-5" weight="thin" />
                         </div>
-                      </TooltipTrigger>
-                      <TooltipContent
-                        side="top"
-                        align="start"
-                        className="bg-primary">
-                        <div className="max-w-75 text-xs text-muted-foreground">
-                          {Object.entries(customizationDescriptions).map(
-                            ([key, value], index) => (
-                              <div key={index}>
-                                <span className="font-medium">{key}:</span>{" "}
-                                {String(value)}
-                              </div>
-                            ),
-                          )}
-                        </div>
-                      </TooltipContent>
-                    </Tooltip>
-                  </div>
-                  <div className="border-b" />
-                  <SchemaForm
-                    readonly={readonly}
-                    schema={createdAction?.customizations}
-                    defaultFormData={nodeCustomizations}
-                    fieldFocusMap={fieldFocusMap}
-                    onFieldFocus={onParamFieldFocus}
-                    onChange={onCustomizationsUpdate}
-                    onValidationChange={handleCustomizationsValidationChange}
-                  />
+                      }
+                    />
+                    <TooltipContent
+                      side="top"
+                      align="start"
+                      className="bg-primary">
+                      <div className="max-w-75 text-xs text-muted-foreground">
+                        {Object.entries(customizationDescriptions).map(
+                          ([key, value], index) => (
+                            <div key={index}>
+                              <span className="font-medium">{key}:</span>{" "}
+                              {String(value)}
+                            </div>
+                          ),
+                        )}
+                      </div>
+                    </TooltipContent>
+                  </Tooltip>
                 </div>
-              )}
-            </div>
-            <Button
-              className="shrink-0 self-end"
-              size="lg"
-              onClick={handleUpdate}
-              disabled={readonly || !isCurrentTabValid}>
-              {t("Update")}
-            </Button>
+                <div className="border-b" />
+                <SchemaForm
+                  readonly={readonly}
+                  schema={createdAction?.customizations}
+                  defaultFormData={nodeCustomizations}
+                  fieldFocusMap={fieldFocusMap}
+                  onFieldFocus={onParamFieldFocus}
+                  onChange={onCustomizationsUpdate}
+                  onValidationChange={handleCustomizationsValidationChange}
+                />
+              </div>
+            )}
           </div>
+          <Button
+            className="shrink-0 self-end"
+            size="lg"
+            onClick={handleUpdate}
+            disabled={readonly || !isCurrentTabValid}>
+            {t("Update")}
+          </Button>
         </TabsContent>
         <TabsContent className="w-full px-4" value="details">
           <div className="min-h-32 w-full overflow-scroll rounded">

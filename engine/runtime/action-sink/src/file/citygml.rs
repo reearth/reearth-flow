@@ -232,7 +232,7 @@ pub struct CityGmlWriterFactory;
 
 impl SinkFactory for CityGmlWriterFactory {
     fn name(&self) -> &str {
-        "CityGmlWriter"
+        "CityGML Writer"
     }
 
     fn description(&self) -> &str {
@@ -358,7 +358,7 @@ struct CityGmlWriterSink {
 
 impl Sink for CityGmlWriterSink {
     fn name(&self) -> &str {
-        "CityGmlWriter"
+        "CityGML Writer"
     }
 
     #[cfg(not(feature = "new-geometry"))]

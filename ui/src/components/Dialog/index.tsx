@@ -1,7 +1,7 @@
 "use client";
 
-import * as DialogPrimitive from "@radix-ui/react-dialog";
-import { Cross2Icon } from "@radix-ui/react-icons";
+import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
+import { XIcon } from "@phosphor-icons/react";
 import { forwardRef, ForwardRefExoticComponent, RefAttributes } from "react";
 
 import { cn } from "@flow/lib/utils";
@@ -15,8 +15,8 @@ const DialogPortal = DialogPrimitive.Portal;
 const DialogClose = DialogPrimitive.Close;
 
 const DialogOverlay = forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Overlay>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Overlay> & {
+  React.ElementRef<typeof DialogPrimitive.Backdrop>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Backdrop> & {
     overlayBgClass?: string;
   }
 >(
@@ -28,22 +28,22 @@ const DialogOverlay = forwardRef<
     },
     ref,
   ) => (
-    <DialogPrimitive.Overlay
+    <DialogPrimitive.Backdrop
       ref={ref}
       className={cn(
         overlayBgClass,
-        "fixed inset-0 z-50 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:animate-in data-[state=open]:fade-in-0",
+        "fixed inset-0 z-50 transition-opacity duration-200 data-ending-style:opacity-0 data-starting-style:opacity-0",
         className,
       )}
       {...props}
     />
   ),
 );
-DialogOverlay.displayName = DialogPrimitive.Overlay.displayName;
+DialogOverlay.displayName = "DialogOverlay";
 
 const DialogContent = forwardRef<
-  React.ElementRef<typeof DialogPrimitive.Content>,
-  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Content> & {
+  React.ElementRef<typeof DialogPrimitive.Popup>,
+  React.ComponentPropsWithoutRef<typeof DialogPrimitive.Popup> & {
     size?: "xs" | "sm" | "md" | "lg" | "xl" | "2xl" | "3xl" | "4xl" | "full";
     position?: "center" | "off-center" | "top";
     overlayBgClass?: string;
@@ -58,19 +58,19 @@ const DialogContent = forwardRef<
       position = "center",
       overlayBgClass,
       hideCloseButton,
-      onOpenAutoFocus,
-      onCloseAutoFocus,
       ...props
     },
     ref,
   ) => (
     <DialogPortal>
       <DialogOverlay overlayBgClass={overlayBgClass} />
-      <DialogPrimitive.Content
+      <DialogPrimitive.Popup
         ref={ref}
-        id="dialog-content"
+        data-slot="dialog-content"
+        initialFocus={false}
+        finalFocus={false}
         className={cn(
-          "fixed top-[50%] left-[50%] z-50 grid w-full max-w-xl translate-x-[-50%] gap-4 border border-accent bg-card/50 shadow-lg backdrop-blur duration-200 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 data-[state=open]:animate-in data-[state=open]:fade-in-0 data-[state=open]:zoom-in-95 sm:rounded-lg dark:border-primary dark:bg-card/50",
+          "fixed top-[50%] left-[50%] z-50 grid w-full max-w-xl translate-x-[-50%] gap-4 border border-accent bg-card/50 shadow-lg backdrop-blur transition-all duration-200 data-ending-style:scale-95 data-ending-style:opacity-0 data-starting-style:scale-95 data-starting-style:opacity-0 sm:rounded-lg dark:border-primary dark:bg-card/50",
           size === "xs"
             ? "max-w-[300px]"
             : size === "sm"
@@ -100,27 +100,21 @@ const DialogContent = forwardRef<
             : undefined,
           className,
         )}
-        onOpenAutoFocus={(e) =>
-          onOpenAutoFocus ? onOpenAutoFocus(e) : e.preventDefault()
-        }
-        onCloseAutoFocus={(e) =>
-          onCloseAutoFocus ? onCloseAutoFocus(e) : e.preventDefault()
-        }
         {...props}>
         <div className="flex h-full flex-col overflow-hidden rounded-lg">
           {children}
           {!hideCloseButton && (
-            <DialogPrimitive.Close className="absolute top-4 right-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none data-[state=open]:bg-accent data-[state=open]:text-muted-foreground">
-              <Cross2Icon className="size-5" />
+            <DialogPrimitive.Close className="absolute top-4 right-4 rounded-sm opacity-70 ring-offset-background transition-opacity hover:opacity-100 focus:ring-2 focus:ring-ring focus:ring-offset-2 focus:outline-hidden disabled:pointer-events-none">
+              <XIcon className="size-5" />
               <span className="sr-only">Close</span>
             </DialogPrimitive.Close>
           )}
         </div>
-      </DialogPrimitive.Content>
+      </DialogPrimitive.Popup>
     </DialogPortal>
   ),
 );
-DialogContent.displayName = DialogPrimitive.Content.displayName;
+DialogContent.displayName = "DialogContent";
 
 const DialogHeader = ({
   className,
@@ -163,7 +157,7 @@ const DialogTitle = forwardRef<
     {...props}
   />
 ));
-DialogTitle.displayName = DialogPrimitive.Title.displayName;
+DialogTitle.displayName = "DialogTitle";
 
 const DialogDescription = forwardRef<
   React.ElementRef<typeof DialogPrimitive.Description>,
@@ -175,7 +169,7 @@ const DialogDescription = forwardRef<
     {...props}
   />
 ));
-DialogDescription.displayName = DialogPrimitive.Description.displayName;
+DialogDescription.displayName = "DialogDescription";
 
 const DialogContentWrapper = forwardRef<
   React.ElementRef<

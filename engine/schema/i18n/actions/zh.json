@@ -1,11 +1,11 @@
 {
   "actions": [
     {
-      "name": "AppearanceRemover",
+      "name": "Appearance Remover",
       "description": "从CityGML几何体中移除外观信息（材质、纹理）"
     },
     {
-      "name": "AreaCalculator",
+      "name": "Area Calculator",
       "description": "计算多边形几何体的平面或坡面面积，并将结果作为属性添加",
       "parameterI18n": {
         "": {
@@ -54,7 +54,7 @@
       }
     },
     {
-      "name": "AttributeAggregator",
+      "name": "Attribute Aggregator",
       "description": "根据属性对实体进行分组",
       "parameterI18n": {
         "": {
@@ -108,21 +108,7 @@
       }
     },
     {
-      "name": "AttributeBulkArrayJoiner",
-      "description": "将数组属性连接为单个值",
-      "parameterI18n": {
-        "": {
-          "title": "AttributeBulkArrayJoiner Parameters",
-          "description": "Configure which array attributes to join into single values"
-        },
-        "ignoreAttributes": {
-          "title": "Attributes to Ignore",
-          "description": "List of attribute names to skip during array joining process"
-        }
-      }
-    },
-    {
-      "name": "AttributeConversionTable",
+      "name": "Attribute Conversion Table",
       "description": "使用查找表转换要素属性",
       "parameterI18n": {
         "": {
@@ -163,33 +149,7 @@
       }
     },
     {
-      "name": "AttributeDuplicateFilter",
-      "description": "筛选具有重复属性的实体",
-      "parameterI18n": {
-        "": {
-          "title": "AttributeDuplicateFilter Parameters"
-        },
-        "filterBy": {
-          "title": "Filter Attributes",
-          "description": "Attributes used to identify duplicate features - features with identical values for these attributes will be deduplicated"
-        }
-      }
-    },
-    {
-      "name": "AttributeFilePathInfoExtractor",
-      "description": "从属性中提取文件路径信息",
-      "parameterI18n": {
-        "": {
-          "title": "AttributeFilePathInfoExtractor Parameters"
-        },
-        "attribute": {
-          "title": "Source Path Attribute",
-          "description": "Attribute containing the file path to analyze for extracting file system information"
-        }
-      }
-    },
-    {
-      "name": "AttributeFlattener",
+      "name": "Attribute Flattener",
       "description": "嵌套属性的展平器",
       "parameterI18n": {
         "": {
@@ -202,7 +162,7 @@
       }
     },
     {
-      "name": "AttributeManager",
+      "name": "Attribute Manager",
       "description": "管理属性",
       "parameterI18n": {
         "": {
@@ -229,7 +189,7 @@
       }
     },
     {
-      "name": "AttributeMapper",
+      "name": "Attribute Mapper",
       "description": "分配属性",
       "parameterI18n": {
         "": {
@@ -260,6 +220,46 @@
           "valueAttribute": {
             "title": "Attribute name to get value from"
           }
+        }
+      }
+    },
+    {
+      "name": "AttributeBulkArrayJoiner",
+      "description": "将数组属性连接为单个值",
+      "parameterI18n": {
+        "": {
+          "title": "AttributeBulkArrayJoiner Parameters",
+          "description": "Configure which array attributes to join into single values"
+        },
+        "ignoreAttributes": {
+          "title": "Attributes to Ignore",
+          "description": "List of attribute names to skip during array joining process"
+        }
+      }
+    },
+    {
+      "name": "AttributeDuplicateFilter",
+      "description": "筛选具有重复属性的实体",
+      "parameterI18n": {
+        "": {
+          "title": "AttributeDuplicateFilter Parameters"
+        },
+        "filterBy": {
+          "title": "Filter Attributes",
+          "description": "Attributes used to identify duplicate features - features with identical values for these attributes will be deduplicated"
+        }
+      }
+    },
+    {
+      "name": "AttributeFilePathInfoExtractor",
+      "description": "从属性中提取文件路径信息",
+      "parameterI18n": {
+        "": {
+          "title": "AttributeFilePathInfoExtractor Parameters"
+        },
+        "attribute": {
+          "title": "Source Path Attribute",
+          "description": "Attribute containing the file path to analyze for extracting file system information"
         }
       }
     },
@@ -321,7 +321,7 @@
       }
     },
     {
-      "name": "BoundsExtractor",
+      "name": "Bounds Extractor",
       "description": "提取边界",
       "parameterI18n": {
         "": {
@@ -384,7 +384,7 @@
       }
     },
     {
-      "name": "BulkAttributeRenamer",
+      "name": "Bulk Attribute Renamer",
       "description": "通过添加/删除前缀或后缀，或替换文本来重命名属性",
       "parameterI18n": {
         "": {
@@ -484,151 +484,7 @@
       }
     },
     {
-      "name": "CenterPointReplacer",
-      "description": "将实体的几何形状替换为位于其包围盒中心、质心或实体区域内部的点。",
-      "parameterI18n": {
-        "": {
-          "title": "CenterPointReplacerParam"
-        },
-        "mode": {
-          "description": "The method used to compute the replacement center point."
-        }
-      },
-      "enumI18n": {
-        "CenterPointMode": {
-          "anyInsidePoint": {
-            "description": "Computes a point guaranteed to lie inside the geometry (pole of inaccessibility)."
-          },
-          "boundingBoxCenter": {
-            "description": "Computes the center of the geometry's bounding box."
-          },
-          "centerOfGravity": {
-            "description": "Computes the centroid (center of gravity) of the geometry."
-          }
-        }
-      }
-    },
-    {
-      "name": "Cesium3DTilesWriter",
-      "description": "将实体写入文件",
-      "parameterI18n": {
-        "": {
-          "title": "Cesium3DTilesWriter Parameters"
-        },
-        "attachTexture": {
-          "title": "Attach Textures",
-          "description": "Whether to include texture information in the generated tiles"
-        },
-        "compressOutput": {
-          "title": "Compressed Output Path",
-          "description": "Optional path for compressed archive output"
-        },
-        "dracoCompression": {
-          "title": "Draco Compression",
-          "description": "Use draco compression. Defaults to true."
-        },
-        "maxZoom": {
-          "title": "Maximum Zoom Level",
-          "description": "Maximum zoom level for tile generation (0-24)"
-        },
-        "minZoom": {
-          "title": "Minimum Zoom Level",
-          "description": "Minimum zoom level for tile generation (0-24)"
-        },
-        "output": {
-          "title": "Output Path",
-          "description": "Directory path where the 3D tiles will be written"
-        },
-        "schemaKey": {
-          "title": "Schema Key",
-          "description": "Attribute key whose value identifies the schema type and determines the output filename: all features sharing the same value are written to the same file. This attribute is excluded from output."
-        },
-        "skipUnexposedAttributes": {
-          "title": "Skip unexposed Attributes",
-          "description": "Skip attributes with double underscore prefix"
-        }
-      }
-    },
-    {
-      "name": "CityGmlReader",
-      "description": "从CityGML文件读取3D城市模型",
-      "parameterI18n": {
-        "": {
-          "title": "CityGmlReader Parameters",
-          "description": "Configuration for reading CityGML files as 3D city models."
-        },
-        "dataset": {
-          "title": "File Path",
-          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)"
-        },
-        "flatten": {},
-        "inline": {
-          "title": "Inline Content",
-          "description": "Expression that returns the file content as text instead of reading from a file path"
-        }
-      }
-    },
-    {
-      "name": "CityGmlWriter",
-      "description": "将要素写入CityGML 2.0文件",
-      "parameterI18n": {
-        "": {
-          "title": "CityGmlWriterParam"
-        },
-        "epsgCode": {
-          "description": "EPSG code for coordinate reference system"
-        },
-        "lodFilter": {
-          "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs."
-        },
-        "output": {
-          "description": "Output file path expression"
-        },
-        "prettyPrint": {
-          "description": "Whether to format output with indentation (default: true)"
-        }
-      }
-    },
-    {
-      "name": "Clipper",
-      "description": "使用裁剪实体来分割候选实体，使内部或外部部分分别输出"
-    },
-    {
-      "name": "ClosedCurveFilter",
-      "description": "检查曲线是否形成闭合回路"
-    },
-    {
-      "name": "ConvexHullAccumulator",
-      "description": "创建凸包",
-      "parameterI18n": {
-        "": {
-          "title": "ConvexHullAccumulator Parameters"
-        },
-        "groupBy": {
-          "title": "Group By Attributes",
-          "description": "Attributes used to group features before creating convex hulls - each group gets its own hull"
-        }
-      }
-    },
-    {
-      "name": "CoordinateExtractor",
-      "description": "从几何体顶点中提取坐标作为要素属性",
-      "parameterI18n": {
-        "": {
-          "title": "Coordinate Extractor Parameters"
-        },
-        "defaultZValue": {
-          "title": "Default Z Value",
-          "description": "Z value to use for 2D geometries that have no Z coordinate."
-        },
-        "mode": {
-          "title": "Extraction Mode",
-          "description": "How to extract coordinates from geometry vertices."
-        }
-      }
-    },
-    {
-      "name": "CsvReader",
+      "name": "CSV Reader",
       "description": "从CSV文件读取要素",
       "parameterI18n": {
         "": {
@@ -686,7 +542,7 @@
       }
     },
     {
-      "name": "CsvWriter",
+      "name": "CSV Writer",
       "description": "将要素写入CSV或TSV文件",
       "parameterI18n": {
         "": {
@@ -714,6 +570,154 @@
             "title": "TSV (Tab-Separated Values)",
             "description": "File with tab-separated values"
           }
+        }
+      }
+    },
+    {
+      "name": "CenterPointReplacer",
+      "description": "将实体的几何形状替换为位于其包围盒中心、质心或实体区域内部的点。",
+      "parameterI18n": {
+        "": {
+          "title": "CenterPointReplacerParam"
+        },
+        "mode": {
+          "description": "The method used to compute the replacement center point."
+        }
+      },
+      "enumI18n": {
+        "CenterPointMode": {
+          "anyInsidePoint": {
+            "description": "Computes a point guaranteed to lie inside the geometry (pole of inaccessibility)."
+          },
+          "boundingBoxCenter": {
+            "description": "Computes the center of the geometry's bounding box."
+          },
+          "centerOfGravity": {
+            "description": "Computes the centroid (center of gravity) of the geometry."
+          }
+        }
+      }
+    },
+    {
+      "name": "Cesium 3D Tiles Writer",
+      "description": "将实体写入文件",
+      "parameterI18n": {
+        "": {
+          "title": "Cesium3DTilesWriter 参数"
+        },
+        "attachTexture": {
+          "title": "附加纹理",
+          "description": "是否在生成的瓦片中包含纹理信息"
+        },
+        "compressOutput": {
+          "title": "压缩输出路径",
+          "description": "压缩归档输出的可选路径"
+        },
+        "computeFlatNormal": {
+          "title": "计算平面法线",
+          "description": "为光照计算逐多边形的平面法线。默认为 true。禁用时不写入法线，网格更小，但瓦片不包含光照数据（查看器需自行推导平面法线）。"
+        },
+        "dracoCompression": {
+          "title": "Draco 压缩",
+          "description": "使用 Draco 压缩。默认为 true。"
+        },
+        "maxZoom": {
+          "title": "最大缩放级别",
+          "description": "瓦片生成的最大缩放级别（0-24）"
+        },
+        "minZoom": {
+          "title": "最小缩放级别",
+          "description": "瓦片生成的最小缩放级别（0-24）"
+        },
+        "output": {
+          "title": "输出路径",
+          "description": "写入 3D Tiles 的目录路径"
+        },
+        "schemaKey": {
+          "title": "模式键",
+          "description": "其值用于标识模式类型并决定输出文件名的属性键：所有具有相同值的实体都写入同一文件。该属性会从输出中排除。"
+        },
+        "skipUnexposedAttributes": {
+          "title": "跳过未公开属性",
+          "description": "跳过带有双下划线前缀的属性"
+        }
+      }
+    },
+    {
+      "name": "CityGML Reader",
+      "description": "从CityGML文件读取3D城市模型",
+      "parameterI18n": {
+        "": {
+          "title": "CityGmlReader Parameters",
+          "description": "Configuration for reading CityGML files as 3D city models."
+        },
+        "dataset": {
+          "title": "File Path",
+          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)"
+        },
+        "flatten": {},
+        "inline": {
+          "title": "Inline Content",
+          "description": "Expression that returns the file content as text instead of reading from a file path"
+        }
+      }
+    },
+    {
+      "name": "CityGML Writer",
+      "description": "将要素写入CityGML 2.0文件",
+      "parameterI18n": {
+        "": {
+          "title": "CityGmlWriterParam"
+        },
+        "epsgCode": {
+          "description": "EPSG code for coordinate reference system"
+        },
+        "lodFilter": {
+          "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs."
+        },
+        "output": {
+          "description": "Output file path expression"
+        },
+        "prettyPrint": {
+          "description": "Whether to format output with indentation (default: true)"
+        }
+      }
+    },
+    {
+      "name": "Clipper",
+      "description": "使用裁剪实体来分割候选实体，使内部或外部部分分别输出"
+    },
+    {
+      "name": "ClosedCurveFilter",
+      "description": "检查曲线是否形成闭合回路"
+    },
+    {
+      "name": "ConvexHullAccumulator",
+      "description": "创建凸包",
+      "parameterI18n": {
+        "": {
+          "title": "ConvexHullAccumulator Parameters"
+        },
+        "groupBy": {
+          "title": "Group By Attributes",
+          "description": "Attributes used to group features before creating convex hulls - each group gets its own hull"
+        }
+      }
+    },
+    {
+      "name": "CoordinateExtractor",
+      "description": "从几何体顶点中提取坐标作为要素属性",
+      "parameterI18n": {
+        "": {
+          "title": "Coordinate Extractor Parameters"
+        },
+        "defaultZValue": {
+          "title": "Default Z Value",
+          "description": "Z value to use for 2D geometries that have no Z coordinate."
+        },
+        "mode": {
+          "title": "Extraction Mode",
+          "description": "How to extract coordinates from geometry vertices."
         }
       }
     },
@@ -881,11 +885,11 @@
       }
     },
     {
-      "name": "DimensionFilter",
+      "name": "Dimension Filter",
       "description": "根据实体的维度进行筛选"
     },
     {
-      "name": "DirectoryDecompressor",
+      "name": "Directory Decompressor",
       "description": "从存档中解压目录",
       "parameterI18n": {
         "": {
@@ -939,15 +943,15 @@
       }
     },
     {
-      "name": "EchoProcessor",
+      "name": "Echo Processor",
       "description": "重复实体"
     },
     {
-      "name": "EchoSink",
+      "name": "Echo Sink",
       "description": "重复实体"
     },
     {
-      "name": "ElevationExtractor",
+      "name": "Elevation Extractor",
       "description": "提取实体的第一个z坐标值并存储为一个属性",
       "parameterI18n": {
         "": {
@@ -987,6 +991,281 @@
         "distance": {
           "title": "Distance",
           "description": "The vertical distance (height) to extrude the polygon. Can be a constant value or an expression"
+        }
+      }
+    },
+    {
+      "name": "Feature CityGML Reader",
+      "description": "从CityGML文件读取要素",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureCityGmlReader Parameters",
+          "description": "Configuration for reading and processing CityGML files as features."
+        },
+        "codelistsPath": {
+          "title": "Codelists Path",
+          "description": "Optional path to the codelists directory for resolving codelist values"
+        },
+        "dataset": {
+          "title": "Dataset",
+          "description": "Path or expression to the CityGML dataset file to be read"
+        },
+        "flatten": {
+          "title": "Flatten",
+          "description": "Whether to flatten the hierarchical structure of the CityGML data"
+        }
+      }
+    },
+    {
+      "name": "Feature Counter",
+      "description": "统计实体数量",
+      "parameterI18n": {
+        "": {
+          "title": "Feature Counter Parameters",
+          "description": "Configure how features are numbered and grouped, and where to store the number"
+        },
+        "countStart": {
+          "title": "Start Count",
+          "description": "Value assigned to the first feature"
+        },
+        "groupBy": {
+          "title": "Group By Attributes",
+          "description": "List of attribute names to group features by before counting"
+        },
+        "outputAttribute": {
+          "title": "Count Attribute",
+          "description": "Name of the attribute where the count will be stored"
+        }
+      }
+    },
+    {
+      "name": "Feature Creator",
+      "description": "根据表达式创建实体",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureCreator Parameters",
+          "description": "Configure how to generate custom features using script expressions"
+        },
+        "creator": {
+          "title": "Script Expression",
+          "description": "Write a script expression that returns a map (single feature) or array of maps (multiple features). Each map represents feature attributes as key-value pairs."
+        }
+      }
+    },
+    {
+      "name": "Feature File Path Extractor",
+      "description": "从要素中提取文件路径",
+      "parameterI18n": {
+        "": {
+          "title": "Feature File Path Extractor Parameters",
+          "description": "Configure how to extract file paths from datasets and optionally extract archives"
+        },
+        "destPrefix": {
+          "title": "Destination Prefix",
+          "description": "Optional prefix to add to extracted file paths"
+        },
+        "extractArchive": {
+          "title": "Extract Archive",
+          "description": "Whether to extract archive files found in the dataset"
+        },
+        "sourceDataset": {
+          "title": "Source Dataset",
+          "description": "Expression to get the source dataset path or URL"
+        }
+      }
+    },
+    {
+      "name": "Feature Filter",
+      "description": "根据条件筛选实体",
+      "parameterI18n": {
+        "": {
+          "title": "Feature Filter Parameters",
+          "description": "Configure the conditions and output ports for filtering features based on expressions"
+        },
+        "conditions": {
+          "title": "Filter Conditions",
+          "description": "List of conditions and their corresponding output ports for routing filtered features"
+        }
+      },
+      "definitionI18n": {
+        "Condition": {
+          "expr": {
+            "title": "Condition expression",
+            "description": "Boolean expression evaluated against each feature; features for which it returns true are routed to this condition's output port."
+          },
+          "outputPort": {
+            "title": "Output port",
+            "description": "Name of the output port that receives features matching this condition."
+          }
+        }
+      }
+    },
+    {
+      "name": "Feature GeoJSON Writer",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureGeoJsonWriter Parameters",
+          "description": "Configuration for writing features to GeoJSON files."
+        },
+        "output": {
+          "title": "Output",
+          "description": "Path (or expression evaluated per feature) of the GeoJSON file to write. Features sharing a resolved path are written to the same file, so the expression can split features across files by attribute value."
+        }
+      }
+    },
+    {
+      "name": "Feature Joiner",
+      "description": "基于匹配的属性值，以可配置的连接类型连接请求要素和供给要素",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureJoiner Parameters",
+          "description": "Configuration for joining requestor and supplier features based on matching attributes or expressions."
+        },
+        "conflictResolution": {
+          "title": "Conflict Resolution",
+          "description": "Attribute conflict resolution strategy when both requestor and supplier have the same attribute"
+        },
+        "joinType": {
+          "title": "Join Type",
+          "description": "Join type: inner, left, or full"
+        },
+        "requestorAttribute": {
+          "title": "Requestor Attributes",
+          "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue)"
+        },
+        "requestorAttributeValue": {
+          "title": "Requestor Attribute Value",
+          "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute)"
+        },
+        "supplierAttribute": {
+          "title": "Supplier Attributes",
+          "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue)"
+        },
+        "supplierAttributeValue": {
+          "title": "Supplier Attribute Value",
+          "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute)"
+        }
+      },
+      "enumI18n": {
+        "ConflictResolution": {
+          "requestorWins": {
+            "title": "Requestor Wins",
+            "description": "Requestor attributes win on conflict"
+          },
+          "supplierWins": {
+            "title": "Supplier Wins",
+            "description": "Supplier attributes win on conflict (default)"
+          }
+        },
+        "JoinType": {
+          "full": {
+            "title": "Full",
+            "description": "Emit all features from both sides"
+          },
+          "inner": {
+            "title": "Inner",
+            "description": "Only emit features where a match exists"
+          },
+          "left": {
+            "title": "Left",
+            "description": "Emit all requestor features (default)"
+          }
+        }
+      }
+    },
+    {
+      "name": "Feature LOD Filter",
+      "description": "基于详细级别进行过滤",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureLodFilter Parameters",
+          "description": "Configuration for filtering features based on Level of Detail (LOD)."
+        },
+        "filterKey": {
+          "title": "Filter Key",
+          "description": "Attribute used to group features for LOD filtering"
+        }
+      }
+    },
+    {
+      "name": "Feature Merger",
+      "description": "根据属性合并实体",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureMerger Parameters",
+          "description": "Configuration for merging requestor and supplier features based on matching attributes or expressions."
+        },
+        "completeGrouped": {
+          "title": "Complete Grouped",
+          "description": "Whether to complete grouped features before processing the next group"
+        },
+        "requestorAttribute": {
+          "title": "Requestor Attributes",
+          "description": "Attributes from requestor features to use for matching (alternative to requestor_attribute_value)"
+        },
+        "requestorAttributeValue": {
+          "title": "Requestor Attribute Value",
+          "description": "Expression to evaluate for requestor feature matching values (alternative to requestor_attribute)"
+        },
+        "supplierAttribute": {
+          "title": "Supplier Attributes",
+          "description": "Attributes from supplier features to use for matching (alternative to supplier_attribute_value)"
+        },
+        "supplierAttributeValue": {
+          "title": "Supplier Attribute Value",
+          "description": "Expression to evaluate for supplier feature matching values (alternative to supplier_attribute)"
+        }
+      }
+    },
+    {
+      "name": "Feature Sorter",
+      "description": "根据属性对实体排序",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureSorter Parameters",
+          "description": "Configuration for sorting features based on attribute values."
+        },
+        "attributes": {
+          "title": "Sort Attributes",
+          "description": "Attributes to use for sorting features (sort order based on attribute order)"
+        },
+        "order": {
+          "title": "Sort Order",
+          "description": "Sorting order (ascending or descending)"
+        }
+      }
+    },
+    {
+      "name": "Feature Transformer",
+      "description": "通过表达式转换实体",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureTransformer Parameters",
+          "description": "Configuration for applying transformation expressions to features."
+        },
+        "transformers": {
+          "description": "List of transformation expressions to apply to each feature"
+        }
+      },
+      "definitionI18n": {
+        "Transform": {
+          "expr": {
+            "description": "Expression that modifies the feature (can access and modify attributes, geometry, etc.)"
+          }
+        }
+      }
+    },
+    {
+      "name": "Feature Type Filter",
+      "description": "根据类型筛选实体",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureTypeFilter Parameters",
+          "description": "Configuration for filtering features based on their feature type."
+        },
+        "targetTypes": {
+          "title": "Target Feature Types",
+          "description": "Target feature types"
         }
       }
     },
@@ -1057,199 +1336,8 @@
       }
     },
     {
-      "name": "FeatureCityGmlReader",
-      "description": "从CityGML文件读取要素",
-      "parameterI18n": {
-        "": {
-          "title": "FeatureCityGmlReader Parameters",
-          "description": "Configuration for reading and processing CityGML files as features."
-        },
-        "codelistsPath": {
-          "title": "Codelists Path",
-          "description": "Optional path to the codelists directory for resolving codelist values"
-        },
-        "dataset": {
-          "title": "Dataset",
-          "description": "Path or expression to the CityGML dataset file to be read"
-        },
-        "flatten": {
-          "title": "Flatten",
-          "description": "Whether to flatten the hierarchical structure of the CityGML data"
-        }
-      }
-    },
-    {
-      "name": "FeatureCounter",
-      "description": "统计实体数量",
-      "parameterI18n": {
-        "": {
-          "title": "Feature Counter Parameters",
-          "description": "Configure how features are counted and grouped, and where to store the count"
-        },
-        "countStart": {
-          "title": "Start Count",
-          "description": "Starting value for the counter"
-        },
-        "groupBy": {
-          "title": "Group By Attributes",
-          "description": "List of attribute names to group features by before counting"
-        },
-        "outputAttribute": {
-          "title": "Output Attribute",
-          "description": "Name of the attribute where the count will be stored"
-        }
-      }
-    },
-    {
-      "name": "FeatureCreator",
-      "description": "根据表达式创建实体",
-      "parameterI18n": {
-        "": {
-          "title": "FeatureCreator Parameters",
-          "description": "Configure how to generate custom features using script expressions"
-        },
-        "creator": {
-          "title": "Script Expression",
-          "description": "Write a script expression that returns a map (single feature) or array of maps (multiple features). Each map represents feature attributes as key-value pairs."
-        }
-      }
-    },
-    {
       "name": "FeatureDuplicateFilter",
       "description": "移除重复要素"
-    },
-    {
-      "name": "FeatureFilePathExtractor",
-      "description": "从要素中提取文件路径",
-      "parameterI18n": {
-        "": {
-          "title": "Feature File Path Extractor Parameters",
-          "description": "Configure how to extract file paths from datasets and optionally extract archives"
-        },
-        "destPrefix": {
-          "title": "Destination Prefix",
-          "description": "Optional prefix to add to extracted file paths"
-        },
-        "extractArchive": {
-          "title": "Extract Archive",
-          "description": "Whether to extract archive files found in the dataset"
-        },
-        "sourceDataset": {
-          "title": "Source Dataset",
-          "description": "Expression to get the source dataset path or URL"
-        }
-      }
-    },
-    {
-      "name": "FeatureFilter",
-      "description": "根据条件筛选实体",
-      "parameterI18n": {
-        "": {
-          "title": "Feature Filter Parameters",
-          "description": "Configure the conditions and output ports for filtering features based on expressions"
-        },
-        "conditions": {
-          "title": "Filter Conditions",
-          "description": "List of conditions and their corresponding output ports for routing filtered features"
-        }
-      },
-      "definitionI18n": {
-        "Condition": {
-          "expr": {
-            "title": "Condition expression"
-          },
-          "outputPort": {
-            "title": "Output port"
-          }
-        }
-      }
-    },
-    {
-      "name": "FeatureJoiner",
-      "description": "基于匹配的属性值，以可配置的连接类型连接请求要素和供给要素",
-      "parameterI18n": {
-        "": {
-          "title": "FeatureJoiner Parameters",
-          "description": "Configuration for joining requestor and supplier features based on matching attributes or expressions."
-        },
-        "conflictResolution": {
-          "description": "Attribute conflict resolution strategy when both requestor and supplier have the same attribute"
-        },
-        "joinType": {
-          "description": "Join type: inner, left, or full"
-        },
-        "requestorAttribute": {
-          "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue)"
-        },
-        "requestorAttributeValue": {
-          "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute)"
-        },
-        "supplierAttribute": {
-          "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue)"
-        },
-        "supplierAttributeValue": {
-          "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute)"
-        }
-      },
-      "enumI18n": {
-        "ConflictResolution": {
-          "requestorWins": {
-            "description": "Requestor attributes win on conflict"
-          },
-          "supplierWins": {
-            "description": "Supplier attributes win on conflict (default)"
-          }
-        },
-        "JoinType": {
-          "full": {
-            "description": "Emit all features from both sides"
-          },
-          "inner": {
-            "description": "Only emit features where a match exists"
-          },
-          "left": {
-            "description": "Emit all requestor features (default)"
-          }
-        }
-      }
-    },
-    {
-      "name": "FeatureLodFilter",
-      "description": "基于详细级别进行过滤",
-      "parameterI18n": {
-        "": {
-          "title": "FeatureLodFilter Parameters",
-          "description": "Configuration for filtering features based on Level of Detail (LOD)."
-        },
-        "filterKey": {
-          "description": "Attribute used to group features for LOD filtering"
-        }
-      }
-    },
-    {
-      "name": "FeatureMerger",
-      "description": "根据属性合并实体",
-      "parameterI18n": {
-        "": {
-          "title": "FeatureMerger Parameters",
-          "description": "Configuration for merging requestor and supplier features based on matching attributes or expressions."
-        },
-        "completeGrouped": {
-          "description": "Whether to complete grouped features before processing the next group"
-        },
-        "requestorAttribute": {
-          "description": "Attributes from requestor features to use for matching (alternative to requestor_attribute_value)"
-        },
-        "requestorAttributeValue": {
-          "description": "Expression to evaluate for requestor feature matching values (alternative to requestor_attribute)"
-        },
-        "supplierAttribute": {
-          "description": "Attributes from supplier features to use for matching (alternative to supplier_attribute_value)"
-        },
-        "supplierAttributeValue": {
-          "description": "Expression to evaluate for supplier feature matching values (alternative to supplier_attribute)"
-        }
-      }
     },
     {
       "name": "FeatureReader",
@@ -1257,55 +1345,6 @@
       "parameterI18n": {
         "": {
           "title": "FeatureReaderParam"
-        }
-      }
-    },
-    {
-      "name": "FeatureSorter",
-      "description": "根据属性对实体排序",
-      "parameterI18n": {
-        "": {
-          "title": "FeatureSorter Parameters",
-          "description": "Configuration for sorting features based on attribute values."
-        },
-        "attributes": {
-          "description": "Attributes to use for sorting features (sort order based on attribute order)"
-        },
-        "order": {
-          "description": "Sorting order (ascending or descending)"
-        }
-      }
-    },
-    {
-      "name": "FeatureTransformer",
-      "description": "通过表达式转换实体",
-      "parameterI18n": {
-        "": {
-          "title": "FeatureTransformer Parameters",
-          "description": "Configuration for applying transformation expressions to features."
-        },
-        "transformers": {
-          "description": "List of transformation expressions to apply to each feature"
-        }
-      },
-      "definitionI18n": {
-        "Transform": {
-          "expr": {
-            "description": "Expression that modifies the feature (can access and modify attributes, geometry, etc.)"
-          }
-        }
-      }
-    },
-    {
-      "name": "FeatureTypeFilter",
-      "description": "根据类型筛选实体",
-      "parameterI18n": {
-        "": {
-          "title": "FeatureTypeFilter Parameters",
-          "description": "Configuration for filtering features based on their feature type."
-        },
-        "targetTypes": {
-          "description": "Target feature types"
         }
       }
     },
@@ -1320,7 +1359,7 @@
       }
     },
     {
-      "name": "FilePathExtractor",
+      "name": "File Path Extractor",
       "description": "从目录或归档文件中提取文件",
       "parameterI18n": {
         "": {
@@ -1338,7 +1377,7 @@
       }
     },
     {
-      "name": "FilePropertyExtractor",
+      "name": "File Property Extractor",
       "description": "提取文件的属性",
       "parameterI18n": {
         "": {
@@ -1351,11 +1390,11 @@
       }
     },
     {
-      "name": "FootprintReplacer",
+      "name": "Footprint Replacer",
       "description": "将3D几何体投影到XY平面并计算联合底面轮廓（支持实体、面和CityGML）"
     },
     {
-      "name": "GeoJsonReader",
+      "name": "GeoJSON Reader",
       "description": "从GeoJSON文件读取要素",
       "parameterI18n": {
         "": {
@@ -1373,7 +1412,7 @@
       }
     },
     {
-      "name": "GeoJsonWriter",
+      "name": "GeoJSON Writer",
       "description": "将实体写入 GeoJSON 文件",
       "parameterI18n": {
         "": {
@@ -1389,7 +1428,7 @@
       }
     },
     {
-      "name": "GeoPackageReader",
+      "name": "GeoPackage Reader",
       "description": "从GeoPackage（.gpkg）文件读取矢量要素、瓦片和元数据",
       "parameterI18n": {
         "": {
@@ -1414,7 +1453,7 @@
       }
     },
     {
-      "name": "GeoPackageWriter",
+      "name": "GeoPackage Writer",
       "description": "将地理要素写入GeoPackage（.gpkg）文件，包含正确的SQLite结构、空间索引和元数据表",
       "parameterI18n": {
         "": {
@@ -1445,20 +1484,7 @@
       }
     },
     {
-      "name": "GeometryCoercer",
-      "description": "强制将实体几何转换为特定几何类型",
-      "parameterI18n": {
-        "": {
-          "title": "GeometryCoercer Parameters",
-          "description": "Configuration for coercing geometries to specific target types."
-        },
-        "targetType": {
-          "description": "Target geometry type to coerce features to (e.g., LineString)"
-        }
-      }
-    },
-    {
-      "name": "GeometryExtractor",
+      "name": "Geometry Extractor",
       "description": "提取实体的几何并作为属性添加",
       "parameterI18n": {
         "": {
@@ -1472,17 +1498,7 @@
       }
     },
     {
-      "name": "GeometryFilter",
-      "description": "根据类型筛选几何",
-      "parameterI18n": {
-        "": {
-          "title": "Geometry Filter Parameters",
-          "description": "Configure how to filter features based on their geometry type"
-        }
-      }
-    },
-    {
-      "name": "GeometryPartExtractor",
+      "name": "Geometry Part Extractor",
       "description": "将3D几何体中的几何部件（面）提取为单独的要素",
       "parameterI18n": {
         "": {
@@ -1503,11 +1519,11 @@
       }
     },
     {
-      "name": "GeometryRemover",
+      "name": "Geometry Remover",
       "description": "从要素中移除几何体"
     },
     {
-      "name": "GeometryReplacer",
+      "name": "Geometry Replacer",
       "description": "用新几何替换实体的几何",
       "parameterI18n": {
         "": {
@@ -1521,7 +1537,7 @@
       }
     },
     {
-      "name": "GeometrySplitter",
+      "name": "Geometry Splitter",
       "description": "根据类型分割几何",
       "parameterI18n": {
         "": {
@@ -1544,7 +1560,7 @@
       }
     },
     {
-      "name": "GeometryValidator",
+      "name": "Geometry Validator",
       "description": "验证实体的几何",
       "parameterI18n": {
         "": {
@@ -1559,6 +1575,29 @@
       "enumI18n": {
         "ValidationType": {
           "duplicatePoints": {}
+        }
+      }
+    },
+    {
+      "name": "GeometryCoercer",
+      "description": "强制将实体几何转换为特定几何类型",
+      "parameterI18n": {
+        "": {
+          "title": "GeometryCoercer Parameters",
+          "description": "Configuration for coercing geometries to specific target types."
+        },
+        "targetType": {
+          "description": "Target geometry type to coerce features to (e.g., LineString)"
+        }
+      }
+    },
+    {
+      "name": "GeometryFilter",
+      "description": "根据类型筛选几何",
+      "parameterI18n": {
+        "": {
+          "title": "Geometry Filter Parameters",
+          "description": "Configure how to filter features based on their geometry type"
         }
       }
     },
@@ -1618,7 +1657,7 @@
       }
     },
     {
-      "name": "GridDivider",
+      "name": "Grid Divider",
       "description": "将多边形划分为规则网格单元",
       "parameterI18n": {
         "": {
@@ -1981,7 +2020,7 @@
       "description": "提取几何中的孔并作为属性添加"
     },
     {
-      "name": "HorizontalReprojector",
+      "name": "Horizontal Reprojector",
       "description": "将实体的几何重投影到指定坐标系",
       "parameterI18n": {
         "": {
@@ -1999,7 +2038,7 @@
       }
     },
     {
-      "name": "ImageRasterizer",
+      "name": "Image Rasterizer",
       "description": "将矢量几何体转换为栅格图像格式",
       "parameterI18n": {
         "": {
@@ -2028,13 +2067,17 @@
       }
     },
     {
-      "name": "InputRouter",
+      "name": "Input Router",
       "description": "用于子工作流中最初一个端口转发的操作",
       "parameterI18n": {
         "": {
-          "title": "InputRouter"
+          "title": "InputRouter",
+          "description": "Configuration for receiving features from the parent workflow."
         },
-        "routingPort": {}
+        "routingPort": {
+          "title": "Routing Port",
+          "description": "Name of the parent workflow port whose features enter the sub-workflow through this router."
+        }
       }
     },
     {
@@ -2042,17 +2085,7 @@
       "description": "在日本标准网格上积累要素"
     },
     {
-      "name": "JSONFragmenter",
-      "description": "根据JSONPath查询将JSON文档分割为单独的要素",
-      "parameterI18n": {
-        "": {
-          "title": "JSONFragmenter Parameters",
-          "description": "Configuration for fragmenting JSON documents into individual features."
-        }
-      }
-    },
-    {
-      "name": "JsonReader",
+      "name": "JSON Reader",
       "description": "从JSON文件读取要素，支持单个对象和对象数组",
       "parameterI18n": {
         "": {
@@ -2070,7 +2103,7 @@
       }
     },
     {
-      "name": "JsonWriter",
+      "name": "JSON Writer",
       "description": "将要素写入JSON文件",
       "parameterI18n": {
         "": {
@@ -2082,6 +2115,16 @@
         },
         "output": {
           "description": "Output path or expression for the JSON file to create"
+        }
+      }
+    },
+    {
+      "name": "JSONFragmenter",
+      "description": "根据JSONPath查询将JSON文档分割为单独的要素",
+      "parameterI18n": {
+        "": {
+          "title": "JSONFragmenter Parameters",
+          "description": "Configuration for fragmenting JSON documents into individual features."
         }
       }
     },
@@ -2098,6 +2141,19 @@
           "description": "Name of the attribute to store the overlaid lists. Defaults to \"overlaidLists\"."
         },
         "tolerance": {}
+      }
+    },
+    {
+      "name": "List Exploder",
+      "description": "将列表类型的属性拆分为多个元素",
+      "parameterI18n": {
+        "": {
+          "title": "ListExploder Parameters",
+          "description": "Configuration for exploding array attributes into individual features."
+        },
+        "sourceAttribute": {
+          "description": "Attribute containing the array to explode (each element becomes a separate feature)"
+        }
       }
     },
     {
@@ -2119,19 +2175,6 @@
         },
         "separateCharacter": {
           "description": "Character(s) to use as separator between concatenated values"
-        }
-      }
-    },
-    {
-      "name": "ListExploder",
-      "description": "将列表类型的属性拆分为多个元素",
-      "parameterI18n": {
-        "": {
-          "title": "ListExploder Parameters",
-          "description": "Configuration for exploding array attributes into individual features."
-        },
-        "sourceAttribute": {
-          "description": "Attribute containing the array to explode (each element becomes a separate feature)"
         }
       }
     },
@@ -2158,7 +2201,7 @@
       }
     },
     {
-      "name": "MVTWriter",
+      "name": "MVT Writer",
       "description": "将实体写入文件",
       "parameterI18n": {
         "": {
@@ -2262,15 +2305,15 @@
       }
     },
     {
-      "name": "NoopProcessor",
+      "name": "Noop Processor",
       "description": "对实体不执行任何操作"
     },
     {
-      "name": "NoopSink",
+      "name": "Noop Sink",
       "description": "不执行任何最终操作"
     },
     {
-      "name": "NullAttributeMapper",
+      "name": "Null Attribute Mapper",
       "description": "用配置的默认值替换空属性值",
       "parameterI18n": {
         "": {
@@ -2441,13 +2484,17 @@
       }
     },
     {
-      "name": "OutputRouter",
+      "name": "Output Router",
       "description": "用于子工作流中最后一个端口转发的操作",
       "parameterI18n": {
         "": {
-          "title": "OutputRouter"
+          "title": "OutputRouter",
+          "description": "Configuration for returning features to the parent workflow."
         },
-        "routingPort": {}
+        "routingPort": {
+          "title": "Routing Port",
+          "description": "Name of the output port under which the sub-workflow's features are exposed to the parent workflow."
+        }
       }
     },
     {
@@ -2989,7 +3036,7 @@
       }
     },
     {
-      "name": "PolygonNormalExtractor",
+      "name": "Polygon Normal Extractor",
       "description": "提取多边形要素的法向量和其他属性"
     },
     {
@@ -3018,7 +3065,7 @@
       }
     },
     {
-      "name": "RayIntersector",
+      "name": "Ray Intersector",
       "description": "计算射线与几何体之间的交点",
       "parameterI18n": {
         "": {
@@ -3099,7 +3146,25 @@
       }
     },
     {
-      "name": "ShapefileReader",
+      "name": "SQL Reader",
+      "description": "从SQL数据库读取要素",
+      "parameterI18n": {
+        "": {
+          "title": "SQL Reader Parameters",
+          "description": "Configure the SQL query and database connection for reading features from a database"
+        },
+        "databaseUrl": {
+          "title": "Database URL",
+          "description": "Database connection URL (e.g. `sqlite:///tests/sqlite/sqlite.db`, `mysql://user:password@localhost:3306/db`, `postgresql://user:password@localhost:5432/db`)"
+        },
+        "sql": {
+          "title": "SQL Query",
+          "description": "SQL query expression to execute for retrieving data"
+        }
+      }
+    },
+    {
+      "name": "Shapefile Reader",
       "description": "从Shapefile存档（包含.shp、.dbf、.shx的.zip文件）读取地理要素",
       "parameterI18n": {
         "": {
@@ -3129,7 +3194,7 @@
       }
     },
     {
-      "name": "ShapefileWriter",
+      "name": "Shapefile Writer",
       "description": "将要素写入Shapefile",
       "parameterI18n": {
         "": {
@@ -3159,7 +3224,7 @@
       }
     },
     {
-      "name": "SpatialFilter",
+      "name": "Spatial Filter",
       "description": "按空间关系过滤要素",
       "parameterI18n": {
         "": {
@@ -3220,25 +3285,7 @@
       }
     },
     {
-      "name": "SqlReader",
-      "description": "从SQL数据库读取要素",
-      "parameterI18n": {
-        "": {
-          "title": "SQL Reader Parameters",
-          "description": "Configure the SQL query and database connection for reading features from a database"
-        },
-        "databaseUrl": {
-          "title": "Database URL",
-          "description": "Database connection URL (e.g. `sqlite:///tests/sqlite/sqlite.db`, `mysql://user:password@localhost:3306/db`, `postgresql://user:password@localhost:5432/db`)"
-        },
-        "sql": {
-          "title": "SQL Query",
-          "description": "SQL query expression to execute for retrieving data"
-        }
-      }
-    },
-    {
-      "name": "StatisticsCalculator",
+      "name": "Statistics Calculator",
       "description": "计算实体的统计信息",
       "parameterI18n": {
         "": {
@@ -3266,6 +3313,24 @@
           "newAttribute": {
             "title": "New attribute name"
           }
+        }
+      }
+    },
+    {
+      "name": "Three Dimension Forcer",
+      "description": "通过添加Z坐标（高程）将2D几何体转换为3D",
+      "parameterI18n": {
+        "": {
+          "title": "ThreeDimensionForcer Parameters",
+          "description": "Configure how to convert 2D geometries to 3D by adding Z-coordinates"
+        },
+        "elevation": {
+          "title": "Elevation",
+          "description": "The Z-coordinate (elevation) value to add to all points. Can be a constant value or an expression. Defaults to 0.0 if not specified."
+        },
+        "preserveExistingZ": {
+          "title": "Preserve Existing Z Values",
+          "description": "If true, geometries that are already 3D will pass through unchanged. If false, existing Z values will be replaced with the specified elevation. Defaults to false."
         }
       }
     },
@@ -3300,24 +3365,6 @@
         "minZ": {
           "title": "Minimum Z Attribute",
           "description": "Name of attribute containing the minimum Z coordinate"
-        }
-      }
-    },
-    {
-      "name": "ThreeDimensionForcer",
-      "description": "通过添加Z坐标（高程）将2D几何体转换为3D",
-      "parameterI18n": {
-        "": {
-          "title": "ThreeDimensionForcer Parameters",
-          "description": "Configure how to convert 2D geometries to 3D by adding Z-coordinates"
-        },
-        "elevation": {
-          "title": "Elevation",
-          "description": "The Z-coordinate (elevation) value to add to all points. Can be a constant value or an expression. Defaults to 0.0 if not specified."
-        },
-        "preserveExistingZ": {
-          "title": "Preserve Existing Z Values",
-          "description": "If true, geometries that are already 3D will pass through unchanged. If false, existing Z values will be replaced with the specified elevation. Defaults to false."
         }
       }
     },
@@ -3364,7 +3411,7 @@
       }
     },
     {
-      "name": "TwoDimensionForcer",
+      "name": "Two Dimension Forcer",
       "description": "将几何强制为二维"
     },
     {
@@ -3386,7 +3433,7 @@
       "description": "从实体的几何中删除特定的顶点"
     },
     {
-      "name": "VerticalReprojector",
+      "name": "Vertical Reprojector",
       "description": "将实体的几何重投影到指定坐标系",
       "parameterI18n": {
         "": {
@@ -3400,7 +3447,7 @@
       }
     },
     {
-      "name": "XMLFragmenter",
+      "name": "XML Fragmenter",
       "description": "分割XML",
       "parameterI18n": {
         "": {
@@ -3410,7 +3457,7 @@
       }
     },
     {
-      "name": "XMLValidator",
+      "name": "XML Validator",
       "description": "验证XML内容",
       "parameterI18n": {
         "": {
@@ -3422,7 +3469,7 @@
       }
     },
     {
-      "name": "XmlWriter",
+      "name": "XML Writer",
       "description": "将要素写入XML文件",
       "parameterI18n": {
         "": {
@@ -3435,7 +3482,7 @@
       }
     },
     {
-      "name": "ZipFileWriter",
+      "name": "Zip File Writer",
       "description": "将要素写入zip文件",
       "parameterI18n": {
         "": {

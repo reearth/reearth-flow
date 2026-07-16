@@ -31,7 +31,7 @@ pub struct MVTSinkFactory;
 
 impl SinkFactory for MVTSinkFactory {
     fn name(&self) -> &str {
-        "MVTWriter"
+        "MVT Writer"
     }
 
     fn description(&self) -> &str {
@@ -180,7 +180,7 @@ pub struct MVTWriterCompiledParam {
 
 impl Sink for MVTWriter {
     fn name(&self) -> &str {
-        "MVTWriter"
+        "MVT Writer"
     }
 
     #[cfg(not(feature = "new-geometry"))]

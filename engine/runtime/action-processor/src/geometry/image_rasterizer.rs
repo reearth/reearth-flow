@@ -69,7 +69,7 @@ pub(super) struct ImageRasterizerFactory;
 
 impl ProcessorFactory for ImageRasterizerFactory {
     fn name(&self) -> &str {
-        "ImageRasterizer"
+        "Image Rasterizer"
     }
 
     fn description(&self) -> &str {
@@ -462,7 +462,7 @@ impl Processor for ImageRasterizer {
     }
 
     fn name(&self) -> &str {
-        "ImageRasterizer"
+        "Image Rasterizer"
     }
 }
 

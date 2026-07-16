@@ -11,11 +11,11 @@ pub struct NoopSinkFactory;
 
 impl SinkFactory for NoopSinkFactory {
     fn name(&self) -> &str {
-        "NoopSink"
+        "Noop Sink"
     }
 
     fn description(&self) -> &str {
-        "No-Operation Sink (Discard Features)"
+        "Discards all incoming features."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -50,7 +50,7 @@ pub struct NoopSink;
 
 impl Sink for NoopSink {
     fn name(&self) -> &str {
-        "NoopSink"
+        "Noop Sink"
     }
 
     fn process(&mut self, _ctx: ExecutorContext) -> Result<(), BoxedError> {

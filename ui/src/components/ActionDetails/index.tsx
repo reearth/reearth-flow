@@ -44,15 +44,17 @@ const ActionDetails = ({ action, onAdd }: Props) => {
         </div>
         {onAdd && (
           <Tooltip>
-            <TooltipTrigger asChild>
-              <IconButton
-                variant="outline"
-                icon={
-                  <PlusIcon size={20} weight="thin" className="text-white " />
-                }
-                onClick={() => onAdd?.(action.name)}
-              />
-            </TooltipTrigger>
+            <TooltipTrigger
+              render={
+                <IconButton
+                  variant="outline"
+                  icon={
+                    <PlusIcon size={20} weight="thin" className="text-white " />
+                  }
+                  onClick={() => onAdd?.(action.name)}
+                />
+              }
+            />
             <TooltipContent>{t("Add to canvas")}</TooltipContent>
           </Tooltip>
         )}

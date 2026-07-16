@@ -1,4 +1,4 @@
-import { CopyIcon } from "@radix-ui/react-icons";
+import { CopyIcon } from "@phosphor-icons/react";
 import {
   FormContextType,
   IconButtonProps,

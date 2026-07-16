@@ -33,7 +33,7 @@ pub struct GeometryPartExtractorFactory;
 
 impl ProcessorFactory for GeometryPartExtractorFactory {
     fn name(&self) -> &str {
-        "GeometryPartExtractor"
+        "Geometry Part Extractor"
     }
 
     fn description(&self) -> &str {
@@ -166,7 +166,7 @@ impl Processor for GeometryPartExtractor {
     }
 
     fn name(&self) -> &str {
-        "GeometryPartExtractor"
+        "Geometry Part Extractor"
     }
 }
 

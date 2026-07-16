@@ -4,33 +4,30 @@ nodes:
   - id: 2f8a4b1c-5e9d-4c2a-8b6e-3f7a9b2c5d8e
     name: InputRouter
     type: action
-    action: InputRouter
+    action: Input Router
     with:
       routingPort: features
 
   - id: 4c7a2b5e-8f1d-4a6c-9e2b-7a4c8e1b3f6d
     name: Noop
     type: action
-    action: NoopProcessor
-
+    action: Noop Processor
   - id: 6e3b8a1c-f4d7-4b9e-a2c5-8f1b4e6a9c3d
     name: SurfaceRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: features
 
   - id: 1a9c4e7b-2f5d-4e8a-b3c6-9f2a5e8b1c4d
     name: GeometryPartExtractor
     type: action
-    action: GeometryPartExtractor
-
+    action: Geometry Part Extractor
   ## Incorrect orientation
   - id: 3d6f9a2c-5b8e-4a1d-c7f4-2e5a8c3b6f9d
     name: TwoDimensionForcer
     type: action
-    action: TwoDimensionForcer
-
+    action: Two Dimension Forcer
   - id: 5c2a7f4b-8e1d-4f9c-a6e3-4b7f2a5c8e1d
     name: OrientationExtractor
     type: action
@@ -41,7 +38,7 @@ nodes:
   - id: 7f4a1c6e-b9d2-4c5a-e8f1-6a3c7f4b9e2d
     name: FeatureFilterByOrientation
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -52,14 +49,14 @@ nodes:
   - id: 9e2b5f8a-1c4d-4a7e-f2b5-8a1e4b7c2f5d
     name: GeometryReplacer
     type: action
-    action: GeometryReplacer
+    action: Geometry Replacer
     with:
       sourceAttribute: dumpGeometry
 
   - id: 2a5c8f1b-4e7d-4b2c-a9f6-1c4e7a2b5f8d
     name: InCorrectOrientationRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: inCorrectOrientation
 
@@ -67,7 +64,7 @@ nodes:
   - id: 4f8b3e6a-7d1c-4e5a-c2f9-3a6f9b4e7c1d
     name: GeometryValidator
     type: action
-    action: GeometryValidator
+    action: Geometry Validator
     with:
       validationTypes:
         - corruptGeometry: 0.01
@@ -111,7 +108,7 @@ nodes:
   - id: 8c5f2a9d-1b4e-4f7c-a3d8-5e2c8f1b4a7d
     name: FeatureCounter
     type: action
-    action: FeatureCounter
+    action: Feature Counter
     with:
       countStart: 0
       outputAttribute: surfaceId
@@ -126,7 +123,7 @@ nodes:
   - id: 3b9f6a2d-5c8e-4d1a-f7c4-2e5b8a3f6d9c
     name: FeatureFilterByHole
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -141,7 +138,7 @@ nodes:
   - id: 5d2c7f4a-8b1e-4c6d-a9f2-4a7d2c5f8b1e
     name: GeometryValidatorSelfIntersection
     type: action
-    action: GeometryValidator
+    action: Geometry Validator
     with:
       validationTypes:
         # Since the geometry is rotated Rotator3D, the inspection might fail when a pair of vertices are EXACTLY 0.01m apart,
@@ -152,7 +149,7 @@ nodes:
   - id: 6b2e9a4f-1c5d-4b8e-a3f7-2e5b8c1d4a7f
     name: AttributeManagerSelfIntersection
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: issue
@@ -194,7 +191,7 @@ nodes:
   - id: 6f3b1a8e-9c4d-4a7f-e2c9-3b6f1a8e4c7d
     name: ElevationExtractorHole
     type: action
-    action: ElevationExtractor
+    action: Elevation Extractor
     with:
       outputAttribute: elevation
 
@@ -216,7 +213,7 @@ nodes:
   - id: 3f5a8c1d-7e4b-4c9f-a2e7-6f3a8c1d4e7b
     name: FeatureCounterHole
     type: action
-    action: FeatureCounter
+    action: Feature Counter
     with:
       countStart: 1
       groupBy:
@@ -226,7 +223,7 @@ nodes:
   - id: 5b8d1f4a-9c6e-4f2b-c8d5-1f4b8d5a9c2e
     name: FeatureMergerIntersectionbetweenInteriorAndExterior
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttribute:
         - surfaceId
@@ -269,7 +266,7 @@ nodes:
   - id: 4e1b7c5a-6f9d-4c2e-b8a5-1c4e7b5a6f9d
     name: FeatureFilterByAreaOnAreaOverlap
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -280,7 +277,7 @@ nodes:
   - id: 5a3b7e9c-2f4d-4a6e-b8c1-3e7a5b9c2f4d
     name: AttributeManagerIntersectionInterior
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: issue
@@ -300,7 +297,7 @@ nodes:
   - id: 8f2a5c7d-3e6b-4a9f-c1d4-2a8f5c7d3e6b
     name: FeatureMergerIncorrectInterior
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttribute:
         - surfaceId
@@ -311,7 +308,7 @@ nodes:
   - id: 1a4d7c2f-9e5b-4d8a-f6c3-4d1a7c2f9e5b
     name: FeatureFilterByIncorrectInteriorOrientation
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -322,7 +319,7 @@ nodes:
   - id: 4b8e2a7d-3f6c-4a1e-b9d5-7a4b8e2d3f6c
     name: AttributeManagerIncorrectInteriorOrientation
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
       - attribute: issue
@@ -334,7 +331,7 @@ nodes:
   - id: 3c6f9a1e-8d4b-4f3c-a7e2-6f3c9a1e8d4b
     name: InvalidSurfaceRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: invalidSurface
 

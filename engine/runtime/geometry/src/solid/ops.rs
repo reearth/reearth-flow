@@ -44,7 +44,7 @@ impl Shell {
     /// shell is cloned through unchanged.
     fn triangulated(&mut self, cache: &mut Cache) -> Shell {
         match self {
-            Shell::PolygonMesh(d) => Shell::TriangularMesh(d.triangulate(cache)),
+            Shell::PolygonMesh(d) => Shell::TriangularMesh(d.triangulate(cache).mesh),
             Shell::TriangularMesh(d) => Shell::TriangularMesh(d.clone()),
         }
     }

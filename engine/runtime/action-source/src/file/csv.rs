@@ -21,7 +21,7 @@ pub(crate) struct CsvReaderFactory;
 
 impl SourceFactory for CsvReaderFactory {
     fn name(&self) -> &str {
-        "CsvReader"
+        "CSV Reader"
     }
 
     fn description(&self) -> &str {
@@ -147,7 +147,7 @@ impl Source for CsvReader {
     async fn initialize(&self, _ctx: NodeContext) {}
 
     fn name(&self) -> &str {
-        "CsvReader"
+        "CSV Reader"
     }
 
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {
