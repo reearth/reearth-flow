@@ -26,7 +26,7 @@ use reearth_flow_worker::{
     logger::{enable_file_logging, set_pubsub_context, USER_FACING_LOG_HANDLER},
     pubsub::{PubSubBackend, Publisher},
     types::{
-        job_complete_event::{JobCompleteEvent, JobResult, JOB_COMPLETE_TOP_K},
+        job_complete_event::{JobCompleteEvent, JobResult},
         metadata::Metadata,
     },
 };
@@ -291,11 +291,15 @@ impl RunWorkerCommand {
         };
         self.cleanup(&meta, &storage_resolver).await?;
         let complete_event = match &run_summary {
+            // `with_summary` applies the JOB_COMPLETE_TOP_K wire bound
+            // internally now (2a-policy Task 7 hardening) -- pass the
+            // uncapped summary; capping it again here would double-cap
+            // an already-capped overflow marker (see with_summary's doc).
             Some(summary) => JobCompleteEvent::with_summary(
                 workflow_id,
                 meta.job_id,
                 job_result.clone(),
-                &summary.capped(JOB_COMPLETE_TOP_K),
+                summary,
             ),
             // No summary means the runner returned `Err`: publish the
             // pre-Task-10 shape (no diagnostics fields) exactly as before.

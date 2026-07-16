@@ -76,32 +76,45 @@ impl JobCompleteEvent {
         }
     }
 
-    /// Builds the event with structured diagnostics populated from `summary`
-    /// (the caller is expected to have already bounded it, e.g. via
-    /// `summary.capped(JOB_COMPLETE_TOP_K)`). Use `new` instead when there is
-    /// no summary to report.
+    /// Builds the event with structured diagnostics populated from `summary`,
+    /// applying the `JOB_COMPLETE_TOP_K` wire bound (spec 4.7) internally via
+    /// `summary.capped(JOB_COMPLETE_TOP_K)` before rendering. Use `new`
+    /// instead when there is no summary to report.
+    ///
+    /// 2a-core review rec 4 hardening: capping used to be the caller's
+    /// responsibility (`with_summary(..., &summary.capped(JOB_COMPLETE_TOP_K))`
+    /// at the single production call site in `command.rs`) — an invariant
+    /// that held only because nothing else called this function. Capping
+    /// internally instead removes that single-call-site drift risk: every
+    /// caller, present or future, gets the wire bound for free and cannot
+    /// forget it. Callers must now pass the *uncapped* `summary` (see
+    /// `command.rs`) — capping twice would be wrong, not just redundant: a
+    /// second `cap_diagnostics` pass over an already-capped (`k`-real +
+    /// 1-overflow-marker) list would fold the prior overflow marker's
+    /// `count` into a new one, understating the true residual.
     pub fn with_summary(
         workflow_id: Uuid,
         job_id: Uuid,
         result: JobResult,
         summary: &RunSummary,
     ) -> Self {
+        let capped = summary.capped(JOB_COMPLETE_TOP_K);
         Self {
             failed_nodes: Some(
-                summary
+                capped
                     .failed_nodes
                     .iter()
                     .map(WireDiagnostic::from)
                     .collect(),
             ),
             aggregated_diagnostics: Some(
-                summary
+                capped
                     .aggregated_diagnostics
                     .iter()
                     .map(WireDiagnostic::from)
                     .collect(),
             ),
-            dropped_event_count: Some(summary.dropped_event_count),
+            dropped_event_count: Some(capped.dropped_event_count),
             ..Self::new(workflow_id, job_id, result)
         }
     }
@@ -304,6 +317,52 @@ mod tests {
         assert!(obj.contains_key("failedNodes"));
         assert!(obj.contains_key("aggregatedDiagnostics"));
         assert!(obj.contains_key("droppedEventCount"));
+    }
+
+    /// 2a-core review rec 4 hardening: `with_summary` now caps internally,
+    /// so a caller that passes an *uncapped* oversized `RunSummary` (unlike
+    /// the single production call site, which used to have to remember
+    /// `summary.capped(JOB_COMPLETE_TOP_K)` itself) still gets a bounded
+    /// wire payload. `JOB_COMPLETE_TOP_K + 1` distinct failed nodes go in;
+    /// exactly `JOB_COMPLETE_TOP_K` real entries plus one
+    /// `internal.diagnostics_overflow` marker come out.
+    #[test]
+    fn with_summary_caps_an_oversized_run_summary_internally() {
+        let failed_nodes: Vec<Diagnostic> = (0..JOB_COMPLETE_TOP_K + 1)
+            .map(|i| {
+                Diagnostic::from_draft(
+                    DiagnosticDraft::new(ErrorCode::InternalInvariantViolation),
+                    Some(format!("node-{i}")),
+                    Some("Some Action".to_string()),
+                    None,
+                )
+            })
+            .collect();
+        let oversized = RunSummary {
+            failed_nodes,
+            aggregated_diagnostics: vec![],
+            dropped_event_count: 0,
+        };
+
+        let event = JobCompleteEvent::with_summary(
+            fixed_uuid(0x11),
+            fixed_uuid(0x22),
+            JobResult::Failed,
+            &oversized,
+        );
+
+        let wire_failed_nodes = event
+            .failed_nodes
+            .expect("with_summary always populates failed_nodes");
+        assert_eq!(wire_failed_nodes.len(), JOB_COMPLETE_TOP_K + 1);
+        let overflow_count = wire_failed_nodes
+            .iter()
+            .filter(|d| d.code == "internal.diagnostics_overflow")
+            .count();
+        assert_eq!(
+            overflow_count, 1,
+            "exactly one overflow marker must be present, got: {wire_failed_nodes:?}"
+        );
     }
 
     #[test]

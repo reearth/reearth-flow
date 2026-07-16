@@ -119,3 +119,7 @@ path = "logging_test/10_warn_drop_aggregation.rs"
 [[test]]
 name = "test-run-summary-threading"
 path = "logging_test/11_run_summary_threading.rs"
+
+[[test]]
+name = "test-logging-fatal-override"
+path = "logging_test/12_fatal_override.rs"

@@ -1047,3 +1047,132 @@ fn branch_completion_terminate_default_still_errors_for_same_workflow() {
         "expected a non-empty rendered error, got: {rendered}"
     );
 }
+
+// ---------------------------------------------------------------------------
+// Phase 2a-policy Task 7: fatal-override end-to-end, runner-level companions
+// to the `test-logging-fatal-override` golden (`logging/12_fatal_override`).
+// ---------------------------------------------------------------------------
+
+/// scenario-12's writer node id (`errorPolicy` promotes
+/// `cesium3dtiles.empty_geometry` to `fatal` on this node), read straight out
+/// of `logging/12_fatal_override/workflow.yml`. No subgraphs in that
+/// fixture, so composed id == raw id.
+const SCENARIO_12_WRITER_NODE_ID: &str = "cbd5f624-b7cd-4a11-b6dd-181063c314d4";
+
+/// The golden `test-logging-fatal-override` scenario proves the default
+/// `onFatal: terminate` shape (the run fails with `Err`, no `RunSummary` is
+/// ever produced). This is its `onFatal: continue` counterpart -- same
+/// fixture, only the policy's `on_fatal` field flipped -- proving the
+/// swallowed/superseded-fatal drain-end backstop (spec §7) surfaces the
+/// writer as a `failed_nodes` entry when the run is allowed to keep going
+/// instead of aborting.
+///
+/// **Trace (see the report for the full derivation):** all 3 of the writer's
+/// `report()` calls resolve `Fatal` via the override; the *first* one's `Err`
+/// propagates through `process_default`'s `?` as a real thread-level error
+/// (`ExecutionError::Sink`, wrapping the *stringified*
+/// `SinkError::Cesium3DTilesWriter(diag.to_string())` -- not the structured
+/// `Diagnostic` itself). At the sink's drain end,
+/// `reconcile_sink_terminate_result` gives that real returned error
+/// precedence over the fatal slot (`first_error` > fatal slot), so the node
+/// thread's `Result` carries the *stringified* error, not a boxed
+/// `Diagnostic`. `fold_outcomes`' `diagnostic_from_execution_error` can only
+/// recover the original structured `Diagnostic` by downcasting the boxed
+/// error to `Diagnostic` -- which only succeeds for the *raw fatal-slot-wins*
+/// case (`reconcile_sink_terminate_result`'s third arm, `Err(ExecutionError::
+/// Sink(Box::new(diag)))`, reached only when the action swallows `report()`'s
+/// `Err` entirely and nothing else fails). Since this scenario's `report()`
+/// Err is genuinely propagated (not swallowed), the downcast fails and
+/// `fold_outcomes` synthesizes a `failed_nodes` entry under the catch-all
+/// `internal.unclassified` code instead -- carrying the *original*
+/// diagnostic's rendering (including the `cesium3dtiles.empty_geometry` code
+/// string and its message) inside its own `message` field, and the writer's
+/// composed node id via `meta.composed_id`. This is still the drain-end
+/// backstop doing its job: a swallowed/superseded fatal is never silently
+/// invisible, it just surfaces as `internal.unclassified` rather than
+/// impersonating the original code when the original diagnostic itself
+/// wasn't what won the node's final `Result`.
+#[test]
+fn fatal_override_under_continue_policy_surfaces_the_writer_in_failed_nodes() {
+    use reearth_flow_diagnostics::{Disposition, ErrorCode};
+    use reearth_flow_types::OnFatal;
+
+    let mut p = prepare_run("12_fatal_override");
+    p.workflow
+        .error_policy
+        .as_mut()
+        .expect("fixture bakes in an errorPolicy fatal override")
+        .on_fatal = OnFatal::Continue;
+
+    let summary = Runner::run_with_event_handler(
+        p.job_id,
+        p.workflow,
+        BUILTIN_ACTION_FACTORIES.clone(),
+        p.logger_factory,
+        p.storage_resolver,
+        p.ingress_state,
+        p.feature_state,
+        None,
+        vec![],
+        p.sandbox_root,
+    )
+    .expect("onFatal: continue must turn the fatal-overridden writer's Err into Ok(summary)");
+
+    assert_eq!(summary.failed_nodes.len(), 1);
+    let failed = &summary.failed_nodes[0];
+    assert_eq!(failed.node_id.as_deref(), Some(SCENARIO_12_WRITER_NODE_ID));
+    assert_eq!(failed.effective_disposition, Some(Disposition::Fatal));
+    // The node's real thread-level Result carried the stringified
+    // SinkError, not a boxed Diagnostic, so fold_outcomes' downcast falls
+    // through to the catch-all code -- see the trace above.
+    assert_eq!(failed.code, ErrorCode::InternalUnclassified);
+    assert!(
+        failed.message.contains("cesium3dtiles.empty_geometry"),
+        "the original diagnostic's code must still be visible in the synthesized \
+         entry's message, got: {}",
+        failed.message
+    );
+}
+
+/// `treatAllAsFatal` runner-level test: scenario-10's workflow (policy-free
+/// fixture, 3 features dropped for empty geometry) with `errorPolicy: {
+/// treatAllAsFatal: true, onFatal: continue }` -- no per-code override at
+/// all. `DispositionPolicy::resolve` applies `treat_all_as_fatal` last,
+/// unconditionally promoting the ladder's already-clamped result
+/// (`cesium3dtiles.empty_geometry`'s registry default, `warn_drop`) to
+/// `Fatal`. Unlike the override-based test above, every one of the 3
+/// `report()` calls independently resolves `Fatal` for the *same* reason
+/// (the blanket policy, not a per-code override), but the behavior at the
+/// sink drain end is identical: the run completes (`Ok`) under `onFatal:
+/// continue`, with the writer recorded as the sole failed node.
+#[test]
+fn treat_all_as_fatal_promotes_warn_drop_to_fatal_end_to_end() {
+    use reearth_flow_diagnostics::Disposition;
+    use reearth_flow_types::{ErrorPolicy, OnFatal};
+
+    let mut p = prepare_run("10_warn_drop_aggregation");
+    p.workflow.error_policy = Some(ErrorPolicy {
+        treat_all_as_fatal: true,
+        on_fatal: OnFatal::Continue,
+        ..Default::default()
+    });
+
+    let summary = Runner::run_with_event_handler(
+        p.job_id,
+        p.workflow,
+        BUILTIN_ACTION_FACTORIES.clone(),
+        p.logger_factory,
+        p.storage_resolver,
+        p.ingress_state,
+        p.feature_state,
+        None,
+        vec![],
+        p.sandbox_root,
+    )
+    .expect("treatAllAsFatal + onFatal: continue must still yield Ok(summary)");
+
+    assert_eq!(summary.failed_nodes.len(), 1);
+    let failed = &summary.failed_nodes[0];
+    assert_eq!(failed.node_id.as_deref(), Some(SCENARIO_10_WRITER_NODE_ID));
+    assert_eq!(failed.effective_disposition, Some(Disposition::Fatal));
+}

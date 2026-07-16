@@ -208,9 +208,16 @@ impl Cesium3DTilesWriter {
     fn process_default(&mut self, ctx: &ExecutorContext) -> crate::errors::Result<()> {
         let geometry = &ctx.feature.geometry;
         if geometry.is_empty() {
-            // Phase-1 Cesium codes are all registry `warn_drop`, so `report()`
-            // always returns `Ok` here; the `map_err` only satisfies the
-            // `crate::errors::Result` return type via `?`.
+            // These codes are registry `warn_drop` by default, but an
+            // `errorPolicy` override can promote either to `reject` or
+            // `fatal` (spec 4.2's resolve() ladder) -- so `report()` can
+            // return `Err` here for real. The `?`-propagation through
+            // `map_err` handles that: a promoted `Fatal` is recorded in the
+            // node's fatal slot by `report()` itself *before* returning
+            // `Err`, so the executor-side drain-end backstop still fails the
+            // node even if a future caller ever swallowed this `Err`
+            // (2a-core T1) -- this call site just needs to propagate it,
+            // not guarantee it.
             ctx.report(DiagnosticDraft::new(ErrorCode::Cesium3dtilesEmptyGeometry))
                 .map_err(|diag| SinkError::Cesium3DTilesWriter(diag.to_string()))?;
             return Ok(());
@@ -286,9 +293,14 @@ impl Cesium3DTilesWriter {
             // `process_schema` returns `()` (it is called from `process()`'s
             // schema-port arm, which discards its result), so the `Result`
             // from `report()` can't be `?`-propagated here. This is not a
-            // silent drop: Phase-1 Cesium codes are all registry `warn_drop`,
-            // so `report()` cannot return `Err` (`Fatal`) on this path; the
-            // `Ok` disposition is intentionally discarded.
+            // silent drop even under a fatal-promoting `errorPolicy`
+            // override: `report()` records a promoted `Fatal` in the node's
+            // fatal slot *before* returning `Err`, and the executor-side
+            // drain-end backstop (2a-core T1) fails the node from that slot
+            // regardless of what this call site does with the returned
+            // `Result` -- discarding it here (`let _ =`) only means this
+            // specific site doesn't also short-circuit `process_schema`'s
+            // own control flow, not that a promoted fatal goes unreported.
             let _ = ctx.report(
                 DiagnosticDraft::new(ErrorCode::Cesium3dtilesMissingSchemaKey).with_message(
                     format!("skipped schema feature missing '{schema_key}' attribute"),
