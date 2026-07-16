@@ -123,6 +123,7 @@ The log_subscriber uses the following environment variables
 | `FLOW_LOG_SUBSCRIBER_SUBSCRIPTION_ID` | The Pub/Sub subscription ID to use for the subscription | `flow-log-stream-topic-sub` |
 | `FLOW_LOG_SUBSCRIBER_REDIS_ADDR`      | The Redis address to connect to (in host:port format)   | `localhost:6379`            |
 | `FLOW_LOG_SUBSCRIBER_REDIS_PASSWORD`  | Redis password                                          | `""`                        |
+| `REEARTH_FLOW_SUBSCRIBER_DIAGNOSTIC_SUBSCRIPTION_ID` | The Pub/Sub subscription ID for per-node/job `DiagnosticEvent` ingestion (writes Redis `diagnostics:*` lists and the Mongo `nodeDiagnostics` collection) | `flow-worker-diagnostic-main` |
 
 
 ```

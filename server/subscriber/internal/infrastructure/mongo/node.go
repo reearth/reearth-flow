@@ -13,20 +13,22 @@ import (
 )
 
 type MongoStorage struct {
-	client      *mongox.ClientCollection
-	transaction usecasex.Transaction
-	baseURL     string
-	gcsBucket   string
+	client            *mongox.ClientCollection
+	diagnosticsClient *mongox.ClientCollection
+	transaction       usecasex.Transaction
+	baseURL           string
+	gcsBucket         string
 }
 
 func NewMongoStorage(client *mongox.Client, gcsBucket, baseURL string) *MongoStorage {
 	transaction := &usecasex.NopTransaction{}
 
 	return &MongoStorage{
-		client:      client.WithCollection("nodeExecutions"),
-		transaction: transaction,
-		baseURL:     baseURL,
-		gcsBucket:   gcsBucket,
+		client:            client.WithCollection("nodeExecutions"),
+		diagnosticsClient: client.WithCollection("nodeDiagnostics"),
+		transaction:       transaction,
+		baseURL:           baseURL,
+		gcsBucket:         gcsBucket,
 	}
 }
 

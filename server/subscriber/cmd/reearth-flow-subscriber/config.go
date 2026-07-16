@@ -19,6 +19,7 @@ type Config struct {
 	AssetBaseURL                string `envconfig:"ASSET_BASE_URL" default:"http://localhost:8080/assets"`
 	DB                          string `default:"mongodb://localhost"`
 	Dev                         bool   `pp:",omitempty"`
+	DiagnosticSubscriptionID    string `envconfig:"DIAGNOSTIC_SUBSCRIPTION_ID" default:"flow-worker-diagnostic-main"`
 	GCPProject                  string `envconfig:"GOOGLE_CLOUD_PROJECT" pp:",omitempty"`
 	GCSBucket                   string `envconfig:"GCS_BUCKET" pp:",omitempty"`
 	JobCompleteSubscriptionID   string `envconfig:"JOB_COMPLETE_SUBSCRIPTION_ID" default:"flow-job-complete-main"`
