@@ -10,6 +10,17 @@
 //! channel from the material map's selector. So `channel` carries no global
 //! meaning: it is a material-local index into the UV sets of whatever theme/side
 //! the face resolves to.
+//!
+//! # Coordinate convention
+//!
+//! Flow's canonical UV origin is **top-left, `v` increasing downward** — the
+//! glTF / image-storage convention, where `(0, 0)` is the first texel. Every
+//! producer and consumer inside the engine assumes it: a reader converts from
+//! its source convention at ingest (the CityGML reader flips its bottom-left
+//! `v`), and the texture atlas packer follows it under `new-geometry`. A sink
+//! whose format matches (glTF, 3D Tiles) writes coordinates through unchanged;
+//! one that differs converts at its own boundary rather than mutating this
+//! shared convention.
 
 use serde::{Deserialize, Serialize};
 

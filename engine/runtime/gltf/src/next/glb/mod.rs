@@ -18,14 +18,59 @@ use std::collections::{BTreeMap, HashSet};
 use gltf::json;
 use gltf::json::validation::{Checked, USize64};
 
-pub use primitive::{normal, DedupAttribute, Granularity};
+pub use primitive::{normal, texcoord, DedupAttribute, Granularity};
 
-/// A material's PBR metallic-roughness factors; each primitive is untextured
-/// and single-material.
+/// A material's PBR metallic-roughness description: the base factors, plus an
+/// optional base-color texture. A textured material's primitive must also carry
+/// a `TEXCOORD_0` attribute (see [`texcoord`]) for the texture to sample.
 pub struct MaterialDesc {
     pub base_color_factor: [f32; 4],
     pub metallic_factor: f32,
     pub roughness_factor: f32,
+    /// `baseColorTexture`; `None` for a colour-only material.
+    pub base_color_texture: Option<TextureRef>,
+}
+
+/// Handle to a texture pushed via [`Builder::push_image_texture`], for
+/// referencing from a [`MaterialDesc`].
+#[derive(Clone, Copy)]
+pub struct TextureRef(json::Index<json::Texture>);
+
+impl TextureRef {
+    pub(super) fn index(self) -> json::Index<json::Texture> {
+        self.0
+    }
+}
+
+/// How a texture's coordinates are wrapped and filtered — the glTF-agnostic
+/// subset this writer needs. Maps to a glTF `sampler`.
+#[derive(Clone, Copy)]
+pub struct SamplerDesc {
+    pub wrap_s: Wrap,
+    pub wrap_t: Wrap,
+    pub mag: MagFilter,
+    pub min: MinFilter,
+}
+
+#[derive(Clone, Copy)]
+pub enum Wrap {
+    Repeat,
+    MirroredRepeat,
+    ClampToEdge,
+}
+
+#[derive(Clone, Copy)]
+pub enum MagFilter {
+    Nearest,
+    Linear,
+}
+
+#[derive(Clone, Copy)]
+pub enum MinFilter {
+    Nearest,
+    Linear,
+    NearestMipmap,
+    LinearMipmap,
 }
 
 /// Opaque handle to a primitive pushed via [`Builder::push_primitive`], for
@@ -104,6 +149,52 @@ impl Builder {
             extensions: Default::default(),
             extras: Default::default(),
         })
+    }
+
+    /// Embed an image as a bufferView-backed glTF texture (self-contained: no
+    /// external URI), with its sampler, and return a handle for a
+    /// [`MaterialDesc::base_color_texture`]. `mime_type` is the image's MIME
+    /// (e.g. `"image/png"`).
+    pub fn push_image_texture(
+        &mut self,
+        image_bytes: &[u8],
+        mime_type: &str,
+        sampler: SamplerDesc,
+    ) -> TextureRef {
+        let buffer_view = self.push_buffer_view_targeted(image_bytes, None);
+        let image = self.root.push(json::Image {
+            name: None,
+            buffer_view: Some(buffer_view),
+            mime_type: Some(json::image::MimeType(mime_type.to_string())),
+            uri: None,
+            extensions: Default::default(),
+            extras: Default::default(),
+        });
+        let sampler_index = self.root.push(json::texture::Sampler {
+            name: None,
+            mag_filter: Some(Checked::Valid(match sampler.mag {
+                MagFilter::Nearest => json::texture::MagFilter::Nearest,
+                MagFilter::Linear => json::texture::MagFilter::Linear,
+            })),
+            min_filter: Some(Checked::Valid(match sampler.min {
+                MinFilter::Nearest => json::texture::MinFilter::Nearest,
+                MinFilter::Linear => json::texture::MinFilter::Linear,
+                MinFilter::NearestMipmap => json::texture::MinFilter::NearestMipmapNearest,
+                MinFilter::LinearMipmap => json::texture::MinFilter::LinearMipmapLinear,
+            })),
+            wrap_s: Checked::Valid(wrap(sampler.wrap_s)),
+            wrap_t: Checked::Valid(wrap(sampler.wrap_t)),
+            extensions: None,
+            extras: Default::default(),
+        });
+        let texture = self.root.push(json::Texture {
+            name: None,
+            sampler: Some(sampler_index),
+            source: image,
+            extensions: Default::default(),
+            extras: Default::default(),
+        });
+        TextureRef(texture)
     }
 
     /// Append a `VEC3` f32 accessor (positions or normals); `with_bounds`
@@ -329,6 +420,14 @@ impl Builder {
             bin: Some(Cow::Owned(self.bin)),
         };
         glb.to_vec().expect("GLB binary output is always writable")
+    }
+}
+
+fn wrap(w: Wrap) -> json::texture::WrappingMode {
+    match w {
+        Wrap::Repeat => json::texture::WrappingMode::Repeat,
+        Wrap::MirroredRepeat => json::texture::WrappingMode::MirroredRepeat,
+        Wrap::ClampToEdge => json::texture::WrappingMode::ClampToEdge,
     }
 }
 
