@@ -41,6 +41,12 @@
 //!   degenerate slivers are dropped, collinear vertices are removed, and
 //!   chained overlays can drift. Segment intersection points are f64-rounded
 //!   robust-kernel constructions (no grid snap).
+//! - An exact pre-pass guards the backend: when each operand's members have
+//!   pairwise disjoint bounding boxes, the operands are first related with
+//!   the exact [`relate`](crate::predicates::relate()) kernel, and a
+//!   relationship that alone determines the result (disjoint, boundary-only
+//!   touch, containment, equality) bypasses the backend instead of trusting
+//!   its snapped output near zero-area configurations.
 //! - Output is pure 2D: any per-vertex elevation on the inputs is ignored and
 //!   dropped, and appearance does not propagate.
 
@@ -57,7 +63,9 @@ use i_overlay::string::clip::ClipRule;
 
 use crate::coordinate::CoordinateFrame;
 use crate::line_string::LineString2D;
+use crate::ops::Aabb;
 use crate::polygon::Polygon2D;
+use crate::predicates::relate::relate_leaves;
 use crate::predicates::view::{flatten_2d, require_common_frame_leaves, Leaf2D};
 use crate::predicates::{flatten_2d_pair, PredicateError, Result};
 use crate::{Euclidean2DGeometry, Geometry};
@@ -181,8 +189,124 @@ fn overlay_leaves(a: &[Leaf2D<'_>], b: &[Leaf2D<'_>], op: OverlayOp) -> Result<V
     let Some(frame) = common_frame(a, b) else {
         return Ok(Vec::new());
     };
-    let result = subject.overlay(&clip, op.into(), FillRule::NonZero);
-    Ok(shapes::shapes_to_polygons(result, frame))
+    let dissolve = |shapes: &Vec<shapes::Shape>| {
+        let empty: Vec<shapes::Shape> = Vec::new();
+        shapes::shapes_to_polygons(
+            shapes.overlay(&empty, OverlayRule::Union, FillRule::NonZero),
+            frame,
+        )
+    };
+    match exact_plan(a, b, op) {
+        Plan::Empty => Ok(Vec::new()),
+        Plan::DissolveA => Ok(dissolve(&subject)),
+        Plan::DissolveB => Ok(dissolve(&clip)),
+        Plan::DissolveBoth => {
+            let mut out = dissolve(&subject);
+            out.extend(dissolve(&clip));
+            Ok(out)
+        }
+        Plan::Run(op) => {
+            let result = subject.overlay(&clip, op.into(), FillRule::NonZero);
+            Ok(shapes::shapes_to_polygons(result, frame))
+        }
+    }
+}
+
+// --- exactness gate --------------------------------------------------------
+
+/// How an overlay call is executed once the operands' exact relationship is
+/// known.
+enum Plan {
+    /// The result is empty.
+    Empty,
+    /// The result is `a` alone, dissolved.
+    DissolveA,
+    /// The result is `b` alone, dissolved.
+    DissolveB,
+    /// The result is `a` and `b` dissolved separately, side by side.
+    DissolveBoth,
+    /// The backend computes the operation.
+    Run(OverlayOp),
+}
+
+/// Decide how to execute `a <op> b` from the operands' exact relationship.
+///
+/// When the relationship can be established with the exact
+/// [`relate`](crate::predicates::relate()) kernel and it alone determines the
+/// result (disjoint, boundary-only touch, containment, equality), the backend
+/// and its coordinate snapping are bypassed, so zero-area configurations
+/// cannot produce snap slivers or gaps. Every other pair, and every pair whose
+/// relationship cannot be established exactly, runs the backend unchanged.
+fn exact_plan(a: &[Leaf2D<'_>], b: &[Leaf2D<'_>], op: OverlayOp) -> Plan {
+    if a.is_empty() || b.is_empty() {
+        return Plan::Run(op);
+    }
+    let a_boxes: Vec<Aabb> = a.iter().filter_map(Leaf2D::bbox).collect();
+    let b_boxes: Vec<Aabb> = b.iter().filter_map(Leaf2D::bbox).collect();
+    let (Some(a_union), Some(b_union)) = (
+        a_boxes.iter().copied().reduce(Aabb::union),
+        b_boxes.iter().copied().reduce(Aabb::union),
+    ) else {
+        return Plan::Run(op);
+    };
+    // Operand-level box reject: disjoint without touching the kernel.
+    if !a_union.intersects(&b_union) {
+        return disjoint_plan(op);
+    }
+    // relate is exact only on operands whose own members cannot interact;
+    // pairwise disjoint leaf boxes guarantee that.
+    if !pairwise_disjoint(&a_boxes) || !pairwise_disjoint(&b_boxes) {
+        return Plan::Run(op);
+    }
+    let m = relate_leaves(a.to_vec(), b.to_vec());
+    if m.is_disjoint() {
+        disjoint_plan(op)
+    } else if m.is_touches() {
+        // Boundary-only contact: the intersection has zero area, so union and
+        // xor coincide and the difference leaves `a` whole.
+        match op {
+            OverlayOp::Intersection => Plan::Empty,
+            OverlayOp::Difference => Plan::DissolveA,
+            OverlayOp::Union | OverlayOp::Xor => Plan::Run(OverlayOp::Union),
+        }
+    } else if m.is_equal_topo() {
+        match op {
+            OverlayOp::Union | OverlayOp::Intersection => Plan::DissolveA,
+            OverlayOp::Difference | OverlayOp::Xor => Plan::Empty,
+        }
+    } else if m.is_within() {
+        match op {
+            OverlayOp::Intersection => Plan::DissolveA,
+            OverlayOp::Union => Plan::DissolveB,
+            OverlayOp::Difference => Plan::Empty,
+            OverlayOp::Xor => Plan::Run(OverlayOp::Xor),
+        }
+    } else if m.is_contains() {
+        match op {
+            OverlayOp::Intersection => Plan::DissolveB,
+            OverlayOp::Union => Plan::DissolveA,
+            OverlayOp::Difference | OverlayOp::Xor => Plan::Run(op),
+        }
+    } else {
+        Plan::Run(op)
+    }
+}
+
+/// The plan for two disjoint operands.
+fn disjoint_plan(op: OverlayOp) -> Plan {
+    match op {
+        OverlayOp::Intersection => Plan::Empty,
+        OverlayOp::Difference => Plan::DissolveA,
+        OverlayOp::Union | OverlayOp::Xor => Plan::DissolveBoth,
+    }
+}
+
+/// Whether the boxes are pairwise non-overlapping.
+fn pairwise_disjoint(boxes: &[Aabb]) -> bool {
+    boxes
+        .iter()
+        .enumerate()
+        .all(|(i, x)| boxes[i + 1..].iter().all(|y| !x.intersects(y)))
 }
 
 fn clip_leaves(

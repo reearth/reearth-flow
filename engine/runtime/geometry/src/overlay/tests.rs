@@ -597,3 +597,82 @@ fn overlay_output_covers_exactly_on_the_grid() {
         }
     }
 }
+
+// --- exactness gate ---------------------------------------------------------
+
+#[test]
+fn gate_touching_operands_have_exact_zero_area_results() {
+    // Squares sharing the edge x = 2: boundary-only contact.
+    let a = polygon(&rect(0.0, 0.0, 2.0, 2.0), &[]);
+    let b = polygon(&rect(2.0, 0.0, 4.0, 2.0), &[]);
+
+    // Zero-area intersection is exactly empty, never a sliver.
+    assert!(intersection(&a, &b).unwrap().is_empty());
+    // The difference leaves `a` whole.
+    let diff = difference(&a, &b).unwrap();
+    assert_eq!(diff.len(), 1);
+    assert_eq!(area(&diff), 4.0);
+    // Xor coincides with union: one merged polygon, no sliver carved out.
+    let xor = xor(&a, &b).unwrap();
+    assert_eq!(xor.len(), 1);
+    assert_eq!(area(&xor), 8.0);
+    let union = union(&a, &b).unwrap();
+    assert_eq!(union.len(), 1);
+    assert_eq!(area(&union), 8.0);
+}
+
+#[test]
+fn gate_containment_bypasses_the_backend() {
+    let outer = polygon(&rect(0.0, 0.0, 8.0, 8.0), &[]);
+    let inner = polygon(&rect(2.0, 2.0, 5.0, 5.0), &[]);
+
+    // a contains b: the intersection is b, the union is a.
+    let i = intersection(&outer, &inner).unwrap();
+    assert_eq!(i.len(), 1);
+    assert_eq!(area(&i), 9.0);
+    let u = union(&outer, &inner).unwrap();
+    assert_eq!(u.len(), 1);
+    assert_eq!(area(&u), 64.0);
+    // a within b: the difference is exactly empty.
+    assert!(difference(&inner, &outer).unwrap().is_empty());
+    // Genuine construction still runs: carving the hole.
+    assert_eq!(area(&difference(&outer, &inner).unwrap()), 55.0);
+    assert_eq!(area(&xor(&inner, &outer).unwrap()), 55.0);
+}
+
+#[test]
+fn gate_equal_operands() {
+    let a = polygon(&rect(0.0, 0.0, 4.0, 4.0), &[]);
+    let b = polygon(&rect(0.0, 0.0, 4.0, 4.0), &[]);
+    assert_eq!(area(&union(&a, &b).unwrap()), 16.0);
+    assert_eq!(area(&intersection(&a, &b).unwrap()), 16.0);
+    assert!(difference(&a, &b).unwrap().is_empty());
+    assert!(xor(&a, &b).unwrap().is_empty());
+}
+
+#[test]
+fn gate_disjoint_inside_a_hole() {
+    // Overlapping bounding boxes, disjoint geometries: decided by relate.
+    let donut = polygon(&rect(0.0, 0.0, 8.0, 8.0), &[rect_cw(2.0, 2.0, 6.0, 6.0)]);
+    let inner = polygon(&rect(3.0, 3.0, 5.0, 5.0), &[]);
+
+    assert!(intersection(&donut, &inner).unwrap().is_empty());
+    let u = union(&donut, &inner).unwrap();
+    assert_eq!(u.len(), 2);
+    assert_eq!(area(&u), 52.0);
+    assert_eq!(area(&difference(&donut, &inner).unwrap()), 48.0);
+}
+
+#[test]
+fn gate_keeps_nearly_touching_operands_separate() {
+    // Two triangles separated across the diagonal by a gap far below the
+    // backend's snap grid; their boxes overlap, so relate decides. The exact
+    // answer is two disjoint polygons, and the gate keeps them that way.
+    let eps = 1e-9;
+    let a = polygon(&[[0.0, 0.0], [8.0, 0.0], [0.0, 8.0], [0.0, 0.0]], &[]);
+    let b = polygon(&[[8.0, 8.0], [eps, 8.0], [8.0, eps], [8.0, 8.0]], &[]);
+
+    let u = union(&a, &b).unwrap();
+    assert_eq!(u.len(), 2);
+    assert!(intersection(&a, &b).unwrap().is_empty());
+}
