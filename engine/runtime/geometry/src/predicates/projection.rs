@@ -1,31 +1,30 @@
 //! DE-9IM relates for 3D geometry through planar projection.
 //!
-//! There is no volumetric DE-9IM (plan §7); what 3D offers beyond the exact
+//! There is no volumetric DE-9IM; what 3D offers beyond the exact
 //! [`intersects`](super::intersects()) tests are two projections into the 2D
 //! [`relate`](super::relate()) machinery:
 //!
-//! - [`relate_coplanar`] — for **mutually coplanar** 3D geometries (a shared
+//! - [`relate_coplanar`]: for **mutually coplanar** 3D geometries (a shared
 //!   wall, a floor and its furniture footprints): verifies coplanarity
 //!   exactly, projects both operands onto the shared plane, and relates
 //!   in-plane. Non-coplanar operands are a
 //!   [`NotCoplanar`](super::PredicateError::NotCoplanar) error.
-//! - [`relate_xy`] — the legacy-compatible SpatialFilter semantics: every
-//!   leaf, 2D or 3D, is taken by its `(x, y)` footprint and related in 2D.
-//!   This is the explicit XY-projection opt-in; nothing else in the
-//!   predicates crosses dimensions.
+//! - [`relate_xy`]: every leaf, 2D or 3D, is taken by its `(x, y)` footprint
+//!   and related in 2D. This is the explicit XY-projection opt-in; nothing
+//!   else in the predicates crosses dimensions.
 //!
 //! Both project by **dropping a coordinate axis**, not by rotating onto a
 //! tangent plane: an axis drop copies coordinates verbatim, so the 2D relate's
 //! robust predicates see exact inputs and the matrix is exact for the 3D
 //! configuration. (`relate_coplanar` picks an axis along which the shared
-//! plane does not collapse — one always exists — and DE-9IM is invariant
+//! plane does not collapse, which always exists, and DE-9IM is invariant
 //! under a linear bijection of the plane, so the skew of an axis drop is
 //! harmless.) The projected operands are materialized as owned 2D leaves per
 //! call.
 //!
 //! Because a projection may mirror orientation, mesh faces are re-normalized
-//! to the validated 2D winding (exterior counter-clockwise) before the relate
-//! — the mesh dissolve depends on it. Caveats carried over from `relate`:
+//! to the validated 2D winding (exterior counter-clockwise) before the relate;
+//! the mesh dissolve depends on it. Caveats carried over from `relate`:
 //! leaves whose *projections* overlap areally (e.g. the faces of a closed
 //! shell under `relate_xy`) are the documented unsupported relate input, and
 //! a face that projects to zero area degrades like any other degenerate ring.
@@ -67,8 +66,8 @@ pub fn relate_coplanar(a: &Geometry, b: &Geometry) -> Result<IntersectionMatrix>
     relate_2d(&project(&a_leaves, axis), &project(&b_leaves, axis))
 }
 
-/// The DE-9IM matrix of the `(x, y)` footprints of two geometries — the
-/// explicit XY-projection opt-in matching legacy SpatialFilter 3D semantics.
+/// The DE-9IM matrix of the `(x, y)` footprints of two geometries: the
+/// explicit XY-projection opt-in.
 ///
 /// Each operand may be 2D, 3D, or a mixed collection: 2D leaves are taken
 /// as-is (their optional elevation ignored, as everywhere), 3D leaves drop
@@ -158,8 +157,8 @@ fn require_common_frame(a: &[Leaf3D<'_>], b: &[Leaf3D<'_>]) -> Result<()> {
 // --- the shared plane ----------------------------------------------------------
 
 /// Verify all leaves' vertices lie in one plane (exactly) and return the axis
-/// to drop: one along which that plane — or line, or point — does not
-/// collapse, so the projection is injective on it.
+/// to drop: one along which that plane (or line, or point) does not collapse,
+/// so the projection is injective on it.
 fn shared_plane_axis<'a, 'b>(leaves: impl Iterator<Item = &'b Leaf3D<'a>> + Clone) -> Result<usize>
 where
     'a: 'b,

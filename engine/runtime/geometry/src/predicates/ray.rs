@@ -1,17 +1,17 @@
 //! Ray casting against 3D geometry.
 //!
 //! [`ray_cast`] intersects a [`Ray3D`] with every surface a 3D geometry
-//! carries — a `TriangularMesh` verbatim, `Polygon` / `PolygonMesh` faces and
+//! carries (a `TriangularMesh` verbatim, `Polygon` / `PolygonMesh` faces and
 //! `Solid` shells through the borrowed triangulation of
-//! [`view3d`](super::view3d) — and returns the [`RayHit`]s sorted by distance.
-//! `Point` and `LineString` leaves yield no hits (a ray almost never meets a
-//! measure-zero target; this matches the legacy `RayIntersection3D`).
+//! [`view3d`](super::view3d)) and returns the [`RayHit`]s sorted by distance.
+//! `Point` and `LineString` leaves yield no hits: a ray almost never meets a
+//! measure-zero target.
 //!
 //! Unlike the exact boolean tests in [`kernel3d`](super::kernel3d), ray
-//! casting *constructs* hit coordinates, so it keeps the legacy Möller–
-//! Trumbore formulation with an explicit `tolerance` (the legacy default is
-//! `1e-10`, see [`DEFAULT_RAY_TOLERANCE`]): near-parallel rays are rejected by
-//! the determinant test and hits are accepted from `t >= -tolerance`. A ray
+//! casting *constructs* hit coordinates, so it uses the Möller–Trumbore
+//! formulation with an explicit `tolerance` (see [`DEFAULT_RAY_TOLERANCE`]):
+//! near-parallel rays are rejected by the determinant test and hits are
+//! accepted from `t >= -tolerance`. A ray
 //! passing exactly through an edge shared by two triangles reports one hit per
 //! triangle; callers that need one crossing per surface point can collapse
 //! equal `(t, point)` pairs.
@@ -27,7 +27,7 @@ use super::kernel::{cross3, dot3, sub3};
 use super::view3d::{flatten_3d, require_common_frame_3d, Leaf3D, TriangleSet};
 use super::{PredicateError, Result};
 
-/// The tolerance the legacy ray casting defaulted to.
+/// The default `tolerance` for ray casting.
 pub const DEFAULT_RAY_TOLERANCE: f64 = 1e-10;
 
 /// A ray: an origin and a unit direction, extending infinitely in the
@@ -187,11 +187,10 @@ fn cast_into(set: &TriangleSet<'_>, ray: &Ray3D, tolerance: f64, hits: &mut Vec<
     );
 }
 
-/// Möller–Trumbore ray × triangle intersection, preserving the legacy
-/// `RayIntersection3D` semantics: rays parallel to the triangle within the
-/// (raw-determinant) `tolerance` miss, boundary hits (`u`/`v` at their bounds)
-/// count, and hits from `t >= -tolerance` are accepted so a ray starting on
-/// the surface still reports it.
+/// Möller–Trumbore ray × triangle intersection: rays parallel to the triangle
+/// within the (raw-determinant) `tolerance` miss, boundary hits (`u`/`v` at
+/// their bounds) count, and hits from `t >= -tolerance` are accepted so a ray
+/// starting on the surface still reports it.
 pub fn ray_triangle_intersection(
     ray: &Ray3D,
     triangle: [[f64; 3]; 3],
@@ -235,13 +234,8 @@ pub fn ray_triangle_intersection(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::algorithm::ray_intersection::{
-        Ray3D as LegacyRay3D, RayIntersection3D as LegacyRayIntersection3D,
-    };
     use crate::point::Point3D;
-    use crate::predicates::test3d::{box_solid, e, g3, solid_geometry, Rng};
-    use crate::types::coordinate::Coordinate3D;
-    use crate::types::triangle::Triangle3D;
+    use crate::predicates::test3d::{box_solid, e, g3, solid_geometry};
     use pretty_assertions::assert_eq;
 
     #[test]
@@ -306,65 +300,6 @@ mod tests {
         assert_eq!(
             ray_cast(&square_2d, &ray, DEFAULT_RAY_TOLERANCE),
             Err(PredicateError::CrossDimension)
-        );
-    }
-
-    #[test]
-    fn differential_against_legacy_moller_trumbore() {
-        let mut rng = Rng(20260716);
-        let mut hit_count = 0usize;
-        for case in 0..2000 {
-            let coord = |rng: &mut Rng| {
-                [
-                    rng.f64(-10.0, 10.0),
-                    rng.f64(-10.0, 10.0),
-                    rng.f64(-10.0, 10.0),
-                ]
-            };
-            let tri = [coord(&mut rng), coord(&mut rng), coord(&mut rng)];
-            let origin = coord(&mut rng);
-            // Aim near the triangle's centroid half the time so hits are
-            // frequent; otherwise a random direction.
-            let target = if case % 2 == 0 {
-                let c = [
-                    (tri[0][0] + tri[1][0] + tri[2][0]) / 3.0 + rng.f64(-2.0, 2.0),
-                    (tri[0][1] + tri[1][1] + tri[2][1]) / 3.0 + rng.f64(-2.0, 2.0),
-                    (tri[0][2] + tri[1][2] + tri[2][2]) / 3.0 + rng.f64(-2.0, 2.0),
-                ];
-                [c[0] - origin[0], c[1] - origin[1], c[2] - origin[2]]
-            } else {
-                coord(&mut rng)
-            };
-
-            let Some(ray) = Ray3D::new(origin, target) else {
-                continue;
-            };
-            let ours = ray_triangle_intersection(&ray, tri, DEFAULT_RAY_TOLERANCE);
-
-            let legacy_ray = LegacyRay3D::new(
-                Coordinate3D::new__(origin[0], origin[1], origin[2]),
-                Coordinate3D::new__(target[0], target[1], target[2]),
-            );
-            let legacy_tri = Triangle3D::new(
-                Coordinate3D::new__(tri[0][0], tri[0][1], tri[0][2]),
-                Coordinate3D::new__(tri[1][0], tri[1][1], tri[1][2]),
-                Coordinate3D::new__(tri[2][0], tri[2][1], tri[2][2]),
-            );
-            let legacy = legacy_tri.ray_intersections(&legacy_ray, DEFAULT_RAY_TOLERANCE);
-
-            match (ours, legacy.as_slice()) {
-                (None, []) => {}
-                (Some(hit), [l]) => {
-                    assert_eq!(hit.t, l.t, "case {case}: t");
-                    assert_eq!(hit.point, [l.point.x, l.point.y, l.point.z], "case {case}");
-                    hit_count += 1;
-                }
-                (ours, legacy) => panic!("case {case}: {ours:?} vs legacy {legacy:?}"),
-            }
-        }
-        assert!(
-            hit_count > 400,
-            "sweep should produce many hits: {hit_count}"
         );
     }
 }

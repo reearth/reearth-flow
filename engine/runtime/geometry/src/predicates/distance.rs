@@ -2,12 +2,12 @@
 //!
 //! The minimum Euclidean distance between the operands' closed point sets:
 //! `0` exactly when they [`intersects`](super::intersects()) (including a
-//! geometry inside a `Solid` with no shell contact — the upfront check is the
-//! exact phase-5 test), otherwise the minimum over primitive **element**
+//! geometry inside a `Solid` with no shell contact; the upfront check is the
+//! exact intersection test), otherwise the minimum over primitive **element**
 //! pairs:
 //!
 //! - 2D leaves decompose into points and segments (an areal leaf contributes
-//!   its ring edges — for disjoint operands the nearest point of a region
+//!   its ring edges: for disjoint operands the nearest point of a region
 //!   lies on its boundary, and a mesh's internal shared edges lie behind the
 //!   rim, so including them never changes the minimum);
 //! - 3D leaves decompose into points, segments, and triangles (surfaces and
@@ -18,7 +18,7 @@
 //! The sweep is rstar-pruned: each element queries the other operand's tree
 //! within the best distance found so far, so far-apart element pairs are
 //! never evaluated. Unlike the boolean predicates, distances are
-//! *constructed* values — plain f64 arithmetic, not exact — but the
+//! *constructed* values (plain f64 arithmetic, not exact), but the
 //! intersecting/disjoint decision itself is exact via the upfront check.
 //!
 //! `Ok(None)` when either operand is empty (no leaves, or only leaves that
@@ -357,7 +357,7 @@ fn pt3(p: [f64; 3], t: [[f64; 3]; 3]) -> f64 {
     let offset = dot(sub(p, t[0]), n);
     let foot = at(p, n, -offset / n_sq);
     // Foot-inside test via consistent signs of the edge cross products
-    // (plain f64: a misclassification near an edge is harmless — the edge
+    // (plain f64: a misclassification near an edge is harmless; the edge
     // distance converges to the plane distance there).
     let inside = edges
         .iter()
@@ -386,7 +386,7 @@ fn st3(s: [[f64; 3]; 2], t: [[f64; 3]; 3]) -> f64 {
 }
 
 /// Triangle × triangle: each edge against the other triangle (complete for
-/// disjoint triangles — the closest pair is edge × edge or vertex × face).
+/// disjoint triangles: the closest pair is edge × edge or vertex × face).
 fn tt3(t: [[f64; 3]; 3], u: [[f64; 3]; 3]) -> f64 {
     let mut best = f64::INFINITY;
     for e in [[t[0], t[1]], [t[1], t[2]], [t[2], t[0]]] {
