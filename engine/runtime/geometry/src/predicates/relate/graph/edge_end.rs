@@ -76,8 +76,10 @@ impl EdgeEnd {
 impl std::cmp::Eq for EdgeEndKey {}
 
 impl std::cmp::PartialEq for EdgeEndKey {
+    /// Consistent with [`Ord`]: two keys are equal exactly when they point in
+    /// the same direction, so the `Ord`/`Eq` contract holds.
     fn eq(&self, other: &EdgeEndKey) -> bool {
-        self.delta == other.delta
+        self.compare_direction(other) == std::cmp::Ordering::Equal
     }
 }
 
