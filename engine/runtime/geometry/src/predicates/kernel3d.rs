@@ -1,12 +1,10 @@
 //! Exact 3D intersection tests over the robust [`kernel`](super::kernel).
 //!
 //! Boolean primitives for the 3D predicates: point × segment / triangle,
-//! segment × segment / triangle, and triangle × triangle, all **exact** — every
+//! segment × segment / triangle, and triangle × triangle, all **exact**: every
 //! decision is a robust [`orient2d`] / [`orient3d`] sign, with no epsilon
-//! thresholds. Unlike the legacy `triangle_intersection` helpers (which treat
-//! coplanar and edge contacts as non-intersections within an epsilon), these
-//! are closed point-set tests: shared vertices, edge touches, and coplanar
-//! overlaps all intersect.
+//! thresholds. These are closed point-set tests: shared vertices, edge
+//! touches, and coplanar overlaps all intersect.
 //!
 //! Degenerate configurations reduce exactly instead of erroring: a collinear
 //! "triangle" is tested as the segment it spans, coplanar cases drop to 2D
@@ -15,7 +13,7 @@
 //! onto one line, which is detectable with `orient2d` alone).
 //!
 //! The *constructed* counterpart (ray casting with hit coordinates) lives in
-//! [`ray`](super::ray) and is deliberately not exact — see there.
+//! [`ray`](super::ray) and is deliberately not exact; see there.
 
 use super::kernel::{orient2d, orient3d, segment_intersection, Orientation};
 use super::view::point_in_triangle_2d;
@@ -24,7 +22,7 @@ use super::view::point_in_triangle_2d;
 ///
 /// The three components of the cross product `(b - a) × (p - a)` are the signed
 /// areas of the three axis projections, so the points are collinear in 3D iff
-/// every axis projection is collinear in 2D — three robust [`orient2d`] calls.
+/// every axis projection is collinear in 2D: three robust [`orient2d`] calls.
 pub fn collinear_3d(a: [f64; 3], b: [f64; 3], p: [f64; 3]) -> bool {
     (0..3).all(|axis| {
         orient2d(drop_axis(a, axis), drop_axis(b, axis), drop_axis(p, axis))
@@ -138,7 +136,7 @@ pub fn segment_intersects_triangle_3d(p: [f64; 3], q: [f64; 3], t: [[f64; 3]; 3]
         (Orientation::Collinear, _) => point_in_triangle_3d(p, t),
         (_, Orientation::Collinear) => point_in_triangle_3d(q, t),
         // The segment straddles the plane: it meets the closed triangle iff
-        // the line through `p, q` does not pass strictly outside any edge —
+        // the line through `p, q` does not pass strictly outside any edge,
         // i.e. no two of the three edge orientations strictly disagree.
         _ => {
             let u = orient3d(p, q, t[0], t[1]);

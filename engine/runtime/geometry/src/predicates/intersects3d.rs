@@ -12,7 +12,7 @@
 //! A `Solid` is volumetric: a geometry with no shell contact still intersects
 //! it when it lies inside (decided by the exact ray parity of
 //! [`position3d`](super::position3d), one representative vertex per connected
-//! component — with no boundary contact a component is entirely on one side).
+//! component; with no boundary contact a component is entirely on one side).
 //! Every other pair is a surface/curve point-set test. `Csg` and `PointCloud`
 //! leaves are [`Unsupported`](super::PredicateError::Unsupported).
 

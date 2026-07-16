@@ -3,7 +3,7 @@
 //! The 3D counterpart of [`view`](super::view): [`Leaf3D`] is the
 //! collection-free normal form the 3D operations dispatch over, and the
 //! crate-internal `TriangleSet` re-expresses every surface-bearing leaf as one flat triangle
-//! soup — a `TriangularMesh` verbatim, a `Polygon` / `PolygonMesh` / `Solid`
+//! soup: a `TriangularMesh` verbatim, a `Polygon` / `PolygonMesh` / `Solid`
 //! shell through the same per-face earcut used by
 //! [`Triangulate`](crate::ops::Triangulate), but **borrowing** the source
 //! buffers instead of consuming them.
@@ -11,8 +11,8 @@
 //! For planar faces the triangulation is an exact re-representation: earcut
 //! only connects existing vertices, so the union of the triangles is the face.
 //! Non-planar faces are triangulated through their best-fit plane (the same
-//! approximation `Triangulate` makes), and a degenerate face — one whose
-//! exterior cannot define a plane — contributes no triangles at all, exactly
+//! approximation `Triangulate` makes), and a degenerate face (one whose
+//! exterior cannot define a plane) contributes no triangles at all, exactly
 //! as in `Triangulate`.
 
 use std::borrow::Cow;

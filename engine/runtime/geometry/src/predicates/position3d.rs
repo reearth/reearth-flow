@@ -5,28 +5,26 @@
 //! [`Outside`](CoordPos::Outside), with the per-leaf semantics graded by
 //! codimension:
 //!
-//! - **Point** — the interior is the point itself (as in 2D).
-//! - **LineString** — the chain minus its endpoints is interior, open-chain
+//! - **Point**: the interior is the point itself (as in 2D).
+//! - **LineString**: the chain minus its endpoints is interior, open-chain
 //!   endpoints are boundary (as in 2D, counted mod 2 across collection
 //!   members).
-//! - **Polygon / meshes** — a surface embedded in 3D has no volumetric
+//! - **Polygon / meshes**: a surface embedded in 3D has no volumetric
 //!   interior: every point of it classifies as `OnBoundary`.
-//! - **Solid** — the genuinely volumetric case, which 2D has no analog of and
-//!   the legacy geometry never implemented: on any shell is `OnBoundary`,
+//! - **Solid**: the genuinely volumetric case. On any shell is `OnBoundary`;
 //!   enclosed by the exterior shell and outside every interior (void) shell is
 //!   `Inside`.
-//! - **Collections** — the union: the highest member classification wins.
+//! - **Collections**: the union: the highest member classification wins.
 //!
 //! Point-in-solid is decided by **exact ray-crossing parity**: a probe segment
 //! is cast from the coordinate to a point outside the shell's bounding box and
 //! the strict crossings through shell triangles are counted, every sign coming
-//! from robust [`orient3d`]. A probe that grazes the shell — hitting an edge,
+//! from robust [`orient3d`]. A probe that grazes the shell (hitting an edge,
 //! a vertex, or a triangle's plane tangentially, where naive parity counters
-//! silently double-count — is *detected exactly* (some orientation sign is
+//! silently double-count) is *detected exactly* (some orientation sign is
 //! zero) and retried with a different probe target instead of being fudged
 //! with an epsilon. Shells are assumed closed and non-self-intersecting (the
-//! [`Validate`](crate::validation_next) contract); parity over an open shell
-//! is meaningless.
+//! `Validate` contract); parity over an open shell is meaningless.
 
 use crate::ops::triangulation::Cache;
 use crate::solid::Solid;
@@ -185,7 +183,7 @@ pub(crate) fn shell_position(coord: [f64; 3], shell: &TriangleSet<'_>) -> CoordP
             CoordPos::Outside
         };
     }
-    // Every probe grazed the shell — possible only for wildly degenerate
+    // Every probe grazed the shell, possible only for wildly degenerate
     // input. Degrade to the boundary answer rather than guess a side.
     CoordPos::OnBoundary
 }
@@ -197,7 +195,7 @@ enum ProbeCrossing {
     /// One strict crossing through the triangle's interior.
     Cross,
     /// A graze (edge, vertex, or coplanar contact): the parity of this probe
-    /// direction is unreliable — retry with another.
+    /// direction is unreliable; retry with another.
     Degenerate,
 }
 

@@ -85,11 +85,6 @@ impl Rng {
         lo + (self.next_u64() % (hi - lo + 1) as u64) as i64
     }
 
-    /// A uniform float in `[lo, hi)`.
-    pub fn f64(&mut self, lo: f64, hi: f64) -> f64 {
-        lo + (hi - lo) * ((self.next_u64() >> 11) as f64 / (1u64 << 53) as f64)
-    }
-
     /// A point with integer coordinates in `[lo, hi]^3`.
     pub fn grid_point(&mut self, lo: i64, hi: i64) -> [f64; 3] {
         [
