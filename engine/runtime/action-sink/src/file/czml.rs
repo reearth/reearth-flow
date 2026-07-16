@@ -11,6 +11,7 @@ use nusamai_czml::{
 };
 use rayon::iter::{ParallelBridge, ParallelIterator};
 use reearth_flow_common::str::to_hash;
+use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
 use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
 use reearth_flow_geometry::types::polygon::Polygon3D;
 use reearth_flow_runtime::errors::BoxedError;
@@ -1285,21 +1286,28 @@ fn build_properties_bag(feature: &Feature) -> Option<Value> {
 
 #[cfg(not(feature = "new-geometry"))]
 fn feature_to_packets(ctx: &Context, feature: &Feature) -> Vec<Packet> {
+    // Feature-scoped seam: `Context` (finish()-time, no single feature) has no
+    // `report`/`warn` API, so synthesize the per-feature `ExecutorContext`
+    // those live on. These CZML codes are all registry `warn_drop`, so
+    // `report()` always returns `Ok` here; the fatal-promotion path (via a
+    // policy override) still records into the node's fatal slot inside
+    // `report()` itself before returning, so discarding the `Result` below
+    // is not a silent drop even under an overriding policy.
+    let ectx = ctx.as_executor_context(feature.clone(), FEATURES_PORT.clone());
+
     let Some(parent_id) = feature.feature_id() else {
-        ctx.event_hub
-            .warn_log(None, "Feature does not have a feature_id".to_string());
+        let _ = ectx.report(DiagnosticDraft::new(ErrorCode::CzmlMissingFeatureId));
         return vec![];
     };
 
     let properties = map_to_html_table(&feature.attributes);
 
     let GeometryValue::CityGmlGeometry(geometry) = &feature.geometry.value else {
-        ctx.event_hub.warn_log(
-            None,
-            format!(
+        let _ = ectx.report(
+            DiagnosticDraft::new(ErrorCode::CzmlNonCitygmlGeometry).with_message(format!(
                 "Geometry is not a CityGML geometry with: feature_id={}",
                 feature.id
-            ),
+            )),
         );
         return vec![];
     };
@@ -1312,12 +1320,11 @@ fn feature_to_packets(ctx: &Context, feature: &Feature) -> Vec<Packet> {
         .collect_vec();
 
     if polygons.is_empty() {
-        ctx.event_hub.warn_log(
-            None,
-            format!(
+        let _ = ectx.report(
+            DiagnosticDraft::new(ErrorCode::CzmlEmptyGeometry).with_message(format!(
                 "Geometry does not contain any polygons: feature_id={}",
                 feature.id
-            ),
+            )),
         );
         return vec![];
     }
@@ -1817,5 +1824,99 @@ mod tests {
         assert!(!obj.contains_key("id"));
         assert!(!obj.contains_key("name"));
         assert!(!obj.contains_key("czml.point"));
+    }
+}
+
+#[cfg(all(test, not(feature = "new-geometry")))]
+mod diagnostics_tests {
+    use std::sync::Arc;
+
+    use indexmap::IndexMap;
+    use reearth_flow_runtime::diagnostics::NodeDiagnosticsHandle;
+    use reearth_flow_runtime::node::NodeHandle;
+    use reearth_flow_types::{CitygmlFeatureExt, Geometry};
+
+    use super::*;
+
+    /// `NodeId` is `pub(super)` inside `reearth_flow_runtime` (crate-private),
+    /// so an external crate cannot name it directly. Its `Deserialize` impl
+    /// is still public, so we build one via inference through `NodeHandle`'s
+    /// public `id` field instead of naming the type.
+    fn test_node_handle(id: &str) -> NodeHandle {
+        NodeHandle {
+            id: serde_json::from_value(serde_json::Value::String(id.to_string())).unwrap(),
+        }
+    }
+
+    fn context_with_handle(handle: &Arc<NodeDiagnosticsHandle>) -> Context {
+        let node_ctx = NodeContext::default();
+        let mut ctx: Context = node_ctx.into();
+        ctx.diagnostics = Some(handle.clone());
+        ctx
+    }
+
+    fn make_handle() -> Arc<NodeDiagnosticsHandle> {
+        Arc::new(NodeDiagnosticsHandle::new(
+            "n1".to_string(),
+            test_node_handle("n1"),
+            "writer".into(),
+            "CzmlWriter".into(),
+            Arc::default(),
+            Arc::new(reearth_flow_diagnostics::DispositionPolicy::default()),
+            true,
+        ))
+    }
+
+    #[test]
+    fn missing_feature_id_is_reported_not_silently_dropped() {
+        let handle = make_handle();
+        let ctx = context_with_handle(&handle);
+        let feature = Feature::from(IndexMap::<String, AttributeValue>::new());
+
+        let packets = feature_to_packets(&ctx, &feature);
+
+        assert!(packets.is_empty());
+        let summaries = handle.inner.drain_summaries();
+        assert_eq!(summaries.len(), 1);
+        assert_eq!(summaries[0].aggregated.as_ref().unwrap().count, 1);
+        assert!(summaries[0].message.contains("czml.missing_feature_id"));
+    }
+
+    #[test]
+    fn non_citygml_geometry_is_reported_not_silently_dropped() {
+        let handle = make_handle();
+        let ctx = context_with_handle(&handle);
+        let mut feature = Feature::from(IndexMap::<String, AttributeValue>::new());
+        feature.update_feature_id("gml-1".to_string());
+
+        let packets = feature_to_packets(&ctx, &feature);
+
+        assert!(packets.is_empty());
+        let summaries = handle.inner.drain_summaries();
+        assert_eq!(summaries.len(), 1);
+        assert_eq!(summaries[0].aggregated.as_ref().unwrap().count, 1);
+        assert!(summaries[0].message.contains("czml.non_citygml_geometry"));
+    }
+
+    #[test]
+    fn empty_geometry_is_reported_not_silently_dropped() {
+        let handle = make_handle();
+        let ctx = context_with_handle(&handle);
+        let mut feature = Feature::new_with_attributes_and_geometry(
+            IndexMap::new(),
+            Geometry {
+                epsg: Some(4326),
+                value: GeometryValue::CityGmlGeometry(Default::default()),
+            },
+        );
+        feature.update_feature_id("gml-1".to_string());
+
+        let packets = feature_to_packets(&ctx, &feature);
+
+        assert!(packets.is_empty());
+        let summaries = handle.inner.drain_summaries();
+        assert_eq!(summaries.len(), 1);
+        assert_eq!(summaries[0].aggregated.as_ref().unwrap().count, 1);
+        assert!(summaries[0].message.contains("czml.empty_geometry"));
     }
 }

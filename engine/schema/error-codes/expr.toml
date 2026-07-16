@@ -1,0 +1,6 @@
+[[codes]]
+code = "expr.attribute_operation_failed"
+category = "expression"
+default_disposition = "warn_drop"
+message = "skipped attribute operation that failed to evaluate"
+help = "Check the operation's expression for the attribute it reads or produces."

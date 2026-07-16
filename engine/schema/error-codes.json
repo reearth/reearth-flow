@@ -35,6 +35,34 @@
     "help": "City GML Writer only writes CityGML geometry; route other geometry types to a different writer."
   },
   {
+    "code": "czml.empty_geometry",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature whose geometry contains no polygons",
+    "help": "Check the feature's LOD geometries; only LOD > 0 geometries with polygons are converted."
+  },
+  {
+    "code": "czml.missing_feature_id",
+    "category": "schema",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature without a feature_id",
+    "help": "Ensure upstream features carry a CityGML gml:id before reaching the CZML Writer."
+  },
+  {
+    "code": "czml.non_citygml_geometry",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature with non-CityGML geometry",
+    "help": "CZML Writer only converts CityGML geometry to polygons; route other geometry types to a different writer."
+  },
+  {
+    "code": "expr.attribute_operation_failed",
+    "category": "expression",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped attribute operation that failed to evaluate",
+    "help": "Check the operation's expression for the attribute it reads or produces."
+  },
+  {
     "code": "gltf.zero_face_solid",
     "category": "geometry",
     "defaultDisposition": "warn_drop",
@@ -58,5 +86,19 @@
     "category": "internal",
     "defaultDisposition": "fatal",
     "message": "node failed with an unclassified error"
+  },
+  {
+    "code": "raster.image_save_failed",
+    "category": "io",
+    "defaultDisposition": "warn_drop",
+    "message": "failed to save the rasterized image",
+    "help": "Check that the configured save path is writable."
+  },
+  {
+    "code": "raster.texture_assignment_failed",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped assigning texture coordinates to a feature",
+    "help": "Image Rasterizer only assigns texture coordinates to CityGML geometry with a non-degenerate boundary."
   }
 ]

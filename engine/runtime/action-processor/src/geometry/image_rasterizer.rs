@@ -1,6 +1,7 @@
 use std::collections::HashMap;
 
 use once_cell::sync::Lazy;
+use reearth_flow_diagnostics::{DiagnosticDraft, ErrorCode};
 use reearth_flow_geometry::types::coordinate::Coordinate2D;
 use reearth_flow_geometry::types::line_string::LineString2D;
 use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
@@ -419,12 +420,21 @@ impl Processor for ImageRasterizer {
                                 ));
                             }
                             Err(e) => {
-                                ctx.event_hub.warn_log(
-                                    None,
-                                    format!(
-                                        "Failed to assign texture coordinates to feature: {}",
-                                        e
-                                    ),
+                                // Per-feature failure; the feature itself was already
+                                // forwarded unchanged above, so this only affects the
+                                // textured-port copy. warn-and-continue: the run and
+                                // the feature both keep flowing.
+                                let fctx = ExecutorContext::new_with_node_context_feature_and_port(
+                                    &ctx,
+                                    feature.clone(),
+                                    TEXTURED_PORT.clone(),
+                                );
+                                fctx.warn(
+                                    DiagnosticDraft::new(ErrorCode::RasterTextureAssignmentFailed)
+                                        .with_message(format!(
+                                            "Failed to assign texture coordinates to feature: {}",
+                                            e
+                                        )),
                                 );
                             }
                         }
@@ -443,9 +453,21 @@ impl Processor for ImageRasterizer {
                     ));
                 }
             }
-            Err(e) => {
-                ctx.event_hub
-                    .warn_log(None, format!("Failed to save image: {}", e));
+            Err(_e) => {
+                // finish()-time drop with no single feature to attribute it to
+                // (the whole rasterized image failed to save) — the
+                // `report()`/`ctx.warn()` API lives on `ExecutorContext`, not
+                // the feature-less `NodeContext` this function holds, so this
+                // uses `NodeDiagnosticsHandle::report_drop` directly, same as
+                // `citygml.rs`'s finish()-time drops. That call has no
+                // message-override parameter (only the registry default
+                // message is recorded), so the `e` detail isn't carried
+                // through — consistent with those existing report_drop call
+                // sites, none of which preserve per-call detail either. The
+                // run and the node's `finish()` both still return `Ok`.
+                if let Some(diagnostics) = ctx.diagnostics.as_deref() {
+                    diagnostics.report_drop(ErrorCode::RasterImageSaveFailed, None);
+                }
             }
         }
 
@@ -1389,5 +1411,162 @@ mod tests {
 
         img.save(&dest_path).expect("Failed to save test image");
         println!("Successfully generated and saved image to: {:?}", dest_path);
+    }
+}
+
+#[cfg(all(test, not(feature = "new-geometry")))]
+mod diagnostics_tests {
+    use std::sync::Arc;
+
+    use reearth_flow_diagnostics::Disposition;
+    use reearth_flow_runtime::diagnostics::NodeDiagnosticsHandle;
+    use reearth_flow_runtime::forwarder::{NoopChannelForwarder, ProcessorChannelForwarder};
+    use reearth_flow_runtime::node::NodeHandle;
+    use tempfile::tempdir;
+
+    use super::*;
+
+    /// `NodeId` is `pub(super)` inside `reearth_flow_runtime` (crate-private),
+    /// so an external crate cannot name it directly. Its `Deserialize` impl
+    /// is still public, so we build one via inference through `NodeHandle`'s
+    /// public `id` field instead of naming the type.
+    fn test_node_handle(id: &str) -> NodeHandle {
+        NodeHandle {
+            id: serde_json::from_value(serde_json::Value::String(id.to_string())).unwrap(),
+        }
+    }
+
+    fn make_handle() -> Arc<NodeDiagnosticsHandle> {
+        Arc::new(NodeDiagnosticsHandle::new(
+            "n1".to_string(),
+            test_node_handle("n1"),
+            "processor".into(),
+            "Image Rasterizer".into(),
+            Arc::default(),
+            Arc::new(reearth_flow_diagnostics::DispositionPolicy::default()),
+            false,
+        ))
+    }
+
+    fn square_polygon() -> GeometryPolygon {
+        GeometryPolygon {
+            exterior_coordinates: vec![(0.0, 0.0), (10.0, 0.0), (10.0, 10.0), (0.0, 10.0)],
+            interior_coordinates: vec![],
+            color_r: 255,
+            color_g: 0,
+            color_b: 0,
+            overlap_value: None,
+        }
+    }
+
+    fn noop_forwarder() -> ProcessorChannelForwarder {
+        ProcessorChannelForwarder::Noop(NoopChannelForwarder::default())
+    }
+
+    #[test]
+    fn texture_assignment_failure_is_warned_and_the_feature_keeps_flowing() {
+        let tmp = tempdir().unwrap();
+        let save_path = tmp.path().join("out.png");
+
+        let handle = make_handle();
+        let node_ctx = NodeContext {
+            diagnostics: Some(handle.clone()),
+            ..Default::default()
+        };
+
+        // No CityGmlGeometry -> assign_texture_coordinates deterministically
+        // errors ("Feature does not have CityGmlGeometry").
+        let non_citygml_feature = Feature::new_with_attributes(Attributes::default());
+
+        let mut geometry_polygons = GeometryPolygons::new();
+        geometry_polygons.add_polygon(square_polygon());
+
+        let mut processor = ImageRasterizer {
+            width: 10,
+            on_overlap: None,
+            evaluated_save_path: Some(save_path.to_string_lossy().to_string()),
+            overlap_value_ast: None,
+            geometry_polygons,
+            texture_coord_features: vec![non_citygml_feature],
+        };
+
+        let fw = noop_forwarder();
+        processor
+            .finish(node_ctx, &fw)
+            .expect("finish must still return Ok despite the per-feature failure");
+
+        let summaries = handle.inner.drain_summaries();
+        assert_eq!(summaries.len(), 1);
+        assert_eq!(summaries[0].aggregated.as_ref().unwrap().count, 1);
+        // warn-and-continue never resolves an effective disposition.
+        assert!(summaries[0].effective_disposition.is_none());
+        assert!(summaries[0]
+            .message
+            .contains("raster.texture_assignment_failed"));
+
+        // control-flow preservation: the feature was still forwarded to the
+        // default port (alongside the unrelated bounds-feature send on
+        // BOUNDS_PORT) even though its textured-port copy failed.
+        let ProcessorChannelForwarder::Noop(noop) = &fw else {
+            unreachable!()
+        };
+        let ports = noop.send_ports.lock().unwrap().clone();
+        assert!(
+            ports.contains(&FEATURES_PORT.clone()),
+            "the original feature must still be forwarded to the default port"
+        );
+        assert!(
+            !ports.contains(&TEXTURED_PORT.clone()),
+            "no textured copy should be forwarded when texture-coordinate assignment failed"
+        );
+    }
+
+    #[test]
+    fn image_save_failure_is_reported_not_silently_dropped_and_the_run_continues() {
+        let tmp = tempdir().unwrap();
+
+        let handle = make_handle();
+        let node_ctx = NodeContext {
+            diagnostics: Some(handle.clone()),
+            ..Default::default()
+        };
+
+        let mut geometry_polygons = GeometryPolygons::new();
+        geometry_polygons.add_polygon(square_polygon());
+
+        let mut processor = ImageRasterizer {
+            width: 10,
+            on_overlap: None,
+            // A directory path (no filename) is not writable as an image
+            // file, so `img.save(..)` deterministically errors.
+            evaluated_save_path: Some(tmp.path().to_string_lossy().to_string()),
+            overlap_value_ast: None,
+            geometry_polygons,
+            texture_coord_features: vec![],
+        };
+
+        let fw = noop_forwarder();
+        let result = processor.finish(node_ctx, &fw);
+        assert!(
+            result.is_ok(),
+            "finish() must still return Ok despite the save failure: {:?}",
+            result.err()
+        );
+
+        let summaries = handle.inner.drain_summaries();
+        assert_eq!(summaries.len(), 1);
+        assert_eq!(summaries[0].aggregated.as_ref().unwrap().count, 1);
+        assert_eq!(
+            summaries[0].effective_disposition,
+            Some(Disposition::WarnDrop)
+        );
+        assert!(summaries[0].message.contains("raster.image_save_failed"));
+
+        // control-flow preservation: nothing downstream when the image itself
+        // could not be saved.
+        let ProcessorChannelForwarder::Noop(noop) = &fw else {
+            unreachable!()
+        };
+        assert!(noop.send_features.lock().unwrap().is_empty());
     }
 }
