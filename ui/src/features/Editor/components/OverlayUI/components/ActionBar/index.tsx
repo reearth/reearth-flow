@@ -1,6 +1,6 @@
 import {
   ClockCounterClockwiseIcon,
-  DotsThreeVerticalIcon,
+  // DotsThreeVerticalIcon,
   ExportIcon,
   PaperPlaneTiltIcon,
   RocketIcon,
@@ -16,7 +16,7 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-  DropdownMenuTrigger,
+  // DropdownMenuTrigger,
   IconButton,
   Popover,
   PopoverContent,
@@ -124,7 +124,7 @@ const ActionBar: React.FC<Props> = ({
         </PopoverContent>
       </Popover>
       <DropdownMenu>
-        <DropdownMenuTrigger
+        {/* <DropdownMenuTrigger
           render={
             <IconButton
               className="w-[25px]"
@@ -133,7 +133,7 @@ const ActionBar: React.FC<Props> = ({
               icon={<DotsThreeVerticalIcon size={18} />}
             />
           }
-        />
+        /> */}
         <DropdownMenuContent
           className="min-w-[170px] bg-primary/50 backdrop-blur select-none"
           align="end"
