@@ -30,13 +30,11 @@ impl LabeledEdgeEndBundleStar {
     fn compute_labeling(&mut self, graph_a: &GeometryGraph<'_>, graph_b: &GeometryGraph<'_>) {
         self.propagate_side_labels(0);
         self.propagate_side_labels(1);
-        // Note: JTS ORs this flag across the bundles; here it is overwritten, so
-        // the last bundle wins.
         let mut has_dimensional_collapse_edge = [false, false];
         for edge_end in self.edges.iter() {
             let label = edge_end.label();
             for (geom_index, is_collapsed) in has_dimensional_collapse_edge.iter_mut().enumerate() {
-                *is_collapsed = label.is_line(geom_index)
+                *is_collapsed |= label.is_line(geom_index)
                     && label.on_position(geom_index) == Some(CoordPos::OnBoundary);
             }
         }

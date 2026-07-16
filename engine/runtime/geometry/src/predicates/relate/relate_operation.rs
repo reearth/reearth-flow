@@ -73,7 +73,7 @@ impl<'a> RelateOperation<'a> {
             }
         }
 
-        // Since changes to topology are inspected at nodes, we must crate a node for each
+        // Since changes to topology are inspected at nodes, we must create a node for each
         // intersection.
         self.graph_a.compute_self_nodes();
         self.graph_b.compute_self_nodes();
