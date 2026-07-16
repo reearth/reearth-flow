@@ -41,22 +41,69 @@ pub struct JobCompleteEvent {
     pub job_id: Uuid,
     pub result: JobResult,
     pub timestamp: chrono::DateTime<Utc>,
-    /// Absent (not `null`) when there is no `RunSummary` to report (the
-    /// runner returned `Err`), so old subscribers that don't know about
-    /// these fields see exactly the pre-Task-10 wire shape.
+    /// Structured per-node fatal failures (`RunSummary::failed_nodes`,
+    /// folded by `DagExecutorJoinHandle::join`'s `fold_outcomes`) — not
+    /// every failure the job ever hit, and not reliably shaped the way a
+    /// first read of the field name suggests. Read carefully before wiring
+    /// a consumer against this:
     ///
-    /// Consumers MUST NOT infer job failure from this field: `result:
-    /// "failed"` with an empty or absent `failedNodes` is common (legacy
-    /// per-feature errors don't produce structured failed nodes yet; the
-    /// regex log fallback remains the failure-detail source until they are
-    /// converted). Absent = run aborted before a summary existed; empty =
-    /// run completed with no structured node failures recorded.
+    /// - Absent (not `null`) when there is no `RunSummary` to report at all
+    ///   (the runner returned `Err` before one was built), so old
+    ///   subscribers that don't know about these fields see exactly the
+    ///   pre-Task-10 wire shape. Present-but-empty (`[]`) means a summary
+    ///   *was* produced and it recorded no structured node failures.
+    ///
+    /// - Consumers MUST NOT infer job failure from this field being empty
+    ///   or absent: `result: "failed"` with an empty or absent
+    ///   `failedNodes` remains common — legacy per-feature error paths
+    ///   still fail the run without ever populating a structured entry
+    ///   here, so the regex log fallback remains the failure-detail source
+    ///   for those.
+    ///
+    /// - A non-empty `failedNodes` IS reachable in production, most
+    ///   visibly under `errorPolicy.onFatal: continue`: the run keeps going
+    ///   past a node failure instead of aborting, and every thread's
+    ///   outcome — including the failed one's — is folded into the
+    ///   returned summary.
+    ///
+    /// - An entry is not always the *original* per-feature diagnostic:
+    ///   when a failed node thread's error doesn't downcast to a
+    ///   recoverable structured `Diagnostic` (e.g. an orphaned downstream
+    ///   sink whose upstream source failed without ever sending it a
+    ///   `Terminate`), `fold_outcomes` synthesizes one under
+    ///   `internal.unclassified` instead, carrying the original error's
+    ///   rendered text in `message` and the failed thread's identity in
+    ///   `nodeId`/`actionType`.
+    ///
+    /// - `nodeId` is the node's *composed* id, not necessarily a bare UUID
+    ///   and not always exactly one node: it may contain subgraph-prefix
+    ///   dots, and a synthesized entry's id may instead be a comma-joined
+    ///   list of several composed ids (`"id1,id2"`, when one thread ran
+    ///   several source nodes and failed without attribution to just one)
+    ///   or the fixed string `"replay-injector"` (the incremental-replay
+    ///   injector thread, which has no DAG node identity of its own).
+    ///
+    /// - Whether an entry is actually fatal must be read from
+    ///   `effectiveDisposition`, not `severity`: `severity` is stamped once
+    ///   from the code's registry-authored default and is never rewritten
+    ///   when a disposition policy promotes it to `fatal` at resolution
+    ///   time, so a policy-promoted fatal entry can carry a non-`"fatal"`
+    ///   `severity` (e.g. `"warn"`) while `effectiveDisposition` reads
+    ///   `"fatal"`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub failed_nodes: Option<Vec<WireDiagnostic>>,
-    /// finish()-time diagnostics aggregated across all nodes. Same
-    /// absent-vs-empty contract as `failed_nodes` (absent = run aborted
+    /// finish()-time diagnostics aggregated across all nodes
+    /// (`RunSummary::aggregated_diagnostics`, every node's drained
+    /// `WarnDrop`/`Reject`/`WarnContinue` bucket) — never a `Fatal` entry
+    /// (a resolved fatal never reaches this bucket; it surfaces via
+    /// `failedNodes` instead, see that field's contract). Same
+    /// absent-vs-empty contract as `failedNodes` (absent = run aborted
     /// before a summary existed, empty = run completed with nothing to
-    /// report) — do not infer job failure from this field either.
+    /// report) — do not infer job failure from this field either. Unlike
+    /// `failedNodes`, every entry here comes from a genuine per-node
+    /// aggregation bucket: no cascade-synthesized `internal.unclassified`
+    /// entries, and `nodeId` is always a real single node's composed id
+    /// (never a comma-joined list or `"replay-injector"`).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub aggregated_diagnostics: Option<Vec<WireDiagnostic>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]

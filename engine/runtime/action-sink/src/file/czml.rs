@@ -1288,11 +1288,17 @@ fn build_properties_bag(feature: &Feature) -> Option<Value> {
 fn feature_to_packets(ctx: &Context, feature: &Feature) -> Vec<Packet> {
     // Feature-scoped seam: `Context` (finish()-time, no single feature) has no
     // `report`/`warn` API, so synthesize the per-feature `ExecutorContext`
-    // those live on. These CZML codes are all registry `warn_drop`, so
-    // `report()` always returns `Ok` here; the fatal-promotion path (via a
-    // policy override) still records into the node's fatal slot inside
-    // `report()` itself before returning, so discarding the `Result` below
-    // is not a silent drop even under an overriding policy.
+    // those live on. These CZML codes are registry `warn_drop` by default,
+    // but (per T7's cesium/2a-policy shape) an `errorPolicy` override can
+    // promote any of them to `reject` or `fatal` -- so `report()` can
+    // return `Err` here for real. This function returns `Vec<Packet>`, not
+    // a `Result`, so every call site below discards `report()`'s `Result`
+    // with `let _ =`; that's still not a silent drop even under a
+    // fatal-promoting override, because `report()` records a promoted
+    // `Fatal` into the node's fatal slot *before* returning `Err` -- the
+    // executor-side drain-end backstop (2a-core T1) fails the node from
+    // that slot regardless of what this function does with the discarded
+    // `Result`.
     let ectx = ctx.as_executor_context(feature.clone(), FEATURES_PORT.clone());
 
     let Some(parent_id) = feature.feature_id() else {
