@@ -52,7 +52,7 @@ const FIXTURE_GEOJSON: &str = r#"{
 
 fn geojson_factory() -> &'static NodeKind {
     ACTION_FACTORY_MAPPINGS
-        .get("GeoJsonReader")
+        .get("GeoJSON Reader")
         .expect("GeoJsonReader factory must be registered")
 }
 

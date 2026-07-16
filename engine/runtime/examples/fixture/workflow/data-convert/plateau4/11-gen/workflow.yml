@@ -21,7 +21,7 @@ graphs:
       - id: 7b1af940-900f-4195-b2cc-ae37bfcf62fe
         name: FeatureCreator
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
           creator:
             type: flowExpr
@@ -55,18 +55,18 @@ graphs:
       - id: 04b83179-6c76-446c-851d-ef0f91f62406
         name: TargetPackagesFilter
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
                 type: flowExpr
                 value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
-              outputPort: default
+              outputPort: features
 
       - id: 7bd12def-bc00-4340-adf5-1a2d68995dd7
         name: AttributeManagerPreFlattener
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: meshcode
@@ -98,7 +98,7 @@ graphs:
       - id: 8f254c7d-fa35-416c-8093-dbaafd72d95a
         name: AttributeManagerDict
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: code
@@ -123,7 +123,7 @@ graphs:
       - id: ea88ce7b-1525-419e-a869-d193d8318b71
         name: JsonWriterDict
         type: action
-        action: JsonWriter
+        action: JSON Writer
         with:
           output:
             type: string
@@ -144,7 +144,7 @@ graphs:
       - id: f63b1460-11eb-4000-a976-38f37a4e919b
         name: AttributeManager
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: cityCode
@@ -176,12 +176,11 @@ graphs:
       - id: 2469c61e-dbda-488e-af80-e3b4105197b7
         name: TwoDimensionForcer
         type: action
-        action: TwoDimensionForcer
-
+        action: Two Dimension Forcer
       - id: 9bfcb0a4-0f66-494a-aa93-d26831f6221f
         name: MVTWriter
         type: action
-        action: MVTWriter
+        action: MVT Writer
         with:
           schemaKey: __citygml_feature_type
           layerName:
@@ -204,99 +203,99 @@ graphs:
       - id: 07061a8e-abc1-4aef-b56d-a2d03c7a590c
         from: 7b1af940-900f-4195-b2cc-ae37bfcf62fe
         to: a1bbd1f8-aa6e-44d7-b307-65b491def483
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       # FolderAndFilePathReader -> FeatureReaderByCityGml
       - id: 82014fac-40eb-46f4-ae89-084d96143127
         from: a1bbd1f8-aa6e-44d7-b307-65b491def483
         to: 6a3a3bba-14c5-438b-86bc-0bbb10d8b94d
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       # FeatureReaderByCityGml -> TargetPackagesFilter
       - id: 4c54b0bc-2b17-4d59-b999-e45b015ab3ff
         from: 6a3a3bba-14c5-438b-86bc-0bbb10d8b94d
         to: 04b83179-6c76-446c-851d-ef0f91f62406
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       # TargetPackagesFilter -> AttributeManagerPreFlattener
       - id: 632886cb-7cb6-41fa-b1c6-c6d484f8fbd4
         from: 04b83179-6c76-446c-851d-ef0f91f62406
         to: 7bd12def-bc00-4340-adf5-1a2d68995dd7
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       # AttributeManagerPreFlattener -> AttributeFlattener
       - id: ff02b5e8-8b5e-4b55-9060-3e6f1681043d
         from: 7bd12def-bc00-4340-adf5-1a2d68995dd7
         to: f26fe812-ad3b-4cab-9ea3-397b521c6dfd
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       # AttributeFlattener -> LodSplitter
       - id: d22e994e-2ae9-47e2-9ddd-501492d864f1
         from: f26fe812-ad3b-4cab-9ea3-397b521c6dfd
         to: 75faa932-e0a9-482c-a3f9-267817ed311c
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       # Dictionary writer branch edges
       # AttributeFlattener -> AttributeManagerDict
       - id: 6770737c-d1ed-4545-bc7d-8701a052fe6b
         from: f26fe812-ad3b-4cab-9ea3-397b521c6dfd
         to: 8f254c7d-fa35-416c-8093-dbaafd72d95a
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       # AttributeManagerDict -> AttributeDuplicateFilterDict
       - id: 20a9426e-e4be-411a-96fa-1f048def2ea1
         from: 8f254c7d-fa35-416c-8093-dbaafd72d95a
         to: abc6a99c-5730-423c-a449-38911ab4a4e7
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       # AttributeDuplicateFilterDict -> JsonWriterDict
       - id: b40ba70c-2298-4f1e-ab44-0b52694733a6
         from: abc6a99c-5730-423c-a449-38911ab4a4e7
         to: ea88ce7b-1525-419e-a869-d193d8318b71
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       # LodSplitter (lod0) -> AttributeManager
       - id: 81137235-61f1-4aec-b4d5-e10d16f92e84
         from: 75faa932-e0a9-482c-a3f9-267817ed311c
         to: f63b1460-11eb-4000-a976-38f37a4e919b
         fromPort: lod0
-        toPort: default
+        toPort: features
       # LodSplitter (lod1) -> AttributeManager
       - id: 33f6429c-3e18-443e-a68c-a782a17ec1a7
         from: 75faa932-e0a9-482c-a3f9-267817ed311c
         to: f63b1460-11eb-4000-a976-38f37a4e919b
         fromPort: lod1
-        toPort: default
+        toPort: features
       # LodSplitter (lod2) -> AttributeManager
       - id: 9ec7a84c-aab5-47c1-ba6d-495f5ce57360
         from: 75faa932-e0a9-482c-a3f9-267817ed311c
         to: f63b1460-11eb-4000-a976-38f37a4e919b
         fromPort: lod2
-        toPort: default
+        toPort: features
       # LodSplitter (lod3) -> AttributeManager
       - id: 8bf23c4f-564d-47c9-bcaa-3a271832bddd
         from: 75faa932-e0a9-482c-a3f9-267817ed311c
         to: f63b1460-11eb-4000-a976-38f37a4e919b
         fromPort: lod3
-        toPort: default
+        toPort: features
       # LodSplitter (lod4) -> AttributeManager
       - id: bd94975e-79f4-43b8-a8bc-fdab11236223
         from: 75faa932-e0a9-482c-a3f9-267817ed311c
         to: f63b1460-11eb-4000-a976-38f37a4e919b
         fromPort: lod4
-        toPort: default
+        toPort: features
       # AttributeManager -> TwoDimensionForcer
       - id: 6637e8a3-8664-4f93-a622-effeabed4321
         from: f63b1460-11eb-4000-a976-38f37a4e919b
         to: 2469c61e-dbda-488e-af80-e3b4105197b7
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       # TwoDimensionForcer -> MVTWriter
       - id: fee6abe9-144a-48b8-8cf8-c9f9126ac461
         from: 2469c61e-dbda-488e-af80-e3b4105197b7
         to: 9bfcb0a4-0f66-494a-aa93-d26831f6221f
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       # AttributeFlattener -> MVTWriter (schema)
       - id: e0adccfb-46f1-4706-89f6-7b60853eb1a1
         from: f26fe812-ad3b-4cab-9ea3-397b521c6dfd

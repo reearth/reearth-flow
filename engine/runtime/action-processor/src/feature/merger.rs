@@ -32,11 +32,11 @@ pub(super) struct FeatureMergerFactory;
 
 impl ProcessorFactory for FeatureMergerFactory {
     fn name(&self) -> &str {
-        "FeatureMerger"
+        "Feature Merger"
     }
 
     fn description(&self) -> &str {
-        "Merges requestor and supplier features based on matching attribute values"
+        "Merges requestor and supplier features based on matching attribute values."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -103,14 +103,14 @@ impl ProcessorFactory for FeatureMergerFactory {
             .transpose()?;
         if requestor_attribute_value.is_none() && params.requestor_attribute.is_none() {
             return Err(FeatureProcessorError::MergerFactory(
-                "At least one of requestor_attribute_value or requestor_attribute must be provided"
+                "At least one of requestorAttribute or requestorAttributeValue must be provided"
                     .to_string(),
             )
             .into());
         }
         if supplier_attribute_value.is_none() && params.supplier_attribute.is_none() {
             return Err(FeatureProcessorError::MergerFactory(
-                "At least one of supplier_attribute_value or supplier_attribute must be provided"
+                "At least one of supplierAttribute or supplierAttributeValue must be provided"
                     .to_string(),
             )
             .into());
@@ -141,21 +141,26 @@ impl ProcessorFactory for FeatureMergerFactory {
     }
 }
 
-/// # FeatureMerger Parameters
+/// # Feature Merger Parameters
 ///
 /// Configuration for merging requestor and supplier features based on matching attributes or expressions.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct FeatureMergerParam {
-    /// Attributes from requestor features to use for matching (alternative to requestor_attribute_value)
+    /// # Requestor Attributes
+    /// Attributes from requestor features to use for matching (alternative to requestorAttributeValue).
     requestor_attribute: Option<Vec<Attribute>>,
-    /// Attributes from supplier features to use for matching (alternative to supplier_attribute_value)
+    /// # Supplier Attributes
+    /// Attributes from supplier features to use for matching (alternative to supplierAttributeValue).
     supplier_attribute: Option<Vec<Attribute>>,
-    /// Expression to evaluate for requestor feature matching values (alternative to requestor_attribute)
+    /// # Requestor Attribute Value
+    /// Expression to evaluate for requestor feature matching values (alternative to requestorAttribute).
     requestor_attribute_value: Option<Code<{ CodeType::FlowExpr as u32 }>>,
-    /// Expression to evaluate for supplier feature matching values (alternative to supplier_attribute)
+    /// # Supplier Attribute Value
+    /// Expression to evaluate for supplier feature matching values (alternative to supplierAttribute).
     supplier_attribute_value: Option<Code<{ CodeType::FlowExpr as u32 }>>,
-    /// Whether to complete grouped features before processing the next group
+    /// # Complete Grouped
+    /// Whether to complete grouped features before processing the next group.
     complete_grouped: Option<bool>,
 }
 
@@ -181,7 +186,7 @@ pub struct FeatureMerger {
 
 impl std::fmt::Debug for FeatureMerger {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("FeatureMerger")
+        f.debug_struct("Feature Merger")
             .field("requestor_keys", &self.requestor_key_map.len())
             .field("supplier_keys", &self.supplier_key_map.len())
             .finish_non_exhaustive()
@@ -571,6 +576,6 @@ impl Processor for FeatureMerger {
     }
 
     fn name(&self) -> &str {
-        "FeatureMerger"
+        "Feature Merger"
     }
 }

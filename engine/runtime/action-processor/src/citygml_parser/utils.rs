@@ -1,6 +1,8 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
 use url::Url;
 
 pub(super) const GML_NS_32: &str = "http://www.opengis.net/gml/3.2";
@@ -95,6 +97,25 @@ pub(super) fn xlink_href_attr(attrs: &[(QName, String)]) -> Option<&str> {
         .iter()
         .find(|((q, ns), _)| local_name(q) == "href" && *ns == XLINK_NS_ID)
         .map(|(_, v)| v.as_str())
+}
+
+/// The `srsName` attribute of an element, if present.
+#[cfg(feature = "new-geometry")]
+pub(super) fn srs_name_attr(attrs: &[(QName, String)]) -> Option<&str> {
+    attrs
+        .iter()
+        .find(|((q, _), _)| local_name(q) == "srsName")
+        .map(|(_, v)| v.as_str())
+}
+
+/// The frame for geometry parsed from `file`: `Crs` if `srs_by_file` has an entry
+/// for it, `Euclidean` (no known CRS) otherwise.
+#[cfg(feature = "new-geometry")]
+pub(super) fn frame_for(file: &str, srs_by_file: &HashMap<String, EpsgCode>) -> CoordinateFrame {
+    match srs_by_file.get(file) {
+        Some(&epsg) => CoordinateFrame::Crs(epsg),
+        None => CoordinateFrame::Euclidean,
+    }
 }
 
 #[cfg(test)]

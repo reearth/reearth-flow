@@ -87,7 +87,7 @@ export const useFetch = () => {
       queryKey: [ActionFetchKeys.actions, actionId, lang],
       queryFn: async ({ signal }: { signal: AbortSignal }) => {
         return fetcher<Action>(
-          `${BASE_URL}/actions/${actionId}?lang=${lang}`,
+          `${BASE_URL}/actions/${encodeURIComponent(actionId)}?lang=${lang}`,
           signal,
         );
       },

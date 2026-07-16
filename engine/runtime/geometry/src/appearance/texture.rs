@@ -66,6 +66,20 @@ pub struct Sampler {
     pub min_filter: Filter,
 }
 
+impl Default for Sampler {
+    /// A repeat-wrapped, linearly filtered sampler; the neutral default for a
+    /// source that specifies no sampling parameters (e.g. CityGML with no
+    /// `wrapMode`).
+    fn default() -> Self {
+        Self {
+            wrap_s: WrapMode::Repeat,
+            wrap_t: WrapMode::Repeat,
+            mag_filter: Filter::Linear,
+            min_filter: Filter::LinearMipmap,
+        }
+    }
+}
+
 /// Texture-coordinate wrap behaviour. The union of CityGML `wrapMode`
 /// (none / wrap / mirror / clamp / border) and glTF sampler wrap.
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Hash)]

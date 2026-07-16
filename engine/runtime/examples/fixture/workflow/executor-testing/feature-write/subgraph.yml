@@ -10,14 +10,14 @@ graphs:
       - id: 10000000-0000-0000-0000-000000000021
         name: InputRouter
         type: action
-        action: InputRouter
+        action: Input Router
         with:
-          routingPort: default
+          routingPort: features
 
       - id: 10000000-0000-0000-0000-000000000022
         name: FeatureFilter
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -32,14 +32,14 @@ graphs:
       - id: 10000000-0000-0000-0000-000000000023
         name: OutputRouterOut1
         type: action
-        action: OutputRouter
+        action: Output Router
         with:
           routingPort: out1
 
       - id: 10000000-0000-0000-0000-000000000024
         name: OutputRouterOut2
         type: action
-        action: OutputRouter
+        action: Output Router
         with:
           routingPort: out2
 
@@ -47,18 +47,18 @@ graphs:
       - id: 10000000-0000-0000-0000-000000000031
         from: 10000000-0000-0000-0000-000000000021
         to: 10000000-0000-0000-0000-000000000022
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 10000000-0000-0000-0000-000000000032
         from: 10000000-0000-0000-0000-000000000022
         to: 10000000-0000-0000-0000-000000000023
         fromPort: portA
-        toPort: default
+        toPort: features
       - id: 10000000-0000-0000-0000-000000000033
         from: 10000000-0000-0000-0000-000000000022
         to: 10000000-0000-0000-0000-000000000024
         fromPort: unfiltered
-        toPort: default
+        toPort: features
 
   - id: 10000000-0000-0000-0000-000000000010
     name: entry_point
@@ -66,7 +66,7 @@ graphs:
       - id: 10000000-0000-0000-0000-000000000011
         name: FeatureCreator
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
           creator:
             type: flowExpr
@@ -85,7 +85,7 @@ graphs:
       - id: 10000000-0000-0000-0000-000000000013
         name: CsvWriter
         type: action
-        action: CsvWriter
+        action: CSV Writer
         with:
           output:
             type: string
@@ -96,10 +96,10 @@ graphs:
       - id: 10000000-0000-0000-0000-000000000041
         from: 10000000-0000-0000-0000-000000000011
         to: 10000000-0000-0000-0000-000000000012
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 10000000-0000-0000-0000-000000000042
         from: 10000000-0000-0000-0000-000000000012
         to: 10000000-0000-0000-0000-000000000013
         fromPort: out1
-        toPort: default
+        toPort: features

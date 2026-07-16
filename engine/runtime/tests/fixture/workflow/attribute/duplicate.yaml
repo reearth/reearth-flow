@@ -8,7 +8,7 @@ graphs:
       - id: a1a91180-ab88-4c1a-aab5-48c242a218ca
         name: Source-Sample-DatasetUrl-01
         type: action
-        action: JsonReader
+        action: JSON Reader
         with:
           dataset:
             type: string
@@ -25,5 +25,5 @@ graphs:
       - id: 1379a497-9e4e-40fb-8361-d2eeeb491762
         from: a1a91180-ab88-4c1a-aab5-48c242a218ca
         to: a1a91180-ab88-4c1a-aab5-48c242a218cb
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features

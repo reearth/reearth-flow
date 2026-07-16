@@ -7,9 +7,9 @@ graphs:
     name: main_graph
     nodes:
       - id: a1fc0a3e-61d3-48e2-a328-e7226c2ad1ae
-        name: FeatureCreator
+        name: Feature Creator
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
           creator:
             type: flowExpr
@@ -24,17 +24,17 @@ graphs:
               }
               features
       - id: b2f50a3e-61d3-48e2-a328-e7226c2ad1ae
-        name: BulkAttributeRenamer
+        name: Bulk Attribute Renamer
         type: action
-        action: BulkAttributeRenamer
+        action: Bulk Attribute Renamer
         with:
           renameType: All
           renameAction: AddPrefix
           renameValue: "test_"
       - id: c1fc0a3e-61d3-48e2-a328-e7226c2ad1ae
-        name: JsonWriter
+        name: JSON Writer
         type: action
-        action: JsonWriter
+        action: JSON Writer
         with:
           output:
             type: string
@@ -43,10 +43,10 @@ graphs:
       - id: e1fc0a3e-61d3-48e2-a328-e7226c2ad1ae
         from: a1fc0a3e-61d3-48e2-a328-e7226c2ad1ae
         to: b2f50a3e-61d3-48e2-a328-e7226c2ad1ae
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: e2fc0a3e-61d3-48e2-a328-e7226c2ad1ae
         from: b2f50a3e-61d3-48e2-a328-e7226c2ad1ae
         to: c1fc0a3e-61d3-48e2-a328-e7226c2ad1ae
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features

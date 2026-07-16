@@ -20,7 +20,7 @@ graphs:
       - id: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
         name: FeatureCreator
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
           creator:
             type: flowExpr
@@ -42,7 +42,7 @@ graphs:
       - id: ded2e272-e05c-4918-86b3-aa9f763da6e6
         name: FeatureReaderByCityGml
         type: action
-        action: FeatureCityGmlReader
+        action: Feature CityGML Reader
         with:
           codelistsPath:
             type: flowExpr
@@ -54,18 +54,18 @@ graphs:
       - id: d2e97a03-3a15-4245-9c50-25ba34677c67
         name: TargetPackagesFilter
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
                 type: flowExpr
                 value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
-              outputPort: default
+              outputPort: features
 
       - id: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6e
         name: AttributeManagerPreFlattener
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: meshcode
@@ -96,7 +96,7 @@ graphs:
       - id: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
         name: AttributeManager
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
           - attribute: cityCode
@@ -123,18 +123,18 @@ graphs:
       - id: f1a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6
         name: FilterUrfPackage
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
                 type: flowExpr
                 value: attributes["package"] == "urf"
-              outputPort: default
+              outputPort: features
 
       - id: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8d
         name: StripFeatureTypePrefix
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
           - attribute: feature_type_without_prefix
@@ -154,7 +154,7 @@ graphs:
       - id: d1e2f3a4-b5c6-d7e8-f9a0-b1c2d3e4f5a6
         name: AttributeConversionTable
         type: action
-        action: AttributeConversionTable
+        action: Attribute Conversion Table
         with:
           format: csv
           inline: !include urf_japanese_converter.csv.txt
@@ -169,7 +169,7 @@ graphs:
       - id: c7d8e9f0-a1b2-c3d4-e5f6-a7b8c9d0e1f2
         name: JsonWriter
         type: action
-        action: JsonWriter
+        action: JSON Writer
         with:
           output:
             type: string
@@ -185,7 +185,7 @@ graphs:
       - id: 1f8b3c4e-5a2d-4e1f-9b7c-3d5e6f8a9b0c
         name: FeatureSorter
         type: action
-        action: FeatureSorter
+        action: Feature Sorter
         with:
           attributes:
             - feature_type
@@ -194,7 +194,7 @@ graphs:
       - id: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
         name: MvtWriter
         type: action
-        action: MVTWriter
+        action: MVT Writer
         with:
           schemaKey: __citygml_feature_type
           layerName:
@@ -225,68 +225,68 @@ graphs:
       - id: 5ebf24ab-1d98-49d5-8f58-eb7c18d27244
         from: 90f40a3e-61d3-48e2-a328-e7226c2ad1ae
         to: d376f32b-7ce8-4721-8b9e-bfa39d71b860
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 7b81f501-3f07-4cec-bf9b-9cefcebdf47d
         from: d376f32b-7ce8-4721-8b9e-bfa39d71b860
         to: ded2e272-e05c-4918-86b3-aa9f763da6e6
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: cf845867-6ffc-4b83-9fd5-e376a22470e2
         from: ded2e272-e05c-4918-86b3-aa9f763da6e6
         to: d2e97a03-3a15-4245-9c50-25ba34677c67
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 1ee68611-1a29-4443-8986-cd497f0d6a27
         from: d2e97a03-3a15-4245-9c50-25ba34677c67
         to: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6e
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 7e8f9a0b-1c2d-3e4f-5a6b-7c8d9e0f1a2b
         from: 1a2b3c4d-5e6f-7a8b-9c0d-1e2f3a4b5c6e
         to: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: ad52c3e6-68ff-4844-a7b2-d302fc0aef14
         from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
         to: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: d8e9f0a1-b2c3-d4e5-f6a7-b8c9d0e1f2a3
         from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a
         to: f1a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: a2b3c4d5-e6f7-a8b9-c0d1-e2f3a4b5c6d7
         from: f1a2b3c4-d5e6-f7a8-b9c0-d1e2f3a4b5c6
         to: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8d
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: e9f0a1b2-c3d4-e5f6-a7b8-c9d0e1f2a3b4
         from: a3b4c5d6-e7f8-9a0b-1c2d-3e4f5a6b7c8d
         to: b5c6d7e8-f9a0-1b2c-3d4e-5f6a7b8c9d0e
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: f0a1b2c3-d4e5-f6a7-b8c9-d0e1f2a3b4c5
         from: b5c6d7e8-f9a0-1b2c-3d4e-5f6a7b8c9d0e
         to: d1e2f3a4-b5c6-d7e8-f9a0-b1c2d3e4f5a6
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: a1b2c3d4-e5f6-a7b8-c9d0-e1f2a3b4c5d6
         from: d1e2f3a4-b5c6-d7e8-f9a0-b1c2d3e4f5a6
         to: c7d8e9f0-a1b2-c3d4-e5f6-a7b8c9d0e1f2
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 3c7d9e2f-4a5b-6c8d-9e0f-1a2b3c4d5e6f
         from: 6e5ed9fc-006e-4dbe-8699-4663dba795cb
         to: 1f8b3c4e-5a2d-4e1f-9b7c-3d5e6f8a9b0c
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: e862f11a-88a6-4c1b-a743-ba80253039df
         from: 1f8b3c4e-5a2d-4e1f-9b7c-3d5e6f8a9b0c
         to: b4862d31-4bb2-49b1-8f0d-6d58dd4cb385
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       # AttributeFlattener -> MvtWriter (schema)
       - id: 9314a900-1ffc-a149-2820-e0c55201b345
         from: 5daabfc0-2bda-4f8d-b206-d7a388469f7a

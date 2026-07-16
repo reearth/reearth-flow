@@ -25,7 +25,7 @@ graphs:
       - id: bc9b77cd-ad61-4ccb-b2eb-4e9536f07873
         name: FeatureCreator
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
           creator:
             type: flowExpr
@@ -44,7 +44,7 @@ graphs:
       - id: a018fcb3-0f1d-4ba1-b96c-242fb8f002a4
         name: DirectoryDecompressor
         type: action
-        action: DirectoryDecompressor
+        action: Directory Decompressor
         with:
           archiveAttributes:
             - codelists
@@ -64,7 +64,7 @@ graphs:
       - id: e275d299-2cd1-4e26-9d91-4d63921a29c7
         name: FeatureFilePathExtractor
         type: action
-        action: FeatureFilePathExtractor
+        action: Feature File Path Extractor
         with:
           sourceDataset:
             type: flowExpr
@@ -75,18 +75,18 @@ graphs:
       - id: 151fa081-4606-4493-8808-35d75f063159
         name: FeatureFilterByGml
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
                 type: flowExpr
                 value: attributes["extension"] == "gml"
-              outputPort: default
+              outputPort: features
 
       - id: 55c98a8e-b785-4e42-8217-b26610aa243f
         name: FeatureCounterFileIndex
         type: action
-        action: FeatureCounter
+        action: Feature Counter
         with:
           countStart: 1
           outputAttribute: fileIndex
@@ -105,18 +105,18 @@ graphs:
       - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13
         name: FeatureFilterByPackage
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
           - expr:
               type: flowExpr
               value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
-            outputPort: default
+            outputPort: features
 
       - id: 80f7b3d8-201b-4985-b512-c4b94690c16d
         name: FeatureCityGmlReader
         type: action
-        action: FeatureCityGmlReader
+        action: Feature CityGML Reader
         with:
           codelistsPath:
             type: flowExpr
@@ -128,18 +128,18 @@ graphs:
       - id: 89d41d5e-1a17-4d00-bc1d-8150eb6f79ec
         name: FilterNotCityModel
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
                 type: flowExpr
                 value: attributes["featureType"] != "CityModel"
-              outputPort: default
+              outputPort: features
 
       - id: 10df06f3-cafa-4abd-ba94-04ac71dae467
         name: HorizontalReprojector
         type: action
-        action: HorizontalReprojector
+        action: Horizontal Reprojector
         with:
           targetEpsgCode:
             type: flowExpr
@@ -153,7 +153,7 @@ graphs:
       - id: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
         name: FeatureFilterGmlGeometryType
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -177,7 +177,7 @@ graphs:
       - id: 8cb3a0a3-4527-466a-a362-6fedddf6a15f
         name: FeatureSorter
         type: action
-        action: FeatureSorter
+        action: Feature Sorter
         with:
           attributes: 
             - featureType
@@ -186,7 +186,7 @@ graphs:
       - id: e6a9d5f8-943f-4783-aabd-754dcc6b307d
         name: InstanceCounter
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           groupBy:
             - fileIndex
@@ -203,7 +203,7 @@ graphs:
       - id: 22641726-fc4a-4d8a-a375-91b5ac6aac28
         name: AttributeMapperForInstanceCount
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: Folder
@@ -254,7 +254,7 @@ graphs:
       - id: 10b3d500-65b6-47a4-ada2-fdf219f3e669
         name: AttributeMapperSurfaceValidationErrors
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: Folder
@@ -310,7 +310,7 @@ graphs:
       - id: 46d6ed1c-cde5-43a5-837b-8544103aa36b
         name: SurfaceValidationErrorCounter
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           groupBy: 
           - fileIndex
@@ -333,7 +333,7 @@ graphs:
       - id: d0132191-a81f-4647-896d-5db49e3fb734
         name: FeatureFilterInvalidSolidBoundary
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
@@ -344,7 +344,7 @@ graphs:
       - id: e57bec12-7e6e-4edf-8ce2-14fbd12a7f92
         name: AttributeMapperSolidBoundaryInvalidNotClosed
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: Folder
@@ -397,7 +397,7 @@ graphs:
       - id: 33e3f4a5-6b7c-8d9e-0f1a-2b3c4d5e6f7a
         name: Lod1-4NotClosedSolidCounter
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           groupBy: 
           - fileIndex
@@ -410,14 +410,14 @@ graphs:
       - id: 44f4a5b6-7c8d-9e0f-1a2b-3c4d5e6f7a8b
         name: ErrorCount-Lod1NotClosedSolid
         type: action
-        action: OutputRouter
+        action: Output Router
         with:
           routingPort: errorCountLod1NotClosedSolid
 
       - id: 64ff1eee-0d1a-42a1-b32d-fde94ffac693
         name: AttributeMapperSolidBoundaryInvalidOtherIssues
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: Folder
@@ -470,7 +470,7 @@ graphs:
       - id: 55a5b6c7-8d9e-0f1a-2b3c-4d5e6f7a8b9c
         name: Lod1-4SolidIssuesCounter
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           groupBy: 
           - fileIndex
@@ -484,7 +484,7 @@ graphs:
       - id: 8b699a61-e326-4da7-80d3-eb2a4674d0ea
         name: AttributeMapperGeometryTypeError
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: Folder
@@ -538,7 +538,7 @@ graphs:
       - id: d7c87c17-485d-469e-b216-7797bd63d0e9
         name: GeometryTypeErrorCounter
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           groupBy: 
           - fileIndex
@@ -554,7 +554,7 @@ graphs:
       - id: 7ccbb722-d0cc-4843-a42e-179576530340
         name: FileInfoExtractor
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: Index
@@ -568,7 +568,7 @@ graphs:
       - id: 92119eb6-9343-49b7-b6c2-e2142374c52c
         name: ErrorSummaryMerger
         type: action
-        action: FeatureMerger
+        action: Feature Merger
         with:
           requestorAttributeValue:
             type: flowExpr
@@ -581,7 +581,7 @@ graphs:
       - id: f58eeb2c-9187-4880-8c1f-7da2f9388069
         name: SummaryAttributeMapper
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: Folder
@@ -631,7 +631,7 @@ graphs:
       - id: 521b2dea-51af-460f-9eb5-672917768692
         name: StatisticsCalculator
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           groupBy:
             - Folder
@@ -692,7 +692,7 @@ graphs:
       - id: 27350bec-6220-4d6e-8fd1-1bd5d01716d3
         name: StatisticsCalculatorTotalErrors
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           calculations:
             - newAttribute: totalErrorCount
@@ -704,19 +704,19 @@ graphs:
       - id: 020bac31-10f6-4a00-8426-630d03970c0f
         name: FeatureFilterNoErrors
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
                 type: flowExpr
                 value: attributes["totalErrorCount"] == 0
-              outputPort: default
+              outputPort: features
 
       # Write qc_result_ok file
       - id: 734ebb2a-c2b0-429e-9363-5ccdd2a5b2ae
         name: JsonWriterQcResultOk
         type: action
-        action: JsonWriter
+        action: JSON Writer
         with:
           converter:
             type: flowExpr
@@ -729,7 +729,7 @@ graphs:
       - id: be482ba8-ca60-40fb-8e52-8b15460b17cc
         name: ZipFileWriter
         type: action
-        action: ZipFileWriter
+        action: Zip File Writer
         with:
           output:
             type: flowExpr
@@ -740,249 +740,249 @@ graphs:
       - id: 235074db-bbc0-484e-bd7e-3af7d707f2fc
         from: bc9b77cd-ad61-4ccb-b2eb-4e9536f07873
         to: a018fcb3-0f1d-4ba1-b96c-242fb8f002a4
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # Connect DirectoryDecompressor to common quality check subgraphs
       - id: b5c6d7e8-f9a0-1b2c-3d4e-5f6a7b8c9d0e
         from: a018fcb3-0f1d-4ba1-b96c-242fb8f002a4  # DirectoryDecompressor
         to: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a    # CommonQualityCheck-01-01
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       - id: c6d7e8f9-a0b1-2c3d-4e5f-6a7b8c9d0e1f
         from: a018fcb3-0f1d-4ba1-b96c-242fb8f002a4  # DirectoryDecompressor
         to: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7b    # CommonQualityCheck-01-02
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       - id: e24c990c-4c60-461c-9ac3-a8b05f01af86
         from: a018fcb3-0f1d-4ba1-b96c-242fb8f002a4
         to: e275d299-2cd1-4e26-9d91-4d63921a29c7
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: c9d3e589-4e51-47ff-86dc-0e915b368072
         from: e275d299-2cd1-4e26-9d91-4d63921a29c7
         to: 151fa081-4606-4493-8808-35d75f063159
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 2fc1b488-3688-4cfd-8b65-d4d6d327c38f
         from: 151fa081-4606-4493-8808-35d75f063159
         to: 55c98a8e-b785-4e42-8217-b26610aa243f
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: f5dcdbfa-3bac-414f-8829-dd1af4f981e7
         from: 55c98a8e-b785-4e42-8217-b26610aa243f
         to: 55767a5d-6d94-471b-af4a-09e20ae5f024
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 55767a5d-0001-0001-0001-000000000001
         from: 55767a5d-6d94-471b-af4a-09e20ae5f024
         to: a1554a74-3caa-4880-a4a3-6dc4ab526a13
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 17912650-d822-45a9-b31a-81d9bd9932ee
         from: a1554a74-3caa-4880-a4a3-6dc4ab526a13
         to: 80f7b3d8-201b-4985-b512-c4b94690c16d
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 4f90c136-9ee8-44ce-b0f5-a70e1c8dc38a
         from: 80f7b3d8-201b-4985-b512-c4b94690c16d
         to: 89d41d5e-1a17-4d00-bc1d-8150eb6f79ec
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: bc1dd787-c39b-4fec-8fbc-a7f9911088f3
         from: 89d41d5e-1a17-4d00-bc1d-8150eb6f79ec
         to: 10df06f3-cafa-4abd-ba94-04ac71dae467
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 9a358b62-c289-4ca5-bb4f-bdf69deec04d
         from: 10df06f3-cafa-4abd-ba94-04ac71dae467
         to: 52f504c2-5c79-421c-b14d-8ac661b3b15f
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 2eb28ad8-d23e-4dba-97b9-bd2bb634c839
         from: 52f504c2-5c79-421c-b14d-8ac661b3b15f
         to: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
         fromPort: lod1
-        toPort: default
+        toPort: features
       - id: 619f83b9-5a14-4667-9cec-9fc851e1df98
         from: 52f504c2-5c79-421c-b14d-8ac661b3b15f
         to: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
         fromPort: lod2
-        toPort: default
+        toPort: features
       - id: a75e71d4-6951-4b60-909f-7dafc53fb298
         from: 52f504c2-5c79-421c-b14d-8ac661b3b15f
         to: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
         fromPort: lod3
-        toPort: default
+        toPort: features
 
       # Instance counting flow
       - id: cf5deb77-5b1a-4a03-88fe-cd3ae2785f7e
         from: 52f504c2-5c79-421c-b14d-8ac661b3b15f
         to: 8cb3a0a3-4527-466a-a362-6fedddf6a15f
         fromPort: lod1
-        toPort: default
+        toPort: features
       - id: 525096bc-5c79-41c3-90bb-c834df4d8433
         from: 52f504c2-5c79-421c-b14d-8ac661b3b15f
         to: 8cb3a0a3-4527-466a-a362-6fedddf6a15f
         fromPort: lod2
-        toPort: default
+        toPort: features
       - id: 79d51b90-418f-4884-b445-51b3005de843
         from: 52f504c2-5c79-421c-b14d-8ac661b3b15f
         to: 8cb3a0a3-4527-466a-a362-6fedddf6a15f
         fromPort: lod3
-        toPort: default
+        toPort: features
       - id: b749f31f-3fb8-4c95-b6ea-fb80e6f1b28e
         from: 8cb3a0a3-4527-466a-a362-6fedddf6a15f
         to: e6a9d5f8-943f-4783-aabd-754dcc6b307d
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 1b7e97f5-05b9-4d13-92e7-86d03a7e0975
         from: e6a9d5f8-943f-4783-aabd-754dcc6b307d
         to: 22641726-fc4a-4d8a-a375-91b5ac6aac28
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 9af0a9d4-30b8-4ef8-942e-cbcaac65562a
         from: 22641726-fc4a-4d8a-a375-91b5ac6aac28
         to: a453192e-603c-417e-9f65-f57b8e15f7d3
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       
       # Suraface Validation flow
       - id: 588df3c1-eb70-4961-93b0-ab45402805e8
         from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
         to: 950407af-eec5-49ee-902c-2b41f31150d3
         fromPort: multiSurface
-        toPort: default
+        toPort: features
       - id: 664d0a26-1b35-4b43-83c4-352c562c946f
         from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
         to: 950407af-eec5-49ee-902c-2b41f31150d3
         fromPort: multiSurface
-        toPort: default
+        toPort: features
       - id: aa75806c-3daf-4c5c-bab0-188979ecb00b
         from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
         to: 950407af-eec5-49ee-902c-2b41f31150d3
         fromPort: multiSolid
-        toPort: default
+        toPort: features
       - id: a5f4a4ee-9d18-4f94-8909-19ca4228e931
         from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
         to: 950407af-eec5-49ee-902c-2b41f31150d3
         fromPort: solidGeometry
-        toPort: default
+        toPort: features
       - id: 637ac78f-80eb-45db-815b-0dde642e0e7a
         from: 950407af-eec5-49ee-902c-2b41f31150d3
         to: 10b3d500-65b6-47a4-ada2-fdf219f3e669
         fromPort: invalidSurface
-        toPort: default
+        toPort: features
       - id: a9aaaf1f-5f5e-42a5-8b47-f8c1788b971f
         from: 10b3d500-65b6-47a4-ada2-fdf219f3e669
         to: 51bdd4e8-1f3d-4745-9e96-9cb53ee92a53
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 2cff0421-0fe8-40ae-9339-671d6e37bdbb
         from: 950407af-eec5-49ee-902c-2b41f31150d3
         to: 46d6ed1c-cde5-43a5-837b-8544103aa36b
         fromPort: invalidSurface
-        toPort: default
+        toPort: features
 
       # Solid Validation flow
       - id: 92fbdd35-b2ac-4a68-9300-4fc35b0bb59b
         from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
         to: bf13c543-ca57-4479-be36-47fe5ad34dfc
         fromPort: multiSolid
-        toPort: default
+        toPort: features
       - id: caddaf7a-1f14-4fbc-99f0-af6a360c0c56
         from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
         to: bf13c543-ca57-4479-be36-47fe5ad34dfc
         fromPort: solidGeometry
-        toPort: default
+        toPort: features
       - id: c9eac8a2-591e-4f3e-96aa-fafe45a65a2b
         from: bf13c543-ca57-4479-be36-47fe5ad34dfc
         to: d0132191-a81f-4647-896d-5db49e3fb734
         fromPort: failed
-        toPort: default
+        toPort: features
       - id: 9d998e42-7f49-44ea-b726-f9f95cb68021
         from: d0132191-a81f-4647-896d-5db49e3fb734
         to: e57bec12-7e6e-4edf-8ce2-14fbd12a7f92
         fromPort: notClosed
-        toPort: default
+        toPort: features
       - id: 4bd1541c-ad5c-482f-8ca1-78337fbe2664
         from: e57bec12-7e6e-4edf-8ce2-14fbd12a7f92
         to: 89712e8f-e0ac-4bb3-a92f-c5ff06fe4c96
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 64a4a6d1-a4ba-4b1a-97fb-69c22014d2ef
         from: d0132191-a81f-4647-896d-5db49e3fb734
         to: 33e3f4a5-6b7c-8d9e-0f1a-2b3c4d5e6f7a
         fromPort: notClosed
-        toPort: default
+        toPort: features
       - id: c964647c-71b4-4c34-9f04-d247538a3acc
         from: d0132191-a81f-4647-896d-5db49e3fb734
         to: 64ff1eee-0d1a-42a1-b32d-fde94ffac693
         fromPort: unfiltered
-        toPort: default
+        toPort: features
       - id: 57a3aa25-21fe-47cf-a9ca-7334cc86eafb
         from: 64ff1eee-0d1a-42a1-b32d-fde94ffac693
         to: 527087b4-0411-49bd-ae5f-c1c7f9a5ccb8
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 8bce78b0-0605-4986-a9b5-42be75551269
         from: d0132191-a81f-4647-896d-5db49e3fb734
         to: 55a5b6c7-8d9e-0f1a-2b3c-4d5e6f7a8b9c
         fromPort: unfiltered
-        toPort: default
+        toPort: features
 
       # Geometry Type Error flow
       - id: 45d153c9-e98a-4f3a-80c0-b43d390528eb
         from: 93045f38-7f7a-4f1a-915e-e6d725ce36fb
         to: 8b699a61-e326-4da7-80d3-eb2a4674d0ea
         fromPort: unfiltered
-        toPort: default
+        toPort: features
       - id: e3983ee8-9709-4597-b25d-cb2d6a3f21b4
         from: 8b699a61-e326-4da7-80d3-eb2a4674d0ea
         to: 1087cae8-2937-4e33-a9ac-d20c9052f80e
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 3770ae24-e996-48ad-a001-e2c425574854
         from: 8b699a61-e326-4da7-80d3-eb2a4674d0ea
         to: d7c87c17-485d-469e-b216-7797bd63d0e9
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       
       # Error aggregation flow
       - id: 4ff8a685-06c9-4227-b33e-0dc21b07fc12
         from: a1554a74-3caa-4880-a4a3-6dc4ab526a13 # FeatureFilterByPackage
         to: 7ccbb722-d0cc-4843-a42e-179576530340  # FileInfoExtractor
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       - id: 803d0888-212c-4219-93e2-be0b1a9918f0
         from: 7ccbb722-d0cc-4843-a42e-179576530340  # FileInfoExtractor
         to: 92119eb6-9343-49b7-b6c2-e2142374c52c    # ErrorSummaryMerger (requestor)
-        fromPort: default
+        fromPort: features
         toPort: requestor
 
       # StatisticsCalculator to ErrorSummaryMerger (supplier)
       - id: 0780d4c5-8446-47ee-8609-d880677f49e0
         from: 46d6ed1c-cde5-43a5-837b-8544103aa36b
         to: 92119eb6-9343-49b7-b6c2-e2142374c52c
-        fromPort: default
+        fromPort: features
         toPort: supplier
       - id: d4230b77-fc0a-4869-96c0-8ad1eaaa804f
         from: 33e3f4a5-6b7c-8d9e-0f1a-2b3c4d5e6f7a
         to: 92119eb6-9343-49b7-b6c2-e2142374c52c
-        fromPort: default
+        fromPort: features
         toPort: supplier
       - id: 08ad674d-2e1c-4807-bcb4-a2bcb687f22d
         from: 55a5b6c7-8d9e-0f1a-2b3c-4d5e6f7a8b9c
         to: 92119eb6-9343-49b7-b6c2-e2142374c52c
-        fromPort: default
+        fromPort: features
         toPort: supplier
       - id: e9fcaf4b-15b6-4567-a3fa-d095704191e2
         from: d7c87c17-485d-469e-b216-7797bd63d0e9
         to: 92119eb6-9343-49b7-b6c2-e2142374c52c
-        fromPort: default
+        fromPort: features
         toPort: supplier
 
       # ErrorSummaryMerger → SummaryAttributeMapper
@@ -990,108 +990,108 @@ graphs:
         from: 92119eb6-9343-49b7-b6c2-e2142374c52c  # ErrorSummaryMerger
         to: f58eeb2c-9187-4880-8c1f-7da2f9388069    # SummaryAttributeMapper
         fromPort: merged
-        toPort: default
+        toPort: features
       - id: c592fd98-cbd7-4f3a-917f-0457910732d6
         from: 92119eb6-9343-49b7-b6c2-e2142374c52c  # ErrorSummaryMerger
         to: f58eeb2c-9187-4880-8c1f-7da2f9388069    # SummaryAttributeMapper
         fromPort: unmerged
-        toPort: default
+        toPort: features
 
       - id: e579e69e-6f24-47be-8bb2-642d48d9fe6d
         from: f58eeb2c-9187-4880-8c1f-7da2f9388069  # SummaryAttributeMapper
         to: f38c754b-98cd-48e1-bfa7-adbf7c390899    # CSVSummaryWriter
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       - id: c5d7057d-b240-4493-9141-6b26faaf03ba
         from: f58eeb2c-9187-4880-8c1f-7da2f9388069  # SummaryAttributeMapper
         to: 521b2dea-51af-460f-9eb5-672917768692    # StatisticsCalculator
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       - id: b51cd2a6-7885-4b2f-9234-2dd759fe47dc
         from: 521b2dea-51af-460f-9eb5-672917768692  # StatisticsCalculator
         to: 4ed9ffc0-9509-4037-bcb6-117829aab7d5    # JSONSummaryWriter
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       - id: 16f040ee-6f4b-4c66-bdd8-cd03dcc4fb9a
         from: 521b2dea-51af-460f-9eb5-672917768692  # StatisticsCalculator
         to: 27350bec-6220-4d6e-8fd1-1bd5d01716d3    # StatisticsCalculatorTotalErrors
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # CommonQualityCheck summaryOutput → StatisticsCalculatorTotalErrors (for qc_result_ok)
       - id: a1b2c3d4-0e1f-2a3b-4c5d-6e7f8a9b0c1d
         from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a  # CommonQualityCheck-01-01
         to: 27350bec-6220-4d6e-8fd1-1bd5d01716d3    # StatisticsCalculatorTotalErrors
         fromPort: summaryOutput
-        toPort: default
+        toPort: features
 
       - id: b2c3d4e5-1f2a-3b4c-5d6e-7f8a9b0c1d2e
         from: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7b  # CommonQualityCheck-01-02
         to: 27350bec-6220-4d6e-8fd1-1bd5d01716d3    # StatisticsCalculatorTotalErrors
         fromPort: summaryOutput
-        toPort: default
+        toPort: features
 
       - id: 3054b3f1-24b0-45d8-a3e7-7938409c900d
         from: 27350bec-6220-4d6e-8fd1-1bd5d01716d3  # StatisticsCalculatorTotalErrors
         to: 020bac31-10f6-4a00-8426-630d03970c0f    # FeatureFilterNoErrors
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       - id: 83f795ad-d183-4bbd-b7a5-e9da5497fe16
         from: 020bac31-10f6-4a00-8426-630d03970c0f  # FeatureFilterNoErrors
         to: 734ebb2a-c2b0-429e-9363-5ccdd2a5b2ae    # FileWriterQcResultOk
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
 
       # Output files to ZipFileWriter
       - id: b4a13b04-9c9c-4152-a221-7c74947b59b3
         from: f38c754b-98cd-48e1-bfa7-adbf7c390899
         to: be482ba8-ca60-40fb-8e52-8b15460b17cc
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: ed977dcd-0d9d-4b25-9e84-7293c16a23fb
         from: a453192e-603c-417e-9f65-f57b8e15f7d3  # CsvWriterInstanceCount
         to: be482ba8-ca60-40fb-8e52-8b15460b17cc
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 5acd4c49-d2ec-45fa-a23a-78eee8fca01c
         from: 4ed9ffc0-9509-4037-bcb6-117829aab7d5  # JSONSummaryWriter
         to: be482ba8-ca60-40fb-8e52-8b15460b17cc
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 3556fbd8-fce4-490a-a455-2503ca11e5ae
         from: 51bdd4e8-1f3d-4745-9e96-9cb53ee92a53
         to: be482ba8-ca60-40fb-8e52-8b15460b17cc
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 5c237b4e-c960-4a87-a7a2-e9633aa5e093
         from: 89712e8f-e0ac-4bb3-a92f-c5ff06fe4c96
         to: be482ba8-ca60-40fb-8e52-8b15460b17cc
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: a5e1edb9-fd1f-4465-aba9-188ebff3fe6a
         from: 527087b4-0411-49bd-ae5f-c1c7f9a5ccb8
         to: be482ba8-ca60-40fb-8e52-8b15460b17cc
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 3ec78b1c-6741-4756-9b53-835edeb45e01
         from: 1087cae8-2937-4e33-a9ac-d20c9052f80e
         to: be482ba8-ca60-40fb-8e52-8b15460b17cc
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # Common subgraph outputs to ZipFileWriter
       - id: b7c8d9e0-f1a2-3b4c-5d6e-7f8a9b0c1d2e
         from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a  # CommonQualityCheck-01-01
         to: be482ba8-ca60-40fb-8e52-8b15460b17cc    # ZipFileWriter
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: c8d9e0f1-a2b3-4c5d-6e7f-8a9b0c1d2e3f
         from: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7b  # CommonQualityCheck-01-02
         to: be482ba8-ca60-40fb-8e52-8b15460b17cc    # ZipFileWriter
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features

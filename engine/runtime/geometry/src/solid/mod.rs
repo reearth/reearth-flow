@@ -16,6 +16,8 @@ use crate::triangular_mesh::TriangularMesh3DData;
 
 mod constructor;
 mod ops;
+#[cfg(feature = "new-geometry")]
+mod validation;
 
 /// One closed boundary of a [`Solid`]: a general polygon mesh or a triangle
 /// mesh, stored as coordinate-free mesh data so the boundary cannot carry a
@@ -59,6 +61,12 @@ pub struct Solid {
 }
 
 impl Solid {
+    /// The coordinate frame this solid's shells are expressed in.
+    #[inline]
+    pub fn frame(&self) -> &CoordinateFrame {
+        &self.frame
+    }
+
     /// The exterior boundary shell.
     #[inline]
     pub fn exterior(&self) -> &Shell {

@@ -19,7 +19,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{
     Attribute, AttributeValue, CityGmlGeometry, Feature, Geometry, GeometryValue, GmlGeometry,
@@ -36,7 +36,7 @@ pub struct GridDividerFactory;
 
 impl ProcessorFactory for GridDividerFactory {
     fn name(&self) -> &str {
-        "GridDivider"
+        "Grid Divider"
     }
 
     fn description(&self) -> &str {
@@ -56,11 +56,11 @@ impl ProcessorFactory for GridDividerFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
+        vec![FEATURES_PORT.clone(), REJECTED_PORT.clone()]
     }
 
     fn build(
@@ -150,7 +150,7 @@ pub struct GridDivider {
 
 impl fmt::Debug for GridDivider {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        f.debug_struct("GridDivider")
+        f.debug_struct("Grid Divider")
             .field("unit_square_size", &self.unit_square_size)
             .field("group_count", &self.group_count)
             .field("buffer_bytes", &self.buffer_bytes)
@@ -472,14 +472,14 @@ impl Processor for GridDivider {
             .finish()?;
 
         if total_output > 0 {
-            fw.send_file(output_path, DEFAULT_PORT.clone(), ctx.as_context());
+            fw.send_file(output_path, FEATURES_PORT.clone(), ctx.as_context());
         }
 
         Ok(())
     }
 
     fn name(&self) -> &str {
-        "GridDivider"
+        "Grid Divider"
     }
 }
 

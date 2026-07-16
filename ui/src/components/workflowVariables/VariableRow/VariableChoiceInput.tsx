@@ -49,7 +49,8 @@ export default function VariableChoiceInput({
   return (
     <Select
       value={variable.defaultValue}
-      onValueChange={(newValue) => onDefaultValueChange(index, newValue)}>
+      onValueChange={(newValue) => onDefaultValueChange(index, newValue)}
+      items={choices}>
       <SelectTrigger className="h-9 w-[150px]">
         <SelectValue placeholder={t("Select an option")} />
       </SelectTrigger>

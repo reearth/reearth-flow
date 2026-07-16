@@ -29,6 +29,7 @@ import {
   useYjsStore,
 } from "@flow/lib/yjs";
 import type { YWorkflow } from "@flow/lib/yjs/types";
+import useLegacyPortsMigration from "@flow/lib/yjs/useLegacyPortsMigration";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
 import { useCurrentProject } from "@flow/stores";
 import type { Algorithm, Direction, Edge, Node } from "@flow/types";
@@ -216,6 +217,15 @@ export default ({
     yDoc,
   });
 
+  const {
+    showLegacyPortsDialog,
+    handleLegacyPortsMigrate,
+    handleLegacyPortsDialogClose,
+  } = useLegacyPortsMigration({
+    yWorkflows,
+    onProjectSnapshotSave: handleProjectSnapshotSave,
+  });
+
   const { sharingUrl, handleProjectShare } = useProjectShare({
     currentProject,
     yDoc,
@@ -269,14 +279,14 @@ export default ({
 
         for (const node of nodes) {
           const officalName = node.data.officialName;
-          if (officalName !== "InputRouter" && officalName !== "OutputRouter")
+          if (officalName !== "Input Router" && officalName !== "Output Router")
             continue;
           const isDeleting = deletingIds.has(node.id);
 
-          if (officalName === "InputRouter") {
+          if (officalName === "Input Router") {
             totalInputRouters++;
             if (!isDeleting) remainingInputRouters++;
-          } else if (officalName === "OutputRouter") {
+          } else if (officalName === "Output Router") {
             totalOutputRouters++;
             if (!isDeleting) remainingOutputRouters++;
           }
@@ -525,6 +535,9 @@ export default ({
     staleNodeIds,
     handleProjectLockChange,
     isLocked,
+    showLegacyPortsDialog,
+    handleLegacyPortsMigrate,
+    handleLegacyPortsDialogClose,
     handleSpotlightUserSelect,
     handleSpotlightUserDeselect,
     handlePaneClick,

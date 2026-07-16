@@ -1,3 +1,5 @@
+#[cfg(feature = "new-geometry")]
+pub(crate) mod appearance;
 pub(crate) mod codespace;
 pub(crate) mod flatten;
 #[cfg(not(feature = "new-geometry"))]
@@ -13,5 +15,7 @@ pub mod parser;
 pub mod pipeline;
 #[cfg(feature = "new-geometry")]
 pub(crate) mod resolver;
+#[cfg(feature = "new-geometry")]
+mod srsname;
 pub(crate) mod utils;
 pub(crate) mod xlink;

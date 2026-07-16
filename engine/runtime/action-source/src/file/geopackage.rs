@@ -16,7 +16,7 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
+    node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
 };
 use reearth_flow_sql::SqlAdapter;
 use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
@@ -36,7 +36,7 @@ pub(crate) struct GeoPackageReaderFactory;
 
 impl SourceFactory for GeoPackageReaderFactory {
     fn name(&self) -> &str {
-        "GeoPackageReader"
+        "GeoPackage Reader"
     }
 
     fn description(&self) -> &str {
@@ -56,7 +56,7 @@ impl SourceFactory for GeoPackageReaderFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -165,7 +165,7 @@ impl Source for GeoPackageReader {
     async fn initialize(&self, _ctx: NodeContext) {}
 
     fn name(&self) -> &str {
-        "GeoPackageReader"
+        "GeoPackage Reader"
     }
 
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {
@@ -186,7 +186,7 @@ impl Source for GeoPackageReader {
         for feature in features {
             sender
                 .send((
-                    DEFAULT_PORT.clone(),
+                    FEATURES_PORT.clone(),
                     IngestionMessage::OperationEvent { feature },
                 ))
                 .await

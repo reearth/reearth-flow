@@ -11,7 +11,7 @@ graphs:
       - id: 01234567-0000-0000-0000-000000000303
         name: ReadGeoPackage
         type: action
-        action: GeoPackageReader
+        action: GeoPackage Reader
         with:
           dataset:
             type: string
@@ -21,7 +21,7 @@ graphs:
       - id: 01234567-0000-0000-0000-000000000304
         name: WriteGeoPackage
         type: action
-        action: GeoPackageWriter
+        action: GeoPackage Writer
         with:
           output:
             type: string
@@ -37,5 +37,5 @@ graphs:
       - id: 01234567-0000-0000-0000-000000000307
         from: 01234567-0000-0000-0000-000000000303
         to: 01234567-0000-0000-0000-000000000304
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features

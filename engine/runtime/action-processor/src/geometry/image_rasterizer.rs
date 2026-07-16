@@ -10,7 +10,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{
     material::Texture, Attributes, Code, CodeType, CompiledCode, Feature, Geometry, GeometryValue,
@@ -69,7 +69,7 @@ pub(super) struct ImageRasterizerFactory;
 
 impl ProcessorFactory for ImageRasterizerFactory {
     fn name(&self) -> &str {
-        "ImageRasterizer"
+        "Image Rasterizer"
     }
 
     fn description(&self) -> &str {
@@ -89,12 +89,12 @@ impl ProcessorFactory for ImageRasterizerFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone(), TEXTURE_COORDS_PORT.clone()]
+        vec![FEATURES_PORT.clone(), TEXTURE_COORDS_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
         vec![
-            DEFAULT_PORT.clone(),
+            FEATURES_PORT.clone(),
             TEXTURED_PORT.clone(),
             BOUNDS_PORT.clone(),
         ]
@@ -406,7 +406,7 @@ impl Processor for ImageRasterizer {
                         fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                             &ctx,
                             feature.clone(),
-                            DEFAULT_PORT.clone(),
+                            FEATURES_PORT.clone(),
                         ));
 
                         // Send textured feature to textured port
@@ -439,7 +439,7 @@ impl Processor for ImageRasterizer {
                     fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                         &ctx,
                         feature,
-                        DEFAULT_PORT.clone(),
+                        FEATURES_PORT.clone(),
                     ));
                 }
             }
@@ -462,7 +462,7 @@ impl Processor for ImageRasterizer {
     }
 
     fn name(&self) -> &str {
-        "ImageRasterizer"
+        "Image Rasterizer"
     }
 }
 

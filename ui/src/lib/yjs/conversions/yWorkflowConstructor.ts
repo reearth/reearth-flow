@@ -38,6 +38,7 @@ export const yNodeConstructor = (node: Node): YNode => {
         node.data.outputs?.map((output) => toYjsText(output)),
       ),
       params: node.data.params,
+      paramsSchema: node.data.paramsSchema,
       customizations: node.data.customizations,
       nodeMetadata: node.data.nodeMetadata,
       isCollapsed: node.data.isCollapsed ?? false,

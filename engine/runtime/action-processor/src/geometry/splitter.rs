@@ -13,7 +13,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{
     Attribute, AttributeValue, CityGmlGeometry, Feature, Geometry, GeometryValue, GmlGeometry,
@@ -54,7 +54,7 @@ pub struct GeometrySplitterFactory;
 
 impl ProcessorFactory for GeometrySplitterFactory {
     fn name(&self) -> &str {
-        "GeometrySplitter"
+        "Geometry Splitter"
     }
 
     fn description(&self) -> &str {
@@ -74,11 +74,11 @@ impl ProcessorFactory for GeometrySplitterFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -158,7 +158,7 @@ impl Processor for GeometrySplitter {
             }
             GeometryValue::None => {
                 // Pass through empty geometry
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
             }
         }
         Ok(())
@@ -174,7 +174,7 @@ impl Processor for GeometrySplitter {
     }
 
     fn name(&self) -> &str {
-        "GeometrySplitter"
+        "Geometry Splitter"
     }
 }
 
@@ -199,7 +199,7 @@ impl GeometrySplitter {
                     );
                     new_feature.geometry_mut().value =
                         GeometryValue::FlowGeometry2D(Geometry2D::Polygon(polygon));
-                    fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
                 }
             }
             Geometry2D::MultiLineString(multi_line_string) => {
@@ -214,12 +214,12 @@ impl GeometrySplitter {
                     );
                     new_feature.geometry_mut().value =
                         GeometryValue::FlowGeometry2D(Geometry2D::LineString(line_string));
-                    fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
                 }
             }
             _ => {
                 // For non-multi geometries, pass through unchanged
-                fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), FEATURES_PORT.clone()));
             }
         }
         Ok(())
@@ -245,7 +245,7 @@ impl GeometrySplitter {
                     );
                     new_feature.geometry_mut().value =
                         GeometryValue::FlowGeometry3D(Geometry3D::Polygon(polygon));
-                    fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
                 }
             }
             Geometry3D::MultiLineString(multi_line_string) => {
@@ -260,7 +260,7 @@ impl GeometrySplitter {
                     );
                     new_feature.geometry_mut().value =
                         GeometryValue::FlowGeometry3D(Geometry3D::LineString(line_string));
-                    fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
                 }
             }
             Geometry3D::TriangularMesh(mesh) => {
@@ -268,7 +268,7 @@ impl GeometrySplitter {
             }
             _ => {
                 // For non-multi geometries, pass through unchanged
-                fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), FEATURES_PORT.clone()));
             }
         }
         Ok(())
@@ -308,7 +308,7 @@ impl GeometrySplitter {
                 );
                 new_feature.geometry_mut().value =
                     GeometryValue::FlowGeometry3D(Geometry3D::Polygon(polygon));
-                fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
             }
             return Ok(());
         }
@@ -335,7 +335,7 @@ impl GeometrySplitter {
         }
         writer.flush()?;
 
-        fw.send_file(output_path, DEFAULT_PORT.clone(), ctx.as_context());
+        fw.send_file(output_path, FEATURES_PORT.clone(), ctx.as_context());
         Ok(())
     }
 
@@ -404,7 +404,7 @@ impl GeometrySplitter {
         new_geometry.value = GeometryValue::CityGmlGeometry(split_feature);
         fw.send(ctx.new_with_feature_and_port(
             Feature::new_with_attributes_and_geometry(attributes, new_geometry),
-            DEFAULT_PORT.clone(),
+            FEATURES_PORT.clone(),
         ));
 
         Ok(())
@@ -507,7 +507,7 @@ impl GeometrySplitter {
             new_geometry.value = GeometryValue::CityGmlGeometry(single_citygml);
             fw.send(ctx.new_with_feature_and_port(
                 Feature::new_with_attributes_and_geometry(attributes, new_geometry),
-                DEFAULT_PORT.clone(),
+                FEATURES_PORT.clone(),
             ));
         }
 

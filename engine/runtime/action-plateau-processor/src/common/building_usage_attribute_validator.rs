@@ -31,7 +31,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::{Attribute, AttributeValue, Code, CompiledCode, Feature};
@@ -137,14 +137,14 @@ impl ProcessorFactory for BuildingUsageAttributeValidatorFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
         vec![
             L_04_05_BLDG_ERROR_PORT.clone(),
             CITY_CODE_ERROR_PORT.clone(),
-            DEFAULT_PORT.clone(),
+            FEATURES_PORT.clone(),
         ]
     }
 
@@ -274,7 +274,7 @@ impl BuildingUsageAttributeValidator {
             ports.push(CITY_CODE_ERROR_PORT.clone());
         }
         if ports.is_empty() {
-            ports.push(DEFAULT_PORT.clone());
+            ports.push(FEATURES_PORT.clone());
         }
 
         let attributes = Arc::new(attributes);

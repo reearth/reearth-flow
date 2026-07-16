@@ -9,16 +9,16 @@
 
 use std::sync::Arc;
 
+use reearth_flow_geometry::coordinate::CoordinateFrame;
 use reearth_flow_geometry::line_string::LineString3D;
 use reearth_flow_geometry::point::Point3D;
 use reearth_flow_geometry::polygon::Polygon3D;
-use reearth_flow_geometry::polygon_mesh::PolygonMesh3D;
 use reearth_flow_geometry::triangular_mesh::TriangularMesh3D;
 use reearth_flow_geometry::Euclidean3DGeometry;
 
-use super::parser::{raw_gml_id, RawChild, RawNode};
-use super::resolver::{GeomNode, GeomRegistry, GmlGeometryType, Role, Unresolved, FRAME};
-use super::utils::{local_name, GML_NS_ID};
+use super::parser::{raw_gml_id, Parser, RawChild, RawNode};
+use super::resolver::{FaceIds, GeomNode, GmlGeometryType, LeafIds, Role, Unresolved};
+use super::utils::{frame_for, local_name, GML_NS_311_ID, GML_NS_ID};
 
 /// A geometry carved from a feature, tagged with the LOD of the property it came
 /// from (`None` for `tin`) and the `gml:id`s of its enclosing elements (nearest
@@ -46,92 +46,172 @@ fn owner_chain(mut owner: Option<&Owner>) -> Vec<String> {
     ids
 }
 
-/// Strip every geometry property from `node`, returning the geometry-free
-/// attribute tree and the geometries carved out of it. Geometries carrying a
-/// `gml:id` are registered in `registry` as reference targets. `track_owners`
-/// records each geometry's enclosing `gml:id`s, needed only when children will be
-/// hoisted.
-pub(super) fn split_geometry(
-    node: &Arc<RawNode>,
-    registry: &mut GeomRegistry,
-    track_owners: bool,
-) -> (Arc<RawNode>, Vec<PendingGeom>) {
-    let mut geoms = Vec::new();
-    let stripped = strip(node, None, registry, &mut geoms, track_owners);
-    (stripped, geoms)
-}
+impl Parser {
+    /// Strip every geometry property from `node`, returning the geometry-free
+    /// attribute tree and the geometries carved out of it. Geometries carrying a
+    /// `gml:id` are registered as `xlink` reference targets.
+    pub(super) fn split_geometry(
+        &mut self,
+        node: &Arc<RawNode>,
+    ) -> (Arc<RawNode>, Vec<PendingGeom>) {
+        let mut geoms = Vec::new();
+        let stripped = self.strip(node, None, &mut geoms);
+        (stripped, geoms)
+    }
 
-/// Recursively rebuild `node` without its geometry-property children, collecting
-/// the parsed geometries into `geoms`. `owner` is the chain of enclosing
-/// `gml:id`s above `node`.
-fn strip(
-    node: &Arc<RawNode>,
-    owner: Option<&Owner>,
-    registry: &mut GeomRegistry,
-    geoms: &mut Vec<PendingGeom>,
-    track_owners: bool,
-) -> Arc<RawNode> {
-    let here = gml_id_ref(node).map(|id| Owner { id, parent: owner });
-    let owner = here.as_ref().or(owner);
-    let mut new_children: Option<Vec<RawChild>> = None;
+    /// Recursively rebuild `node` without its geometry-property children, collecting
+    /// the parsed geometries into `geoms`. `owner` is the chain of enclosing
+    /// `gml:id`s above `node`.
+    fn strip(
+        &mut self,
+        node: &Arc<RawNode>,
+        owner: Option<&Owner>,
+        geoms: &mut Vec<PendingGeom>,
+    ) -> Arc<RawNode> {
+        let here = gml_id_ref(node).map(|id| Owner { id, parent: owner });
+        let owner = here.as_ref().or(owner);
+        let mut new_children: Option<Vec<RawChild>> = None;
 
-    for (i, child) in node.children.iter().enumerate() {
-        let RawChild::Element(e) = child else {
-            if let Some(ref mut nc) = new_children {
-                nc.push(child.clone());
-            }
-            continue;
-        };
-
-        let ln = local_name(&e.name.0);
-        let lod = if ln == "tin" {
-            Some(None)
-        } else {
-            extract_lod(ln).map(Some)
-        };
-        // A name match alone is not enough: keep an element that merely shares the
-        // `lod<N>…` / `tin` naming but wraps no geometry, rather than stripping it.
-        let lod = lod.filter(|_| is_geometry_property(e));
-
-        if let Some(lod) = lod {
-            if let Some(gnode) = property_geometry(e, registry) {
-                let owner_ids = if track_owners {
-                    owner_chain(owner)
-                } else {
-                    Vec::new()
-                };
-                geoms.push(PendingGeom {
-                    lod,
-                    node: gnode,
-                    owner_ids,
-                });
-            }
-            if new_children.is_none() {
-                new_children = Some(node.children[..i].to_vec());
-            }
-        } else {
-            let stripped_child = strip(e, owner, registry, geoms, track_owners);
-            match new_children {
-                None => {
-                    if !Arc::ptr_eq(&stripped_child, e) {
-                        let mut nc = node.children[..i].to_vec();
-                        nc.push(RawChild::Element(stripped_child));
-                        new_children = Some(nc);
-                    }
+        for (i, child) in node.children.iter().enumerate() {
+            let RawChild::Element(e) = child else {
+                if let Some(ref mut nc) = new_children {
+                    nc.push(child.clone());
                 }
-                Some(ref mut nc) => nc.push(RawChild::Element(stripped_child)),
+                continue;
+            };
+
+            let ln = local_name(&e.name.0);
+            let lod = if ln == "tin" {
+                Some(None)
+            } else {
+                extract_lod(ln).map(Some)
+            };
+            // A name match alone is not enough: keep an element that merely shares
+            // the `lod<N>…` / `tin` naming but wraps no geometry, rather than
+            // stripping it.
+            let lod = lod.filter(|_| is_geometry_property(e));
+
+            if let Some(lod) = lod {
+                if let Some(gnode) = self.property_geometry(e) {
+                    let owner_ids = if self.track_owners {
+                        owner_chain(owner)
+                    } else {
+                        Vec::new()
+                    };
+                    geoms.push(PendingGeom {
+                        lod,
+                        node: gnode,
+                        owner_ids,
+                    });
+                }
+                if new_children.is_none() {
+                    new_children = Some(node.children[..i].to_vec());
+                }
+            } else {
+                let stripped_child = self.strip(e, owner, geoms);
+                match new_children {
+                    None => {
+                        if !Arc::ptr_eq(&stripped_child, e) {
+                            let mut nc = node.children[..i].to_vec();
+                            nc.push(RawChild::Element(stripped_child));
+                            new_children = Some(nc);
+                        }
+                    }
+                    Some(ref mut nc) => nc.push(RawChild::Element(stripped_child)),
+                }
             }
+        }
+
+        match new_children {
+            None => Arc::clone(node),
+            Some(children) => Arc::new(RawNode {
+                name: node.name.clone(),
+                attrs: node.attrs.clone(),
+                children,
+                source_url: Arc::clone(&node.source_url),
+            }),
         }
     }
 
-    match new_children {
-        None => Arc::clone(node),
-        Some(children) => Arc::new(RawNode {
-            name: node.name.clone(),
-            attrs: node.attrs.clone(),
-            children,
-            source_url: Arc::clone(&node.source_url),
-        }),
+    /// Parse the single geometry element (or `xlink:href`) inside a `lod<N>…` /
+    /// `tin` property into a [`GeomNode`].
+    fn property_geometry(&mut self, prop: &RawNode) -> Option<GeomNode> {
+        for child in &prop.children {
+            match child {
+                RawChild::Ref(key) => return Some(GeomNode::Ref(key.clone())),
+                RawChild::Element(e) => return self.geometry_node(e),
+                RawChild::Text(_) => {}
+            }
+        }
+        None
+    }
+
+    /// Convert a geometry element into a [`GeomNode`]: an inline leaf is parsed to a
+    /// concrete geometry, tagged with its source file's frame; a container is left
+    /// [`Unresolved`]. A node with a `gml:id` is registered and replaced by a
+    /// [`GeomNode::Ref`].
+    fn geometry_node(&mut self, node: &RawNode) -> Option<GeomNode> {
+        let Some(ty) = geometry_type(local_name(&node.name.0)) else {
+            tracing::warn!(
+                element = local_name(&node.name.0),
+                "citygml geometry: unrecognized element, skipped"
+            );
+            return None;
+        };
+        let id = raw_gml_id(node);
+        let file = node.source_url.as_str().to_string();
+        let geom = if ty.is_inline() {
+            let (geometry, faces) = build_leaf(node, &ty, &self.frame(node))?;
+            GeomNode::Resolved(geometry, LeafIds { file, faces })
+        } else {
+            GeomNode::Unresolved(Unresolved {
+                ty,
+                id: id.clone(),
+                file,
+                members: self.collect_members(node),
+            })
+        };
+        Some(self.register(node, id, geom))
+    }
+
+    /// Register a geometry as an `xlink` target if it has a `gml:id`, returning a
+    /// [`GeomNode::Ref`] in its place; otherwise return it unchanged.
+    fn register(&mut self, node: &RawNode, id: Option<String>, geom: GeomNode) -> GeomNode {
+        match id {
+            Some(id) => {
+                let key = (node.source_url.as_str().to_string(), id);
+                self.geom_registry.insert(key.clone(), geom);
+                GeomNode::Ref(key)
+            }
+            None => geom,
+        }
+    }
+
+    /// Collect a container's members, tagging each with the role of the property
+    /// that owns it.
+    fn collect_members(&mut self, node: &RawNode) -> Vec<(Role, GeomNode)> {
+        let mut members = Vec::new();
+        for prop in element_children(node) {
+            let role = property_role(local_name(&prop.name.0));
+            for child in &prop.children {
+                match child {
+                    RawChild::Ref(key) => members.push((role, GeomNode::Ref(key.clone()))),
+                    RawChild::Element(inner) => {
+                        if let Some(g) = self.geometry_node(inner) {
+                            members.push((role, g));
+                        }
+                    }
+                    RawChild::Text(_) => {}
+                }
+            }
+        }
+        members
+    }
+
+    /// The coordinate frame geometry from `node` is expressed in: the CRS of the
+    /// file the node was parsed from, or `Euclidean` when that file declared none.
+    fn frame(&self, node: &RawNode) -> CoordinateFrame {
+        frame_for(node.source_url.as_str(), &self.srs_by_file)
     }
 }
 
@@ -139,13 +219,13 @@ fn strip(
 fn gml_id_ref(node: &RawNode) -> Option<&str> {
     node.attrs
         .iter()
-        .find(|((q, ns), _)| local_name(q) == "id" && *ns == GML_NS_ID)
+        .find(|((q, ns), _)| local_name(q) == "id" && (*ns == GML_NS_ID || *ns == GML_NS_311_ID))
         .map(|(_, v)| v.as_str())
 }
 
 /// Whether a `lod<N>…` / `tin`-named element actually wraps a geometry: its first
 /// non-text child is a recognized GML geometry element or an `xlink:href`
-/// reference. Mirrors [`property_geometry`]'s child selection.
+/// reference. Mirrors [`Parser::property_geometry`]'s child selection.
 fn is_geometry_property(prop: &RawNode) -> bool {
     for child in &prop.children {
         match child {
@@ -157,169 +237,110 @@ fn is_geometry_property(prop: &RawNode) -> bool {
     false
 }
 
-/// Parse the single geometry element (or `xlink:href`) inside a `lod<N>…` / `tin`
-/// property into a [`GeomNode`].
-fn property_geometry(prop: &RawNode, registry: &mut GeomRegistry) -> Option<GeomNode> {
-    for child in &prop.children {
-        match child {
-            RawChild::Ref(key) => return Some(GeomNode::Ref(key.clone())),
-            RawChild::Element(e) => return geometry_node(e, registry),
-            RawChild::Text(_) => {}
-        }
-    }
-    None
-}
-
-/// Convert a geometry element into a [`GeomNode`]: an inline leaf is parsed to a
-/// concrete geometry, a container is left [`Unresolved`]. A node with a `gml:id`
-/// is moved into `registry` and replaced by a [`GeomNode::Ref`].
-fn geometry_node(node: &RawNode, registry: &mut GeomRegistry) -> Option<GeomNode> {
-    let Some(ty) = geometry_type(local_name(&node.name.0)) else {
-        tracing::warn!(
-            element = local_name(&node.name.0),
-            "citygml geometry: unrecognized element, skipped"
-        );
-        return None;
-    };
-    let id = raw_gml_id(node);
-    let geom = if ty.is_inline() {
-        GeomNode::Resolved(build_leaf(node, &ty)?)
-    } else {
-        GeomNode::Unresolved(Unresolved {
-            ty,
-            id: id.clone(),
-            members: collect_members(node, registry),
-        })
-    };
-    Some(register(node, id, geom, registry))
-}
-
-/// Register a geometry as an `xlink` target if it has a `gml:id`, returning a
-/// [`GeomNode::Ref`] in its place; otherwise return it unchanged.
-fn register(
+/// Parse an inline geometry leaf into a concrete geometry and the per-face gml:ids
+/// captured alongside it, dispatching on its type. Container types and unsupported
+/// leaves yield `None`.
+fn build_leaf(
     node: &RawNode,
-    id: Option<String>,
-    geom: GeomNode,
-    registry: &mut GeomRegistry,
-) -> GeomNode {
-    match id {
-        Some(id) => {
-            let key = (node.source_url.as_str().to_string(), id);
-            registry.insert(key.clone(), geom);
-            GeomNode::Ref(key)
-        }
-        None => geom,
-    }
-}
-
-/// Collect a container's members, tagging each with the role of the property that
-/// owns it.
-fn collect_members(node: &RawNode, registry: &mut GeomRegistry) -> Vec<(Role, GeomNode)> {
-    let mut members = Vec::new();
-    for prop in element_children(node) {
-        let role = property_role(local_name(&prop.name.0));
-        for child in &prop.children {
-            match child {
-                RawChild::Ref(key) => members.push((role, GeomNode::Ref(key.clone()))),
-                RawChild::Element(inner) => {
-                    if let Some(g) = geometry_node(inner, registry) {
-                        members.push((role, g));
-                    }
-                }
-                RawChild::Text(_) => {}
-            }
-        }
-    }
-    members
-}
-
-/// Parse an inline geometry leaf into a concrete geometry, dispatching on its
-/// type. Container types and unsupported leaves yield `None`.
-fn build_leaf(node: &RawNode, ty: &GmlGeometryType) -> Option<Euclidean3DGeometry> {
+    ty: &GmlGeometryType,
+    frame: &CoordinateFrame,
+) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
     match ty {
-        GmlGeometryType::Point => build_point(node),
-        GmlGeometryType::LineString => build_line_string(node),
+        GmlGeometryType::Point => build_point(node, frame),
+        GmlGeometryType::LineString => build_line_string(node, frame),
         // TODO: gml:Curve support is deferred. Its segments may be arcs or splines,
         // which cannot be handled by sweeping control points into a straight chain.
         GmlGeometryType::Curve => {
             tracing::warn!("citygml geometry: gml:Curve is not supported yet, skipped");
             None
         }
-        GmlGeometryType::LinearRing => build_ring_polygon(node),
-        GmlGeometryType::Polygon => build_polygon(node),
-        GmlGeometryType::Surface | GmlGeometryType::PolyhedralSurface => build_surface(node),
-        GmlGeometryType::TriangulatedSurface | GmlGeometryType::Tin => build_triangulated(node),
+        GmlGeometryType::LinearRing => build_ring_polygon(node, frame),
+        GmlGeometryType::Polygon => build_polygon(node, frame),
+        GmlGeometryType::TriangulatedSurface | GmlGeometryType::Tin => {
+            build_triangulated(node, frame)
+        }
         _ => None,
     }
 }
 
 /// Build a `Point` from the element's first coordinate; `None` if it carries none.
-fn build_point(node: &RawNode) -> Option<Euclidean3DGeometry> {
+/// A point has no faces, so no gml:ids are captured.
+fn build_point(
+    node: &RawNode,
+    frame: &CoordinateFrame,
+) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
     let coords = gather_coords(node);
-    coords
-        .first()
-        .map(|&c| Euclidean3DGeometry::Point(Point3D::new(FRAME, c)))
+    coords.first().map(|&c| {
+        (
+            Euclidean3DGeometry::Point(Point3D::new(frame.clone(), c)),
+            Vec::new(),
+        )
+    })
 }
 
 /// Build a `LineString` from the element's coordinates; `None` if it carries none.
-fn build_line_string(node: &RawNode) -> Option<Euclidean3DGeometry> {
+/// A line has no faces, so no gml:ids are captured.
+fn build_line_string(
+    node: &RawNode,
+    frame: &CoordinateFrame,
+) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
     let coords = gather_coords(node);
     if coords.is_empty() {
         return None;
     }
-    Some(Euclidean3DGeometry::LineString(LineString3D::from_coords(
-        FRAME, coords,
-    )))
+    let line = Euclidean3DGeometry::LineString(LineString3D::from_coords(frame.clone(), coords));
+    Some((line, Vec::new()))
 }
 
 /// Build a single-ring `Polygon` from a `LinearRing`'s coordinates; `None` if it
-/// carries none.
-fn build_ring_polygon(node: &RawNode) -> Option<Euclidean3DGeometry> {
+/// carries none. The one face's sole ring id is the `LinearRing`'s own gml:id.
+fn build_ring_polygon(
+    node: &RawNode,
+    frame: &CoordinateFrame,
+) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
     let exterior = gather_coords(node);
     if exterior.is_empty() {
         return None;
     }
-    Some(Euclidean3DGeometry::Polygon(Box::new(
-        Polygon3D::from_rings(FRAME, exterior, Vec::<Vec<[f64; 3]>>::new()),
-    )))
+    let polygon = Polygon3D::from_rings(frame.clone(), exterior, Vec::<Vec<[f64; 3]>>::new());
+    let face = FaceIds {
+        surface: None,
+        rings: vec![raw_gml_id(node)],
+    };
+    Some((Euclidean3DGeometry::Polygon(Box::new(polygon)), vec![face]))
 }
 
 /// Build a `Polygon` from an element's exterior and interior ring properties.
-fn build_polygon(node: &RawNode) -> Option<Euclidean3DGeometry> {
-    polygon_from_rings(node).map(|p| Euclidean3DGeometry::Polygon(Box::new(p)))
-}
-
-/// Build a `PolygonMesh` by welding a `Surface`/`PolyhedralSurface`'s polygon
-/// patches into one mesh; `None` if it has no patches.
-fn build_surface(node: &RawNode) -> Option<Euclidean3DGeometry> {
-    let mut faces: Vec<Polygon3D> = Vec::new();
-    for prop in element_children(node) {
-        if matches!(local_name(&prop.name.0), "patches" | "polygonPatches") {
-            for patch in element_children(prop) {
-                if let Some(p) = polygon_from_rings(patch) {
-                    faces.push(p);
-                }
-            }
-        }
-    }
-    if faces.is_empty() {
-        return None;
-    }
-    PolygonMesh3D::from_polygons(FRAME, &faces)
-        .ok()
-        .map(|m| Euclidean3DGeometry::PolygonMesh(Box::new(m)))
+fn build_polygon(
+    node: &RawNode,
+    frame: &CoordinateFrame,
+) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
+    let (polygon, face) = polygon_from_rings(node, frame)?;
+    Some((Euclidean3DGeometry::Polygon(Box::new(polygon)), vec![face]))
 }
 
 /// Build a `TriangularMesh` from a `TriangulatedSurface`/`Tin`'s triangle patches,
-/// taking the first three coordinates of each; `None` if it has no patches.
-fn build_triangulated(node: &RawNode) -> Option<Euclidean3DGeometry> {
+/// taking the first three coordinates of each; `None` if it has no patches. One
+/// `FaceIds` per triangle, in triangle order: each face's surface id the whole
+/// surface's own gml:id (a texture drapes the surface, not a single triangle) and
+/// its sole ring id the triangle's exterior `LinearRing` gml:id.
+fn build_triangulated(
+    node: &RawNode,
+    frame: &CoordinateFrame,
+) -> Option<(Euclidean3DGeometry, Vec<FaceIds>)> {
+    let surface = raw_gml_id(node);
     let mut soup: Vec<[f64; 3]> = Vec::new();
+    let mut face_ids: Vec<FaceIds> = Vec::new();
     for prop in element_children(node) {
         if matches!(local_name(&prop.name.0), "trianglePatches" | "patches") {
             for triangle in element_children(prop) {
                 let ring = gather_coords(triangle);
                 if ring.len() >= 3 {
                     soup.extend_from_slice(&ring[..3]);
+                    face_ids.push(FaceIds {
+                        surface: surface.clone(),
+                        rings: vec![triangle_ring_id(triangle)],
+                    });
                 }
             }
         }
@@ -327,33 +348,78 @@ fn build_triangulated(node: &RawNode) -> Option<Euclidean3DGeometry> {
     if soup.is_empty() {
         return None;
     }
-    Some(Euclidean3DGeometry::TriangularMesh(Box::new(
-        TriangularMesh3D::from_soup(FRAME, soup),
-    )))
+    let mesh = Euclidean3DGeometry::TriangularMesh(Box::new(TriangularMesh3D::from_soup(
+        frame.clone(),
+        soup,
+    )));
+    Some((mesh, face_ids))
 }
 
-/// Build a polygon from an element's `exterior` / `interior` ring properties.
-fn polygon_from_rings(node: &RawNode) -> Option<Polygon3D> {
-    let mut exterior: Option<Vec<[f64; 3]>> = None;
-    let mut interiors: Vec<Vec<[f64; 3]>> = Vec::new();
+/// The gml:id of a triangle patch's exterior `LinearRing`, if any.
+fn triangle_ring_id(triangle: &RawNode) -> Option<String> {
+    element_children(triangle)
+        .find(|e| local_name(&e.name.0) == "exterior")
+        .and_then(|ext| element_children(ext).find(|e| local_name(&e.name.0) == "LinearRing"))
+        .and_then(raw_gml_id)
+}
+
+/// Build a polygon from an element's `exterior` / `interior` ring properties,
+/// capturing the element's own gml:id as the face's surface id and each
+/// `LinearRing`'s gml:id in exterior-first, holes-next order.
+fn polygon_from_rings(node: &RawNode, frame: &CoordinateFrame) -> Option<(Polygon3D, FaceIds)> {
+    let mut exterior: Option<Ring> = None;
+    let mut interiors: Vec<Ring> = Vec::new();
     for prop in element_children(node) {
         match local_name(&prop.name.0) {
             "exterior" => {
-                let ring = gather_coords(prop);
-                if !ring.is_empty() {
+                let ring = read_ring(prop);
+                if !ring.coords.is_empty() {
                     exterior = Some(ring);
                 }
             }
             "interior" => {
-                let ring = gather_coords(prop);
-                if !ring.is_empty() {
+                let ring = read_ring(prop);
+                if !ring.coords.is_empty() {
                     interiors.push(ring);
                 }
             }
             _ => {}
         }
     }
-    exterior.map(|ext| Polygon3D::from_rings(FRAME, ext, interiors))
+    let exterior = exterior?;
+    let mut rings = Vec::with_capacity(1 + interiors.len());
+    rings.push(exterior.id);
+    let interior_coords: Vec<Vec<[f64; 3]>> = interiors
+        .into_iter()
+        .map(|ring| {
+            rings.push(ring.id);
+            ring.coords
+        })
+        .collect();
+    let polygon = Polygon3D::from_rings(frame.clone(), exterior.coords, interior_coords);
+    let face = FaceIds {
+        surface: raw_gml_id(node),
+        rings,
+    };
+    Some((polygon, face))
+}
+
+/// A single ring's coordinates and the enclosing `LinearRing`'s gml:id.
+struct Ring {
+    id: Option<String>,
+    coords: Vec<[f64; 3]>,
+}
+
+/// Read a `exterior` / `interior` ring property: its coordinates and the enclosing
+/// `LinearRing`'s gml:id.
+fn read_ring(prop: &RawNode) -> Ring {
+    let id = element_children(prop)
+        .find(|e| local_name(&e.name.0) == "LinearRing")
+        .and_then(raw_gml_id);
+    Ring {
+        id,
+        coords: gather_coords(prop),
+    }
 }
 
 /// Collect every coordinate under `node`, descending through property and ring
@@ -384,10 +450,9 @@ fn parse_ordinates(text: &str) -> Option<Vec<f64>> {
         .collect()
 }
 
-/// Parse a `gml:posList` into `[x, y, z]` triples, swapping the leading
-/// latitude/longitude pair into `x, y` order. A list with any unparseable token,
-/// or whose ordinate count is not a multiple of 3, is skipped whole rather than
-/// producing misaligned coordinates.
+/// Parse a `gml:posList` into ordinate triples, in the source's own axis order.
+/// A list with any unparseable token, or whose ordinate count is not a multiple
+/// of 3, is skipped whole rather than producing misaligned coordinates.
 fn parse_pos_list(text: &str) -> Vec<[f64; 3]> {
     let Some(values) = parse_ordinates(text) else {
         tracing::warn!("citygml geometry: invalid gml:posList content, skipped");
@@ -397,10 +462,10 @@ fn parse_pos_list(text: &str) -> Vec<[f64; 3]> {
         tracing::warn!("citygml geometry: gml:posList length not a multiple of 3, skipped");
         return Vec::new();
     }
-    values.chunks_exact(3).map(|c| [c[1], c[0], c[2]]).collect()
+    values.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect()
 }
 
-/// Parse a single `gml:pos` into one `[x, y, z]`, swapping latitude/longitude.
+/// Parse a single `gml:pos` into one ordinate triple, in the source's own axis order.
 fn parse_pos(text: &str) -> Option<[f64; 3]> {
     let Some(values) = parse_ordinates(text) else {
         tracing::warn!("citygml geometry: invalid gml:pos content, skipped");
@@ -409,7 +474,7 @@ fn parse_pos(text: &str) -> Option<[f64; 3]> {
     if values.len() != 3 {
         return None;
     }
-    Some([values[1], values[0], values[2]])
+    Some([values[0], values[1], values[2]])
 }
 
 /// Extract the LOD digit from a `lod<N>…` property name.
@@ -437,7 +502,8 @@ fn geometry_type(local: &str) -> Option<GmlGeometryType> {
         "LineString" => GmlGeometryType::LineString,
         "Curve" => GmlGeometryType::Curve,
         "LinearRing" => GmlGeometryType::LinearRing,
-        "Polygon" => GmlGeometryType::Polygon,
+        // A surface patch is a polygon: welded into its enclosing surface mesh.
+        "Polygon" | "PolygonPatch" | "Rectangle" | "Triangle" => GmlGeometryType::Polygon,
         "Surface" => GmlGeometryType::Surface,
         "PolyhedralSurface" => GmlGeometryType::PolyhedralSurface,
         "TriangulatedSurface" => GmlGeometryType::TriangulatedSurface,
@@ -486,8 +552,8 @@ fn text_content(node: &RawNode) -> &str {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::citygml_parser::parser::Parser;
-    use crate::citygml_parser::resolver::resolve_root;
+    use crate::citygml_parser::parser::{Parser, ParserOutput};
+    use crate::citygml_parser::resolver::{resolve_root_bare, GeomRegistry};
     use url::Url;
 
     /// Parse one CityGML feature wrapping `inner`, returning its stripped attribute
@@ -508,7 +574,11 @@ mod tests {
         let url = Url::parse("file:///test.gml").unwrap();
         let mut parser = Parser::new();
         parser.parse(xml.as_bytes(), &url).unwrap();
-        let (pending, _raw, geom_registry, _ns) = parser.finish();
+        let ParserOutput {
+            pending,
+            geom_registry,
+            ..
+        } = parser.finish();
         let feature = pending.into_iter().next().expect("one feature");
         (feature.root, feature.geoms, geom_registry)
     }
@@ -549,7 +619,7 @@ mod tests {
         ));
         assert_eq!(geoms.len(), 1);
         assert_eq!(geoms[0].lod, Some(2));
-        let geometry = resolve_root(&geoms[0].node, &registry).unwrap();
+        let geometry = resolve_root_bare(&geoms[0].node, &registry).unwrap();
         assert_eq!(collection_len(&geometry), 1);
     }
 
@@ -558,7 +628,7 @@ mod tests {
         let (geoms, registry) = parse_one(&format!(
             "<bldg:lod2Solid><gml:Solid><gml:exterior><gml:Shell><gml:surfaceMember>{POLYGON}</gml:surfaceMember></gml:Shell></gml:exterior></gml:Solid></bldg:lod2Solid>"
         ));
-        let geometry = resolve_root(&geoms[0].node, &registry).unwrap();
+        let geometry = resolve_root_bare(&geoms[0].node, &registry).unwrap();
         assert!(matches!(geometry, Euclidean3DGeometry::Solid(_)));
     }
 
@@ -571,7 +641,7 @@ mod tests {
                  </gml:LinearRing></gml:exterior></gml:Triangle>
                </gml:trianglePatches></gml:TriangulatedSurface></bldg:lod1MultiSurface>"#,
         );
-        let geometry = resolve_root(&geoms[0].node, &registry).unwrap();
+        let geometry = resolve_root_bare(&geoms[0].node, &registry).unwrap();
         assert!(matches!(geometry, Euclidean3DGeometry::TriangularMesh(_)));
     }
 
@@ -600,7 +670,7 @@ mod tests {
                </gml:MultiSurface></bldg:lod2MultiSurface>"##
         ));
         assert!(registry.contains_key(&("file:///test.gml".to_string(), "p1".to_string())));
-        let geometry = resolve_root(&geoms[0].node, &registry).unwrap();
+        let geometry = resolve_root_bare(&geoms[0].node, &registry).unwrap();
         assert_eq!(collection_len(&geometry), 2);
     }
 
@@ -620,12 +690,11 @@ mod tests {
         );
         assert_eq!(geoms.len(), 1);
         assert_eq!(geoms[0].lod, Some(0));
-        let geometry = resolve_root(&geoms[0].node, &registry).unwrap();
+        let geometry = resolve_root_bare(&geoms[0].node, &registry).unwrap();
         match only_member(&geometry) {
             Euclidean3DGeometry::LineString(ls) => {
                 assert_eq!(ls.coords().len(), 3);
-                // posList is lat/lon; stored x/y, so the pair is swapped.
-                assert_eq!(ls.coords()[0], [1.0, 0.0, 0.0]);
+                assert_eq!(ls.coords()[0], [0.0, 1.0, 0.0]);
             }
             other => panic!("expected LineString, got {other:?}"),
         }
@@ -638,11 +707,11 @@ mod tests {
         ));
         assert_eq!(geoms.len(), 1);
         assert_eq!(geoms[0].lod, Some(2));
-        let geometry = resolve_root(&geoms[0].node, &registry).unwrap();
+        let geometry = resolve_root_bare(&geoms[0].node, &registry).unwrap();
         match only_member(&geometry) {
             Euclidean3DGeometry::Polygon(p) => {
                 assert_eq!(p.exterior().len(), 4);
-                assert_eq!(p.exterior()[0], [2.0, 1.0, 0.0]); // swapped
+                assert_eq!(p.exterior()[0], [1.0, 2.0, 0.0]);
                 assert_eq!(p.interiors().count(), 0);
             }
             other => panic!("expected Polygon, got {other:?}"),
@@ -659,7 +728,7 @@ mod tests {
                  </gml:Polygon>
                </gml:surfaceMember></gml:MultiSurface></core:lod2MultiSurface>"#,
         );
-        let geometry = resolve_root(&geoms[0].node, &registry).unwrap();
+        let geometry = resolve_root_bare(&geoms[0].node, &registry).unwrap();
         match only_member(&geometry) {
             Euclidean3DGeometry::Polygon(p) => {
                 assert_eq!(p.exterior().len(), 5);
@@ -690,7 +759,7 @@ mod tests {
         assert_eq!(geoms.len(), 2);
         // geoms[0] is the CompositeSurface-in-MultiSurface: the two xlinked polygons
         // resolved and welded into one two-face mesh.
-        let geometry = resolve_root(&geoms[0].node, &registry).unwrap();
+        let geometry = resolve_root_bare(&geoms[0].node, &registry).unwrap();
         match only_member(&geometry) {
             Euclidean3DGeometry::PolygonMesh(m) => assert_eq!(m.num_faces(), 2),
             other => panic!("expected PolygonMesh, got {other:?}"),
@@ -709,7 +778,7 @@ mod tests {
             tp1 = TA.replacen("<gml:Polygon>", r#"<gml:Polygon gml:id="tp1">"#, 1),
         ));
         assert_eq!(geoms.len(), 2);
-        let geometry = resolve_root(&geoms[0].node, &registry).unwrap();
+        let geometry = resolve_root_bare(&geoms[0].node, &registry).unwrap();
         match only_member(&geometry) {
             Euclidean3DGeometry::Polygon(p) => assert_eq!(p.exterior().len(), 4),
             other => panic!("expected Polygon (xlink resolved), got {other:?}"),
@@ -726,7 +795,7 @@ mod tests {
         ));
         assert_eq!(geoms.len(), 1);
         assert_eq!(geoms[0].lod, Some(1));
-        match resolve_root(&geoms[0].node, &registry).unwrap() {
+        match resolve_root_bare(&geoms[0].node, &registry).unwrap() {
             Euclidean3DGeometry::Solid(s) => {
                 assert_eq!(s.exterior().num_faces(), 2);
                 assert!(s.interiors().is_empty());
@@ -748,7 +817,7 @@ mod tests {
         assert_eq!(geoms[0].lod, Some(2));
         // The CompositeSurface shell body welds its two polygons into the solid's
         // one exterior shell.
-        match resolve_root(&geoms[0].node, &registry).unwrap() {
+        match resolve_root_bare(&geoms[0].node, &registry).unwrap() {
             Euclidean3DGeometry::Solid(s) => assert_eq!(s.exterior().num_faces(), 2),
             other => panic!("expected Solid, got {other:?}"),
         }
@@ -764,7 +833,7 @@ mod tests {
         );
         assert_eq!(geoms.len(), 1);
         assert_eq!(geoms[0].lod, None);
-        match resolve_root(&geoms[0].node, &registry).unwrap() {
+        match resolve_root_bare(&geoms[0].node, &registry).unwrap() {
             Euclidean3DGeometry::TriangularMesh(m) => {
                 assert_eq!(m.num_triangles(), 2);
                 // Edge B–C is shared, so the two triangles dedup to four vertices.
@@ -781,8 +850,8 @@ mod tests {
         );
         assert_eq!(geoms.len(), 1);
         assert_eq!(geoms[0].lod, Some(0));
-        match resolve_root(&geoms[0].node, &registry).unwrap() {
-            Euclidean3DGeometry::Point(p) => assert_eq!(p.position(), [2.0, 1.0, 5.0]),
+        match resolve_root_bare(&geoms[0].node, &registry).unwrap() {
+            Euclidean3DGeometry::Point(p) => assert_eq!(p.position(), [1.0, 2.0, 5.0]),
             other => panic!("expected Point, got {other:?}"),
         }
     }
@@ -801,7 +870,7 @@ mod tests {
              </gml:MultiSurface></bldg:lod2MultiSurface>"
         ));
         assert_eq!(
-            collection_len(&resolve_root(&geoms[0].node, &registry).unwrap()),
+            collection_len(&resolve_root_bare(&geoms[0].node, &registry).unwrap()),
             1
         );
     }
@@ -820,7 +889,7 @@ mod tests {
              </gml:MultiSurface></bldg:lod2MultiSurface>"
         ));
         assert_eq!(
-            collection_len(&resolve_root(&geoms[0].node, &registry).unwrap()),
+            collection_len(&resolve_root_bare(&geoms[0].node, &registry).unwrap()),
             1
         );
     }
@@ -851,6 +920,87 @@ mod tests {
     }
 
     #[test]
+    fn linear_ring_gml_ids_are_captured() {
+        // A Polygon surface with a gml:id whose exterior and interior LinearRings
+        // each carry a gml:id: the surface id and both ring ids are captured, in
+        // exterior-first, holes-next order. The polygon is registered under its own
+        // gml:id, so its captured ids live on the registry entry.
+        let (_geoms, registry) = parse_one(
+            r#"<bldg:lod0FootPrint><gml:Polygon gml:id="surf1">
+                 <gml:exterior><gml:LinearRing gml:id="ring_ext"><gml:posList>0 0 0 4 0 0 4 4 0 0 4 0 0 0 0</gml:posList></gml:LinearRing></gml:exterior>
+                 <gml:interior><gml:LinearRing gml:id="ring_int"><gml:posList>1 1 0 3 1 0 3 3 0 1 1 0</gml:posList></gml:LinearRing></gml:interior>
+               </gml:Polygon></bldg:lod0FootPrint>"#,
+        );
+        let node = registry
+            .get(&("file:///test.gml".to_string(), "surf1".to_string()))
+            .expect("polygon registered under its gml:id");
+        let GeomNode::Resolved(_, ids) = node else {
+            panic!("expected a resolved leaf");
+        };
+        assert_eq!(ids.faces.len(), 1);
+        assert_eq!(ids.faces[0].surface.as_deref(), Some("surf1"));
+        assert_eq!(
+            ids.faces[0].rings,
+            vec![Some("ring_ext".to_string()), Some("ring_int".to_string())]
+        );
+    }
+
+    #[test]
+    fn gml31_namespace_ids_are_captured() {
+        // CityGML 2.0 uses the GML 3.1 namespace (`http://www.opengis.net/gml`);
+        // gml:id capture must not be limited to GML 3.2.
+        let xml = r#"<core:CityModel
+             xmlns:core="http://www.opengis.net/citygml/2.0"
+             xmlns:bldg="http://www.opengis.net/citygml/building/2.0"
+             xmlns:gml="http://www.opengis.net/gml"
+             xmlns:xlink="http://www.w3.org/1999/xlink">
+           <core:cityObjectMember><bldg:Building gml:id="b1">
+             <bldg:lod2MultiSurface><gml:MultiSurface><gml:surfaceMember>
+               <gml:Polygon gml:id="poly1"><gml:exterior><gml:LinearRing gml:id="ring1">
+                 <gml:posList>0 0 0 1 0 0 0 1 0 0 0 0</gml:posList>
+               </gml:LinearRing></gml:exterior></gml:Polygon>
+             </gml:surfaceMember></gml:MultiSurface></bldg:lod2MultiSurface>
+           </bldg:Building></core:cityObjectMember>
+         </core:CityModel>"#;
+        let mut parser = Parser::new();
+        parser
+            .parse(xml.as_bytes(), &Url::parse("file:///test.gml").unwrap())
+            .unwrap();
+        let ParserOutput { geom_registry, .. } = parser.finish();
+        let node = geom_registry
+            .get(&("file:///test.gml".to_string(), "poly1".to_string()))
+            .expect("polygon registered under its GML 3.1 gml:id");
+        let GeomNode::Resolved(_, ids) = node else {
+            panic!("expected a resolved leaf");
+        };
+        assert_eq!(ids.faces[0].surface.as_deref(), Some("poly1"));
+        assert_eq!(ids.faces[0].rings, vec![Some("ring1".to_string())]);
+    }
+
+    #[test]
+    fn ring_gml_ids_captured_on_multisurface_member() {
+        // The common PLATEAU shape: a surfaceMember Polygon with no gml:id of its
+        // own, whose exterior LinearRing carries one. The member leaf keeps the ring
+        // id with no surface id.
+        let (geoms, _registry) = parse_one(
+            r#"<bldg:lod2MultiSurface><gml:MultiSurface><gml:surfaceMember>
+                 <gml:Polygon><gml:exterior><gml:LinearRing gml:id="ring1">
+                   <gml:posList>0 0 0 1 0 0 0 1 0 0 0 0</gml:posList>
+                 </gml:LinearRing></gml:exterior></gml:Polygon>
+               </gml:surfaceMember></gml:MultiSurface></bldg:lod2MultiSurface>"#,
+        );
+        let GeomNode::Unresolved(container) = &geoms[0].node else {
+            panic!("expected an unresolved container");
+        };
+        let GeomNode::Resolved(_, ids) = &container.members[0].1 else {
+            panic!("expected a resolved member leaf");
+        };
+        assert_eq!(ids.faces.len(), 1);
+        assert_eq!(ids.faces[0].surface, None);
+        assert_eq!(ids.faces[0].rings, vec![Some("ring1".to_string())]);
+    }
+
+    #[test]
     fn curve_is_deferred_and_skipped() {
         let (geoms, registry) = parse_one(
             r#"<bldg:lod0MultiSurface><gml:MultiCurve><gml:curveMember>
@@ -862,7 +1012,7 @@ mod tests {
         // The MultiCurve survives but its sole Curve member is dropped, leaving an
         // empty collection.
         assert_eq!(
-            collection_len(&resolve_root(&geoms[0].node, &registry).unwrap()),
+            collection_len(&resolve_root_bare(&geoms[0].node, &registry).unwrap()),
             0
         );
     }

@@ -6,7 +6,7 @@ use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
+use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
 use reearth_flow_sql::SqlAdapter;
 use reearth_flow_types::{AttributeValue, Code, Feature, Geometry, GeometryValue};
 use schemars::JsonSchema;
@@ -20,7 +20,7 @@ pub(crate) struct GeoPackageWriterFactory;
 
 impl SinkFactory for GeoPackageWriterFactory {
     fn name(&self) -> &str {
-        "GeoPackageWriter"
+        "GeoPackage Writer"
     }
 
     fn description(&self) -> &str {
@@ -40,7 +40,7 @@ impl SinkFactory for GeoPackageWriterFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn prepare(&self) -> Result<(), BoxedError> {
@@ -205,7 +205,7 @@ impl AttributeType {
 
 impl Sink for GeoPackageWriter {
     fn name(&self) -> &str {
-        "GeoPackageWriter"
+        "GeoPackage Writer"
     }
 
     #[cfg(not(feature = "new-geometry"))]

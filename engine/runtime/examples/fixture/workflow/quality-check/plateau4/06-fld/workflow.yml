@@ -24,7 +24,7 @@ graphs:
       - id: 04f359e7-3c19-4b3a-9859-3cd7de61eec9
         name: InputFeatureCreator
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
           creator:
             type: flowExpr
@@ -41,7 +41,7 @@ graphs:
       - id: 0aeb935e-bc3e-4867-96f3-122d504fcde6
         name: DirectoryDecompressor
         type: action
-        action: DirectoryDecompressor
+        action: Directory Decompressor
         with:
           archiveAttributes:
             - codelists
@@ -61,7 +61,7 @@ graphs:
       - id: 1c38a4d1-a4ca-455d-b65e-bf5d3209abe4
         name: FeatureFilePathExtractor
         type: action
-        action: FeatureFilePathExtractor
+        action: Feature File Path Extractor
         with:
           sourceDataset:
             type: flowExpr
@@ -72,13 +72,13 @@ graphs:
       - id: 1c38a4d1-a4ca-455d-b65e-bf5d3209abe5
         name: FeatureFilterByGml
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
                 type: flowExpr
                 value: attributes["extension"] == "gml"
-              outputPort: default
+              outputPort: features
 
       # UDX Folder Structure Extraction and _fld_scale Extraction
       - id: 30af8e4f-0d06-4b74-b99d-c23d7cb5c72e
@@ -95,20 +95,20 @@ graphs:
       - id: a1554a74-3caa-4880-a4a3-6dc4ab526a13
         name: FeatureFilterByPackage
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
           - expr:
               type: flowExpr
               value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
-            outputPort: default
+            outputPort: features
 
       # Extract _fld_scale (l1 or l2) from filename using pattern matching
       # FME StringSearcher pattern: (?<=_)(l1|l2)(?=_|\.)
       - id: 2f8e9d3a-1b2c-4d5e-6f7a-8b9c0d1e2f3a
         name: FldScaleExtractor
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: "_fld_scale"
@@ -136,7 +136,7 @@ graphs:
       - id: 3b4c5d6e-7f8a-9b0c-1d2e-3f4a5b6c7d8e
         name: AttributeCleanup
         type: action
-        action: AttributeManager
+        action: Attribute Manager
         with:
           operations:
             - attribute: "_folder_root"
@@ -152,7 +152,7 @@ graphs:
       - id: 4c5d6e7f-8a9b-0c1d-2e3f-4a5b6c7d8e9f
         name: Sorter
         type: action
-        action: FeatureSorter
+        action: Feature Sorter
         with:
           attributes:
             - "_udx_dirs"
@@ -164,7 +164,7 @@ graphs:
       - id: 5d6e7f8a-9b0c-1d2e-3f4a-5b6c7d8e9f0a
         name: Counter
         type: action
-        action: FeatureCounter
+        action: Feature Counter
         with:
           outputAttribute: "_file_index"
           groupBy:
@@ -186,7 +186,7 @@ graphs:
       - id: 6a4b5c6d-7e8f-9a0b-1c2d-3e4f5a6b7c8d
         name: HorizontalReprojector
         type: action
-        action: HorizontalReprojector
+        action: Horizontal Reprojector
         with:
           targetEpsgCode:
             type: flowExpr
@@ -196,7 +196,7 @@ graphs:
       - id: 7b5c6d7e-8f9a-0b1c-2d3e-4f5a6b7c8d9e
         name: GeometryValidator
         type: action
-        action: GeometryValidator
+        action: Geometry Validator
         with:
           validationTypes:
             - duplicateConsecutivePoints: 0.009
@@ -206,7 +206,7 @@ graphs:
       - id: f1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6c
         name: TwoDimensionForcer
         type: action
-        action: TwoDimensionForcer
+        action: Two Dimension Forcer
         with: {}
 
       # PLATEAU4.UnsharedEdgeDetector: Detect unshared edges in triangular meshes
@@ -231,7 +231,7 @@ graphs:
       - id: c8d9e0f1-a2b3-4c5d-6e7f-8a9b0c1d2e3f
         name: UnsharedEdgeCounter
         type: action
-        action: AttributeAggregator
+        action: Attribute Aggregator
         with:
           aggregateAttributes:
             - newAttribute: "udxDirs"
@@ -246,7 +246,7 @@ graphs:
       - id: a9b8c7d6-e5f4-3a2b-1c0d-9e8f7a6b5c4d
         name: DegenerateTriangleCounter
         type: action
-        action: AttributeAggregator
+        action: Attribute Aggregator
         with:
           aggregateAttributes:
             - newAttribute: "udxDirs"
@@ -261,7 +261,7 @@ graphs:
       - id: c0d1e2f3-a4b5-6c7d-8e9f-0a1b2c3d4e5f
         name: MergeSummaryWithDegenerateCount
         type: action
-        action: FeatureMerger
+        action: Feature Merger
         with:
           requestorAttribute:
             - "udxDirs"
@@ -274,7 +274,7 @@ graphs:
       - id: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
         name: MergeSummaryWithUnsharedEdges
         type: action
-        action: FeatureMerger
+        action: Feature Merger
         with:
           requestorAttribute:
             - "udxDirs"
@@ -288,7 +288,7 @@ graphs:
       - id: 9d0e1f2a-3b4c-5d6e-7f8a-9b0c1d2e3f4a
         name: PrepareSummaryForCSV
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: "Folder"
@@ -317,7 +317,7 @@ graphs:
       - id: 0a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
         name: PrepareSummaryForJSON
         type: action
-        action: AttributeMapper
+        action: Attribute Mapper
         with:
           mappers:
             - attribute: "頂点数が不正な三角形"
@@ -393,7 +393,7 @@ graphs:
       - id: 3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b
         name: StatisticsCalculatorTotalErrors
         type: action
-        action: StatisticsCalculator
+        action: Statistics Calculator
         with:
           calculations:
             # Note: "共有先のない辺" is excluded from totalErrorCount to match FME behavior
@@ -413,19 +413,19 @@ graphs:
       - id: 4f5a6b7c-8d9e-0f1a-2b3c-4d5e6f7a8b9c
         name: FeatureFilterNoErrors
         type: action
-        action: FeatureFilter
+        action: Feature Filter
         with:
           conditions:
             - expr:
                 type: flowExpr
                 value: attributes["totalErrorCount"] == 0
-              outputPort: default
+              outputPort: features
 
       # Write qc_result_ok file when no errors
       - id: 5a6b7c8d-9e0f-1a2b-3c4d-5e6f7a8b9c0d
         name: FileWriterQcResultOk
         type: action
-        action: JsonWriter
+        action: JSON Writer
         with:
           converter:
             type: flowExpr
@@ -438,7 +438,7 @@ graphs:
       - id: 6b7c8d9e-0f1a-2b3c-4d5e-6f7a8b9c0d1e
         name: ZipFileWriter
         type: action
-        action: ZipFileWriter
+        action: Zip File Writer
         with:
           output:
             type: flowExpr
@@ -449,127 +449,127 @@ graphs:
       - id: b54bb6e9-9bee-407c-a11d-58436552a745
         from: 04f359e7-3c19-4b3a-9859-3cd7de61eec9
         to: 0aeb935e-bc3e-4867-96f3-122d504fcde6
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # Connect DirectoryDecompressor to common quality check subgraphs
       - id: b5c6d7e8-f9a0-1b2c-3d4e-5f6a7b8c9d0f
         from: 0aeb935e-bc3e-4867-96f3-122d504fcde6  # DirectoryDecompressor
         to: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6b    # CommonQualityCheck-01-01
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       - id: c6d7e8f9-a0b1-2c3d-4e5f-6a7b8c9d0e1a
         from: 0aeb935e-bc3e-4867-96f3-122d504fcde6  # DirectoryDecompressor
         to: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7c    # CommonQualityCheck-01-02
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       - id: 205e077b-2464-4b02-a6b7-760957506e27
         from: 0aeb935e-bc3e-4867-96f3-122d504fcde6
         to: 1c38a4d1-a4ca-455d-b65e-bf5d3209abe4
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       - id: 1c38a4d1-a4ca-455d-b65e-bf5d3209abe6
         from: 1c38a4d1-a4ca-455d-b65e-bf5d3209abe4
         to: 1c38a4d1-a4ca-455d-b65e-bf5d3209abe5
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       - id: 4fe403d4-b3e2-41f3-b155-c7050aba3c8b
         from: 1c38a4d1-a4ca-455d-b65e-bf5d3209abe5
         to: 30af8e4f-0d06-4b74-b99d-c23d7cb5c72e
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 30af8e4f-0001-0001-0001-000000000001
         from: 30af8e4f-0d06-4b74-b99d-c23d7cb5c72e
         to: a1554a74-3caa-4880-a4a3-6dc4ab526a13
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # _fld_scale extraction
       - id: 3a4b5c6d-7e8f-9a0b-1c2d-3e4f5a6b7c8d
         from: a1554a74-3caa-4880-a4a3-6dc4ab526a13
         to: 2f8e9d3a-1b2c-4d5e-6f7a-8b9c0d1e2f3a
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # Attribute cleanup
       - id: 4b5c6d7e-8f9a-0b1c-2d3e-4f5a6b7c8d9e
         from: 2f8e9d3a-1b2c-4d5e-6f7a-8b9c0d1e2f3a
         to: 3b4c5d6e-7f8a-9b0c-1d2e-3f4a5b6c7d8e
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # Sorting by _udx_dirs, _fld_scale, _gml_filename
       - id: 5c6d7e8f-9a0b-1c2d-3e4f-5a6b7c8d9e0f
         from: 3b4c5d6e-7f8a-9b0c-1d2e-3f4a5b6c7d8e
         to: 4c5d6e7f-8a9b-0c1d-2e3f-4a5b6c7d8e9f
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # Add _file_index counter
       - id: 6d7e8f9a-0b1c-2d3e-4f5a-6b7c8d9e0f1a
         from: 4c5d6e7f-8a9b-0c1d-2e3f-4a5b6c7d8e9f
         to: 5d6e7f8a-9b0c-1d2e-3f4a-5b6c7d8e9f0a
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # Counter to FaceExtractor (direct connection)
       - id: 9705ee13-25e6-4237-b60e-4e89828a1774
         from: 5d6e7f8a-9b0c-1d2e-3f4a-5b6c7d8e9f0a
         to: 5a3b2c1d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # FaceExtractor all port to HorizontalReprojector
       - id: a1b2c3d4-e5f6-7a8b-9c0d-1e2f3a4b5c6d
         from: 5a3b2c1d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
         to: 6a4b5c6d-7e8f-9a0b-1c2d-3e4f5a6b7c8d
         fromPort: all
-        toPort: default
+        toPort: features
 
       # HorizontalReprojector to TwoDimensionForcer (Convert all 3D to 2D)
       - id: 9c7d8e9f-0a1b-2c3d-4e5f-6a7b8c9d0e1f
         from: 6a4b5c6d-7e8f-9a0b-1c2d-3e4f5a6b7c8d
         to: f1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6c
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # TwoDimensionForcer to GeometryValidator
       - id: 8c6d7e8f-9a0b-1c2d-3e4f-5a6b7c8d9e0f
         from: f1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6c
         to: 7b5c6d7e-8f9a-0b1c-2d3e-4f5a6b7c8d9e
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # TwoDimensionForcer to UnsharedEdgeDetector (all triangles)
       - id: a7b8c9d0-e1f2-3a4b-5c6d-7e8f9a0b1c2d
         from: f1a2b3c4-d5e6-7f8a-9b0c-1d2e3f4a5b6c
         to: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # UnsharedEdgeDetector unshared port to UnsharedEdgeCounter
       - id: 8f6a7b8c-9d0e-1f2a-3b4c-5d6e7f8a9b0c
         from: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6b
         to: c8d9e0f1-a2b3-4c5d-6e7f-8a9b0c1d2e3f
         fromPort: unshared
-        toPort: default
+        toPort: features
 
       # GeometryValidator FAILED port to DegenerateTriangleCounter
       - id: b0c9d8e7-f6a5-4b3c-2d1e-0f9a8b7c6d5e
         from: 7b5c6d7e-8f9a-0b1c-2d3e-4f5a6b7c8d9e
         to: a9b8c7d6-e5f4-3a2b-1c0d-9e8f7a6b5c4d
         fromPort: failed
-        toPort: default
+        toPort: features
 
       # MicroGapCounter to MergeSummaryWithUnsharedEdges (supplier port)
       - id: 9a7b8c9d-0e1f-2a3b-4c5d-6e7f8a9b0c1d
         from: c8d9e0f1-a2b3-4c5d-6e7f-8a9b0c1d2e3f
         to: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
-        fromPort: default
+        fromPort: features
         toPort: supplier
 
       # FaceExtractor summary to FeatureMerger (requestor port)
@@ -583,7 +583,7 @@ graphs:
       - id: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7a
         from: a9b8c7d6-e5f4-3a2b-1c0d-9e8f7a6b5c4d
         to: c0d1e2f3-a4b5-6c7d-8e9f-0a1b2c3d4e5f
-        fromPort: default
+        fromPort: features
         toPort: supplier
 
       # MergeSummaryWithDegenerateCount merged to MergeSummaryWithUnsharedEdges (requestor)
@@ -605,103 +605,103 @@ graphs:
         from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
         to: 9d0e1f2a-3b4c-5d6e-7f8a-9b0c1d2e3f4a
         fromPort: merged
-        toPort: default
+        toPort: features
 
       # MergeSummaryWithUnsharedEdges unmerged port to CSV preparation (files with zero errors)
       - id: 1b2c3d4e-5f6a-7b8c-9d0e-1f2a3b4c5d6f
         from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
         to: 9d0e1f2a-3b4c-5d6e-7f8a-9b0c1d2e3f4a
         fromPort: unmerged
-        toPort: default
+        toPort: features
 
       # CSV preparation to CSV writer
       - id: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7b
         from: 9d0e1f2a-3b4c-5d6e-7f8a-9b0c1d2e3f4a
         to: 1f2a3b4c-5d6e-7f8a-9b0c-1d2e3f4a5b6c
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # MergeSummaryWithUnsharedEdges merged port to JSON preparation
       - id: 2c3d4e5f-6a7b-8c9d-0e1f-2a3b4c5d6e7f
         from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
         to: 0a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
         fromPort: merged
-        toPort: default
+        toPort: features
 
       # MergeSummaryWithUnsharedEdges unmerged port to JSON preparation (files with zero errors)
       - id: 2c3d4e5f-6a7b-8c9d-0e1f-2a3b4c5d6e80
         from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6a
         to: 0a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
         fromPort: unmerged
-        toPort: default
+        toPort: features
 
       # JSON preparation to JSON writer
       - id: 3d4e5f6a-7b8c-9d0e-1f2a-3b4c5d6e7f8a
         from: 0a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
         to: 2a3b4c5d-6e7f-8a9b-0c1d-2e3f4a5b6c7d
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # qc_result_ok generation flow
       # JSON preparation to StatisticsCalculatorTotalErrors
       - id: 4e5f6a7b-8c9d-0e1f-2a3b-4c5d6e7f8a9b
         from: 0a1b2c3d-4e5f-6a7b-8c9d-0e1f2a3b4c5d
         to: 3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # StatisticsCalculatorTotalErrors to FeatureFilterNoErrors
       - id: 5f6a7b8c-9d0e-1f2a-3b4c-5d6e7f8a9b0c
         from: 3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b
         to: 4f5a6b7c-8d9e-0f1a-2b3c-4d5e6f7a8b9c
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # FeatureFilterNoErrors to FileWriterQcResultOk
       - id: 6a7b8c9d-0e1f-2a3b-4c5d-6e7f8a9b0c1d
         from: 4f5a6b7c-8d9e-0f1a-2b3c-4d5e6f7a8b9c
         to: 5a6b7c8d-9e0f-1a2b-3c4d-5e6f7a8b9c0d
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # Connect CommonQualityCheck subgraphs summaryOutput to StatisticsCalculatorTotalErrors
       - id: a1b2c3d4-0e1f-2a3b-4c5d-6e7f8a9b0c1e
         from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6b  # CommonQualityCheck-01-01
         to: 3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b    # StatisticsCalculatorTotalErrors
         fromPort: summaryOutput
-        toPort: default
+        toPort: features
 
       - id: b2c3d4e5-1f2a-3b4c-5d6e-7f8a9b0c1d2f
         from: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7c  # CommonQualityCheck-01-02
         to: 3e4f5a6b-7c8d-9e0f-1a2b-3c4d5e6f7a8b    # StatisticsCalculatorTotalErrors
         fromPort: summaryOutput
-        toPort: default
+        toPort: features
 
       # ===== ZipFileWriter connections =====
       # CSVWriter → ZipFileWriter
       - id: 7c8d9e0f-1a2b-3c4d-5e6f-7a8b9c0d1e2f
         from: 1f2a3b4c-5d6e-7f8a-9b0c-1d2e3f4a5b6c
         to: 6b7c8d9e-0f1a-2b3c-4d5e-6f7a8b9c0d1e
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # JSONWriter → ZipFileWriter
       - id: 8d9e0f1a-2b3c-4d5e-6f7a-8b9c0d1e2f3a
         from: 2a3b4c5d-6e7f-8a9b-0c1d-2e3f4a5b6c7d
         to: 6b7c8d9e-0f1a-2b3c-4d5e-6f7a8b9c0d1e
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # CommonQualityCheck-01-01 default output → ZipFileWriter
       - id: c0d1e2f3-4a5b-6c7d-8e9f-0a1b2c3d4e5a
         from: d1e2f3a4-b5c6-7d8e-9f0a-1b2c3d4e5f6b  # CommonQualityCheck-01-01
         to: 6b7c8d9e-0f1a-2b3c-4d5e-6f7a8b9c0d1e    # ZipFileWriter
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
 
       # CommonQualityCheck-01-02 default output → ZipFileWriter
       - id: d1e2f3a4-5b6c-7d8e-9f0a-1b2c3d4e5f6b
         from: e2f3a4b5-c6d7-8e9f-0a1b-2c3d4e5f6a7c  # CommonQualityCheck-01-02
         to: 6b7c8d9e-0f1a-2b3c-4d5e-6f7a8b9c0d1e    # ZipFileWriter
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features

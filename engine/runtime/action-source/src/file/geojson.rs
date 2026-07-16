@@ -4,7 +4,7 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
+    node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -20,7 +20,7 @@ pub(crate) struct GeoJsonReaderFactory;
 
 impl SourceFactory for GeoJsonReaderFactory {
     fn name(&self) -> &str {
-        "GeoJsonReader"
+        "GeoJSON Reader"
     }
 
     fn description(&self) -> &str {
@@ -40,7 +40,7 @@ impl SourceFactory for GeoJsonReaderFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -95,14 +95,13 @@ impl Source for GeoJsonReader {
     async fn initialize(&self, _ctx: NodeContext) {}
 
     fn name(&self) -> &str {
-        "GeoJsonReader"
+        "GeoJSON Reader"
     }
 
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {
         Ok(vec![])
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     async fn start(
         &mut self,
         ctx: NodeContext,

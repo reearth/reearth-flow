@@ -15,12 +15,12 @@ use crate::event::EventHub;
 use crate::executor_operation::{ExecutorContext, NodeContext};
 use crate::forwarder::ProcessorChannelForwarder;
 
-pub static DEFAULT_PORT: Lazy<Port> = Lazy::new(|| Port::new("default"));
+pub static FEATURES_PORT: Lazy<Port> = Lazy::new(|| Port::new("features"));
 pub static REJECTED_PORT: Lazy<Port> = Lazy::new(|| Port::new("rejected"));
 pub static ROUTING_PARAM_KEY: &str = "routingPort";
-pub static INPUT_ROUTING_ACTION: &str = "InputRouter";
-pub static OUTPUT_ROUTING_ACTION: &str = "OutputRouter";
-pub static FEATURE_FILTER_ACTION: &str = "FeatureFilter";
+pub static INPUT_ROUTING_ACTION: &str = "Input Router";
+pub static OUTPUT_ROUTING_ACTION: &str = "Output Router";
+pub static FEATURE_FILTER_ACTION: &str = "Feature Filter";
 pub static REMAIN_PORT: Lazy<Port> = Lazy::new(|| Port::new("remain"));
 
 pub static SYSTEM_ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
@@ -474,7 +474,7 @@ impl ProcessorFactory for InputRouterFactory {
     }
 
     fn description(&self) -> &str {
-        "Action for first port forwarding for sub-workflows."
+        "Forwards features from the parent workflow into a sub-workflow."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -494,7 +494,7 @@ impl ProcessorFactory for InputRouterFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -514,9 +514,14 @@ impl ProcessorFactory for InputRouterFactory {
     }
 }
 
+/// # Input Router Parameters
+///
+/// Configuration for receiving features from the parent workflow.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct InputRouter {
+    /// # Routing Port
+    /// Name of the parent workflow port whose features enter the sub-workflow through this router.
     routing_port: String,
 }
 
@@ -529,7 +534,7 @@ impl Processor for InputRouter {
         let feature = ctx.feature;
         fw.send(ExecutorContext::new(
             feature,
-            DEFAULT_PORT.clone(),
+            FEATURES_PORT.clone(),
             Arc::clone(&ctx.env_vars),
             Arc::clone(&ctx.storage_resolver),
             Arc::clone(&ctx.kv_store),
@@ -561,7 +566,7 @@ impl ProcessorFactory for OutputRouterFactory {
     }
 
     fn description(&self) -> &str {
-        "Action for last port forwarding for sub-workflows."
+        "Forwards features from a sub-workflow back to the parent workflow."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -577,7 +582,7 @@ impl ProcessorFactory for OutputRouterFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
@@ -601,9 +606,14 @@ impl ProcessorFactory for OutputRouterFactory {
     }
 }
 
+/// # Output Router Parameters
+///
+/// Configuration for returning features to the parent workflow.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputRouter {
+    /// # Routing Port
+    /// Name of the output port under which the sub-workflow's features are exposed to the parent workflow.
     routing_port: String,
 }
 
@@ -654,10 +664,10 @@ mod schema_hook_tests {
             None
         }
         fn get_input_ports(&self) -> Vec<Port> {
-            vec![DEFAULT_PORT.clone()]
+            vec![FEATURES_PORT.clone()]
         }
         fn get_output_ports(&self) -> Vec<Port> {
-            vec![DEFAULT_PORT.clone()]
+            vec![FEATURES_PORT.clone()]
         }
         fn build(
             &self,

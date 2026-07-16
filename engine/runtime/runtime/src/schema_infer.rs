@@ -275,7 +275,7 @@ mod tests {
 
     use crate::event::EventHub;
     use crate::executor_operation::NodeContext;
-    use crate::node::{Processor, Source, DEFAULT_PORT};
+    use crate::node::{Processor, Source, FEATURES_PORT};
 
     // ---- Stub factories -------------------------------------------------
 
@@ -290,7 +290,7 @@ mod tests {
             None
         }
         fn get_output_ports(&self) -> Vec<Port> {
-            vec![DEFAULT_PORT.clone()]
+            vec![FEATURES_PORT.clone()]
         }
         fn build(
             &self,
@@ -320,10 +320,10 @@ mod tests {
             None
         }
         fn get_input_ports(&self) -> Vec<Port> {
-            vec![DEFAULT_PORT.clone()]
+            vec![FEATURES_PORT.clone()]
         }
         fn get_output_ports(&self) -> Vec<Port> {
-            vec![DEFAULT_PORT.clone()]
+            vec![FEATURES_PORT.clone()]
         }
         fn build(
             &self,
@@ -340,7 +340,7 @@ mod tests {
             _with: &Option<HashMap<String, serde_json::Value>>,
         ) -> Option<HashMap<Port, AttrSchema>> {
             let mut schema = inputs
-                .get(&DEFAULT_PORT)
+                .get(&FEATURES_PORT)
                 .cloned()
                 .unwrap_or_else(AttrSchema::empty);
             schema.open = false;
@@ -349,7 +349,7 @@ mod tests {
                 AttrField::always(AttrType::Number),
             );
             let mut out = HashMap::new();
-            out.insert(DEFAULT_PORT.clone(), schema);
+            out.insert(FEATURES_PORT.clone(), schema);
             Some(out)
         }
     }
@@ -362,13 +362,13 @@ mod tests {
 
     impl ProcessorFactory for RouterStub {
         fn name(&self) -> &str {
-            "OutputRouter"
+            "Output Router"
         }
         fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
             None
         }
         fn get_input_ports(&self) -> Vec<Port> {
-            vec![DEFAULT_PORT.clone()]
+            vec![FEATURES_PORT.clone()]
         }
         fn get_output_ports(&self) -> Vec<Port> {
             // OutputRouter declares no static output ports.
@@ -420,8 +420,8 @@ mod tests {
             id: Uuid::new_v4(),
             from,
             to,
-            from_port: "default".to_string(),
-            to_port: "default".to_string(),
+            from_port: "features".to_string(),
+            to_port: "features".to_string(),
         }
     }
 
@@ -436,7 +436,7 @@ mod tests {
             NodeKind::Processor(Box::new(AdderProc)),
         );
         m.insert(
-            "OutputRouter".to_string(),
+            "Output Router".to_string(),
             NodeKind::Processor(Box::new(RouterStub)),
         );
         m
@@ -475,11 +475,11 @@ mod tests {
             .node_outputs
             .values()
             .find(|m| {
-                m.get("default")
+                m.get("features")
                     .is_some_and(|s| s.fields.contains_key(&Attribute::new("foo".to_string())))
             })
             .expect("an output with field foo");
-        assert!(adder_out["default"]
+        assert!(adder_out["features"]
             .fields
             .contains_key(&Attribute::new("foo".to_string())));
     }
@@ -504,11 +504,11 @@ mod tests {
             .node_outputs
             .values()
             .find(|m| {
-                m.get("default")
+                m.get("features")
                     .is_some_and(|s| s.fields.contains_key(&Attribute::new("foo".to_string())))
             })
             .expect("an output with field foo");
-        assert!(adder_out["default"]
+        assert!(adder_out["features"]
             .fields
             .contains_key(&Attribute::new("foo".to_string())));
     }
@@ -530,7 +530,7 @@ mod tests {
                 action_node_with(
                     router_id,
                     "router",
-                    "OutputRouter",
+                    "Output Router",
                     serde_json::json!({ "routingPort": "myroute" }),
                 ),
             ],

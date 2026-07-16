@@ -5,7 +5,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use serde_json::Value;
 
@@ -14,11 +14,11 @@ pub struct NoopProcessorFactory;
 
 impl ProcessorFactory for NoopProcessorFactory {
     fn name(&self) -> &str {
-        "NoopProcessor"
+        "Noop Processor"
     }
 
     fn description(&self) -> &str {
-        "No-Operation Pass-Through Processor"
+        "Passes features through unchanged."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -30,11 +30,11 @@ impl ProcessorFactory for NoopProcessorFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -70,6 +70,6 @@ impl Processor for NoopProcessor {
     }
 
     fn name(&self) -> &str {
-        "NoopProcessor"
+        "Noop Processor"
     }
 }

@@ -38,11 +38,12 @@ pub fn read_mesh_features(
     if let Some(Value::Number(attribute_index)) = feature_id_obj.get("attribute") {
         let attribute_idx = attribute_index.as_u64().unwrap_or(0) as usize;
 
-        // Find the accessor for _FEATURE_ID_N attribute
-        let attribute_name = format!("_FEATURE_ID_{}", attribute_idx);
+        // `Semantic::Extras`'s inner name excludes the glTF-spec-mandated
+        // leading underscore; the crate adds it on (de)serialization.
+        let expected = gltf::Semantic::Extras(format!("FEATURE_ID_{attribute_idx}"));
 
         for (semantic, accessor) in primitive.attributes() {
-            if semantic.to_string() == attribute_name {
+            if semantic == expected {
                 return read_feature_id_accessor(&accessor, buffer_data);
             }
         }

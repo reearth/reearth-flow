@@ -9,7 +9,7 @@ graphs:
       - id: 550e8400-e29b-41d4-a716-446655440102
         name: "FeatureCreator"
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
           creator:
             type: flowExpr
@@ -41,10 +41,10 @@ graphs:
       - id: 550e8400-e29b-41d4-a716-446655440105
         from: 550e8400-e29b-41d4-a716-446655440102
         to: 550e8400-e29b-41d4-a716-446655440103
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: 550e8400-e29b-41d4-a716-446655440106
         from: 550e8400-e29b-41d4-a716-446655440103
         to: 550e8400-e29b-41d4-a716-446655440104
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features

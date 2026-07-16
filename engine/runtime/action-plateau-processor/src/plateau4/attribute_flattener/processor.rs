@@ -7,7 +7,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, CitygmlFeatureExt, Feature};
 use schemars::JsonSchema;
@@ -95,11 +95,11 @@ impl ProcessorFactory for AttributeFlattenerFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone(), SCHEMA_PORT.clone()]
+        vec![FEATURES_PORT.clone(), SCHEMA_PORT.clone()]
     }
 
     fn build(
@@ -684,7 +684,7 @@ impl AttributeFlattener {
             for child in children {
                 let flattened_child = self.flatten_feature(child)?;
                 fw.send(
-                    ctx.new_with_feature_and_port(flattened_child.clone(), DEFAULT_PORT.clone()),
+                    ctx.new_with_feature_and_port(flattened_child.clone(), FEATURES_PORT.clone()),
                 );
 
                 // Recursively process this child's buffered children
@@ -913,7 +913,7 @@ impl Processor for AttributeFlattener {
 
         // Process this feature immediately
         let flattened_feature = self.flatten_feature(feature)?;
-        fw.send(ctx.new_with_feature_and_port(flattened_feature.clone(), DEFAULT_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(flattened_feature.clone(), FEATURES_PORT.clone()));
 
         // Check if this feature has any buffered children and process them recursively
         if let Some(feature_id) = flattened_feature.feature_id() {
@@ -959,7 +959,7 @@ impl Processor for AttributeFlattener {
     }
 
     fn name(&self) -> &str {
-        "AttributeFlattener"
+        "Attribute Flattener"
     }
 }
 

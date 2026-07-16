@@ -4,7 +4,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue};
 use schemars::JsonSchema;
@@ -108,11 +108,11 @@ pub(super) struct FeatureSorterFactory;
 
 impl ProcessorFactory for FeatureSorterFactory {
     fn name(&self) -> &str {
-        "FeatureSorter"
+        "Feature Sorter"
     }
 
     fn description(&self) -> &str {
-        "Sorts features based on specified attributes in ascending or descending order"
+        "Sorts features based on specified attributes in ascending or descending order."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -123,16 +123,12 @@ impl ProcessorFactory for FeatureSorterFactory {
         &["Merge"]
     }
 
-    fn tags(&self) -> &[&'static str] {
-        &["sort"]
-    }
-
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -183,15 +179,17 @@ struct FeatureSorter {
     executor_id: Option<uuid::Uuid>,
 }
 
-/// # FeatureSorter Parameters
+/// # Feature Sorter Parameters
 ///
 /// Configuration for sorting features based on attribute values.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct FeatureSorterParam {
-    /// Attributes to use for sorting features (sort order based on attribute order)
+    /// # Sort Attributes
+    /// Attributes to sort by; earlier attributes take precedence.
     attributes: Vec<Attribute>,
-    /// Sorting order (ascending or descending)
+    /// # Sort Order
+    /// Whether features are sorted in ascending or descending order.
     order: Order,
 }
 
@@ -372,12 +370,12 @@ impl Processor for FeatureSorter {
             encoder.finish()?;
         }
 
-        fw.send_file(output_path, DEFAULT_PORT.clone(), ctx.as_context());
+        fw.send_file(output_path, FEATURES_PORT.clone(), ctx.as_context());
 
         Ok(())
     }
 
     fn name(&self) -> &str {
-        "FeatureSorter"
+        "Feature Sorter"
     }
 }

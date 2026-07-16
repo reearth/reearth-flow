@@ -4,14 +4,14 @@ nodes:
   - id: 5848465e-828f-4646-874e-e2f182b73714
     name: InputRouter
     type: action
-    action: InputRouter
+    action: Input Router
     with:
-      routingPort: default
+      routingPort: features
 
   - id: a1b2c3d4-e5f6-7890-abcd-ef1234567890
     name: DmGeometricAttributeFilter
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -29,7 +29,7 @@ nodes:
   - id: 1787b15c-19b5-4386-a0ff-f0e58f477d07
     name: FeatureFilterByExceptSplit
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -40,12 +40,11 @@ nodes:
   - id: 8fe1a102-e3f3-40dd-b235-66e9c148830f
     name: GeometrySplitter
     type: action
-    action: GeometrySplitter
-
+    action: Geometry Splitter
   - id: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
     name: FeatureFilterByLod
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -72,42 +71,42 @@ nodes:
   - id: b1c2d3e4-f5a6-7890-bcde-f12345678901
     name: DmGeometricAttributeRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: DmGeometricAttribute
 
   - id: dab9d3b6-594e-40cc-9f6b-c605005e3320
     name: Lod0Router
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: lod0
 
   - id: dab9d3b6-594e-40cc-9f6b-c605005e3321
     name: Lod1Router
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: lod1
 
   - id: dab9d3b6-594e-40cc-9f6b-c605005e3322
     name: Lod2Router
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: lod2
 
   - id: dab9d3b6-594e-40cc-9f6b-c605005e3323
     name: Lod3Router
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: lod3
 
   - id: dab9d3b6-594e-40cc-9f6b-c605005e3324
     name: Lod4Router
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: lod4
 
@@ -115,60 +114,60 @@ edges:
   - id: fcc0d596-9169-4289-9f35-07c8cbec6f10
     from: 5848465e-828f-4646-874e-e2f182b73714
     to: a1b2c3d4-e5f6-7890-abcd-ef1234567890
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e6f
     from: a1b2c3d4-e5f6-7890-abcd-ef1234567890
     to: 278ab965-ce22-473d-98c6-c7b381c38679
     fromPort: unfiltered
-    toPort: default
+    toPort: features
   - id: d2e3f4a5-b6c7-8d9e-0f1a-2b3c4d5e6f7a
     from: a1b2c3d4-e5f6-7890-abcd-ef1234567890
     to: b1c2d3e4-f5a6-7890-bcde-f12345678901
     fromPort: DmGeometricAttribute
-    toPort: default
+    toPort: features
   - id: 1386a662-cf02-4475-a5d2-3668a50a56b7
     from: 278ab965-ce22-473d-98c6-c7b381c38679
     to: 1787b15c-19b5-4386-a0ff-f0e58f477d07
     fromPort: unfiltered
-    toPort: default
+    toPort: features
   - id: ef2f1484-6173-4f34-85bc-58bc45e31bff
     from: 1787b15c-19b5-4386-a0ff-f0e58f477d07
     to: 8fe1a102-e3f3-40dd-b235-66e9c148830f
     fromPort: unfiltered
-    toPort: default
+    toPort: features
   - id: 111cc70e-e1ad-44f4-b4c8-82f7b1cf1309
     from: 8fe1a102-e3f3-40dd-b235-66e9c148830f
     to: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 5857909b-7fc0-4d3e-adfa-65a5669a6646
     from: 1787b15c-19b5-4386-a0ff-f0e58f477d07
     to: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
     fromPort: exceptSplit
-    toPort: default
+    toPort: features
   - id: 1a802e2e-c876-42e3-b3ae-639af1bc7780
     from: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
     to: dab9d3b6-594e-40cc-9f6b-c605005e3320
     fromPort: lod0
-    toPort: default
+    toPort: features
   - id: 1a802e2e-c876-42e3-b3ae-639af1bc7781
     from: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
     to: dab9d3b6-594e-40cc-9f6b-c605005e3321
     fromPort: lod1
-    toPort: default
+    toPort: features
   - id: 1a802e2e-c876-42e3-b3ae-639af1bc7782
     from: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
     to: dab9d3b6-594e-40cc-9f6b-c605005e3322
     fromPort: lod2
-    toPort: default
+    toPort: features
   - id: 1a802e2e-c876-42e3-b3ae-639af1bc7783
     from: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
     to: dab9d3b6-594e-40cc-9f6b-c605005e3323
     fromPort: lod3
-    toPort: default
+    toPort: features
   - id: 1a802e2e-c876-42e3-b3ae-639af1bc7784
     from: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
     to: dab9d3b6-594e-40cc-9f6b-c605005e3324
     fromPort: lod4
-    toPort: default
+    toPort: features

@@ -5,14 +5,14 @@ nodes:
   - id: 63341eb4-409d-4668-b338-2d1e5ab003fd
     name: InputRouter
     type: action
-    action: InputRouter
+    action: Input Router
     with:
-      routingPort: default
+      routingPort: features
 
   - id: 27bb6136-ff9f-4523-9b28-bf01e0e9f698
     name: FeatureFilePathExtractor
     type: action
-    action: FeatureFilePathExtractor
+    action: Feature File Path Extractor
     with:
       sourceDataset:
         type: flowExpr
@@ -23,18 +23,18 @@ nodes:
   - id: eb76867a-9d21-4c08-959b-abaf06bfadb6
     name: FeatureFilterByGml
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
             type: flowExpr
             value: attributes["extension"] == "gml"
-          outputPort: default
+          outputPort: features
 
   - id: a650b6b7-d764-4eb8-aeb0-6dc123e52d26
     name: FeatureSorterByName
     type: action
-    action: FeatureSorter
+    action: Feature Sorter
     with:
       attributes:
         - name
@@ -43,7 +43,7 @@ nodes:
   - id: b229d8d1-f6c8-456a-b325-68f39a5fe82b
     name: FeatureCounterIndex
     type: action
-    action: FeatureCounter
+    action: Feature Counter
     with:
       countStart: 1
       outputAttribute: index
@@ -51,7 +51,7 @@ nodes:
   - id: 06437150-b04d-4b41-83fc-e5767ea35a23
     name: FilePropertyExtractor
     type: action
-    action: FilePropertyExtractor
+    action: File Property Extractor
     with:
       filePathAttribute: path
 
@@ -94,7 +94,7 @@ nodes:
   - id: 273fc537-32eb-44e1-af9f-d46bf0ba1cc8
     name: HorizontalReprojector
     type: action
-    action: HorizontalReprojector
+    action: Horizontal Reprojector
     with:
       sourceEpsgCode:
         type: flowExpr
@@ -116,7 +116,7 @@ nodes:
   - id: b60778f7-b110-44cb-a079-26d03f4dbb51
     name: Lod0InvalidSurfaceCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -129,7 +129,7 @@ nodes:
   - id: ce1613dd-0b26-45a8-984e-adcf8932656e
     name: AttributeMapperLod0InvalidSurface
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: filename
@@ -177,8 +177,7 @@ nodes:
   - id: d65886fc-2d62-448c-8b2e-16841e3c4887
     name: TwoDimensionForcer
     type: action
-    action: TwoDimensionForcer
-
+    action: Two Dimension Forcer
   - id: 2edae6ab-44fe-48af-beb4-68c85e26dcdb
     name: AreaOnAreaOverlayerLod0
     type: action
@@ -192,7 +191,7 @@ nodes:
   - id: 2550e8a3-04e0-446d-b592-886edcc3d351
     name: FeatureFilterByAreaOnAreaOverlap
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -221,7 +220,7 @@ nodes:
   - id: 2a060073-02a0-460a-8b68-c3ea965a96d6
     name: AttributeMapperLod0SurfaceIntersection
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: filename_a
@@ -248,7 +247,7 @@ nodes:
   - id: 86da6c18-1b32-4443-9d24-9a0c3d6d060c
     name: Lod0SurfaceIntersectionCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - filename_a
@@ -268,6 +267,43 @@ nodes:
         type: string
         value: 02_建築物_LOD0面の交差.csv
 
+  # GeoJSON error-detail output for the same check. Coordinates stay in the
+  # inspection CRS (env "prcs"); the intersection-area polygon from
+  # AreaOnAreaOverlayer is the error geometry itself.
+  - id: e3e0a17b-e034-4a68-86df-ccf0f88264b6
+    name: AttributeMapperLod0SurfaceIntersectionGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: check
+          expr:
+            type: string
+            value: LOD0面の交差
+        - attribute: issue
+          valueAttribute: issue
+        - attribute: filename
+          valueAttribute: filename_a
+        - attribute: featureType
+          valueAttribute: feature_type_a
+        - attribute: gmlId
+          valueAttribute: gml_id_a
+        - attribute: relatedGmlId
+          valueAttribute: gml_id_b
+        - attribute: rootGmlId
+          valueAttribute: gml_id_a
+        - attribute: lod
+          valueAttribute: lod_a
+
+  - id: 8c34276b-9f20-42ab-a542-659819a5626e
+    name: FeatureGeoJsonWriterLod0SurfaceIntersection
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: string
+        value: error_geometry/02_建築物_LOD0面の交差.geojson
+
   # --- LOD0 surface orientation pipeline ---
   # SurfaceValidator2D emits LOD0 surfaces whose exterior ring is not
   # counter-clockwise on the inCorrectOrientation port. Keep only genuinely
@@ -278,7 +314,7 @@ nodes:
   - id: aefb9355-f63a-459c-beee-69635c4afaf1
     name: FeatureFilterLod0IncorrectOrientation
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -293,7 +329,7 @@ nodes:
   - id: af670379-9f3c-4eef-bccb-580a53c2cc69
     name: OrientationInvalidSurfaceExcluder
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -305,7 +341,7 @@ nodes:
   - id: 0177ff7b-a842-4aca-be99-47813bf1b11d
     name: Lod0IncorrectOrientationCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -318,7 +354,7 @@ nodes:
   - id: 8b6e3dbc-4c45-4d8d-8f64-58ee6e2c419a
     name: AttributeMapperLod0IncorrectOrientation
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: filename
@@ -356,7 +392,7 @@ nodes:
   - id: afa5ac6e-0bf0-496c-91b5-a46058264ff6
     name: Lod1InvalidSurfaceCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -369,7 +405,7 @@ nodes:
   - id: 7d0476b4-30db-45f5-bbd7-99c52a86e30b
     name: AttributeMapperLod1InvalidSurface
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: filename
@@ -419,7 +455,7 @@ nodes:
   - id: 9c9074a7-7977-443e-897e-883128733faf
     name: FeatureFilterInvalidSolidBoundaryLod1
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -430,7 +466,7 @@ nodes:
   - id: 5af53e1b-cbfe-4cba-9f38-d8230d74468b
     name: Lod1NotClosedSolidCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -443,7 +479,7 @@ nodes:
   - id: 4941ec68-5567-41bd-a8a6-946c30343b26
     name: AttributeMapperLod1NotClosedSolid
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: filename
@@ -472,7 +508,7 @@ nodes:
   - id: 19da512d-70c7-4461-824b-047919d0cd40
     name: Lod1SolidIssuesCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -485,7 +521,7 @@ nodes:
   - id: 2173b3cb-18b8-43bf-a49e-cfe2f5fb1ff8
     name: AttributeMapperLod1SolidIssues
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: filename
@@ -524,15 +560,14 @@ nodes:
   - id: 6536f03a-91b4-44d2-9e9d-d7b3e8e91b6b
     name: GeometryExtractorSolidIntersectionLod1
     type: action
-    action: GeometryExtractor
+    action: Geometry Extractor
     with:
       outputAttribute: _solid_geometry
 
   - id: 3cc74f98-96bd-4585-801b-02bb11c434c8
     name: FootprintReplacerSolidIntersectionLod1
     type: action
-    action: FootprintReplacer
-
+    action: Footprint Replacer
   # IMPORTANT: Shrink the footprint by 0.005m to match the behavior of the FME
   # PLATEAU workflow, which silently ignores small intersections caused by a few
   # mm of coordinate precision artifacts at shared building boundaries. This is
@@ -561,7 +596,7 @@ nodes:
   - id: 689eabf1-cc48-43dd-b6b5-0ac7b369d0ab
     name: FeatureFilterSolidIntersectionOverlapLod1
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -581,14 +616,14 @@ nodes:
   - id: c56dec68-91f9-4d49-94d4-3e6142996735
     name: GeometryReplacerSolidIntersectionLod1A
     type: action
-    action: GeometryReplacer
+    action: Geometry Replacer
     with:
       sourceAttribute: _solid_geometry
 
   - id: 23e6f0c7-d4b2-4d1a-8287-a910a4f7dcc7
     name: GeometryReplacerSolidIntersectionLod1B
     type: action
-    action: GeometryReplacer
+    action: Geometry Replacer
     with:
       sourceAttribute: _solid_geometry
 
@@ -616,7 +651,7 @@ nodes:
   - id: a08a7333-b223-41d2-aea1-24966c6349b1
     name: AttributeMapperLod1SolidIntersection
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: intersection_id
@@ -665,7 +700,7 @@ nodes:
   - id: 68871b39-bb4c-45a2-a328-3725ad947f0f
     name: Lod1SolidIntersectionCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - gmlFilenameA
@@ -689,7 +724,7 @@ nodes:
   - id: 7edcc43f-22a3-4091-bef5-b6ba1b18a543
     name: ErrorSummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -702,7 +737,7 @@ nodes:
   - id: 7f364020-94f2-4c3a-9642-f94b696dc551
     name: SurfaceIntersectionSummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -715,7 +750,7 @@ nodes:
   - id: af18b16c-6dd7-41f8-b6b7-65ecb062aa67
     name: OrientationSummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -728,7 +763,7 @@ nodes:
   - id: a9806a8c-4796-42eb-a76e-960435492aaa
     name: InvalidSurfaceLod1SummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -741,7 +776,7 @@ nodes:
   - id: 7af09d51-c5a9-4434-ab60-24ed7f1e8192
     name: NotClosedSolidLod1SummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -754,7 +789,7 @@ nodes:
   - id: d2268a59-ec0c-42a7-953b-b55475d27b30
     name: SolidIssuesLod1SummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -767,7 +802,7 @@ nodes:
   - id: c693f8b2-e6a9-4943-871d-f3ee950f75a0
     name: SolidIntersectionLod1SummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -780,7 +815,7 @@ nodes:
   - id: 428129b3-ad69-4a18-bf99-25492d41ba26
     name: AttributeMapperBuildingSummary
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: Index
@@ -915,7 +950,7 @@ nodes:
   - id: 2eea35c1-6732-471a-bb39-4a03f01d411a
     name: StatisticsCalculatorBuilding
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       calculations:
         - newAttribute: "C-bldg-01 エラー"
@@ -1065,14 +1100,14 @@ nodes:
   - id: 3730412c-8a45-417c-a669-fa10fec80028
     name: OutputRouter
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
-      routingPort: default
+      routingPort: features
 
   - id: 20e962f2-e612-42c7-a107-8c0ff21a09af
     name: OutputRouterSummary
     type: action
-    action: OutputRouter
+    action: Output Router
     with:
       routingPort: summaryOutput
 
@@ -1085,7 +1120,7 @@ nodes:
   - id: bd42447c-1efd-4ebb-813b-3cd44d174272
     name: Lod2InvalidSurfaceCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -1098,7 +1133,7 @@ nodes:
   - id: 725c8a38-54c5-41eb-92d5-5172719be124
     name: AttributeMapperLod2InvalidSurface
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: filename
@@ -1131,7 +1166,7 @@ nodes:
   - id: 95cbdea7-0b8b-406f-bd8b-b0ad53139e53
     name: Lod3InvalidSurfaceCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -1144,7 +1179,7 @@ nodes:
   - id: 3ef2a0b9-c1ff-4a74-a245-973dee31c508
     name: AttributeMapperLod3InvalidSurface
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: filename
@@ -1178,6 +1213,92 @@ nodes:
         type: string
         value: 02_建築物_LOD2以上境界面のエラー.csv
 
+  # GeoJSON error-detail output for the LOD2/LOD3 boundary-surface check.
+  # The CityGML reader already emits each con:*Surface (wall/roof/ground) as its
+  # own feature, so the geometry pinpoints the offending boundary surface rather
+  # than the whole building. Coordinates stay in the inspection CRS (env "prcs");
+  # the validator rotates near-horizontal surfaces by ~identity, so the emitted
+  # ground-surface geometry matches the real-world footprint. LOD2 and LOD3 share
+  # one writer and merge into a single GeoJSON, mirroring the combined CSV.
+  - id: 8047c601-56d5-42c0-8854-a6d35c631f2f
+    name: AttributeMapperLod2InvalidSurfaceGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: check
+          expr:
+            type: string
+            value: LOD2以上境界面のエラー
+        - attribute: issue
+          expr:
+            type: flowExpr
+            value: |
+              vr = attributes.get("validationResult");
+              if vr != null and "details" in vr {
+                vr["details"][0][0]
+              } else if "issue" in attributes {
+                attributes["issue"]
+              } else {
+                "UnknownError"
+              }
+        - attribute: filename
+          valueAttribute: name
+        - attribute: featureType
+          valueAttribute: __citygml_feature_type
+        - attribute: gmlId
+          valueAttribute: __citygml_gml_id
+        - attribute: parentGmlId
+          valueAttribute: __citygml_parent_gml_id
+        - attribute: rootGmlId
+          valueAttribute: __citygml_root_gml_id
+        - attribute: lod
+          valueAttribute: lod
+
+  - id: 223edd04-27c5-4e61-a524-313b7cd9303f
+    name: AttributeMapperLod3InvalidSurfaceGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: check
+          expr:
+            type: string
+            value: LOD2以上境界面のエラー
+        - attribute: issue
+          expr:
+            type: flowExpr
+            value: |
+              vr = attributes.get("validationResult");
+              if vr != null and "details" in vr {
+                vr["details"][0][0]
+              } else if "issue" in attributes {
+                attributes["issue"]
+              } else {
+                "UnknownError"
+              }
+        - attribute: filename
+          valueAttribute: name
+        - attribute: featureType
+          valueAttribute: __citygml_feature_type
+        - attribute: gmlId
+          valueAttribute: __citygml_gml_id
+        - attribute: parentGmlId
+          valueAttribute: __citygml_parent_gml_id
+        - attribute: rootGmlId
+          valueAttribute: __citygml_root_gml_id
+        - attribute: lod
+          valueAttribute: lod
+
+  - id: 84bf2d44-a30e-436b-b0ca-3fa81504ab49
+    name: FeatureGeoJsonWriterLod23InvalidSurface
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: string
+        value: error_geometry/02_建築物_LOD2以上境界面のエラー.geojson
+
   # --- LOD2 solid-boundary validation pipeline (L14) ---
   - id: f2cfc80d-26e2-43e9-9038-89f698e84147
     name: SolidBoundaryValidatorLod2
@@ -1191,7 +1312,7 @@ nodes:
   - id: 172b94c2-b9db-49f8-9a8e-365d3a49d746
     name: FeatureFilterInvalidSolidBoundaryLod2
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -1202,7 +1323,7 @@ nodes:
   - id: 84ce42ad-fcfc-4708-b17d-af3430bbdb82
     name: Lod2NotClosedSolidCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -1215,7 +1336,7 @@ nodes:
   - id: c43097f8-3bed-4223-b25b-10aa277ec6eb
     name: AttributeMapperLod2NotClosedSolid
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: filename
@@ -1234,7 +1355,7 @@ nodes:
   - id: 6022cb9e-77c6-4669-9369-969aa5a0a74e
     name: Lod2SolidIssuesCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -1247,7 +1368,7 @@ nodes:
   - id: c56efca4-f708-4be5-aa69-ba49a2101c75
     name: AttributeMapperLod2SolidIssues
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: filename
@@ -1276,7 +1397,7 @@ nodes:
   - id: 707f16bf-a9a4-4b91-a1c6-e938ef54827f
     name: FeatureFilterInvalidSolidBoundaryLod3
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -1287,7 +1408,7 @@ nodes:
   - id: 16e3b0fd-ecc8-46b2-8577-8c10865870b1
     name: Lod3NotClosedSolidCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -1300,7 +1421,7 @@ nodes:
   - id: 4f585298-309b-406e-adc0-e4a029f82baa
     name: AttributeMapperLod3NotClosedSolid
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: filename
@@ -1319,7 +1440,7 @@ nodes:
   - id: 876700c4-dd8e-42ea-b41f-d45dba190321
     name: Lod3SolidIssuesCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -1332,7 +1453,7 @@ nodes:
   - id: 2eba5329-3f05-41c1-bd8f-be180546b791
     name: AttributeMapperLod3SolidIssues
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: filename
@@ -1352,15 +1473,14 @@ nodes:
   - id: b453e3de-1050-49da-9e7d-a5b31c09d874
     name: GeometryExtractorSolidIntersectionLod2
     type: action
-    action: GeometryExtractor
+    action: Geometry Extractor
     with:
       outputAttribute: _solid_geometry
 
   - id: 58827ddf-8bbb-44c8-a337-9b3ddd8514b4
     name: FootprintReplacerSolidIntersectionLod2
     type: action
-    action: FootprintReplacer
-
+    action: Footprint Replacer
   - id: 4c9eea9b-d92e-4272-baba-97a8153f2cbe
     name: BuffererSolidIntersectionLod2
     type: action
@@ -1385,7 +1505,7 @@ nodes:
   - id: 00073c0d-4d99-4dfd-aab7-93576c344072
     name: FeatureFilterSolidIntersectionOverlapLod2
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -1405,14 +1525,14 @@ nodes:
   - id: 6e902c73-60a3-4857-adcb-050c5a24a2fa
     name: GeometryReplacerSolidIntersectionLod2A
     type: action
-    action: GeometryReplacer
+    action: Geometry Replacer
     with:
       sourceAttribute: _solid_geometry
 
   - id: d61451d4-3c04-48e4-b3a9-934f21f56b24
     name: GeometryReplacerSolidIntersectionLod2B
     type: action
-    action: GeometryReplacer
+    action: Geometry Replacer
     with:
       sourceAttribute: _solid_geometry
 
@@ -1440,7 +1560,7 @@ nodes:
   - id: 06d5d818-0ecc-4fd7-bf89-a4177210c9ce
     name: AttributeMapperLod2SolidIntersection
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: intersection_id
@@ -1489,7 +1609,7 @@ nodes:
   - id: 14a007fc-a5a3-43b0-9fe0-a1f2c765f6e3
     name: Lod2SolidIntersectionCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - gmlFilenameA
@@ -1503,15 +1623,14 @@ nodes:
   - id: 27321acb-d341-4866-9dd8-fd4170ba6918
     name: GeometryExtractorSolidIntersectionLod3
     type: action
-    action: GeometryExtractor
+    action: Geometry Extractor
     with:
       outputAttribute: _solid_geometry
 
   - id: 7aa453e0-7d18-4927-a4d9-582d42e5cdac
     name: FootprintReplacerSolidIntersectionLod3
     type: action
-    action: FootprintReplacer
-
+    action: Footprint Replacer
   - id: 22530283-72ea-4ae2-8ae5-216787c93aff
     name: BuffererSolidIntersectionLod3
     type: action
@@ -1536,7 +1655,7 @@ nodes:
   - id: 4ccbd075-561f-4540-aaa6-7f82a21056b2
     name: FeatureFilterSolidIntersectionOverlapLod3
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -1556,14 +1675,14 @@ nodes:
   - id: 93d01ed1-8ac7-406f-ad28-704bcb213f0c
     name: GeometryReplacerSolidIntersectionLod3A
     type: action
-    action: GeometryReplacer
+    action: Geometry Replacer
     with:
       sourceAttribute: _solid_geometry
 
   - id: 96f36de0-0180-4bb8-9e1e-f503d35af14e
     name: GeometryReplacerSolidIntersectionLod3B
     type: action
-    action: GeometryReplacer
+    action: Geometry Replacer
     with:
       sourceAttribute: _solid_geometry
 
@@ -1591,7 +1710,7 @@ nodes:
   - id: 9bd16218-2091-4ec3-9755-f0145602141b
     name: AttributeMapperLod3SolidIntersection
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: intersection_id
@@ -1640,7 +1759,7 @@ nodes:
   - id: f6cae627-8915-43b0-8781-65956bb6c1ef
     name: Lod3SolidIntersectionCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - gmlFilenameA
@@ -1654,7 +1773,7 @@ nodes:
   - id: 9d779ca4-0750-4098-b6f7-102fa1c331ef
     name: InvalidSurfaceLod2SummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -1666,7 +1785,7 @@ nodes:
   - id: 1306a9be-0cbc-4e44-9a47-9e63b4e6751b
     name: InvalidSurfaceLod3SummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -1678,7 +1797,7 @@ nodes:
   - id: f098ecf6-e0df-492f-848b-e03de1c322b8
     name: NotClosedSolidLod2SummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -1690,7 +1809,7 @@ nodes:
   - id: 8e4d7762-1205-4313-b2a9-0ce18a4b0b08
     name: NotClosedSolidLod3SummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -1702,7 +1821,7 @@ nodes:
   - id: 7791b4fd-0782-47d1-b9bc-df9eb1b89a3f
     name: SolidIssuesLod2SummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -1714,7 +1833,7 @@ nodes:
   - id: 7dd8c30f-f748-4a04-9f74-313f69d8f3e3
     name: SolidIssuesLod3SummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -1726,7 +1845,7 @@ nodes:
   - id: 39075c4f-efb6-4d37-9dd8-43c480093a5c
     name: SolidIntersectionLod2SummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -1738,7 +1857,7 @@ nodes:
   - id: 87eee007-3e1a-41c8-a8ab-90e57e18166f
     name: SolidIntersectionLod3SummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -1755,19 +1874,19 @@ nodes:
   - id: c1b00001-0000-4000-8000-000000000001
     name: FeatureFilterBuildingForDuplicateId
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
             type: flowExpr
             value: attributes["__citygml_feature_type"] == "bldg:Building"
-          outputPort: default
+          outputPort: features
 
   # Flatten the building id parts into plain attributes for keying/counting.
   - id: c1b00002-0000-4000-8000-000000000002
     name: AttributeManagerBuildingId
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: uroBuildingId
@@ -1826,7 +1945,7 @@ nodes:
   - id: c1b00003-0000-4000-8000-000000000003
     name: AttributeAggregatorDuplicateBuildingId
     type: action
-    action: AttributeAggregator
+    action: Attribute Aggregator
     with:
       aggregateAttributes:
         - newAttribute: uroBuildingId
@@ -1851,7 +1970,7 @@ nodes:
   - id: c1b00004-0000-4000-8000-000000000004
     name: FeatureMergerDuplicateBuildingId
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -1866,7 +1985,7 @@ nodes:
   - id: c1b00005-0000-4000-8000-000000000005
     name: FeatureFilterMultipleBuildingId
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -1878,7 +1997,7 @@ nodes:
   - id: c1b00006-0000-4000-8000-000000000006
     name: AttributeMapperDuplicateBuildingId
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: GmlId
@@ -1916,7 +2035,7 @@ nodes:
   - id: c1b00008-0000-4000-8000-000000000008
     name: DuplicateBuildingIdCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -1930,7 +2049,7 @@ nodes:
   - id: c1b00009-0000-4000-8000-000000000009
     name: DuplicateBuildingIdSummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -1948,7 +2067,7 @@ nodes:
   - id: c1b00010-0000-4000-8000-000000000010
     name: FeatureFilterValidBuildingIdFormat
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -1974,7 +2093,7 @@ nodes:
   - id: c1b00011-0000-4000-8000-000000000011
     name: AttributeMapperInvalidBuildingIdFormat
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: Index
@@ -2012,7 +2131,7 @@ nodes:
   - id: c1b00013-0000-4000-8000-000000000013
     name: InvalidBuildingIdFormatCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -2026,7 +2145,7 @@ nodes:
   - id: c1b00014-0000-4000-8000-000000000014
     name: InvalidBuildingIdFormatSummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -2056,7 +2175,7 @@ nodes:
   - id: c1b00022-0000-4000-8000-000000000022
     name: AttributeMapperUsageError
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: Filename
@@ -2084,7 +2203,7 @@ nodes:
   - id: c1b00024-0000-4000-8000-000000000024
     name: UsageErrorCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -2098,7 +2217,7 @@ nodes:
   - id: c1b00025-0000-4000-8000-000000000025
     name: UsageErrorSummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -2112,7 +2231,7 @@ nodes:
   - id: c1b00041-0000-4000-8000-000000000041
     name: AttributeMapperCityCodeError
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: "Feature Type"
@@ -2140,7 +2259,7 @@ nodes:
   - id: c1b00043-0000-4000-8000-000000000043
     name: CityCodeErrorCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -2154,7 +2273,7 @@ nodes:
   - id: c1b00044-0000-4000-8000-000000000044
     name: CityCodeErrorSummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -2177,12 +2296,11 @@ nodes:
   - id: c1b00051-0000-4000-8000-000000000051
     name: UnmatchedXlinkSummaryNoop
     type: action
-    action: NoopSink
-
+    action: Noop Sink
   - id: c1b00052-0000-4000-8000-000000000052
     name: AttributeManagerXlinkFrom
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: Attribute
@@ -2204,7 +2322,7 @@ nodes:
   - id: c1b00053-0000-4000-8000-000000000053
     name: AttributeManagerXlinkTo
     type: action
-    action: AttributeManager
+    action: Attribute Manager
     with:
       operations:
         - attribute: Attribute
@@ -2226,7 +2344,7 @@ nodes:
   - id: c1b00054-0000-4000-8000-000000000054
     name: AttributeMapperLbldg06
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: Index
@@ -2262,7 +2380,7 @@ nodes:
   - id: c1b00056-0000-4000-8000-000000000056
     name: Lbldg06ErrorCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -2276,7 +2394,7 @@ nodes:
   - id: c1b00057-0000-4000-8000-000000000057
     name: UnmatchedXlinkSummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -2294,7 +2412,7 @@ nodes:
   - id: c1b00060-0000-4000-8000-000000000060
     name: FeatureFilterBuildingPartL02
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -2322,7 +2440,7 @@ nodes:
   - id: c1b00063-0000-4000-8000-000000000063
     name: FilterNonFullStatusL02
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -2338,7 +2456,7 @@ nodes:
   - id: c1b00065-0000-4000-8000-000000000065
     name: AttributeMapperLbldg02
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: Index
@@ -2372,7 +2490,7 @@ nodes:
   - id: c1b00067-0000-4000-8000-000000000067
     name: Lbldg02ErrorCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -2386,7 +2504,7 @@ nodes:
   - id: c1b00068-0000-4000-8000-000000000068
     name: Lbldg02SummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -2414,7 +2532,7 @@ nodes:
   - id: c1b00071-0000-4000-8000-000000000071
     name: MeshCodeTester
     type: action
-    action: FeatureFilter
+    action: Feature Filter
     with:
       conditions:
         - expr:
@@ -2425,7 +2543,7 @@ nodes:
   - id: c1b00072-0000-4000-8000-000000000072
     name: AttributeMapperIncorrectMeshCode
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: feature_type
@@ -2457,7 +2575,7 @@ nodes:
   - id: c1b00074-0000-4000-8000-000000000074
     name: IncorrectMeshCodeCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -2471,7 +2589,7 @@ nodes:
   - id: c1b00075-0000-4000-8000-000000000075
     name: IncorrectMeshCodeSummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -2488,7 +2606,7 @@ nodes:
   - id: c1b00080-0000-4000-8000-000000000080
     name: Lod0Or1BuildingPartCounter
     type: action
-    action: StatisticsCalculator
+    action: Statistics Calculator
     with:
       groupBy:
         - name
@@ -2502,7 +2620,7 @@ nodes:
   - id: c1b00081-0000-4000-8000-000000000081
     name: AttributeMapperLod0Or1BuildingPart
     type: action
-    action: AttributeMapper
+    action: Attribute Mapper
     with:
       mappers:
         - attribute: Index
@@ -2530,7 +2648,7 @@ nodes:
   - id: c1b00083-0000-4000-8000-000000000083
     name: Lod0Or1BuildingPartSummaryMerger
     type: action
-    action: FeatureMerger
+    action: Feature Merger
     with:
       requestorAttributeValue:
         type: flowExpr
@@ -2543,151 +2661,169 @@ edges:
   - id: ded8e784-943d-478f-b0fd-00a99bc1a71d
     from: 63341eb4-409d-4668-b338-2d1e5ab003fd
     to: 27bb6136-ff9f-4523-9b28-bf01e0e9f698
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 938baf36-f831-4d0d-99d4-a330124d723f
     from: 27bb6136-ff9f-4523-9b28-bf01e0e9f698
     to: eb76867a-9d21-4c08-959b-abaf06bfadb6
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 247043d6-0323-47c5-add9-a86f07b85f05
     from: eb76867a-9d21-4c08-959b-abaf06bfadb6
     to: a650b6b7-d764-4eb8-aeb0-6dc123e52d26
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: f6d3dae6-f5fb-4402-9966-af84eb452042
     from: a650b6b7-d764-4eb8-aeb0-6dc123e52d26
     to: b229d8d1-f6c8-456a-b325-68f39a5fe82b
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 8899305d-f997-4ba8-9617-2c28e0dc6b60
     from: b229d8d1-f6c8-456a-b325-68f39a5fe82b
     to: 06437150-b04d-4b41-83fc-e5767ea35a23
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   # File feature -> ErrorSummaryMerger (requestor) and into the LOD0 pipeline.
   - id: a33876e6-151d-4095-b2c7-cba0a3881826
     from: 06437150-b04d-4b41-83fc-e5767ea35a23
     to: 7edcc43f-22a3-4091-bef5-b6ba1b18a543
-    fromPort: default
+    fromPort: features
     toPort: requestor
   # File feature -> UDXFolderExtractor (arranges codelists/schemas as udx siblings) -> reader.
   - id: c6303dda-980f-458c-9751-6d5138d7b59f
     from: 06437150-b04d-4b41-83fc-e5767ea35a23
     to: c1b00030-0000-4000-8000-000000000030
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: c1b0e040-0000-4000-8000-000000000040
     from: c1b00030-0000-4000-8000-000000000030
     to: d9349887-1920-44a6-93c9-182c8484d1a2
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # LOD0 surface validation pipeline.
   - id: 0594a7bb-239c-4a04-a3fb-a09c63d48574
     from: d9349887-1920-44a6-93c9-182c8484d1a2
     to: 273fc537-32eb-44e1-af9f-d46bf0ba1cc8
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: ffb8809c-fed3-4ea6-b53f-868f21a633f0
     from: 273fc537-32eb-44e1-af9f-d46bf0ba1cc8
     to: 012f23c6-65e1-4759-ab04-f20ebecbadfc
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 31fe411a-c85b-4b13-8c1b-24a191c02ec6
     from: 012f23c6-65e1-4759-ab04-f20ebecbadfc
     to: d12958f8-f52d-4c95-b62c-58a92d363017
     fromPort: lod0
-    toPort: default
+    toPort: features
   - id: bd738dc2-1139-4366-b84a-45cc21fd91f7
     from: d12958f8-f52d-4c95-b62c-58a92d363017
     to: b60778f7-b110-44cb-a079-26d03f4dbb51
     fromPort: invalidSurface
-    toPort: default
+    toPort: features
   # Counter.complete -> AttributeMapper -> CSV writer
   - id: 7d2bc7f2-5031-47a2-8767-43295b99f68d
     from: b60778f7-b110-44cb-a079-26d03f4dbb51
     to: ce1613dd-0b26-45a8-984e-adcf8932656e
     fromPort: complete
-    toPort: default
+    toPort: features
   - id: 42e83680-f399-4ade-958a-58a8b47fb917
     from: ce1613dd-0b26-45a8-984e-adcf8932656e
     to: b06c19d6-0ad0-4a3c-90bf-26d3613d7637
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   # Counter.default -> ErrorSummaryMerger (supplier)
   - id: 23bc5726-958c-4762-ab89-295e914df4e6
     from: b60778f7-b110-44cb-a079-26d03f4dbb51
     to: 7edcc43f-22a3-4091-bef5-b6ba1b18a543
-    fromPort: default
+    fromPort: features
     toPort: supplier
 
   # LOD0 surface intersection pipeline (taps valid LOD0 surfaces).
   - id: 9ec657c4-6b91-4a90-a7dc-948d7a09dc1a
     from: d12958f8-f52d-4c95-b62c-58a92d363017
     to: 5eb65556-a94e-4b76-a396-1752283d48a4
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 21677d05-2fa4-4b30-bdfd-0bd777f0d7ad
     from: 5eb65556-a94e-4b76-a396-1752283d48a4
     to: d65886fc-2d62-448c-8b2e-16841e3c4887
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: ddf2120f-3285-4ce5-b93d-5d58db773f1a
     from: d65886fc-2d62-448c-8b2e-16841e3c4887
     to: 2edae6ab-44fe-48af-beb4-68c85e26dcdb
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 4465b7f4-22fc-4cc5-b28f-e2277b823454
     from: 2edae6ab-44fe-48af-beb4-68c85e26dcdb
     to: 2550e8a3-04e0-446d-b592-886edcc3d351
     fromPort: area
-    toPort: default
+    toPort: features
   - id: be0511b9-7638-419a-b09c-2deaee3e484c
     from: 2550e8a3-04e0-446d-b592-886edcc3d351
     to: fd8dd5ad-cd3a-4703-87b9-663cd0bfb589
     fromPort: intersectionSurface
-    toPort: default
+    toPort: features
   - id: f56397ab-2ebc-49c3-b00b-db802bcc9716
     from: fd8dd5ad-cd3a-4703-87b9-663cd0bfb589
     to: af899976-7fb2-4c38-a0ff-c76ce7d00709
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 2041c5fd-f1ed-4763-9cc0-f0b3ace86c13
     from: af899976-7fb2-4c38-a0ff-c76ce7d00709
     to: 2a060073-02a0-460a-8b68-c3ea965a96d6
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 68ebbdf1-e929-4761-a298-3d7fc0e74c84
     from: 2a060073-02a0-460a-8b68-c3ea965a96d6
     to: 86da6c18-1b32-4443-9d24-9a0c3d6d060c
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   # Counter.complete -> CSV writer (one row per intersection pair)
   - id: 25aeaf03-8309-43a2-914d-5d703338fbb7
     from: 86da6c18-1b32-4443-9d24-9a0c3d6d060c
     to: acb7b8cf-9059-4c7f-9b51-45cf430be09a
     fromPort: complete
-    toPort: default
+    toPort: features
   # Counter.default -> SurfaceIntersectionSummaryMerger (supplier)
   - id: dc34f178-3b7c-4c87-9da9-9472ac1eb8d2
     from: 86da6c18-1b32-4443-9d24-9a0c3d6d060c
     to: 7f364020-94f2-4c3a-9642-f94b696dc551
-    fromPort: default
+    fromPort: features
     toPort: supplier
   # Route the written LOD0 intersection CSV into the result zip.
   - id: 6d38927a-36c8-45af-93e8-083c2d233b7b
     from: acb7b8cf-9059-4c7f-9b51-45cf430be09a
     to: 3730412c-8a45-417c-a669-fa10fec80028
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
+  # Counter.complete -> GeoJSON attribute mapper (parallel to the CSV writer)
+  - id: 2cf00a25-3a9f-4006-ace8-c2895cc870db
+    from: 86da6c18-1b32-4443-9d24-9a0c3d6d060c
+    to: e3e0a17b-e034-4a68-86df-ccf0f88264b6
+    fromPort: complete
+    toPort: features
+  # GeoJSON attribute mapper -> GeoJSON writer
+  - id: 7ec0821e-35b9-4415-ba7c-a43283856e18
+    from: e3e0a17b-e034-4a68-86df-ccf0f88264b6
+    to: 8c34276b-9f20-42ab-a542-659819a5626e
+    fromPort: features
+    toPort: features
+  # Route the written LOD0 intersection GeoJSON into the result zip.
+  - id: 5fcf22da-e6c2-4e30-9aea-f8f91e01e068
+    from: 8c34276b-9f20-42ab-a542-659819a5626e
+    to: 3730412c-8a45-417c-a669-fa10fec80028
+    fromPort: features
+    toPort: features
 
   # LOD0 surface orientation pipeline (taps inCorrectOrientation surfaces).
   - id: 8712059f-8e80-4cb6-ba77-12c294035546
     from: d12958f8-f52d-4c95-b62c-58a92d363017
     to: aefb9355-f63a-459c-beee-69635c4afaf1
     fromPort: inCorrectOrientation
-    toPort: default
+    toPort: features
   # Keep only genuinely reversed (clockwise) surfaces.
   - id: da71725b-a9e9-43da-a1c4-7fd1f9d432bd
     from: aefb9355-f63a-459c-beee-69635c4afaf1
@@ -2705,29 +2841,29 @@ edges:
     from: af670379-9f3c-4eef-bccb-580a53c2cc69
     to: 0177ff7b-a842-4aca-be99-47813bf1b11d
     fromPort: unmerged
-    toPort: default
+    toPort: features
   # Counter.complete -> AttributeMapper -> CSV writer (one row per surface)
   - id: 6acfa6f3-ff6b-43e9-af8e-72c99ea08c36
     from: 0177ff7b-a842-4aca-be99-47813bf1b11d
     to: 8b6e3dbc-4c45-4d8d-8f64-58ee6e2c419a
     fromPort: complete
-    toPort: default
+    toPort: features
   - id: 93b1af53-7434-436d-b50b-303ea4d5cbdf
     from: 8b6e3dbc-4c45-4d8d-8f64-58ee6e2c419a
     to: d0a4c34c-c050-4017-960a-762a0ad09441
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   # Route the written LOD0 orientation CSV into the result zip.
   - id: d1216ed0-dbd7-478a-82ed-7640b87c8996
     from: d0a4c34c-c050-4017-960a-762a0ad09441
     to: 3730412c-8a45-417c-a669-fa10fec80028
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   # Counter.default -> OrientationSummaryMerger (supplier)
   - id: b73d84ce-6c41-471f-9f0c-32fa737ecfae
     from: 0177ff7b-a842-4aca-be99-47813bf1b11d
     to: af18b16c-6dd7-41f8-b6b7-65ecb062aa67
-    fromPort: default
+    fromPort: features
     toPort: supplier
   # Merged + unmerged file features -> surface-intersection merger (requestor)
   - id: 40c7c687-b78b-4e72-8a7a-156730ec2411
@@ -2813,137 +2949,137 @@ edges:
   - id: 5caa10d1-f739-467f-858d-64299a29555f
     from: 428129b3-ad69-4a18-bf99-25492d41ba26
     to: 501a24e8-b919-4f3b-9706-9ae6228f2bfd
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: dae40fc8-8f55-4bc6-910f-489bef4a114f
     from: 428129b3-ad69-4a18-bf99-25492d41ba26
     to: 2eea35c1-6732-471a-bb39-4a03f01d411a
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: ff9187e7-0435-4833-ba4e-65bac4a2ddd7
     from: 501a24e8-b919-4f3b-9706-9ae6228f2bfd
     to: 3730412c-8a45-417c-a669-fa10fec80028
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   # Route the written LOD0 error CSV into the result zip.
   - id: 5a9431ee-c3e8-45c4-acaa-4638da748360
     from: b06c19d6-0ad0-4a3c-90bf-26d3613d7637
     to: 3730412c-8a45-417c-a669-fa10fec80028
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: b71e9291-1a2e-4047-9f47-72f972c2a218
     from: 2eea35c1-6732-471a-bb39-4a03f01d411a
     to: 4375b01b-c253-475b-8737-08736f4961f8
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 08e4c111-58f7-4921-82d1-7b5d7e32d43e
     from: 4375b01b-c253-475b-8737-08736f4961f8
     to: 3730412c-8a45-417c-a669-fa10fec80028
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 7893662d-62cc-4842-b9a7-782ab16c0d36
     from: 2eea35c1-6732-471a-bb39-4a03f01d411a
     to: 20e962f2-e612-42c7-a107-8c0ff21a09af
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # --- LOD1 boundary-surface validation pipeline ---
   - id: 0e4e4883-a619-4c98-96c9-5a70b1128a6c
     from: 012f23c6-65e1-4759-ab04-f20ebecbadfc
     to: 3ace9872-a832-406a-8fdb-af97610dd86d
     fromPort: lod1
-    toPort: default
+    toPort: features
   - id: ce9cd4e9-ef55-457d-a0fb-6897c8e94dcd
     from: 3ace9872-a832-406a-8fdb-af97610dd86d
     to: afa5ac6e-0bf0-496c-91b5-a46058264ff6
     fromPort: invalidSurface
-    toPort: default
+    toPort: features
   # Counter.complete -> AttributeMapper -> CSV writer
   - id: c4b8863e-2604-4077-bf1b-510067ef3e0c
     from: afa5ac6e-0bf0-496c-91b5-a46058264ff6
     to: 7d0476b4-30db-45f5-bbd7-99c52a86e30b
     fromPort: complete
-    toPort: default
+    toPort: features
   - id: 9a7ce0f6-a47d-45b7-9c73-b3656bc93be7
     from: 7d0476b4-30db-45f5-bbd7-99c52a86e30b
     to: f8589886-0315-441c-bca5-a937f9137e6f
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   # Counter.default -> LOD1 invalid-surface summary merger (supplier)
   - id: 6fb9c625-7d7a-49c6-b8c2-f4f547d5ba36
     from: afa5ac6e-0bf0-496c-91b5-a46058264ff6
     to: a9806a8c-4796-42eb-a76e-960435492aaa
-    fromPort: default
+    fromPort: features
     toPort: supplier
   # Route the written LOD1 boundary-surface CSV into the result zip.
   - id: 59cbd734-5b78-4863-8da2-ae674760b967
     from: f8589886-0315-441c-bca5-a937f9137e6f
     to: 3730412c-8a45-417c-a669-fa10fec80028
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
 
   # --- LOD1 solid-boundary validation pipeline (L14) ---
   - id: c8e9a493-b108-4ec6-a177-e634cb6570f9
     from: 012f23c6-65e1-4759-ab04-f20ebecbadfc
     to: 45007e89-4cd7-49aa-b145-a40d6539f83c
     fromPort: lod1
-    toPort: default
+    toPort: features
   - id: 9771ff12-a3f9-4585-95c1-e8dfa3cc7ddd
     from: 45007e89-4cd7-49aa-b145-a40d6539f83c
     to: 9c9074a7-7977-443e-897e-883128733faf
     fromPort: failed
-    toPort: default
+    toPort: features
   # Not-closed (NotA2Manifold) branch: Counter.complete -> AttributeMapper -> writer
   - id: 43af48b8-4e4f-4a5f-bc89-c228a372e2cb
     from: 9c9074a7-7977-443e-897e-883128733faf
     to: 5af53e1b-cbfe-4cba-9f38-d8230d74468b
     fromPort: notClosed
-    toPort: default
+    toPort: features
   - id: b8940748-8dac-4837-a7e1-f30e834833f4
     from: 5af53e1b-cbfe-4cba-9f38-d8230d74468b
     to: 4941ec68-5567-41bd-a8a6-946c30343b26
     fromPort: complete
-    toPort: default
+    toPort: features
   - id: 857315f9-6f69-491e-b465-83c357f1ef78
     from: 4941ec68-5567-41bd-a8a6-946c30343b26
     to: 4261177e-6f06-48cc-aa24-f0a10382b704
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 9e0a7430-10d7-4f06-85bb-37d4b653089e
     from: 4261177e-6f06-48cc-aa24-f0a10382b704
     to: 3730412c-8a45-417c-a669-fa10fec80028
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: fd389054-a97e-47de-bdd2-d52582d4ff04
     from: 5af53e1b-cbfe-4cba-9f38-d8230d74468b
     to: 7af09d51-c5a9-4434-ab60-24ed7f1e8192
-    fromPort: default
+    fromPort: features
     toPort: supplier
   # Other invalid-solid issues branch: Counter.complete -> AttributeMapper -> writer
   - id: 05603c4a-5b38-475f-98a2-7a88ce6ca984
     from: 9c9074a7-7977-443e-897e-883128733faf
     to: 19da512d-70c7-4461-824b-047919d0cd40
     fromPort: unfiltered
-    toPort: default
+    toPort: features
   - id: 4fcf9cdb-3e9b-41d0-a196-ea7225e1e81d
     from: 19da512d-70c7-4461-824b-047919d0cd40
     to: 2173b3cb-18b8-43bf-a49e-cfe2f5fb1ff8
     fromPort: complete
-    toPort: default
+    toPort: features
   - id: 98a77aad-23b4-4354-9b5b-ca3fe962bcc6
     from: 2173b3cb-18b8-43bf-a49e-cfe2f5fb1ff8
     to: 59b03bd3-9e44-453e-92fc-52cc14abcf25
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 1b05c79b-5462-4cf9-bf67-b5fbd8a11ee3
     from: 59b03bd3-9e44-453e-92fc-52cc14abcf25
     to: 3730412c-8a45-417c-a669-fa10fec80028
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 9fc602c2-838e-4b6e-87da-968044552cd4
     from: 19da512d-70c7-4461-824b-047919d0cd40
     to: d2268a59-ec0c-42a7-953b-b55475d27b30
-    fromPort: default
+    fromPort: features
     toPort: supplier
 
   # --- LOD1 solid intersection pipeline (L-BLDG-01) ---
@@ -2951,82 +3087,82 @@ edges:
     from: 012f23c6-65e1-4759-ab04-f20ebecbadfc
     to: 6536f03a-91b4-44d2-9e9d-d7b3e8e91b6b
     fromPort: lod1
-    toPort: default
+    toPort: features
   - id: 1d8d2b66-2565-4829-acc8-36a15d01d3fa
     from: 6536f03a-91b4-44d2-9e9d-d7b3e8e91b6b
     to: 3cc74f98-96bd-4585-801b-02bb11c434c8
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 69c2d6b9-2bfd-45b0-8be4-113a5afcda30
     from: 3cc74f98-96bd-4585-801b-02bb11c434c8
     to: e25d4514-3bcc-4d10-b31b-bf93a57f23b1
     fromPort: footprint
-    toPort: default
+    toPort: features
   - id: b471f058-ad04-4fed-ab23-d04c573ade59
     from: e25d4514-3bcc-4d10-b31b-bf93a57f23b1
     to: 3f676870-4b7c-46f0-925e-073c20429200
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 1cf489a3-ff25-44d0-aad5-1069e3b730ad
     from: 3f676870-4b7c-46f0-925e-073c20429200
     to: 689eabf1-cc48-43dd-b6b5-0ac7b369d0ab
     fromPort: area
-    toPort: default
+    toPort: features
   - id: 5aa9651c-7805-4b3f-a516-897159f1e164
     from: 689eabf1-cc48-43dd-b6b5-0ac7b369d0ab
     to: 4c033bed-d29b-48f0-9226-bef423073e18
     fromPort: overlapping
-    toPort: default
+    toPort: features
   - id: 10a8770e-e894-499c-a31a-7f7c7cd4a79d
     from: 4c033bed-d29b-48f0-9226-bef423073e18
     to: c56dec68-91f9-4d49-94d4-3e6142996735
     fromPort: A
-    toPort: default
+    toPort: features
   - id: d9a0db8e-b856-452e-b521-c70f759027e8
     from: 4c033bed-d29b-48f0-9226-bef423073e18
     to: 23e6f0c7-d4b2-4d1a-8287-a910a4f7dcc7
     fromPort: B
-    toPort: default
+    toPort: features
   - id: 95560682-4ea9-4ed3-ac99-e1ca013d3132
     from: c56dec68-91f9-4d49-94d4-3e6142996735
     to: 585e54ec-2814-4e67-a5b2-33e16007110a
-    fromPort: default
+    fromPort: features
     toPort: left
   - id: cab953fe-ad19-450f-be66-e08fe734cfa7
     from: 23e6f0c7-d4b2-4d1a-8287-a910a4f7dcc7
     to: 585e54ec-2814-4e67-a5b2-33e16007110a
-    fromPort: default
+    fromPort: features
     toPort: right
   - id: 01b57095-206c-4a1d-9cc1-26e9d439887f
     from: 585e54ec-2814-4e67-a5b2-33e16007110a
     to: 8c37d786-50f7-4aba-8737-5422da3ba79b
     fromPort: intersection
-    toPort: default
+    toPort: features
   - id: 886dfb22-a1e4-4b03-b40e-8d7f8a060335
     from: 8c37d786-50f7-4aba-8737-5422da3ba79b
     to: a08a7333-b223-41d2-aea1-24966c6349b1
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   # AttributeMapper -> Counter; Counter.complete -> writer, Counter.default -> merger
   - id: cc03d04d-fb59-42b5-af57-1570683880b9
     from: a08a7333-b223-41d2-aea1-24966c6349b1
     to: 68871b39-bb4c-45a2-a328-3725ad947f0f
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 6c30f0d2-8bef-4346-9d26-63c0b7f85894
     from: 68871b39-bb4c-45a2-a328-3725ad947f0f
     to: 073a86d1-e1d0-497d-803f-6398518f0c1a
     fromPort: complete
-    toPort: default
+    toPort: features
   - id: a3f1939c-0146-422f-8117-2bb66893c4f8
     from: 073a86d1-e1d0-497d-803f-6398518f0c1a
     to: 3730412c-8a45-417c-a669-fa10fec80028
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: b01b26b7-0404-435b-9e37-838d1c707b2f
     from: 68871b39-bb4c-45a2-a328-3725ad947f0f
     to: c693f8b2-e6a9-4943-871d-f3ee950f75a0
-    fromPort: default
+    fromPort: features
     toPort: supplier
 
   # --- LOD2/LOD3 per-file summary merger chain ---
@@ -3139,26 +3275,26 @@ edges:
     from: 012f23c6-65e1-4759-ab04-f20ebecbadfc
     to: ef2ca3c5-3113-4ac7-a99f-2bd184cfd3bb
     fromPort: lod2
-    toPort: default
+    toPort: features
   - id: 49b77b35-47a5-446b-9c29-720cb36e1b79
     from: ef2ca3c5-3113-4ac7-a99f-2bd184cfd3bb
     to: bd42447c-1efd-4ebb-813b-3cd44d174272
     fromPort: invalidSurface
-    toPort: default
+    toPort: features
   - id: a14c1ed5-5fb9-4805-98a1-f1d152204be7
     from: bd42447c-1efd-4ebb-813b-3cd44d174272
     to: 725c8a38-54c5-41eb-92d5-5172719be124
     fromPort: complete
-    toPort: default
+    toPort: features
   - id: 5e028686-fe31-48fd-a36d-dc9cde74d49c
     from: 725c8a38-54c5-41eb-92d5-5172719be124
     to: 9989e9e9-6b77-41f9-a1ee-3fd3f58ee5a3
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 6c15d25d-7ecf-4577-912d-8831de1aae60
     from: bd42447c-1efd-4ebb-813b-3cd44d174272
     to: 9d779ca4-0750-4098-b6f7-102fa1c331ef
-    fromPort: default
+    fromPort: features
     toPort: supplier
 
   # --- LOD3 boundary-surface validation pipeline ---
@@ -3166,84 +3302,115 @@ edges:
     from: 012f23c6-65e1-4759-ab04-f20ebecbadfc
     to: 99ecedf3-7d7f-425e-b79c-90d598cf1e1e
     fromPort: lod3
-    toPort: default
+    toPort: features
   - id: 30be6245-57e8-456c-9519-4af98410c3bc
     from: 99ecedf3-7d7f-425e-b79c-90d598cf1e1e
     to: 95cbdea7-0b8b-406f-bd8b-b0ad53139e53
     fromPort: invalidSurface
-    toPort: default
+    toPort: features
   - id: 6cf4dc74-2cc9-431a-9ac1-189007746e47
     from: 95cbdea7-0b8b-406f-bd8b-b0ad53139e53
     to: 3ef2a0b9-c1ff-4a74-a245-973dee31c508
     fromPort: complete
-    toPort: default
+    toPort: features
   - id: 898e74f8-0611-4f5e-85b8-c10002f09b50
     from: 3ef2a0b9-c1ff-4a74-a245-973dee31c508
     to: 9989e9e9-6b77-41f9-a1ee-3fd3f58ee5a3
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: b65745a7-b9ea-4c42-80d7-c70d27e5e195
     from: 95cbdea7-0b8b-406f-bd8b-b0ad53139e53
     to: 1306a9be-0cbc-4e44-9a47-9e63b4e6751b
-    fromPort: default
+    fromPort: features
     toPort: supplier
   # Route the combined LOD2/LOD3 boundary CSV into the result zip.
   - id: 927a80f0-8583-4675-8323-ee333d256c7d
     from: 9989e9e9-6b77-41f9-a1ee-3fd3f58ee5a3
     to: 3730412c-8a45-417c-a669-fa10fec80028
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
+  # GeoJSON error-detail branch (parallel to the CSV writers).
+  # LOD2 counter.complete -> LOD2 GeoJSON attribute mapper
+  - id: 16bb53a6-c03d-4a14-ac1e-4667ab7afc17
+    from: bd42447c-1efd-4ebb-813b-3cd44d174272
+    to: 8047c601-56d5-42c0-8854-a6d35c631f2f
+    fromPort: complete
+    toPort: features
+  # LOD2 GeoJSON mapper -> shared GeoJSON writer
+  - id: 873720f1-a260-497c-8e73-9067cd7c9ea0
+    from: 8047c601-56d5-42c0-8854-a6d35c631f2f
+    to: 84bf2d44-a30e-436b-b0ca-3fa81504ab49
+    fromPort: features
+    toPort: features
+  # LOD3 counter.complete -> LOD3 GeoJSON attribute mapper
+  - id: 4fac2cb4-ebac-48a7-abd3-a6d51d61c5f5
+    from: 95cbdea7-0b8b-406f-bd8b-b0ad53139e53
+    to: 223edd04-27c5-4e61-a524-313b7cd9303f
+    fromPort: complete
+    toPort: features
+  # LOD3 GeoJSON mapper -> shared GeoJSON writer
+  - id: 9cae6b29-e7ef-4dcd-bafb-712c7e963149
+    from: 223edd04-27c5-4e61-a524-313b7cd9303f
+    to: 84bf2d44-a30e-436b-b0ca-3fa81504ab49
+    fromPort: features
+    toPort: features
+  # Route the combined LOD2/LOD3 boundary GeoJSON into the result zip.
+  - id: 43333752-31af-4fc6-95ab-c69f7614da4a
+    from: 84bf2d44-a30e-436b-b0ca-3fa81504ab49
+    to: 3730412c-8a45-417c-a669-fa10fec80028
+    fromPort: features
+    toPort: features
 
   # --- LOD2 solid-boundary validation pipeline (L14) ---
   - id: 9f511f88-ab56-4e23-b7a0-aad21afe8ad7
     from: 012f23c6-65e1-4759-ab04-f20ebecbadfc
     to: f2cfc80d-26e2-43e9-9038-89f698e84147
     fromPort: lod2
-    toPort: default
+    toPort: features
   - id: 135969eb-640a-4063-a156-db34ee19401b
     from: f2cfc80d-26e2-43e9-9038-89f698e84147
     to: 172b94c2-b9db-49f8-9a8e-365d3a49d746
     fromPort: failed
-    toPort: default
+    toPort: features
   - id: 334ce9f7-7725-4f1e-8c74-9226eacfb3bb
     from: 172b94c2-b9db-49f8-9a8e-365d3a49d746
     to: 84ce42ad-fcfc-4708-b17d-af3430bbdb82
     fromPort: notClosed
-    toPort: default
+    toPort: features
   - id: b05ad920-6ea0-4a4b-aa81-0b54e60d9e68
     from: 84ce42ad-fcfc-4708-b17d-af3430bbdb82
     to: c43097f8-3bed-4223-b25b-10aa277ec6eb
     fromPort: complete
-    toPort: default
+    toPort: features
   - id: eae3e0dc-f9d5-43ed-8e81-b66ca4c44cc4
     from: c43097f8-3bed-4223-b25b-10aa277ec6eb
     to: 4261177e-6f06-48cc-aa24-f0a10382b704
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 334ed984-a4fa-4a8c-86e0-06ee6e4724c6
     from: 84ce42ad-fcfc-4708-b17d-af3430bbdb82
     to: f098ecf6-e0df-492f-848b-e03de1c322b8
-    fromPort: default
+    fromPort: features
     toPort: supplier
   - id: ee5d4d8e-6731-4b71-8868-1c63fec305e7
     from: 172b94c2-b9db-49f8-9a8e-365d3a49d746
     to: 6022cb9e-77c6-4669-9369-969aa5a0a74e
     fromPort: unfiltered
-    toPort: default
+    toPort: features
   - id: 5d456670-2f3a-4546-9b25-bc55894a3363
     from: 6022cb9e-77c6-4669-9369-969aa5a0a74e
     to: c56efca4-f708-4be5-aa69-ba49a2101c75
     fromPort: complete
-    toPort: default
+    toPort: features
   - id: 4b3c61fe-ed0a-47d4-afa6-1dfda14c3581
     from: c56efca4-f708-4be5-aa69-ba49a2101c75
     to: 59b03bd3-9e44-453e-92fc-52cc14abcf25
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 95bc7192-70c5-4565-9bd7-5e3cc62f5754
     from: 6022cb9e-77c6-4669-9369-969aa5a0a74e
     to: 7791b4fd-0782-47d1-b9bc-df9eb1b89a3f
-    fromPort: default
+    fromPort: features
     toPort: supplier
 
   # --- LOD3 solid-boundary validation pipeline (L14) ---
@@ -3251,51 +3418,51 @@ edges:
     from: 012f23c6-65e1-4759-ab04-f20ebecbadfc
     to: de965e92-16ac-4d49-ad14-5e5a688d1de6
     fromPort: lod3
-    toPort: default
+    toPort: features
   - id: c7e2d7e0-6950-40cb-a058-6453dc9e8467
     from: de965e92-16ac-4d49-ad14-5e5a688d1de6
     to: 707f16bf-a9a4-4b91-a1c6-e938ef54827f
     fromPort: failed
-    toPort: default
+    toPort: features
   - id: d25a0728-f711-416b-a038-f69a61507158
     from: 707f16bf-a9a4-4b91-a1c6-e938ef54827f
     to: 16e3b0fd-ecc8-46b2-8577-8c10865870b1
     fromPort: notClosed
-    toPort: default
+    toPort: features
   - id: efcb1cbf-fa36-4fbc-b314-2402dae3a081
     from: 16e3b0fd-ecc8-46b2-8577-8c10865870b1
     to: 4f585298-309b-406e-adc0-e4a029f82baa
     fromPort: complete
-    toPort: default
+    toPort: features
   - id: 2a6c5413-3a87-4e10-9e2a-9f275d6b3610
     from: 4f585298-309b-406e-adc0-e4a029f82baa
     to: 4261177e-6f06-48cc-aa24-f0a10382b704
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 67d4cbb2-8973-417f-b885-c43ffe338ade
     from: 16e3b0fd-ecc8-46b2-8577-8c10865870b1
     to: 8e4d7762-1205-4313-b2a9-0ce18a4b0b08
-    fromPort: default
+    fromPort: features
     toPort: supplier
   - id: 6d429f67-503a-4a21-b142-5ac01d2c30a0
     from: 707f16bf-a9a4-4b91-a1c6-e938ef54827f
     to: 876700c4-dd8e-42ea-b41f-d45dba190321
     fromPort: unfiltered
-    toPort: default
+    toPort: features
   - id: 9f805fc0-eaa6-4870-8830-8cdc68b5c391
     from: 876700c4-dd8e-42ea-b41f-d45dba190321
     to: 2eba5329-3f05-41c1-bd8f-be180546b791
     fromPort: complete
-    toPort: default
+    toPort: features
   - id: 65b3cbc1-603b-448f-9be2-2d2e4d32236a
     from: 2eba5329-3f05-41c1-bd8f-be180546b791
     to: 59b03bd3-9e44-453e-92fc-52cc14abcf25
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e5558c7f-d529-4fc8-8103-38fa3490b294
     from: 876700c4-dd8e-42ea-b41f-d45dba190321
     to: 7dd8c30f-f748-4a04-9f74-313f69d8f3e3
-    fromPort: default
+    fromPort: features
     toPort: supplier
 
   # --- LOD2 solid intersection pipeline (L-BLDG-01) ---
@@ -3303,76 +3470,76 @@ edges:
     from: 012f23c6-65e1-4759-ab04-f20ebecbadfc
     to: b453e3de-1050-49da-9e7d-a5b31c09d874
     fromPort: lod2
-    toPort: default
+    toPort: features
   - id: 175c872f-583e-4b45-a981-b9302df325f1
     from: b453e3de-1050-49da-9e7d-a5b31c09d874
     to: 58827ddf-8bbb-44c8-a337-9b3ddd8514b4
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 8b564e60-f17d-41c7-baba-acb7397ec722
     from: 58827ddf-8bbb-44c8-a337-9b3ddd8514b4
     to: 4c9eea9b-d92e-4272-baba-97a8153f2cbe
     fromPort: footprint
-    toPort: default
+    toPort: features
   - id: 8da4a3ab-f104-4d2f-be1c-d16bc54b0b5a
     from: 4c9eea9b-d92e-4272-baba-97a8153f2cbe
     to: 2fcd2ca5-e9fd-444a-b989-c2318bb1f141
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: fea1fc5c-b2e9-437f-a774-1e39289de137
     from: 2fcd2ca5-e9fd-444a-b989-c2318bb1f141
     to: 00073c0d-4d99-4dfd-aab7-93576c344072
     fromPort: area
-    toPort: default
+    toPort: features
   - id: 4d94b0c6-e3b6-48e0-adb0-8fa1de81aae6
     from: 00073c0d-4d99-4dfd-aab7-93576c344072
     to: 0bce7e4d-93de-44d8-9f67-4facb9d27bc0
     fromPort: overlapping
-    toPort: default
+    toPort: features
   - id: 82ac5cdb-0bc2-4325-88a1-9c36401926b0
     from: 0bce7e4d-93de-44d8-9f67-4facb9d27bc0
     to: 6e902c73-60a3-4857-adcb-050c5a24a2fa
     fromPort: A
-    toPort: default
+    toPort: features
   - id: ea0862d2-cb4f-4c15-9029-de527ac2edb8
     from: 0bce7e4d-93de-44d8-9f67-4facb9d27bc0
     to: d61451d4-3c04-48e4-b3a9-934f21f56b24
     fromPort: B
-    toPort: default
+    toPort: features
   - id: ce231a82-4b36-4baf-b1f6-ed2354748a6b
     from: 6e902c73-60a3-4857-adcb-050c5a24a2fa
     to: 07c7d3b8-a6db-4bfe-9f13-7af2adf1e3e6
-    fromPort: default
+    fromPort: features
     toPort: left
   - id: 84ed829a-b7e2-41a1-bab3-dd402869d015
     from: d61451d4-3c04-48e4-b3a9-934f21f56b24
     to: 07c7d3b8-a6db-4bfe-9f13-7af2adf1e3e6
-    fromPort: default
+    fromPort: features
     toPort: right
   - id: 33fd81ad-6610-446b-bffc-04e9b5bcf62a
     from: 07c7d3b8-a6db-4bfe-9f13-7af2adf1e3e6
     to: 5cd3ac4e-a574-4b98-a321-dcc8a7fe12e0
     fromPort: intersection
-    toPort: default
+    toPort: features
   - id: 9c8e6559-eff1-4190-a63b-4e96aee6b421
     from: 5cd3ac4e-a574-4b98-a321-dcc8a7fe12e0
     to: 06d5d818-0ecc-4fd7-bf89-a4177210c9ce
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 2006f588-2bd7-49a9-81e1-927ea8a74e75
     from: 06d5d818-0ecc-4fd7-bf89-a4177210c9ce
     to: 14a007fc-a5a3-43b0-9fe0-a1f2c765f6e3
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 29d7809c-1604-4d26-9142-a46d3ee39815
     from: 14a007fc-a5a3-43b0-9fe0-a1f2c765f6e3
     to: 073a86d1-e1d0-497d-803f-6398518f0c1a
     fromPort: complete
-    toPort: default
+    toPort: features
   - id: ee04fa44-395c-42f3-9238-b2156ee0bdc6
     from: 14a007fc-a5a3-43b0-9fe0-a1f2c765f6e3
     to: 39075c4f-efb6-4d37-9dd8-43c480093a5c
-    fromPort: default
+    fromPort: features
     toPort: supplier
 
   # --- LOD3 solid intersection pipeline (L-BLDG-01) ---
@@ -3380,76 +3547,76 @@ edges:
     from: 012f23c6-65e1-4759-ab04-f20ebecbadfc
     to: 27321acb-d341-4866-9dd8-fd4170ba6918
     fromPort: lod3
-    toPort: default
+    toPort: features
   - id: 61488105-cd07-4d0f-84e2-8d8a3a1f540b
     from: 27321acb-d341-4866-9dd8-fd4170ba6918
     to: 7aa453e0-7d18-4927-a4d9-582d42e5cdac
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: bde4a32f-41cd-47f6-bf62-45e67b8a23af
     from: 7aa453e0-7d18-4927-a4d9-582d42e5cdac
     to: 22530283-72ea-4ae2-8ae5-216787c93aff
     fromPort: footprint
-    toPort: default
+    toPort: features
   - id: 466c6ae3-df32-4bce-8721-c659738eeaf1
     from: 22530283-72ea-4ae2-8ae5-216787c93aff
     to: daecf1b8-ac79-475f-b956-93d50667bda5
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: c1dfa859-6646-4e3f-b56f-2ecb0e545a37
     from: daecf1b8-ac79-475f-b956-93d50667bda5
     to: 4ccbd075-561f-4540-aaa6-7f82a21056b2
     fromPort: area
-    toPort: default
+    toPort: features
   - id: e065f071-9114-46eb-8952-fefcc56b64a0
     from: 4ccbd075-561f-4540-aaa6-7f82a21056b2
     to: 36292d4e-0ca3-4749-8e03-0ccb2e1df1f7
     fromPort: overlapping
-    toPort: default
+    toPort: features
   - id: 363a76ff-0893-4152-b056-79aeeb71e4e8
     from: 36292d4e-0ca3-4749-8e03-0ccb2e1df1f7
     to: 93d01ed1-8ac7-406f-ad28-704bcb213f0c
     fromPort: A
-    toPort: default
+    toPort: features
   - id: bd6799d8-6ce1-460a-a98d-d0cdda0abe61
     from: 36292d4e-0ca3-4749-8e03-0ccb2e1df1f7
     to: 96f36de0-0180-4bb8-9e1e-f503d35af14e
     fromPort: B
-    toPort: default
+    toPort: features
   - id: 99825e1f-ec5d-40b2-a49a-40d772a77e39
     from: 93d01ed1-8ac7-406f-ad28-704bcb213f0c
     to: 6aa26006-ada2-4031-8f5b-005f3f9bff31
-    fromPort: default
+    fromPort: features
     toPort: left
   - id: d2cdb5ac-00b1-4f7c-b3d5-2d3698a7fea8
     from: 96f36de0-0180-4bb8-9e1e-f503d35af14e
     to: 6aa26006-ada2-4031-8f5b-005f3f9bff31
-    fromPort: default
+    fromPort: features
     toPort: right
   - id: e29cd5e4-afc7-4808-89d4-9b88238a99d8
     from: 6aa26006-ada2-4031-8f5b-005f3f9bff31
     to: 646133fe-0c98-4a73-8d6a-f21011005e19
     fromPort: intersection
-    toPort: default
+    toPort: features
   - id: 9939220e-065d-46d2-bb37-0df885ef294a
     from: 646133fe-0c98-4a73-8d6a-f21011005e19
     to: 9bd16218-2091-4ec3-9755-f0145602141b
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: e9d5f92e-70bb-4df0-84f1-0758ffae2711
     from: 9bd16218-2091-4ec3-9755-f0145602141b
     to: f6cae627-8915-43b0-8781-65956bb6c1ef
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: 0d35b0d8-f9f2-41b5-83f5-fef5197d9071
     from: f6cae627-8915-43b0-8781-65956bb6c1ef
     to: 073a86d1-e1d0-497d-803f-6398518f0c1a
     fromPort: complete
-    toPort: default
+    toPort: features
   - id: e9ca3570-6db5-49ad-a838-72715bf600f4
     from: f6cae627-8915-43b0-8781-65956bb6c1ef
     to: 87eee007-3e1a-41c8-a8ab-90e57e18166f
-    fromPort: default
+    fromPort: features
     toPort: supplier
 
   # --- C-bldg-01 duplicate building-id pipeline edges ---
@@ -3457,61 +3624,61 @@ edges:
   - id: c1b0e001-0000-4000-8000-000000000001
     from: d9349887-1920-44a6-93c9-182c8484d1a2
     to: c1b00001-0000-4000-8000-000000000001
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: c1b0e002-0000-4000-8000-000000000002
     from: c1b00001-0000-4000-8000-000000000001
     to: c1b00002-0000-4000-8000-000000000002
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   # Flattened building features -> aggregator (count) and merger (requestor).
   - id: c1b0e003-0000-4000-8000-000000000003
     from: c1b00002-0000-4000-8000-000000000002
     to: c1b00003-0000-4000-8000-000000000003
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: c1b0e004-0000-4000-8000-000000000004
     from: c1b00002-0000-4000-8000-000000000002
     to: c1b00004-0000-4000-8000-000000000004
-    fromPort: default
+    fromPort: features
     toPort: requestor
   - id: c1b0e005-0000-4000-8000-000000000005
     from: c1b00003-0000-4000-8000-000000000003
     to: c1b00004-0000-4000-8000-000000000004
-    fromPort: default
+    fromPort: features
     toPort: supplier
   - id: c1b0e006-0000-4000-8000-000000000006
     from: c1b00004-0000-4000-8000-000000000004
     to: c1b00005-0000-4000-8000-000000000005
     fromPort: merged
-    toPort: default
+    toPort: features
   # Duplicate buildings -> CSV writer and per-file counter.
   - id: c1b0e007-0000-4000-8000-000000000007
     from: c1b00005-0000-4000-8000-000000000005
     to: c1b00006-0000-4000-8000-000000000006
     fromPort: multipleBuildingId
-    toPort: default
+    toPort: features
   - id: c1b0e008-0000-4000-8000-000000000008
     from: c1b00005-0000-4000-8000-000000000005
     to: c1b00008-0000-4000-8000-000000000008
     fromPort: multipleBuildingId
-    toPort: default
+    toPort: features
   - id: c1b0e009-0000-4000-8000-000000000009
     from: c1b00006-0000-4000-8000-000000000006
     to: c1b00007-0000-4000-8000-000000000007
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   # Route the written C-bldg-01 CSV into the result zip.
   - id: c1b0e010-0000-4000-8000-000000000010
     from: c1b00007-0000-4000-8000-000000000007
     to: 3730412c-8a45-417c-a669-fa10fec80028
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   # Counter.default -> duplicate-id summary merger (supplier).
   - id: c1b0e011-0000-4000-8000-000000000011
     from: c1b00008-0000-4000-8000-000000000008
     to: c1b00009-0000-4000-8000-000000000009
-    fromPort: default
+    fromPort: features
     toPort: supplier
 
   # --- Invalid building-id format pipeline edges ---
@@ -3519,35 +3686,35 @@ edges:
   - id: c1b0e014-0000-4000-8000-000000000014
     from: c1b00002-0000-4000-8000-000000000002
     to: c1b00010-0000-4000-8000-000000000010
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   # Buildings failing the format check -> CSV mapper and per-file counter.
   - id: c1b0e015-0000-4000-8000-000000000015
     from: c1b00010-0000-4000-8000-000000000010
     to: c1b00011-0000-4000-8000-000000000011
     fromPort: unfiltered
-    toPort: default
+    toPort: features
   - id: c1b0e016-0000-4000-8000-000000000016
     from: c1b00010-0000-4000-8000-000000000010
     to: c1b00013-0000-4000-8000-000000000013
     fromPort: unfiltered
-    toPort: default
+    toPort: features
   - id: c1b0e017-0000-4000-8000-000000000017
     from: c1b00011-0000-4000-8000-000000000011
     to: c1b00012-0000-4000-8000-000000000012
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   # Route the written invalid-format CSV into the result zip.
   - id: c1b0e018-0000-4000-8000-000000000018
     from: c1b00012-0000-4000-8000-000000000012
     to: 3730412c-8a45-417c-a669-fa10fec80028
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   # Counter.default -> invalid-format summary merger (supplier).
   - id: c1b0e019-0000-4000-8000-000000000019
     from: c1b00013-0000-4000-8000-000000000013
     to: c1b00014-0000-4000-8000-000000000014
-    fromPort: default
+    fromPort: features
     toPort: supplier
 
   # --- L-bldg-04,05 usage-attribute + city-code validator edges ---
@@ -3555,35 +3722,35 @@ edges:
   - id: c1b0e030-0000-4000-8000-000000000030
     from: c1b00002-0000-4000-8000-000000000002
     to: c1b00020-0000-4000-8000-000000000020
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   # Buildings with a usage-attribute error -> CSV mapper and per-file counter.
   - id: c1b0e032-0000-4000-8000-000000000032
     from: c1b00020-0000-4000-8000-000000000020
     to: c1b00022-0000-4000-8000-000000000022
     fromPort: l0405BldgError
-    toPort: default
+    toPort: features
   - id: c1b0e033-0000-4000-8000-000000000033
     from: c1b00020-0000-4000-8000-000000000020
     to: c1b00024-0000-4000-8000-000000000024
     fromPort: l0405BldgError
-    toPort: default
+    toPort: features
   - id: c1b0e034-0000-4000-8000-000000000034
     from: c1b00022-0000-4000-8000-000000000022
     to: c1b00023-0000-4000-8000-000000000023
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   # Route the written L-bldg-04,05 CSV into the result zip.
   - id: c1b0e035-0000-4000-8000-000000000035
     from: c1b00023-0000-4000-8000-000000000023
     to: 3730412c-8a45-417c-a669-fa10fec80028
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   # Counter.default -> usage-attribute summary merger (supplier).
   - id: c1b0e036-0000-4000-8000-000000000036
     from: c1b00024-0000-4000-8000-000000000024
     to: c1b00025-0000-4000-8000-000000000025
-    fromPort: default
+    fromPort: features
     toPort: supplier
   # Usage-attribute summary merger output -> city-code summary merger (requestor).
   - id: c1b0e037-0000-4000-8000-000000000037
@@ -3603,28 +3770,28 @@ edges:
     from: c1b00020-0000-4000-8000-000000000020
     to: c1b00041-0000-4000-8000-000000000041
     fromPort: cityCodeError
-    toPort: default
+    toPort: features
   - id: c1b0e042-0000-4000-8000-000000000042
     from: c1b00020-0000-4000-8000-000000000020
     to: c1b00043-0000-4000-8000-000000000043
     fromPort: cityCodeError
-    toPort: default
+    toPort: features
   - id: c1b0e043-0000-4000-8000-000000000043
     from: c1b00041-0000-4000-8000-000000000041
     to: c1b00042-0000-4000-8000-000000000042
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   # Route the written city-code CSV into the result zip.
   - id: c1b0e044-0000-4000-8000-000000000044
     from: c1b00042-0000-4000-8000-000000000042
     to: 3730412c-8a45-417c-a669-fa10fec80028
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   # Counter.default -> city-code summary merger (supplier).
   - id: c1b0e045-0000-4000-8000-000000000045
     from: c1b00043-0000-4000-8000-000000000043
     to: c1b00044-0000-4000-8000-000000000044
-    fromPort: default
+    fromPort: features
     toPort: supplier
   # City-code summary merger output -> unmatched-xlink summary merger (requestor).
   - id: c1b0e046-0000-4000-8000-000000000046
@@ -3643,64 +3810,64 @@ edges:
   - id: c1b0e050-0000-4000-8000-000000000050
     from: 06437150-b04d-4b41-83fc-e5767ea35a23
     to: c1b00050-0000-4000-8000-000000000050
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   # Per-file summary feature is unused here.
   - id: c1b0e051-0000-4000-8000-000000000051
     from: c1b00050-0000-4000-8000-000000000050
     to: c1b00051-0000-4000-8000-000000000051
     fromPort: summary
-    toPort: default
+    toPort: features
   # Unmatched "from" / "to" error features -> label managers.
   - id: c1b0e052-0000-4000-8000-000000000052
     from: c1b00050-0000-4000-8000-000000000050
     to: c1b00052-0000-4000-8000-000000000052
     fromPort: unMatchedXlinkFrom
-    toPort: default
+    toPort: features
   - id: c1b0e053-0000-4000-8000-000000000053
     from: c1b00050-0000-4000-8000-000000000050
     to: c1b00053-0000-4000-8000-000000000053
     fromPort: unMatchedXlinkTo
-    toPort: default
+    toPort: features
   # Both directions -> CSV mapper.
   - id: c1b0e054-0000-4000-8000-000000000054
     from: c1b00052-0000-4000-8000-000000000052
     to: c1b00054-0000-4000-8000-000000000054
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: c1b0e055-0000-4000-8000-000000000055
     from: c1b00053-0000-4000-8000-000000000053
     to: c1b00054-0000-4000-8000-000000000054
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   # Both directions -> per-file counter.
   - id: c1b0e056-0000-4000-8000-000000000056
     from: c1b00052-0000-4000-8000-000000000052
     to: c1b00056-0000-4000-8000-000000000056
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: c1b0e057-0000-4000-8000-000000000057
     from: c1b00053-0000-4000-8000-000000000053
     to: c1b00056-0000-4000-8000-000000000056
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   # Mapper -> CSV writer.
   - id: c1b0e058-0000-4000-8000-000000000058
     from: c1b00054-0000-4000-8000-000000000054
     to: c1b00055-0000-4000-8000-000000000055
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   # Route the written L-bldg-06 CSV into the result zip.
   - id: c1b0e059-0000-4000-8000-000000000059
     from: c1b00055-0000-4000-8000-000000000055
     to: 3730412c-8a45-417c-a669-fa10fec80028
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   # Counter.default -> unmatched-xlink summary merger (supplier).
   - id: c1b0e05a-0000-4000-8000-00000000005a
     from: c1b00056-0000-4000-8000-000000000056
     to: c1b00057-0000-4000-8000-000000000057
-    fromPort: default
+    fromPort: features
     toPort: supplier
   # Unmatched-xlink summary merger output -> L-bldg-02 summary merger (requestor).
   - id: c1b0e05b-0000-4000-8000-00000000005b
@@ -3719,63 +3886,63 @@ edges:
   - id: c1b0e060-0000-4000-8000-000000000060
     from: 273fc537-32eb-44e1-af9f-d46bf0ba1cc8
     to: c1b00060-0000-4000-8000-000000000060
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   # BuildingParts -> dedicated LodSplitter.
   - id: c1b0e061-0000-4000-8000-000000000061
     from: c1b00060-0000-4000-8000-000000000060
     to: c1b00061-0000-4000-8000-000000000061
     fromPort: buildingPart
-    toPort: default
+    toPort: features
   # LOD2 / LOD3 BuildingParts -> connectivity checker (LOD0/LOD1 belong to Z-bldg-04).
   - id: c1b0e062-0000-4000-8000-000000000062
     from: c1b00061-0000-4000-8000-000000000061
     to: c1b00062-0000-4000-8000-000000000062
     fromPort: lod2
-    toPort: default
+    toPort: features
   - id: c1b0e063-0000-4000-8000-000000000063
     from: c1b00061-0000-4000-8000-000000000061
     to: c1b00062-0000-4000-8000-000000000062
     fromPort: lod3
-    toPort: default
+    toPort: features
   # Checker -> keep error parts -> deduplicate.
   - id: c1b0e064-0000-4000-8000-000000000064
     from: c1b00062-0000-4000-8000-000000000062
     to: c1b00063-0000-4000-8000-000000000063
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: c1b0e065-0000-4000-8000-000000000065
     from: c1b00063-0000-4000-8000-000000000063
     to: c1b00064-0000-4000-8000-000000000064
     fromPort: filtered
-    toPort: default
+    toPort: features
   # Deduplicated error parts -> CSV mapper and per-file counter.
   - id: c1b0e066-0000-4000-8000-000000000066
     from: c1b00064-0000-4000-8000-000000000064
     to: c1b00065-0000-4000-8000-000000000065
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: c1b0e067-0000-4000-8000-000000000067
     from: c1b00064-0000-4000-8000-000000000064
     to: c1b00067-0000-4000-8000-000000000067
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   # Mapper -> CSV writer -> result zip.
   - id: c1b0e068-0000-4000-8000-000000000068
     from: c1b00065-0000-4000-8000-000000000065
     to: c1b00066-0000-4000-8000-000000000066
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: c1b0e069-0000-4000-8000-000000000069
     from: c1b00066-0000-4000-8000-000000000066
     to: 3730412c-8a45-417c-a669-fa10fec80028
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   # Counter.default -> L-bldg-02 summary merger (supplier).
   - id: c1b0e06a-0000-4000-8000-00000000006a
     from: c1b00067-0000-4000-8000-000000000067
     to: c1b00068-0000-4000-8000-000000000068
-    fromPort: default
+    fromPort: features
     toPort: supplier
   # L-bldg-02 summary merger output -> mesh-code summary merger (requestor).
   - id: c1b0e06b-0000-4000-8000-00000000006b
@@ -3794,40 +3961,40 @@ edges:
   - id: c1b0e070-0000-4000-8000-000000000070
     from: d65886fc-2d62-448c-8b2e-16841e3c4887
     to: c1b00070-0000-4000-8000-000000000070
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   # Extractor -> mesh-code tester.
   - id: c1b0e071-0000-4000-8000-000000000071
     from: c1b00070-0000-4000-8000-000000000070
     to: c1b00071-0000-4000-8000-000000000071
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   # Filename/mesh-code mismatch -> attribute mapper -> CSV writer.
   - id: c1b0e072-0000-4000-8000-000000000072
     from: c1b00071-0000-4000-8000-000000000071
     to: c1b00072-0000-4000-8000-000000000072
     fromPort: failed
-    toPort: default
+    toPort: features
   - id: c1b0e073-0000-4000-8000-000000000073
     from: c1b00072-0000-4000-8000-000000000072
     to: c1b00073-0000-4000-8000-000000000073
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: c1b0e074-0000-4000-8000-000000000074
     from: c1b00073-0000-4000-8000-000000000073
     to: 3730412c-8a45-417c-a669-fa10fec80028
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   # Mismatched features -> counter -> mesh-code summary merger (supplier).
   - id: c1b0e075-0000-4000-8000-000000000075
     from: c1b00071-0000-4000-8000-000000000071
     to: c1b00074-0000-4000-8000-000000000074
     fromPort: failed
-    toPort: default
+    toPort: features
   - id: c1b0e076-0000-4000-8000-000000000076
     from: c1b00074-0000-4000-8000-000000000074
     to: c1b00075-0000-4000-8000-000000000075
-    fromPort: default
+    fromPort: features
     toPort: supplier
   # Mesh-code summary merger output -> Z-bldg-04 summary merger (requestor).
   - id: c1b0e077-0000-4000-8000-000000000077
@@ -3847,42 +4014,42 @@ edges:
     from: c1b00061-0000-4000-8000-000000000061
     to: c1b00080-0000-4000-8000-000000000080
     fromPort: lod0
-    toPort: default
+    toPort: features
   - id: c1b0e081-0000-4000-8000-000000000081
     from: c1b00061-0000-4000-8000-000000000061
     to: c1b00080-0000-4000-8000-000000000080
     fromPort: lod1
-    toPort: default
+    toPort: features
   # complete (identity passthrough) -> attribute mapper -> CSV writer -> result zip.
   - id: c1b0e082-0000-4000-8000-000000000082
     from: c1b00080-0000-4000-8000-000000000080
     to: c1b00081-0000-4000-8000-000000000081
     fromPort: complete
-    toPort: default
+    toPort: features
   - id: c1b0e083-0000-4000-8000-000000000083
     from: c1b00081-0000-4000-8000-000000000081
     to: c1b00082-0000-4000-8000-000000000082
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   - id: c1b0e084-0000-4000-8000-000000000084
     from: c1b00082-0000-4000-8000-000000000082
     to: 3730412c-8a45-417c-a669-fa10fec80028
-    fromPort: default
-    toPort: default
+    fromPort: features
+    toPort: features
   # Counter.default (per-file total) -> Z-bldg-04 summary merger (supplier).
   - id: c1b0e085-0000-4000-8000-000000000085
     from: c1b00080-0000-4000-8000-000000000080
     to: c1b00083-0000-4000-8000-000000000083
-    fromPort: default
+    fromPort: features
     toPort: supplier
   # Z-bldg-04 summary merger output -> building summary mapper.
   - id: c1b0e086-0000-4000-8000-000000000086
     from: c1b00083-0000-4000-8000-000000000083
     to: 428129b3-ad69-4a18-bf99-25492d41ba26
     fromPort: merged
-    toPort: default
+    toPort: features
   - id: c1b0e087-0000-4000-8000-000000000087
     from: c1b00083-0000-4000-8000-000000000083
     to: 428129b3-ad69-4a18-bf99-25492d41ba26
     fromPort: unmerged
-    toPort: default
+    toPort: features

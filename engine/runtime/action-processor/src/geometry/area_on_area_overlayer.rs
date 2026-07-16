@@ -7,6 +7,7 @@ use std::{
 };
 
 use indexmap::IndexMap;
+use nusamai_projection::crs::EpsgCode;
 use once_cell::sync::Lazy;
 use rayon::iter::{IntoParallelIterator, ParallelIterator};
 use reearth_flow_geometry::{
@@ -19,7 +20,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
 use rstar::{RTree, AABB};
@@ -54,7 +55,7 @@ impl ProcessorFactory for AreaOnAreaOverlayerFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
@@ -96,6 +97,7 @@ impl ProcessorFactory for AreaOnAreaOverlayerFactory {
             accumulation_mode: param.accumulation_mode,
             tolerance: param.tolerance.unwrap_or(0.0),
             group_map: HashMap::new(),
+            group_epsg: HashMap::new(),
             group_count: 0,
             temp_dir: None,
             buffer: HashMap::new(),
@@ -142,6 +144,10 @@ struct AreaOnAreaOverlayer {
     tolerance: f64,
     // Disk-backed state
     group_map: HashMap<AttributeValue, usize>,
+    /// Per-group CRS carried over from the inputs onto the overlay outputs.
+    /// A missing EPSG means unknown, not conflicting; only differing known
+    /// EPSGs drop the CRS.
+    group_epsg: HashMap<usize, GroupEpsg>,
     group_count: usize,
     temp_dir: Option<PathBuf>,
     // In-memory buffer: group_idx -> Vec<(aabb_json, feature_json)>
@@ -149,6 +155,37 @@ struct AreaOnAreaOverlayer {
     buffer_bytes: usize,
     /// Executor ID for cache isolation, set on first process() call
     executor_id: Option<uuid::Uuid>,
+}
+
+/// Tracks the CRS of the features accumulated into a single overlay group.
+#[derive(Clone, Copy)]
+enum GroupEpsg {
+    /// The single EPSG known so far (`None` while only EPSG-less features
+    /// have been seen).
+    Uniform(Option<EpsgCode>),
+    /// Two differing known EPSGs were seen; no CRS is carried over.
+    Mixed,
+}
+
+impl GroupEpsg {
+    /// Fold another feature's EPSG into the group's running state.
+    fn observe(&mut self, epsg: Option<EpsgCode>) {
+        if let GroupEpsg::Uniform(existing) = self {
+            match (*existing, epsg) {
+                (Some(a), Some(b)) if a != b => *self = GroupEpsg::Mixed,
+                (None, Some(_)) => *existing = epsg,
+                _ => {}
+            }
+        }
+    }
+
+    /// The EPSG to stamp on this group's outputs, or `None` when mixed.
+    fn resolve(self) -> Option<EpsgCode> {
+        match self {
+            GroupEpsg::Uniform(epsg) => epsg,
+            GroupEpsg::Mixed => None,
+        }
+    }
 }
 
 impl std::fmt::Debug for AreaOnAreaOverlayer {
@@ -168,6 +205,7 @@ impl Clone for AreaOnAreaOverlayer {
             accumulation_mode: self.accumulation_mode.clone(),
             tolerance: self.tolerance,
             group_map: HashMap::new(),
+            group_epsg: HashMap::new(),
             group_count: 0,
             temp_dir: None,
             buffer: HashMap::new(),
@@ -324,6 +362,13 @@ impl Processor for AreaOnAreaOverlayer {
                     idx
                 };
 
+                // Carry the input CRS forward: the overlay output lives in the
+                // same plane as its inputs.
+                self.group_epsg
+                    .entry(group_idx)
+                    .or_insert(GroupEpsg::Uniform(geometry.epsg))
+                    .observe(geometry.epsg);
+
                 // Compute AABB from geometry (convert closed LineStrings to Polygon first)
                 let mp = geom_to_multipolygon(geom_2d);
                 let aabb = mp.bounding_box();
@@ -395,12 +440,18 @@ impl Processor for AreaOnAreaOverlayer {
             overlay_2d_disk(&aabbs, &disk_feats, self.tolerance, &midpolygons_path)?;
 
             // Stream midpolygons from disk, build features, write directly to output files
+            let group_epsg = self
+                .group_epsg
+                .get(&group_idx)
+                .copied()
+                .and_then(GroupEpsg::resolve);
             let (ac, rc) = from_midpolygons_disk(
                 &midpolygons_path,
                 &disk_feats,
                 &self.output_attribute,
                 &self.generate_list,
                 &self.accumulation_mode,
+                group_epsg,
                 &mut area_writer,
                 &mut remnants_writer,
             )?;
@@ -720,12 +771,14 @@ fn overlay_2d_disk(
 /// directly to area/remnants output files without collecting in memory.
 /// Returns (area_count, remnants_count).
 #[cfg(not(feature = "new-geometry"))]
+#[allow(clippy::too_many_arguments)]
 fn from_midpolygons_disk<W: Write>(
     midpolygons_path: &Path,
     disk_feats: &DiskBackedFeatures,
     output_attribute: &Option<String>,
     generate_list: &Option<String>,
     accumulation_mode: &AccumulationMode,
+    epsg: Option<EpsgCode>,
     area_writer: &mut W,
     remnants_writer: &mut W,
 ) -> Result<(usize, usize), BoxedError> {
@@ -794,6 +847,7 @@ fn from_midpolygons_disk<W: Write>(
 
                 feature.geometry_mut().value =
                     GeometryValue::FlowGeometry2D(subpolygon.polygon.into());
+                feature.geometry_mut().epsg = epsg;
                 serde_json::to_writer(&mut *area_writer, &feature)?;
                 area_writer.write_all(b"\n")?;
                 area_count += 1;
@@ -834,6 +888,7 @@ fn from_midpolygons_disk<W: Write>(
 
                 feature.geometry_mut().value =
                     GeometryValue::FlowGeometry2D(subpolygon.polygon.into());
+                feature.geometry_mut().epsg = epsg;
                 serde_json::to_writer(&mut *remnants_writer, &feature)?;
                 remnants_writer.write_all(b"\n")?;
                 remnants_count += 1;
@@ -870,6 +925,41 @@ mod tests {
         let mut f = Feature::new_with_attributes(IndexMap::new());
         *f.geometry_mut() = (*geom).clone();
         f
+    }
+
+    #[test]
+    fn group_epsg_uniform_carries_the_shared_code() {
+        let mut state = GroupEpsg::Uniform(Some(6675));
+        state.observe(Some(6675));
+        assert_eq!(state.resolve(), Some(6675));
+    }
+
+    #[test]
+    fn group_epsg_all_none_stays_none() {
+        let mut state = GroupEpsg::Uniform(None);
+        state.observe(None);
+        assert_eq!(state.resolve(), None);
+    }
+
+    #[test]
+    fn group_epsg_mixed_codes_fall_back_to_none() {
+        let mut state = GroupEpsg::Uniform(Some(6675));
+        state.observe(Some(6669));
+        assert_eq!(state.resolve(), None);
+    }
+
+    #[test]
+    fn group_epsg_missing_code_does_not_conflict_with_known_code() {
+        let mut state = GroupEpsg::Uniform(Some(6675));
+        state.observe(None);
+        assert_eq!(state.resolve(), Some(6675));
+    }
+
+    #[test]
+    fn group_epsg_known_code_upgrades_missing_state() {
+        let mut state = GroupEpsg::Uniform(None);
+        state.observe(Some(6675));
+        assert_eq!(state.resolve(), Some(6675));
     }
 
     #[cfg(not(feature = "new-geometry"))]

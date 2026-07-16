@@ -7,7 +7,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Geometry, GeometryValue};
 use schemars::JsonSchema;
@@ -21,7 +21,7 @@ pub struct VerticalReprojectorFactory;
 
 impl ProcessorFactory for VerticalReprojectorFactory {
     fn name(&self) -> &str {
-        "VerticalReprojector"
+        "Vertical Reprojector"
     }
 
     fn description(&self) -> &str {
@@ -41,11 +41,11 @@ impl ProcessorFactory for VerticalReprojectorFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
     fn build(
         &self,
@@ -131,7 +131,7 @@ impl Processor for VerticalReprojector {
             }
             GeometryValue::None | GeometryValue::FlowGeometry2D(..) => {}
         }
-        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
         Ok(())
     }
 
@@ -145,6 +145,6 @@ impl Processor for VerticalReprojector {
     }
 
     fn name(&self) -> &str {
-        "VerticalReprojector"
+        "Vertical Reprojector"
     }
 }

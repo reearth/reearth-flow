@@ -6,7 +6,7 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Processor, DEFAULT_PORT, REJECTED_PORT},
+    node::{Processor, FEATURES_PORT, REJECTED_PORT},
 };
 use reearth_flow_types::{AttributeValue, CompiledCode};
 
@@ -280,7 +280,7 @@ impl HttpCallerProcessor {
             Ok(()) => {
                 metrics.add_to_attributes(new_feature.attributes_mut(), &self.params.observability);
 
-                fw.send(ctx.new_with_feature_and_port(new_feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
             }
             Err(e) => {
                 let error_msg = format!("Failed to process response: {e}");

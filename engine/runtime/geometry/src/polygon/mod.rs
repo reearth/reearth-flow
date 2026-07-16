@@ -16,6 +16,8 @@ use crate::coordinate::CoordinateFrame;
 
 mod constructor;
 mod ops;
+#[cfg(feature = "new-geometry")]
+mod validation;
 
 pub use constructor::{state, PolygonBuilder2D, PolygonBuilder3D, PolygonFace};
 
@@ -25,7 +27,10 @@ pub struct Polygon2D {
     /// Coordinate frame these coords are expressed in.
     frame: CoordinateFrame,
     /// Exterior ring, then all interior rings (holes), concatenated. A valid polygon
-    /// has each ring closed (first == last).
+    /// has each ring closed (first == last), with the exterior wound counter-clockwise
+    /// and interiors clockwise in canonical orientation (see [`crate::coordinate`]:
+    /// winding is judged after applying the frame's orientation sign, not in stored
+    /// coordinate order).
     coords: Box<[[f64; 2]]>,
     /// Start index in `coords` of each interior ring; empty when there are no
     /// holes. exterior = `coords[0 .. first interior start (or end)]`;
@@ -45,8 +50,11 @@ pub struct Polygon2D {
 pub struct Polygon3D {
     /// Coordinate frame these coords are expressed in.
     frame: CoordinateFrame,
-    /// Exterior ring, then all interior rings (holes), concatenated. A valid polygon
-    /// has each ring closed (first == last).
+    /// Exterior ring, then all interior rings (holes), concatenated. Its canonical
+    /// outward normal is the exterior's right-hand-rule normal times the frame's
+    /// orientation sign (see [`crate::coordinate`]). A valid polygon has each ring
+    /// closed (first == last), with exterior and interior rings wound opposite to
+    /// each other.
     coords: Box<[[f64; 3]]>,
     /// Start index in `coords` of each interior ring; empty when there are no holes.
     interior_offsets: Box<[u32]>,
