@@ -2689,7 +2689,7 @@ Convert datetime values between different formats
 ### Type
 * processor
 ### Description
-Filter Features by Geometry Dimension
+Routes features to output ports based on the number of geometry dimensions.
 ### Parameters
 * No parameters
 ### Input Ports
@@ -3251,7 +3251,7 @@ Extract File Paths from Dataset to Features
 ### Type
 * processor
 ### Description
-Filter Features Based on Custom Conditions
+Routes features to named output ports based on user-defined filter conditions.
 ### Parameters
 ```json
 {
@@ -3281,7 +3281,8 @@ Filter Features Based on Custom Conditions
       ],
       "properties": {
         "expr": {
-          "title": "Condition expression",
+          "title": "Condition Expression",
+          "description": "Boolean expression evaluated against each feature; features for which it returns true are routed to this condition's output port.",
           "type": "object",
           "format": "code",
           "required": [
@@ -3301,7 +3302,8 @@ Filter Features Based on Custom Conditions
           }
         },
         "outputPort": {
-          "title": "Output port",
+          "title": "Output Port",
+          "description": "Name of the output port that receives features matching this condition.",
           "allOf": [
             {
               "$ref": "#/definitions/Port"
@@ -3548,12 +3550,12 @@ Joins requestor and supplier features based on matching attribute values, with c
 ### Type
 * processor
 ### Description
-Filters features by Level of Detail (LOD), routing them to appropriate output ports
+Filters features by Level of Detail (LOD), emitting each to the matching LOD output port.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "FeatureLodFilter Parameters",
+  "title": "Feature LOD Filter Parameters",
   "description": "Configuration for filtering features based on Level of Detail (LOD).",
   "type": "object",
   "required": [
@@ -3561,7 +3563,8 @@ Filters features by Level of Detail (LOD), routing them to appropriate output po
   ],
   "properties": {
     "filterKey": {
-      "description": "Attribute used to group features for LOD filtering",
+      "title": "Filter Key",
+      "description": "Attribute whose value groups features; the maximum available LOD is determined within each group.",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -3579,11 +3582,11 @@ Filters features by Level of Detail (LOD), routing them to appropriate output po
 ### Input Ports
 * features
 ### Output Ports
-* up_to_lod0
-* up_to_lod1
-* up_to_lod2
-* up_to_lod3
-* up_to_lod4
+* max-lod0
+* max-lod1
+* max-lod2
+* max-lod3
+* max-lod4
 * unfiltered
 ### Category
 * Filter
@@ -3819,12 +3822,12 @@ Applies transformation expressions to modify feature attributes and properties
 ### Type
 * processor
 ### Description
-Filter CityGML features by feature type
+Filters CityGML features by their feature type.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "FeatureTypeFilter Parameters",
+  "title": "Feature Type Filter Parameters",
   "description": "Configuration for filtering features based on their feature type.",
   "type": "object",
   "required": [
@@ -3832,7 +3835,8 @@ Filter CityGML features by feature type
   ],
   "properties": {
     "targetTypes": {
-      "description": "Target feature types",
+      "title": "Target Feature Types",
+      "description": "List of CityGML feature type names to match, such as \"bldg:Building\" or \"tran:TrafficArea\".",
       "type": "array",
       "items": {
         "type": "string"
@@ -7165,18 +7169,21 @@ Convert vector geometries to raster image format
 ### Type
 * processor
 ### Description
-Action for first port forwarding for sub-workflows.
+Forwards features from the parent workflow into a sub-workflow.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "InputRouter",
+  "title": "Input Router Parameters",
+  "description": "Configuration for receiving features from the parent workflow.",
   "type": "object",
   "required": [
     "routingPort"
   ],
   "properties": {
     "routingPort": {
+      "title": "Routing Port",
+      "description": "Name of the parent workflow port whose features enter the sub-workflow through this router.",
       "type": "string"
     }
   }
@@ -8476,18 +8483,21 @@ Extract Polygon Orientation to Attribute
 ### Type
 * processor
 ### Description
-Action for last port forwarding for sub-workflows.
+Forwards features from a sub-workflow back to the parent workflow.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "OutputRouter",
+  "title": "Output Router Parameters",
+  "description": "Configuration for returning features to the parent workflow.",
   "type": "object",
   "required": [
     "routingPort"
   ],
   "properties": {
     "routingPort": {
+      "title": "Routing Port",
+      "description": "Name of the output port under which the sub-workflow's features are exposed to the parent workflow.",
       "type": "string"
     }
   }
@@ -11469,18 +11479,18 @@ Validates the Solid Boundary Geometry
 ### Type
 * processor
 ### Description
-Filter Features by Spatial Relationship
+Filters candidate features based on their spatial relationship to filter geometry.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "SpatialFilter Parameters",
+  "title": "Spatial Filter Parameters",
   "description": "Configure spatial relationship testing between filter and candidate geometries",
   "type": "object",
   "properties": {
     "predicate": {
       "title": "Spatial Predicate",
-      "description": "The spatial relationship to test between filter and candidate geometries",
+      "description": "The spatial relationship to test between filter and candidate geometries.",
       "default": "intersects",
       "allOf": [
         {
@@ -11494,22 +11504,9 @@ Filter Features by Spatial Relationship
       "default": true,
       "type": "boolean"
     },
-    "outputMatchCountAttribute": {
-      "title": "Output Match Count Attribute",
-      "description": "Optional attribute name to store the number of matching filters",
-      "default": null,
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Attribute"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
     "mergeFilterAttributes": {
       "title": "Merge Filter Attributes",
-      "description": "If true, copy attributes from matched filter feature(s) onto the candidate. Only applies to features routed to the passed port. In OR mode (pass_on_multiple_matches: true), only the first matching filter's attributes are merged. In AND mode, attributes from all matched filters are merged in order; if multiple filters share a key, the last filter's value wins.",
+      "description": "If true, copies attributes from the matched filter feature(s) onto passing candidates. When multiple matched filters share an attribute, the last filter's value wins.",
       "default": false,
       "type": "boolean"
     },
@@ -11520,6 +11517,19 @@ Filter Features by Spatial Relationship
       "type": [
         "string",
         "null"
+      ]
+    },
+    "outputMatchCountAttribute": {
+      "title": "Output Match Count Attribute",
+      "description": "Optional attribute name to store the number of matching filters.",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
       ]
     }
   },

@@ -23,7 +23,7 @@ impl ProcessorFactory for DimensionFilterFactory {
     }
 
     fn description(&self) -> &str {
-        "Filter Features by Geometry Dimension"
+        "Routes features to output ports based on the number of geometry dimensions."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -35,7 +35,7 @@ impl ProcessorFactory for DimensionFilterFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["2d", "3d"]
+        &["3d", "geometry"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
