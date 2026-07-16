@@ -10,6 +10,7 @@
 //! [`UnsupportedPair`](PredicateError::UnsupportedPair). `Geometry::None`
 //! intersects nothing.
 
+use super::edge_set::{operand_edges, operand_segment_count, should_index, EdgeSet};
 use super::kernel::segment_intersection;
 use super::kernel::CoordPos;
 use super::position::{face_position, line_position};
@@ -56,14 +57,68 @@ pub fn intersects_2d(a: &Euclidean2DGeometry, b: &Euclidean2DGeometry) -> Result
     let a = Operand2D::new(a);
     let b = Operand2D::new(b);
     require_common_frame(&a, &b)?;
+    Ok(intersects_operands(&a, &b))
+}
+
+/// `intersects` over prepared operands, dispatching on input size: a direct
+/// leaf-pair scan for small inputs, an rstar-indexed crossing sweep above
+/// [`DIRECT_WORK_LIMIT`](super::edge_set::DIRECT_WORK_LIMIT) kernel calls.
+fn intersects_operands(a: &Operand2D<'_>, b: &Operand2D<'_>) -> bool {
+    let (na, nb) = (operand_segment_count(a), operand_segment_count(b));
+    if should_index(na, nb) {
+        intersects_indexed(a, b, na <= nb)
+    } else {
+        intersects_direct(a, b)
+    }
+}
+
+/// The direct strategy: every leaf pair through [`leaf_intersects`].
+fn intersects_direct(a: &Operand2D<'_>, b: &Operand2D<'_>) -> bool {
     for la in &a.leaves {
         for lb in &b.leaves {
             if leaf_intersects(la, lb) {
-                return Ok(true);
+                return true;
             }
         }
     }
-    Ok(false)
+    false
+}
+
+/// The indexed strategy: one global early-exit crossing sweep of one operand's
+/// segments against an rstar index over the other's, then the point and
+/// containment cases no segment crossing can witness. `index_b` picks which
+/// operand is indexed (the one with more segments).
+fn intersects_indexed(a: &Operand2D<'_>, b: &Operand2D<'_>, index_b: bool) -> bool {
+    let (probe, indexed) = if index_b { (a, b) } else { (b, a) };
+    let set = EdgeSet::with_strategy(operand_edges(indexed), true);
+    for prepared in &probe.leaves {
+        let crossing = |u: [f64; 2], v: [f64; 2]| {
+            set.probe(u, v, |s, t| segment_intersection(u, v, s, t).is_some())
+        };
+        let hit = match prepared.leaf {
+            Leaf2D::Point(_) => false,
+            Leaf2D::Line(l) => l.coords().windows(2).any(|s| crossing(s[0], s[1])),
+            _ => prepared
+                .area
+                .as_ref()
+                .expect("leaf is areal")
+                .edges()
+                .any(|(u, v)| crossing(u, v)),
+        };
+        if hit {
+            return true;
+        }
+    }
+    // No segment of one operand touches any segment of the other: only
+    // point contact and strict containment remain, decided per leaf pair.
+    for la in &a.leaves {
+        for lb in &b.leaves {
+            if residual_leaf_intersects(la, lb) {
+                return true;
+            }
+        }
+    }
+    false
 }
 
 /// The concrete 3D leaf name, for `UnsupportedPair` diagnostics.
@@ -101,6 +156,49 @@ pub(crate) fn leaf_intersects(a: &PreparedLeaf<'_>, b: &PreparedLeaf<'_>) -> boo
         (Leaf2D::Line(l), _) => line_vs_area(l.coords(), area(b)),
         (_, Leaf2D::Line(l)) => line_vs_area(l.coords(), area(a)),
         (_, _) => area_vs_area(area(a), area(b)),
+    }
+}
+
+/// Whether two prepared leaves intersect, given that no segment of one crosses
+/// any segment of the other (established by the indexed sweep): only point
+/// contact and strict containment can still hold.
+fn residual_leaf_intersects(a: &PreparedLeaf<'_>, b: &PreparedLeaf<'_>) -> bool {
+    let (Some(box_a), Some(box_b)) = (&a.bbox, &b.bbox) else {
+        return false;
+    };
+    if !box_a.intersects(box_b) {
+        return false;
+    }
+    match (&a.leaf, &b.leaf) {
+        (Leaf2D::Point(pa), Leaf2D::Point(pb)) => pa.position() == pb.position(),
+        (Leaf2D::Point(p), Leaf2D::Line(l)) | (Leaf2D::Line(l), Leaf2D::Point(p)) => {
+            line_position(p.position(), l.coords()) != CoordPos::Outside
+        }
+        (Leaf2D::Point(p), _) => point_vs_area(p.position(), area(b)),
+        (_, Leaf2D::Point(p)) => point_vs_area(p.position(), area(a)),
+        (Leaf2D::Line(la), Leaf2D::Line(lb)) => {
+            // Chains with segments were fully swept; only a point-like
+            // single-vertex chain can still touch.
+            if la.coords().len() == 1 {
+                line_position(la.coords()[0], lb.coords()) != CoordPos::Outside
+            } else if lb.coords().len() == 1 {
+                line_position(lb.coords()[0], la.coords()) != CoordPos::Outside
+            } else {
+                false
+            }
+        }
+        (Leaf2D::Line(l), _) => {
+            // No boundary contact: the chain lies in one region; one vertex
+            // decides.
+            l.coords()
+                .first()
+                .is_some_and(|&c| point_vs_area(c, area(b)))
+        }
+        (_, Leaf2D::Line(l)) => l
+            .coords()
+            .first()
+            .is_some_and(|&c| point_vs_area(c, area(a))),
+        (_, _) => areas_nested(area(a), area(b)),
     }
 }
 
@@ -152,9 +250,14 @@ fn area_vs_area(a: &AreaView<'_>, b: &AreaView<'_>) -> bool {
     }) {
         return true;
     }
-    // No contact: every ring lies entirely in one region of the other operand,
-    // so one vertex per ring decides full containment either way (a ring
-    // inside the other's hole classifies as outside).
+    areas_nested(a, b)
+}
+
+/// Whether one boundary-disjoint areal view lies inside the other. With no
+/// boundary contact every ring lies entirely in one region of the other
+/// operand, so one vertex per ring decides full containment either way (a
+/// ring inside the other's hole classifies as outside).
+fn areas_nested(a: &AreaView<'_>, b: &AreaView<'_>) -> bool {
     let ring_inside = |x: &AreaView<'_>, y: &AreaView<'_>| {
         x.faces().any(|f| {
             f.rings().any(|r| {
@@ -329,5 +432,180 @@ mod tests {
         let a = unit_square_at(0.0, 0.0, 1.0);
         let b = unit_square_at(1000.0, 1000.0, 1.0);
         assert_eq!(intersects(&a, &b), Ok(false));
+    }
+
+    // --- direct / indexed strategy parity ------------------------------------
+
+    /// Deterministic splitmix-style generator.
+    struct Rng(u64);
+
+    impl Rng {
+        fn next(&mut self) -> u64 {
+            self.0 = self.0.wrapping_add(0x9E3779B97F4A7C15);
+            let mut z = self.0;
+            z = (z ^ (z >> 30)).wrapping_mul(0xBF58476D1CE4E5B9);
+            z = (z ^ (z >> 27)).wrapping_mul(0x94D049BB133111EB);
+            z ^ (z >> 31)
+        }
+
+        fn range(&mut self, n: u64) -> u64 {
+            self.next() % n
+        }
+
+        fn coord(&mut self) -> [f64; 2] {
+            [self.range(9) as f64, self.range(9) as f64]
+        }
+    }
+
+    /// One random 2D geometry on a small integer grid, so touching, collinear,
+    /// and degenerate configurations occur often.
+    fn rng_geometry(rng: &mut Rng) -> Euclidean2DGeometry {
+        let rect = |x0: f64, y0: f64, w: f64, h: f64| {
+            [
+                [x0, y0],
+                [x0 + w, y0],
+                [x0 + w, y0 + h],
+                [x0, y0 + h],
+                [x0, y0],
+            ]
+        };
+        match rng.range(9) {
+            0 => Euclidean2DGeometry::Point(Point2D::new(e(), rng.coord())),
+            // Single-vertex chain: point-like, no segments.
+            1 => Euclidean2DGeometry::LineString(LineString2D::from_coords(e(), [rng.coord()])),
+            2 => Euclidean2DGeometry::LineString(LineString2D::from_coords(
+                e(),
+                [rng.coord(), rng.coord()],
+            )),
+            3 => Euclidean2DGeometry::LineString(LineString2D::from_coords(
+                e(),
+                [rng.coord(), rng.coord(), rng.coord(), rng.coord()],
+            )),
+            4 => {
+                // Closed chain.
+                let (a, b, c) = (rng.coord(), rng.coord(), rng.coord());
+                Euclidean2DGeometry::LineString(LineString2D::from_coords(e(), [a, b, c, a]))
+            }
+            5 => {
+                let (x0, y0) = (rng.range(6) as f64, rng.range(6) as f64);
+                let (w, h) = (1 + rng.range(3), 1 + rng.range(3));
+                poly(rect(x0, y0, w as f64, h as f64))
+            }
+            6 => {
+                // Rect with a hole strictly inside.
+                let (x0, y0) = (rng.range(4) as f64, rng.range(4) as f64);
+                let (w, h) = (3 + rng.range(2), 3 + rng.range(2));
+                let outer = rect(x0, y0, w as f64, h as f64);
+                let hole = vec![
+                    [x0 + 1.0, y0 + 1.0],
+                    [x0 + 1.0, y0 + h as f64 - 1.0],
+                    [x0 + w as f64 - 1.0, y0 + h as f64 - 1.0],
+                    [x0 + w as f64 - 1.0, y0 + 1.0],
+                    [x0 + 1.0, y0 + 1.0],
+                ];
+                Euclidean2DGeometry::Polygon(Box::new(Polygon2D::from_rings(
+                    e(),
+                    outer,
+                    vec![hole],
+                )))
+            }
+            7 => {
+                // Two quads sharing an edge, as a mesh.
+                let (x0, y0) = (rng.range(5) as f64, rng.range(5) as f64);
+                let mesh = crate::polygon_mesh::PolygonMesh2D::from_parts(
+                    e(),
+                    vec![
+                        [x0, y0],
+                        [x0 + 2.0, y0],
+                        [x0 + 2.0, y0 + 2.0],
+                        [x0, y0 + 2.0],
+                        [x0 + 4.0, y0],
+                        [x0 + 4.0, y0 + 2.0],
+                    ],
+                    vec![vec![0u32, 1, 2, 3], vec![1, 4, 5, 2]],
+                )
+                .unwrap();
+                Euclidean2DGeometry::PolygonMesh(Box::new(mesh))
+            }
+            _ => {
+                // Collection of two rects (possibly overlapping or touching).
+                let member = |rng: &mut Rng| {
+                    let (x0, y0) = (rng.range(6) as f64, rng.range(6) as f64);
+                    poly(rect(
+                        x0,
+                        y0,
+                        (1 + rng.range(3)) as f64,
+                        (1 + rng.range(3)) as f64,
+                    ))
+                };
+                Euclidean2DGeometry::Collection(Collection2D::new([member(rng), member(rng)]))
+            }
+        }
+    }
+
+    #[test]
+    fn direct_and_indexed_strategies_agree() {
+        let mut rng = Rng(20260716);
+        for case in 0..400 {
+            let ga = rng_geometry(&mut rng);
+            let gb = rng_geometry(&mut rng);
+            let a = Operand2D::new(&ga);
+            let b = Operand2D::new(&gb);
+            let direct = intersects_direct(&a, &b);
+            assert_eq!(
+                direct,
+                intersects_indexed(&a, &b, true),
+                "case {case}: indexed(b) diverges for {ga:?} / {gb:?}"
+            );
+            assert_eq!(
+                direct,
+                intersects_indexed(&a, &b, false),
+                "case {case}: indexed(a) diverges for {ga:?} / {gb:?}"
+            );
+            assert_eq!(
+                Ok(direct),
+                intersects_2d(&ga, &gb),
+                "case {case}: public path diverges for {ga:?} / {gb:?}"
+            );
+        }
+    }
+
+    /// A closed regular `n`-gon ring around `(cx, cy)`.
+    fn ngon_ring(cx: f64, cy: f64, r: f64, n: usize) -> Vec<[f64; 2]> {
+        (0..=n)
+            .map(|i| {
+                let t = core::f64::consts::TAU * (i % n) as f64 / n as f64;
+                [cx + r * t.cos(), cy + r * t.sin()]
+            })
+            .collect()
+    }
+
+    #[test]
+    fn auto_indexed_large_inputs_answer_correctly() {
+        // 100-gon pairs: the segment-count product crosses the index gate.
+        let ngon = |cx: f64, cy: f64, r: f64| {
+            g2(Euclidean2DGeometry::Polygon(Box::new(
+                Polygon2D::from_rings(e(), ngon_ring(cx, cy, r, 100), Vec::<Vec<[f64; 2]>>::new()),
+            )))
+        };
+        // Strict containment: no boundary crossing, decided by the residual.
+        assert_eq!(
+            intersects(&ngon(0.0, 0.0, 10.0), &ngon(0.0, 0.0, 5.0)),
+            Ok(true)
+        );
+        assert_eq!(
+            intersects(&ngon(0.0, 0.0, 5.0), &ngon(0.0, 0.0, 10.0)),
+            Ok(true)
+        );
+        // Overlapping boundaries: found by the indexed sweep.
+        assert_eq!(
+            intersects(&ngon(0.0, 0.0, 10.0), &ngon(12.0, 0.0, 5.0)),
+            Ok(true)
+        );
+        // Disjoint.
+        assert_eq!(
+            intersects(&ngon(0.0, 0.0, 10.0), &ngon(40.0, 0.0, 5.0)),
+            Ok(false)
+        );
     }
 }

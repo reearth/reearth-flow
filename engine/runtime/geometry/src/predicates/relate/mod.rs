@@ -28,7 +28,7 @@ mod tests;
 
 pub use intersection_matrix::{Dimensions, IntersectionMatrix};
 
-use crate::predicates::view::require_common_frame_leaves;
+use crate::predicates::view::{require_common_frame_leaves, Leaf2D};
 use crate::{Euclidean2DGeometry, Geometry};
 
 use super::Result;
@@ -47,9 +47,7 @@ use relate_operation::RelateOperation;
 pub fn relate(a: &Geometry, b: &Geometry) -> Result<IntersectionMatrix> {
     let (a_leaves, b_leaves) = crate::predicates::flatten_2d_pair(a, b)?;
     require_common_frame_leaves(&a_leaves, &b_leaves)?;
-    let a = RelateOperand::new(a_leaves);
-    let b = RelateOperand::new(b_leaves);
-    Ok(RelateOperation::new(&a, &b).compute_intersection_matrix())
+    Ok(relate_leaves(a_leaves, b_leaves))
 }
 
 /// [`relate`] over two 2D geometries.
@@ -59,7 +57,15 @@ pub fn relate_2d(a: &Euclidean2DGeometry, b: &Euclidean2DGeometry) -> Result<Int
     let mut b_leaves = Vec::new();
     crate::predicates::view::flatten_2d(b, &mut b_leaves);
     require_common_frame_leaves(&a_leaves, &b_leaves)?;
+    Ok(relate_leaves(a_leaves, b_leaves))
+}
+
+/// [`relate`] over flattened leaves that already share one coordinate frame.
+pub(crate) fn relate_leaves(
+    a_leaves: Vec<Leaf2D<'_>>,
+    b_leaves: Vec<Leaf2D<'_>>,
+) -> IntersectionMatrix {
     let a = RelateOperand::new(a_leaves);
     let b = RelateOperand::new(b_leaves);
-    Ok(RelateOperation::new(&a, &b).compute_intersection_matrix())
+    RelateOperation::new(&a, &b).compute_intersection_matrix()
 }

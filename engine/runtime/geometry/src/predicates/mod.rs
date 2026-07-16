@@ -6,7 +6,9 @@
 //! triangle all feed the same [`kernel`] with zero copying.
 //!
 //! Available predicates, all 2D (collections are point-set unions of their
-//! members; every leaf pair takes a bounding-box quick reject first):
+//! members; every leaf pair takes a bounding-box quick reject first, and the
+//! segment-crossing searches switch from a direct scan to an rstar-indexed
+//! sweep above a size threshold, with identical answers):
 //!
 //! - [`intersects()`]: whether two geometries share at least one point.
 //! - [`contains()`] / [`covers`]: split-based containment with OGC semantics;
@@ -24,6 +26,7 @@
 //! views and kernel. Ray casting and 3D pairs are not yet supported.
 
 pub mod contains;
+mod edge_set;
 pub mod intersects;
 pub mod kernel;
 pub mod position;

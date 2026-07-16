@@ -26,6 +26,7 @@
 //! constructed (f64-rounded) coordinates; classification at them inherits that
 //! rounding. Collections mixing 2D and 3D members error, as elsewhere.
 
+use super::edge_set::{operand_edges, operand_segment_count, Edge2, EdgeSet};
 use super::intersects::type_name_3d;
 use super::kernel::{segment_intersection, CoordPos, SegmentIntersection};
 use super::position::{areal_union_position, face_position, union_position};
@@ -83,6 +84,32 @@ pub(crate) fn flatten_geometry(geometry: &Geometry) -> (Vec<Leaf2D<'_>>, Option<
 }
 
 fn containment_2d(a: &Operand2D<'_>, b: &Operand2D<'_>, need_witness: bool) -> bool {
+    containment_2d_impl(a, b, need_witness, None)
+}
+
+/// [`containment_2d`] with the [`EdgeSet`] strategy forced, for strategy
+/// parity tests.
+#[cfg(test)]
+fn containment_2d_forced(
+    a: &Operand2D<'_>,
+    b: &Operand2D<'_>,
+    need_witness: bool,
+    indexed: bool,
+) -> bool {
+    containment_2d_impl(a, b, need_witness, Some(indexed))
+}
+
+fn containment_2d_impl(
+    a: &Operand2D<'_>,
+    b: &Operand2D<'_>,
+    need_witness: bool,
+    force_indexed: Option<bool>,
+) -> bool {
+    let build = |edges: Vec<Edge2>, probes: usize| match force_indexed {
+        Some(indexed) => EdgeSet::with_strategy(edges, indexed),
+        None => EdgeSet::new(edges, probes),
+    };
+
     // Coverage requires b's extent within a's.
     let Some(bbox_b) = union_bbox(b) else {
         return false;
@@ -94,8 +121,9 @@ fn containment_2d(a: &Operand2D<'_>, b: &Operand2D<'_>, need_witness: bool) -> b
         return false;
     }
 
-    // The splitting edge set of `a`: areal ring edges and line segments.
-    let a_edges: Vec<([f64; 2], [f64; 2])> = collect_edges(a);
+    // The splitting edge set of `a`: areal ring edges and line segments,
+    // probed once per segment of `b`.
+    let a_edges = build(operand_edges(a), operand_segment_count(b));
     let mut witness = false;
 
     for prepared in &b.leaves {
@@ -161,9 +189,12 @@ fn containment_2d(a: &Operand2D<'_>, b: &Operand2D<'_>, need_witness: bool) -> b
     // interior must be interior to a as well (a shared mesh edge), or b's
     // interior extends past a across it.
     if b.areas().next().is_some() {
-        let b_area_edges: Vec<([f64; 2], [f64; 2])> =
-            b.areas().flat_map(|view| view.edges()).collect();
-        for (u, v) in a.areas().flat_map(|view| view.edges()) {
+        let a_areal: Vec<Edge2> = a.areas().flat_map(|view| view.edges()).collect();
+        let b_area_edges = build(
+            b.areas().flat_map(|view| view.edges()).collect(),
+            a_areal.len(),
+        );
+        for &(u, v) in &a_areal {
             for m in piece_midpoints(u, v, &b_area_edges) {
                 if areal_union_position(m, b.areas()) == CoordPos::Inside
                     && areal_union_position(m, a.areas()) != CoordPos::Inside
@@ -177,30 +208,12 @@ fn containment_2d(a: &Operand2D<'_>, b: &Operand2D<'_>, need_witness: bool) -> b
     !need_witness || witness
 }
 
-/// The areal ring edges and line segments of an operand (points contribute
-/// nothing to splitting).
-fn collect_edges(operand: &Operand2D<'_>) -> Vec<([f64; 2], [f64; 2])> {
-    let mut edges = Vec::new();
-    for prepared in &operand.leaves {
-        match prepared.leaf {
-            Leaf2D::Point(_) => {}
-            Leaf2D::Line(l) => {
-                edges.extend(l.coords().windows(2).map(|s| (s[0], s[1])));
-            }
-            _ => {
-                edges.extend(prepared.area.as_ref().expect("leaf is areal").edges());
-            }
-        }
-    }
-    edges
-}
-
 /// Split the segment `u -> v` at every intersection with `edges` and yield the
 /// midpoint of each resulting piece. Each piece lies entirely in one region of
 /// the geometry the edges came from, so its midpoint classifies it.
-fn piece_midpoints(u: [f64; 2], v: [f64; 2], edges: &[([f64; 2], [f64; 2])]) -> Vec<[f64; 2]> {
+fn piece_midpoints(u: [f64; 2], v: [f64; 2], edges: &EdgeSet) -> Vec<[f64; 2]> {
     let mut cuts: Vec<[f64; 2]> = vec![u, v];
-    for &(s, t) in edges {
+    edges.probe(u, v, |s, t| {
         match segment_intersection(u, v, s, t) {
             Some(SegmentIntersection::SinglePoint { intersection, .. }) => cuts.push(intersection),
             Some(SegmentIntersection::Collinear { start, end }) => {
@@ -209,7 +222,8 @@ fn piece_midpoints(u: [f64; 2], v: [f64; 2], edges: &[([f64; 2], [f64; 2])]) -> 
             }
             None => {}
         }
-    }
+        false
+    });
     // Order along the segment by projection onto its direction.
     let d = [v[0] - u[0], v[1] - u[1]];
     let param = |p: &[f64; 2]| (p[0] - u[0]) * d[0] + (p[1] - u[1]) * d[1];
@@ -561,5 +575,127 @@ mod tests {
         let view = super::super::view::AreaView::from_polygon(&p);
         let sample = face_interior_point(view.face(0)).unwrap();
         assert_eq!(face_position(sample, view.face(0)), CoordPos::Inside);
+    }
+
+    // --- linear / indexed strategy parity -------------------------------------
+
+    /// Deterministic splitmix-style generator.
+    struct Rng(u64);
+
+    impl Rng {
+        fn next(&mut self) -> u64 {
+            self.0 = self.0.wrapping_add(0x9E3779B97F4A7C15);
+            let mut z = self.0;
+            z = (z ^ (z >> 30)).wrapping_mul(0xBF58476D1CE4E5B9);
+            z = (z ^ (z >> 27)).wrapping_mul(0x94D049BB133111EB);
+            z ^ (z >> 31)
+        }
+
+        fn range(&mut self, n: u64) -> u64 {
+            self.next() % n
+        }
+
+        fn coord(&mut self) -> [f64; 2] {
+            [self.range(9) as f64, self.range(9) as f64]
+        }
+    }
+
+    /// One random geometry on a small integer grid.
+    fn rng_geometry(rng: &mut Rng) -> Geometry {
+        match rng.range(6) {
+            0 => {
+                let p = rng.coord();
+                point(p[0], p[1])
+            }
+            1 => line(vec![rng.coord(), rng.coord()]),
+            2 => line(vec![rng.coord(), rng.coord(), rng.coord(), rng.coord()]),
+            3 => {
+                let (x, y) = (rng.range(6) as f64, rng.range(6) as f64);
+                square(x, y, (1 + rng.range(3)) as f64)
+            }
+            4 => holey(
+                (1 + rng.range(3)) as f64,
+                (1 + rng.range(3)) as f64,
+                (1 + rng.range(3)) as f64,
+            ),
+            _ => {
+                // Two quads sharing an edge, as a mesh.
+                let (x, y) = (rng.range(5) as f64, rng.range(5) as f64);
+                let mesh = PolygonMesh2D::from_parts(
+                    e(),
+                    vec![
+                        [x, y],
+                        [x + 2.0, y],
+                        [x + 2.0, y + 2.0],
+                        [x, y + 2.0],
+                        [x + 4.0, y],
+                        [x + 4.0, y + 2.0],
+                    ],
+                    vec![vec![0u32, 1, 2, 3], vec![1, 4, 5, 2]],
+                )
+                .unwrap();
+                g2(Euclidean2DGeometry::PolygonMesh(Box::new(mesh)))
+            }
+        }
+    }
+
+    fn operands<'g>(a: &'g Geometry, b: &'g Geometry) -> (Operand2D<'g>, Operand2D<'g>) {
+        let (a_leaves, _) = flatten_geometry(a);
+        let (b_leaves, _) = flatten_geometry(b);
+        (
+            Operand2D::from_leaves(a_leaves),
+            Operand2D::from_leaves(b_leaves),
+        )
+    }
+
+    #[test]
+    fn linear_and_indexed_strategies_agree() {
+        let mut rng = Rng(20260716);
+        for case in 0..300 {
+            let ga = rng_geometry(&mut rng);
+            let gb = rng_geometry(&mut rng);
+            let (a, b) = operands(&ga, &gb);
+            for need_witness in [false, true] {
+                assert_eq!(
+                    containment_2d_forced(&a, &b, need_witness, false),
+                    containment_2d_forced(&a, &b, need_witness, true),
+                    "case {case} witness={need_witness}: strategies diverge for {ga:?} / {gb:?}"
+                );
+            }
+            assert_eq!(
+                Ok(containment_2d(&a, &b, true)),
+                contains(&ga, &gb),
+                "case {case}: public path diverges for {ga:?} / {gb:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn auto_indexed_large_inputs_answer_correctly() {
+        // 100-gon pairs: the probe-count product crosses the index gate.
+        let ngon = |cx: f64, cy: f64, r: f64| {
+            let ring: Vec<[f64; 2]> = (0..=100)
+                .map(|i| {
+                    let t = core::f64::consts::TAU * (i % 100) as f64 / 100.0;
+                    [cx + r * t.cos(), cy + r * t.sin()]
+                })
+                .collect();
+            g2(Euclidean2DGeometry::Polygon(Box::new(
+                Polygon2D::from_rings(e(), ring, Vec::<Vec<[f64; 2]>>::new()),
+            )))
+        };
+        assert_eq!(
+            contains(&ngon(0.0, 0.0, 10.0), &ngon(0.0, 0.0, 5.0)),
+            Ok(true)
+        );
+        assert_eq!(
+            contains(&ngon(0.0, 0.0, 5.0), &ngon(0.0, 0.0, 10.0)),
+            Ok(false)
+        );
+        // Partial overlap: covered fails on the poking-out part.
+        assert_eq!(
+            covers(&ngon(0.0, 0.0, 10.0), &ngon(8.0, 0.0, 5.0)),
+            Ok(false)
+        );
     }
 }

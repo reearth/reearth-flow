@@ -374,6 +374,18 @@ impl<'a> Leaf2D<'a> {
             Leaf2D::TriangularMesh(m) => Some(AreaView::from_triangular_mesh(m)),
         }
     }
+
+    /// The leaf's bounding box, `None` for an empty leaf.
+    pub(crate) fn bbox(&self) -> Option<Aabb> {
+        match self {
+            Leaf2D::Point(p) => p.bounding_box(),
+            Leaf2D::Line(l) => l.bounding_box(),
+            Leaf2D::Polygon(p) => p.bounding_box(),
+            Leaf2D::PolygonMesh(m) => m.bounding_box(),
+            Leaf2D::TriangularMesh(m) => m.bounding_box(),
+        }
+        .ok()
+    }
 }
 
 /// Flatten a 2D geometry into its leaves, recursing into (possibly nested)
@@ -418,20 +430,10 @@ impl<'a> Operand2D<'a> {
     pub fn from_leaves(flat: Vec<Leaf2D<'a>>) -> Self {
         let leaves = flat
             .into_iter()
-            .map(|leaf| {
-                let bbox = match leaf {
-                    Leaf2D::Point(p) => p.bounding_box(),
-                    Leaf2D::Line(l) => l.bounding_box(),
-                    Leaf2D::Polygon(p) => p.bounding_box(),
-                    Leaf2D::PolygonMesh(m) => m.bounding_box(),
-                    Leaf2D::TriangularMesh(m) => m.bounding_box(),
-                }
-                .ok();
-                PreparedLeaf {
-                    leaf,
-                    area: leaf.area_view(),
-                    bbox,
-                }
+            .map(|leaf| PreparedLeaf {
+                leaf,
+                area: leaf.area_view(),
+                bbox: leaf.bbox(),
             })
             .collect();
         Self { leaves }
