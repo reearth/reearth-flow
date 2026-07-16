@@ -511,11 +511,23 @@ impl AtlasBatch {
             }
         };
 
-        let mut png = Vec::new();
+        let mut webp = Vec::new();
         image::DynamicImage::ImageRgba8(built.image)
-            .write_to(&mut Cursor::new(&mut png), image::ImageFormat::Png)
-            .map_err(|e| SinkError::Cesium3DTilesWriter(format!("atlas PNG encode failed: {e}")))?;
-        let texture = builder.push_image_texture(&png, "image/png", ATLAS_SAMPLER);
+            .write_to(&mut Cursor::new(&mut webp), image::ImageFormat::WebP)
+            .map_err(|e| {
+                SinkError::Cesium3DTilesWriter(format!("atlas WebP encode failed: {e}"))
+            })?;
+        let image = builder.push_image(&webp, "image/webp");
+        // WebP has no core-glTF fallback image, so the extension is required.
+        builder.require_extension("EXT_texture_webp");
+        let texture = builder.push_texture(
+            None,
+            ATLAS_SAMPLER,
+            vec![(
+                "EXT_texture_webp",
+                serde_json::json!({ "source": image.index() }),
+            )],
+        );
         Ok(Some((texture, built.remapped_uvs)))
     }
 }
