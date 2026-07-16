@@ -3,6 +3,7 @@ package redis_test
 import (
 	"context"
 	"encoding/json"
+	"os"
 	"testing"
 	"time"
 
@@ -92,6 +93,75 @@ func TestGetJobCompleteEvent(t *testing.T) {
 
 		assert.NoError(t, mock.ExpectationsWereMet())
 	})
+}
+
+// fixturePath is the shared wire-shape fixture also used by the subscriber
+// module's own round-trip test (pkg/job/job_complete_event_test.go) and by
+// gateway.TestJobCompleteEvent_RoundTripsDiagnosticsFixture. The subscriber
+// and api Go modules are independent (no shared package, no cross-module
+// import), so this test simulates the subscriber -> Redis -> api hop by
+// treating the fixture bytes as "what the subscriber wrote to Redis" —
+// the subscriber's own tests separately lock that its Marshal output
+// matches this fixture's shape.
+const fixturePath = "../../../../testdata/diagnostics/job_complete_with_diagnostics.json"
+
+func TestGetJobCompleteEvent_DiagnosticsSurviveSubscriberRedisHop(t *testing.T) {
+	ctx := context.Background()
+
+	client, mock := redismock.NewClientMock()
+	r, err := redis.NewRedisLog(client)
+	require.NoError(t, err)
+
+	raw, err := os.ReadFile(fixturePath)
+	require.NoError(t, err)
+
+	jobID := id.NewJobID()
+	key := "job_complete:" + jobID.String()
+	mock.ExpectGet(key).SetVal(string(raw))
+
+	result, err := r.GetJobCompleteEvent(ctx, jobID)
+	assert.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, "failed", result.Result)
+
+	require.Len(t, result.FailedNodes, 2)
+	assert.Equal(t, "internal.invariant_violation", result.FailedNodes[0].Code)
+	assert.Equal(t, "internal.unclassified", result.FailedNodes[1].Code)
+	require.NotNil(t, result.FailedNodes[1].NodeID)
+	assert.Equal(t, "subgraph-a.sink-writer-2", *result.FailedNodes[1].NodeID)
+
+	require.Len(t, result.AggregatedDiagnostics, 1)
+	assert.Equal(t, "gltf.zero_face_solid", result.AggregatedDiagnostics[0].Code)
+	require.NotNil(t, result.AggregatedDiagnostics[0].Aggregated)
+	assert.Equal(t, uint64(5), result.AggregatedDiagnostics[0].Aggregated.Count)
+
+	require.NotNil(t, result.DroppedEventCount)
+	assert.Equal(t, uint64(2), *result.DroppedEventCount)
+
+	assert.NoError(t, mock.ExpectationsWereMet())
+}
+
+func TestGetJobCompleteEvent_LegacyWireCompat(t *testing.T) {
+	ctx := context.Background()
+
+	client, mock := redismock.NewClientMock()
+	r, err := redis.NewRedisLog(client)
+	require.NoError(t, err)
+
+	jobID := id.NewJobID()
+	key := "job_complete:" + jobID.String()
+	legacy := `{"workflowId":"11111111-1111-1111-1111-111111111111","jobId":"` + jobID.String() + `","result":"success","timestamp":"2026-01-01T00:00:00Z"}`
+	mock.ExpectGet(key).SetVal(legacy)
+
+	result, err := r.GetJobCompleteEvent(ctx, jobID)
+	assert.NoError(t, err)
+	require.NotNil(t, result)
+	assert.Equal(t, "success", result.Result)
+	assert.Nil(t, result.FailedNodes)
+	assert.Nil(t, result.AggregatedDiagnostics)
+	assert.Nil(t, result.DroppedEventCount)
+
+	assert.NoError(t, mock.ExpectationsWereMet())
 }
 
 func TestDeleteJobCompleteEvent(t *testing.T) {
