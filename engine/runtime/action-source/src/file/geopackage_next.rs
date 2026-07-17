@@ -206,10 +206,7 @@ fn parse_wkb_geometry(
     force_2d: bool,
 ) -> Result<Geometry, SourceError> {
     let byte_order = read_byte_order(cursor)?;
-    let wkb_type = read_u32(cursor, byte_order)?;
-    let has_z = (wkb_type & 0x8000_0000) != 0;
-    let has_m = (wkb_type & 0x4000_0000) != 0;
-    let geom_type = wkb_type & 0x1FFF_FFFF;
+    let (geom_type, has_z, has_m) = wkb_type_parts(read_u32(cursor, byte_order)?);
     let three_d = has_z && !force_2d;
     let swap = axis_swap(srs_id);
 
@@ -283,6 +280,23 @@ fn read_byte_order(cursor: &mut std::io::Cursor<&[u8]>) -> Result<u8, SourceErro
         b @ (0x00 | 0x01) => Ok(b),
         other => Err(err(format!("invalid WKB byte order: {other:#x}"))),
     }
+}
+
+/// Decode a WKB type word into `(base_type, has_z, has_m)`.
+///
+/// GeoPackage mandates **ISO WKB**, which encodes dimension in the type number
+/// (`base + 1000*Z + 2000*M`, e.g. Point-Z = 1001, Point-ZM = 3001). We also tolerate
+/// PostGIS **EWKB** high-bit flags (`0x80000000` Z, `0x40000000` M) so EWKB-produced
+/// blobs still read, but ISO is the path real GeoPackage 3D data (e.g. 3DBAG) takes.
+fn wkb_type_parts(wkb_type: u32) -> (u32, bool, bool) {
+    let ewkb_z = wkb_type & 0x8000_0000 != 0;
+    let ewkb_m = wkb_type & 0x4000_0000 != 0;
+    let iso = wkb_type & 0x1FFF_FFFF;
+    let iso_dim = iso / 1000; // 0 = XY, 1 = Z, 2 = M, 3 = ZM
+    let base = iso % 1000;
+    let has_z = ewkb_z || iso_dim == 1 || iso_dim == 3;
+    let has_m = ewkb_m || iso_dim == 2 || iso_dim == 3;
+    (base, has_z, has_m)
 }
 
 fn read_u32(cursor: &mut std::io::Cursor<&[u8]>, byte_order: u8) -> Result<u32, SourceError> {
@@ -418,10 +432,8 @@ where
         // Each member must be the corresponding single type with the same Z/M as the
         // enclosing Multi*; a mismatch means a malformed blob, so fail fast rather than
         // misread the byte stream.
-        let member_type = read_u32(cursor, member_order)?;
-        let member_base = member_type & 0x1FFF_FFFF;
-        let member_has_z = (member_type & 0x8000_0000) != 0;
-        let member_has_m = (member_type & 0x4000_0000) != 0;
+        let (member_base, member_has_z, member_has_m) =
+            wkb_type_parts(read_u32(cursor, member_order)?);
         if member_base != expected_type || member_has_z != has_z || member_has_m != has_m {
             return Err(err(format!(
                 "Multi* member type mismatch: expected type {expected_type} (z={has_z}, m={has_m}), \
@@ -495,9 +507,21 @@ mod tests {
         w
     }
 
+    // GeoPackage mandates ISO WKB, which encodes Z in the type number (base + 1000).
     fn wkb_point_3d(x: f64, y: f64, z: f64) -> Vec<u8> {
         let mut w = vec![0x01];
-        w.extend_from_slice(&(1u32 | 0x8000_0000).to_le_bytes()); // Point + Z flag
+        w.extend_from_slice(&1001u32.to_le_bytes()); // ISO Point Z
+        w.extend_from_slice(&x.to_le_bytes());
+        w.extend_from_slice(&y.to_le_bytes());
+        w.extend_from_slice(&z.to_le_bytes());
+        w
+    }
+
+    // PostGIS EWKB encodes Z in a high-bit flag; supported for robustness though
+    // GeoPackage itself never uses it.
+    fn wkb_point_3d_ewkb(x: f64, y: f64, z: f64) -> Vec<u8> {
+        let mut w = vec![0x01];
+        w.extend_from_slice(&(1u32 | 0x8000_0000).to_le_bytes()); // EWKB Point + Z flag
         w.extend_from_slice(&x.to_le_bytes());
         w.extend_from_slice(&y.to_le_bytes());
         w.extend_from_slice(&z.to_le_bytes());
@@ -517,7 +541,7 @@ mod tests {
 
     fn wkb_linestring_3d(coords: &[[f64; 3]]) -> Vec<u8> {
         let mut w = vec![0x01];
-        w.extend_from_slice(&(2u32 | 0x8000_0000).to_le_bytes()); // LineString + Z
+        w.extend_from_slice(&1002u32.to_le_bytes()); // ISO LineString Z
         w.extend_from_slice(&(coords.len() as u32).to_le_bytes());
         for c in coords {
             w.extend_from_slice(&c[0].to_le_bytes());
@@ -543,7 +567,7 @@ mod tests {
 
     fn wkb_polygon_3d(rings: &[Vec<[f64; 3]>]) -> Vec<u8> {
         let mut w = vec![0x01];
-        w.extend_from_slice(&(3u32 | 0x8000_0000).to_le_bytes()); // Polygon + Z
+        w.extend_from_slice(&1003u32.to_le_bytes()); // ISO Polygon Z
         w.extend_from_slice(&(rings.len() as u32).to_le_bytes());
         for ring in rings {
             w.extend_from_slice(&(ring.len() as u32).to_le_bytes());
@@ -575,6 +599,22 @@ mod tests {
     #[test]
     fn point_3d_wkb_converts_to_euclidean_3d() {
         let blob = gp_blob(4979, &wkb_point_3d(139.7, 35.6, 12.5));
+
+        let geom = parse_geopackage_geometry(&blob, 4979, false).unwrap();
+
+        assert_eq!(
+            geom,
+            Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+                crs(4979),
+                [35.6, 139.7, 12.5],
+            )))
+        );
+    }
+
+    // PostGIS EWKB 3D (Z via high-bit flag) is also read, even though GeoPackage uses ISO.
+    #[test]
+    fn point_3d_ewkb_is_also_supported() {
+        let blob = gp_blob(4979, &wkb_point_3d_ewkb(139.7, 35.6, 12.5));
 
         let geom = parse_geopackage_geometry(&blob, 4979, false).unwrap();
 
