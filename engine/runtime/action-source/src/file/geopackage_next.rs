@@ -206,7 +206,7 @@ fn parse_wkb_geometry(
     force_2d: bool,
 ) -> Result<Geometry, SourceError> {
     let byte_order = read_byte_order(cursor)?;
-    let (geom_type, has_z, has_m) = wkb_type_parts(read_u32(cursor, byte_order)?);
+    let (geom_type, has_z, has_m) = read_wkb_type(cursor, byte_order)?;
     let three_d = has_z && !force_2d;
     let swap = axis_swap(srs_id);
 
@@ -297,6 +297,21 @@ fn wkb_type_parts(wkb_type: u32) -> (u32, bool, bool) {
     let has_z = ewkb_z || iso_dim == 1 || iso_dim == 3;
     let has_m = ewkb_m || iso_dim == 2 || iso_dim == 3;
     (base, has_z, has_m)
+}
+
+/// Read a WKB type word and return `(base, has_z, has_m)`. When the EWKB SRID flag
+/// (`0x20000000`) is set, the type is followed by a 4-byte inline SRID; consume it so
+/// the geometry body is read from the correct offset. GeoPackage ISO WKB never sets it
+/// (the srs comes from the layer), so the SRID value is ignored.
+fn read_wkb_type(
+    cursor: &mut std::io::Cursor<&[u8]>,
+    byte_order: u8,
+) -> Result<(u32, bool, bool), SourceError> {
+    let wkb_type = read_u32(cursor, byte_order)?;
+    if wkb_type & 0x2000_0000 != 0 {
+        let _srid = read_u32(cursor, byte_order)?;
+    }
+    Ok(wkb_type_parts(wkb_type))
 }
 
 fn read_u32(cursor: &mut std::io::Cursor<&[u8]>, byte_order: u8) -> Result<u32, SourceError> {
@@ -432,8 +447,7 @@ where
         // Each member must be the corresponding single type with the same Z/M as the
         // enclosing Multi*; a mismatch means a malformed blob, so fail fast rather than
         // misread the byte stream.
-        let (member_base, member_has_z, member_has_m) =
-            wkb_type_parts(read_u32(cursor, member_order)?);
+        let (member_base, member_has_z, member_has_m) = read_wkb_type(cursor, member_order)?;
         if member_base != expected_type || member_has_z != has_z || member_has_m != has_m {
             return Err(err(format!(
                 "Multi* member type mismatch: expected type {expected_type} (z={has_z}, m={has_m}), \
@@ -651,6 +665,35 @@ mod tests {
             Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
                 crs(4979),
                 [35.6, 139.7, 12.5],
+            )))
+        );
+    }
+
+    // EWKB with an inline SRID (flag 0x20000000) carries 4 extra bytes after the type;
+    // they must be consumed, not read as coordinates.
+    fn wkb_point_3d_ewkb_with_srid(srid: u32, x: f64, y: f64, z: f64) -> Vec<u8> {
+        let mut w = vec![0x01];
+        // Point + Z flag + SRID flag
+        w.extend_from_slice(&(1u32 | 0x8000_0000 | 0x2000_0000).to_le_bytes());
+        w.extend_from_slice(&srid.to_le_bytes()); // inline SRID
+        w.extend_from_slice(&x.to_le_bytes());
+        w.extend_from_slice(&y.to_le_bytes());
+        w.extend_from_slice(&z.to_le_bytes());
+        w
+    }
+
+    #[test]
+    fn ewkb_inline_srid_is_consumed() {
+        // gp header srs_id 0 -> Euclidean frame (no swap); inline EWKB SRID is ignored.
+        let blob = gp_blob(0, &wkb_point_3d_ewkb_with_srid(4326, 139.7, 35.6, 12.5));
+
+        let geom = parse_geopackage_geometry(&blob, 0, false).unwrap();
+
+        assert_eq!(
+            geom,
+            Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+                CoordinateFrame::Euclidean,
+                [139.7, 35.6, 12.5],
             )))
         );
     }
