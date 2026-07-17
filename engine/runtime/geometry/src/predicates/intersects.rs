@@ -15,41 +15,16 @@ use super::kernel::segment_intersection;
 use super::kernel::CoordPos;
 use super::position::{face_position, line_position};
 use super::view::{require_common_frame, AreaView, Leaf2D, Operand2D, PreparedLeaf};
-use super::{PredicateError, Result};
+use super::Result;
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
 /// Whether `a` and `b` share at least one point.
 pub fn intersects(a: &Geometry, b: &Geometry) -> Result<bool> {
-    match (a, b) {
-        (Geometry::None, _) | (_, Geometry::None) => Ok(false),
-        (Geometry::GeometryCollection(c), other) => {
-            for member in c.members() {
-                if intersects(member, other)? {
-                    return Ok(true);
-                }
-            }
-            Ok(false)
-        }
-        (other, Geometry::GeometryCollection(c)) => {
-            for member in c.members() {
-                if intersects(other, member)? {
-                    return Ok(true);
-                }
-            }
-            Ok(false)
-        }
-        (Geometry::Euclidean2D(a), Geometry::Euclidean2D(b)) => intersects_2d(a, b),
-        (Geometry::Euclidean2D(_), Geometry::Euclidean3D(_))
-        | (Geometry::Euclidean3D(_), Geometry::Euclidean2D(_)) => {
-            Err(PredicateError::CrossDimension)
-        }
-        (Geometry::Euclidean3D(a), Geometry::Euclidean3D(b)) => {
-            Err(PredicateError::UnsupportedPair {
-                left: type_name_3d(a),
-                right: type_name_3d(b),
-            })
-        }
-    }
+    let (a_leaves, b_leaves) = super::flatten_2d_pair(a, b)?;
+    let a = Operand2D::from_leaves(a_leaves);
+    let b = Operand2D::from_leaves(b_leaves);
+    require_common_frame(&a, &b)?;
+    Ok(intersects_operands(&a, &b))
 }
 
 /// `intersects` over two 2D geometries.
@@ -278,6 +253,7 @@ mod tests {
     use crate::line_string::{LineString2D, LineString3D};
     use crate::point::Point2D;
     use crate::polygon::Polygon2D;
+    use crate::predicates::PredicateError;
     use crate::{Euclidean2DGeometry, Euclidean3DGeometry, GeometryCollection};
     use pretty_assertions::assert_eq;
 
@@ -392,6 +368,42 @@ mod tests {
 
         let gc = Geometry::GeometryCollection(GeometryCollection::new([square.clone()]));
         assert_eq!(intersects(&gc, &c), Ok(true));
+    }
+
+    #[test]
+    fn collection_errors_do_not_depend_on_member_order() {
+        let square = unit_square_at(0.0, 0.0, 4.0);
+        let hit = unit_square_at(1.0, 1.0, 1.0);
+
+        // A 3D member errors even when an earlier member already intersects.
+        let line3d = Geometry::Euclidean3D(Euclidean3DGeometry::LineString(
+            LineString3D::from_coords(e(), [[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]]),
+        ));
+        for members in [[hit.clone(), line3d.clone()], [line3d.clone(), hit.clone()]] {
+            let gc = Geometry::GeometryCollection(GeometryCollection::new(members));
+            assert_eq!(
+                intersects(&gc, &square),
+                Err(PredicateError::CrossDimension)
+            );
+            assert_eq!(
+                intersects(&square, &gc),
+                Err(PredicateError::CrossDimension)
+            );
+        }
+
+        // Same for a member in a different frame.
+        let other_frame = g2(Euclidean2DGeometry::Point(Point2D::new(
+            CoordinateFrame::Crs(EpsgCode::new(4326)),
+            [1.5, 1.5],
+        )));
+        for members in [
+            [hit.clone(), other_frame.clone()],
+            [other_frame.clone(), hit.clone()],
+        ] {
+            let gc = Geometry::GeometryCollection(GeometryCollection::new(members));
+            assert_eq!(intersects(&gc, &square), Err(PredicateError::MixedFrames));
+            assert_eq!(intersects(&square, &gc), Err(PredicateError::MixedFrames));
+        }
     }
 
     #[test]
