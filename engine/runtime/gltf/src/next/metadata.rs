@@ -67,16 +67,16 @@ pub fn build_table(features: &[&Feature], options: MetadataOptions) -> PropertyT
 }
 
 /// Attach `table` to `builder` as one `EXT_structural_metadata` property table
-/// (built once) plus, on every primitive in `primitives`, an `EXT_mesh_features`
-/// feature-ID attribute tagging each of its vertices with
-/// `feature_ids[original_vertex]`. Every primitive shares the one property
-/// table, so all reference `propertyTable` 0 and the same original-vertex
-/// `feature_ids`. No-op if `table` has no properties.
+/// (built once) plus, on each `(primitive, feature_ids)` in `primitives`, an
+/// `EXT_mesh_features` feature-ID attribute tagging each of that primitive's
+/// vertices with `feature_ids[original_vertex]`. All primitives share the one
+/// property table (reference `propertyTable` 0), but each carries its own
+/// per-vertex `feature_ids` (their vertex buffers are independent). No-op if
+/// `table` has no properties.
 pub fn encode(
     table: &PropertyTable,
     builder: &mut Builder,
-    primitives: &[PrimitiveHandle],
-    feature_ids: &[u32],
+    primitives: &[(PrimitiveHandle, &[u32])],
 ) {
     if table.properties.is_empty() {
         return;
@@ -141,7 +141,7 @@ pub fn encode(
             .expect("EXT_structural_metadata is always serializable"),
     );
 
-    for &primitive in primitives {
+    for &(primitive, feature_ids) in primitives {
         builder.extend(
             primitive,
             "EXT_mesh_features",
