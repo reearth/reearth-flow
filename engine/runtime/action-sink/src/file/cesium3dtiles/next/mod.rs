@@ -461,7 +461,8 @@ fn uv_wraps(cell: &CellMesh, triangle: usize) -> bool {
     cell.corner_uv[triangle * 3..triangle * 3 + 3]
         .iter()
         .any(|&[u, v]| {
-            u < -TOLERANCE || u > 1.0 + TOLERANCE || v < -TOLERANCE || v > 1.0 + TOLERANCE
+            let unit = -TOLERANCE..=1.0 + TOLERANCE;
+            !unit.contains(&u) || !unit.contains(&v)
         })
 }
 

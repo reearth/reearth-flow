@@ -90,9 +90,8 @@ pub(super) fn resolve(appearance: &Appearance, triangle_count: usize) -> Resolve
             continue;
         };
         let coords = front_channels[&channel];
-        for corner in triangle * 3..triangle * 3 + 3 {
-            corner_uv[corner] = coords[corner];
-        }
+        let range = triangle * 3..triangle * 3 + 3;
+        corner_uv[range.clone()].copy_from_slice(&coords[range]);
     }
 
     ResolvedAppearance {
