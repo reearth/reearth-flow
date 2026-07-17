@@ -25,20 +25,20 @@ pub fn intersects(a: &Geometry, b: &Geometry) -> Result<bool> {
     match (a, b) {
         (Geometry::None, _) | (_, Geometry::None) => Ok(false),
         (Geometry::GeometryCollection(c), other) => {
+            // Every member is evaluated even after a hit, so an error from a
+            // later member wins regardless of member order.
+            let mut hit = false;
             for member in c.members() {
-                if intersects(member, other)? {
-                    return Ok(true);
-                }
+                hit |= intersects(member, other)?;
             }
-            Ok(false)
+            Ok(hit)
         }
         (other, Geometry::GeometryCollection(c)) => {
+            let mut hit = false;
             for member in c.members() {
-                if intersects(other, member)? {
-                    return Ok(true);
-                }
+                hit |= intersects(other, member)?;
             }
-            Ok(false)
+            Ok(hit)
         }
         (Geometry::Euclidean2D(a), Geometry::Euclidean2D(b)) => intersects_2d(a, b),
         (Geometry::Euclidean2D(_), Geometry::Euclidean3D(_))
