@@ -26,13 +26,17 @@
 //! with an epsilon. Shells are assumed closed and non-self-intersecting (the
 //! `Validate` contract); parity over an open shell is meaningless.
 
+use rstar::{RTree, AABB};
+
 use crate::ops::triangulation::Cache;
 use crate::solid::Solid;
 use crate::Euclidean3DGeometry;
 
 use super::kernel::{orient3d, CoordPos, Orientation};
 use super::kernel3d::{point_in_triangle_3d, point_on_segment_3d};
-use super::view3d::{flatten_3d, require_common_frame_3d, Leaf3D, TriangleSet};
+use super::view3d::{
+    flatten_3d, require_common_frame_3d, Leaf3D, SlabSelection, TriBox, TriangleSet,
+};
 use super::{PredicateError, Result};
 
 /// Position of a coordinate relative to a 3D geometry, treating collections as
@@ -123,25 +127,79 @@ pub(crate) fn solid_position(coord: [f64; 3], solid: &Solid, cache: &mut Cache) 
 /// that hold them (the 3D `intersects` keeps them for its boundary tests).
 pub(crate) fn solid_position_sets<'a, 'b>(
     coord: [f64; 3],
-    exterior: &TriangleSet<'a>,
+    exterior: &'b TriangleSet<'a>,
     voids: impl Iterator<Item = &'b TriangleSet<'a>>,
 ) -> CoordPos
 where
     'a: 'b,
 {
-    match shell_position(coord, exterior) {
+    solid_position_from(coord, &Shell::linear(exterior), voids.map(Shell::linear))
+}
+
+/// [`solid_position_sets`] over shells that carry their [`TriangleSet::rtree`],
+/// reusing the index the caller already built (the 3D `intersects` keeps one
+/// per shell for its boundary tests). The parity probe and the on-boundary test
+/// both prune through the tree instead of scanning every triangle.
+pub(crate) fn solid_position_indexed<'a, 'b>(
+    coord: [f64; 3],
+    exterior: (&TriangleSet<'a>, &RTree<TriBox>),
+    voids: impl Iterator<Item = (&'b TriangleSet<'a>, &'b RTree<TriBox>)>,
+) -> CoordPos
+where
+    'a: 'b,
+{
+    solid_position_from(
+        coord,
+        &Shell::indexed(exterior.0, exterior.1),
+        voids.map(|(set, tree)| Shell::indexed(set, tree)),
+    )
+}
+
+/// The shared solid-position walk over a boundary-first classification of each
+/// shell: on the exterior is boundary, inside it and outside every void is
+/// inside, inside a void is a hollow (outside).
+fn solid_position_from<'a, 'b>(
+    coord: [f64; 3],
+    exterior: &Shell<'a, 'b>,
+    voids: impl Iterator<Item = Shell<'a, 'b>>,
+) -> CoordPos {
+    match exterior.position(coord) {
         CoordPos::OnBoundary => return CoordPos::OnBoundary,
         CoordPos::Outside => return CoordPos::Outside,
         CoordPos::Inside => {}
     }
     for void in voids {
-        match shell_position(coord, void) {
+        match void.position(coord) {
             CoordPos::OnBoundary => return CoordPos::OnBoundary,
             CoordPos::Inside => return CoordPos::Outside, // in a hollow
             CoordPos::Outside => {}
         }
     }
     CoordPos::Inside
+}
+
+/// One shell with the strategy to classify a coordinate against it: a linear
+/// scan, or a traversal of the shell's prebuilt triangle-box tree.
+struct Shell<'a, 'b> {
+    set: &'b TriangleSet<'a>,
+    tree: Option<&'b RTree<TriBox>>,
+}
+
+impl<'a, 'b> Shell<'a, 'b> {
+    fn linear(set: &'b TriangleSet<'a>) -> Self {
+        Shell { set, tree: None }
+    }
+
+    fn indexed(set: &'b TriangleSet<'a>, tree: &'b RTree<TriBox>) -> Self {
+        Shell {
+            set,
+            tree: Some(tree),
+        }
+    }
+
+    fn position(&self, coord: [f64; 3]) -> CoordPos {
+        shell_position_impl(coord, self.set, self.tree)
+    }
 }
 
 /// On-surface position: `OnBoundary` anywhere on the triangle set, else
@@ -155,7 +213,15 @@ pub(crate) fn surface_position(coord: [f64; 3], set: &TriangleSet<'_>) -> CoordP
 }
 
 /// Position relative to one closed shell, by exact ray-crossing parity.
-pub(crate) fn shell_position(coord: [f64; 3], shell: &TriangleSet<'_>) -> CoordPos {
+/// Scans every triangle when `tree` is `None` or prunes through the shell's
+/// prebuilt triangle-box tree when it is `Some`. Both visit a superset of the
+/// triangles the probe segment crosses, so the exact parity they count is
+/// identical; the tree only skips triangles the probe cannot reach.
+fn shell_position_impl(
+    coord: [f64; 3],
+    shell: &TriangleSet<'_>,
+    tree: Option<&RTree<TriBox>>,
+) -> CoordPos {
     if shell.is_empty() {
         return CoordPos::Outside;
     }
@@ -163,29 +229,68 @@ pub(crate) fn shell_position(coord: [f64; 3], shell: &TriangleSet<'_>) -> CoordP
     if (0..3).any(|k| coord[k] < min[k] || coord[k] > max[k]) {
         return CoordPos::Outside;
     }
-    if shell.triangles().any(|t| point_in_triangle_3d(coord, t)) {
+    if on_boundary(coord, shell, tree) {
         return CoordPos::OnBoundary;
     }
 
-    'attempt: for attempt in 0..MAX_PROBE_ATTEMPTS {
+    for attempt in 0..MAX_PROBE_ATTEMPTS {
         let target = probe_target(min, max, attempt);
-        let mut crossings = 0usize;
-        for t in shell.triangles() {
-            match probe_crossing(coord, target, t) {
-                ProbeCrossing::Miss => {}
-                ProbeCrossing::Cross => crossings += 1,
-                ProbeCrossing::Degenerate => continue 'attempt,
-            }
+        if let Some(crossings) = count_crossings(coord, target, shell, tree) {
+            return if crossings % 2 == 1 {
+                CoordPos::Inside
+            } else {
+                CoordPos::Outside
+            };
         }
-        return if crossings % 2 == 1 {
-            CoordPos::Inside
-        } else {
-            CoordPos::Outside
-        };
     }
     // Every probe grazed the shell, possible only for wildly degenerate
     // input. Degrade to the boundary answer rather than guess a side.
     CoordPos::OnBoundary
+}
+
+/// Whether the coordinate lies on any shell triangle: a scan, or (indexed) only
+/// the triangles whose box contains the coordinate.
+fn on_boundary(coord: [f64; 3], shell: &TriangleSet<'_>, tree: Option<&RTree<TriBox>>) -> bool {
+    match tree {
+        None => shell.triangles().any(|t| point_in_triangle_3d(coord, t)),
+        Some(tree) => tree
+            .locate_in_envelope_intersecting(&AABB::from_point(coord))
+            .any(|tb| point_in_triangle_3d(coord, shell.triangle(tb.idx as usize))),
+    }
+}
+
+/// Count the probe segment's strict crossings through shell triangles, or
+/// `None` if any is a graze (an unreliable probe direction, to be retried). The
+/// indexed path visits only the triangles the segment's slab reaches, a
+/// superset of those it crosses, so the count matches the scan.
+fn count_crossings(
+    p: [f64; 3],
+    target: [f64; 3],
+    shell: &TriangleSet<'_>,
+    tree: Option<&RTree<TriBox>>,
+) -> Option<usize> {
+    let mut crossings = 0usize;
+    let mut tally = |t: [[f64; 3]; 3]| match probe_crossing(p, target, t) {
+        ProbeCrossing::Miss => Some(()),
+        ProbeCrossing::Cross => {
+            crossings += 1;
+            Some(())
+        }
+        ProbeCrossing::Degenerate => None,
+    };
+    match tree {
+        None => {
+            for t in shell.triangles() {
+                tally(t)?;
+            }
+        }
+        Some(tree) => {
+            for tb in tree.locate_with_selection_function(SlabSelection::segment(p, target)) {
+                tally(shell.triangle(tb.idx as usize))?;
+            }
+        }
+    }
+    Some(crossings)
 }
 
 /// How the probe segment relates to one shell triangle.
@@ -338,9 +443,99 @@ mod tests {
     use crate::point::Point3D;
     use crate::polygon::Polygon3D;
     use crate::predicates::test3d::{
-        box_solid, box_solid_with_void, e, solid_geometry, tetra_solid, Rng,
+        box_solid, box_solid_with_void, e, solid_geometry, subdivided_box_solid, tetra_solid, Rng,
     };
     use pretty_assertions::assert_eq;
+
+    /// Calibration benchmark for the point-in-solid strategies: per-query cost
+    /// of the linear scan versus the reused-tree traversal across shell sizes.
+    /// Run manually:
+    /// `cargo test -p reearth-flow-geometry --features new-geometry \
+    ///  predicates::position3d::tests::scan_vs_indexed_point_in_solid -- --ignored --nocapture`.
+    #[test]
+    #[ignore = "timing benchmark; point-in-solid linear scan vs reused tree"]
+    fn scan_vs_indexed_point_in_solid() {
+        let mut cache = Cache::new();
+        println!("\n  tris | linear ns/query | indexed ns/query | speedup");
+        for w in [2usize, 4, 8, 12, 16, 24] {
+            let solid = subdivided_box_solid(w);
+            let set = TriangleSet::from_shell(solid.exterior(), &mut cache);
+            let tree = set.rtree();
+            let mut rng = Rng(20260722);
+            // Half-integer points in [-1, w+1]^3: a mix of inside and outside,
+            // off the integer face planes so probes rarely need a retry.
+            let queries: Vec<[f64; 3]> = (0..3000)
+                .map(|_| core::array::from_fn(|_| rng.int(-2, 2 * w as i64 + 2) as f64 * 0.5))
+                .collect();
+
+            let time = |f: &dyn Fn([f64; 3]) -> CoordPos| {
+                let mut guard = 0u64;
+                let start = std::time::Instant::now();
+                for &q in &queries {
+                    if f(q) != CoordPos::Outside {
+                        guard += 1;
+                    }
+                }
+                std::hint::black_box(guard);
+                start.elapsed().as_nanos() as f64 / queries.len() as f64
+            };
+            let linear = time(&|q| solid_position_sets(q, &set, core::iter::empty()));
+            let indexed = time(&|q| {
+                solid_position_indexed(
+                    q,
+                    (&set, &tree),
+                    core::iter::empty::<(&TriangleSet, &RTree<TriBox>)>(),
+                )
+            });
+            println!(
+                "{:6} | {:15.1} | {:16.1} | {:.1}x",
+                set.len(),
+                linear,
+                indexed,
+                linear / indexed
+            );
+        }
+    }
+
+    #[test]
+    fn indexed_parity_matches_the_linear_scan() {
+        // The tree-pruned shell classification must agree with the full scan on
+        // every query, over solids with and without voids, at grid points that
+        // land inside, outside, and exactly on faces/edges/vertices.
+        let mut cache = Cache::new();
+        let solids = [
+            box_solid([0.0; 3], [6.0, 6.0, 6.0]),
+            box_solid_with_void([0.0; 3], [6.0, 6.0, 6.0], [2.0; 3], [2.0, 2.0, 2.0]),
+            tetra_solid([
+                [0.0, 0.0, 0.0],
+                [6.0, 0.0, 0.0],
+                [0.0, 6.0, 0.0],
+                [0.0, 0.0, 6.0],
+            ]),
+        ];
+        let mut rng = Rng(20260721);
+        for solid in &solids {
+            let exterior = TriangleSet::from_shell(solid.exterior(), &mut cache);
+            let voids: Vec<TriangleSet<'_>> = solid
+                .interiors()
+                .iter()
+                .map(|shell| TriangleSet::from_shell(shell, &mut cache))
+                .collect();
+            let ext_tree = exterior.rtree();
+            let void_trees: Vec<_> = voids.iter().map(|v| v.rtree()).collect();
+
+            for _ in 0..400 {
+                let q = rng.grid_point(-1, 7);
+                let linear = solid_position_sets(q, &exterior, voids.iter());
+                let indexed = solid_position_indexed(
+                    q,
+                    (&exterior, &ext_tree),
+                    voids.iter().zip(&void_trees),
+                );
+                assert_eq!(linear, indexed, "query {q:?}");
+            }
+        }
+    }
 
     #[test]
     fn box_solid_positions() {

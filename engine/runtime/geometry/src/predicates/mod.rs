@@ -33,8 +33,10 @@
 //!   is volumetric (containment without shell contact intersects).
 //! - [`point_position_3d`]: coordinate vs. 3D geometry, including exact
 //!   ray-parity **point-in-solid**.
-//! - [`ray_cast`] / [`closest_ray_hit`]: [`Ray3D`] casting against every
-//!   surface, with Möller–Trumbore semantics.
+//! - [`ray_cast`] / [`closest_ray_hit`]: one-shot [`Ray3D`] casting against
+//!   every surface, with Möller–Trumbore semantics; [`RayCaster`] prepares a
+//!   geometry once (bounding-volume hierarchy over large surfaces) for casting
+//!   many rays.
 //! - [`relate_coplanar`] / [`relate_xy`]: the DE-9IM matrix of mutually
 //!   coplanar 3D geometries in their shared plane, and of `(x, y)`
 //!   footprints.
@@ -69,7 +71,7 @@ pub use kernel::CoordPos;
 pub use position::point_position_2d;
 pub use position3d::point_position_3d;
 pub use projection::{relate_coplanar, relate_xy};
-pub use ray::{closest_ray_hit, ray_cast, Ray3D, RayHit};
+pub use ray::{closest_ray_hit, ray_cast, Ray3D, RayCaster, RayHit};
 pub use relate::{relate, Dimensions, IntersectionMatrix};
 
 use crate::coordinate::CoordinateFrame;

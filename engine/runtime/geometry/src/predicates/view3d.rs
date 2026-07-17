@@ -17,6 +17,8 @@
 
 use std::borrow::Cow;
 
+use rstar::{RTree, RTreeObject, SelectionFunction, AABB};
+
 use crate::coordinate::CoordinateFrame;
 use crate::index::IndexBuffer;
 use crate::line_string::LineString3D;
@@ -164,6 +166,31 @@ impl<'a> TriangleSet<'a> {
         &self.pool
     }
 
+    /// A bulk-loaded rstar tree over the set's per-triangle boxes, keyed by
+    /// pool-triangle index. The shared acceleration structure behind every 3D
+    /// operation that reuses a surface across many probes (mesh intersection,
+    /// point-in-solid parity, repeated ray casting).
+    pub fn rtree(&self) -> RTree<TriBox> {
+        let objs = (0..self.len())
+            .map(|i| {
+                let t = self.triangle(i);
+                let mut min = t[0];
+                let mut max = t[0];
+                for p in &t[1..] {
+                    for k in 0..3 {
+                        min[k] = min[k].min(p[k]);
+                        max[k] = max[k].max(p[k]);
+                    }
+                }
+                TriBox {
+                    idx: i as u32,
+                    envelope: AABB::from_corners(min, max),
+                }
+            })
+            .collect();
+        RTree::bulk_load(objs)
+    }
+
     /// The triangles' corner coordinates, in order.
     pub fn triangles(&self) -> impl Iterator<Item = [[f64; 3]; 3]> + '_ {
         (0..self.len()).map(|i| self.triangle(i))
@@ -287,6 +314,111 @@ impl<'a> TriangleSet<'a> {
             Shell::PolygonMesh(d) => TriangleSet::from_polygon_mesh_data(d, cache),
             Shell::TriangularMesh(d) => TriangleSet::from_triangular_data(d),
         }
+    }
+}
+
+/// One triangle's pool index and precomputed axis-aligned box, the element
+/// type of [`TriangleSet::rtree`].
+pub(crate) struct TriBox {
+    pub(crate) idx: u32,
+    pub(crate) envelope: AABB<[f64; 3]>,
+}
+
+impl RTreeObject for TriBox {
+    type Envelope = AABB<[f64; 3]>;
+
+    fn envelope(&self) -> Self::Envelope {
+        self.envelope
+    }
+}
+
+/// An rstar [`SelectionFunction`] that descends only the tree nodes a ray or
+/// segment reaches: a node is unpacked when the primitive's parameter range
+/// overlaps the node's box (the slab test). A box the primitive misses cannot
+/// hold a triangle it meets, so pruning it never drops a crossing. The test is
+/// inclusive at the box faces, so a graze along a face still counts.
+pub(crate) struct SlabSelection {
+    origin: [f64; 3],
+    /// `1 / direction` per axis; unused where the axis is `parallel`.
+    inv_dir: [f64; 3],
+    /// Whether the direction is exactly zero on this axis (no slab there).
+    parallel: [bool; 3],
+    t_min: f64,
+    t_max: f64,
+}
+
+impl SlabSelection {
+    /// A ray from `origin` along `direction`, valid for `t >= -tolerance` (so a
+    /// primitive starting on a face is not pruned). `direction` need not be
+    /// unit; the slab test only compares parameter intervals.
+    pub(crate) fn ray(origin: [f64; 3], direction: [f64; 3], tolerance: f64) -> Self {
+        Self::new(origin, direction, -tolerance, f64::INFINITY)
+    }
+
+    /// The closed segment `[a, b]` (parameter range `[0, 1]`).
+    pub(crate) fn segment(a: [f64; 3], b: [f64; 3]) -> Self {
+        let dir = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+        Self::new(a, dir, 0.0, 1.0)
+    }
+
+    fn new(origin: [f64; 3], direction: [f64; 3], t_min: f64, t_max: f64) -> Self {
+        let mut inv_dir = [0.0; 3];
+        let mut parallel = [false; 3];
+        for k in 0..3 {
+            if direction[k] == 0.0 {
+                parallel[k] = true;
+            } else {
+                inv_dir[k] = 1.0 / direction[k];
+            }
+        }
+        SlabSelection {
+            origin,
+            inv_dir,
+            parallel,
+            t_min,
+            t_max,
+        }
+    }
+
+    fn hits(&self, env: &AABB<[f64; 3]>) -> bool {
+        let lo = env.lower();
+        let hi = env.upper();
+        let mut t_enter = self.t_min;
+        let mut t_exit = self.t_max;
+        for k in 0..3 {
+            if self.parallel[k] {
+                if self.origin[k] < lo[k] || self.origin[k] > hi[k] {
+                    return false;
+                }
+                continue;
+            }
+            let inv = self.inv_dir[k];
+            let mut t1 = (lo[k] - self.origin[k]) * inv;
+            let mut t2 = (hi[k] - self.origin[k]) * inv;
+            if t1 > t2 {
+                core::mem::swap(&mut t1, &mut t2);
+            }
+            if t1 > t_enter {
+                t_enter = t1;
+            }
+            if t2 < t_exit {
+                t_exit = t2;
+            }
+            if t_enter > t_exit {
+                return false;
+            }
+        }
+        true
+    }
+}
+
+impl SelectionFunction<TriBox> for SlabSelection {
+    fn should_unpack_parent(&self, envelope: &AABB<[f64; 3]>) -> bool {
+        self.hits(envelope)
+    }
+
+    fn should_unpack_leaf(&self, leaf: &TriBox) -> bool {
+        self.hits(&leaf.envelope)
     }
 }
 

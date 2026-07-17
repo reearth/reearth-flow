@@ -60,6 +60,60 @@ pub(crate) fn box_solid_with_void(
     )
 }
 
+/// A closed triangle shell over the unit-scaled box `[0, w]^3`, each of the six
+/// faces subdivided into a `w x w` grid: `12 * w^2` triangles. Seam vertices are
+/// duplicated per face, which is immaterial to ray-crossing parity. For sizing
+/// the point-in-solid benchmark.
+#[cfg(test)]
+pub(crate) fn subdivided_box_shell(w: usize) -> TriangularMesh3DData {
+    let s = w as f64;
+    // (origin, du, dv) per face; winding is irrelevant to parity.
+    let faces: [([f64; 3], [f64; 3], [f64; 3]); 6] = [
+        ([0.0, 0.0, 0.0], [0.0, 1.0, 0.0], [1.0, 0.0, 0.0]),
+        ([0.0, 0.0, s], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]),
+        ([0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 1.0]),
+        ([0.0, s, 0.0], [0.0, 0.0, 1.0], [1.0, 0.0, 0.0]),
+        ([0.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, 1.0, 0.0]),
+        ([s, 0.0, 0.0], [0.0, 1.0, 0.0], [0.0, 0.0, 1.0]),
+    ];
+    let mut verts: Vec<[f64; 3]> = Vec::new();
+    let mut tris: Vec<u32> = Vec::new();
+    let stride = (w + 1) as u32;
+    for (origin, du, dv) in faces {
+        let base = verts.len() as u32;
+        for i in 0..=w {
+            for j in 0..=w {
+                let (fi, fj) = (i as f64, j as f64);
+                verts.push([
+                    origin[0] + du[0] * fi + dv[0] * fj,
+                    origin[1] + du[1] * fi + dv[1] * fj,
+                    origin[2] + du[2] * fi + dv[2] * fj,
+                ]);
+            }
+        }
+        let at = |i: usize, j: usize| base + i as u32 * stride + j as u32;
+        for i in 0..w {
+            for j in 0..w {
+                tris.extend([
+                    at(i, j),
+                    at(i + 1, j),
+                    at(i + 1, j + 1),
+                    at(i, j),
+                    at(i + 1, j + 1),
+                    at(i, j + 1),
+                ]);
+            }
+        }
+    }
+    TriangularMesh3DData::from_parts(verts, tris).unwrap()
+}
+
+/// A solid over [`subdivided_box_shell`].
+#[cfg(test)]
+pub(crate) fn subdivided_box_solid(w: usize) -> Solid {
+    Solid::from_exterior(e(), Shell::TriangularMesh(subdivided_box_shell(w)))
+}
+
 /// A solid tetrahedron over the four vertices.
 pub(crate) fn tetra_solid(v: [[f64; 3]; 4]) -> Solid {
     let shell =

@@ -16,7 +16,7 @@
 //! Every other pair is a surface/curve point-set test. `Csg` and `PointCloud`
 //! leaves are [`Unsupported`](super::PredicateError::Unsupported).
 
-use rstar::{RTree, RTreeObject, AABB};
+use rstar::{RTree, AABB};
 
 use crate::ops::triangulation::Cache;
 use crate::ops::{Aabb, BoundingBox};
@@ -28,8 +28,8 @@ use super::kernel3d::{
     point_in_triangle_3d, segment_intersects_triangle_3d, segments_intersect_3d,
     triangles_intersect_3d,
 };
-use super::position3d::{on_chain_3d, solid_position_sets};
-use super::view3d::{flatten_3d, require_common_frame_3d, Leaf3D, TriangleSet};
+use super::position3d::{on_chain_3d, solid_position_indexed};
+use super::view3d::{flatten_3d, require_common_frame_3d, Leaf3D, TriBox, TriangleSet};
 use super::{PredicateError, Result};
 
 /// [`intersects`](super::intersects()) over two 3D geometries.
@@ -76,49 +76,16 @@ pub(crate) fn flatten_3d_pair<'a>(
 
 // --- prepared operands --------------------------------------------------------
 
-/// One triangle's index and precomputed rstar envelope.
-struct TriObj {
-    idx: u32,
-    envelope: AABB<[f64; 3]>,
-}
-
-impl RTreeObject for TriObj {
-    type Envelope = AABB<[f64; 3]>;
-
-    fn envelope(&self) -> Self::Envelope {
-        self.envelope
-    }
-}
-
 /// A triangle set with an rstar tree over its triangles' bounding boxes.
 struct Surface<'a> {
     set: TriangleSet<'a>,
-    tree: RTree<TriObj>,
+    tree: RTree<TriBox>,
 }
 
 impl<'a> Surface<'a> {
     fn new(set: TriangleSet<'a>) -> Self {
-        let objs = (0..set.len())
-            .map(|i| {
-                let t = set.triangle(i);
-                let mut min = t[0];
-                let mut max = t[0];
-                for p in &t[1..] {
-                    for k in 0..3 {
-                        min[k] = min[k].min(p[k]);
-                        max[k] = max[k].max(p[k]);
-                    }
-                }
-                TriObj {
-                    idx: i as u32,
-                    envelope: AABB::from_corners(min, max),
-                }
-            })
-            .collect();
-        Surface {
-            set,
-            tree: RTree::bulk_load(objs),
-        }
+        let tree = set.rtree();
+        Surface { set, tree }
     }
 
     /// Whether the coordinate lies on any triangle.
@@ -250,9 +217,14 @@ fn shells<'a>(solid: &'a Solid, cache: &mut Cache) -> Vec<Surface<'a>> {
         .collect()
 }
 
-/// Whether a coordinate lies in a solid's closed point set.
+/// Whether a coordinate lies in a solid's closed point set, reusing each
+/// shell's prebuilt tree for the parity probe instead of scanning its triangles.
 fn solid_has_point(shells: &[Surface<'_>], p: [f64; 3]) -> bool {
-    solid_position_sets(p, &shells[0].set, shells[1..].iter().map(|s| &s.set)) != CoordPos::Outside
+    solid_position_indexed(
+        p,
+        (&shells[0].set, &shells[0].tree),
+        shells[1..].iter().map(|s| (&s.set, &s.tree)),
+    ) != CoordPos::Outside
 }
 
 // --- pair dispatch -------------------------------------------------------------
