@@ -66,15 +66,17 @@ pub fn build_table(features: &[&Feature], options: MetadataOptions) -> PropertyT
     PropertyTable { properties, rows }
 }
 
-/// Attach `table` to `builder` as an `EXT_structural_metadata` property table
-/// plus an `EXT_mesh_features` feature-ID attribute on `primitive`, tagging
-/// each of its vertices with `feature_ids[original_vertex]`. No-op if `table`
-/// has no properties.
+/// Attach `table` to `builder` as one `EXT_structural_metadata` property table
+/// (built once) plus, on each `(primitive, feature_ids)` in `primitives`, an
+/// `EXT_mesh_features` feature-ID attribute tagging each of that primitive's
+/// vertices with `feature_ids[original_vertex]`. All primitives share the one
+/// property table (reference `propertyTable` 0), but each carries its own
+/// per-vertex `feature_ids` (their vertex buffers are independent). No-op if
+/// `table` has no properties.
 pub fn encode(
     table: &PropertyTable,
     builder: &mut Builder,
-    primitive: PrimitiveHandle,
-    feature_ids: &[u32],
+    primitives: &[(PrimitiveHandle, &[u32])],
 ) {
     if table.properties.is_empty() {
         return;
@@ -139,26 +141,28 @@ pub fn encode(
             .expect("EXT_structural_metadata is always serializable"),
     );
 
-    builder.extend(
-        primitive,
-        "EXT_mesh_features",
-        serde_json::to_value(&ExtMeshFeatures {
-            feature_ids: vec![FeatureId {
-                feature_count: table.rows.len(),
-                attribute: 0,
-                property_table: 0,
-            }],
-        })
-        .expect("EXT_mesh_features is always serializable"),
-    );
+    for &(primitive, feature_ids) in primitives {
+        builder.extend(
+            primitive,
+            "EXT_mesh_features",
+            serde_json::to_value(&ExtMeshFeatures {
+                feature_ids: vec![FeatureId {
+                    feature_count: table.rows.len(),
+                    attribute: 0,
+                    property_table: 0,
+                }],
+            })
+            .expect("EXT_mesh_features is always serializable"),
+        );
 
-    // `Semantic::Extras`'s inner name excludes the glTF-spec-mandated
-    // leading underscore; the crate adds it on (de)serialization.
-    builder.set_attribute(
-        primitive,
-        json::mesh::Semantic::Extras("FEATURE_ID_0".to_string()),
-        feature_ids,
-    );
+        // `Semantic::Extras`'s inner name excludes the glTF-spec-mandated
+        // leading underscore; the crate adds it on (de)serialization.
+        builder.set_attribute(
+            primitive,
+            json::mesh::Semantic::Extras("FEATURE_ID_0".to_string()),
+            feature_ids,
+        );
+    }
 }
 
 #[derive(Serialize)]

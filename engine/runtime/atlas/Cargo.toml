@@ -10,6 +10,12 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[features]
+# Under the new-geometry migration, flow's canonical UV origin is top-left
+# (v down). Off (legacy geometry), the packer keeps the bottom-left (v up)
+# convention its old-writer caller feeds it.
+new-geometry = []
+
 [dependencies]
 image.workspace = true
 rstar.workspace = true

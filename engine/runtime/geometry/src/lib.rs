@@ -136,6 +136,12 @@ impl GeometryCollection {
     pub fn members(&self) -> &[Geometry] {
         &self.members
     }
+
+    /// Per-member attributes, parallel to [`members`](Self::members), or empty
+    /// if no member carries any.
+    pub fn member_attributes(&self) -> &[Attributes] {
+        &self.attrs
+    }
 }
 
 /// 2D-embedded geometry. All coordinates are 2D `(x, y)`; some leaves carry an
