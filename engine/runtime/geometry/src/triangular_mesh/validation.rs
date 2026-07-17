@@ -1,8 +1,8 @@
 use super::{TriangularMesh2D, TriangularMesh3D, TriangularMesh3DData};
 use crate::validation_next::{
-    check_duplicate_points, check_edge_orientation_3d, check_finite_2d, check_finite_3d,
-    check_ring_orientation_2d, tetra_volume_6x, FaceTopology, Validate, ValidationParams,
-    ValidationReport, ValidationType,
+    check_degenerate_ring_2d, check_degenerate_ring_3d, check_duplicate_points,
+    check_edge_orientation_3d, check_finite_2d, check_finite_3d, check_ring_orientation_2d,
+    tetra_volume_6x, FaceTopology, Validate, ValidationParams, ValidationReport, ValidationType,
 };
 use crate::{Euclidean3DGeometry, Geometry};
 
@@ -97,6 +97,20 @@ impl Validate for TriangularMesh2D {
             )
         })
     }
+
+    fn check_degenerate(&self, params: &ValidationParams) -> ValidationReport {
+        // Each triangle is a three-vertex open ring measured by area.
+        ValidationReport::ran(|r| {
+            for [a, b, c] in self.triangles() {
+                let ring = [
+                    self.vertices[a as usize],
+                    self.vertices[b as usize],
+                    self.vertices[c as usize],
+                ];
+                check_degenerate_ring_2d(&self.frame, &ring, params.degenerate.min_area, r);
+            }
+        })
+    }
 }
 
 impl Validate for TriangularMesh3D {
@@ -136,6 +150,21 @@ impl Validate for TriangularMesh3D {
                 params.duplicate_tolerance,
                 r,
             )
+        })
+    }
+
+    fn check_degenerate(&self, params: &ValidationParams) -> ValidationReport {
+        // Each triangle is a three-vertex open ring measured by area.
+        ValidationReport::ran(|r| {
+            let vertices = self.data.vertices();
+            for [a, b, c] in self.triangles() {
+                let ring = [
+                    vertices[a as usize],
+                    vertices[b as usize],
+                    vertices[c as usize],
+                ];
+                check_degenerate_ring_3d(&self.frame, &ring, params.degenerate.min_area, r);
+            }
         })
     }
 }
@@ -262,5 +291,61 @@ mod tests {
             positions[0],
             Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(_))
         ));
+    }
+
+    #[test]
+    fn healthy_triangles_are_not_degenerate() {
+        let m = TriangularMesh2D::from_parts(
+            CoordinateFrame::Euclidean,
+            vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]],
+            [0u32, 1, 2],
+        )
+        .unwrap();
+        assert!(is_success(&m, ValidationType::Degenerate));
+    }
+
+    #[test]
+    fn collinear_triangle_is_degenerate() {
+        // The second triangle spans collinear vertices: zero area.
+        let m = TriangularMesh3D::from_parts(
+            CoordinateFrame::Euclidean,
+            vec![
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [2.0, 0.0, 0.0],
+            ],
+            [0u32, 1, 2, 0, 1, 3],
+        )
+        .unwrap();
+        let positions = failures(&m, ValidationType::Degenerate);
+        assert_eq!(positions.len(), 1);
+        // The position is the offending triangle as a three-vertex line.
+        assert!(matches!(
+            positions[0],
+            Geometry::Euclidean3D(Euclidean3DGeometry::LineString(_))
+        ));
+    }
+
+    #[test]
+    fn min_area_threshold_applies_per_triangle() {
+        // Two triangles of area 0.5 each.
+        let m = TriangularMesh2D::from_parts(
+            CoordinateFrame::Euclidean,
+            vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]],
+            [0u32, 1, 2, 1, 3, 2],
+        )
+        .unwrap();
+        let at_area = ValidationParams {
+            degenerate: crate::validation_next::DegenerateThresholds {
+                min_area: 0.5,
+                ..Default::default()
+            },
+            ..Default::default()
+        };
+        match validate_one(&m, ValidationType::Degenerate, &at_area) {
+            ValidationResult::Failed(positions) => assert_eq!(positions.len(), 2),
+            other => panic!("expected both triangles to flag, got {other:?}"),
+        }
     }
 }

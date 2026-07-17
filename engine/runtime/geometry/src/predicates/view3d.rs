@@ -136,6 +136,11 @@ pub(crate) fn require_common_frame_3d(a: &[Leaf3D<'_>], b: &[Leaf3D<'_>]) -> sup
 pub(crate) struct TriangleSet<'a> {
     pool: Cow<'a, [[f64; 3]]>,
     tris: Vec<[u32; 3]>,
+    /// Cumulative triangle counts per source face: face `f`'s triangles are
+    /// `face_starts[f]..face_starts[f + 1]`. Faces keep their source order; a
+    /// face that produced no triangles contributes an empty span.
+    #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
+    face_starts: Vec<u32>,
 }
 
 impl<'a> TriangleSet<'a> {
@@ -196,11 +201,21 @@ impl<'a> TriangleSet<'a> {
         (0..self.len()).map(|i| self.triangle(i))
     }
 
-    /// View a triangular mesh's data verbatim: borrowed pool, widened indices.
+    /// The source face of triangle `i`.
+    #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
+    pub fn face_of(&self, i: usize) -> usize {
+        self.face_starts.partition_point(|&s| s <= i as u32) - 1
+    }
+
+    /// View a triangular mesh's data verbatim: borrowed pool, widened indices;
+    /// each triangle is its own face.
     pub fn from_triangular_data(data: &'a TriangularMesh3DData) -> Self {
+        let tris: Vec<[u32; 3]> = data.triangles().collect();
+        let face_starts = (0..=tris.len() as u32).collect();
         TriangleSet {
             pool: Cow::Borrowed(data.vertices()),
-            tris: data.triangles().collect(),
+            tris,
+            face_starts,
         }
     }
 
@@ -217,6 +232,7 @@ impl<'a> TriangleSet<'a> {
         let earcut = &mut cache.earcut;
         let buffers = &mut cache.buffers;
         let mut tris: Vec<[u32; 3]> = Vec::new();
+        let mut face_starts: Vec<u32> = vec![0];
         let n = indices.len();
         if n != 0 {
             let n_faces = offsets.len() + 1;
@@ -261,6 +277,7 @@ impl<'a> TriangleSet<'a> {
                         ]
                     }));
                 }
+                face_starts.push(tris.len() as u32);
                 start = end;
             }
         }
@@ -268,6 +285,7 @@ impl<'a> TriangleSet<'a> {
         TriangleSet {
             pool: Cow::Borrowed(data.vertices()),
             tris,
+            face_starts,
         }
     }
 
@@ -286,6 +304,7 @@ impl<'a> TriangleSet<'a> {
                 return TriangleSet {
                     pool: Cow::Owned(pool),
                     tris: Vec::new(),
+                    face_starts: vec![0, 0],
                 };
             }
             let open = if ring.len() >= 2 && ring.first() == ring.last() {
@@ -301,10 +320,12 @@ impl<'a> TriangleSet<'a> {
         let out = &mut cache.buffers.out;
         out.clear();
         triangulate_3d(earcut, &pool, num_outer, &holes, out);
-        let tris = out.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+        let tris: Vec<[u32; 3]> = out.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
+        let face_starts = vec![0, tris.len() as u32];
         TriangleSet {
             pool: Cow::Owned(pool),
             tris,
+            face_starts,
         }
     }
 
@@ -537,5 +558,31 @@ mod tests {
             .triangles()
             .flat_map(|t| t.into_iter())
             .all(|p| mesh.vertices().contains(&p)));
+        // Each quad contributes two triangles, attributed to its face.
+        assert_eq!(set.face_starts.len() - 1, 2);
+        assert_eq!(set.face_of(0), 0);
+        assert_eq!(set.face_of(1), 0);
+        assert_eq!(set.face_of(2), 1);
+        assert_eq!(set.face_of(3), 1);
+    }
+
+    #[test]
+    fn triangular_data_makes_each_triangle_a_face() {
+        let mesh = crate::triangular_mesh::TriangularMesh3D::from_parts(
+            e(),
+            vec![
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [1.0, 1.0, 0.0],
+            ],
+            [0u32, 1, 2, 1, 3, 2],
+        )
+        .unwrap();
+        let set = TriangleSet::from_triangular_data(mesh.data());
+        assert_eq!(set.len(), 2);
+        assert_eq!(set.face_starts.len() - 1, 2);
+        assert_eq!(set.face_of(0), 0);
+        assert_eq!(set.face_of(1), 1);
     }
 }

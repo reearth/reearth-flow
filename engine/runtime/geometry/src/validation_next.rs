@@ -1,5 +1,18 @@
 //! Validations/predicates on geometry types.
 
+mod containment;
+mod measure;
+mod simplicity;
+
+pub(crate) use containment::{check_holes_in_exterior_2d, check_holes_in_exterior_3d};
+pub(crate) use measure::{
+    check_degenerate_chain_2d, check_degenerate_chain_3d, check_degenerate_ring_2d,
+    check_degenerate_ring_3d, check_planarity_3d,
+};
+pub(crate) use simplicity::{
+    check_chain_simple_2d, check_chain_simple_3d, check_ring_pair_2d, check_ring_pair_3d,
+};
+
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 
@@ -96,21 +109,33 @@ impl fmt::Display for ValidationType {
 
 /// Tunable thresholds for the checks that admit them. Which checks *run* is fixed
 /// per leaf type ([`applicable_checks`](Validate::applicable_checks)); these only
-/// tune *how* a check decides. [`Default`] gives the strictest sensible behavior
-/// (exact-equality duplicates, zero-tolerance planarity and degeneracy), so an
-/// omitted field means "no slack".
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Default)]
+/// tune *how* a check decides. [`Default`] gives exact-equality duplicate
+/// detection, zero-tolerance degeneracy (only exactly zero measures flag), and
+/// the standard planarity ratio.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct ValidationParams {
     /// [`DuplicatePoints`](ValidationType::DuplicatePoints): `None` = exact bit
     /// equality; `Some(t)` = two coordinates coincide when within distance `t`.
     pub duplicate_tolerance: Option<f64>,
-    /// [`Planarity`](ValidationType::Planarity): the greatest distance a ring
-    /// vertex may sit off the ring's best-fit plane before the ring is non-planar.
+    /// [`Planarity`](ValidationType::Planarity): the greatest ratio of the face
+    /// vertices' convex-hull minimum height to the hull's diameter before the
+    /// face is non-planar. Dimensionless, so the verdict is scale-invariant;
+    /// defaults to `0.001`.
     pub planarity_tolerance: f64,
     /// [`Degenerate`](ValidationType::Degenerate): the smallest measure a geometry
     /// may have before it counts as degenerate.
     pub degenerate: DegenerateThresholds,
+}
+
+impl Default for ValidationParams {
+    fn default() -> Self {
+        Self {
+            duplicate_tolerance: None,
+            planarity_tolerance: 0.001,
+            degenerate: DegenerateThresholds::default(),
+        }
+    }
 }
 
 /// The per-dimension measures below which a geometry is
@@ -630,7 +655,7 @@ pub(crate) fn check_unclosed_ring_3d(
 /// The bit pattern of a coordinate component, normalizing `-0.0` to `+0.0` so the
 /// two hash and compare equal in the exact duplicate scan.
 #[inline]
-fn norm_bits(x: f64) -> u64 {
+pub(crate) fn norm_bits(x: f64) -> u64 {
     (x + 0.0).to_bits()
 }
 
@@ -713,7 +738,7 @@ pub(crate) fn check_duplicate_points<const N: usize>(
 /// Twice the signed area of a 2D ring (shoelace), wrapping the last vertex back
 /// to the first. Positive = counter-clockwise, negative = clockwise, zero =
 /// degenerate / collinear.
-fn signed_area_2d(ring: &[[f64; 2]]) -> f64 {
+pub(crate) fn signed_area_2d(ring: &[[f64; 2]]) -> f64 {
     let n = ring.len();
     let mut acc = 0.0;
     for i in 0..n {
@@ -1219,13 +1244,16 @@ mod tests {
     #[test]
     #[should_panic(expected = "SelfIntersection validation is not implemented")]
     fn applicable_but_unimplemented_check_panics() {
-        // `SelfIntersection` applies to a line string but is a TODO; reaching it
-        // (its prerequisites hold) must panic rather than report `Unvalidated`.
-        let ls = LineString3D::from_coords(
-            CoordinateFrame::Euclidean,
-            [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]],
-        );
-        let _ = validate_one(&ls, ValidationType::SelfIntersection, &params());
+        // A leaf listing a check it does not implement must panic loudly when
+        // the check is reached, rather than report `Unvalidated`. No shipped
+        // leaf is in that state anymore, so a stub stands in.
+        struct Stub;
+        impl Validate for Stub {
+            fn applicable_checks(&self) -> &'static [ValidationType] {
+                &[ValidationType::SelfIntersection]
+            }
+        }
+        let _ = validate_one(&Stub, ValidationType::SelfIntersection, &params());
     }
 
     #[test]

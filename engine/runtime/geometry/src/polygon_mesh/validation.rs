@@ -1,13 +1,25 @@
+use std::collections::BTreeSet;
+
 use super::{PolygonMesh2D, PolygonMesh3D, PolygonMesh3DData};
 use crate::coordinate::CoordinateFrame;
 use crate::index::IndexBuffer;
-use crate::validation_next::{
-    check_duplicate_points, check_finite_2d, check_finite_3d, check_ring_orientation_2d,
-    check_too_few_points_2d, check_too_few_points_3d, check_unclosed_ring_2d,
-    check_unclosed_ring_3d, open_ring, tetra_volume_6x, EdgeOrientation, FaceOrientation,
-    FaceTopology, Validate, ValidationParams, ValidationReport, ValidationType,
+use crate::line_string::{LineString2D, LineString3D};
+use crate::ops::triangulation::Cache;
+use crate::point::Point2D;
+use crate::predicates::surface_intersection::{
+    face_overlap_conflicts_2d, intersecting_faces_3d, FaceConflict2D,
 };
-use crate::{Euclidean3DGeometry, Geometry};
+use crate::predicates::view::AreaView;
+use crate::predicates::view3d::TriangleSet;
+use crate::validation_next::{
+    check_chain_simple_2d, check_chain_simple_3d, check_degenerate_ring_2d,
+    check_degenerate_ring_3d, check_duplicate_points, check_finite_2d, check_finite_3d,
+    check_holes_in_exterior_2d, check_holes_in_exterior_3d, check_ring_orientation_2d,
+    check_ring_pair_2d, check_ring_pair_3d, check_too_few_points_2d, check_too_few_points_3d,
+    check_unclosed_ring_2d, check_unclosed_ring_3d, open_ring, tetra_volume_6x, EdgeOrientation,
+    FaceOrientation, FaceTopology, Validate, ValidationParams, ValidationReport, ValidationType,
+};
+use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
 /// Decode the CSR face topology and invoke `f` once per face ring — each face's
 /// exterior ring, then its hole rings — passing the ring's vertex indices and
@@ -64,6 +76,57 @@ fn for_each_ring(
 /// The `[f64; N]` coordinates of one ring, gathered from the shared vertex pool.
 fn ring_coords<const N: usize>(vertices: &[[f64; N]], ring: &[u32]) -> Vec<[f64; N]> {
     ring.iter().map(|&i| vertices[i as usize]).collect()
+}
+
+/// Decode the CSR face topology and invoke `f` once per face with that face's
+/// ring coordinates, exterior first, then the face's holes.
+fn for_each_face_coords<const N: usize>(
+    vertices: &[[f64; N]],
+    face_indices: &IndexBuffer<1>,
+    face_offsets: &IndexBuffer<1>,
+    interior_offsets: &IndexBuffer<1>,
+    mut f: impl FnMut(&[Vec<[f64; N]>]),
+) {
+    let mut face: Vec<Vec<[f64; N]>> = Vec::new();
+    for_each_ring(
+        face_indices,
+        face_offsets,
+        interior_offsets,
+        |ring, is_exterior| {
+            if is_exterior && !face.is_empty() {
+                f(&face);
+                face.clear();
+            }
+            face.push(ring_coords(vertices, ring));
+        },
+    );
+    if !face.is_empty() {
+        f(&face);
+    }
+}
+
+/// Report a [`ValidationType::SelfIntersection`] problem for every face whose
+/// rings are not simple or cross each other. Shared by the 2D and 3D meshes;
+/// `csr` is the mesh's `(face_indices, face_offsets, interior_offsets)`, and
+/// `check_ring` / `check_pair` are the dimension-specific detectors.
+fn check_mesh_ring_self_intersections<const N: usize>(
+    frame: &CoordinateFrame,
+    vertices: &[[f64; N]],
+    csr: (&IndexBuffer<1>, &IndexBuffer<1>, &IndexBuffer<1>),
+    check_ring: impl Fn(&CoordinateFrame, &[[f64; N]], &mut ValidationReport),
+    check_pair: impl Fn(&CoordinateFrame, &[[f64; N]], &[[f64; N]], &mut ValidationReport),
+    report: &mut ValidationReport,
+) {
+    for_each_face_coords(vertices, csr.0, csr.1, csr.2, |rings| {
+        for ring in rings {
+            check_ring(frame, ring, report);
+        }
+        for i in 0..rings.len() {
+            for j in (i + 1)..rings.len() {
+                check_pair(frame, &rings[i], &rings[j], report);
+            }
+        }
+    });
 }
 
 /// Report a [`ValidationType::TooFewPoints`] problem for every face ring with
@@ -169,6 +232,127 @@ impl PolygonMesh3DData {
                         is_exterior,
                         report,
                     );
+                }
+            },
+        );
+    }
+
+    /// Report a [`ValidationType::SelfIntersection`] problem for every face
+    /// whose rings are not simple or cross each other. Shared by the
+    /// [`PolygonMesh3D`] leaf and [`Solid`](crate::solid::Solid) shells, which
+    /// supply the frame.
+    pub(crate) fn check_ring_self_intersections(
+        &self,
+        frame: &CoordinateFrame,
+        report: &mut ValidationReport,
+    ) {
+        check_mesh_ring_self_intersections(
+            frame,
+            &self.vertices,
+            (
+                &self.face_indices,
+                &self.face_offsets,
+                &self.interior_offsets,
+            ),
+            check_chain_simple_3d,
+            check_ring_pair_3d,
+            report,
+        );
+    }
+
+    /// Report an [`ValidationType::InteriorRingContainment`] problem for every
+    /// face hole outside its own face's exterior ring. Shared by the
+    /// [`PolygonMesh3D`] leaf and [`Solid`](crate::solid::Solid) shells.
+    pub(crate) fn check_interior_ring_containment(
+        &self,
+        frame: &CoordinateFrame,
+        report: &mut ValidationReport,
+    ) {
+        for_each_face_coords(
+            &self.vertices,
+            &self.face_indices,
+            &self.face_offsets,
+            &self.interior_offsets,
+            |rings| {
+                if rings.len() > 1 {
+                    check_holes_in_exterior_3d(
+                        frame,
+                        &rings[0],
+                        rings[1..].iter().map(|hole| hole.as_slice()),
+                        report,
+                    );
+                }
+            },
+        );
+    }
+
+    /// Report a [`ValidationType::Degenerate`] problem for every face ring
+    /// whose area is at most `min_area`. Shared by the [`PolygonMesh3D`] leaf
+    /// and [`Solid`](crate::solid::Solid) shells.
+    pub(crate) fn check_degenerate_rings(
+        &self,
+        frame: &CoordinateFrame,
+        min_area: f64,
+        report: &mut ValidationReport,
+    ) {
+        for_each_ring(
+            &self.face_indices,
+            &self.face_offsets,
+            &self.interior_offsets,
+            |ring, _| {
+                check_degenerate_ring_3d(
+                    frame,
+                    &ring_coords(&self.vertices, ring),
+                    min_area,
+                    report,
+                );
+            },
+        );
+    }
+
+    /// Report a [`ValidationType::SelfIntersection`] problem for every face
+    /// that intersects another face of this mesh beyond shared corners and
+    /// edges, through the triangulated surface. The position is the offending
+    /// face's exterior ring.
+    pub(crate) fn check_face_intersections(
+        &self,
+        frame: &CoordinateFrame,
+        report: &mut ValidationReport,
+    ) {
+        let mut cache = Cache::new();
+        let set = TriangleSet::from_polygon_mesh_data(self, &mut cache);
+        let conflicts = intersecting_faces_3d(&[&set]);
+        let faces: BTreeSet<usize> = conflicts.into_iter().map(|(_, face)| face).collect();
+        self.push_face_exteriors(frame, &faces, report);
+    }
+
+    /// Push the exterior ring of each listed face (by CSR face order) as a
+    /// LineString position.
+    pub(crate) fn push_face_exteriors(
+        &self,
+        frame: &CoordinateFrame,
+        faces: &BTreeSet<usize>,
+        report: &mut ValidationReport,
+    ) {
+        if faces.is_empty() {
+            return;
+        }
+        let mut face = usize::MAX;
+        for_each_ring(
+            &self.face_indices,
+            &self.face_offsets,
+            &self.interior_offsets,
+            |ring, is_exterior| {
+                if is_exterior {
+                    face = face.wrapping_add(1);
+                    if faces.contains(&face) {
+                        report.push(Geometry::Euclidean3D(Euclidean3DGeometry::LineString(
+                            LineString3D::from_coords(
+                                frame.clone(),
+                                ring.iter().map(|&i| self.vertices[i as usize]),
+                            ),
+                        )));
+                    }
                 }
             },
         );
@@ -322,6 +506,77 @@ impl Validate for PolygonMesh2D {
             )
         })
     }
+
+    fn check_self_intersection(&self, _params: &ValidationParams) -> ValidationReport {
+        // Per-face ring simplicity plus the global face-vs-face overlap scan.
+        ValidationReport::ran(|r| {
+            check_mesh_ring_self_intersections(
+                &self.frame,
+                &self.vertices,
+                (
+                    &self.face_indices,
+                    &self.face_offsets,
+                    &self.interior_offsets,
+                ),
+                check_chain_simple_2d,
+                check_ring_pair_2d,
+                r,
+            );
+            let view = AreaView::from_polygon_mesh(self);
+            face_overlap_conflicts_2d(&view, |conflict| match conflict {
+                FaceConflict2D::Crossing(p) => {
+                    r.push(Geometry::Euclidean2D(Euclidean2DGeometry::Point(
+                        Point2D::new(self.frame.clone(), p),
+                    )));
+                }
+                FaceConflict2D::Contained { face } => {
+                    let coords: Vec<[f64; 2]> = view.face(face).exterior().coords().collect();
+                    r.push(Geometry::Euclidean2D(Euclidean2DGeometry::LineString(
+                        LineString2D::from_coords(self.frame.clone(), coords),
+                    )));
+                }
+            });
+        })
+    }
+
+    fn check_interior_ring_containment(&self, _params: &ValidationParams) -> ValidationReport {
+        ValidationReport::ran(|r| {
+            for_each_face_coords(
+                &self.vertices,
+                &self.face_indices,
+                &self.face_offsets,
+                &self.interior_offsets,
+                |rings| {
+                    if rings.len() > 1 {
+                        check_holes_in_exterior_2d(
+                            &self.frame,
+                            &rings[0],
+                            rings[1..].iter().map(|hole| hole.as_slice()),
+                            r,
+                        );
+                    }
+                },
+            );
+        })
+    }
+
+    fn check_degenerate(&self, params: &ValidationParams) -> ValidationReport {
+        ValidationReport::ran(|r| {
+            for_each_ring(
+                &self.face_indices,
+                &self.face_offsets,
+                &self.interior_offsets,
+                |ring, _| {
+                    check_degenerate_ring_2d(
+                        &self.frame,
+                        &ring_coords(&self.vertices, ring),
+                        params.degenerate.min_area,
+                        r,
+                    );
+                },
+            );
+        })
+    }
 }
 
 impl Validate for PolygonMesh3D {
@@ -366,6 +621,25 @@ impl Validate for PolygonMesh3D {
                 params.duplicate_tolerance,
                 r,
             )
+        })
+    }
+
+    fn check_self_intersection(&self, _params: &ValidationParams) -> ValidationReport {
+        // Per-face ring simplicity plus the global face-vs-face surface scan.
+        ValidationReport::ran(|r| {
+            self.data.check_ring_self_intersections(&self.frame, r);
+            self.data.check_face_intersections(&self.frame, r);
+        })
+    }
+
+    fn check_interior_ring_containment(&self, _params: &ValidationParams) -> ValidationReport {
+        ValidationReport::ran(|r| self.data.check_interior_ring_containment(&self.frame, r))
+    }
+
+    fn check_degenerate(&self, params: &ValidationParams) -> ValidationReport {
+        ValidationReport::ran(|r| {
+            self.data
+                .check_degenerate_rings(&self.frame, params.degenerate.min_area, r)
         })
     }
 }
@@ -515,5 +789,254 @@ mod tests {
             [1.0, 1.0, 0.0],
         ]);
         assert_eq!(failure_count(&m, ValidationType::Orientation), 1);
+    }
+
+    #[test]
+    fn shared_edge_2d_faces_are_not_self_intersecting() {
+        let m = PolygonMesh2D::from_parts(
+            CoordinateFrame::Euclidean,
+            vec![
+                [0.0, 0.0],
+                [1.0, 0.0],
+                [1.0, 1.0],
+                [0.0, 1.0],
+                [2.0, 0.0],
+                [2.0, 1.0],
+            ],
+            [[0u32, 1, 2, 3, 0], [1, 4, 5, 2, 1]],
+        )
+        .unwrap();
+        assert!(is_success(&m, ValidationType::SelfIntersection));
+    }
+
+    #[test]
+    fn crossing_2d_faces_self_intersect_at_a_point() {
+        let m = PolygonMesh2D::from_parts(
+            CoordinateFrame::Euclidean,
+            vec![
+                [0.0, 0.0],
+                [2.0, 0.0],
+                [2.0, 2.0],
+                [0.0, 2.0],
+                [1.0, 1.0],
+                [3.0, 1.0],
+                [3.0, 3.0],
+                [1.0, 3.0],
+            ],
+            [[0u32, 1, 2, 3, 0], [4, 5, 6, 7, 4]],
+        )
+        .unwrap();
+        assert!(failure_count(&m, ValidationType::SelfIntersection) >= 1);
+    }
+
+    #[test]
+    fn face_inside_another_2d_face_self_intersects() {
+        let m = PolygonMesh2D::from_parts(
+            CoordinateFrame::Euclidean,
+            vec![
+                [0.0, 0.0],
+                [4.0, 0.0],
+                [4.0, 4.0],
+                [0.0, 4.0],
+                [1.0, 1.0],
+                [2.0, 1.0],
+                [2.0, 2.0],
+                [1.0, 2.0],
+            ],
+            [[0u32, 1, 2, 3, 0], [4, 5, 6, 7, 4]],
+        )
+        .unwrap();
+        let positions = match validate_one(
+            &m,
+            ValidationType::SelfIntersection,
+            &ValidationParams::default(),
+        ) {
+            ValidationResult::Failed(positions) => positions,
+            other => panic!("expected a failure, got {other:?}"),
+        };
+        // The contained face is reported as its exterior ring.
+        assert!(positions.iter().any(|p| matches!(
+            p,
+            crate::Geometry::Euclidean2D(crate::Euclidean2DGeometry::LineString(_))
+        )));
+    }
+
+    #[test]
+    fn bowtie_2d_face_ring_self_intersects() {
+        let m = PolygonMesh2D::from_parts(
+            CoordinateFrame::Euclidean,
+            vec![[0.0, 0.0], [2.0, 2.0], [2.0, 0.0], [0.0, 2.0]],
+            [[0u32, 1, 2, 3, 0]],
+        )
+        .unwrap();
+        assert!(failure_count(&m, ValidationType::SelfIntersection) >= 1);
+    }
+
+    #[test]
+    fn mesh_2d_hole_outside_its_face_is_not_contained() {
+        // One face with a hole ring lying outside the exterior.
+        let m = PolygonMesh2D::from_raw_parts(
+            CoordinateFrame::Euclidean,
+            vec![
+                [0.0, 0.0],
+                [4.0, 0.0],
+                [4.0, 4.0],
+                [0.0, 4.0],
+                [5.0, 5.0],
+                [6.0, 5.0],
+                [6.0, 6.0],
+                [5.0, 6.0],
+            ],
+            vec![0, 1, 2, 3, 0, 4, 5, 6, 7, 4],
+            vec![],
+            vec![5],
+        )
+        .unwrap();
+        assert_eq!(
+            failure_count(&m, ValidationType::InteriorRingContainment),
+            1
+        );
+    }
+
+    #[test]
+    fn mesh_2d_hole_inside_its_face_is_contained() {
+        let m = PolygonMesh2D::from_raw_parts(
+            CoordinateFrame::Euclidean,
+            vec![
+                [0.0, 0.0],
+                [4.0, 0.0],
+                [4.0, 4.0],
+                [0.0, 4.0],
+                [1.0, 1.0],
+                [2.0, 1.0],
+                [2.0, 2.0],
+                [1.0, 2.0],
+            ],
+            vec![0, 1, 2, 3, 0, 4, 7, 6, 5, 4],
+            vec![],
+            vec![5],
+        )
+        .unwrap();
+        assert!(is_success(&m, ValidationType::InteriorRingContainment));
+    }
+
+    #[test]
+    fn zero_area_2d_face_ring_is_degenerate() {
+        let m = PolygonMesh2D::from_parts(
+            CoordinateFrame::Euclidean,
+            vec![[0.0, 0.0], [1.0, 1.0], [2.0, 2.0]],
+            [[0u32, 1, 2, 0]],
+        )
+        .unwrap();
+        assert_eq!(failure_count(&m, ValidationType::Degenerate), 1);
+    }
+
+    #[test]
+    fn folded_3d_faces_sharing_an_edge_are_not_self_intersecting() {
+        // Two wings folded along the shared 0-1 edge.
+        let m = PolygonMesh3D::from_parts(
+            CoordinateFrame::Euclidean,
+            vec![
+                [0.0, 0.0, 0.0],
+                [4.0, 0.0, 0.0],
+                [0.0, 4.0, 0.0],
+                [0.0, -4.0, 4.0],
+            ],
+            [[0u32, 1, 2, 0], [1, 0, 3, 1]],
+        )
+        .unwrap();
+        assert!(is_success(&m, ValidationType::SelfIntersection));
+    }
+
+    #[test]
+    fn coplanar_overlapping_3d_faces_self_intersect() {
+        // Two coplanar triangles on the same side of their shared edge.
+        let m = PolygonMesh3D::from_parts(
+            CoordinateFrame::Euclidean,
+            vec![
+                [0.0, 0.0, 0.0],
+                [4.0, 0.0, 0.0],
+                [0.0, 4.0, 0.0],
+                [2.0, 4.0, 0.0],
+            ],
+            [[0u32, 1, 2, 0], [0, 1, 3, 0]],
+        )
+        .unwrap();
+        assert_eq!(failure_count(&m, ValidationType::SelfIntersection), 2);
+    }
+
+    #[test]
+    fn piercing_3d_face_self_intersects() {
+        // The second face passes through the first away from any shared vertex.
+        let m = PolygonMesh3D::from_parts(
+            CoordinateFrame::Euclidean,
+            vec![
+                [0.0, 0.0, 0.0],
+                [4.0, 0.0, 0.0],
+                [0.0, 4.0, 0.0],
+                [1.0, 1.0, -1.0],
+                [1.0, 1.0, 1.0],
+                [3.0, 3.0, 1.0],
+            ],
+            [[0u32, 1, 2, 0], [3, 4, 5, 3]],
+        )
+        .unwrap();
+        assert_eq!(failure_count(&m, ValidationType::SelfIntersection), 2);
+    }
+
+    #[test]
+    fn vertex_fan_3d_faces_are_not_self_intersecting() {
+        // Two triangles sharing only vertex 0, bending apart.
+        let m = PolygonMesh3D::from_parts(
+            CoordinateFrame::Euclidean,
+            vec![
+                [0.0, 0.0, 0.0],
+                [4.0, 0.0, 0.0],
+                [0.0, 4.0, 0.0],
+                [-4.0, 0.0, 1.0],
+                [0.0, -4.0, 1.0],
+            ],
+            [[0u32, 1, 2, 0], [0, 3, 4, 0]],
+        )
+        .unwrap();
+        assert!(is_success(&m, ValidationType::SelfIntersection));
+    }
+
+    #[test]
+    fn mesh_3d_hole_outside_its_face_is_not_contained() {
+        let m = face_with_hole(vec![
+            [5.0, 5.0, 0.0],
+            [5.0, 6.0, 0.0],
+            [6.0, 6.0, 0.0],
+            [6.0, 5.0, 0.0],
+            [5.0, 5.0, 0.0],
+        ]);
+        assert_eq!(
+            failure_count(&m, ValidationType::InteriorRingContainment),
+            1
+        );
+    }
+
+    #[test]
+    fn mesh_3d_hole_inside_its_face_is_contained() {
+        let m = face_with_hole(vec![
+            [1.0, 1.0, 0.0],
+            [1.0, 2.0, 0.0],
+            [2.0, 2.0, 0.0],
+            [2.0, 1.0, 0.0],
+            [1.0, 1.0, 0.0],
+        ]);
+        assert!(is_success(&m, ValidationType::InteriorRingContainment));
+    }
+
+    #[test]
+    fn zero_area_3d_face_ring_is_degenerate() {
+        let m = PolygonMesh3D::from_parts(
+            CoordinateFrame::Euclidean,
+            vec![[0.0, 0.0, 0.0], [1.0, 1.0, 1.0], [2.0, 2.0, 2.0]],
+            [[0u32, 1, 2, 0]],
+        )
+        .unwrap();
+        assert_eq!(failure_count(&m, ValidationType::Degenerate), 1);
     }
 }

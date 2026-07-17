@@ -16,6 +16,8 @@
 //! [`ray`](super::ray) and is deliberately not exact; see there.
 
 use super::kernel::{orient2d, orient3d, segment_intersection, Orientation};
+#[cfg(feature = "new-geometry")]
+use super::kernel::{segment_intersection_3d, SegmentIntersection};
 use super::view::point_in_triangle_2d;
 
 /// Whether the three points are collinear, exactly.
@@ -99,6 +101,174 @@ pub fn segments_intersect_3d(p1: [f64; 3], p2: [f64; 3], q1: [f64; 3], q2: [f64;
         || point_on_segment_3d(q2, p1, p2)
         || point_on_segment_3d(p1, q1, q2)
         || point_on_segment_3d(p2, q1, q2)
+}
+
+/// Whether the rays `origin -> u` and `origin -> w` point in the same
+/// direction: exactly collinear with matching per-axis difference signs. The
+/// 3D analog of [`kernel::same_direction`](super::kernel::same_direction);
+/// the sign of an IEEE subtraction is exact, so this is exact for distinct
+/// endpoints.
+#[cfg(feature = "new-geometry")]
+pub(crate) fn same_direction_3d(origin: [f64; 3], u: [f64; 3], w: [f64; 3]) -> bool {
+    fn sign(v: f64) -> i8 {
+        if v > 0.0 {
+            1
+        } else if v < 0.0 {
+            -1
+        } else {
+            0
+        }
+    }
+    collinear_3d(origin, u, w) && (0..3).all(|k| sign(u[k] - origin[k]) == sign(w[k] - origin[k]))
+}
+
+/// The classified intersection of two closed 3D segments.
+#[cfg(feature = "new-geometry")]
+#[derive(PartialEq, Clone, Copy, Debug)]
+pub(crate) enum SegmentContact3D {
+    /// A single crossing point interior to both segments.
+    Proper([f64; 3]),
+    /// A single shared point involving an endpoint of at least one segment
+    /// (an endpoint touch or a T-junction).
+    Touch([f64; 3]),
+    /// A collinear overlap along the sub-segment `[start, end]`.
+    Overlap {
+        /// One end of the overlap.
+        start: [f64; 3],
+        /// The other end of the overlap.
+        end: [f64; 3],
+    },
+}
+
+/// Classify the intersection of the closed segments `[p1, p2]` and `[q1, q2]`,
+/// exactly: `None` when disjoint (including skew and parallel-disjoint pairs),
+/// otherwise the contact class. The class decision is robust; the `Proper`
+/// coordinate is a constructed f64 witness. Coordinates must be finite.
+#[cfg(feature = "new-geometry")]
+pub(crate) fn classify_segments_3d(
+    p1: [f64; 3],
+    p2: [f64; 3],
+    q1: [f64; 3],
+    q2: [f64; 3],
+) -> Option<SegmentContact3D> {
+    if p1 == p2 {
+        let touching = if q1 == q2 {
+            p1 == q1
+        } else {
+            point_on_segment_3d(p1, q1, q2)
+        };
+        return touching.then_some(SegmentContact3D::Touch(p1));
+    }
+    if q1 == q2 {
+        return point_on_segment_3d(q1, p1, p2).then_some(SegmentContact3D::Touch(q1));
+    }
+    if !coplanar(p1, p2, q1, q2) {
+        return None;
+    }
+    // Mirror `segments_intersect_3d`: drop to an axis projection injective on
+    // the carrying plane, falling through to the 1D case when every
+    // projection collapses the four points onto a line.
+    for axis in [2, 1, 0] {
+        let (a, b, c, d) = (
+            drop_axis(p1, axis),
+            drop_axis(p2, axis),
+            drop_axis(q1, axis),
+            drop_axis(q2, axis),
+        );
+        let collapsed = orient2d(a, b, c) == Orientation::Collinear
+            && orient2d(a, b, d) == Orientation::Collinear
+            && orient2d(a, c, d) == Orientation::Collinear;
+        if collapsed {
+            continue;
+        }
+        return match segment_intersection(a, b, c, d)? {
+            SegmentIntersection::SinglePoint {
+                intersection,
+                is_proper: true,
+            } => Some(SegmentContact3D::Proper(
+                segment_intersection_3d(p1, p2, q1, q2)
+                    .unwrap_or_else(|| lift_onto_segment(intersection, axis, p1, p2)),
+            )),
+            SegmentIntersection::SinglePoint { intersection, .. } => Some(SegmentContact3D::Touch(
+                touch_witness_3d(intersection, axis, [p1, p2, q1, q2]),
+            )),
+            SegmentIntersection::Collinear { .. } => {
+                unreachable!("a collinear 2D overlap requires a collapsed projection")
+            }
+        };
+    }
+    collinear_segments_contact_3d(p1, p2, q1, q2)
+}
+
+/// The contact of two proper segments whose four endpoints are collinear in
+/// 3D: a 1D interval question decided by which endpoints lie on the other
+/// segment.
+#[cfg(feature = "new-geometry")]
+fn collinear_segments_contact_3d(
+    p1: [f64; 3],
+    p2: [f64; 3],
+    q1: [f64; 3],
+    q2: [f64; 3],
+) -> Option<SegmentContact3D> {
+    let mut shared: Vec<[f64; 3]> = Vec::with_capacity(4);
+    for e in [q1, q2] {
+        if point_on_segment_3d(e, p1, p2) {
+            shared.push(e);
+        }
+    }
+    for e in [p1, p2] {
+        if point_on_segment_3d(e, q1, q2) {
+            shared.push(e);
+        }
+    }
+    shared.sort_by(|x, y| x.partial_cmp(y).expect("finite coordinates"));
+    shared.dedup();
+    match shared.as_slice() {
+        [] => None,
+        [point] => Some(SegmentContact3D::Touch(*point)),
+        // Lexicographic order is monotone along a line, so the extremes are
+        // the overlap's ends.
+        [start, .., end] => Some(SegmentContact3D::Overlap {
+            start: *start,
+            end: *end,
+        }),
+    }
+}
+
+/// The 3D endpoint behind an improper single-point 2D contact: such a contact
+/// always includes a segment endpoint, and the projection is injective on the
+/// carrying plane, so the endpoint projecting onto it is the witness.
+#[cfg(feature = "new-geometry")]
+fn touch_witness_3d(projected: [f64; 2], axis: usize, endpoints: [[f64; 3]; 4]) -> [f64; 3] {
+    for e in endpoints {
+        if drop_axis(e, axis) == projected {
+            return e;
+        }
+    }
+    lift_onto_segment(projected, axis, endpoints[0], endpoints[1])
+}
+
+/// Lift a projected point back onto the 3D segment `[a, b]` by interpolating
+/// along the dominant projected direction. A constructed fallback witness, not
+/// a decision input.
+#[cfg(feature = "new-geometry")]
+fn lift_onto_segment(w: [f64; 2], axis: usize, a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
+    let (a2, b2) = (drop_axis(a, axis), drop_axis(b, axis));
+    let d = [b2[0] - a2[0], b2[1] - a2[1]];
+    let t = if d[0].abs() >= d[1].abs() {
+        if d[0] == 0.0 {
+            0.0
+        } else {
+            (w[0] - a2[0]) / d[0]
+        }
+    } else {
+        (w[1] - a2[1]) / d[1]
+    };
+    [
+        a[0] + t * (b[0] - a[0]),
+        a[1] + t * (b[1] - a[1]),
+        a[2] + t * (b[2] - a[2]),
+    ]
 }
 
 /// Whether the closed segment `[p, q]` shares at least one point with the
@@ -194,6 +364,107 @@ pub fn triangles_intersect_3d(t: [[f64; 3]; 3], s: [[f64; 3]; 3]) -> bool {
         || triangle_edges_3d(s)
             .iter()
             .any(|&(a, b)| segment_intersects_triangle_3d(a, b, t))
+}
+
+/// How two triangles from different faces share corners (by coordinate).
+#[cfg(feature = "new-geometry")]
+#[derive(PartialEq, Clone, Copy, Debug)]
+pub(crate) enum TriangleContact {
+    /// No equal corners.
+    None,
+    /// Exactly one equal corner `v`; `t_rest` / `s_rest` are each triangle's
+    /// other two corners.
+    Vertex {
+        /// The shared corner.
+        v: [f64; 3],
+        /// The first triangle's other two corners.
+        t_rest: [[f64; 3]; 2],
+        /// The second triangle's other two corners.
+        s_rest: [[f64; 3]; 2],
+    },
+    /// Two equal corners `[a, b]`, necessarily an edge of both triangles;
+    /// `t_far` / `s_far` are the opposite corners.
+    Edge {
+        /// One shared corner.
+        a: [f64; 3],
+        /// The other shared corner.
+        b: [f64; 3],
+        /// The first triangle's opposite corner.
+        t_far: [f64; 3],
+        /// The second triangle's opposite corner.
+        s_far: [f64; 3],
+    },
+}
+
+/// Whether two triangles known to share the given contact intersect beyond
+/// it, exactly: the adjacency-aware refinement of [`triangles_intersect_3d`]
+/// for face-vs-face self-intersection, where a contact confined to the shared
+/// corners or shared edge is legitimate. Both triangles must be proper
+/// (non-degenerate) and `contact` must describe their actual shared corners.
+#[cfg(feature = "new-geometry")]
+pub(crate) fn triangles_overlap_beyond_contact(
+    t: [[f64; 3]; 3],
+    s: [[f64; 3]; 3],
+    contact: &TriangleContact,
+) -> bool {
+    match *contact {
+        TriangleContact::None => triangles_intersect_3d(t, s),
+        // Non-coplanar wings sharing an edge meet exactly at that edge: a
+        // proper triangle meets the line through one of its edges in exactly
+        // that edge. Coplanar wings overlap iff the far corners lie on the
+        // same side of the shared edge.
+        TriangleContact::Edge { a, b, t_far, s_far } => {
+            if orient3d(a, b, t_far, s_far) != Orientation::Collinear {
+                return false;
+            }
+            let axis = projection_axis(t);
+            orient2d(
+                drop_axis(a, axis),
+                drop_axis(b, axis),
+                drop_axis(t_far, axis),
+            ) == orient2d(
+                drop_axis(a, axis),
+                drop_axis(b, axis),
+                drop_axis(s_far, axis),
+            )
+        }
+        // Triangles sharing one corner meet beyond it iff an opposite edge
+        // reaches the other triangle, or an edge from the corner lies in the
+        // other triangle's plane and runs into it (a non-coplanar edge
+        // through the corner meets that plane only at the corner).
+        TriangleContact::Vertex { v, t_rest, s_rest } => {
+            segment_intersects_triangle_3d(t_rest[0], t_rest[1], s)
+                || segment_intersects_triangle_3d(s_rest[0], s_rest[1], t)
+                || wing_reaches_triangle(v, t_rest, s)
+                || wing_reaches_triangle(v, s_rest, t)
+        }
+    }
+}
+
+/// Whether an edge from the shared corner `v` to either of `rest` lies in
+/// `other`'s plane and meets `other` at some point besides `v`. `other` must
+/// be a proper triangle with `v` as one of its corners.
+#[cfg(feature = "new-geometry")]
+fn wing_reaches_triangle(v: [f64; 3], rest: [[f64; 3]; 2], other: [[f64; 3]; 3]) -> bool {
+    let axis = projection_axis(other);
+    let tri = project_triangle(other, axis);
+    let v2 = drop_axis(v, axis);
+    rest.into_iter().any(|x| {
+        if orient3d(other[0], other[1], other[2], x) != Orientation::Collinear {
+            return false;
+        }
+        let x2 = drop_axis(x, axis);
+        point_in_triangle_2d(x2, tri)
+            || triangle_edges_2d(tri).iter().any(|&(u, w)| {
+                match segment_intersection(v2, x2, u, w) {
+                    None => false,
+                    Some(SegmentIntersection::SinglePoint { intersection, .. }) => {
+                        intersection != v2
+                    }
+                    Some(SegmentIntersection::Collinear { start, end }) => start != v2 || end != v2,
+                }
+            })
+    })
 }
 
 /// The true point-set shape of a possibly-degenerate triangle.
@@ -484,5 +755,248 @@ mod tests {
         // Degenerate triangle acting as a segment.
         let needle = [[1.0, 1.0, -1.0], [1.0, 1.0, 1.0], [1.0, 1.0, 0.5]];
         assert!(triangles_intersect_3d(TRI, needle));
+    }
+
+    #[cfg(feature = "new-geometry")]
+    #[test]
+    fn same_direction_3d_cases() {
+        let o = [1.0, 1.0, 1.0];
+        assert!(same_direction_3d(o, [2.0, 2.0, 2.0], [3.0, 3.0, 3.0]));
+        // Opposite direction.
+        assert!(!same_direction_3d(o, [2.0, 2.0, 2.0], [0.0, 0.0, 0.0]));
+        // Not collinear.
+        assert!(!same_direction_3d(o, [2.0, 2.0, 2.0], [3.0, 3.0, 4.0]));
+    }
+
+    #[cfg(feature = "new-geometry")]
+    #[test]
+    fn classify_segments_proper_crossing() {
+        let contact = classify_segments_3d(
+            [0.0, 0.0, 0.0],
+            [2.0, 2.0, 2.0],
+            [2.0, 0.0, 0.0],
+            [0.0, 2.0, 2.0],
+        );
+        assert_eq!(contact, Some(SegmentContact3D::Proper([1.0, 1.0, 1.0])));
+    }
+
+    #[cfg(feature = "new-geometry")]
+    #[test]
+    fn classify_segments_touches() {
+        // Endpoint on endpoint.
+        assert_eq!(
+            classify_segments_3d(
+                [0.0, 0.0, 0.0],
+                [1.0, 1.0, 1.0],
+                [1.0, 1.0, 1.0],
+                [2.0, 0.0, 5.0],
+            ),
+            Some(SegmentContact3D::Touch([1.0, 1.0, 1.0]))
+        );
+        // T-junction: endpoint interior to the other segment.
+        assert_eq!(
+            classify_segments_3d(
+                [0.0, 0.0, 0.0],
+                [4.0, 0.0, 0.0],
+                [2.0, 0.0, 0.0],
+                [2.0, 3.0, 0.0],
+            ),
+            Some(SegmentContact3D::Touch([2.0, 0.0, 0.0]))
+        );
+        // Collinear single-point touch.
+        assert_eq!(
+            classify_segments_3d(
+                [0.0, 0.0, 0.0],
+                [2.0, 2.0, 2.0],
+                [2.0, 2.0, 2.0],
+                [4.0, 4.0, 4.0],
+            ),
+            Some(SegmentContact3D::Touch([2.0, 2.0, 2.0]))
+        );
+    }
+
+    #[cfg(feature = "new-geometry")]
+    #[test]
+    fn classify_segments_overlap_and_disjoint() {
+        assert_eq!(
+            classify_segments_3d(
+                [0.0, 0.0, 0.0],
+                [4.0, 4.0, 4.0],
+                [2.0, 2.0, 2.0],
+                [6.0, 6.0, 6.0],
+            ),
+            Some(SegmentContact3D::Overlap {
+                start: [2.0, 2.0, 2.0],
+                end: [4.0, 4.0, 4.0],
+            })
+        );
+        // Identical segments overlap end to end.
+        assert_eq!(
+            classify_segments_3d(
+                [0.0, 0.0, 0.0],
+                [4.0, 4.0, 4.0],
+                [0.0, 0.0, 0.0],
+                [4.0, 4.0, 4.0],
+            ),
+            Some(SegmentContact3D::Overlap {
+                start: [0.0, 0.0, 0.0],
+                end: [4.0, 4.0, 4.0],
+            })
+        );
+        // Skew.
+        assert_eq!(
+            classify_segments_3d(
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 1.0],
+                [0.0, -1.0, 1.0],
+            ),
+            None
+        );
+        // Parallel in one plane.
+        assert_eq!(
+            classify_segments_3d(
+                [0.0, 0.0, 0.0],
+                [4.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [4.0, 1.0, 0.0],
+            ),
+            None
+        );
+        // Collinear disjoint.
+        assert_eq!(
+            classify_segments_3d(
+                [0.0, 0.0, 0.0],
+                [1.0, 1.0, 1.0],
+                [2.0, 2.0, 2.0],
+                [3.0, 3.0, 3.0],
+            ),
+            None
+        );
+        // Degenerate segment resting on a segment.
+        assert_eq!(
+            classify_segments_3d(
+                [1.0, 1.0, 1.0],
+                [1.0, 1.0, 1.0],
+                [0.0, 0.0, 0.0],
+                [2.0, 2.0, 2.0],
+            ),
+            Some(SegmentContact3D::Touch([1.0, 1.0, 1.0]))
+        );
+    }
+
+    /// Contact for `TRI` and a triangle sharing `TRI`'s edge `[0,0,0]-[4,0,0]`.
+    #[cfg(feature = "new-geometry")]
+    fn edge_contact(t_far: [f64; 3], s_far: [f64; 3]) -> TriangleContact {
+        TriangleContact::Edge {
+            a: [0.0, 0.0, 0.0],
+            b: [4.0, 0.0, 0.0],
+            t_far,
+            s_far,
+        }
+    }
+
+    #[cfg(feature = "new-geometry")]
+    #[test]
+    fn shared_edge_wings() {
+        let t_far = [0.0, 4.0, 0.0];
+        // Folded (non-coplanar) wings meet exactly at the shared edge.
+        let folded_far = [0.0, -4.0, 4.0];
+        let folded = [[0.0, 0.0, 0.0], [4.0, 0.0, 0.0], folded_far];
+        assert!(!triangles_overlap_beyond_contact(
+            TRI,
+            folded,
+            &edge_contact(t_far, folded_far)
+        ));
+        // Coplanar, far corners on opposite sides: a clean quad.
+        let opposite_far = [0.0, -4.0, 0.0];
+        let opposite = [[0.0, 0.0, 0.0], [4.0, 0.0, 0.0], opposite_far];
+        assert!(!triangles_overlap_beyond_contact(
+            TRI,
+            opposite,
+            &edge_contact(t_far, opposite_far)
+        ));
+        // Coplanar, far corners on the same side: interiors overlap.
+        let same_side_far = [2.0, 4.0, 0.0];
+        let same_side = [[0.0, 0.0, 0.0], [4.0, 0.0, 0.0], same_side_far];
+        assert!(triangles_overlap_beyond_contact(
+            TRI,
+            same_side,
+            &edge_contact(t_far, same_side_far)
+        ));
+    }
+
+    /// Contact for two triangles sharing only `TRI`'s corner at the origin.
+    #[cfg(feature = "new-geometry")]
+    fn vertex_contact(t_rest: [[f64; 3]; 2], s_rest: [[f64; 3]; 2]) -> TriangleContact {
+        TriangleContact::Vertex {
+            v: [0.0, 0.0, 0.0],
+            t_rest,
+            s_rest,
+        }
+    }
+
+    #[cfg(feature = "new-geometry")]
+    #[test]
+    fn shared_vertex_fans() {
+        let t_rest = [[4.0, 0.0, 0.0], [0.0, 4.0, 0.0]];
+        // A clean fan: the second triangle bends away from TRI's plane.
+        let fan_rest = [[-4.0, 0.0, 1.0], [0.0, -4.0, 1.0]];
+        let fan = [[0.0, 0.0, 0.0], fan_rest[0], fan_rest[1]];
+        assert!(!triangles_overlap_beyond_contact(
+            TRI,
+            fan,
+            &vertex_contact(t_rest, fan_rest)
+        ));
+        // The second triangle's opposite edge pierces TRI's interior.
+        let pierce_rest = [[1.0, 1.0, -1.0], [1.0, 1.0, 1.0]];
+        let pierce = [[0.0, 0.0, 0.0], pierce_rest[0], pierce_rest[1]];
+        assert!(triangles_overlap_beyond_contact(
+            TRI,
+            pierce,
+            &vertex_contact(t_rest, pierce_rest)
+        ));
+        // A coplanar wedge poking into TRI: its edges from the shared corner
+        // run through TRI's interior, but its opposite edge stays outside.
+        let wedge_rest = [[4.0, 1.0, 0.0], [1.0, 4.0, 0.0]];
+        let wedge = [[0.0, 0.0, 0.0], wedge_rest[0], wedge_rest[1]];
+        assert!(triangles_overlap_beyond_contact(
+            TRI,
+            wedge,
+            &vertex_contact(t_rest, wedge_rest)
+        ));
+        // A coplanar wedge opening away from TRI touches only at the corner.
+        let away_rest = [[-4.0, -1.0, 0.0], [-1.0, -4.0, 0.0]];
+        let away = [[0.0, 0.0, 0.0], away_rest[0], away_rest[1]];
+        assert!(!triangles_overlap_beyond_contact(
+            TRI,
+            away,
+            &vertex_contact(t_rest, away_rest)
+        ));
+        // A wing running along TRI's edge shares a whole sub-segment.
+        let along_rest = [[2.0, 0.0, 0.0], [0.0, -4.0, 1.0]];
+        let along = [[0.0, 0.0, 0.0], along_rest[0], along_rest[1]];
+        assert!(triangles_overlap_beyond_contact(
+            TRI,
+            along,
+            &vertex_contact(t_rest, along_rest)
+        ));
+    }
+
+    #[cfg(feature = "new-geometry")]
+    #[test]
+    fn no_contact_pairs() {
+        let pierce = [[1.0, 1.0, -1.0], [1.0, 1.0, 1.0], [3.0, 3.0, 1.0]];
+        assert!(triangles_overlap_beyond_contact(
+            TRI,
+            pierce,
+            &TriangleContact::None
+        ));
+        let above = TRI.map(|[x, y, _]| [x, y, 1.0]);
+        assert!(!triangles_overlap_beyond_contact(
+            TRI,
+            above,
+            &TriangleContact::None
+        ));
     }
 }
