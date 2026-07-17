@@ -16,6 +16,7 @@ import {
 
 import { config } from "@flow/config";
 import useDoubleClick from "@flow/hooks/useDoubleClick";
+import { initializeSentinel } from "@flow/services/sentinel";
 
 import CityGmlData from "./CityGmlData";
 import GeoJsonData from "./GeoJson";
@@ -104,11 +105,28 @@ const CesiumViewer: React.FC<Props> = ({
   setCityGmlBoundingSphere,
 }) => {
   const [isLoaded, setIsLoaded] = useState(false);
+  const { tileServerBaseUrl, tileServerToken } = config();
+  const [sentinelReady, setSentinelReady] = useState(
+    !(tileServerBaseUrl && tileServerToken),
+  );
 
   useEffect(() => {
     if (isLoaded) return;
     setIsLoaded(true);
   }, [isLoaded]);
+
+  useEffect(() => {
+    if (!tileServerBaseUrl || !tileServerToken) return;
+
+    let cancelled = false;
+    initializeSentinel().finally(() => {
+      if (!cancelled) setSentinelReady(true);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [tileServerBaseUrl, tileServerToken]);
 
   const pickOriginalId = useCallback(
     (movement: any) => {
@@ -171,9 +189,9 @@ const CesiumViewer: React.FC<Props> = ({
   );
 
   const baseImageryProvider = useMemo(() => {
-    const { tileServerBaseUrl, tileServerToken } = config();
-    console.log("Tile server config:", { tileServerBaseUrl, tileServerToken });
     if (tileServerBaseUrl && tileServerToken) {
+      if (!sentinelReady) return null;
+
       return new UrlTemplateImageryProvider({
         url: `${tileServerBaseUrl.replace(/\/$/, "")}/imagery/{z}/{x}/{y}.webp`,
         minimumLevel: 0,
@@ -187,7 +205,7 @@ const CesiumViewer: React.FC<Props> = ({
       maximumLevel: 19,
       credit: "© Esri",
     });
-  }, []);
+  }, [tileServerBaseUrl, tileServerToken, sentinelReady]);
 
   // Separate features by geometry type
   const { geoJsonData, cityGmlData } = useMemo(() => {
@@ -224,7 +242,9 @@ const CesiumViewer: React.FC<Props> = ({
       }
       full
       {...defaultCesiumProps}>
-      <ImageryLayer imageryProvider={baseImageryProvider} />
+      {baseImageryProvider && (
+        <ImageryLayer imageryProvider={baseImageryProvider} />
+      )}
       {/* <TerrainController
         show3DTerrain={visualizerType === "3d-map" && !cityGmlData}
       /> */}
