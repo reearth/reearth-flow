@@ -49,8 +49,17 @@ impl Cesium3DTilesWriter {
             schema_key: self.params.schema_key.as_deref(),
             skip_unexposed_attributes: self.params.skip_unexposed_attributes,
         };
+        // Both default to true (see `Cesium3DTilesWriterParam`).
+        let draco = self.params.draco_compression.unwrap_or(true);
+        let compute_flat_normal = self.params.compute_flat_normal.unwrap_or(true);
         for ((output, _, _), features) in &self.buffer {
-            let built = build(features, options, self.params.max_zoom)?;
+            let built = build(
+                features,
+                options,
+                self.params.max_zoom,
+                draco,
+                compute_flat_normal,
+            )?;
 
             for (relative_path, bytes) in built.tiles.into_iter().chain(built.subtrees) {
                 crate::SinkOutput::new(
@@ -91,13 +100,13 @@ pub fn build(
     features: &[Feature],
     options: MetadataOptions,
     max_zoom: u8,
+    draco: bool,
+    compute_flat_normal: bool,
 ) -> crate::errors::Result<BuiltTileset> {
-    let mut reproject_caches = mesh::ReprojectCaches::default();
+    let mut caches = mesh::ExtractCaches::default();
     let extracted: Vec<(&Feature, mesh::ExtractedMesh)> = features
         .iter()
-        .filter_map(|feature| {
-            mesh::extract(&feature.geometry, &mut reproject_caches).map(|m| (feature, m))
-        })
+        .filter_map(|feature| mesh::extract(&feature.geometry, &mut caches).map(|m| (feature, m)))
         .collect();
 
     if extracted.is_empty() {
@@ -131,9 +140,10 @@ pub fn build(
         .map(|(cell, indices)| {
             let cell_members: Vec<&(&Feature, mesh::ExtractedMesh)> =
                 indices.iter().map(|&i| &extracted[i]).collect();
-            (content_path(cell), build_cell_glb(&cell_members, options))
+            let glb = build_cell_glb(&cell_members, options, draco, compute_flat_normal)?;
+            Ok((content_path(cell), glb))
         })
-        .collect();
+        .collect::<crate::errors::Result<_>>()?;
 
     let tileset_bytes = render_tileset_json(&root, available_levels)?;
     let subtrees = subtree::build_all(&occupied)
@@ -185,11 +195,14 @@ fn subtree_path(cell: Cell) -> String {
 
 /// Merge one occupied cell's features into a single glb, index-offset
 /// concatenated, tagging each vertex with its feature's row in the cell's
-/// property table.
+/// property table. `compute_flat_normal` attaches per-polygon flat normals; `draco`
+/// Draco-compresses the output.
 fn build_cell_glb(
     cell_members: &[&(&Feature, mesh::ExtractedMesh)],
     options: MetadataOptions,
-) -> Vec<u8> {
+    draco: bool,
+    compute_flat_normal: bool,
+) -> crate::errors::Result<Vec<u8>> {
     let mut ecef_vertices: Vec<[f64; 3]> = Vec::new();
     let mut indices: Vec<[u32; 3]> = Vec::new();
     let mut feature_ids: Vec<u32> = Vec::new();
@@ -231,12 +244,6 @@ fn build_cell_glb(
         .collect();
     let gltf_origin = [origin[0], origin[2], -origin[1]];
 
-    // Same axis swap as position, no translation (a normal is a direction).
-    let normal_values: Vec<[f32; 3]> = polygon_normals
-        .iter()
-        .map(|&[x, y, z]| [x as f32, z as f32, -y as f32])
-        .collect();
-
     let cell_features: Vec<&Feature> = cell_members.iter().map(|(f, _)| *f).collect();
     let table = metadata::build_table(&cell_features, options);
 
@@ -251,17 +258,35 @@ fn build_cell_glb(
         metallic_factor: 0.0,
         roughness_factor: 0.9,
     };
-    let normal = glb::normal(glb::Granularity::PerPolygon, normal_values);
+    // The per-polygon normal is also the dedup key that splits vertices at hard
+    // edges, so omitting it dedups on position alone: no `NORMAL`, no seams.
+    let dedup_attrs = if compute_flat_normal {
+        // Same axis swap as position, no translation (a normal is a direction).
+        let normal_values: Vec<[f32; 3]> = polygon_normals
+            .iter()
+            .map(|&[x, y, z]| [x as f32, z as f32, -y as f32])
+            .collect();
+        vec![glb::normal(glb::Granularity::PerPolygon, normal_values)]
+    } else {
+        Vec::new()
+    };
     let primitive = builder.push_primitive(
         gltf_positions,
         indices,
         material,
         &polygon_tris,
         &[],
-        vec![normal],
+        dedup_attrs,
     );
     metadata::encode(&table, &mut builder, primitive, &feature_ids);
-    builder.build(gltf_origin)
+    let glb = builder.build(gltf_origin);
+
+    if draco {
+        reearth_flow_gltf::next::draco::compress(&glb)
+            .map_err(|e| SinkError::Cesium3DTilesWriter(format!("draco compression failed: {e:?}")))
+    } else {
+        Ok(glb)
+    }
 }
 
 fn centroid(points: &[[f64; 3]]) -> [f64; 3] {

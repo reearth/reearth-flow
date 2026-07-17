@@ -607,6 +607,10 @@
           "title": "Compressed Output Path",
           "description": "Optional path for compressed archive output"
         },
+        "computeFlatNormal": {
+          "title": "Compute Flat Normals",
+          "description": "Compute per-polygon flat normals for lighting. Defaults to true. When disabled, no normals are written and the mesh is smaller, but the tile carries no lighting data (a viewer must derive flat normals itself)."
+        },
         "dracoCompression": {
           "title": "Draco Compression",
           "description": "Use draco compression. Defaults to true."
@@ -872,7 +876,7 @@
     },
     {
       "name": "Dimension Filter",
-      "description": "Filters the dimension of features"
+      "description": "Routes features to output ports based on the number of geometry dimensions."
     },
     {
       "name": "Directory Decompressor",
@@ -930,11 +934,11 @@
     },
     {
       "name": "Echo Processor",
-      "description": "Echo features"
+      "description": "Echoes features to logs and passes them through unchanged."
     },
     {
       "name": "Echo Sink",
-      "description": "Echo features"
+      "description": "Echoes features to logs and discards them."
     },
     {
       "name": "Elevation Extractor",
@@ -1003,22 +1007,22 @@
     },
     {
       "name": "Feature Counter",
-      "description": "Counts features",
+      "description": "Assigns a sequential number to each feature, stored in an attribute and optionally grouped by attribute values.",
       "parameterI18n": {
         "": {
           "title": "Feature Counter Parameters",
-          "description": "Configure how features are counted and grouped, and where to store the count"
+          "description": "Configure how features are numbered and grouped, and where to store the number"
         },
         "countStart": {
           "title": "Start Count",
-          "description": "Starting value for the counter"
+          "description": "Value assigned to the first feature"
         },
         "groupBy": {
           "title": "Group By Attributes",
           "description": "List of attribute names to group features by before counting"
         },
         "outputAttribute": {
-          "title": "Output Attribute",
+          "title": "Count Attribute",
           "description": "Name of the attribute where the count will be stored"
         }
       }
@@ -1061,7 +1065,7 @@
     },
     {
       "name": "Feature Filter",
-      "description": "Filters features based on conditions",
+      "description": "Routes features to named output ports based on user-defined filter conditions.",
       "parameterI18n": {
         "": {
           "title": "Feature Filter Parameters",
@@ -1075,11 +1079,26 @@
       "definitionI18n": {
         "Condition": {
           "expr": {
-            "title": "Condition expression"
+            "title": "Condition Expression",
+            "description": "Boolean expression evaluated against each feature; features for which it returns true are routed to this condition's output port."
           },
           "outputPort": {
-            "title": "Output port"
+            "title": "Output Port",
+            "description": "Name of the output port that receives features matching this condition."
           }
+        }
+      }
+    },
+    {
+      "name": "Feature GeoJSON Writer",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureGeoJsonWriter Parameters",
+          "description": "Configuration for writing features to GeoJSON files."
+        },
+        "output": {
+          "title": "Output",
+          "description": "Path (or expression evaluated per feature) of the GeoJSON file to write. Features sharing a resolved path are written to the same file, so the expression can split features across files by attribute value."
         }
       }
     },
@@ -1087,101 +1106,118 @@
       "name": "Feature Joiner",
       "parameterI18n": {
         "": {
-          "title": "FeatureJoiner Parameters",
+          "title": "Feature Joiner Parameters",
           "description": "Configuration for joining requestor and supplier features based on matching attributes or expressions."
         },
         "conflictResolution": {
-          "description": "Attribute conflict resolution strategy when both requestor and supplier have the same attribute"
+          "title": "Conflict Resolution",
+          "description": "How to resolve conflicts when requestor and supplier features share the same attribute."
         },
         "joinType": {
-          "description": "Join type: inner, left, or full"
+          "title": "Join Type",
+          "description": "How unmatched features are handled: inner, left, or full."
         },
         "requestorAttribute": {
-          "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue)"
+          "title": "Requestor Attributes",
+          "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue)."
         },
         "requestorAttributeValue": {
-          "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute)"
+          "title": "Requestor Attribute Value",
+          "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute)."
         },
         "supplierAttribute": {
-          "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue)"
+          "title": "Supplier Attributes",
+          "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue)."
         },
         "supplierAttributeValue": {
-          "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute)"
+          "title": "Supplier Attribute Value",
+          "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute)."
         }
       },
       "enumI18n": {
         "ConflictResolution": {
           "requestorWins": {
-            "description": "Requestor attributes win on conflict"
+            "title": "Requestor Wins",
+            "description": "Requestor attributes win on conflict."
           },
           "supplierWins": {
-            "description": "Supplier attributes win on conflict (default)"
+            "title": "Supplier Wins",
+            "description": "Supplier attributes win on conflict (default)."
           }
         },
         "JoinType": {
           "full": {
-            "description": "Emit all features from both sides"
+            "title": "Full",
+            "description": "Emits all features from both sides."
           },
           "inner": {
-            "description": "Only emit features where a match exists"
+            "title": "Inner",
+            "description": "Only emits features where a match exists."
           },
           "left": {
-            "description": "Emit all requestor features (default)"
+            "title": "Left",
+            "description": "Emits all requestor features, matched or not."
           }
         }
       }
     },
     {
       "name": "Feature LOD Filter",
-      "description": "Filter based on Level of Detail",
+      "description": "Filters features by Level of Detail (LOD), emitting each to the matching LOD output port.",
       "parameterI18n": {
         "": {
-          "title": "FeatureLodFilter Parameters",
+          "title": "Feature LOD Filter Parameters",
           "description": "Configuration for filtering features based on Level of Detail (LOD)."
         },
         "filterKey": {
-          "description": "Attribute used to group features for LOD filtering"
+          "title": "Filter Key",
+          "description": "Attribute whose value groups features; the maximum available LOD is determined within each group."
         }
       }
     },
     {
       "name": "Feature Merger",
-      "description": "Merges features by attributes",
       "parameterI18n": {
         "": {
-          "title": "FeatureMerger Parameters",
+          "title": "Feature Merger Parameters",
           "description": "Configuration for merging requestor and supplier features based on matching attributes or expressions."
         },
         "completeGrouped": {
-          "description": "Whether to complete grouped features before processing the next group"
+          "title": "Complete Grouped",
+          "description": "Whether to complete grouped features before processing the next group."
         },
         "requestorAttribute": {
-          "description": "Attributes from requestor features to use for matching (alternative to requestor_attribute_value)"
+          "title": "Requestor Attributes",
+          "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue)."
         },
         "requestorAttributeValue": {
-          "description": "Expression to evaluate for requestor feature matching values (alternative to requestor_attribute)"
+          "title": "Requestor Attribute Value",
+          "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute)."
         },
         "supplierAttribute": {
-          "description": "Attributes from supplier features to use for matching (alternative to supplier_attribute_value)"
+          "title": "Supplier Attributes",
+          "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue)."
         },
         "supplierAttributeValue": {
-          "description": "Expression to evaluate for supplier feature matching values (alternative to supplier_attribute)"
+          "title": "Supplier Attribute Value",
+          "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute)."
         }
       }
     },
     {
       "name": "Feature Sorter",
-      "description": "Sorts features by attributes",
       "parameterI18n": {
         "": {
-          "title": "FeatureSorter Parameters",
+          "title": "Feature Sorter Parameters",
           "description": "Configuration for sorting features based on attribute values."
         },
         "attributes": {
-          "description": "Attributes to use for sorting features (sort order based on attribute order)"
+          "title": "Sort Attributes",
+          "description": "Attributes to sort by; earlier attributes take precedence."
         },
         "order": {
-          "description": "Sorting order (ascending or descending)"
+          "title": "Sort Order",
+          "description": "Whether features are sorted in ascending or descending order."
         }
       }
     },
@@ -1207,14 +1243,15 @@
     },
     {
       "name": "Feature Type Filter",
-      "description": "Filters features by feature type",
+      "description": "Filters CityGML features by their feature type.",
       "parameterI18n": {
         "": {
-          "title": "FeatureTypeFilter Parameters",
+          "title": "Feature Type Filter Parameters",
           "description": "Configuration for filtering features based on their feature type."
         },
         "targetTypes": {
-          "description": "Target feature types"
+          "title": "Target Feature Types",
+          "description": "List of CityGML feature type names to match, such as \"bldg:Building\" or \"tran:TrafficArea\"."
         }
       }
     },
@@ -2009,12 +2046,16 @@
     },
     {
       "name": "Input Router",
-      "description": "Action for first port forwarding for sub-workflows.",
+      "description": "Forwards features from the parent workflow into a sub-workflow.",
       "parameterI18n": {
         "": {
-          "title": "InputRouter"
+          "title": "Input Router Parameters",
+          "description": "Configuration for receiving features from the parent workflow."
         },
-        "routingPort": {}
+        "routingPort": {
+          "title": "Routing Port",
+          "description": "Name of the parent workflow port whose features enter the sub-workflow through this router."
+        }
       }
     },
     {
@@ -2237,11 +2278,11 @@
     },
     {
       "name": "Noop Processor",
-      "description": "Noop features"
+      "description": "Passes features through unchanged."
     },
     {
       "name": "Noop Sink",
-      "description": "noop sink"
+      "description": "Discards all incoming features."
     },
     {
       "name": "Null Attribute Mapper",
@@ -2413,12 +2454,16 @@
     },
     {
       "name": "Output Router",
-      "description": "Action for last port forwarding for sub-workflows.",
+      "description": "Forwards features from a sub-workflow back to the parent workflow.",
       "parameterI18n": {
         "": {
-          "title": "OutputRouter"
+          "title": "Output Router Parameters",
+          "description": "Configuration for returning features to the parent workflow."
         },
-        "routingPort": {}
+        "routingPort": {
+          "title": "Routing Port",
+          "description": "Name of the output port under which the sub-workflow's features are exposed to the parent workflow."
+        }
       }
     },
     {
@@ -3128,14 +3173,15 @@
     },
     {
       "name": "Spatial Filter",
+      "description": "Filters candidate features based on their spatial relationship to filter geometry.",
       "parameterI18n": {
         "": {
-          "title": "SpatialFilter Parameters",
+          "title": "Spatial Filter Parameters",
           "description": "Configure spatial relationship testing between filter and candidate geometries"
         },
         "mergeFilterAttributes": {
           "title": "Merge Filter Attributes",
-          "description": "If true, copy attributes from matched filter feature(s) onto the candidate. Only applies to features routed to the passed port. In OR mode (pass_on_multiple_matches: true), only the first matching filter's attributes are merged. In AND mode, attributes from all matched filters are merged in order; if multiple filters share a key, the last filter's value wins."
+          "description": "If true, copies attributes from the matched filter feature(s) onto passing candidates. When multiple matched filters share an attribute, the last filter's value wins."
         },
         "mergedAttributesPrefix": {
           "title": "Merged Attributes Prefix",
@@ -3143,7 +3189,7 @@
         },
         "outputMatchCountAttribute": {
           "title": "Output Match Count Attribute",
-          "description": "Optional attribute name to store the number of matching filters"
+          "description": "Optional attribute name to store the number of matching filters."
         },
         "passOnMultipleMatches": {
           "title": "Pass on Multiple Matches",
@@ -3151,7 +3197,7 @@
         },
         "predicate": {
           "title": "Spatial Predicate",
-          "description": "The spatial relationship to test between filter and candidate geometries"
+          "description": "The spatial relationship to test between filter and candidate geometries."
         }
       },
       "enumI18n": {

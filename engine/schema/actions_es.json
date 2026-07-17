@@ -1790,7 +1790,7 @@
       "description": "Escribe las entidades en un archivo",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "Cesium3DTilesWriter Parameters",
+        "title": "Parámetros de Cesium3DTilesWriter",
         "type": "object",
         "required": [
           "maxZoom",
@@ -1799,8 +1799,8 @@
         ],
         "properties": {
           "output": {
-            "title": "Output Path",
-            "description": "Directory path where the 3D tiles will be written",
+            "title": "Ruta de Salida",
+            "description": "Ruta del directorio donde se escribirán los 3D Tiles",
             "type": "object",
             "format": "code",
             "required": [
@@ -1821,30 +1821,30 @@
             }
           },
           "minZoom": {
-            "title": "Minimum Zoom Level",
-            "description": "Minimum zoom level for tile generation (0-24)",
+            "title": "Nivel de Zoom Mínimo",
+            "description": "Nivel de zoom mínimo para la generación de mosaicos (0-24)",
             "type": "integer",
             "format": "uint8",
             "minimum": 0.0
           },
           "maxZoom": {
-            "title": "Maximum Zoom Level",
-            "description": "Maximum zoom level for tile generation (0-24)",
+            "title": "Nivel de Zoom Máximo",
+            "description": "Nivel de zoom máximo para la generación de mosaicos (0-24)",
             "type": "integer",
             "format": "uint8",
             "minimum": 0.0
           },
           "attachTexture": {
-            "title": "Attach Textures",
-            "description": "Whether to include texture information in the generated tiles",
+            "title": "Adjuntar Texturas",
+            "description": "Si se debe incluir información de textura en los mosaicos generados",
             "type": [
               "boolean",
               "null"
             ]
           },
           "compressOutput": {
-            "title": "Compressed Output Path",
-            "description": "Optional path for compressed archive output",
+            "title": "Ruta de Salida Comprimida",
+            "description": "Ruta opcional para la salida del archivo comprimido",
             "type": [
               "object",
               "null"
@@ -1868,24 +1868,32 @@
             }
           },
           "dracoCompression": {
-            "title": "Draco Compression",
-            "description": "Use draco compression. Defaults to true.",
+            "title": "Compresión Draco",
+            "description": "Usar compresión Draco. Verdadero por defecto.",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "computeFlatNormal": {
+            "title": "Calcular Normales Planas",
+            "description": "Calcula normales planas por polígono para la iluminación. Verdadero por defecto. Cuando se desactiva, no se escriben normales y la malla es más pequeña, pero el mosaico no incluye datos de iluminación (el visor debe derivar las normales planas por sí mismo).",
             "type": [
               "boolean",
               "null"
             ]
           },
           "skipUnexposedAttributes": {
-            "title": "Skip unexposed Attributes",
-            "description": "Skip attributes with double underscore prefix",
+            "title": "Omitir Atributos no Expuestos",
+            "description": "Omitir atributos con prefijo de doble guion bajo",
             "type": [
               "boolean",
               "null"
             ]
           },
           "schemaKey": {
-            "title": "Schema Key",
-            "description": "Attribute key whose value identifies the schema type and determines the output filename: all features sharing the same value are written to the same file. This attribute is excluded from output.",
+            "title": "Clave de Esquema",
+            "description": "Clave de atributo cuyo valor identifica el tipo de esquema y determina el nombre del archivo de salida: todas las entidades que comparten el mismo valor se escriben en el mismo archivo. Este atributo se excluye de la salida.",
             "type": [
               "string",
               "null"
@@ -2756,8 +2764,8 @@
         "Filter"
       ],
       "tags": [
-        "2d",
-        "3d"
+        "3d",
+        "geometry"
       ]
     },
     {
@@ -2914,7 +2922,9 @@
       "categories": [
         "Debug"
       ],
-      "tags": []
+      "tags": [
+        "logging"
+      ]
     },
     {
       "name": "Echo Sink",
@@ -2929,7 +2939,9 @@
       "categories": [
         "Debug"
       ],
-      "tags": []
+      "tags": [
+        "logging"
+      ]
     },
     {
       "name": "Elevation Extractor",
@@ -3169,18 +3181,24 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Feature Counter Parameters",
-        "description": "Configure how features are counted and grouped, and where to store the count",
+        "description": "Configure how features are numbered and grouped, and where to store the number",
         "type": "object",
         "required": [
-          "countStart",
           "outputAttribute"
         ],
         "properties": {
+          "outputAttribute": {
+            "title": "Count Attribute",
+            "description": "Name of the attribute where the count will be stored",
+            "type": "string"
+          },
           "countStart": {
             "title": "Start Count",
-            "description": "Starting value for the counter",
+            "description": "Value assigned to the first feature",
+            "default": 1,
             "type": "integer",
-            "format": "int64"
+            "format": "uint64",
+            "minimum": 0.0
           },
           "groupBy": {
             "title": "Group By Attributes",
@@ -3192,11 +3210,6 @@
             "items": {
               "$ref": "#/definitions/Attribute"
             }
-          },
-          "outputAttribute": {
-            "title": "Output Attribute",
-            "description": "Name of the attribute where the count will be stored",
-            "type": "string"
           }
         },
         "definitions": {
@@ -3210,13 +3223,15 @@
         "features"
       ],
       "outputPorts": [
-        "features",
-        "rejected"
+        "features"
       ],
       "categories": [
         "Debug"
       ],
-      "tags": []
+      "tags": [
+        "aggregation",
+        "attribute"
+      ]
     },
     {
       "name": "Feature Creator",
@@ -3363,6 +3378,7 @@
             "properties": {
               "expr": {
                 "title": "Condition expression",
+                "description": "Boolean expression evaluated against each feature; features for which it returns true are routed to this condition's output port.",
                 "type": "object",
                 "format": "code",
                 "required": [
@@ -3383,6 +3399,7 @@
               },
               "outputPort": {
                 "title": "Output port",
+                "description": "Name of the output port that receives features matching this condition.",
                 "allOf": [
                   {
                     "$ref": "#/definitions/Port"
@@ -3409,6 +3426,57 @@
       "tags": []
     },
     {
+      "name": "Feature GeoJSON Writer",
+      "type": "processor",
+      "description": "Writes features to a GeoJSON file for each resolved output path.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureGeoJsonWriter Parameters",
+        "description": "Configuration for writing features to GeoJSON files.",
+        "type": "object",
+        "required": [
+          "output"
+        ],
+        "properties": {
+          "output": {
+            "title": "Output",
+            "description": "Path (or expression evaluated per feature) of the GeoJSON file to write. Features sharing a resolved path are written to the same file, so the expression can split features across files by attribute value.",
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Feature"
+      ],
+      "tags": [
+        "geojson"
+      ]
+    },
+    {
       "name": "Feature Joiner",
       "type": "processor",
       "description": "Une entidades solicitantes y proveedoras basándose en valores de atributos coincidentes con tipos de unión configurables",
@@ -3422,6 +3490,7 @@
         ],
         "properties": {
           "joinType": {
+            "title": "Join Type",
             "description": "Join type: inner, left, or full",
             "allOf": [
               {
@@ -3430,6 +3499,7 @@
             ]
           },
           "requestorAttribute": {
+            "title": "Requestor Attributes",
             "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue)",
             "type": [
               "array",
@@ -3440,6 +3510,7 @@
             }
           },
           "supplierAttribute": {
+            "title": "Supplier Attributes",
             "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue)",
             "type": [
               "array",
@@ -3450,6 +3521,7 @@
             }
           },
           "requestorAttributeValue": {
+            "title": "Requestor Attribute Value",
             "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute)",
             "type": [
               "object",
@@ -3473,6 +3545,7 @@
             }
           },
           "supplierAttributeValue": {
+            "title": "Supplier Attribute Value",
             "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute)",
             "type": [
               "object",
@@ -3496,6 +3569,7 @@
             }
           },
           "conflictResolution": {
+            "title": "Conflict Resolution",
             "description": "Attribute conflict resolution strategy when both requestor and supplier have the same attribute",
             "anyOf": [
               {
@@ -3511,6 +3585,7 @@
           "JoinType": {
             "oneOf": [
               {
+                "title": "Inner",
                 "description": "Only emit features where a match exists",
                 "type": "string",
                 "enum": [
@@ -3518,6 +3593,7 @@
                 ]
               },
               {
+                "title": "Left",
                 "description": "Emit all requestor features (default)",
                 "type": "string",
                 "enum": [
@@ -3525,6 +3601,7 @@
                 ]
               },
               {
+                "title": "Full",
                 "description": "Emit all features from both sides",
                 "type": "string",
                 "enum": [
@@ -3539,6 +3616,7 @@
           "ConflictResolution": {
             "oneOf": [
               {
+                "title": "Requestor Wins",
                 "description": "Requestor attributes win on conflict",
                 "type": "string",
                 "enum": [
@@ -3546,6 +3624,7 @@
                 ]
               },
               {
+                "title": "Supplier Wins",
                 "description": "Supplier attributes win on conflict (default)",
                 "type": "string",
                 "enum": [
@@ -3563,15 +3642,13 @@
       ],
       "outputPorts": [
         "joined",
-        "unjoinedRequestor",
-        "unjoinedSupplier"
+        "unjoined-requestor",
+        "unjoined-supplier"
       ],
       "categories": [
         "Merge"
       ],
-      "tags": [
-        "join"
-      ]
+      "tags": []
     },
     {
       "name": "Feature LOD Filter",
@@ -3587,6 +3664,7 @@
         ],
         "properties": {
           "filterKey": {
+            "title": "Filter Key",
             "description": "Attribute used to group features for LOD filtering",
             "allOf": [
               {
@@ -3606,18 +3684,17 @@
         "features"
       ],
       "outputPorts": [
-        "up_to_lod0",
-        "up_to_lod1",
-        "up_to_lod2",
-        "up_to_lod3",
-        "up_to_lod4",
+        "max-lod0",
+        "max-lod1",
+        "max-lod2",
+        "max-lod3",
+        "max-lod4",
         "unfiltered"
       ],
       "categories": [
         "Filter"
       ],
       "tags": [
-        "lod",
         "citygml"
       ]
     },
@@ -3632,6 +3709,7 @@
         "type": "object",
         "properties": {
           "requestorAttribute": {
+            "title": "Requestor Attributes",
             "description": "Attributes from requestor features to use for matching (alternative to requestor_attribute_value)",
             "type": [
               "array",
@@ -3642,6 +3720,7 @@
             }
           },
           "supplierAttribute": {
+            "title": "Supplier Attributes",
             "description": "Attributes from supplier features to use for matching (alternative to supplier_attribute_value)",
             "type": [
               "array",
@@ -3652,6 +3731,7 @@
             }
           },
           "requestorAttributeValue": {
+            "title": "Requestor Attribute Value",
             "description": "Expression to evaluate for requestor feature matching values (alternative to requestor_attribute)",
             "type": [
               "object",
@@ -3675,6 +3755,7 @@
             }
           },
           "supplierAttributeValue": {
+            "title": "Supplier Attribute Value",
             "description": "Expression to evaluate for supplier feature matching values (alternative to supplier_attribute)",
             "type": [
               "object",
@@ -3698,6 +3779,7 @@
             }
           },
           "completeGrouped": {
+            "title": "Complete Grouped",
             "description": "Whether to complete grouped features before processing the next group",
             "type": [
               "boolean",
@@ -3740,6 +3822,7 @@
         ],
         "properties": {
           "attributes": {
+            "title": "Sort Attributes",
             "description": "Attributes to use for sorting features (sort order based on attribute order)",
             "type": "array",
             "items": {
@@ -3747,6 +3830,7 @@
             }
           },
           "order": {
+            "title": "Sort Order",
             "description": "Sorting order (ascending or descending)",
             "allOf": [
               {
@@ -3778,9 +3862,7 @@
       "categories": [
         "Merge"
       ],
-      "tags": [
-        "sort"
-      ]
+      "tags": []
     },
     {
       "name": "Feature Transformer",
@@ -3860,6 +3942,7 @@
         ],
         "properties": {
           "targetTypes": {
+            "title": "Target Feature Types",
             "description": "Target feature types",
             "type": "array",
             "items": {
@@ -3879,7 +3962,9 @@
       "categories": [
         "Filter"
       ],
-      "tags": []
+      "tags": [
+        "citygml"
+      ]
     },
     {
       "name": "FeatureCityGml2Reader",
@@ -7264,12 +7349,15 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "InputRouter",
+        "description": "Configuration for receiving features from the parent workflow.",
         "type": "object",
         "required": [
           "routingPort"
         ],
         "properties": {
           "routingPort": {
+            "title": "Routing Port",
+            "description": "Name of the parent workflow port whose features enter the sub-workflow through this router.",
             "type": "string"
           }
         }
@@ -8604,12 +8692,15 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "OutputRouter",
+        "description": "Configuration for returning features to the parent workflow.",
         "type": "object",
         "required": [
           "routingPort"
         ],
         "properties": {
           "routingPort": {
+            "title": "Routing Port",
+            "description": "Name of the output port under which the sub-workflow's features are exposed to the parent workflow.",
             "type": "string"
           }
         }
@@ -11709,19 +11800,6 @@
             "default": true,
             "type": "boolean"
           },
-          "outputMatchCountAttribute": {
-            "title": "Output Match Count Attribute",
-            "description": "Optional attribute name to store the number of matching filters",
-            "default": null,
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "mergeFilterAttributes": {
             "title": "Merge Filter Attributes",
             "description": "If true, copy attributes from matched filter feature(s) onto the candidate. Only applies to features routed to the passed port. In OR mode (pass_on_multiple_matches: true), only the first matching filter's attributes are merged. In AND mode, attributes from all matched filters are merged in order; if multiple filters share a key, the last filter's value wins.",
@@ -11735,6 +11813,19 @@
             "type": [
               "string",
               "null"
+            ]
+          },
+          "outputMatchCountAttribute": {
+            "title": "Output Match Count Attribute",
+            "description": "Optional attribute name to store the number of matching filters",
+            "default": null,
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -11824,7 +11915,9 @@
       "categories": [
         "Filter"
       ],
-      "tags": []
+      "tags": [
+        "spatial"
+      ]
     },
     {
       "name": "Statistics Calculator",

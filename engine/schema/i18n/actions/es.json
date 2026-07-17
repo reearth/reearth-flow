@@ -603,39 +603,43 @@
       "description": "Escribe las entidades en un archivo",
       "parameterI18n": {
         "": {
-          "title": "Cesium3DTilesWriter Parameters"
+          "title": "Parámetros de Cesium3DTilesWriter"
         },
         "attachTexture": {
-          "title": "Attach Textures",
-          "description": "Whether to include texture information in the generated tiles"
+          "title": "Adjuntar Texturas",
+          "description": "Si se debe incluir información de textura en los mosaicos generados"
         },
         "compressOutput": {
-          "title": "Compressed Output Path",
-          "description": "Optional path for compressed archive output"
+          "title": "Ruta de Salida Comprimida",
+          "description": "Ruta opcional para la salida del archivo comprimido"
+        },
+        "computeFlatNormal": {
+          "title": "Calcular Normales Planas",
+          "description": "Calcula normales planas por polígono para la iluminación. Verdadero por defecto. Cuando se desactiva, no se escriben normales y la malla es más pequeña, pero el mosaico no incluye datos de iluminación (el visor debe derivar las normales planas por sí mismo)."
         },
         "dracoCompression": {
-          "title": "Draco Compression",
-          "description": "Use draco compression. Defaults to true."
+          "title": "Compresión Draco",
+          "description": "Usar compresión Draco. Verdadero por defecto."
         },
         "maxZoom": {
-          "title": "Maximum Zoom Level",
-          "description": "Maximum zoom level for tile generation (0-24)"
+          "title": "Nivel de Zoom Máximo",
+          "description": "Nivel de zoom máximo para la generación de mosaicos (0-24)"
         },
         "minZoom": {
-          "title": "Minimum Zoom Level",
-          "description": "Minimum zoom level for tile generation (0-24)"
+          "title": "Nivel de Zoom Mínimo",
+          "description": "Nivel de zoom mínimo para la generación de mosaicos (0-24)"
         },
         "output": {
-          "title": "Output Path",
-          "description": "Directory path where the 3D tiles will be written"
+          "title": "Ruta de Salida",
+          "description": "Ruta del directorio donde se escribirán los 3D Tiles"
         },
         "schemaKey": {
-          "title": "Schema Key",
-          "description": "Attribute key whose value identifies the schema type and determines the output filename: all features sharing the same value are written to the same file. This attribute is excluded from output."
+          "title": "Clave de Esquema",
+          "description": "Clave de atributo cuyo valor identifica el tipo de esquema y determina el nombre del archivo de salida: todas las entidades que comparten el mismo valor se escriben en el mismo archivo. Este atributo se excluye de la salida."
         },
         "skipUnexposedAttributes": {
-          "title": "Skip unexposed Attributes",
-          "description": "Skip attributes with double underscore prefix"
+          "title": "Omitir Atributos no Expuestos",
+          "description": "Omitir atributos con prefijo de doble guion bajo"
         }
       }
     },
@@ -1018,18 +1022,18 @@
       "parameterI18n": {
         "": {
           "title": "Feature Counter Parameters",
-          "description": "Configure how features are counted and grouped, and where to store the count"
+          "description": "Configure how features are numbered and grouped, and where to store the number"
         },
         "countStart": {
           "title": "Start Count",
-          "description": "Starting value for the counter"
+          "description": "Value assigned to the first feature"
         },
         "groupBy": {
           "title": "Group By Attributes",
           "description": "List of attribute names to group features by before counting"
         },
         "outputAttribute": {
-          "title": "Output Attribute",
+          "title": "Count Attribute",
           "description": "Name of the attribute where the count will be stored"
         }
       }
@@ -1086,11 +1090,26 @@
       "definitionI18n": {
         "Condition": {
           "expr": {
-            "title": "Condition expression"
+            "title": "Condition expression",
+            "description": "Boolean expression evaluated against each feature; features for which it returns true are routed to this condition's output port."
           },
           "outputPort": {
-            "title": "Output port"
+            "title": "Output port",
+            "description": "Name of the output port that receives features matching this condition."
           }
+        }
+      }
+    },
+    {
+      "name": "Feature GeoJSON Writer",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureGeoJsonWriter Parameters",
+          "description": "Configuration for writing features to GeoJSON files."
+        },
+        "output": {
+          "title": "Output",
+          "description": "Path (or expression evaluated per feature) of the GeoJSON file to write. Features sharing a resolved path are written to the same file, so the expression can split features across files by attribute value."
         }
       }
     },
@@ -1103,41 +1122,52 @@
           "description": "Configuration for joining requestor and supplier features based on matching attributes or expressions."
         },
         "conflictResolution": {
+          "title": "Conflict Resolution",
           "description": "Attribute conflict resolution strategy when both requestor and supplier have the same attribute"
         },
         "joinType": {
+          "title": "Join Type",
           "description": "Join type: inner, left, or full"
         },
         "requestorAttribute": {
+          "title": "Requestor Attributes",
           "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue)"
         },
         "requestorAttributeValue": {
+          "title": "Requestor Attribute Value",
           "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute)"
         },
         "supplierAttribute": {
+          "title": "Supplier Attributes",
           "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue)"
         },
         "supplierAttributeValue": {
+          "title": "Supplier Attribute Value",
           "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute)"
         }
       },
       "enumI18n": {
         "ConflictResolution": {
           "requestorWins": {
+            "title": "Requestor Wins",
             "description": "Requestor attributes win on conflict"
           },
           "supplierWins": {
+            "title": "Supplier Wins",
             "description": "Supplier attributes win on conflict (default)"
           }
         },
         "JoinType": {
           "full": {
+            "title": "Full",
             "description": "Emit all features from both sides"
           },
           "inner": {
+            "title": "Inner",
             "description": "Only emit features where a match exists"
           },
           "left": {
+            "title": "Left",
             "description": "Emit all requestor features (default)"
           }
         }
@@ -1152,6 +1182,7 @@
           "description": "Configuration for filtering features based on Level of Detail (LOD)."
         },
         "filterKey": {
+          "title": "Filter Key",
           "description": "Attribute used to group features for LOD filtering"
         }
       }
@@ -1165,18 +1196,23 @@
           "description": "Configuration for merging requestor and supplier features based on matching attributes or expressions."
         },
         "completeGrouped": {
+          "title": "Complete Grouped",
           "description": "Whether to complete grouped features before processing the next group"
         },
         "requestorAttribute": {
+          "title": "Requestor Attributes",
           "description": "Attributes from requestor features to use for matching (alternative to requestor_attribute_value)"
         },
         "requestorAttributeValue": {
+          "title": "Requestor Attribute Value",
           "description": "Expression to evaluate for requestor feature matching values (alternative to requestor_attribute)"
         },
         "supplierAttribute": {
+          "title": "Supplier Attributes",
           "description": "Attributes from supplier features to use for matching (alternative to supplier_attribute_value)"
         },
         "supplierAttributeValue": {
+          "title": "Supplier Attribute Value",
           "description": "Expression to evaluate for supplier feature matching values (alternative to supplier_attribute)"
         }
       }
@@ -1190,9 +1226,11 @@
           "description": "Configuration for sorting features based on attribute values."
         },
         "attributes": {
+          "title": "Sort Attributes",
           "description": "Attributes to use for sorting features (sort order based on attribute order)"
         },
         "order": {
+          "title": "Sort Order",
           "description": "Sorting order (ascending or descending)"
         }
       }
@@ -1226,6 +1264,7 @@
           "description": "Configuration for filtering features based on their feature type."
         },
         "targetTypes": {
+          "title": "Target Feature Types",
           "description": "Target feature types"
         }
       }
@@ -2032,9 +2071,13 @@
       "description": "Acción para el reenvío del primer puerto en sub-flujos de trabajo.",
       "parameterI18n": {
         "": {
-          "title": "InputRouter"
+          "title": "InputRouter",
+          "description": "Configuration for receiving features from the parent workflow."
         },
-        "routingPort": {}
+        "routingPort": {
+          "title": "Routing Port",
+          "description": "Name of the parent workflow port whose features enter the sub-workflow through this router."
+        }
       }
     },
     {
@@ -2445,9 +2488,13 @@
       "description": "Acción para el reenvío del último puerto en sub-flujos de trabajo.",
       "parameterI18n": {
         "": {
-          "title": "OutputRouter"
+          "title": "OutputRouter",
+          "description": "Configuration for returning features to the parent workflow."
         },
-        "routingPort": {}
+        "routingPort": {
+          "title": "Routing Port",
+          "description": "Name of the output port under which the sub-workflow's features are exposed to the parent workflow."
+        }
       }
     },
     {

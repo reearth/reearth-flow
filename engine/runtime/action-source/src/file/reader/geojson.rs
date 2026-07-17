@@ -4,7 +4,6 @@ use reearth_flow_runtime::node::{IngestionMessage, Port, FEATURES_PORT};
 use reearth_flow_types::Feature;
 use tokio::sync::mpsc::Sender;
 
-#[cfg(not(feature = "new-geometry"))]
 pub(crate) async fn read_geojson(
     content: &Bytes,
     sender: Sender<(Port, IngestionMessage)>,

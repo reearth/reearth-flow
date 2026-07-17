@@ -600,42 +600,46 @@
     },
     {
       "name": "Cesium 3D Tiles Writer",
-      "description": "Export Features as Cesium 3D Tiles for Web Visualization",
+      "description": "Écrit les entités dans un fichier",
       "parameterI18n": {
         "": {
-          "title": "Cesium3DTilesWriter Parameters"
+          "title": "Paramètres de Cesium3DTilesWriter"
         },
         "attachTexture": {
-          "title": "Attach Textures",
-          "description": "Whether to include texture information in the generated tiles"
+          "title": "Joindre les Textures",
+          "description": "Indique s'il faut inclure les informations de texture dans les tuiles générées"
         },
         "compressOutput": {
-          "title": "Compressed Output Path",
-          "description": "Optional path for compressed archive output"
+          "title": "Chemin de Sortie Compressé",
+          "description": "Chemin optionnel pour la sortie de l'archive compressée"
+        },
+        "computeFlatNormal": {
+          "title": "Calculer les Normales Plates",
+          "description": "Calcule des normales plates par polygone pour l'éclairage. Vrai par défaut. Lorsqu'elle est désactivée, aucune normale n'est écrite et le maillage est plus petit, mais la tuile ne contient aucune donnée d'éclairage (le visualiseur doit dériver lui-même les normales plates)."
         },
         "dracoCompression": {
-          "title": "Draco Compression",
-          "description": "Use draco compression. Defaults to true."
+          "title": "Compression Draco",
+          "description": "Utiliser la compression Draco. Vrai par défaut."
         },
         "maxZoom": {
-          "title": "Maximum Zoom Level",
-          "description": "Maximum zoom level for tile generation (0-24)"
+          "title": "Niveau de Zoom Maximum",
+          "description": "Niveau de zoom maximum pour la génération de tuiles (0-24)"
         },
         "minZoom": {
-          "title": "Minimum Zoom Level",
-          "description": "Minimum zoom level for tile generation (0-24)"
+          "title": "Niveau de Zoom Minimum",
+          "description": "Niveau de zoom minimum pour la génération de tuiles (0-24)"
         },
         "output": {
-          "title": "Output Path",
-          "description": "Directory path where the 3D tiles will be written"
+          "title": "Chemin de Sortie",
+          "description": "Chemin du répertoire où les 3D Tiles seront écrits"
         },
         "schemaKey": {
-          "title": "Schema Key",
-          "description": "Attribute key whose value identifies the schema type and determines the output filename: all features sharing the same value are written to the same file. This attribute is excluded from output."
+          "title": "Clé de Schéma",
+          "description": "Clé d'attribut dont la valeur identifie le type de schéma et détermine le nom du fichier de sortie : toutes les entités partageant la même valeur sont écrites dans le même fichier. Cet attribut est exclu de la sortie."
         },
         "skipUnexposedAttributes": {
-          "title": "Skip unexposed Attributes",
-          "description": "Skip attributes with double underscore prefix"
+          "title": "Ignorer les Attributs non Exposés",
+          "description": "Ignorer les attributs avec un préfixe de double trait de soulignement"
         }
       }
     },
@@ -882,7 +886,7 @@
     },
     {
       "name": "Dimension Filter",
-      "description": "Filter Features by Geometry Dimension"
+      "description": "Routes features to output ports based on the number of geometry dimensions."
     },
     {
       "name": "Directory Decompressor",
@@ -940,11 +944,11 @@
     },
     {
       "name": "Echo Processor",
-      "description": "Debug Echo Features to Logs"
+      "description": "Echoes features to logs and passes them through unchanged."
     },
     {
       "name": "Echo Sink",
-      "description": "Debug Echo Features to Logs"
+      "description": "Echoes features to logs and discards them."
     },
     {
       "name": "Elevation Extractor",
@@ -1014,22 +1018,22 @@
     },
     {
       "name": "Feature Counter",
-      "description": "Count Features and Add Counter to Attribute",
+      "description": "Assigns a sequential number to each feature, stored in an attribute and optionally grouped by attribute values.",
       "parameterI18n": {
         "": {
           "title": "Feature Counter Parameters",
-          "description": "Configure how features are counted and grouped, and where to store the count"
+          "description": "Configure how features are numbered and grouped, and where to store the number"
         },
         "countStart": {
           "title": "Start Count",
-          "description": "Starting value for the counter"
+          "description": "Value assigned to the first feature"
         },
         "groupBy": {
           "title": "Group By Attributes",
           "description": "List of attribute names to group features by before counting"
         },
         "outputAttribute": {
-          "title": "Output Attribute",
+          "title": "Count Attribute",
           "description": "Name of the attribute where the count will be stored"
         }
       }
@@ -1072,7 +1076,7 @@
     },
     {
       "name": "Feature Filter",
-      "description": "Filter Features Based on Custom Conditions",
+      "description": "Routes features to named output ports based on user-defined filter conditions.",
       "parameterI18n": {
         "": {
           "title": "Feature Filter Parameters",
@@ -1086,11 +1090,26 @@
       "definitionI18n": {
         "Condition": {
           "expr": {
-            "title": "Condition expression"
+            "title": "Condition Expression",
+            "description": "Boolean expression evaluated against each feature; features for which it returns true are routed to this condition's output port."
           },
           "outputPort": {
-            "title": "Output port"
+            "title": "Output Port",
+            "description": "Name of the output port that receives features matching this condition."
           }
+        }
+      }
+    },
+    {
+      "name": "Feature GeoJSON Writer",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureGeoJsonWriter Parameters",
+          "description": "Configuration for writing features to GeoJSON files."
+        },
+        "output": {
+          "title": "Output",
+          "description": "Path (or expression evaluated per feature) of the GeoJSON file to write. Features sharing a resolved path are written to the same file, so the expression can split features across files by attribute value."
         }
       }
     },
@@ -1103,41 +1122,52 @@
           "description": "Configuration for joining requestor and supplier features based on matching attributes or expressions."
         },
         "conflictResolution": {
+          "title": "Conflict Resolution",
           "description": "Attribute conflict resolution strategy when both requestor and supplier have the same attribute"
         },
         "joinType": {
+          "title": "Join Type",
           "description": "Join type: inner, left, or full"
         },
         "requestorAttribute": {
+          "title": "Requestor Attributes",
           "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue)"
         },
         "requestorAttributeValue": {
+          "title": "Requestor Attribute Value",
           "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute)"
         },
         "supplierAttribute": {
+          "title": "Supplier Attributes",
           "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue)"
         },
         "supplierAttributeValue": {
+          "title": "Supplier Attribute Value",
           "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute)"
         }
       },
       "enumI18n": {
         "ConflictResolution": {
           "requestorWins": {
+            "title": "Requestor Wins",
             "description": "Requestor attributes win on conflict"
           },
           "supplierWins": {
+            "title": "Supplier Wins",
             "description": "Supplier attributes win on conflict (default)"
           }
         },
         "JoinType": {
           "full": {
+            "title": "Full",
             "description": "Emit all features from both sides"
           },
           "inner": {
+            "title": "Inner",
             "description": "Only emit features where a match exists"
           },
           "left": {
+            "title": "Left",
             "description": "Emit all requestor features (default)"
           }
         }
@@ -1145,14 +1175,15 @@
     },
     {
       "name": "Feature LOD Filter",
-      "description": "Filters features by Level of Detail (LOD), routing them to appropriate output ports",
+      "description": "Filters features by Level of Detail (LOD), emitting each to the matching LOD output port.",
       "parameterI18n": {
         "": {
-          "title": "FeatureLodFilter Parameters",
+          "title": "Feature LOD Filter Parameters",
           "description": "Configuration for filtering features based on Level of Detail (LOD)."
         },
         "filterKey": {
-          "description": "Attribute used to group features for LOD filtering"
+          "title": "Filter Key",
+          "description": "Attribute whose value groups features; the maximum available LOD is determined within each group."
         }
       }
     },
@@ -1165,18 +1196,23 @@
           "description": "Configuration for merging requestor and supplier features based on matching attributes or expressions."
         },
         "completeGrouped": {
+          "title": "Complete Grouped",
           "description": "Whether to complete grouped features before processing the next group"
         },
         "requestorAttribute": {
+          "title": "Requestor Attributes",
           "description": "Attributes from requestor features to use for matching (alternative to requestor_attribute_value)"
         },
         "requestorAttributeValue": {
+          "title": "Requestor Attribute Value",
           "description": "Expression to evaluate for requestor feature matching values (alternative to requestor_attribute)"
         },
         "supplierAttribute": {
+          "title": "Supplier Attributes",
           "description": "Attributes from supplier features to use for matching (alternative to supplier_attribute_value)"
         },
         "supplierAttributeValue": {
+          "title": "Supplier Attribute Value",
           "description": "Expression to evaluate for supplier feature matching values (alternative to supplier_attribute)"
         }
       }
@@ -1190,9 +1226,11 @@
           "description": "Configuration for sorting features based on attribute values."
         },
         "attributes": {
+          "title": "Sort Attributes",
           "description": "Attributes to use for sorting features (sort order based on attribute order)"
         },
         "order": {
+          "title": "Sort Order",
           "description": "Sorting order (ascending or descending)"
         }
       }
@@ -1219,14 +1257,15 @@
     },
     {
       "name": "Feature Type Filter",
-      "description": "Filters features by feature type",
+      "description": "Filters CityGML features by their feature type.",
       "parameterI18n": {
         "": {
-          "title": "FeatureTypeFilter Parameters",
+          "title": "Feature Type Filter Parameters",
           "description": "Configuration for filtering features based on their feature type."
         },
         "targetTypes": {
-          "description": "Target feature types"
+          "title": "Target Feature Types",
+          "description": "List of CityGML feature type names to match, such as \"bldg:Building\" or \"tran:TrafficArea\"."
         }
       }
     },
@@ -2029,12 +2068,16 @@
     },
     {
       "name": "Input Router",
-      "description": "Action for first port forwarding for sub-workflows.",
+      "description": "Forwards features from the parent workflow into a sub-workflow.",
       "parameterI18n": {
         "": {
-          "title": "InputRouter"
+          "title": "Input Router Parameters",
+          "description": "Configuration for receiving features from the parent workflow."
         },
-        "routingPort": {}
+        "routingPort": {
+          "title": "Routing Port",
+          "description": "Name of the parent workflow port whose features enter the sub-workflow through this router."
+        }
       }
     },
     {
@@ -2263,11 +2306,11 @@
     },
     {
       "name": "Noop Processor",
-      "description": "No-Operation Pass-Through Processor"
+      "description": "Passes features through unchanged."
     },
     {
       "name": "Noop Sink",
-      "description": "No-Operation Sink (Discard Features)"
+      "description": "Discards all incoming features."
     },
     {
       "name": "Null Attribute Mapper",
@@ -2442,12 +2485,16 @@
     },
     {
       "name": "Output Router",
-      "description": "Action for last port forwarding for sub-workflows.",
+      "description": "Forwards features from a sub-workflow back to the parent workflow.",
       "parameterI18n": {
         "": {
-          "title": "OutputRouter"
+          "title": "Output Router Parameters",
+          "description": "Configuration for returning features to the parent workflow."
         },
-        "routingPort": {}
+        "routingPort": {
+          "title": "Routing Port",
+          "description": "Name of the output port under which the sub-workflow's features are exposed to the parent workflow."
+        }
       }
     },
     {
@@ -3181,12 +3228,12 @@
       "description": "Filtre les entités par relation spatiale",
       "parameterI18n": {
         "": {
-          "title": "SpatialFilter Parameters",
+          "title": "Spatial Filter Parameters",
           "description": "Configure spatial relationship testing between filter and candidate geometries"
         },
         "mergeFilterAttributes": {
           "title": "Merge Filter Attributes",
-          "description": "If true, copy attributes from matched filter feature(s) onto the candidate. Only applies to features routed to the passed port. In OR mode (pass_on_multiple_matches: true), only the first matching filter's attributes are merged. In AND mode, attributes from all matched filters are merged in order; if multiple filters share a key, the last filter's value wins."
+          "description": "If true, copies attributes from the matched filter feature(s) onto passing candidates. When multiple matched filters share an attribute, the last filter's value wins."
         },
         "mergedAttributesPrefix": {
           "title": "Merged Attributes Prefix",
@@ -3194,7 +3241,7 @@
         },
         "outputMatchCountAttribute": {
           "title": "Output Match Count Attribute",
-          "description": "Optional attribute name to store the number of matching filters"
+          "description": "Optional attribute name to store the number of matching filters."
         },
         "passOnMultipleMatches": {
           "title": "Pass on Multiple Matches",
@@ -3202,7 +3249,7 @@
         },
         "predicate": {
           "title": "Spatial Predicate",
-          "description": "The spatial relationship to test between filter and candidate geometries"
+          "description": "The spatial relationship to test between filter and candidate geometries."
         }
       },
       "enumI18n": {

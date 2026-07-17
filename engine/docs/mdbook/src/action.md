@@ -1837,6 +1837,14 @@ Export Features as Cesium 3D Tiles for Web Visualization
         "null"
       ]
     },
+    "computeFlatNormal": {
+      "title": "Compute Flat Normals",
+      "description": "Compute per-polygon flat normals for lighting. Defaults to true. When disabled, no normals are written and the mesh is smaller, but the tile carries no lighting data (a viewer must derive flat normals itself).",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
     "skipUnexposedAttributes": {
       "title": "Skip unexposed Attributes",
       "description": "Skip attributes with double underscore prefix",
@@ -2681,7 +2689,7 @@ Convert datetime values between different formats
 ### Type
 * processor
 ### Description
-Filter Features by Geometry Dimension
+Routes features to output ports based on the number of geometry dimensions.
 ### Parameters
 * No parameters
 ### Input Ports
@@ -2831,7 +2839,7 @@ Dissolve Features by Grouping Attributes
 ### Type
 * processor
 ### Description
-Debug Echo Features to Logs
+Echoes features to logs and passes them through unchanged.
 ### Parameters
 * No parameters
 ### Input Ports
@@ -2845,7 +2853,7 @@ Debug Echo Features to Logs
 ### Type
 * sink
 ### Description
-Debug Echo Features to Logs
+Echoes features to logs and discards them.
 ### Parameters
 * No parameters
 ### Input Ports
@@ -3079,24 +3087,30 @@ Reads and processes features from CityGML files with optional flattening
 ### Type
 * processor
 ### Description
-Count Features and Add Counter to Attribute
+Assigns a sequential number to each feature, stored in an attribute and optionally grouped by attribute values.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Feature Counter Parameters",
-  "description": "Configure how features are counted and grouped, and where to store the count",
+  "description": "Configure how features are numbered and grouped, and where to store the number",
   "type": "object",
   "required": [
-    "countStart",
     "outputAttribute"
   ],
   "properties": {
+    "outputAttribute": {
+      "title": "Count Attribute",
+      "description": "Name of the attribute where the count will be stored",
+      "type": "string"
+    },
     "countStart": {
       "title": "Start Count",
-      "description": "Starting value for the counter",
+      "description": "Value assigned to the first feature",
+      "default": 1,
       "type": "integer",
-      "format": "int64"
+      "format": "uint64",
+      "minimum": 0.0
     },
     "groupBy": {
       "title": "Group By Attributes",
@@ -3108,11 +3122,6 @@ Count Features and Add Counter to Attribute
       "items": {
         "$ref": "#/definitions/Attribute"
       }
-    },
-    "outputAttribute": {
-      "title": "Output Attribute",
-      "description": "Name of the attribute where the count will be stored",
-      "type": "string"
     }
   },
   "definitions": {
@@ -3126,7 +3135,6 @@ Count Features and Add Counter to Attribute
 * features
 ### Output Ports
 * features
-* rejected
 ### Category
 * Debug
 
@@ -3243,7 +3251,7 @@ Extract File Paths from Dataset to Features
 ### Type
 * processor
 ### Description
-Filter Features Based on Custom Conditions
+Routes features to named output ports based on user-defined filter conditions.
 ### Parameters
 ```json
 {
@@ -3273,7 +3281,8 @@ Filter Features Based on Custom Conditions
       ],
       "properties": {
         "expr": {
-          "title": "Condition expression",
+          "title": "Condition Expression",
+          "description": "Boolean expression evaluated against each feature; features for which it returns true are routed to this condition's output port.",
           "type": "object",
           "format": "code",
           "required": [
@@ -3293,7 +3302,8 @@ Filter Features Based on Custom Conditions
           }
         },
         "outputPort": {
-          "title": "Output port",
+          "title": "Output Port",
+          "description": "Name of the output port that receives features matching this condition.",
           "allOf": [
             {
               "$ref": "#/definitions/Port"
@@ -3315,16 +3325,64 @@ Filter Features Based on Custom Conditions
 ### Category
 * Filter
 
-## Feature Joiner
+## Feature GeoJSON Writer
 ### Type
 * processor
 ### Description
-Joins requestor and supplier features based on matching attribute values with configurable join types
+Writes features to a GeoJSON file for each resolved output path.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "FeatureJoiner Parameters",
+  "title": "FeatureGeoJsonWriter Parameters",
+  "description": "Configuration for writing features to GeoJSON files.",
+  "type": "object",
+  "required": [
+    "output"
+  ],
+  "properties": {
+    "output": {
+      "title": "Output",
+      "description": "Path (or expression evaluated per feature) of the GeoJSON file to write. Features sharing a resolved path are written to the same file, so the expression can split features across files by attribute value.",
+      "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* features
+### Category
+* Feature
+
+## Feature Joiner
+### Type
+* processor
+### Description
+Joins requestor and supplier features based on matching attribute values, with configurable join types.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Feature Joiner Parameters",
   "description": "Configuration for joining requestor and supplier features based on matching attributes or expressions.",
   "type": "object",
   "required": [
@@ -3332,7 +3390,8 @@ Joins requestor and supplier features based on matching attribute values with co
   ],
   "properties": {
     "joinType": {
-      "description": "Join type: inner, left, or full",
+      "title": "Join Type",
+      "description": "How unmatched features are handled: inner, left, or full.",
       "allOf": [
         {
           "$ref": "#/definitions/JoinType"
@@ -3340,7 +3399,8 @@ Joins requestor and supplier features based on matching attribute values with co
       ]
     },
     "requestorAttribute": {
-      "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue)",
+      "title": "Requestor Attributes",
+      "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue).",
       "type": [
         "array",
         "null"
@@ -3350,7 +3410,8 @@ Joins requestor and supplier features based on matching attribute values with co
       }
     },
     "supplierAttribute": {
-      "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue)",
+      "title": "Supplier Attributes",
+      "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue).",
       "type": [
         "array",
         "null"
@@ -3360,7 +3421,8 @@ Joins requestor and supplier features based on matching attribute values with co
       }
     },
     "requestorAttributeValue": {
-      "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute)",
+      "title": "Requestor Attribute Value",
+      "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute).",
       "type": [
         "object",
         "null"
@@ -3383,7 +3445,8 @@ Joins requestor and supplier features based on matching attribute values with co
       }
     },
     "supplierAttributeValue": {
-      "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute)",
+      "title": "Supplier Attribute Value",
+      "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute).",
       "type": [
         "object",
         "null"
@@ -3406,7 +3469,8 @@ Joins requestor and supplier features based on matching attribute values with co
       }
     },
     "conflictResolution": {
-      "description": "Attribute conflict resolution strategy when both requestor and supplier have the same attribute",
+      "title": "Conflict Resolution",
+      "description": "How to resolve conflicts when requestor and supplier features share the same attribute.",
       "anyOf": [
         {
           "$ref": "#/definitions/ConflictResolution"
@@ -3421,21 +3485,24 @@ Joins requestor and supplier features based on matching attribute values with co
     "JoinType": {
       "oneOf": [
         {
-          "description": "Only emit features where a match exists",
+          "title": "Inner",
+          "description": "Only emits features where a match exists.",
           "type": "string",
           "enum": [
             "inner"
           ]
         },
         {
-          "description": "Emit all requestor features (default)",
+          "title": "Left",
+          "description": "Emits all requestor features, matched or not.",
           "type": "string",
           "enum": [
             "left"
           ]
         },
         {
-          "description": "Emit all features from both sides",
+          "title": "Full",
+          "description": "Emits all features from both sides.",
           "type": "string",
           "enum": [
             "full"
@@ -3449,14 +3516,16 @@ Joins requestor and supplier features based on matching attribute values with co
     "ConflictResolution": {
       "oneOf": [
         {
-          "description": "Requestor attributes win on conflict",
+          "title": "Requestor Wins",
+          "description": "Requestor attributes win on conflict.",
           "type": "string",
           "enum": [
             "requestorWins"
           ]
         },
         {
-          "description": "Supplier attributes win on conflict (default)",
+          "title": "Supplier Wins",
+          "description": "Supplier attributes win on conflict (default).",
           "type": "string",
           "enum": [
             "supplierWins"
@@ -3472,8 +3541,8 @@ Joins requestor and supplier features based on matching attribute values with co
 * supplier
 ### Output Ports
 * joined
-* unjoinedRequestor
-* unjoinedSupplier
+* unjoined-requestor
+* unjoined-supplier
 ### Category
 * Merge
 
@@ -3481,12 +3550,12 @@ Joins requestor and supplier features based on matching attribute values with co
 ### Type
 * processor
 ### Description
-Filters features by Level of Detail (LOD), routing them to appropriate output ports
+Filters features by Level of Detail (LOD), emitting each to the matching LOD output port.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "FeatureLodFilter Parameters",
+  "title": "Feature LOD Filter Parameters",
   "description": "Configuration for filtering features based on Level of Detail (LOD).",
   "type": "object",
   "required": [
@@ -3494,7 +3563,8 @@ Filters features by Level of Detail (LOD), routing them to appropriate output po
   ],
   "properties": {
     "filterKey": {
-      "description": "Attribute used to group features for LOD filtering",
+      "title": "Filter Key",
+      "description": "Attribute whose value groups features; the maximum available LOD is determined within each group.",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -3512,11 +3582,11 @@ Filters features by Level of Detail (LOD), routing them to appropriate output po
 ### Input Ports
 * features
 ### Output Ports
-* up_to_lod0
-* up_to_lod1
-* up_to_lod2
-* up_to_lod3
-* up_to_lod4
+* max-lod0
+* max-lod1
+* max-lod2
+* max-lod3
+* max-lod4
 * unfiltered
 ### Category
 * Filter
@@ -3525,17 +3595,18 @@ Filters features by Level of Detail (LOD), routing them to appropriate output po
 ### Type
 * processor
 ### Description
-Merges requestor and supplier features based on matching attribute values
+Merges requestor and supplier features based on matching attribute values.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "FeatureMerger Parameters",
+  "title": "Feature Merger Parameters",
   "description": "Configuration for merging requestor and supplier features based on matching attributes or expressions.",
   "type": "object",
   "properties": {
     "requestorAttribute": {
-      "description": "Attributes from requestor features to use for matching (alternative to requestor_attribute_value)",
+      "title": "Requestor Attributes",
+      "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue).",
       "type": [
         "array",
         "null"
@@ -3545,7 +3616,8 @@ Merges requestor and supplier features based on matching attribute values
       }
     },
     "supplierAttribute": {
-      "description": "Attributes from supplier features to use for matching (alternative to supplier_attribute_value)",
+      "title": "Supplier Attributes",
+      "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue).",
       "type": [
         "array",
         "null"
@@ -3555,7 +3627,8 @@ Merges requestor and supplier features based on matching attribute values
       }
     },
     "requestorAttributeValue": {
-      "description": "Expression to evaluate for requestor feature matching values (alternative to requestor_attribute)",
+      "title": "Requestor Attribute Value",
+      "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute).",
       "type": [
         "object",
         "null"
@@ -3578,7 +3651,8 @@ Merges requestor and supplier features based on matching attribute values
       }
     },
     "supplierAttributeValue": {
-      "description": "Expression to evaluate for supplier feature matching values (alternative to supplier_attribute)",
+      "title": "Supplier Attribute Value",
+      "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute).",
       "type": [
         "object",
         "null"
@@ -3601,7 +3675,8 @@ Merges requestor and supplier features based on matching attribute values
       }
     },
     "completeGrouped": {
-      "description": "Whether to complete grouped features before processing the next group",
+      "title": "Complete Grouped",
+      "description": "Whether to complete grouped features before processing the next group.",
       "type": [
         "boolean",
         "null"
@@ -3628,12 +3703,12 @@ Merges requestor and supplier features based on matching attribute values
 ### Type
 * processor
 ### Description
-Sorts features based on specified attributes in ascending or descending order
+Sorts features based on specified attributes in ascending or descending order.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "FeatureSorter Parameters",
+  "title": "Feature Sorter Parameters",
   "description": "Configuration for sorting features based on attribute values.",
   "type": "object",
   "required": [
@@ -3642,14 +3717,16 @@ Sorts features based on specified attributes in ascending or descending order
   ],
   "properties": {
     "attributes": {
-      "description": "Attributes to use for sorting features (sort order based on attribute order)",
+      "title": "Sort Attributes",
+      "description": "Attributes to sort by; earlier attributes take precedence.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Attribute"
       }
     },
     "order": {
-      "description": "Sorting order (ascending or descending)",
+      "title": "Sort Order",
+      "description": "Whether features are sorted in ascending or descending order.",
       "allOf": [
         {
           "$ref": "#/definitions/Order"
@@ -3745,12 +3822,12 @@ Applies transformation expressions to modify feature attributes and properties
 ### Type
 * processor
 ### Description
-Filter CityGML features by feature type
+Filters CityGML features by their feature type.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "FeatureTypeFilter Parameters",
+  "title": "Feature Type Filter Parameters",
   "description": "Configuration for filtering features based on their feature type.",
   "type": "object",
   "required": [
@@ -3758,7 +3835,8 @@ Filter CityGML features by feature type
   ],
   "properties": {
     "targetTypes": {
-      "description": "Target feature types",
+      "title": "Target Feature Types",
+      "description": "List of CityGML feature type names to match, such as \"bldg:Building\" or \"tran:TrafficArea\".",
       "type": "array",
       "items": {
         "type": "string"
@@ -7091,18 +7169,21 @@ Convert vector geometries to raster image format
 ### Type
 * processor
 ### Description
-Action for first port forwarding for sub-workflows.
+Forwards features from the parent workflow into a sub-workflow.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "InputRouter",
+  "title": "Input Router Parameters",
+  "description": "Configuration for receiving features from the parent workflow.",
   "type": "object",
   "required": [
     "routingPort"
   ],
   "properties": {
     "routingPort": {
+      "title": "Routing Port",
+      "description": "Name of the parent workflow port whose features enter the sub-workflow through this router.",
       "type": "string"
     }
   }
@@ -7928,7 +8009,7 @@ Finds the closest candidate features for each base feature based on spatial prox
 ### Type
 * processor
 ### Description
-No-Operation Pass-Through Processor
+Passes features through unchanged.
 ### Parameters
 * No parameters
 ### Input Ports
@@ -7942,7 +8023,7 @@ No-Operation Pass-Through Processor
 ### Type
 * sink
 ### Description
-No-Operation Sink (Discard Features)
+Discards all incoming features.
 ### Parameters
 * No parameters
 ### Input Ports
@@ -8402,18 +8483,21 @@ Extract Polygon Orientation to Attribute
 ### Type
 * processor
 ### Description
-Action for last port forwarding for sub-workflows.
+Forwards features from a sub-workflow back to the parent workflow.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "OutputRouter",
+  "title": "Output Router Parameters",
+  "description": "Configuration for returning features to the parent workflow.",
   "type": "object",
   "required": [
     "routingPort"
   ],
   "properties": {
     "routingPort": {
+      "title": "Routing Port",
+      "description": "Name of the output port under which the sub-workflow's features are exposed to the parent workflow.",
       "type": "string"
     }
   }
@@ -11395,18 +11479,18 @@ Validates the Solid Boundary Geometry
 ### Type
 * processor
 ### Description
-Filter Features by Spatial Relationship
+Filters candidate features based on their spatial relationship to filter geometry.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "SpatialFilter Parameters",
+  "title": "Spatial Filter Parameters",
   "description": "Configure spatial relationship testing between filter and candidate geometries",
   "type": "object",
   "properties": {
     "predicate": {
       "title": "Spatial Predicate",
-      "description": "The spatial relationship to test between filter and candidate geometries",
+      "description": "The spatial relationship to test between filter and candidate geometries.",
       "default": "intersects",
       "allOf": [
         {
@@ -11420,22 +11504,9 @@ Filter Features by Spatial Relationship
       "default": true,
       "type": "boolean"
     },
-    "outputMatchCountAttribute": {
-      "title": "Output Match Count Attribute",
-      "description": "Optional attribute name to store the number of matching filters",
-      "default": null,
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Attribute"
-        },
-        {
-          "type": "null"
-        }
-      ]
-    },
     "mergeFilterAttributes": {
       "title": "Merge Filter Attributes",
-      "description": "If true, copy attributes from matched filter feature(s) onto the candidate. Only applies to features routed to the passed port. In OR mode (pass_on_multiple_matches: true), only the first matching filter's attributes are merged. In AND mode, attributes from all matched filters are merged in order; if multiple filters share a key, the last filter's value wins.",
+      "description": "If true, copies attributes from the matched filter feature(s) onto passing candidates. When multiple matched filters share an attribute, the last filter's value wins.",
       "default": false,
       "type": "boolean"
     },
@@ -11446,6 +11517,19 @@ Filter Features by Spatial Relationship
       "type": [
         "string",
         "null"
+      ]
+    },
+    "outputMatchCountAttribute": {
+      "title": "Output Match Count Attribute",
+      "description": "Optional attribute name to store the number of matching filters.",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
       ]
     }
   },
