@@ -80,6 +80,18 @@ impl TriangularMesh3DData {
 }
 
 impl TriangularMesh2D {
+    /// The coordinate frame these vertices are expressed in.
+    #[inline]
+    pub fn frame(&self) -> &CoordinateFrame {
+        &self.frame
+    }
+
+    /// The shared vertex pool.
+    #[inline]
+    pub fn vertices(&self) -> &[[f64; 2]] {
+        &self.vertices
+    }
+
     /// The number of triangles in the mesh.
     #[inline]
     pub fn num_triangles(&self) -> usize {

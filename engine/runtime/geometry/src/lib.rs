@@ -33,10 +33,12 @@ pub mod csg;
 pub mod index;
 pub mod line_string;
 pub mod ops;
+pub mod overlay;
 pub mod point;
 pub mod point_cloud;
 pub mod polygon;
 pub mod polygon_mesh;
+pub mod predicates;
 pub mod solid;
 pub mod triangular_mesh;
 #[cfg(feature = "new-geometry")]
