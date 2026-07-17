@@ -69,7 +69,7 @@ impl Shell {
 
 /// The checks that apply to a solid. `InteriorRingContainment` does not apply: a
 /// solid's interiors are void *shells*, not interior rings. `Orientable` and
-/// `Orientation` are checked per shell — they are also the prerequisites that make
+/// `Orientation` are checked per shell; they are also the prerequisites that make
 /// `ShellOrientation`'s signed-volume test meaningful.
 const SOLID_CHECKS: [ValidationType; 10] = [
     ValidationType::Finite,

@@ -534,8 +534,8 @@ fn merge_members(members: impl IntoIterator<Item = ValidationResults>) -> Valida
 
 /// A ring stored closed (first == last) with its trailing closing vertex
 /// dropped, so the mandatory closure is not treated as a real element (e.g. a
-/// duplicate point or an extra fan corner). Open rings — and anything too short
-/// to be closed — pass through unchanged.
+/// duplicate point or an extra fan corner). Open rings (and anything too short
+/// to be closed) pass through unchanged.
 pub(crate) fn open_ring<T: PartialEq>(ring: &[T]) -> &[T] {
     match ring.split_last() {
         Some((last, head)) if !head.is_empty() && ring.first() == Some(last) => head,
@@ -697,8 +697,8 @@ impl DuplicateCoord for [f64; 3] {
 /// [`dependencies`](ValidationType::dependencies)), so the gated driver never
 /// reaches this check until finiteness has passed, and this routine relies on
 /// that rather than re-checking. A non-finite coordinate would corrupt
-/// detection — [`norm_bits`] collides distinct NaNs into a false duplicate, and a
-/// NaN poisons the k-d tree — so any caller outside the gated driver must uphold
+/// detection: [`norm_bits`] collides distinct NaNs into a false duplicate, and a
+/// NaN poisons the k-d tree, so any caller outside the gated driver must uphold
 /// it.
 pub(crate) fn check_duplicate_points<const N: usize>(
     frame: &CoordinateFrame,

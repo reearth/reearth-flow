@@ -21,8 +21,8 @@ use crate::validation_next::{
 };
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
-/// Decode the CSR face topology and invoke `f` once per face ring — each face's
-/// exterior ring, then its hole rings — passing the ring's vertex indices and
+/// Decode the CSR face topology and invoke `f` once per face ring (each face's
+/// exterior ring, then its hole rings), passing the ring's vertex indices and
 /// whether it is an exterior ring (vs. a hole).
 ///
 /// The flat index buffer is streamed rather than collected, and each ring is
