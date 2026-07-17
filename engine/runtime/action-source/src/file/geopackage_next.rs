@@ -611,6 +611,34 @@ mod tests {
         );
     }
 
+    fn hex_to_bytes(h: &str) -> Vec<u8> {
+        (0..h.len())
+            .step_by(2)
+            .map(|i| u8::from_str_radix(&h[i..i + 2], 16).unwrap())
+            .collect()
+    }
+
+    // A real GeoPackage blob produced by GDAL/OGR: a 3D LineString stored as ISO WKB
+    // (type 1002) with a 48-byte Z-envelope header. Regression guard for the ISO-WKB fix
+    // (the old EWKB-only decoder rejected this as "Unsupported geometry type: 1002") and
+    // for real envelope-skipping. Source: GDAL autotest data `gpkg/3d_envelope.gpkg`.
+    #[test]
+    fn real_gdal_iso_3d_linestring_blob() {
+        let hex = "47500005000000000000000000000000000000000000F03F0000000000000000000000000000F03F0000000000000000000000000000F03F01EA03000002000000000000000000000000000000000000000000000000000000000000000000F03F000000000000F03F000000000000F03F";
+        let blob = hex_to_bytes(hex);
+
+        // srs_id 0 -> undefined -> Euclidean frame, no axis swap.
+        let geom = parse_geopackage_geometry(&blob, 0, false).unwrap();
+
+        assert_eq!(
+            geom,
+            Geometry::Euclidean3D(Euclidean3DGeometry::LineString(LineString3D::from_coords(
+                CoordinateFrame::Euclidean,
+                [[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]],
+            )))
+        );
+    }
+
     // PostGIS EWKB 3D (Z via high-bit flag) is also read, even though GeoPackage uses ISO.
     #[test]
     fn point_3d_ewkb_is_also_supported() {
