@@ -242,11 +242,12 @@ export default ({
 
   const {
     customDebugRunWorkflowVariables,
+    workflowVariableDefaults,
     refetchWorkflowVariables,
     handleDebugRunStart,
     handleFromSelectedNodeDebugRunStart,
     handleDebugRunStop,
-    handleDebugRunVariableValueChange,
+    handleResetDebugRunWorkflowVariables,
     loadExternalDebugJob,
     activeUsersDebugRuns,
   } = useDebugRun({
@@ -493,7 +494,7 @@ export default ({
     refetchWorkflowVariables,
     showSearchPanel,
     openNodePickerViaShortcut,
-    handleDebugRunVariableValueChange,
+    workflowVariableDefaults,
     loadExternalDebugJob,
     handleWorkflowDeployment,
     sharingUrl,
@@ -523,6 +524,7 @@ export default ({
     handleDebugRunStart,
     handleFromSelectedNodeDebugRunStart,
     handleDebugRunStop,
+    handleResetDebugRunWorkflowVariables,
     schemaProbes,
     readerAttributeSuggestions,
     handleNodeParamsSaved,

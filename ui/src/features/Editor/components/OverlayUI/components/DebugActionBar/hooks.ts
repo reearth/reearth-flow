@@ -9,12 +9,14 @@ import { AnyWorkflowVariable } from "@flow/types";
 export default ({
   onDebugRunStart,
   onDebugRunStop,
+  onResetDebugRunWorkflowVariables,
   refetchWorkflowVariables,
   onUserFocusedElement,
   customDebugRunWorkflowVariables,
 }: {
   onDebugRunStart: () => Promise<void>;
   onDebugRunStop: () => Promise<void>;
+  onResetDebugRunWorkflowVariables: () => void;
   onUserFocusedElement?: (isOpen: boolean) => void;
   refetchWorkflowVariables: () => void;
   customDebugRunWorkflowVariables: AnyWorkflowVariable[] | undefined;
@@ -129,6 +131,7 @@ export default ({
     );
     if (!jobState) return;
     await updateDebugRunState({ jobs: jobState });
+    onResetDebugRunWorkflowVariables();
   };
 
   useEffect(() => {

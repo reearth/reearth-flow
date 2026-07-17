@@ -48,8 +48,9 @@ type Props = {
     nodes?: Node[],
   ) => Promise<void>;
   onDebugRunStop: () => Promise<void>;
+  onResetDebugRunWorkflowVariables: () => void;
   customDebugRunWorkflowVariables?: AnyWorkflowVariable[];
-  onDebugRunVariableValueChange: (index: number, newValue: any) => void;
+  workflowVariableDefaults?: AnyWorkflowVariable[];
   refetchWorkflowVariables: () => void;
   onUserFocusedElement?: (isOpen: boolean) => void;
 };
@@ -60,11 +61,12 @@ const DebugActionBar: React.FC<Props> = ({
   edges,
   isSaving,
   customDebugRunWorkflowVariables,
+  workflowVariableDefaults,
   onDebugRunJoin,
   onDebugRunStart,
   onDebugRunStartFromSelectedNode,
   onDebugRunStop,
-  onDebugRunVariableValueChange,
+  onResetDebugRunWorkflowVariables,
   onUserFocusedElement,
   refetchWorkflowVariables,
 }) => {
@@ -85,6 +87,7 @@ const DebugActionBar: React.FC<Props> = ({
   } = useHooks({
     onDebugRunStart,
     onDebugRunStop,
+    onResetDebugRunWorkflowVariables,
     onUserFocusedElement,
     refetchWorkflowVariables,
     customDebugRunWorkflowVariables,
@@ -136,7 +139,7 @@ const DebugActionBar: React.FC<Props> = ({
       {showOverlayElement === "debugWorkflowVariables" && (
         <DebugWorkflowVariablesDialog
           debugRunWorkflowVariables={customDebugRunWorkflowVariables}
-          onDebugRunVariableValueChange={onDebugRunVariableValueChange}
+          workflowVariableDefaults={workflowVariableDefaults}
           onDebugRunStart={onDebugRunStart}
           onDialogClose={handlePopoverClose}
         />

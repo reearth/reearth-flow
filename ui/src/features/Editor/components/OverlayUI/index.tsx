@@ -49,6 +49,7 @@ type OverlayUIProps = {
   }[];
   currentWorkflowId: string;
   customDebugRunWorkflowVariables?: AnyWorkflowVariable[];
+  workflowVariableDefaults?: AnyWorkflowVariable[];
   openNodePickerViaShortcut: boolean;
   refetchWorkflowVariables: () => void;
   onNodesAdd: (nodes: Node[]) => void;
@@ -90,7 +91,7 @@ type OverlayUIProps = {
     nodes?: Node[],
   ) => Promise<void>;
   onDebugRunStop: () => Promise<void>;
-  onDebugRunVariableValueChange: (index: number, newValue: any) => void;
+  onResetDebugRunWorkflowVariables: () => void;
   onDebugRunJoin?: (jobId: string, userName: string) => Promise<void>;
   onProjectSnapshotSave: () => Promise<void>;
   onProjectLockChange: (lock: boolean) => void;
@@ -122,6 +123,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   openWorkflows,
   currentWorkflowId,
   customDebugRunWorkflowVariables,
+  workflowVariableDefaults,
   openNodePickerViaShortcut,
   refetchWorkflowVariables,
   onNodesAdd,
@@ -144,7 +146,7 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
   onDebugRunStart,
   onDebugRunStartFromSelectedNode,
   onDebugRunStop,
-  onDebugRunVariableValueChange,
+  onResetDebugRunWorkflowVariables,
   onDebugRunJoin,
   onProjectSnapshotSave,
   onProjectLockChange,
@@ -239,8 +241,11 @@ const OverlayUI: React.FC<OverlayUIProps> = ({
               onDebugRunStart={onDebugRunStart}
               onDebugRunStartFromSelectedNode={onDebugRunStartFromSelectedNode}
               onDebugRunStop={onDebugRunStop}
+              onResetDebugRunWorkflowVariables={
+                onResetDebugRunWorkflowVariables
+              }
               customDebugRunWorkflowVariables={customDebugRunWorkflowVariables}
-              onDebugRunVariableValueChange={onDebugRunVariableValueChange}
+              workflowVariableDefaults={workflowVariableDefaults}
               onUserFocusedElement={onUserFocusedElement}
               refetchWorkflowVariables={refetchWorkflowVariables}
             />

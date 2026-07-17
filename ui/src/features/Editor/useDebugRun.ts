@@ -1,5 +1,5 @@
 import { useReactFlow } from "@xyflow/react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Awareness } from "y-protocols/awareness";
 
 import { useProject, useWorkflowVariables } from "@flow/lib/gql";
@@ -35,23 +35,6 @@ export default ({
   const [customDebugRunWorkflowVariables, setCustomDebugRunWorkflowVariables] =
     useState<AnyWorkflowVariable[] | undefined>(undefined);
 
-  useEffect(() => {
-    if (!workflowVariables) return;
-    setCustomDebugRunWorkflowVariables((prev) => {
-      if (!prev) return workflowVariables;
-      return workflowVariables.map((workflowVariable) => {
-        const existingCustom = prev.find(
-          (customVariable) =>
-            customVariable.name === workflowVariable.name &&
-            customVariable.type === workflowVariable.type &&
-            JSON.stringify(customVariable.defaultValue) ===
-              JSON.stringify(workflowVariable.defaultValue),
-        );
-        return existingCustom || workflowVariable;
-      });
-    });
-  }, [workflowVariables]);
-
   const { fitView } = useReactFlow();
 
   const { runProject } = useProject();
@@ -63,12 +46,41 @@ export default ({
     (job) => job.projectId === currentProject?.id,
   );
 
+  const hasRestoredFromJobStateRef = useRef(false);
+
+  useEffect(() => {
+    if (!workflowVariables || debugRunState === null) return;
+
+    setCustomDebugRunWorkflowVariables((prev) => {
+      const baseline = hasRestoredFromJobStateRef.current
+        ? prev
+        : (prev ?? debugJob?.variables);
+      hasRestoredFromJobStateRef.current = true;
+
+      if (!baseline) return workflowVariables;
+      return workflowVariables.map((workflowVariable) => {
+        const existingCustom = baseline.find(
+          (customVariable) => customVariable.id === workflowVariable.id,
+        );
+        return existingCustom
+          ? { ...workflowVariable, defaultValue: existingCustom.defaultValue }
+          : workflowVariable;
+      });
+    });
+  }, [workflowVariables, debugRunState, debugJob?.variables]);
+
   const runDebugWorkflow = useCallback(
-    async (jobId?: string, selectedNodeId?: string) => {
+    async (
+      jobId?: string,
+      selectedNodeId?: string,
+      overrideVariables?: AnyWorkflowVariable[],
+    ) => {
       if (!currentProject) return;
+      const variablesForRun =
+        overrideVariables ?? customDebugRunWorkflowVariables;
       const engineReadyWorkflow = createEngineReadyWorkflow(
         currentProject.name,
-        customDebugRunWorkflowVariables,
+        variablesForRun,
         rawWorkflows,
       );
 
@@ -83,6 +95,10 @@ export default ({
       );
 
       if (data.job) {
+        if (overrideVariables) {
+          setCustomDebugRunWorkflowVariables(overrideVariables);
+        }
+
         let jobs: JobState[] = debugRunState?.jobs || [];
 
         if (!data.job.id) {
@@ -101,6 +117,7 @@ export default ({
                 projectId: currentProject.id,
                 jobId: data.job.id,
                 status: data.job.status,
+                variables: variablesForRun,
               };
             }
             return job;
@@ -110,6 +127,7 @@ export default ({
             projectId: currentProject.id,
             jobId: data.job.id,
             status: data.job.status,
+            variables: variablesForRun,
           });
         }
         await updateValue({ jobs });
@@ -127,9 +145,12 @@ export default ({
     ],
   );
 
-  const handleDebugRunStart = useCallback(async () => {
-    await runDebugWorkflow();
-  }, [runDebugWorkflow]);
+  const handleDebugRunStart = useCallback(
+    async (overrideVariables?: AnyWorkflowVariable[]) => {
+      await runDebugWorkflow(undefined, undefined, overrideVariables);
+    },
+    [runDebugWorkflow],
+  );
 
   const handleFromSelectedNodeDebugRunStart = useCallback(
     async (node?: Node, nodes?: Node[]) => {
@@ -139,6 +160,11 @@ export default ({
     },
     [runDebugWorkflow, debugJob?.jobId],
   );
+
+  const handleResetDebugRunWorkflowVariables = useCallback(() => {
+    if (!workflowVariables) return;
+    setCustomDebugRunWorkflowVariables(workflowVariables);
+  }, [workflowVariables]);
 
   const handleDebugRunStop = useCallback(async () => {
     const debugJob = debugRunState?.jobs?.find(
@@ -152,8 +178,15 @@ export default ({
         debugRunState?.jobs?.filter((j) => j.projectId !== currentProject.id) ||
         [];
       await updateValue({ jobs });
+      handleResetDebugRunWorkflowVariables();
     }
-  }, [currentProject?.id, debugRunState?.jobs, updateValue, useJobCancel]);
+  }, [
+    currentProject?.id,
+    debugRunState?.jobs,
+    updateValue,
+    useJobCancel,
+    handleResetDebugRunWorkflowVariables,
+  ]);
 
   const loadExternalDebugJob = useCallback(
     async (jobId: string, userName: string) => {
@@ -200,17 +233,6 @@ export default ({
     [t, currentProject, debugRunState, updateValue, yAwareness],
   );
 
-  const handleDebugRunVariableValueChange = useCallback(
-    (index: number, newValue: any) => {
-      setCustomDebugRunWorkflowVariables((prev) =>
-        prev?.map((variable, i) =>
-          i === index ? { ...variable, defaultValue: newValue } : variable,
-        ),
-      );
-    },
-    [],
-  );
-
   useEffect(() => {
     broadcastDebugRun(
       debugJob?.jobId ?? null,
@@ -221,11 +243,12 @@ export default ({
   return {
     activeUsersDebugRuns,
     customDebugRunWorkflowVariables,
+    workflowVariableDefaults: workflowVariables,
     refetchWorkflowVariables,
     handleDebugRunStart,
     handleFromSelectedNodeDebugRunStart,
     handleDebugRunStop,
-    handleDebugRunVariableValueChange,
+    handleResetDebugRunWorkflowVariables,
     loadExternalDebugJob,
   };
 };

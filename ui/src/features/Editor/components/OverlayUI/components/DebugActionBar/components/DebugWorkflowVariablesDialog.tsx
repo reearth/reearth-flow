@@ -1,4 +1,8 @@
-import { ChalkboardTeacherIcon } from "@phosphor-icons/react";
+import {
+  ArrowUDownLeftIcon,
+  ChalkboardTeacherIcon,
+  PencilLineIcon,
+} from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useMemo, useState } from "react";
 
@@ -11,6 +15,7 @@ import {
   DialogTitle,
   Button,
   DialogFooter,
+  IconButton,
   VariableRow,
 } from "@flow/components";
 import AssetsDialog from "@flow/features/AssetsDialog";
@@ -20,23 +25,72 @@ import { AnyWorkflowVariable, Asset } from "@flow/types";
 
 type Props = {
   debugRunWorkflowVariables?: AnyWorkflowVariable[];
-  onDebugRunVariableValueChange: (index: number, newValue: any) => void;
-  onDebugRunStart: () => Promise<void>;
+  workflowVariableDefaults?: AnyWorkflowVariable[];
+  onDebugRunStart: (variables?: AnyWorkflowVariable[]) => Promise<void>;
   onDialogClose: () => void;
 };
 type DialogOptions = "assets" | "cms" | undefined;
 
 const DebugWorkflowVariablesDialog: React.FC<Props> = ({
   debugRunWorkflowVariables,
-  onDebugRunVariableValueChange,
+  workflowVariableDefaults,
   onDebugRunStart,
   onDialogClose,
 }) => {
+  const t = useT();
+
+  // Local draft state for workflow variables, initialized with the debug run variables if provided
+  const [variables, setVariables] = useState<AnyWorkflowVariable[]>(
+    () => debugRunWorkflowVariables ?? [],
+  );
+
   const [startingDebugRun, setStartingDebugRun] = useState(false);
   const [showDialog, setShowDialog] = useState<DialogOptions>(undefined);
   const [activeVariableIndex, setActiveVariableIndex] = useState<number>(0);
   const [activeArrayItemIndex, setActiveArrayItemIndex] = useState<number>(0);
   const [showVariableDialog, setShowVariableDialog] = useState(false);
+
+  const handleDefaultValueChange = useCallback(
+    (index: number, newValue: any) => {
+      setVariables((prev) =>
+        prev.map((variable, i) =>
+          i === index ? { ...variable, defaultValue: newValue } : variable,
+        ),
+      );
+    },
+    [],
+  );
+
+  const handleResetToDefault = useCallback(
+    (index: number, variableId: string) => {
+      const original = workflowVariableDefaults?.find(
+        (defaultVariable) => defaultVariable.id === variableId,
+      );
+      if (!original) return;
+      setVariables((prev) =>
+        prev.map((variable, i) =>
+          i === index
+            ? { ...variable, defaultValue: original.defaultValue }
+            : variable,
+        ),
+      );
+    },
+    [workflowVariableDefaults],
+  );
+
+  const isAtDefault = useCallback(
+    (variable: AnyWorkflowVariable): boolean => {
+      const original = workflowVariableDefaults?.find(
+        (defaultVariable) => defaultVariable.id === variable.id,
+      );
+      if (!original) return true;
+      return (
+        JSON.stringify(variable.defaultValue) ===
+        JSON.stringify(original.defaultValue)
+      );
+    },
+    [workflowVariableDefaults],
+  );
 
   const handleAssetDialogOpen = (dialog: DialogOptions) => {
     setShowDialog(dialog);
@@ -55,34 +109,33 @@ const DebugWorkflowVariablesDialog: React.FC<Props> = ({
     [],
   );
   const handleAssetDoubleClick = (asset: Asset) => {
-    const variable = debugRunWorkflowVariables?.[activeVariableIndex];
+    const variable = variables[activeVariableIndex];
     if (Array.isArray(variable?.defaultValue)) {
       const newArray = [...variable.defaultValue];
       newArray[activeArrayItemIndex] = asset.url;
-      onDebugRunVariableValueChange?.(activeVariableIndex, newArray);
+      handleDefaultValueChange(activeVariableIndex, newArray);
     } else {
-      onDebugRunVariableValueChange?.(activeVariableIndex, asset.url);
+      handleDefaultValueChange(activeVariableIndex, asset.url);
     }
     handleVariableDialogClose();
   };
 
   const handleCmsItemValue = (cmsItemAssetUrl: string) => {
-    const variable = debugRunWorkflowVariables?.[activeVariableIndex];
+    const variable = variables[activeVariableIndex];
     if (Array.isArray(variable?.defaultValue)) {
       const newArray = [...variable.defaultValue];
       newArray[activeArrayItemIndex] = cmsItemAssetUrl;
-      onDebugRunVariableValueChange?.(activeVariableIndex, newArray);
+      handleDefaultValueChange(activeVariableIndex, newArray);
     } else {
-      onDebugRunVariableValueChange?.(activeVariableIndex, cmsItemAssetUrl);
+      handleDefaultValueChange(activeVariableIndex, cmsItemAssetUrl);
     }
     handleDialogClose();
     handleVariableDialogClose();
   };
 
-  const t = useT();
   const handleDebugRunStart = async () => {
     setStartingDebugRun(true);
-    await onDebugRunStart();
+    await onDebugRunStart(variables);
     setStartingDebugRun(false);
     onDialogClose();
   };
@@ -108,10 +161,9 @@ const DebugWorkflowVariablesDialog: React.FC<Props> = ({
               showVariableDialog={
                 showVariableDialog && activeVariableIndex === row.index
               }
-              onVariableDialogOpen={handleVariableDialogOpen}
               onVariableDialogClose={handleVariableDialogClose}
               onAssetDialogOpen={handleAssetDialogOpen}
-              onDefaultValueChange={onDebugRunVariableValueChange}
+              onDefaultValueChange={handleDefaultValueChange}
             />
           );
         },
@@ -126,12 +178,38 @@ const DebugWorkflowVariablesDialog: React.FC<Props> = ({
         header: t("Public"),
         cell: ({ getValue }) => (getValue() ? t("Yes") : t("No")),
       },
+      {
+        id: "actions",
+        header: t("Actions"),
+        cell: ({ row }) => (
+          <div>
+            <IconButton
+              size="sm"
+              variant="ghost"
+              icon={<PencilLineIcon />}
+              tooltipText={t("Edit default value")}
+              onClick={() => handleVariableDialogOpen(row.index)}
+            />
+            <IconButton
+              size="sm"
+              variant="ghost"
+              icon={<ArrowUDownLeftIcon />}
+              tooltipText={t("Reset to default")}
+              onClick={() => handleResetToDefault(row.index, row.original.id)}
+              disabled={isAtDefault(row.original)}
+            />
+          </div>
+        ),
+        size: 100,
+      },
     ],
     [
       activeVariableIndex,
+      handleDefaultValueChange,
+      handleResetToDefault,
       handleVariableDialogClose,
       handleVariableDialogOpen,
-      onDebugRunVariableValueChange,
+      isAtDefault,
       showVariableDialog,
       t,
     ],
@@ -156,7 +234,7 @@ const DebugWorkflowVariablesDialog: React.FC<Props> = ({
               <DialogContentSection className="min-h-0 flex-1 overflow-hidden">
                 <Table
                   columns={columns}
-                  data={debugRunWorkflowVariables}
+                  data={variables}
                   showOrdering={false}
                 />
               </DialogContentSection>
