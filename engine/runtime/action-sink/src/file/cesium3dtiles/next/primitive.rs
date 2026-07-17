@@ -207,3 +207,71 @@ fn polygon_wraps(uvs: &[[f64; 2]]) -> bool {
     uvs.iter()
         .any(|&[u, v]| !unit.contains(&u) || !unit.contains(&v))
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::file::cesium3dtiles::next::appearance::TextureSource;
+    use reearth_flow_types::{Attributes, Feature};
+
+    #[test]
+    fn collect_keeps_textured_and_color_faces_separate() {
+        let feature = Feature::new_with_attributes(Attributes::new());
+        let mesh = ExtractedMesh {
+            ecef_vertices: vec![
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [1.0, 1.0, 0.0],
+            ],
+            geographic_vertices: Vec::new(),
+            indices: vec![[0, 1, 2], [1, 3, 2]],
+            polygon_normals: vec![[0.0, 0.0, 1.0]; 2],
+            polygon_tris: vec![1, 1],
+            materials: vec![
+                ResolvedMaterial {
+                    base_color_factor: [1.0, 1.0, 1.0, 1.0],
+                    metallic_factor: 0.0,
+                    roughness_factor: 1.0,
+                    base_texture: Some(TextureSource {
+                        path: PathBuf::from("texture.png"),
+                    }),
+                },
+                ResolvedMaterial {
+                    base_color_factor: [1.0, 0.0, 0.0, 1.0],
+                    metallic_factor: 0.0,
+                    roughness_factor: 0.9,
+                    base_texture: None,
+                },
+            ],
+            triangle_material: vec![Some(0), Some(1)],
+            corner_uv: vec![
+                [0.0, 0.0],
+                [1.0, 0.0],
+                [0.0, 1.0],
+                [1.0, 0.0],
+                [1.0, 1.0],
+                [0.0, 1.0],
+            ],
+        };
+        let member = (&feature, mesh);
+
+        let primitives = collect(&[&member]);
+
+        let textured = primitives.textured.expect("textured face");
+        assert_eq!(textured.geom.indices, vec![[0, 1, 2]]);
+        assert_eq!(
+            textured.geom.corner_uv,
+            vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]]
+        );
+        assert_eq!(textured.polygon_texture, vec![PathBuf::from("texture.png")]);
+
+        let color = primitives
+            .color
+            .iter()
+            .find(|primitive| primitive.factors.base_color_factor == [1.0, 0.0, 0.0, 1.0])
+            .expect("color face");
+        assert_eq!(color.geom.indices, vec![[0, 1, 2]]);
+        assert!(color.geom.corner_uv.is_empty());
+    }
+}
