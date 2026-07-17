@@ -79,11 +79,20 @@ struct RemapContext {
 fn remap_uv(u: f64, v: f64, ctx: &RemapContext) -> [f64; 2] {
     let scale = ctx.downsample as f64;
     let px = u * ctx.texture_size.0 as f64 - ctx.damage.x as f64;
+    // Pixel row this UV samples, and the row back to a UV — both depend on the
+    // v origin. Top-left (new-geometry): v runs with the row index. Bottom-left
+    // (legacy): v runs against it, hence the `1.0 - …` on both ends.
+    #[cfg(feature = "new-geometry")]
+    let py = v * ctx.texture_size.1 as f64 - ctx.damage.y as f64;
+    #[cfg(not(feature = "new-geometry"))]
     let py = (1.0 - v) * ctx.texture_size.1 as f64 - ctx.damage.y as f64;
-    [
-        (px / scale + ctx.frame.x as f64) / ctx.atlas_size.0,
-        1.0 - (py / scale + ctx.frame.y as f64) / ctx.atlas_size.1,
-    ]
+    let out_u = (px / scale + ctx.frame.x as f64) / ctx.atlas_size.0;
+    let row = (py / scale + ctx.frame.y as f64) / ctx.atlas_size.1;
+    #[cfg(feature = "new-geometry")]
+    let out_v = row;
+    #[cfg(not(feature = "new-geometry"))]
+    let out_v = 1.0 - row;
+    [out_u, out_v]
 }
 
 fn remap_polygon_uvs(
