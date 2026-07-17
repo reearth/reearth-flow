@@ -114,6 +114,32 @@ impl Aabb {
         }
     }
 
+    /// Whether two boxes overlap. Contact (shared face, edge, or corner) counts
+    /// as overlap — the test is inclusive on every axis, matching the closed-set
+    /// semantics the predicate kernels expect from a quick-reject.
+    ///
+    /// Same-embedding boxes compare directly; a 2D box mixed with a 3D one is
+    /// placed in the `z = 0` plane first (as in [`union`](Aabb::union)), so the
+    /// mixed case never spuriously rejects on the `z` axis.
+    pub fn intersects(&self, other: &Aabb) -> bool {
+        if let (
+            Aabb::D2 {
+                min: amin,
+                max: amax,
+            },
+            Aabb::D2 {
+                min: bmin,
+                max: bmax,
+            },
+        ) = (self, other)
+        {
+            return (0..2).all(|i| amin[i] <= bmax[i] && bmin[i] <= amax[i]);
+        }
+        let (amin, amax) = self.as_3d();
+        let (bmin, bmax) = other.as_3d();
+        (0..3).all(|i| amin[i] <= bmax[i] && bmin[i] <= amax[i])
+    }
+
     /// The smallest box containing both. Two 2D boxes stay 2D; a 2D box mixed
     /// with a 3D one is promoted into the `z = 0` plane and the result is 3D.
     pub fn union(self, other: Aabb) -> Aabb {
@@ -291,6 +317,52 @@ mod tests {
                 max: [3.0, 1.0]
             })
         );
+    }
+
+    #[test]
+    fn intersects_overlapping_and_disjoint_2d() {
+        let a = Aabb::D2 {
+            min: [0.0, 0.0],
+            max: [2.0, 2.0],
+        };
+        let overlap = Aabb::D2 {
+            min: [1.0, 1.0],
+            max: [3.0, 3.0],
+        };
+        let disjoint = Aabb::D2 {
+            min: [3.0, 3.0],
+            max: [4.0, 4.0],
+        };
+        // Touching along an edge counts (inclusive).
+        let touching = Aabb::D2 {
+            min: [2.0, 0.0],
+            max: [4.0, 2.0],
+        };
+        assert!(a.intersects(&overlap));
+        assert!(a.intersects(&touching));
+        assert!(!a.intersects(&disjoint));
+        // Symmetric.
+        assert!(overlap.intersects(&a));
+    }
+
+    #[test]
+    fn intersects_mixed_dim_uses_z_zero_plane() {
+        let flat = Aabb::D2 {
+            min: [0.0, 0.0],
+            max: [2.0, 2.0],
+        };
+        // A 3D box straddling z = 0 overlaps the z = 0 plane.
+        let through_plane = Aabb::D3 {
+            min: [1.0, 1.0, -1.0],
+            max: [3.0, 3.0, 1.0],
+        };
+        // A 3D box entirely above z = 0 does not.
+        let above_plane = Aabb::D3 {
+            min: [1.0, 1.0, 1.0],
+            max: [3.0, 3.0, 2.0],
+        };
+        assert!(flat.intersects(&through_plane));
+        assert!(!flat.intersects(&above_plane));
     }
 
     #[test]

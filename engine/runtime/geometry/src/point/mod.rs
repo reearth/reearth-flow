@@ -27,7 +27,27 @@ pub struct Point3D {
     position: [f64; 3],
 }
 
+impl Point2D {
+    /// The coordinate frame this position is expressed in.
+    #[inline]
+    pub fn frame(&self) -> &CoordinateFrame {
+        &self.frame
+    }
+
+    /// The `[x, y]` position.
+    #[inline]
+    pub fn position(&self) -> [f64; 2] {
+        self.position
+    }
+}
+
 impl Point3D {
+    /// The coordinate frame this position is expressed in.
+    #[inline]
+    pub fn frame(&self) -> &CoordinateFrame {
+        &self.frame
+    }
+
     /// The `[x, y, z]` position.
     #[inline]
     pub fn position(&self) -> [f64; 3] {
