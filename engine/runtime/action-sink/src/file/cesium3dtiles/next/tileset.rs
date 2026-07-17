@@ -9,7 +9,7 @@ const SUBTREES_URI_TEMPLATE: &str = "subtrees/{level}.{x}.{y}.subtree";
 /// descendants' bounding volume/geometric error are client-derived from
 /// `level` alone. Which cells hold content lives in the paired `.subtree`
 /// file(s) (`subtree.rs`), not here.
-pub(super) fn build(root: &GeoBox, available_levels: u32) -> Value {
+pub(super) fn build(root: &GeoBox, available_levels: u32, resolution: f64) -> Value {
     let region = [
         root.west.to_radians(),
         root.south.to_radians(),
@@ -18,7 +18,7 @@ pub(super) fn build(root: &GeoBox, available_levels: u32) -> Value {
         root.min_height,
         root.max_height,
     ];
-    let root_error = geometric_error(root_ground_diagonal_m(root), 0);
+    let root_error = geometric_error(root_ground_diagonal_m(root), 0, resolution);
 
     json!({
         "asset": {"version": "1.1"},

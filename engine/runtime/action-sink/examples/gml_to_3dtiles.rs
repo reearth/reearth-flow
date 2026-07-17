@@ -10,6 +10,10 @@
 //! `draco` and `compute_flat_normal` are optional `1`/`0` flags, both default `1`.
 //! `lod` (optional) keeps only geometry from that LOD; without it every LOD is
 //! written (LODs then overlap in the viewer).
+//!
+//! Texture options are read from the environment: `RESOLUTION` (metres per
+//! pixel, default `0` = full resolution) and `ATLAS_SIZE` (max atlas page in
+//! pixels, default `8192`).
 
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
@@ -67,8 +71,18 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &features,
         next::MetadataOptions::default(),
         24,
-        draco,
-        compute_flat_normal,
+        next::RenderOptions {
+            draco,
+            compute_flat_normal,
+            resolution: std::env::var("RESOLUTION")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(0.0),
+            atlas_size: std::env::var("ATLAS_SIZE")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(8192),
+        },
     )?;
 
     std::fs::write(output_dir.join("tileset.json"), &built.tileset_json)?;

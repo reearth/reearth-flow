@@ -1,6 +1,7 @@
 mod blit;
 mod damage;
 mod error;
+mod multipage;
 mod plan;
 mod skyline;
 
@@ -10,6 +11,7 @@ use std::path::PathBuf;
 use damage::{collect_damage, TextureDamage};
 pub use error::{AtlasError, Result};
 use image::RgbaImage;
+pub use multipage::{build_atlas_multipage, MultiPageAtlas, PolygonPlacement, TextureCache};
 pub use plan::plan_layout;
 
 pub type PolygonUVs = Vec<[f64; 2]>;
@@ -73,11 +75,14 @@ struct RemapContext {
     damage: Rect,
     frame: Rect,
     atlas_size: (f64, f64),
-    downsample: u32,
+    /// Source pixels per placement pixel (`= downsample factor`, ≥ 1 when the
+    /// region was shrunk into the atlas). A single scale for both axes assumes
+    /// aspect-preserving resize, which both the legacy and multipage packers do.
+    scale: f64,
 }
 
 fn remap_uv(u: f64, v: f64, ctx: &RemapContext) -> [f64; 2] {
-    let scale = ctx.downsample as f64;
+    let scale = ctx.scale;
     let px = u * ctx.texture_size.0 as f64 - ctx.damage.x as f64;
     // Pixel row this UV samples, and the row back to a UV — both depend on the
     // v origin. Top-left (new-geometry): v runs with the row index. Bottom-left
@@ -95,12 +100,12 @@ fn remap_uv(u: f64, v: f64, ctx: &RemapContext) -> [f64; 2] {
     [out_u, out_v]
 }
 
-fn remap_polygon_uvs(
+pub(crate) fn remap_polygon_uvs(
     poly_uvs: &PolygonUVs,
     texture_size: (u32, u32),
     damage: Rect,
     frame: Rect,
-    downsample: u32,
+    scale: f64,
     atlas_size: (f64, f64),
 ) -> PolygonUVs {
     let ctx = RemapContext {
@@ -108,7 +113,7 @@ fn remap_polygon_uvs(
         damage,
         frame,
         atlas_size,
-        downsample,
+        scale,
     };
     poly_uvs
         .iter()
@@ -150,7 +155,7 @@ fn build_remapped_uvs(
                         texture_size,
                         damage,
                         frame,
-                        downsample,
+                        downsample as f64,
                         atlas_size,
                     )
                 })

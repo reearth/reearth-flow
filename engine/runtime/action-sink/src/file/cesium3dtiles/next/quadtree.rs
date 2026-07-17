@@ -186,9 +186,15 @@ pub(super) fn root_ground_diagonal_m(root: &GeoBox) -> f64 {
 /// Geometric error at `level`, halving from the root per level — the fixed
 /// relationship 3D Tiles 1.1 implicit tiling requires (a client derives every
 /// non-root tile's error this way, so the server has no freedom to pick
-/// anything else).
-pub(super) fn geometric_error(root_ground_diagonal_m: f64, level: u32) -> f64 {
-    root_ground_diagonal_m / (1u64 << level) as f64
+/// anything else) — floored at `resolution` so the reported error never claims
+/// finer detail than the (downsampled) textures actually carry. Pass
+/// `resolution == 0.0` to disable the floor.
+///
+/// The writer emits an explicit error only for the root tile; deeper levels are
+/// client-derived by halving, so the floor currently binds only where a value
+/// is written, and is kept here as the single source of truth for the formula.
+pub(super) fn geometric_error(root_ground_diagonal_m: f64, level: u32, resolution: f64) -> f64 {
+    (root_ground_diagonal_m / (1u64 << level) as f64).max(resolution)
 }
 
 #[cfg(test)]
@@ -273,8 +279,17 @@ mod tests {
     #[test]
     fn geometric_error_halves_per_level() {
         let diag = 1000.0;
-        assert_eq!(geometric_error(diag, 0), 1000.0);
-        assert_eq!(geometric_error(diag, 1), 500.0);
-        assert_eq!(geometric_error(diag, 2), 250.0);
+        assert_eq!(geometric_error(diag, 0, 0.0), 1000.0);
+        assert_eq!(geometric_error(diag, 1, 0.0), 500.0);
+        assert_eq!(geometric_error(diag, 2, 0.0), 250.0);
+    }
+
+    #[test]
+    fn geometric_error_floored_at_resolution() {
+        let diag = 1000.0;
+        // Deep enough that the halved error drops below the resolution floor.
+        assert_eq!(geometric_error(diag, 20, 0.1), 0.1);
+        // Shallow levels stay above the floor.
+        assert_eq!(geometric_error(diag, 1, 0.1), 500.0);
     }
 }

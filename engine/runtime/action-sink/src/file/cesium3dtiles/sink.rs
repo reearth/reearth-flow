@@ -104,6 +104,10 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
                 draco_compression: params.draco_compression,
                 #[cfg(feature = "new-geometry")]
                 compute_flat_normal: params.compute_flat_normal,
+                #[cfg(feature = "new-geometry")]
+                resolution: params.resolution,
+                #[cfg(feature = "new-geometry")]
+                atlas_size: params.atlas_size,
                 skip_unexposed_attributes: params.skip_unexposed_attributes.unwrap_or(false),
                 schema_key: params.schema_key,
             },
@@ -148,6 +152,16 @@ pub struct Cesium3DTilesWriterParam {
     /// When disabled, no normals are written and the mesh is smaller, but the
     /// tile carries no lighting data (a viewer must derive flat normals itself).
     pub(super) compute_flat_normal: Option<bool>,
+    /// # Texture Resolution
+    /// Target texture detail in metres per pixel. Textures finer than this are
+    /// downsampled to it, and it floors each tile's geometric error. Defaults
+    /// to 0, which keeps full texture resolution.
+    pub(super) resolution: Option<f64>,
+    /// # Atlas Size
+    /// Maximum texture atlas dimension in pixels. Textures exceeding this spill
+    /// onto additional atlas pages; a single texture larger than it is
+    /// downsampled to fit. Defaults to 8192.
+    pub(super) atlas_size: Option<u32>,
     /// # Skip unexposed Attributes
     /// Skip attributes with double underscore prefix
     pub(super) skip_unexposed_attributes: Option<bool>,
@@ -168,6 +182,10 @@ pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) draco_compression: Option<bool>,
     #[cfg(feature = "new-geometry")]
     pub(super) compute_flat_normal: Option<bool>,
+    #[cfg(feature = "new-geometry")]
+    pub(super) resolution: Option<f64>,
+    #[cfg(feature = "new-geometry")]
+    pub(super) atlas_size: Option<u32>,
     pub(super) skip_unexposed_attributes: bool,
     pub(super) schema_key: Option<String>,
 }
