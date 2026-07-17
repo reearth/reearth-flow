@@ -15,11 +15,11 @@ use serde_json::Value;
 
 use super::errors::FeatureProcessorError;
 
-static UP_TO_LOD0: Lazy<Port> = Lazy::new(|| Port::new("up_to_lod0"));
-static UP_TO_LOD1: Lazy<Port> = Lazy::new(|| Port::new("up_to_lod1"));
-static UP_TO_LOD2: Lazy<Port> = Lazy::new(|| Port::new("up_to_lod2"));
-static UP_TO_LOD3: Lazy<Port> = Lazy::new(|| Port::new("up_to_lod3"));
-static UP_TO_LOD4: Lazy<Port> = Lazy::new(|| Port::new("up_to_lod4"));
+static MAX_LOD0: Lazy<Port> = Lazy::new(|| Port::new("max-lod0"));
+static MAX_LOD1: Lazy<Port> = Lazy::new(|| Port::new("max-lod1"));
+static MAX_LOD2: Lazy<Port> = Lazy::new(|| Port::new("max-lod2"));
+static MAX_LOD3: Lazy<Port> = Lazy::new(|| Port::new("max-lod3"));
+static MAX_LOD4: Lazy<Port> = Lazy::new(|| Port::new("max-lod4"));
 static UNFILTERED_PORT: Lazy<Port> = Lazy::new(|| Port::new("unfiltered"));
 
 #[derive(Debug, Clone, Default)]
@@ -31,7 +31,7 @@ impl ProcessorFactory for FeatureLodFilterFactory {
     }
 
     fn description(&self) -> &str {
-        "Filters features by Level of Detail (LOD), routing them to appropriate output ports"
+        "Filters features by Level of Detail (LOD), emitting each to the matching LOD output port."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -43,7 +43,7 @@ impl ProcessorFactory for FeatureLodFilterFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["lod", "citygml"]
+        &["citygml"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -52,11 +52,11 @@ impl ProcessorFactory for FeatureLodFilterFactory {
 
     fn get_output_ports(&self) -> Vec<Port> {
         vec![
-            UP_TO_LOD0.clone(),
-            UP_TO_LOD1.clone(),
-            UP_TO_LOD2.clone(),
-            UP_TO_LOD3.clone(),
-            UP_TO_LOD4.clone(),
+            MAX_LOD0.clone(),
+            MAX_LOD1.clone(),
+            MAX_LOD2.clone(),
+            MAX_LOD3.clone(),
+            MAX_LOD4.clone(),
             UNFILTERED_PORT.clone(),
         ]
     }
@@ -94,13 +94,14 @@ impl ProcessorFactory for FeatureLodFilterFactory {
     }
 }
 
-/// # FeatureLodFilter Parameters
+/// # Feature LOD Filter Parameters
 ///
 /// Configuration for filtering features based on Level of Detail (LOD).
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct FeatureLodFilterParam {
-    /// Attribute used to group features for LOD filtering
+    /// # Filter Key
+    /// Attribute whose value groups features; the maximum available LOD is determined within each group.
     filter_key: Attribute,
 }
 
@@ -189,11 +190,11 @@ impl FeatureLodFilter {
         };
         if lod.has_lod(0) {
             let feature = Self::feature_with_single_lod(feature, 0);
-            fw.send(ctx.as_executor_context(feature, UP_TO_LOD0.clone()));
+            fw.send(ctx.as_executor_context(feature, MAX_LOD0.clone()));
         }
         if lod.has_lod(1) {
             let feature = Self::feature_with_single_lod(feature, 1);
-            fw.send(ctx.as_executor_context(feature, UP_TO_LOD1.clone()));
+            fw.send(ctx.as_executor_context(feature, MAX_LOD1.clone()));
         }
         if lod_count.max_lod >= 2
             && (lod.has_lod(2)
@@ -201,7 +202,7 @@ impl FeatureLodFilter {
                 || (lod.has_lod(0) && !lod.has_lod(2) && !lod.has_lod(1)))
         {
             let feature = Self::feature_with_single_lod(feature, 2);
-            fw.send(ctx.as_executor_context(feature, UP_TO_LOD2.clone()));
+            fw.send(ctx.as_executor_context(feature, MAX_LOD2.clone()));
         }
         if lod_count.max_lod >= 3
             && (lod.has_lod(3)
@@ -209,7 +210,7 @@ impl FeatureLodFilter {
                 || (lod.has_lod(1) && !lod.has_lod(3) && !lod.has_lod(2)))
         {
             let feature = Self::feature_with_single_lod(feature, 3);
-            fw.send(ctx.as_executor_context(feature, UP_TO_LOD3.clone()));
+            fw.send(ctx.as_executor_context(feature, MAX_LOD3.clone()));
         }
         if lod_count.max_lod >= 4
             && (lod.has_lod(4)
@@ -218,7 +219,7 @@ impl FeatureLodFilter {
                 || (lod.has_lod(1) && !lod.has_lod(4) && !lod.has_lod(3) && !lod.has_lod(2)))
         {
             let feature = Self::feature_with_single_lod(feature, 4);
-            fw.send(ctx.as_executor_context(feature, UP_TO_LOD4.clone()));
+            fw.send(ctx.as_executor_context(feature, MAX_LOD4.clone()));
         }
     }
 

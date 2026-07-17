@@ -615,7 +615,7 @@ graphs:
       - id: dde1d751-fe3e-4283-8742-ec4a61a41574
         from: c32a279d-97be-4584-b282-4d65627b1132
         to: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
-        fromPort: up_to_lod1
+        fromPort: max-lod1
         toPort: features
       - id: dde1d751-fe3e-4283-8742-ec4a61a41577
         from: 8b05f9d4-1cb2-4071-a1da-c968431bc0ec
@@ -627,7 +627,7 @@ graphs:
       - id: 2e6bfbbd-f48f-4cb8-97ac-46fe4ecc30bb
         from: c32a279d-97be-4584-b282-4d65627b1132
         to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d2
-        fromPort: up_to_lod2
+        fromPort: max-lod2
         toPort: features
       - id: 2e6bfbbd-f48f-4cb8-97ac-46fe4ecc30bc
         from: 8b05f9d4-1cb2-4071-a1da-c968431bc0d2
@@ -639,7 +639,7 @@ graphs:
       - id: ce3f3571-053c-4487-8e85-b95fb71a49c7
         from: c32a279d-97be-4584-b282-4d65627b1132
         to: 8b05f9d4-1cb2-4071-a1da-c968431bc0d4
-        fromPort: up_to_lod3
+        fromPort: max-lod3
         toPort: features
       - id: ce3f3571-053c-4487-8e85-b95fb71a49c9
         from: 8b05f9d4-1cb2-4071-a1da-c968431bc0d4

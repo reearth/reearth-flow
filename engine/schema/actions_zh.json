@@ -2764,8 +2764,8 @@
         "Filter"
       ],
       "tags": [
-        "2d",
-        "3d"
+        "3d",
+        "geometry"
       ]
     },
     {
@@ -3378,6 +3378,7 @@
             "properties": {
               "expr": {
                 "title": "Condition expression",
+                "description": "Boolean expression evaluated against each feature; features for which it returns true are routed to this condition's output port.",
                 "type": "object",
                 "format": "code",
                 "required": [
@@ -3398,6 +3399,7 @@
               },
               "outputPort": {
                 "title": "Output port",
+                "description": "Name of the output port that receives features matching this condition.",
                 "allOf": [
                   {
                     "$ref": "#/definitions/Port"
@@ -3662,6 +3664,7 @@
         ],
         "properties": {
           "filterKey": {
+            "title": "Filter Key",
             "description": "Attribute used to group features for LOD filtering",
             "allOf": [
               {
@@ -3681,18 +3684,17 @@
         "features"
       ],
       "outputPorts": [
-        "up_to_lod0",
-        "up_to_lod1",
-        "up_to_lod2",
-        "up_to_lod3",
-        "up_to_lod4",
+        "max-lod0",
+        "max-lod1",
+        "max-lod2",
+        "max-lod3",
+        "max-lod4",
         "unfiltered"
       ],
       "categories": [
         "Filter"
       ],
       "tags": [
-        "lod",
         "citygml"
       ]
     },
@@ -3940,6 +3942,7 @@
         ],
         "properties": {
           "targetTypes": {
+            "title": "Target Feature Types",
             "description": "Target feature types",
             "type": "array",
             "items": {
@@ -3959,7 +3962,9 @@
       "categories": [
         "Filter"
       ],
-      "tags": []
+      "tags": [
+        "citygml"
+      ]
     },
     {
       "name": "FeatureCityGml2Reader",
@@ -7344,12 +7349,15 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "InputRouter",
+        "description": "Configuration for receiving features from the parent workflow.",
         "type": "object",
         "required": [
           "routingPort"
         ],
         "properties": {
           "routingPort": {
+            "title": "Routing Port",
+            "description": "Name of the parent workflow port whose features enter the sub-workflow through this router.",
             "type": "string"
           }
         }
@@ -8684,12 +8692,15 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "OutputRouter",
+        "description": "Configuration for returning features to the parent workflow.",
         "type": "object",
         "required": [
           "routingPort"
         ],
         "properties": {
           "routingPort": {
+            "title": "Routing Port",
+            "description": "Name of the output port under which the sub-workflow's features are exposed to the parent workflow.",
             "type": "string"
           }
         }
@@ -11789,19 +11800,6 @@
             "default": true,
             "type": "boolean"
           },
-          "outputMatchCountAttribute": {
-            "title": "Output Match Count Attribute",
-            "description": "Optional attribute name to store the number of matching filters",
-            "default": null,
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
           "mergeFilterAttributes": {
             "title": "Merge Filter Attributes",
             "description": "If true, copy attributes from matched filter feature(s) onto the candidate. Only applies to features routed to the passed port. In OR mode (pass_on_multiple_matches: true), only the first matching filter's attributes are merged. In AND mode, attributes from all matched filters are merged in order; if multiple filters share a key, the last filter's value wins.",
@@ -11815,6 +11813,19 @@
             "type": [
               "string",
               "null"
+            ]
+          },
+          "outputMatchCountAttribute": {
+            "title": "Output Match Count Attribute",
+            "description": "Optional attribute name to store the number of matching filters",
+            "default": null,
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         },
@@ -11904,7 +11915,9 @@
       "categories": [
         "Filter"
       ],
-      "tags": []
+      "tags": [
+        "spatial"
+      ]
     },
     {
       "name": "Statistics Calculator",

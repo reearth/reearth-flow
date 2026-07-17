@@ -889,7 +889,7 @@
     },
     {
       "name": "Dimension Filter",
-      "description": "地物を次元に基づいてフィルタリングする"
+      "description": "ジオメトリの次元数に基づいて地物を出力ポートに振り分ける"
     },
     {
       "name": "Directory Decompressor",
@@ -1079,24 +1079,26 @@
     },
     {
       "name": "Feature Filter",
-      "description": "条件に基づいて地物をフィルタリングする",
+      "description": "ユーザー定義のフィルター条件に基づいて地物を指定の出力ポートに振り分ける",
       "parameterI18n": {
         "": {
-          "title": "FeatureFilter パラメータ",
-          "description": "式に基づいてフィーチャーをフィルタリングする条件と出力ポートを設定する"
+          "title": "Feature Filter パラメータ",
+          "description": "式に基づいて地物をフィルタリングする条件と出力ポートを設定する"
         },
         "conditions": {
           "title": "フィルター条件",
-          "description": "フィルタリングされたフィーチャーをルーティングする条件と対応する出力ポートのリスト"
+          "description": "フィルタリングされた地物をルーティングする条件と対応する出力ポートのリスト"
         }
       },
       "definitionI18n": {
         "Condition": {
           "expr": {
-            "title": "条件式"
+            "title": "条件式",
+            "description": "各地物に対して評価されるブール式。true を返した地物はこの条件の出力ポートに振り分けられる"
           },
           "outputPort": {
-            "title": "出力ポート"
+            "title": "出力ポート",
+            "description": "この条件に一致した地物を受け取る出力ポートの名前"
           }
         }
       }
@@ -1176,14 +1178,15 @@
     },
     {
       "name": "Feature LOD Filter",
-      "description": "詳細レベルに基づいてフィルタリングする",
+      "description": "地物を LOD（詳細レベル）でフィルタリングし、対応する LOD 出力ポートに出力する",
       "parameterI18n": {
         "": {
-          "title": "FeatureLodFilter パラメータ",
-          "description": "詳細レベル（LOD）に基づいてフィーチャーをフィルタリングする設定"
+          "title": "Feature LOD Filter パラメータ",
+          "description": "詳細レベル（LOD）に基づいて地物をフィルタリングする設定"
         },
         "filterKey": {
-          "description": "LOD フィルタリング用にフィーチャーをグループ化する属性"
+          "title": "フィルターキー",
+          "description": "地物をグループ化する属性。グループごとに利用可能な最大 LOD が決定される"
         }
       }
     },
@@ -1257,14 +1260,15 @@
     },
     {
       "name": "Feature Type Filter",
-      "description": "地物タイプに基づいて地物をフィルタリングする",
+      "description": "CityGML の地物を地物タイプでフィルタリングする",
       "parameterI18n": {
         "": {
-          "title": "FeatureTypeFilter パラメータ",
-          "description": "フィーチャータイプに基づいてフィーチャーをフィルタリングする設定"
+          "title": "Feature Type Filter パラメータ",
+          "description": "地物タイプに基づいて地物をフィルタリングする設定"
         },
         "targetTypes": {
-          "description": "対象フィーチャータイプ"
+          "title": "対象地物タイプ",
+          "description": "一致させる CityGML 地物タイプ名のリスト（例: \"bldg:Building\"、\"tran:TrafficArea\"）"
         }
       }
     },
@@ -2067,12 +2071,16 @@
     },
     {
       "name": "Input Router",
-      "description": "サブワークフローで最初のポートを転送するアクション",
+      "description": "親ワークフローからサブワークフローへ地物を転送する",
       "parameterI18n": {
         "": {
-          "title": "InputRouter パラメータ"
+          "title": "Input Router パラメータ",
+          "description": "親ワークフローから地物を受け取るための設定"
         },
-        "routingPort": {}
+        "routingPort": {
+          "title": "ルーティングポート",
+          "description": "このルーターを通じて地物がサブワークフローに入る、親ワークフロー側のポート名"
+        }
       }
     },
     {
@@ -2480,12 +2488,16 @@
     },
     {
       "name": "Output Router",
-      "description": "サブワークフローで最後のポートを転送するアクション",
+      "description": "サブワークフローから親ワークフローへ地物を転送する",
       "parameterI18n": {
         "": {
-          "title": "OutputRouter パラメータ"
+          "title": "Output Router パラメータ",
+          "description": "親ワークフローへ地物を返すための設定"
         },
-        "routingPort": {}
+        "routingPort": {
+          "title": "ルーティングポート",
+          "description": "サブワークフローの地物を親ワークフローに公開する出力ポート名"
+        }
       }
     },
     {
@@ -3221,19 +3233,19 @@
     },
     {
       "name": "Spatial Filter",
-      "description": "空間的な関係によって地物をフィルタリングする",
+      "description": "フィルタージオメトリとの空間的な関係に基づいて候補の地物をフィルタリングする",
       "parameterI18n": {
         "": {
-          "title": "SpatialFilter パラメータ",
+          "title": "Spatial Filter パラメータ",
           "description": "フィルターと候補ジオメトリ間の空間関係テストを設定する"
         },
         "mergeFilterAttributes": {
           "title": "フィルター属性をマージ",
-          "description": "true の場合、一致したフィルターフィーチャーの属性を候補にコピーする。passed ポートにルーティングされたフィーチャーにのみ適用。OR モード（pass_on_multiple_matches: true）では最初に一致したフィルターの属性のみマージ。AND モードでは一致したすべてのフィルターの属性を順番にマージし、複数のフィルターが同じキーを共有する場合は最後のフィルターの値が優先される。"
+          "description": "true の場合、一致したフィルター地物の属性を通過した候補にコピーする。一致した複数のフィルターが同じ属性を持つ場合は最後のフィルターの値が優先される"
         },
         "mergedAttributesPrefix": {
           "title": "マージ属性プレフィックス",
-          "description": "衝突を避けるためにマージされたフィルター属性名に付加する任意のプレフィックス。例: \"filter_\" を指定するとフィルター属性 \"zone\" が \"filter_zone\" になる。"
+          "description": "衝突を避けるためにマージされたフィルター属性名に付加する任意のプレフィックス。例: \"filter_\" を指定するとフィルター属性 \"zone\" が \"filter_zone\" になる"
         },
         "outputMatchCountAttribute": {
           "title": "マッチ数出力属性",
@@ -3241,7 +3253,7 @@
         },
         "passOnMultipleMatches": {
           "title": "複数マッチ時に通過",
-          "description": "true の場合、いずれかのフィルターが一致すれば通過（OR 論理）。false の場合、すべてのフィルターが一致した場合のみ通過（AND 論理）。"
+          "description": "true の場合、いずれかのフィルターが一致すれば通過（OR 論理）。false の場合、すべてのフィルターが一致した場合のみ通過（AND 論理）"
         },
         "predicate": {
           "title": "空間述語",

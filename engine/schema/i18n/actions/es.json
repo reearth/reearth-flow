@@ -1090,10 +1090,12 @@
       "definitionI18n": {
         "Condition": {
           "expr": {
-            "title": "Condition expression"
+            "title": "Condition expression",
+            "description": "Boolean expression evaluated against each feature; features for which it returns true are routed to this condition's output port."
           },
           "outputPort": {
-            "title": "Output port"
+            "title": "Output port",
+            "description": "Name of the output port that receives features matching this condition."
           }
         }
       }
@@ -1180,6 +1182,7 @@
           "description": "Configuration for filtering features based on Level of Detail (LOD)."
         },
         "filterKey": {
+          "title": "Filter Key",
           "description": "Attribute used to group features for LOD filtering"
         }
       }
@@ -1261,6 +1264,7 @@
           "description": "Configuration for filtering features based on their feature type."
         },
         "targetTypes": {
+          "title": "Target Feature Types",
           "description": "Target feature types"
         }
       }
@@ -2067,9 +2071,13 @@
       "description": "Acción para el reenvío del primer puerto en sub-flujos de trabajo.",
       "parameterI18n": {
         "": {
-          "title": "InputRouter"
+          "title": "InputRouter",
+          "description": "Configuration for receiving features from the parent workflow."
         },
-        "routingPort": {}
+        "routingPort": {
+          "title": "Routing Port",
+          "description": "Name of the parent workflow port whose features enter the sub-workflow through this router."
+        }
       }
     },
     {
@@ -2480,9 +2488,13 @@
       "description": "Acción para el reenvío del último puerto en sub-flujos de trabajo.",
       "parameterI18n": {
         "": {
-          "title": "OutputRouter"
+          "title": "OutputRouter",
+          "description": "Configuration for returning features to the parent workflow."
         },
-        "routingPort": {}
+        "routingPort": {
+          "title": "Routing Port",
+          "description": "Name of the output port under which the sub-workflow's features are exposed to the parent workflow."
+        }
       }
     },
     {

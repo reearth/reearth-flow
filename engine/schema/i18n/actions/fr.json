@@ -886,7 +886,7 @@
     },
     {
       "name": "Dimension Filter",
-      "description": "Filter Features by Geometry Dimension"
+      "description": "Routes features to output ports based on the number of geometry dimensions."
     },
     {
       "name": "Directory Decompressor",
@@ -1076,7 +1076,7 @@
     },
     {
       "name": "Feature Filter",
-      "description": "Filter Features Based on Custom Conditions",
+      "description": "Routes features to named output ports based on user-defined filter conditions.",
       "parameterI18n": {
         "": {
           "title": "Feature Filter Parameters",
@@ -1090,10 +1090,12 @@
       "definitionI18n": {
         "Condition": {
           "expr": {
-            "title": "Condition expression"
+            "title": "Condition Expression",
+            "description": "Boolean expression evaluated against each feature; features for which it returns true are routed to this condition's output port."
           },
           "outputPort": {
-            "title": "Output port"
+            "title": "Output Port",
+            "description": "Name of the output port that receives features matching this condition."
           }
         }
       }
@@ -1173,14 +1175,15 @@
     },
     {
       "name": "Feature LOD Filter",
-      "description": "Filters features by Level of Detail (LOD), routing them to appropriate output ports",
+      "description": "Filters features by Level of Detail (LOD), emitting each to the matching LOD output port.",
       "parameterI18n": {
         "": {
-          "title": "FeatureLodFilter Parameters",
+          "title": "Feature LOD Filter Parameters",
           "description": "Configuration for filtering features based on Level of Detail (LOD)."
         },
         "filterKey": {
-          "description": "Attribute used to group features for LOD filtering"
+          "title": "Filter Key",
+          "description": "Attribute whose value groups features; the maximum available LOD is determined within each group."
         }
       }
     },
@@ -1254,14 +1257,15 @@
     },
     {
       "name": "Feature Type Filter",
-      "description": "Filters features by feature type",
+      "description": "Filters CityGML features by their feature type.",
       "parameterI18n": {
         "": {
-          "title": "FeatureTypeFilter Parameters",
+          "title": "Feature Type Filter Parameters",
           "description": "Configuration for filtering features based on their feature type."
         },
         "targetTypes": {
-          "description": "Target feature types"
+          "title": "Target Feature Types",
+          "description": "List of CityGML feature type names to match, such as \"bldg:Building\" or \"tran:TrafficArea\"."
         }
       }
     },
@@ -2064,12 +2068,16 @@
     },
     {
       "name": "Input Router",
-      "description": "Action for first port forwarding for sub-workflows.",
+      "description": "Forwards features from the parent workflow into a sub-workflow.",
       "parameterI18n": {
         "": {
-          "title": "InputRouter"
+          "title": "Input Router Parameters",
+          "description": "Configuration for receiving features from the parent workflow."
         },
-        "routingPort": {}
+        "routingPort": {
+          "title": "Routing Port",
+          "description": "Name of the parent workflow port whose features enter the sub-workflow through this router."
+        }
       }
     },
     {
@@ -2477,12 +2485,16 @@
     },
     {
       "name": "Output Router",
-      "description": "Action for last port forwarding for sub-workflows.",
+      "description": "Forwards features from a sub-workflow back to the parent workflow.",
       "parameterI18n": {
         "": {
-          "title": "OutputRouter"
+          "title": "Output Router Parameters",
+          "description": "Configuration for returning features to the parent workflow."
         },
-        "routingPort": {}
+        "routingPort": {
+          "title": "Routing Port",
+          "description": "Name of the output port under which the sub-workflow's features are exposed to the parent workflow."
+        }
       }
     },
     {
@@ -3216,12 +3228,12 @@
       "description": "Filtre les entités par relation spatiale",
       "parameterI18n": {
         "": {
-          "title": "SpatialFilter Parameters",
+          "title": "Spatial Filter Parameters",
           "description": "Configure spatial relationship testing between filter and candidate geometries"
         },
         "mergeFilterAttributes": {
           "title": "Merge Filter Attributes",
-          "description": "If true, copy attributes from matched filter feature(s) onto the candidate. Only applies to features routed to the passed port. In OR mode (pass_on_multiple_matches: true), only the first matching filter's attributes are merged. In AND mode, attributes from all matched filters are merged in order; if multiple filters share a key, the last filter's value wins."
+          "description": "If true, copies attributes from the matched filter feature(s) onto passing candidates. When multiple matched filters share an attribute, the last filter's value wins."
         },
         "mergedAttributesPrefix": {
           "title": "Merged Attributes Prefix",
@@ -3229,7 +3241,7 @@
         },
         "outputMatchCountAttribute": {
           "title": "Output Match Count Attribute",
-          "description": "Optional attribute name to store the number of matching filters"
+          "description": "Optional attribute name to store the number of matching filters."
         },
         "passOnMultipleMatches": {
           "title": "Pass on Multiple Matches",
@@ -3237,7 +3249,7 @@
         },
         "predicate": {
           "title": "Spatial Predicate",
-          "description": "The spatial relationship to test between filter and candidate geometries"
+          "description": "The spatial relationship to test between filter and candidate geometries."
         }
       },
       "enumI18n": {

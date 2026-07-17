@@ -474,7 +474,7 @@ impl ProcessorFactory for InputRouterFactory {
     }
 
     fn description(&self) -> &str {
-        "Action for first port forwarding for sub-workflows."
+        "Forwards features from the parent workflow into a sub-workflow."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -514,9 +514,14 @@ impl ProcessorFactory for InputRouterFactory {
     }
 }
 
+/// # Input Router Parameters
+///
+/// Configuration for receiving features from the parent workflow.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct InputRouter {
+    /// # Routing Port
+    /// Name of the parent workflow port whose features enter the sub-workflow through this router.
     routing_port: String,
 }
 
@@ -561,7 +566,7 @@ impl ProcessorFactory for OutputRouterFactory {
     }
 
     fn description(&self) -> &str {
-        "Action for last port forwarding for sub-workflows."
+        "Forwards features from a sub-workflow back to the parent workflow."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -601,9 +606,14 @@ impl ProcessorFactory for OutputRouterFactory {
     }
 }
 
+/// # Output Router Parameters
+///
+/// Configuration for returning features to the parent workflow.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct OutputRouter {
+    /// # Routing Port
+    /// Name of the output port under which the sub-workflow's features are exposed to the parent workflow.
     routing_port: String,
 }
 
