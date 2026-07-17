@@ -17,7 +17,8 @@
 //! frame ([`MixedFrames`](PredicateError::MixedFrames) otherwise, reprojection
 //! is the caller's step), a 2D × 3D pair is
 //! [`CrossDimension`](PredicateError::CrossDimension), a purely 3D pair
-//! [`UnsupportedPair`](PredicateError::UnsupportedPair). Collections flatten to
+//! [`UnsupportedPair`](PredicateError::UnsupportedPair) (boolean overlay is
+//! 2D-only; the only 3D boolean is CSG evaluation). Collections flatten to
 //! their leaves; `Geometry::None` and empty collections are the empty geometry.
 //! Beyond that, each operation constrains the leaf kinds it accepts: an areal
 //! operand takes `Polygon`, `PolygonMesh`, and `TriangularMesh` leaves, a

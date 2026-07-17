@@ -42,6 +42,12 @@ impl Point2D {
 }
 
 impl Point3D {
+    /// The coordinate frame this position is expressed in.
+    #[inline]
+    pub fn frame(&self) -> &CoordinateFrame {
+        &self.frame
+    }
+
     /// The `[x, y, z]` position.
     #[inline]
     pub fn position(&self) -> [f64; 3] {

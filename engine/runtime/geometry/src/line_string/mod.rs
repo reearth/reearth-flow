@@ -49,6 +49,12 @@ impl LineString2D {
 }
 
 impl LineString3D {
+    /// The coordinate frame these coords are expressed in.
+    #[inline]
+    pub fn frame(&self) -> &CoordinateFrame {
+        &self.frame
+    }
+
     /// The chain's vertices in order.
     #[inline]
     pub fn coords(&self) -> &[[f64; 3]] {

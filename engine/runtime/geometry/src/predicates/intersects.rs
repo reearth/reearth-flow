@@ -5,26 +5,50 @@
 //! pair intersecting suffices). Every leaf pair goes through a bounding-box
 //! quick reject first.
 //!
-//! Scope: 2D × 2D pairs. A 2D × 3D pair is a
-//! [`CrossDimension`](PredicateError::CrossDimension) error, a 3D × 3D pair an
-//! [`UnsupportedPair`](PredicateError::UnsupportedPair). `Geometry::None`
-//! intersects nothing.
+//! 2D × 2D pairs dispatch here; 3D × 3D pairs dispatch to
+//! [`intersects3d`](super::intersects3d). A 2D × 3D pair is a
+//! [`CrossDimension`](PredicateError::CrossDimension) error (members of a
+//! [`GeometryCollection`](crate::GeometryCollection) pair per member, so
+//! same-dimension member pairs still evaluate). `Geometry::None` intersects
+//! nothing.
 
 use super::edge_set::{operand_edges, operand_segment_count, should_index, EdgeSet};
 use super::kernel::segment_intersection;
 use super::kernel::CoordPos;
 use super::position::{face_position, line_position};
 use super::view::{require_common_frame, AreaView, Leaf2D, Operand2D, PreparedLeaf};
-use super::Result;
+use super::{PredicateError, Result};
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
 /// Whether `a` and `b` share at least one point.
 pub fn intersects(a: &Geometry, b: &Geometry) -> Result<bool> {
-    let (a_leaves, b_leaves) = super::flatten_2d_pair(a, b)?;
-    let a = Operand2D::from_leaves(a_leaves);
-    let b = Operand2D::from_leaves(b_leaves);
-    require_common_frame(&a, &b)?;
-    Ok(intersects_operands(&a, &b))
+    match (a, b) {
+        (Geometry::None, _) | (_, Geometry::None) => Ok(false),
+        (Geometry::GeometryCollection(c), other) => {
+            // Every member is evaluated even after a hit, so an error from a
+            // later member wins regardless of member order.
+            let mut hit = false;
+            for member in c.members() {
+                hit |= intersects(member, other)?;
+            }
+            Ok(hit)
+        }
+        (other, Geometry::GeometryCollection(c)) => {
+            let mut hit = false;
+            for member in c.members() {
+                hit |= intersects(other, member)?;
+            }
+            Ok(hit)
+        }
+        (Geometry::Euclidean2D(a), Geometry::Euclidean2D(b)) => intersects_2d(a, b),
+        (Geometry::Euclidean2D(_), Geometry::Euclidean3D(_))
+        | (Geometry::Euclidean3D(_), Geometry::Euclidean2D(_)) => {
+            Err(PredicateError::CrossDimension)
+        }
+        (Geometry::Euclidean3D(a), Geometry::Euclidean3D(b)) => {
+            super::intersects3d::intersects_3d(a, b)
+        }
+    }
 }
 
 /// `intersects` over two 2D geometries.
@@ -424,17 +448,15 @@ mod tests {
     }
 
     #[test]
-    fn cross_dimension_and_3d_errors() {
+    fn cross_dimension_errors_and_3d_dispatches() {
         let a = unit_square_at(0.0, 0.0, 1.0);
         let b3 = Geometry::Euclidean3D(Euclidean3DGeometry::LineString(LineString3D::from_coords(
             e(),
             [[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]],
         )));
         assert_eq!(intersects(&a, &b3), Err(PredicateError::CrossDimension));
-        assert!(matches!(
-            intersects(&b3, &b3),
-            Err(PredicateError::UnsupportedPair { .. })
-        ));
+        // 3D × 3D pairs evaluate through the 3D dispatch.
+        assert_eq!(intersects(&b3, &b3), Ok(true));
     }
 
     #[test]
