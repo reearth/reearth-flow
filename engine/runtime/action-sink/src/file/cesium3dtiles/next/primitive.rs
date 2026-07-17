@@ -163,8 +163,8 @@ pub(super) fn collect(cell_members: &[&(&Feature, ExtractedMesh)]) -> CellPrimit
             let tris = tri_off..tri_off + count;
             tri_off += count;
 
-            let material = m.triangle_material[tris.start]
-                .and_then(|mi| m.materials.get(mi as usize));
+            let material =
+                m.triangle_material[tris.start].and_then(|mi| m.materials.get(mi as usize));
             let texture = material
                 .and_then(|mm| mm.base_texture.as_ref())
                 .filter(|_| !polygon_wraps(&m.corner_uv[tris.start * 3..tris.end * 3]));

@@ -255,19 +255,34 @@ fn build_cell_glb(
             // in the neutral fallback colour rather than dropping it.
             None => (color_material(DEFAULT_MATERIAL), None),
         };
-        let handle = push_geom(&mut builder, &textured.geom, origin, material, uv, compute_flat_normal);
+        let handle = push_geom(
+            &mut builder,
+            &textured.geom,
+            origin,
+            material,
+            uv,
+            compute_flat_normal,
+        );
         primitives.push((handle, textured.geom.feature_ids));
     }
 
     for color in cells.color {
         let material = color_material(color.factors);
-        let handle =
-            push_geom(&mut builder, &color.geom, origin, material, None, compute_flat_normal);
+        let handle = push_geom(
+            &mut builder,
+            &color.geom,
+            origin,
+            material,
+            None,
+            compute_flat_normal,
+        );
         primitives.push((handle, color.geom.feature_ids));
     }
 
-    let refs: Vec<(glb::PrimitiveHandle, &[u32])> =
-        primitives.iter().map(|(h, ids)| (*h, ids.as_slice())).collect();
+    let refs: Vec<(glb::PrimitiveHandle, &[u32])> = primitives
+        .iter()
+        .map(|(h, ids)| (*h, ids.as_slice()))
+        .collect();
     metadata::encode(&table, &mut builder, &refs);
 
     let gltf_origin = [origin[0], origin[2], -origin[1]];
@@ -315,7 +330,9 @@ fn build_atlas_texture(
             inputs.len() - 1
         });
         let poly = inputs[pi].uvs.len();
-        inputs[pi].uvs.push(textured.geom.corner_uv[offset..offset + corners].to_vec());
+        inputs[pi]
+            .uvs
+            .push(textured.geom.corner_uv[offset..offset + corners].to_vec());
         slots.push((pi, poly, offset));
         offset += corners;
     }
@@ -432,6 +449,10 @@ fn cell_origin(cells: &primitive::CellPrimitives) -> [f64; 3] {
     if count == 0 {
         [0.0, 0.0, 0.0]
     } else {
-        [sum[0] / count as f64, sum[1] / count as f64, sum[2] / count as f64]
+        [
+            sum[0] / count as f64,
+            sum[1] / count as f64,
+            sum[2] / count as f64,
+        ]
     }
 }
