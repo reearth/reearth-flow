@@ -211,16 +211,23 @@ fn parse_wkb_geometry(
     let has_m = (wkb_type & 0x4000_0000) != 0;
     let geom_type = wkb_type & 0x1FFF_FFFF;
     let three_d = has_z && !force_2d;
+    let swap = axis_swap(srs_id);
 
     match geom_type {
-        1 => Ok(point_leaf(cursor, has_z, has_m, three_d, srs_id, byte_order)?.into_geometry()),
-        2 => Ok(line_leaf(cursor, has_z, has_m, three_d, srs_id, byte_order)?.into_geometry()),
-        3 => Ok(polygon_leaf(cursor, has_z, has_m, three_d, srs_id, byte_order)?.into_geometry()),
+        1 => Ok(
+            point_leaf(cursor, has_z, has_m, three_d, srs_id, byte_order, swap)?.into_geometry(),
+        ),
+        2 => {
+            Ok(line_leaf(cursor, has_z, has_m, three_d, srs_id, byte_order, swap)?.into_geometry())
+        }
+        3 => Ok(
+            polygon_leaf(cursor, has_z, has_m, three_d, srs_id, byte_order, swap)?.into_geometry(),
+        ),
         4 => parse_multi(
-            cursor, has_z, has_m, three_d, srs_id, byte_order, 1, point_leaf,
+            cursor, has_z, has_m, three_d, srs_id, byte_order, swap, 1, point_leaf,
         ),
         5 => parse_multi(
-            cursor, has_z, has_m, three_d, srs_id, byte_order, 2, line_leaf,
+            cursor, has_z, has_m, three_d, srs_id, byte_order, swap, 2, line_leaf,
         ),
         6 => parse_multi(
             cursor,
@@ -229,11 +236,40 @@ fn parse_wkb_geometry(
             three_d,
             srs_id,
             byte_order,
+            swap,
             3,
             polygon_leaf,
         ),
         7 => parse_geometrycollection(cursor, srs_id, force_2d, byte_order),
         other => Err(err(format!("Unsupported geometry type: {other}"))),
+    }
+}
+
+/// A north-first CRS (orientation_sign `-1`, e.g. geographic like EPSG:4326) declares
+/// its axes latitude-first. GeoPackage WKB stores coordinates in traditional
+/// `(x = lon/easting, y = lat/northing)` order, so for those CRSs the horizontal pair is
+/// swapped on read to match the frame's declared axis order (the #2258 convention).
+/// East-first / projected, Euclidean, and unknown CRSs are stored as-is.
+///
+/// NOTE (for review): this assumes GeoPackage WKB is in traditional x/y order, the same
+/// premise the GeoJSON reader's swap relies on.
+fn axis_swap(srs_id: i32) -> bool {
+    matches!(frame(srs_id).orientation_sign(), Ok(-1))
+}
+
+fn xy(swap: bool, x: f64, y: f64) -> [f64; 2] {
+    if swap {
+        [y, x]
+    } else {
+        [x, y]
+    }
+}
+
+fn xyz(swap: bool, x: f64, y: f64, z: f64) -> [f64; 3] {
+    if swap {
+        [y, x, z]
+    } else {
+        [x, y, z]
     }
 }
 
@@ -258,6 +294,7 @@ fn read_u32(cursor: &mut std::io::Cursor<&[u8]>, byte_order: u8) -> Result<u32, 
     .map_err(|e| err(format!("u32: {e}")))
 }
 
+#[allow(clippy::too_many_arguments)]
 fn point_leaf(
     cursor: &mut std::io::Cursor<&[u8]>,
     has_z: bool,
@@ -265,22 +302,24 @@ fn point_leaf(
     three_d: bool,
     srs_id: i32,
     byte_order: u8,
+    swap: bool,
 ) -> Result<Leaf, SourceError> {
     let coords = super::read_coordinates(cursor, 1, has_z, has_m, byte_order)?;
     let (x, y, z) = *coords.first().ok_or_else(|| err("empty point"))?;
     Ok(if three_d {
         Leaf::D3(Euclidean3DGeometry::Point(Point3D::new(
             frame(srs_id),
-            [x, y, z.unwrap_or(0.0)],
+            xyz(swap, x, y, z.unwrap_or(0.0)),
         )))
     } else {
         Leaf::D2(Euclidean2DGeometry::Point(Point2D::new(
             frame(srs_id),
-            [x, y],
+            xy(swap, x, y),
         )))
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn line_leaf(
     cursor: &mut std::io::Cursor<&[u8]>,
     has_z: bool,
@@ -288,22 +327,26 @@ fn line_leaf(
     three_d: bool,
     srs_id: i32,
     byte_order: u8,
+    swap: bool,
 ) -> Result<Leaf, SourceError> {
     let count = read_u32(cursor, byte_order)?;
     let coords = super::read_coordinates(cursor, count, has_z, has_m, byte_order)?;
     Ok(if three_d {
         Leaf::D3(Euclidean3DGeometry::LineString(LineString3D::from_coords(
             frame(srs_id),
-            coords.iter().map(|c| [c.0, c.1, c.2.unwrap_or(0.0)]),
+            coords
+                .iter()
+                .map(|c| xyz(swap, c.0, c.1, c.2.unwrap_or(0.0))),
         )))
     } else {
         Leaf::D2(Euclidean2DGeometry::LineString(LineString2D::from_coords(
             frame(srs_id),
-            coords.iter().map(|c| [c.0, c.1]),
+            coords.iter().map(|c| xy(swap, c.0, c.1)),
         )))
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 fn polygon_leaf(
     cursor: &mut std::io::Cursor<&[u8]>,
     has_z: bool,
@@ -311,6 +354,7 @@ fn polygon_leaf(
     three_d: bool,
     srs_id: i32,
     byte_order: u8,
+    swap: bool,
 ) -> Result<Leaf, SourceError> {
     let num_rings = read_u32(cursor, byte_order)?;
     let mut rings = Vec::with_capacity(num_rings as usize);
@@ -323,7 +367,7 @@ fn polygon_leaf(
     Ok(if three_d {
         let mut it = rings.into_iter().map(|r| {
             r.iter()
-                .map(|c| [c.0, c.1, c.2.unwrap_or(0.0)])
+                .map(|c| xyz(swap, c.0, c.1, c.2.unwrap_or(0.0)))
                 .collect::<Vec<_>>()
         });
         let exterior = it.next().unwrap_or_default();
@@ -333,7 +377,7 @@ fn polygon_leaf(
     } else {
         let mut it = rings
             .into_iter()
-            .map(|r| r.iter().map(|c| [c.0, c.1]).collect::<Vec<_>>());
+            .map(|r| r.iter().map(|c| xy(swap, c.0, c.1)).collect::<Vec<_>>());
         let exterior = it.next().unwrap_or_default();
         Leaf::D2(Euclidean2DGeometry::Polygon(Box::new(
             Polygon2D::from_rings(frame(srs_id), exterior, it),
@@ -351,11 +395,20 @@ fn parse_multi<F>(
     three_d: bool,
     srs_id: i32,
     byte_order: u8,
+    swap: bool,
     expected_type: u32,
     read_leaf: F,
 ) -> Result<Geometry, SourceError>
 where
-    F: Fn(&mut std::io::Cursor<&[u8]>, bool, bool, bool, i32, u8) -> Result<Leaf, SourceError>,
+    F: Fn(
+        &mut std::io::Cursor<&[u8]>,
+        bool,
+        bool,
+        bool,
+        i32,
+        u8,
+        bool,
+    ) -> Result<Leaf, SourceError>,
 {
     let count = read_u32(cursor, byte_order)?;
     let mut members_2d = Vec::new();
@@ -375,7 +428,7 @@ where
                  got type {member_base} (z={member_has_z}, m={member_has_m})"
             )));
         }
-        match read_leaf(cursor, has_z, has_m, three_d, srs_id, member_order)? {
+        match read_leaf(cursor, has_z, has_m, three_d, srs_id, member_order, swap)? {
             Leaf::D2(g) => members_2d.push(g),
             Leaf::D3(g) => members_3d.push(g),
         }
@@ -509,11 +562,12 @@ mod tests {
 
         let geom = parse_geopackage_geometry(&blob, 4326, false).unwrap();
 
+        // EPSG:4326 is north-first, so WKB (lon, lat) is stored (lat, lon).
         assert_eq!(
             geom,
             Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
                 crs(4326),
-                [139.7, 35.6],
+                [35.6, 139.7],
             )))
         );
     }
@@ -528,7 +582,7 @@ mod tests {
             geom,
             Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
                 crs(4979),
-                [139.7, 35.6, 12.5],
+                [35.6, 139.7, 12.5],
             )))
         );
     }
@@ -544,7 +598,7 @@ mod tests {
             geom,
             Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
                 crs(4326),
-                [139.7, 35.6],
+                [35.6, 139.7],
             )))
         );
     }
@@ -559,7 +613,7 @@ mod tests {
             geom,
             Geometry::Euclidean2D(Euclidean2DGeometry::LineString(LineString2D::from_coords(
                 crs(4326),
-                [[0.0, 0.0], [1.0, 2.0]],
+                [[0.0, 0.0], [2.0, 1.0]],
             )))
         );
     }
@@ -577,7 +631,7 @@ mod tests {
             geom,
             Geometry::Euclidean3D(Euclidean3DGeometry::LineString(LineString3D::from_coords(
                 crs(4979),
-                [[0.0, 0.0, 1.0], [1.0, 2.0, 3.0]],
+                [[0.0, 0.0, 1.0], [2.0, 1.0, 3.0]],
             )))
         );
     }
@@ -595,8 +649,8 @@ mod tests {
             Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
                 Polygon2D::from_rings(
                     crs(4326),
-                    [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 0.0]],
-                    [[[1.0, 1.0], [2.0, 1.0], [1.0, 2.0], [1.0, 1.0]]],
+                    [[0.0, 0.0], [0.0, 4.0], [4.0, 4.0], [0.0, 0.0]],
+                    [[[1.0, 1.0], [1.0, 2.0], [2.0, 1.0], [1.0, 1.0]]],
                 )
             )))
         );
@@ -621,7 +675,7 @@ mod tests {
                     crs(4979),
                     [
                         [0.0, 0.0, 1.0],
-                        [4.0, 0.0, 1.0],
+                        [0.0, 4.0, 1.0],
                         [4.0, 4.0, 1.0],
                         [0.0, 0.0, 1.0]
                     ],
@@ -673,7 +727,7 @@ mod tests {
             Geometry::Euclidean2D(Euclidean2DGeometry::Collection(Collection2D::new([
                 Euclidean2DGeometry::Polygon(Box::new(Polygon2D::from_rings(
                     crs(4326),
-                    [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [0.0, 0.0]],
+                    [[0.0, 0.0], [0.0, 1.0], [1.0, 0.0], [0.0, 0.0]],
                     std::iter::empty::<Vec<[f64; 2]>>(),
                 ))),
             ])))
@@ -697,6 +751,23 @@ mod tests {
         );
     }
 
+    // A projected, east-first CRS (EPSG:3857) is stored as-is: no lon/lat swap, unlike
+    // a geographic CRS. This is what distinguishes GeoPackage from the always-WGS84 GeoJSON reader.
+    #[test]
+    fn projected_crs_is_not_swapped() {
+        let blob = gp_blob(3857, &wkb_point_2d(100.0, 200.0));
+
+        let geom = parse_geopackage_geometry(&blob, 3857, false).unwrap();
+
+        assert_eq!(
+            geom,
+            Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
+                crs(3857),
+                [100.0, 200.0],
+            )))
+        );
+    }
+
     // A big-endian GeoPackage header must have its srs_id read big-endian.
     #[test]
     fn big_endian_header_reads_srs_id() {
@@ -705,11 +776,12 @@ mod tests {
         // db srs_id 0 so the header's srs_id is what's used.
         let geom = parse_geopackage_geometry(&blob, 0, false).unwrap();
 
+        // 4326 north-first: WKB (lon=1.0, lat=2.0) stored (lat, lon) = [2.0, 1.0].
         assert_eq!(
             geom,
             Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
                 crs(4326),
-                [1.0, 2.0]
+                [2.0, 1.0]
             )))
         );
     }
