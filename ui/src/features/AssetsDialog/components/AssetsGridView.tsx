@@ -7,6 +7,7 @@ import { AssetCard } from "./AssetCard";
 
 type Props = {
   assets?: Asset[];
+  readonly?: boolean;
   isFetching: boolean;
   isDebouncingSearch?: boolean;
   isDeleting: boolean;
@@ -21,6 +22,7 @@ type Props = {
 };
 const AssetsGridView: React.FC<Props> = ({
   assets,
+  readonly,
   isFetching,
   isDebouncingSearch,
   isDeleting,
@@ -43,6 +45,7 @@ const AssetsGridView: React.FC<Props> = ({
               <AssetCard
                 key={a.id}
                 asset={a}
+                readonly={readonly}
                 isDeleting={isDeleting}
                 onCopyUrlToClipBoard={onCopyUrlToClipBoard}
                 onAssetDownload={onAssetDownload}
