@@ -39,7 +39,7 @@ pub(super) struct NeighborFinderFactory;
 
 impl ProcessorFactory for NeighborFinderFactory {
     fn name(&self) -> &str {
-        "NeighborFinder"
+        "Neighbor Finder"
     }
 
     fn description(&self) -> &str {
@@ -147,7 +147,7 @@ pub enum MergeStrategy {
     ArrayAttributes,
 }
 
-/// # NeighborFinder Parameters
+/// # Neighbor Finder Parameters
 ///
 /// Configuration for finding spatial neighbors between base and candidate features.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -480,7 +480,7 @@ impl Processor for NeighborFinder {
     }
 
     fn name(&self) -> &str {
-        "NeighborFinder"
+        "Neighbor Finder"
     }
 }
 
@@ -2227,7 +2227,7 @@ mod tests {
         let result = factory.build(
             NodeContext::default(),
             EventHub::new(1),
-            "NeighborFinder".to_string(),
+            "Neighbor Finder".to_string(),
             Some(with),
         );
 

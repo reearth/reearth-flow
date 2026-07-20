@@ -43,7 +43,7 @@ graphs:
       - id: 6a3a3bba-14c5-438b-86bc-0bbb10d8b94d
         name: FeatureReaderByCityGml
         type: action
-        action: FeatureCityGml2Reader
+        action: Feature CityGML 2 Reader
         with:
           dataset:
             type: flowExpr
@@ -115,7 +115,7 @@ graphs:
       - id: abc6a99c-5730-423c-a449-38911ab4a4e7
         name: AttributeDuplicateFilterDict
         type: action
-        action: AttributeDuplicateFilter
+        action: Attribute Duplicate Filter
         with:
           filterBy:
             - code

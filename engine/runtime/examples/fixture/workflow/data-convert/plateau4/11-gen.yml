@@ -138,7 +138,7 @@ graphs:
   - id: 278ab965-ce22-473d-98c6-c7b381c38679
     name: GeometryFilter
     type: action
-    action: GeometryFilter
+    action: Geometry Filter
     with:
       filterType: none
   - id: 1787b15c-19b5-4386-a0ff-f0e58f477d07
@@ -304,7 +304,7 @@ graphs:
   - id: 6a3a3bba-14c5-438b-86bc-0bbb10d8b94d
     name: FeatureReaderByCityGml
     type: action
-    action: FeatureCityGml2Reader
+    action: Feature CityGML 2 Reader
     with:
       dataset:
         type: flowExpr
@@ -371,7 +371,7 @@ graphs:
   - id: abc6a99c-5730-423c-a449-38911ab4a4e7
     name: AttributeDuplicateFilterDict
     type: action
-    action: AttributeDuplicateFilter
+    action: Attribute Duplicate Filter
     with:
       filterBy:
       - code

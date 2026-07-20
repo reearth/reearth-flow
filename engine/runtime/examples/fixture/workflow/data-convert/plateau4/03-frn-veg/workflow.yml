@@ -91,7 +91,7 @@ graphs:
       - id: 69992005-2bdf-41f8-b298-59460b822bec
         name: AttributeDuplicateFilterDict
         type: action
-        action: AttributeDuplicateFilter
+        action: Attribute Duplicate Filter
         with:
           filterBy:
             - feature_type_without_prefix
@@ -227,7 +227,7 @@ graphs:
       - id: 35953fd4-5359-43cc-be03-a396259a4c8e
         name: GeometryFilterForFrn
         type: action
-        action: GeometryFilter
+        action: Geometry Filter
         with:
           filterType: geometryType
 

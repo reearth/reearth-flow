@@ -15,7 +15,7 @@ pub(super) struct FeatureDuplicateFilterFactory;
 
 impl ProcessorFactory for FeatureDuplicateFilterFactory {
     fn name(&self) -> &str {
-        "FeatureDuplicateFilter"
+        "Feature Duplicate Filter"
     }
 
     fn description(&self) -> &str {
@@ -83,7 +83,7 @@ impl Processor for FeatureDuplicateFilter {
     }
 
     fn name(&self) -> &str {
-        "FeatureDuplicateFilter"
+        "Feature Duplicate Filter"
     }
 }
 

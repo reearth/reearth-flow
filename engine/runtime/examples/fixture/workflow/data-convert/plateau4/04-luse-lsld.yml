@@ -143,7 +143,7 @@ graphs:
   - id: ded2e272-e05c-4918-86b3-aa9f763da6e6
     name: FeatureReaderByCityGml
     type: action
-    action: FeatureCityGml2Reader
+    action: Feature CityGML 2 Reader
     with:
       dataset:
         type: flowExpr
