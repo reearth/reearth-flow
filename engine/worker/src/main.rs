@@ -24,6 +24,8 @@ fn main() {
             .as_str(),
     );
 
+    // No OTel guard exists yet at this point (it is created below), so
+    // there is nothing to flush before this exit.
     let otel_guard = match logger::setup_logging_and_tracing() {
         Ok(guard) => guard,
         Err(err) => {
@@ -35,13 +37,18 @@ fn main() {
     // `probe-schema` and `schema-events` are read-only, side-effect-free
     // subcommands (schema probe / schema codegen respectively). Everything
     // else falls through to the existing run behavior unchanged.
+    //
+    // Every exit below this point runs after `otel_guard` has been
+    // created, so it MUST go through `shutdown_and_exit` rather than
+    // calling `std::process::exit` directly — see that function's doc
+    // comment for why.
     let return_code: i32 = match matches.remove_subcommand() {
         Some((name, sub)) if name == "probe-schema" => {
             let command = match ProbeSchemaCommand::parse_cli_args(sub) {
                 Ok(command) => command,
                 Err(err) => {
                     eprintln!("Failed to parse cli args: {err:?}\n");
-                    std::process::exit(1);
+                    shutdown_and_exit(&otel_guard, 1);
                 }
             };
             if let Err(err) = command.execute() {
@@ -56,7 +63,7 @@ fn main() {
                 Ok(command) => command,
                 Err(err) => {
                     eprintln!("Failed to parse cli args: {err:?}\n");
-                    std::process::exit(1);
+                    shutdown_and_exit(&otel_guard, 1);
                 }
             };
             if let Err(err) = command.execute() {
@@ -71,7 +78,7 @@ fn main() {
                 Ok(command) => command,
                 Err(err) => {
                     eprintln!("Failed to parse cli args: {err:?}\n");
-                    std::process::exit(1);
+                    shutdown_and_exit(&otel_guard, 1);
                 }
             };
             if let Err(err) = command.execute() {
@@ -82,10 +89,27 @@ fn main() {
             }
         }
     };
-    // std::process::exit below skips Drop, so any OTel provider guard
-    // must be flushed explicitly here before it would otherwise be lost.
+    shutdown_and_exit(&otel_guard, return_code);
+}
+
+/// Flushes any buffered OTel spans/metrics (via `OtelGuard::shutdown`, if a
+/// guard was created) and then exits the process with `code`.
+///
+/// `std::process::exit` skips `Drop`, so every call site in this file that
+/// exits after `otel_guard` has been created routes through this helper
+/// instead of calling `std::process::exit` directly — otherwise spans
+/// buffered by the batch exporter would be silently dropped. This is
+/// deliberately explicit/local rather than a global guard or an
+/// `atexit`-style hook: `main` owns the guard's lifetime end-to-end.
+///
+/// Not covered: a panic while `panic = "abort"` (the release profile,
+/// see `engine/Cargo.toml`) aborts the process immediately without
+/// unwinding, so this helper never runs and any buffered spans are lost.
+/// There is no way to intercept that path short of a `panic = "unwind"`
+/// profile change, which is out of scope here.
+fn shutdown_and_exit(otel_guard: &Option<logger::OtelGuard>, code: i32) -> ! {
     if let Some(guard) = otel_guard {
         guard.shutdown();
     }
-    std::process::exit(return_code)
+    std::process::exit(code)
 }
