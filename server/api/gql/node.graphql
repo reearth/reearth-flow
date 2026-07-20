@@ -6,9 +6,13 @@ type NodeExecution implements Node {
   createdAt: DateTime
   startedAt: DateTime
   completedAt: DateTime
+  diagnostics: [Diagnostic!]
 }
 
 enum NodeStatus {
+  """
+  Never emitted by the runtime; retained for API compatibility.
+  """
   PENDING
   STARTING
   PROCESSING

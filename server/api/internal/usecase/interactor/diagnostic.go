@@ -110,3 +110,62 @@ func (i *NodeDiagnostics) GetJobDiagnostics(ctx context.Context, jobID id.JobID)
 	}
 	return rows, nil
 }
+
+// fatalEffectiveDisposition is the wire/domain string value of the engine's
+// Disposition::Fatal (Rust #[serde(rename_all = "snake_case")]). The engine
+// guarantees every RunSummary::failed_nodes entry is stamped
+// effective_disposition = Some(Fatal) (dag_executor.rs's fold_outcomes) and
+// that RunSummary::aggregated_diagnostics entries are NEVER Fatal
+// (job_complete_event.json's aggregatedDiagnostics field contract) — so this
+// is a precise, lossless way to recover "which wire array a persisted row
+// came from" after both have landed as indistinguishable DiagnosticDocument
+// rows in the same nodeDiagnostics collection (see GetFailedNodes).
+const fatalEffectiveDisposition = "fatal"
+
+// GetFailedNodes reads the job's terminal per-node fatal-failure rows
+// (GraphQL Job.failedNodes). Deliberately Mongo-only (diagnosticsRepo),
+// never Redis: failedNodes/aggregatedDiagnostics rows are persisted
+// exclusively at job-completion merge time (interactor/job.go's
+// persistTerminalDiagnostics) and are never written to Redis, so consulting
+// Redis here (as GetJobDiagnostics does for live per-event diagnostics)
+// would be reading the wrong store. FindByJobID returns both failedNodes-
+// and aggregatedDiagnostics-derived rows undifferentiated (both carry a
+// "code" field); the fatalEffectiveDisposition filter recovers exactly the
+// failedNodes subset.
+func (i *NodeDiagnostics) GetFailedNodes(ctx context.Context, jobID id.JobID) ([]*diagnostic.Diagnostic, error) {
+	if err := i.checkJobPermission(ctx, jobID); err != nil {
+		return nil, err
+	}
+
+	if i.diagnosticsRepo == nil {
+		return nil, nil
+	}
+
+	rows, err := i.diagnosticsRepo.FindByJobID(ctx, jobID)
+	if err != nil {
+		return nil, err
+	}
+
+	failed := make([]*diagnostic.Diagnostic, 0, len(rows))
+	for _, row := range rows {
+		if ed := row.EffectiveDisposition(); ed != nil && *ed == fatalEffectiveDisposition {
+			failed = append(failed, row)
+		}
+	}
+	return failed, nil
+}
+
+// GetDroppedEventCount reads the job's persisted droppedEventCount (GraphQL
+// Job.droppedEventCount) from the per-job summary row written alongside
+// failedNodes/aggregatedDiagnostics at job-completion merge time.
+func (i *NodeDiagnostics) GetDroppedEventCount(ctx context.Context, jobID id.JobID) (*uint64, error) {
+	if err := i.checkJobPermission(ctx, jobID); err != nil {
+		return nil, err
+	}
+
+	if i.diagnosticsRepo == nil {
+		return nil, nil
+	}
+
+	return i.diagnosticsRepo.FindJobSummary(ctx, jobID)
+}

@@ -67,11 +67,13 @@ type mockDiagnosticsRepo struct {
 	byNodeErr       error
 	byJobErr        error
 	saveErr         error
+	summaryErr      error
+	summary         *uint64
 	lastDropped     *uint64
 	byNode          []*diagnostic.Diagnostic
-	byJob           []*diagnostic.Diagnostic
 	lastFailedNodes []*diagnostic.Diagnostic
 	lastAggregated  []*diagnostic.Diagnostic
+	byJob           []*diagnostic.Diagnostic
 	saveCalls       int
 	lastJobID       id.JobID
 }
@@ -82,6 +84,10 @@ func (m *mockDiagnosticsRepo) FindByJobNodeID(ctx context.Context, jobID id.JobI
 
 func (m *mockDiagnosticsRepo) FindByJobID(ctx context.Context, jobID id.JobID) ([]*diagnostic.Diagnostic, error) {
 	return m.byJob, m.byJobErr
+}
+
+func (m *mockDiagnosticsRepo) FindJobSummary(ctx context.Context, jobID id.JobID) (*uint64, error) {
+	return m.summary, m.summaryErr
 }
 
 func (m *mockDiagnosticsRepo) SaveTerminalDiagnostics(
@@ -246,6 +252,146 @@ func TestNodeDiagnostics_GetJobDiagnostics(t *testing.T) {
 
 		i := NewNodeDiagnostics(repoMock, jobRepo, redisMock, alwaysAllowPermissionChecker())
 		got, err := i.GetJobDiagnostics(ctx, jobID)
+		assert.Error(t, err)
+		assert.Nil(t, got)
+	})
+}
+
+// fatalDiagnostic/nonFatalDiagnostic build test rows mirroring the two wire
+// arrays FindByJobID mixes together in Mongo: a failedNodes-derived row
+// (effectiveDisposition="fatal") and an aggregatedDiagnostics-derived row
+// (no fatal effectiveDisposition — see fatalEffectiveDisposition's doc
+// comment on the engine guarantee this rests on).
+func fatalDiagnostic(t *testing.T, jobID id.JobID, code string) *diagnostic.Diagnostic {
+	t.Helper()
+	fatal := fatalEffectiveDisposition
+	d, err := diagnostic.NewBuilder().
+		JobID(jobID).
+		Timestamp(time.Now()).
+		Code(code).
+		Category("internal").
+		Severity("fatal").
+		EffectiveDisposition(&fatal).
+		Message("fatal test diagnostic").
+		Build()
+	require.NoError(t, err)
+	return d
+}
+
+func TestNodeDiagnostics_GetFailedNodes(t *testing.T) {
+	ctx := context.Background()
+	jobID := id.NewJobID()
+
+	t.Run("filters to fatal effectiveDisposition rows only, excluding non-fatal aggregated rows", func(t *testing.T) {
+		fatalRow := fatalDiagnostic(t, jobID, "internal.invariant_violation")
+		nonFatalRow := newTestDiagnostic(t, jobID, "gltf.zero_face_solid") // no effectiveDisposition set
+		repoMock := &mockDiagnosticsRepo{byJob: []*diagnostic.Diagnostic{fatalRow, nonFatalRow}}
+		jobRepo := &mockJobRepo{}
+
+		i := NewNodeDiagnostics(repoMock, jobRepo, nil, alwaysAllowPermissionChecker())
+		got, err := i.GetFailedNodes(ctx, jobID)
+		assert.NoError(t, err)
+		require.Len(t, got, 1)
+		assert.Equal(t, "internal.invariant_violation", got[0].Code())
+	})
+
+	t.Run("no rows: empty, not error", func(t *testing.T) {
+		repoMock := &mockDiagnosticsRepo{}
+		jobRepo := &mockJobRepo{}
+
+		i := NewNodeDiagnostics(repoMock, jobRepo, nil, alwaysAllowPermissionChecker())
+		got, err := i.GetFailedNodes(ctx, jobID)
+		assert.NoError(t, err)
+		assert.Empty(t, got)
+	})
+
+	t.Run("nil repo: empty, not error", func(t *testing.T) {
+		jobRepo := &mockJobRepo{}
+
+		i := NewNodeDiagnostics(nil, jobRepo, nil, alwaysAllowPermissionChecker())
+		got, err := i.GetFailedNodes(ctx, jobID)
+		assert.NoError(t, err)
+		assert.Empty(t, got)
+	})
+
+	t.Run("repo error propagates", func(t *testing.T) {
+		repoMock := &mockDiagnosticsRepo{byJobErr: errors.New("mongo down")}
+		jobRepo := &mockJobRepo{}
+
+		i := NewNodeDiagnostics(repoMock, jobRepo, nil, alwaysAllowPermissionChecker())
+		got, err := i.GetFailedNodes(ctx, jobID)
+		assert.Error(t, err)
+		assert.Nil(t, got)
+	})
+
+	t.Run("permission denied", func(t *testing.T) {
+		repoMock := &mockDiagnosticsRepo{}
+		jobRepo := &mockJobRepo{}
+		denyChecker := NewMockPermissionChecker(func(ctx context.Context, resource, action string) (bool, error) {
+			return false, nil
+		})
+
+		i := NewNodeDiagnostics(repoMock, jobRepo, nil, denyChecker)
+		got, err := i.GetFailedNodes(ctx, jobID)
+		assert.Error(t, err)
+		assert.Nil(t, got)
+	})
+}
+
+func TestNodeDiagnostics_GetDroppedEventCount(t *testing.T) {
+	ctx := context.Background()
+	jobID := id.NewJobID()
+
+	t.Run("returns the persisted count", func(t *testing.T) {
+		dropped := uint64(4)
+		repoMock := &mockDiagnosticsRepo{summary: &dropped}
+		jobRepo := &mockJobRepo{}
+
+		i := NewNodeDiagnostics(repoMock, jobRepo, nil, alwaysAllowPermissionChecker())
+		got, err := i.GetDroppedEventCount(ctx, jobID)
+		assert.NoError(t, err)
+		require.NotNil(t, got)
+		assert.Equal(t, uint64(4), *got)
+	})
+
+	t.Run("no summary row: nil, not error", func(t *testing.T) {
+		repoMock := &mockDiagnosticsRepo{}
+		jobRepo := &mockJobRepo{}
+
+		i := NewNodeDiagnostics(repoMock, jobRepo, nil, alwaysAllowPermissionChecker())
+		got, err := i.GetDroppedEventCount(ctx, jobID)
+		assert.NoError(t, err)
+		assert.Nil(t, got)
+	})
+
+	t.Run("nil repo: nil, not error", func(t *testing.T) {
+		jobRepo := &mockJobRepo{}
+
+		i := NewNodeDiagnostics(nil, jobRepo, nil, alwaysAllowPermissionChecker())
+		got, err := i.GetDroppedEventCount(ctx, jobID)
+		assert.NoError(t, err)
+		assert.Nil(t, got)
+	})
+
+	t.Run("repo error propagates", func(t *testing.T) {
+		repoMock := &mockDiagnosticsRepo{summaryErr: errors.New("mongo down")}
+		jobRepo := &mockJobRepo{}
+
+		i := NewNodeDiagnostics(repoMock, jobRepo, nil, alwaysAllowPermissionChecker())
+		got, err := i.GetDroppedEventCount(ctx, jobID)
+		assert.Error(t, err)
+		assert.Nil(t, got)
+	})
+
+	t.Run("permission denied", func(t *testing.T) {
+		repoMock := &mockDiagnosticsRepo{}
+		jobRepo := &mockJobRepo{}
+		denyChecker := NewMockPermissionChecker(func(ctx context.Context, resource, action string) (bool, error) {
+			return false, nil
+		})
+
+		i := NewNodeDiagnostics(repoMock, jobRepo, nil, denyChecker)
+		got, err := i.GetDroppedEventCount(ctx, jobID)
 		assert.Error(t, err)
 		assert.Nil(t, got)
 	})

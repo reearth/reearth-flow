@@ -161,9 +161,9 @@ func newTerminalDiagnosticDocument(jobID id.JobID, d *diagnostic.Diagnostic, kin
 // (DiagnosticDocument.Model() would otherwise silently decode it into a
 // mostly-empty Diagnostic). AggregatedDiagnostics entries are NOT nested
 // here: each gets its own row via NewAggregatedDiagnosticDocument, so they
-// stay visible through FindByJobNodeID for the node they pertain to. A
-// future Job.droppedEventCount GraphQL resolution is expected to read this
-// row directly by its deterministic ID.
+// stay visible through FindByJobNodeID for the node they pertain to. Read via
+// its deterministic ID by ../diagnostic.go's FindJobSummary, backing the
+// GraphQL Job.droppedEventCount resolver.
 type JobDiagnosticsSummaryDocument struct {
 	Timestamp         time.Time `bson:"timestamp"`
 	DroppedEventCount *uint64   `bson:"droppedEventCount,omitempty"`
@@ -173,8 +173,8 @@ type JobDiagnosticsSummaryDocument struct {
 
 // JobDiagnosticsSummaryID is the deterministic ID of the single per-job
 // summary row (see JobDiagnosticsSummaryDocument), exported so callers can
-// look the row up directly (upsert or future read) without recomputing the
-// convention.
+// look the row up directly (upsert or read, see ../diagnostic.go's
+// FindJobSummary) without recomputing the convention.
 func JobDiagnosticsSummaryID(jobID id.JobID) string {
 	return jobID.String() + ":_job:summary"
 }
@@ -192,4 +192,23 @@ func NewJobDiagnosticsSummaryDocument(
 		ID:                JobDiagnosticsSummaryID(jobID),
 		JobID:             jobID.String(),
 	}
+}
+
+// Model implements mongodoc.Model, letting JobDiagnosticsSummaryDocument
+// plug into the same Consumer machinery as DiagnosticDocument. The "model"
+// here is just the droppedEventCount pointer, not a domain type: this row
+// has no other GraphQL-visible shape (see JobDiagnosticsSummaryDocument's
+// own doc comment). SaveTerminalDiagnostics only ever writes this row when
+// droppedEventCount is non-nil, so a decoded row's count is never nil.
+func (d *JobDiagnosticsSummaryDocument) Model() (*uint64, error) {
+	if d == nil {
+		return nil, nil
+	}
+	return d.DroppedEventCount, nil
+}
+
+type JobDiagnosticsSummaryConsumer = Consumer[*JobDiagnosticsSummaryDocument, *uint64]
+
+func NewJobDiagnosticsSummaryConsumer() *JobDiagnosticsSummaryConsumer {
+	return NewConsumer[*JobDiagnosticsSummaryDocument](nil)
 }

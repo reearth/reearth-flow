@@ -22,6 +22,11 @@ import (
 type NodeDiagnostics interface {
 	FindByJobNodeID(ctx context.Context, jobID id.JobID, nodeID string) ([]*diagnostic.Diagnostic, error)
 	FindByJobID(ctx context.Context, jobID id.JobID) ([]*diagnostic.Diagnostic, error)
+	// FindJobSummary reads the single per-job summary row written by
+	// SaveTerminalDiagnostics (deterministic ID {jobId}:_job:summary, see
+	// mongodoc.JobDiagnosticsSummaryDocument), returning its
+	// droppedEventCount. Returns (nil, nil) when no summary row exists.
+	FindJobSummary(ctx context.Context, jobID id.JobID) (*uint64, error)
 	// SaveTerminalDiagnostics upserts one row per failedNode (deterministic
 	// ID {jobId}:{nodeId-or-_job}:failed:{code}) and one row per aggregated
 	// diagnostic (deterministic ID {jobId}:{nodeId-or-_job}:aggregated:

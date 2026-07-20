@@ -86,6 +86,25 @@ func TestNewJobDiagnosticsSummaryDocument(t *testing.T) {
 	assert.Equal(t, uint64(2), *doc.DroppedEventCount)
 }
 
+func TestJobDiagnosticsSummaryDocument_Model(t *testing.T) {
+	t.Run("returns the droppedEventCount pointer", func(t *testing.T) {
+		dropped := uint64(7)
+		doc := JobDiagnosticsSummaryDocument{DroppedEventCount: &dropped}
+
+		got, err := doc.Model()
+		require.NoError(t, err)
+		require.NotNil(t, got)
+		assert.Equal(t, uint64(7), *got)
+	})
+
+	t.Run("nil receiver", func(t *testing.T) {
+		var doc *JobDiagnosticsSummaryDocument
+		got, err := doc.Model()
+		assert.NoError(t, err)
+		assert.Nil(t, got)
+	})
+}
+
 func TestNewAggregatedDiagnosticDocument(t *testing.T) {
 	jobID := id.NewJobID()
 	nodeID := "subgraph-a.node-4"

@@ -2,6 +2,7 @@ package mongo
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/mongo/mongodoc"
@@ -55,6 +56,24 @@ func (r *NodeDiagnostics) FindByJobID(ctx context.Context, jobID id.JobID) ([]*d
 		"code":  diagnosticHasCodeFilter,
 	}
 	return r.find(ctx, filter)
+}
+
+// FindJobSummary reads the single per-job summary row by its deterministic
+// ID (mongodoc.JobDiagnosticsSummaryID), returning (nil, nil) when no such
+// row exists (no droppedEventCount was ever persisted for this job).
+func (r *NodeDiagnostics) FindJobSummary(ctx context.Context, jobID id.JobID) (*uint64, error) {
+	filter := bson.M{"id": mongodoc.JobDiagnosticsSummaryID(jobID)}
+	c := mongodoc.NewJobDiagnosticsSummaryConsumer()
+	if err := r.client.FindOne(ctx, filter, c); err != nil {
+		if errors.Is(err, rerror.ErrNotFound) {
+			return nil, nil
+		}
+		return nil, rerror.ErrInternalByWithContext(ctx, err)
+	}
+	if len(c.Result) == 0 {
+		return nil, nil
+	}
+	return c.Result[0], nil
 }
 
 func (r *NodeDiagnostics) find(ctx context.Context, filter interface{}) ([]*diagnostic.Diagnostic, error) {

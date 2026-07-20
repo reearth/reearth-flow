@@ -106,4 +106,17 @@ func TestNodeDiagnostics_FindByJobNodeID_And_FindByJobID(t *testing.T) {
 		assert.NoError(t, err)
 		require.Len(t, got, 3)
 	})
+
+	t.Run("FindJobSummary reads the droppedEventCount persisted above", func(t *testing.T) {
+		got, err := r.FindJobSummary(ctx, jobID)
+		assert.NoError(t, err)
+		require.NotNil(t, got)
+		assert.Equal(t, uint64(2), *got)
+	})
+
+	t.Run("FindJobSummary is nil, not error, for a job with no summary row", func(t *testing.T) {
+		got, err := r.FindJobSummary(ctx, id.NewJobID())
+		assert.NoError(t, err)
+		assert.Nil(t, got)
+	})
 }
