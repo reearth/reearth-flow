@@ -41,12 +41,43 @@ pub enum Event {
         node_handle: NodeHandle,
         status: NodeStatus,
         feature_id: Option<uuid::Uuid>,
+        /// Per-node completion counters, populated only at the terminal
+        /// status emit of each node's receive loop (`Completed`/`Failed`) —
+        /// every other `NodeStatusChanged` (Starting/Processing) carries
+        /// `None`. `Source` nodes never populate this (nothing in
+        /// `NodeMetrics` applies to them); `Processor` populates
+        /// `features_processed`/`finish_feature_count` and leaves
+        /// `features_written` at 0; `Sink` populates `features_written` and
+        /// leaves the other two at 0.
+        metrics: Option<NodeMetrics>,
     },
     /// Structured diagnostic signal; rendered into action logs by
     /// `LogEventHandler` and consumed directly by other wire handlers.
     /// `Arc`'d because `EventHub` is a broadcast channel — every subscriber
     /// gets its own clone of `Event`, and `Diagnostic` is large.
     Diagnostic(Arc<reearth_flow_diagnostics::Diagnostic>),
+}
+
+/// Per-node completion counters carried on the terminal
+/// `Event::NodeStatusChanged` of a node's receive loop. The counts
+/// themselves (`features_processed`, `finish_feature_count`,
+/// `features_written`) are tracked correctly today but, before this type
+/// existed, only ever reached a formatted log line — recoverable downstream
+/// solely by regexing that string (`worker/src/action_log_parser.rs`). This
+/// struct carries the same numbers structurally instead, without touching
+/// the log prose those regexes match.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub struct NodeMetrics {
+    /// Successfully processed feature count (`Processor` only; incremented
+    /// once per successful `process()` call). Always 0 for `Sink`.
+    pub features_processed: u64,
+    /// Successfully written feature count (`Sink` only). Always 0 for
+    /// `Processor`.
+    pub features_written: u64,
+    /// Feature count emitted downstream during `finish()` (`Processor`
+    /// only — e.g. an accumulating/aggregating action that buffers input
+    /// and flushes results at finish time). Always 0 for `Sink`.
+    pub finish_feature_count: u64,
 }
 
 #[derive(Debug)]

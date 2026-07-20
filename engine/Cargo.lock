@@ -5283,6 +5283,7 @@ dependencies = [
  "reearth-flow-worker",
  "regex",
  "rust-embed",
+ "schemars",
  "serde",
  "serde_json",
  "serde_yaml",

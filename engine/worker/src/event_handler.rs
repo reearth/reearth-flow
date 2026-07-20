@@ -9,7 +9,7 @@ use reearth_flow_worker::pubsub::Publisher;
 use reearth_flow_worker::types::diagnostic_event::{DiagnosticEvent, ENABLE_DIAGNOSTICS};
 use reearth_flow_worker::types::log_stream_event::LogStreamEvent;
 use reearth_flow_worker::types::node_status_event::{
-    NodeStatus as PublishNodeStatus, NodeStatusEvent,
+    NodeMetrics as PublishNodeMetrics, NodeStatus as PublishNodeStatus, NodeStatusEvent,
 };
 
 #[derive(Debug)]
@@ -123,6 +123,7 @@ impl<P: Publisher + 'static> reearth_flow_runtime::event::EventHandler for Event
                 node_handle,
                 status,
                 feature_id,
+                metrics,
             } => {
                 tracing::info!(
                     "SENDING NODE STATUS EVENT: node_id={}, status={:?}, feature_id={:?}",
@@ -144,12 +145,19 @@ impl<P: Publisher + 'static> reearth_flow_runtime::event::EventHandler for Event
                     }
                 };
 
+                let publish_metrics = metrics.map(|m| PublishNodeMetrics {
+                    features_processed: m.features_processed,
+                    features_written: m.features_written,
+                    finish_feature_count: m.finish_feature_count,
+                });
+
                 let node_status_event = NodeStatusEvent::new(
                     self.workflow_id,
                     self.job_id,
                     node_handle.id.to_string(),
                     publish_status,
                     *feature_id,
+                    publish_metrics,
                 );
 
                 match self.publisher.publish(node_status_event).await {

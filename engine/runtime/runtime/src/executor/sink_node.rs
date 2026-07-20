@@ -21,7 +21,7 @@ use reearth_flow_diagnostics::Diagnostic;
 use crate::{
     builder_dag::NodeKind,
     errors::{to_node_error, ExecutionError, NodeErrorKind},
-    event::{Event, EventHub},
+    event::{Event, EventHub, NodeMetrics},
     executor_operation::{ExecutorContext, ExecutorOperation, NodeContext},
     kvs::KvStore,
     node::{NodeHandle, NodeStatus, Sink},
@@ -206,6 +206,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
             node_handle: self.node_handle.clone(),
             status: NodeStatus::Starting,
             feature_id: None,
+            metrics: None,
         });
 
         self.event_hub.info_log_with_node_info(
@@ -241,6 +242,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                 node_handle: self.node_handle.clone(),
                 status: NodeStatus::Failed,
                 feature_id: None,
+                metrics: None,
             });
             return init_result;
         }
@@ -251,6 +253,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
             node_handle: self.node_handle.clone(),
             status: NodeStatus::Processing,
             feature_id: None,
+            metrics: None,
         });
 
         loop {
@@ -440,6 +443,11 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                                 NodeStatus::Completed
                             },
                             feature_id: None,
+                            metrics: Some(NodeMetrics {
+                                features_processed: 0,
+                                features_written: features_count,
+                                finish_feature_count: 0,
+                            }),
                         });
 
                         return final_result;

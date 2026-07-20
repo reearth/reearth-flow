@@ -33,6 +33,7 @@ directories.workspace = true
 once_cell.workspace = true
 regex.workspace = true
 rust-embed = "8.11.0"
+schemars.workspace = true
 serde.workspace = true
 serde_json.workspace = true
 serde_yaml.workspace = true
@@ -123,3 +124,7 @@ path = "logging_test/11_run_summary_threading.rs"
 [[test]]
 name = "test-logging-fatal-override"
 path = "logging_test/12_fatal_override.rs"
+
+[[test]]
+name = "test-processor-lifecycle"
+path = "logging_test/13_processor_lifecycle.rs"

@@ -17,7 +17,7 @@ use reearth_flow_storage::resolve::StorageResolver;
 use tokio::runtime::Handle;
 use tracing::{info_span, Span};
 
-use crate::event::{Event, EventHub};
+use crate::event::{Event, EventHub, NodeMetrics};
 use crate::executor_operation::{ExecutorContext, ExecutorOperation, NodeContext};
 use crate::forwarder::ProcessorChannelForwarder;
 use crate::kvs::KvStore;
@@ -68,6 +68,16 @@ pub struct ProcessorNode<F> {
     num_threads: usize,
     thread_counter: Arc<AtomicU32>,
     features_processed: Arc<AtomicU64>,
+    /// Feature count sent downstream during `finish()`
+    /// (`ChannelManager::get_send_count()`, read in `on_terminate`).
+    /// `on_terminate` runs as a plain method call from `receiver_loop`
+    /// (not a spawned thread), but it returns only `Result<(), ExecutionError>`
+    /// (the `ReceiverLoop` trait's fixed signature) — this field is the same
+    /// "carry a value out through a fixed-signature method" pattern
+    /// `summaries_sink` already uses, so `receiver_loop` can read the count
+    /// back after calling `on_terminate` and put it on the terminal
+    /// `NodeStatusChanged`'s `NodeMetrics`.
+    finish_feature_count: Arc<AtomicU64>,
     /// Cumulative process() duration in microseconds.
     process_duration_us: Arc<AtomicU64>,
     /// Sum of squared process() durations in microseconds (for std dev).
@@ -193,6 +203,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             num_threads,
             thread_counter: Arc::new(AtomicU32::new(0)),
             features_processed: Arc::new(AtomicU64::new(0)),
+            finish_feature_count: Arc::new(AtomicU64::new(0)),
             process_duration_us: Arc::new(AtomicU64::new(0)),
             process_duration_sq_us: Arc::new(AtomicU64::new(0)),
             env_vars,
@@ -268,9 +279,10 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
             node_handle: self.node_handle.clone(),
             status: NodeStatus::Starting,
             feature_id: None,
+            metrics: None,
         });
 
-        processor
+        let init_result = processor
             .write()
             .initialize(NodeContext::new(
                 self.env_vars.clone(),
@@ -279,12 +291,35 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                 self.event_hub.clone(),
                 self.sandbox_root.clone(),
             ))
-            .map_err(ExecutionError::Processor)?;
+            .map_err(ExecutionError::Processor);
+
+        // Mirrors the sink's initialize-failure handling (`sink_node.rs`):
+        // without this, an `initialize()` error used to propagate via `?`
+        // with no status event at all, leaving the node stuck at `Starting`
+        // forever from any observer's point of view.
+        if let Err(ref e) = init_result {
+            self.event_hub.error_log_with_node_info(
+                Some(span.clone()),
+                self.node_handle.clone(),
+                self.node_name.clone(),
+                format!("{} process error: {}", self.processor.read().name(), e),
+            );
+
+            self.event_hub.send(Event::NodeStatusChanged {
+                node_handle: self.node_handle.clone(),
+                status: NodeStatus::Failed,
+                feature_id: None,
+                metrics: None,
+            });
+
+            return init_result;
+        }
 
         self.event_hub.send(Event::NodeStatusChanged {
             node_handle: self.node_handle.clone(),
             status: NodeStatus::Processing,
             feature_id: None,
+            metrics: None,
         });
 
         self.event_hub.info_log_with_node_info(
@@ -364,6 +399,9 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                     // this node's own diagnostics handle onto it directly.
                     finish_ctx.diagnostics = Some(self.diagnostics.clone());
                     let terminate_result = self.on_terminate(finish_ctx);
+                    let finish_feature_count = self
+                        .finish_feature_count
+                        .load(std::sync::atomic::Ordering::Relaxed);
 
                     // Unified failure precedence: a real error returned by
                     // `on_terminate` (finish() or the downstream terminate-send)
@@ -373,11 +411,30 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                     // failed. Exactly one NodeStatusChanged{Failed|Completed}
                     // is emitted below, from the single reconciled outcome.
                     let fatal = self.diagnostics.inner.take_fatal();
-                    let (final_result, node_failed) = reconcile_terminate_result(
+                    let (final_result, node_failed, superseded_fatal) = reconcile_terminate_result(
                         terminate_result,
                         fatal,
                         has_failed.load(std::sync::atomic::Ordering::SeqCst),
                     );
+
+                    // Mirrors the sink's superseded-fatal backstop
+                    // (`sink_node.rs`): a swallowed-fatal `report()`/`ctx.fatal()`
+                    // that loses precedence to a real `on_terminate` error must
+                    // not vanish silently — warn once, naming the superseded
+                    // diagnostic's code.
+                    if let Some(superseded) = superseded_fatal {
+                        self.event_hub.warn_log_with_node_info(
+                            Some(span.clone()),
+                            self.node_handle.clone(),
+                            self.node_name.clone(),
+                            format!(
+                                "{} process: swallowed fatal diagnostic ({}) superseded by a \
+                                 real error and dropped from the final result",
+                                self.processor.read().name(),
+                                superseded.code
+                            ),
+                        );
+                    }
 
                     self.event_hub.send(Event::NodeStatusChanged {
                         node_handle: self.node_handle.clone(),
@@ -387,7 +444,26 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                             NodeStatus::Completed
                         },
                         feature_id: None,
+                        metrics: Some(NodeMetrics {
+                            features_processed: features_count,
+                            features_written: 0,
+                            finish_feature_count,
+                        }),
                     });
+
+                    // `ProcessorFinished` is per-NODE (emitted exactly once
+                    // here, only on the success path), deliberately NOT a 1:1
+                    // counterpart to its sibling `ProcessorFailed`, which is
+                    // emitted per-FEATURE from the rayon pool (see `process()`
+                    // below, on a failed `process()` call). This point is
+                    // after `on_terminate` (finish()) and the reconcile above,
+                    // so a node whose finish() failed never emits this.
+                    if !node_failed {
+                        self.event_hub.send(Event::ProcessorFinished {
+                            node: self.node_handle.clone(),
+                            name: self.node_name.clone(),
+                        });
+                    }
 
                     return final_result;
                 }
@@ -546,6 +622,8 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
         // These are sent as FileBackedOps which the downstream already handles.
         channel_manager.flush_spill_files(&ctx.as_context());
         let finish_feature_count = channel_manager.get_send_count();
+        self.finish_feature_count
+            .store(finish_feature_count, std::sync::atomic::Ordering::Relaxed);
 
         drop(_accumulating_guard);
 
@@ -641,16 +719,27 @@ fn process(
 }
 
 /// Unified failure precedence: a real returned error wins; the fatal slot is
-/// only a backstop for swallowed `report()` fatals. Returns (final_result, node_failed).
+/// only a backstop for swallowed `report()` fatals.
+///
+/// Returns `(final_result, node_failed, superseded_fatal)`. `superseded_fatal`
+/// is `Some(diag)` exactly when a swallowed fatal was present but lost
+/// precedence to a real `on_terminate` error — i.e. it was recorded via
+/// `ctx.fatal()`/`report()` but never surfaces in `final_result`. Mirrors
+/// `sink_node.rs::reconcile_sink_terminate_result`'s indicator (minus
+/// `first_error`, which the processor loop has no equivalent of: per-feature
+/// `process()` failures are tracked only as the `has_failed` bool, not as a
+/// carried error). It is `None` both when there is no fatal to begin with and
+/// when the fatal slot itself wins (already reflected in `final_result`
+/// there, so nothing was superseded).
 fn reconcile_terminate_result(
     terminate_result: Result<(), ExecutionError>,
     fatal: Option<Diagnostic>,
     has_failed: bool,
-) -> (Result<(), ExecutionError>, bool) {
+) -> (Result<(), ExecutionError>, bool, Option<Diagnostic>) {
     match (terminate_result, fatal) {
-        (Err(e), _) => (Err(e), true),
-        (Ok(()), Some(diag)) => (Err(ExecutionError::Processor(Box::new(diag))), true),
-        (Ok(()), None) => (Ok(()), has_failed),
+        (Err(e), fatal) => (Err(e), true, fatal),
+        (Ok(()), Some(diag)) => (Err(ExecutionError::Processor(Box::new(diag))), true, None),
+        (Ok(()), None) => (Ok(()), has_failed, None),
     }
 }
 
@@ -675,42 +764,48 @@ mod reconcile_tests {
     #[test]
     fn ok_no_fatal_result_is_ok_and_node_failed_tracks_has_failed() {
         for has_failed in [false, true] {
-            let (result, node_failed) = reconcile_terminate_result(Ok(()), None, has_failed);
+            let (result, node_failed, superseded) =
+                reconcile_terminate_result(Ok(()), None, has_failed);
             assert!(result.is_ok());
             assert_eq!(node_failed, has_failed);
+            assert!(superseded.is_none());
         }
     }
 
     #[test]
     fn ok_with_fatal_backstop_fires_regardless_of_has_failed() {
         for has_failed in [false, true] {
-            let (result, node_failed) =
+            let (result, node_failed, superseded) =
                 reconcile_terminate_result(Ok(()), Some(dummy_diagnostic("fatal")), has_failed);
             assert!(node_failed);
             match result {
                 Err(ExecutionError::Processor(e)) => assert!(e.to_string().contains("fatal")),
                 other => panic!("expected the fatal backstop to fire, got {other:?}"),
             }
+            // The fatal slot itself won here (it's reflected in `result`), so
+            // nothing was superseded — no WARN should fire for this case.
+            assert!(superseded.is_none());
         }
     }
 
     #[test]
     fn err_no_fatal_the_real_error_wins_regardless_of_has_failed() {
         for has_failed in [false, true] {
-            let (result, node_failed) =
+            let (result, node_failed, superseded) =
                 reconcile_terminate_result(Err(terminate_err("boom")), None, has_failed);
             assert!(node_failed);
             match result {
                 Err(ExecutionError::CannotSendToChannel(msg)) => assert_eq!(msg, "boom"),
                 other => panic!("expected the real terminate error, got {other:?}"),
             }
+            assert!(superseded.is_none());
         }
     }
 
     #[test]
     fn err_with_fatal_the_real_error_still_wins_over_the_fatal_backstop() {
         for has_failed in [false, true] {
-            let (result, node_failed) = reconcile_terminate_result(
+            let (result, node_failed, superseded) = reconcile_terminate_result(
                 Err(terminate_err("boom")),
                 Some(dummy_diagnostic("fatal")),
                 has_failed,
@@ -722,6 +817,10 @@ mod reconcile_tests {
                     "expected the real terminate error to win over the fatal backstop, got {other:?}"
                 ),
             }
+            // A real terminate error superseded the fatal slot: the WARN
+            // backstop's indicator must carry the same diagnostic that lost.
+            let superseded = superseded.expect("fatal was present and lost to the terminate error");
+            assert_eq!(superseded.message, "fatal");
         }
     }
 }

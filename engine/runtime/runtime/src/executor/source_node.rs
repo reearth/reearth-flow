@@ -61,6 +61,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                 node_handle: source.channel_manager.owner().clone(),
                 status: NodeStatus::Starting,
                 feature_id: None,
+                metrics: None,
             });
         }
 
@@ -69,6 +70,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                 node_handle: source.channel_manager.owner().clone(),
                 status: NodeStatus::Processing,
                 feature_id: None,
+                metrics: None,
             });
         }
 
@@ -92,6 +94,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                 node_handle: source_node_handle.clone(),
                 status: NodeStatus::Processing,
                 feature_id: None,
+                metrics: None,
             });
 
             let mut source = source_runner.source;
@@ -133,6 +136,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                         node_handle: source_node_handle,
                         status: NodeStatus::Completed,
                         feature_id: None,
+                        metrics: None,
                     });
                 } else if let Err(ref e) = result {
                     event_hub.error_log_with_node_info(
@@ -146,6 +150,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                         node_handle: source_node_handle,
                         status: NodeStatus::Failed,
                         feature_id: None,
+                        metrics: None,
                     });
                 }
 
@@ -177,6 +182,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                             node_handle: source.channel_manager.owner().clone(),
                             status: NodeStatus::Completed,
                             feature_id: None,
+                            metrics: None,
                         });
                     }
 
@@ -210,6 +216,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                                             node_handle: source.channel_manager.owner().clone(),
                                             status: NodeStatus::Completed,
                                             feature_id: None,
+                                            metrics: None,
                                         });
                                     }
 
@@ -227,6 +234,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                                         .clone(),
                                     status: NodeStatus::Failed,
                                     feature_id: None,
+                                    metrics: None,
                                 });
 
                                 return Err(to_node_error(e, NodeErrorKind::Source));
@@ -239,6 +247,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                                         .clone(),
                                     status: NodeStatus::Failed,
                                     feature_id: None,
+                                    metrics: None,
                                 });
 
                                 panic!("Source panicked: {e}");
@@ -259,6 +268,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                                 node_handle: source.channel_manager.owner().clone(),
                                 status: NodeStatus::Processing,
                                 feature_id: Some(feature.id),
+                                metrics: None,
                             });
 
                             source.channel_manager.send_op(ExecutorContext::new(

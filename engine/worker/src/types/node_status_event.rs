@@ -29,6 +29,17 @@ pub enum NodeStatus {
     Failed,
 }
 
+/// Wire mirror of `reearth_flow_runtime::event::NodeMetrics`. Only present on
+/// the terminal `NodeStatusEvent` of a node's lifecycle (Completed/Failed) —
+/// see `NodeStatusEvent::metrics`.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Default, JsonSchema, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct NodeMetrics {
+    pub features_processed: u64,
+    pub features_written: u64,
+    pub finish_feature_count: u64,
+}
+
 #[derive(Serialize, Deserialize, Debug, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct NodeStatusEvent {
@@ -38,6 +49,11 @@ pub struct NodeStatusEvent {
     pub status: NodeStatus,
     pub feature_id: Option<Uuid>,
     pub timestamp: chrono::DateTime<Utc>,
+    /// Per-node completion counters. `None` for every non-terminal status
+    /// event (Pending/Starting/Processing/Idle) and for a run predating this
+    /// field; populated only alongside Completed/Failed.
+    #[serde(skip_serializing_if = "Option::is_none", default)]
+    pub metrics: Option<NodeMetrics>,
 }
 
 impl NodeStatusEvent {
@@ -47,6 +63,7 @@ impl NodeStatusEvent {
         node_id: String,
         status: NodeStatus,
         feature_id: Option<Uuid>,
+        metrics: Option<NodeMetrics>,
     ) -> Self {
         Self {
             workflow_id,
@@ -55,6 +72,7 @@ impl NodeStatusEvent {
             status,
             feature_id,
             timestamp: Utc::now(),
+            metrics,
         }
     }
 }
