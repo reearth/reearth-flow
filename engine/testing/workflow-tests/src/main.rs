@@ -355,6 +355,22 @@ impl TestContext {
         );
 
         match result {
+            // A profile that declares `expectFailedNodes: true` is asserting
+            // the workflow's malformed input MUST surface as a node failure
+            // (see the field's doc comment in shared_types.rs). An
+            // unexpected `Ok(())` here means that no longer happens — e.g. a
+            // convergence regression in the engine that stops reporting a
+            // per-feature/per-node error — so tolerate it silently would
+            // turn this tripwire into a no-op. Fail loudly instead.
+            Ok(()) if self.profile.expect_failed_nodes => Err(anyhow::anyhow!(
+                "test profile declares expectFailedNodes: true, but the workflow run \
+                 succeeded (Ok(())) with no failed node reported; this looks like a \
+                 regression in node-failure reporting (e.g. a per-feature process() \
+                 error no longer converging into RunSummary.failed_nodes) rather than \
+                 a genuine fix, since verify_output/verify_summary_output still expect \
+                 the original malformed-input behavior. If the workflow legitimately no \
+                 longer fails, remove expectFailedNodes from this test's workflow_test.json."
+            )),
             Ok(()) => Ok(()),
             // `expect_failed_nodes` fixtures intentionally feed malformed
             // input to prove per-file/per-feature errors are reported via
@@ -365,9 +381,15 @@ impl TestContext {
             // failure (bad workflow, panic-turned-error, I/O failure, ...)
             // still fails the test loudly:
             // - `ExecutionError` is what a failing node's own thread
-            //   returns under the default (`onFatal: Terminate`) policy —
-            //   `join()` short-circuits to this the moment any thread
-            //   errors, without ever building a `RunSummary`.
+            //   returns under the default (`onFatal: Terminate`) policy.
+            //   `join()` does NOT short-circuit on the first error — it
+            //   drains every node thread's handle first (so all sinks/
+            //   writers still run to completion and their output files are
+            //   still written) — it's only the *return value* that, under
+            //   `Terminate`, surfaces the first-collected thread's raw
+            //   `Err` afterward instead of folding results into a
+            //   `RunSummary` (see `DagExecutorJoinHandle::join`'s doc
+            //   comment for the exact ordering).
             // - `FailedNodes` is `summary_into_unit_result`'s legacy-compat
             //   mapping of a non-empty `RunSummary.failed_nodes` to `Err`,
             //   reached instead under an explicit `onFatal: continue`.

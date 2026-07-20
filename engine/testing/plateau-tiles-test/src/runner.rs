@@ -20,7 +20,7 @@ pub fn run_workflow(
     codelists_path: Option<&Path>,
     schemas_path: Option<&Path>,
     target_package: Option<&str>,
-) {
+) -> Result<(), String> {
     let yaml_transformer =
         yaml_include::Transformer::new(workflow_path.to_path_buf(), false).unwrap();
     let yaml_str = yaml_transformer.to_string();
@@ -101,6 +101,15 @@ pub fn run_workflow(
         reearth_flow_common::uri::Uri::from_str(&format!("file://{}", flow_dir.display())).unwrap();
 
     tracing::info!("Starting workflow run...");
+    // As of the engine's C12/Task 6 convergence, this can now return `Err`
+    // for a run that previously returned `Ok(())` despite a per-feature
+    // `process()` error (e.g. under the default `onFatal: Terminate`
+    // policy, or via `summary_into_unit_result` under an explicit `onFatal:
+    // continue`). Propagate as a clean test failure instead of `.unwrap()`
+    // panicking with an undecorated error — the caller turns this into the
+    // same `panic!("... - {error text}")` shape `run_test` already uses for
+    // the verification stage, so it reports as a failed testcase (caught by
+    // the harness's per-testcase `catch_unwind`), not a harness crash.
     Runner::run_with_sandbox_root(
         job_id,
         workflow,
@@ -112,5 +121,5 @@ pub fn run_workflow(
         None,
         sandbox_root,
     )
-    .unwrap();
+    .map_err(|e| format!("workflow run failed: {e}"))
 }

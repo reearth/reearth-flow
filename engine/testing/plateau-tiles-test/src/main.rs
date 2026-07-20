@@ -230,14 +230,16 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
             .find("_op_")
             .map(|pos| zip_stem[pos + 4..].to_string());
 
-        runner::run_workflow(
+        if let Err(e) = runner::run_workflow(
             &workflow_path,
             &inputs["citymodel"],
             &output_dir,
             inputs.get("codelists").map(PathBuf::as_path),
             inputs.get("schemas").map(PathBuf::as_path),
             target_package.as_deref(),
-        );
+        ) {
+            panic!("Run failed: {} - {}", relative_path.display(), e);
+        }
 
         let elapsed = start_time.elapsed();
         info!(

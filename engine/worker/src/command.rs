@@ -303,6 +303,24 @@ impl RunWorkerCommand {
             ),
             // No summary means the runner returned `Err`: publish the
             // pre-Task-10 shape (no diagnostics fields) exactly as before.
+            //
+            // KNOWN LIMITATION (Task 6, per-feature-error convergence): under
+            // the production-default `onFatal: Terminate` policy, a
+            // per-feature `process()` error now takes this same `Err` path
+            // (previously it could only reach here via a node-level
+            // `ctx.report()`/`report_drop()` Fatal). `run_summary` is `None`
+            // for that run class too, so this event carries no
+            // `droppedEventCount` and no terminal `aggregatedDiagnostics`
+            // rows even though the run genuinely produced them. The job is
+            // still correctly labeled Failed either way (see `job_result`
+            // above, derived from the `Err(_) => derive_job_result(None,
+            // false)` arm), and live `Event::Diagnostic` rows for the same
+            // run still reach the server via the event stream unaffected —
+            // only this terminal summary snapshot is short. A structural fix
+            // (making `join()` return `(Option<RunSummary>, Result<..>)`
+            // under `Terminate`, or running `fold_outcomes` before the
+            // short-circuit check) is deferred past Phase 3; see
+            // `.superpowers/sdd/progress.md`.
             None => JobCompleteEvent::new(workflow_id, meta.job_id, job_result.clone()),
         };
         match &pubsub {
