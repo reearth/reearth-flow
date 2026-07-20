@@ -11,6 +11,7 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
+	"github.com/reearth/reearth-flow/api/pkg/diagnostic"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/reearth/reearth-flow/api/pkg/job/monitor"
@@ -24,20 +25,21 @@ import (
 var _ interfaces.Job = &Job{}
 
 type Job struct {
-	jobRepo           repo.Job
-	transaction       usecasex.Transactor
-	file              gateway.File
-	batch             gateway.Batch
-	cloudRunWorker    gateway.CloudRunWorker
-	redis             gateway.Redis
-	notifier          notification.Notifier
-	permissionChecker gateway.PermissionChecker
-	monitor           *monitor.Monitor
-	subscriptions     *subscription.JobManager
-	activeWatchers    map[string]bool
-	jobLocks          map[string]*sync.Mutex
-	jobLocksMu        sync.RWMutex
-	watchersMu        sync.Mutex
+	jobRepo             repo.Job
+	nodeDiagnosticsRepo repo.NodeDiagnostics
+	transaction         usecasex.Transactor
+	file                gateway.File
+	batch               gateway.Batch
+	cloudRunWorker      gateway.CloudRunWorker
+	redis               gateway.Redis
+	notifier            notification.Notifier
+	permissionChecker   gateway.PermissionChecker
+	monitor             *monitor.Monitor
+	subscriptions       *subscription.JobManager
+	activeWatchers      map[string]bool
+	jobLocks            map[string]*sync.Mutex
+	jobLocksMu          sync.RWMutex
+	watchersMu          sync.Mutex
 }
 
 type NotificationPayload struct {
@@ -54,18 +56,19 @@ func NewJob(
 	permissionChecker gateway.PermissionChecker,
 ) interfaces.Job {
 	return &Job{
-		jobRepo:           r.Job,
-		transaction:       r.Transaction,
-		file:              gr.File,
-		batch:             gr.Batch,
-		cloudRunWorker:    gr.CloudRunWorker,
-		redis:             gr.Redis,
-		monitor:           monitor.NewMonitor(),
-		subscriptions:     subscription.NewJobManager(),
-		notifier:          notification.NewHTTPNotifier(),
-		permissionChecker: permissionChecker,
-		activeWatchers:    make(map[string]bool),
-		jobLocks:          make(map[string]*sync.Mutex),
+		jobRepo:             r.Job,
+		nodeDiagnosticsRepo: r.NodeDiagnostics,
+		transaction:         r.Transaction,
+		file:                gr.File,
+		batch:               gr.Batch,
+		cloudRunWorker:      gr.CloudRunWorker,
+		redis:               gr.Redis,
+		monitor:             monitor.NewMonitor(),
+		subscriptions:       subscription.NewJobManager(),
+		notifier:            notification.NewHTTPNotifier(),
+		permissionChecker:   permissionChecker,
+		activeWatchers:      make(map[string]bool),
+		jobLocks:            make(map[string]*sync.Mutex),
 	}
 }
 
@@ -443,6 +446,25 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 
 	if statusChanged {
 		currentJob.SetStatus(currentJob.Status())
+
+		// Diagnostics persistence runs BEFORE the job save + event delete
+		// below, and its outcome gates the delete: a persist failure must
+		// NOT abort the status merge (the job is saved with its terminal
+		// status either way — mirrors the subscriber's own
+		// Mongo-write-is-best-effort posture, e.g. node_subscriber.go), but
+		// it MUST prevent the source Redis event from being deleted, so the
+		// next checkJobStatus poll re-reads the same event and retries
+		// persistence (safe: SaveTerminalDiagnostics upserts by
+		// deterministic ID). Ordering: persist -> save job -> delete event
+		// only if persist succeeded.
+		diagnosticsPersisted := true
+		if workerEvent != nil {
+			if err := i.persistTerminalDiagnostics(ctx, currentJob.ID(), workerEvent); err != nil {
+				diagnosticsPersisted = false
+				log.Warnf("Failed to persist terminal diagnostics for job %s: %v", currentJob.ID(), err)
+			}
+		}
+
 		if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
 			if err := i.jobRepo.Save(ctx, currentJob); err != nil {
 				return fmt.Errorf("failed to save job: %w", err)
@@ -452,7 +474,7 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 			return err
 		}
 
-		if workerEvent != nil {
+		if workerEvent != nil && diagnosticsPersisted {
 			if err := i.redis.DeleteJobCompleteEvent(ctx, currentJob.ID()); err != nil {
 				log.Warnf("Failed to delete job complete event from Redis for job %s: %v", currentJob.ID(), err)
 			}
@@ -662,4 +684,60 @@ func (i *Job) Unsubscribe(jobID id.JobID, ch chan job.Status) {
 		delete(i.activeWatchers, jobID.String())
 		i.watchersMu.Unlock()
 	}
+}
+
+// persistTerminalDiagnostics snapshots a JobCompleteEvent's
+// FailedNodes/AggregatedDiagnostics/DroppedEventCount into the durable
+// nodeDiagnostics collection (repo.NodeDiagnostics.SaveTerminalDiagnostics)
+// so job.failedNodes stays readable after the source Redis event is deleted
+// — see the ordering comment at the checkJobStatus call site, which deletes
+// the event only once this returns nil.
+//
+// Old-wire events (an engine build predating diagnostics, so all three
+// fields are empty/nil) are a deliberate no-op: there is nothing to persist,
+// and callers must proceed exactly as before (event still gets deleted).
+// A nil nodeDiagnosticsRepo (e.g. a Job built without one) is likewise a
+// no-op rather than an error, mirroring interactor/diagnostic.go's
+// nil-repo tolerance.
+func (i *Job) persistTerminalDiagnostics(ctx context.Context, jobID id.JobID, event *gateway.JobCompleteEvent) error {
+	if event == nil {
+		return nil
+	}
+	if len(event.FailedNodes) == 0 && len(event.AggregatedDiagnostics) == 0 && event.DroppedEventCount == nil {
+		return nil
+	}
+	if i.nodeDiagnosticsRepo == nil {
+		return nil
+	}
+
+	failedNodes, err := wireDiagnosticsToDomain(jobID, event.Timestamp, event.FailedNodes)
+	if err != nil {
+		return fmt.Errorf("failed to convert failed nodes: %w", err)
+	}
+
+	aggregated, err := wireDiagnosticsToDomain(jobID, event.Timestamp, event.AggregatedDiagnostics)
+	if err != nil {
+		return fmt.Errorf("failed to convert aggregated diagnostics: %w", err)
+	}
+
+	return i.nodeDiagnosticsRepo.SaveTerminalDiagnostics(ctx, jobID, event.Timestamp, failedNodes, aggregated, event.DroppedEventCount)
+}
+
+// wireDiagnosticsToDomain converts a JobCompleteEvent's wire diagnostics
+// slice (FailedNodes or AggregatedDiagnostics) into domain rows, applying
+// the envelope's jobID/timestamp to each (WireDiagnostic itself carries
+// neither — see gateway.WireDiagnostic.ToDomain).
+func wireDiagnosticsToDomain(jobID id.JobID, timestamp time.Time, wire []gateway.WireDiagnostic) ([]*diagnostic.Diagnostic, error) {
+	if len(wire) == 0 {
+		return nil, nil
+	}
+	result := make([]*diagnostic.Diagnostic, 0, len(wire))
+	for _, w := range wire {
+		d, err := w.ToDomain(jobID, timestamp)
+		if err != nil {
+			return nil, err
+		}
+		result = append(result, d)
+	}
+	return result, nil
 }

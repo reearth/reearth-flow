@@ -1,5 +1,12 @@
 package gateway
 
+import (
+	"time"
+
+	"github.com/reearth/reearth-flow/api/pkg/diagnostic"
+	"github.com/reearth/reearth-flow/api/pkg/id"
+)
+
 type WireSourceSpan struct {
 	Length *uint `json:"length,omitempty"`
 	Offset uint  `json:"offset"`
@@ -22,4 +29,35 @@ type WireDiagnostic struct {
 	Category             string             `json:"category"`
 	Severity             string             `json:"severity"`
 	Message              string             `json:"message"`
+}
+
+// ToDomain converts a wire diagnostic into the domain representation, given
+// the jobID and timestamp context it doesn't itself carry (WireDiagnostic is
+// nested inside an envelope — DiagnosticEvent or JobCompleteEvent — that
+// owns those fields). Used both by the Redis read path (internal/
+// infrastructure/redis/diagnostic.go, where the envelope is a decoded
+// DiagnosticEntry) and by the job-completion merge persistence path
+// (interactor/job.go, where the envelope is the JobCompleteEvent itself).
+func (w WireDiagnostic) ToDomain(jobID id.JobID, timestamp time.Time) (*diagnostic.Diagnostic, error) {
+	b := diagnostic.NewBuilder().
+		JobID(jobID).
+		Timestamp(timestamp).
+		Code(w.Code).
+		Category(w.Category).
+		Severity(w.Severity).
+		EffectiveDisposition(w.EffectiveDisposition).
+		NodeID(w.NodeID).
+		ActionType(w.ActionType).
+		FeatureID(w.FeatureID).
+		Message(w.Message).
+		Help(w.Help)
+
+	if w.Aggregated != nil {
+		b = b.Aggregated(diagnostic.NewAggregateInfo(w.Aggregated.Count, w.Aggregated.SampleFeatureIds))
+	}
+	if w.SourceSpan != nil {
+		b = b.SourceSpan(diagnostic.NewSourceSpan(w.SourceSpan.Offset, w.SourceSpan.Length))
+	}
+
+	return b.Build()
 }
