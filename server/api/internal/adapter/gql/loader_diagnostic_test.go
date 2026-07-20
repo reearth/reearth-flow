@@ -3,7 +3,9 @@ package gql
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
+	"time"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
 	"github.com/reearth/reearth-flow/api/pkg/diagnostic"
@@ -54,16 +56,33 @@ func newTestLoaderDiagnostic(t *testing.T, jobID id.JobID, code string) *diagnos
 	return d
 }
 
+func newTestLoaderNodeDiagnostic(t *testing.T, jobID id.JobID, nodeID, code string) *diagnostic.Diagnostic {
+	t.Helper()
+	d, err := diagnostic.NewBuilder().
+		JobID(jobID).
+		NodeID(&nodeID).
+		Code(code).
+		Category("internal").
+		Severity("warn").
+		Message("test diagnostic").
+		Build()
+	require.NoError(t, err)
+	return d
+}
+
 func TestDiagnosticLoader_GetNodeDiagnostics(t *testing.T) {
 	ctx := context.Background()
 	jID := id.NewJobID()
 	gqlJobID := gqlmodel.ID(jID.String())
 
-	t.Run("success", func(t *testing.T) {
+	t.Run("success: partitions the whole-job fetch down to the requested node", func(t *testing.T) {
 		mockUsecase := new(MockNodeDiagnosticsUsecase)
 		loader := NewDiagnosticLoader(mockUsecase)
-		rows := []*diagnostic.Diagnostic{newTestLoaderDiagnostic(t, jID, "internal.unclassified")}
-		mockUsecase.On("GetNodeDiagnostics", ctx, jID, "node-1").Return(rows, nil)
+		rows := []*diagnostic.Diagnostic{
+			newTestLoaderNodeDiagnostic(t, jID, "node-1", "internal.unclassified"),
+			newTestLoaderNodeDiagnostic(t, jID, "node-2", "gltf.zero_face_solid"),
+		}
+		mockUsecase.On("GetJobDiagnostics", ctx, jID).Return(rows, nil).Once()
 
 		got, err := loader.GetNodeDiagnostics(ctx, gqlJobID, "node-1")
 		assert.NoError(t, err)
@@ -72,10 +91,82 @@ func TestDiagnosticLoader_GetNodeDiagnostics(t *testing.T) {
 		mockUsecase.AssertExpectations(t)
 	})
 
+	t.Run("N+1 fix: GetJobDiagnostics is called once per job, not once per node", func(t *testing.T) {
+		mockUsecase := new(MockNodeDiagnosticsUsecase)
+		loader := NewDiagnosticLoader(mockUsecase)
+		rows := []*diagnostic.Diagnostic{
+			newTestLoaderNodeDiagnostic(t, jID, "node-1", "internal.unclassified"),
+			newTestLoaderNodeDiagnostic(t, jID, "node-2", "gltf.zero_face_solid"),
+		}
+		mockUsecase.On("GetJobDiagnostics", ctx, jID).Return(rows, nil).Once()
+
+		got1, err := loader.GetNodeDiagnostics(ctx, gqlJobID, "node-1")
+		assert.NoError(t, err)
+		require.Len(t, got1, 1)
+		assert.Equal(t, "internal.unclassified", got1[0].Code)
+
+		got2, err := loader.GetNodeDiagnostics(ctx, gqlJobID, "node-2")
+		assert.NoError(t, err)
+		require.Len(t, got2, 1)
+		assert.Equal(t, "gltf.zero_face_solid", got2[0].Code)
+
+		// The .Once() expectation above fails the test (via AssertExpectations)
+		// if GetJobDiagnostics was called more than once across both
+		// GetNodeDiagnostics calls for this same job.
+		mockUsecase.AssertExpectations(t)
+		mockUsecase.AssertNumberOfCalls(t, "GetJobDiagnostics", 1)
+	})
+
+	t.Run("concurrent GetNodeDiagnostics calls for the same job still fetch it only once", func(t *testing.T) {
+		mockUsecase := new(MockNodeDiagnosticsUsecase)
+		loader := NewDiagnosticLoader(mockUsecase)
+		rows := []*diagnostic.Diagnostic{
+			newTestLoaderNodeDiagnostic(t, jID, "node-1", "internal.unclassified"),
+			newTestLoaderNodeDiagnostic(t, jID, "node-2", "gltf.zero_face_solid"),
+		}
+		// A small delay so concurrent callers actually overlap on the
+		// in-flight fetch instead of serializing through the mock trivially.
+		mockUsecase.On("GetJobDiagnostics", ctx, jID).
+			After(20*time.Millisecond).
+			Return(rows, nil).
+			Once()
+
+		var wg sync.WaitGroup
+		nodeIDs := []string{"node-1", "node-2", "node-1", "node-2", "node-1"}
+		results := make([][]*gqlmodel.Diagnostic, len(nodeIDs))
+		errs := make([]error, len(nodeIDs))
+		for i, nodeID := range nodeIDs {
+			wg.Add(1)
+			go func(i int, nodeID string) {
+				defer wg.Done()
+				results[i], errs[i] = loader.GetNodeDiagnostics(ctx, gqlJobID, nodeID)
+			}(i, nodeID)
+		}
+		wg.Wait()
+
+		for i := range nodeIDs {
+			assert.NoError(t, errs[i])
+			require.Len(t, results[i], 1)
+		}
+		mockUsecase.AssertNumberOfCalls(t, "GetJobDiagnostics", 1)
+	})
+
+	t.Run("a node with no matching rows gets an empty, non-nil slice", func(t *testing.T) {
+		mockUsecase := new(MockNodeDiagnosticsUsecase)
+		loader := NewDiagnosticLoader(mockUsecase)
+		rows := []*diagnostic.Diagnostic{newTestLoaderNodeDiagnostic(t, jID, "node-1", "internal.unclassified")}
+		mockUsecase.On("GetJobDiagnostics", ctx, jID).Return(rows, nil).Once()
+
+		got, err := loader.GetNodeDiagnostics(ctx, gqlJobID, "node-does-not-exist")
+		assert.NoError(t, err)
+		assert.NotNil(t, got)
+		assert.Empty(t, got)
+	})
+
 	t.Run("usecase error", func(t *testing.T) {
 		mockUsecase := new(MockNodeDiagnosticsUsecase)
 		loader := NewDiagnosticLoader(mockUsecase)
-		mockUsecase.On("GetNodeDiagnostics", ctx, jID, "node-1").Return(nil, errors.New("usecase error"))
+		mockUsecase.On("GetJobDiagnostics", ctx, jID).Return(nil, errors.New("usecase error"))
 
 		got, err := loader.GetNodeDiagnostics(ctx, gqlJobID, "node-1")
 		assert.Error(t, err)
@@ -89,7 +180,7 @@ func TestDiagnosticLoader_GetNodeDiagnostics(t *testing.T) {
 		got, err := loader.GetNodeDiagnostics(ctx, gqlmodel.ID("not-a-uuid"), "node-1")
 		assert.Error(t, err)
 		assert.Nil(t, got)
-		mockUsecase.AssertNotCalled(t, "GetNodeDiagnostics")
+		mockUsecase.AssertNotCalled(t, "GetJobDiagnostics")
 	})
 }
 
