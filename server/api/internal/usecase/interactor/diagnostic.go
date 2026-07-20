@@ -23,14 +23,27 @@ import (
 // written to Mongo, never Redis). Both sources are always consulted — this
 // used to short-circuit on a non-empty Redis result, which hid Mongo-only
 // terminal rows (a node's terminal fatal row) until the Redis TTL expired.
-// The merge is deduped by dedupeDiagnostics, keyed on (nodeId, code): the
-// engine's "no-silent-fatal guarantee" (report()'s record_fatal, see
-// executor_operation.rs) means a live-reported Fatal diagnostic always also
-// lands in the terminal failedNodes fold (dag_executor.rs's fold_outcomes),
-// so the same reported fatal can legitimately appear as both a live
-// diagnostic.v1 row and a terminal job-complete.v1 row; the dedupe collapses
-// that pair to the terminal copy without dropping anything else (distinct
-// live warnings/rejects have distinct codes and pass through unchanged).
+// The merge is deduped by dedupeDiagnostics: a whole-2b review of the engine
+// confirmed Fatal diagnostics are NEVER published as live events (neither
+// report()'s nor report_drop()'s Fatal branch calls event_hub.diagnostic() —
+// they only call record_fatal, see executor_operation.rs/diagnostics.rs; the
+// per-feature process()-error fatal Task 6 added mirrors this), so a
+// failedNodes-derived (":failed:") row has no live counterpart to merge away
+// — it exists ONLY as a terminal row. The genuine duplicate dedupeDiagnostics
+// fixes is the AGGREGATED SUMMARIES: emit_summaries (diagnostics.rs)
+// publishes each finish()-time WarnDrop/Reject/WarnContinue summary live
+// (ingested as a diagnostic.v1 row) AND returns the same summaries for
+// folding into RunSummary.aggregated_diagnostics, which persistTerminalDiagnostics
+// persists again as an aggregatedDiagnostics-derived (":aggregated:") terminal
+// row at job completion — so the same aggregated diagnostic can legitimately
+// appear as both a live diagnostic.v1 row and a terminal job-complete.v1 row;
+// the dedupe collapses that pair to the terminal copy without dropping
+// anything else (distinct live warnings/rejects have distinct keys and pass
+// through unchanged). dedupeDiagnostics' key includes effectiveDisposition
+// precisely so a failedNodes row and an aggregatedDiagnostics row that share
+// a (nodeId, code) — a real possibility, e.g. one call site warn()s a code
+// while another report()s the same code to Fatal — are never mistaken for
+// that live/terminal pair and collapsed into each other.
 type NodeDiagnostics struct {
 	diagnosticsRepo   repo.NodeDiagnostics
 	jobRepo           repo.Job
@@ -138,14 +151,12 @@ const fatalEffectiveDisposition = "fatal"
 // row undifferentiated (failedNodes-derived, aggregatedDiagnostics-derived,
 // AND the subscriber's own live-mirrored diagnostic.v1 rows all carry a
 // "code" field); the fatalEffectiveDisposition filter recovers the fatal
-// subset, and dedupeDiagnostics then collapses a fatal that rode both the
-// live event stream and the terminal fold into its single terminal copy
-// (see the package doc comment above and dedupeDiagnostics itself for why
-// that pairing exists and why the dedupe is complete: a fatal that never
-// rode the live stream at all — the fold's synthesized/"fatal-backstop"
-// case for a node that died without ever calling ctx.report() — still
-// lands here because it exists ONLY as a terminal row, which passes through
-// dedupeDiagnostics unchanged).
+// subset. Fatal diagnostics are never published live (see the package doc
+// comment above), so every row that survives the filter is already a
+// failedNodes-derived (":failed:") terminal row with no live counterpart to
+// merge — dedupeDiagnostics here is a defensive backstop (e.g. against a
+// stray row sharing a node/code/disposition with a genuine one) rather than
+// the live/terminal merge GetNodeDiagnostics/GetJobDiagnostics rely on.
 func (i *NodeDiagnostics) GetFailedNodes(ctx context.Context, jobID id.JobID) ([]*diagnostic.Diagnostic, error) {
 	if err := i.checkJobPermission(ctx, jobID); err != nil {
 		return nil, err
@@ -169,19 +180,34 @@ func (i *NodeDiagnostics) GetFailedNodes(ctx context.Context, jobID id.JobID) ([
 	return dedupeDiagnostics(failed), nil
 }
 
-// dedupeDiagnostics collapses rows that share the same (nodeId, code) key
-// down to one representative row, keeping input order for the first
-// occurrence of each key. It exists because Mongo (and, for
-// GetNodeDiagnostics/GetJobDiagnostics, the Redis+Mongo merge) can
+// dedupeDiagnostics collapses rows that share the same (nodeId, code,
+// effectiveDisposition) key down to one representative row, keeping input
+// order for the first occurrence of each key. It exists because Mongo (and,
+// for GetNodeDiagnostics/GetJobDiagnostics, the Redis+Mongo merge) can
 // legitimately hold two rows for the very same reported diagnostic: a live
 // row mirroring the subscriber's per-event diagnostic.v1 ingestion, and a
 // terminal job-complete.v1 row persisted at job-completion merge time (see
-// interactor/job.go's persistTerminalDiagnostics) — the engine's
-// "no-silent-fatal guarantee" (report()'s record_fatal call,
-// executor_operation.rs) means every live-reported Fatal diagnostic is
-// guaranteed to also fail its node and fold into the terminal
-// failedNodes/aggregatedDiagnostics arrays, so this pairing is expected, not
-// a bug to fix upstream.
+// interactor/job.go's persistTerminalDiagnostics). That pairing is
+// aggregated-summary-only, not fatal-only (see the package doc comment
+// above): emit_summaries (diagnostics.rs) publishes every finish()-time
+// WarnDrop/Reject/WarnContinue summary live AND returns it for folding into
+// RunSummary.aggregated_diagnostics, so the same summary legitimately lands
+// in Mongo twice — once as its live diagnostic.v1 mirror, once as its
+// aggregatedDiagnostics-derived (":aggregated:") terminal row. Fatal
+// diagnostics never take this path (report()/report_drop()'s Fatal branches,
+// and Task 6's per-feature process()-error fatal, only ever call
+// record_fatal — never event_hub.diagnostic()), so a failedNodes-derived
+// (":failed:") row has no live counterpart to collapse with.
+//
+// effectiveDisposition is part of the key, not just (nodeId, code), because
+// a ":failed:" row and an ":aggregated:" row CAN legitimately share a
+// (nodeId, code) — e.g. one call site warn()s a code (always aggregates,
+// skips resolve()) while another report()s the very same code and the
+// policy resolves it to Fatal there. Without effectiveDisposition in the
+// key, preferOver's Terminal+Timestamp tie-break would collapse those two
+// unrelated rows into one, nondeterministically dropping whichever loses —
+// a real fatal-failure row or a real aggregated-drop count, either of which
+// is a silent loss of distinct information, not a duplicate.
 //
 // preferOver decides the tie-break: a Terminal() row always wins over a
 // non-terminal one for the same key (it is the durable, authoritative copy
@@ -193,8 +219,9 @@ func (i *NodeDiagnostics) GetFailedNodes(ctx context.Context, jobID id.JobID) ([
 // unchanged.
 func dedupeDiagnostics(rows []*diagnostic.Diagnostic) []*diagnostic.Diagnostic {
 	type dedupeKey struct {
-		nodeID string
-		code   string
+		nodeID      string
+		code        string
+		disposition string
 	}
 
 	keyOf := func(d *diagnostic.Diagnostic) dedupeKey {
@@ -202,7 +229,11 @@ func dedupeDiagnostics(rows []*diagnostic.Diagnostic) []*diagnostic.Diagnostic {
 		if d.NodeID() != nil {
 			nodeID = *d.NodeID()
 		}
-		return dedupeKey{nodeID: nodeID, code: d.Code()}
+		disposition := ""
+		if d.EffectiveDisposition() != nil {
+			disposition = *d.EffectiveDisposition()
+		}
+		return dedupeKey{nodeID: nodeID, code: d.Code(), disposition: disposition}
 	}
 
 	order := make([]dedupeKey, 0, len(rows))
@@ -231,7 +262,8 @@ func dedupeDiagnostics(rows []*diagnostic.Diagnostic) []*diagnostic.Diagnostic {
 }
 
 // preferOver reports whether candidate should replace current as
-// dedupeDiagnostics' representative row for a (nodeId, code) key.
+// dedupeDiagnostics' representative row for a (nodeId, code,
+// effectiveDisposition) key.
 func preferOver(candidate, current *diagnostic.Diagnostic) bool {
 	if candidate.Terminal() != current.Terminal() {
 		return candidate.Terminal()

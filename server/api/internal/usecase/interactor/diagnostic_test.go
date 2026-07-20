@@ -154,9 +154,15 @@ func TestNodeDiagnostics_GetNodeDiagnostics(t *testing.T) {
 		assert.ElementsMatch(t, []string{"redis.code", "mongo.code"}, codes)
 	})
 
-	t.Run("a fatal that rode both the live and terminal paths dedupes to its terminal copy", func(t *testing.T) {
+	t.Run("an aggregated summary that rode both the live and terminal paths dedupes to its terminal copy", func(t *testing.T) {
+		// This is the real duplicate dedupeDiagnostics fixes (see the package
+		// doc comment): emit_summaries publishes each finish()-time
+		// WarnDrop/Reject/WarnContinue summary live AND folds the same
+		// summary into RunSummary.aggregated_diagnostics, persisted again as
+		// a terminal row at job completion. Fatal diagnostics never take this
+		// path — they're never published live in the first place.
 		nodeID := "node-1"
-		fatal := fatalEffectiveDisposition
+		warnDrop := "warn_drop"
 		olderTimestamp := time.Now().Add(-time.Hour)
 		newerTimestamp := time.Now()
 
@@ -164,10 +170,10 @@ func TestNodeDiagnostics_GetNodeDiagnostics(t *testing.T) {
 			JobID(jobID).
 			NodeID(&nodeID).
 			Timestamp(olderTimestamp).
-			Code("internal.invariant_violation").
-			Category("internal").
-			Severity("fatal").
-			EffectiveDisposition(&fatal).
+			Code("gltf.zero_face_solid").
+			Category("gltf").
+			Severity("warn").
+			EffectiveDisposition(&warnDrop).
 			Message("live copy").
 			Build()
 		require.NoError(t, err)
@@ -176,10 +182,10 @@ func TestNodeDiagnostics_GetNodeDiagnostics(t *testing.T) {
 			JobID(jobID).
 			NodeID(&nodeID).
 			Timestamp(newerTimestamp).
-			Code("internal.invariant_violation").
-			Category("internal").
-			Severity("fatal").
-			EffectiveDisposition(&fatal).
+			Code("gltf.zero_face_solid").
+			Category("gltf").
+			Severity("warn").
+			EffectiveDisposition(&warnDrop).
 			Terminal(true).
 			Message("terminal copy").
 			Build()
@@ -349,13 +355,14 @@ func TestNodeDiagnostics_GetFailedNodes(t *testing.T) {
 		assert.Equal(t, "internal.invariant_violation", got[0].Code())
 	})
 
-	t.Run("a fatal persisted via both the live and terminal paths dedupes to one, preferring terminal", func(t *testing.T) {
-		// Pins Important-2's fix: FindByJobID returns both a live
-		// diagnostic.v1-mirrored row and the terminal job-complete.v1
-		// failedNodes row for the SAME reported fatal (see the "no-silent-
-		// fatal guarantee" doc comment on GetFailedNodes/dedupeDiagnostics)
-		// — without the dedupe, this fatal would surface twice in
-		// GraphQL's Job.failedNodes.
+	t.Run("two fatal rows sharing a key still dedupe to one, preferring terminal", func(t *testing.T) {
+		// Fatal diagnostics are never published live (see the package doc
+		// comment), so this exact pairing isn't reachable in production —
+		// GetFailedNodes' dedupe here is a defensive backstop, not the
+		// live/terminal merge GetNodeDiagnostics/GetJobDiagnostics rely on.
+		// This pins that the backstop still resolves a same-key collision
+		// deterministically (terminal wins) rather than dropping one at
+		// random, should two rows ever land on the same key.
 		nodeID := "node-1"
 		fatal := fatalEffectiveDisposition
 
@@ -439,6 +446,93 @@ func TestNodeDiagnostics_GetFailedNodes(t *testing.T) {
 		got, err := i.GetFailedNodes(ctx, jobID)
 		assert.Error(t, err)
 		assert.Nil(t, got)
+	})
+}
+
+// TestDedupeDiagnostics exercises dedupeDiagnostics directly rather than
+// through a NodeDiagnostics method, since the case it pins — a failedNodes
+// row and an aggregatedDiagnostics row sharing (nodeId, code) — can only
+// reach dedupeDiagnostics through FindByJobID's undifferentiated mix, which
+// GetFailedNodes deliberately filters away before deduping.
+func TestDedupeDiagnostics(t *testing.T) {
+	jobID := id.NewJobID()
+	nodeID := "node-1"
+
+	t.Run("same node/code/disposition collapses to the terminal copy", func(t *testing.T) {
+		warnDrop := "warn_drop"
+
+		liveRow, err := diagnostic.NewBuilder().
+			JobID(jobID).
+			NodeID(&nodeID).
+			Timestamp(time.Now().Add(-time.Hour)).
+			Code("gltf.zero_face_solid").
+			Category("gltf").
+			Severity("warn").
+			EffectiveDisposition(&warnDrop).
+			Message("live copy").
+			Build()
+		require.NoError(t, err)
+
+		terminalRow, err := diagnostic.NewBuilder().
+			JobID(jobID).
+			NodeID(&nodeID).
+			Timestamp(time.Now()).
+			Code("gltf.zero_face_solid").
+			Category("gltf").
+			Severity("warn").
+			EffectiveDisposition(&warnDrop).
+			Terminal(true).
+			Message("terminal copy").
+			Build()
+		require.NoError(t, err)
+
+		got := dedupeDiagnostics([]*diagnostic.Diagnostic{liveRow, terminalRow})
+		require.Len(t, got, 1)
+		assert.True(t, got[0].Terminal())
+		assert.Equal(t, "terminal copy", got[0].Message())
+	})
+
+	t.Run("a failedNodes row and an aggregatedDiagnostics row sharing (nodeId, code) both survive", func(t *testing.T) {
+		// The bug the widened key fixes: with the old (nodeId, code)-only
+		// key, these two structurally different rows — this node/code
+		// failed the run fatally, AND the same node/code was separately
+		// warn-dropped some number of times — would collapse into one via
+		// preferOver's Terminal+Timestamp tie-break, nondeterministically
+		// dropping whichever lost. Both are real, distinct information and
+		// must both survive.
+		fatal := fatalEffectiveDisposition
+		warnDrop := "warn_drop"
+
+		failedRow, err := diagnostic.NewBuilder().
+			JobID(jobID).
+			NodeID(&nodeID).
+			Timestamp(time.Now()).
+			Code("internal.unclassified").
+			Category("internal").
+			Severity("fatal").
+			EffectiveDisposition(&fatal).
+			Terminal(true).
+			Message("node failed").
+			Build()
+		require.NoError(t, err)
+
+		aggregatedRow, err := diagnostic.NewBuilder().
+			JobID(jobID).
+			NodeID(&nodeID).
+			Timestamp(time.Now()).
+			Code("internal.unclassified").
+			Category("internal").
+			Severity("warn").
+			EffectiveDisposition(&warnDrop).
+			Terminal(true).
+			Message("features dropped").
+			Build()
+		require.NoError(t, err)
+
+		got := dedupeDiagnostics([]*diagnostic.Diagnostic{failedRow, aggregatedRow})
+		require.Len(t, got, 2)
+		messages := []string{got[0].Message(), got[1].Message()}
+		assert.ElementsMatch(t, []string{"node failed", "features dropped"}, messages)
 	})
 }
 
