@@ -26,4 +26,5 @@ extend type Subscription {
 
 extend type Query {
   nodeExecution(jobId: ID!, nodeId: String!): NodeExecution
+  nodeExecutions(jobId: ID!): [NodeExecution!]
 }

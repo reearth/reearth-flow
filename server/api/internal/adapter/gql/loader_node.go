@@ -29,3 +29,17 @@ func (c *NodeExLoader) FindByJobNodeID(ctx context.Context, jobID gqlmodel.ID, n
 
 	return gqlmodel.ToNodeExecution(nodeEx), nil
 }
+
+func (c *NodeExLoader) FindByJobID(ctx context.Context, jobID gqlmodel.ID) ([]*gqlmodel.NodeExecution, error) {
+	jId, err := id.JobIDFrom(string(jobID))
+	if err != nil {
+		return nil, err
+	}
+
+	nodes, err := c.usecase.GetNodeExecutions(ctx, jId)
+	if err != nil {
+		return nil, err
+	}
+
+	return gqlmodel.ToNodeExecutions(nodes), nil
+}

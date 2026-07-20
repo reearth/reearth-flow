@@ -460,6 +460,7 @@ type ComplexityRoot struct {
 		Me                    func(childComplexity int) int
 		Node                  func(childComplexity int, id gqlmodel.ID, typeArg gqlmodel.NodeType) int
 		NodeExecution         func(childComplexity int, jobID gqlmodel.ID, nodeID string) int
+		NodeExecutions        func(childComplexity int, jobID gqlmodel.ID) int
 		Nodes                 func(childComplexity int, id []gqlmodel.ID, typeArg gqlmodel.NodeType) int
 		Parameters            func(childComplexity int, projectID gqlmodel.ID) int
 		ProjectHistory        func(childComplexity int, projectID gqlmodel.ID) int
@@ -710,6 +711,7 @@ type QueryResolver interface {
 	Jobs(ctx context.Context, workspaceID gqlmodel.ID, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.JobConnection, error)
 	Job(ctx context.Context, id gqlmodel.ID) (*gqlmodel.Job, error)
 	NodeExecution(ctx context.Context, jobID gqlmodel.ID, nodeID string) (*gqlmodel.NodeExecution, error)
+	NodeExecutions(ctx context.Context, jobID gqlmodel.ID) ([]*gqlmodel.NodeExecution, error)
 	Parameters(ctx context.Context, projectID gqlmodel.ID) ([]*gqlmodel.Parameter, error)
 	Projects(ctx context.Context, workspaceID gqlmodel.ID, includeArchived *bool, keyword *string, pagination gqlmodel.PageBasedPagination) (*gqlmodel.ProjectConnection, error)
 	SharedProject(ctx context.Context, token string) (*gqlmodel.SharedProjectPayload, error)
@@ -2698,6 +2700,17 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.Query.NodeExecution(childComplexity, args["jobId"].(gqlmodel.ID), args["nodeId"].(string)), true
+	case "Query.nodeExecutions":
+		if e.complexity.Query.NodeExecutions == nil {
+			break
+		}
+
+		args, err := ec.field_Query_nodeExecutions_args(ctx, rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Query.NodeExecutions(childComplexity, args["jobId"].(gqlmodel.ID)), true
 	case "Query.nodes":
 		if e.complexity.Query.Nodes == nil {
 			break
@@ -4081,6 +4094,7 @@ extend type Subscription {
 
 extend type Query {
   nodeExecution(jobId: ID!, nodeId: String!): NodeExecution
+  nodeExecutions(jobId: ID!): [NodeExecution!]
 }
 `, BuiltIn: false},
 	{Name: "../../../gql/parameter.graphql", Input: `type Parameter {
@@ -5540,6 +5554,17 @@ func (ec *executionContext) field_Query_nodeExecution_args(ctx context.Context, 
 		return nil, err
 	}
 	args["nodeId"] = arg1
+	return args, nil
+}
+
+func (ec *executionContext) field_Query_nodeExecutions_args(ctx context.Context, rawArgs map[string]any) (map[string]any, error) {
+	var err error
+	args := map[string]any{}
+	arg0, err := graphql.ProcessArgField(ctx, rawArgs, "jobId", ec.unmarshalNID2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐID)
+	if err != nil {
+		return nil, err
+	}
+	args["jobId"] = arg0
 	return args, nil
 }
 
@@ -15675,6 +15700,65 @@ func (ec *executionContext) fieldContext_Query_nodeExecution(ctx context.Context
 	return fc, nil
 }
 
+func (ec *executionContext) _Query_nodeExecutions(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_Query_nodeExecutions,
+		func(ctx context.Context) (any, error) {
+			fc := graphql.GetFieldContext(ctx)
+			return ec.resolvers.Query().NodeExecutions(ctx, fc.Args["jobId"].(gqlmodel.ID))
+		},
+		nil,
+		ec.marshalONodeExecution2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐNodeExecutionᚄ,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_Query_nodeExecutions(ctx context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "Query",
+		Field:      field,
+		IsMethod:   true,
+		IsResolver: true,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			switch field.Name {
+			case "id":
+				return ec.fieldContext_NodeExecution_id(ctx, field)
+			case "jobId":
+				return ec.fieldContext_NodeExecution_jobId(ctx, field)
+			case "nodeId":
+				return ec.fieldContext_NodeExecution_nodeId(ctx, field)
+			case "status":
+				return ec.fieldContext_NodeExecution_status(ctx, field)
+			case "createdAt":
+				return ec.fieldContext_NodeExecution_createdAt(ctx, field)
+			case "startedAt":
+				return ec.fieldContext_NodeExecution_startedAt(ctx, field)
+			case "completedAt":
+				return ec.fieldContext_NodeExecution_completedAt(ctx, field)
+			case "diagnostics":
+				return ec.fieldContext_NodeExecution_diagnostics(ctx, field)
+			}
+			return nil, fmt.Errorf("no field named %q was found under type NodeExecution", field.Name)
+		},
+	}
+	defer func() {
+		if r := recover(); r != nil {
+			err = ec.Recover(ctx, r)
+			ec.Error(ctx, err)
+		}
+	}()
+	ctx = graphql.WithFieldContext(ctx, fc)
+	if fc.Args, err = ec.field_Query_nodeExecutions_args(ctx, field.ArgumentMap(ec.Variables)); err != nil {
+		ec.Error(ctx, err)
+		return fc, err
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _Query_parameters(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -25772,6 +25856,25 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
+		case "nodeExecutions":
+			field := field
+
+			innerFunc := func(ctx context.Context, _ *graphql.FieldSet) (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Query_nodeExecutions(ctx, field)
+				return res
+			}
+
+			rrm := func(ctx context.Context) graphql.Marshaler {
+				return ec.OperationContext.RootResolverMiddleware(ctx,
+					func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+			}
+
+			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return rrm(innerCtx) })
 		case "parameters":
 			field := field
 
@@ -28456,6 +28559,16 @@ func (ec *executionContext) marshalNNode2ᚕgithubᚗcomᚋreearthᚋreearthᚑf
 	return ret
 }
 
+func (ec *executionContext) marshalNNodeExecution2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐNodeExecution(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.NodeExecution) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			graphql.AddErrorf(ctx, "the requested element is null which the schema does not allow")
+		}
+		return graphql.Null
+	}
+	return ec._NodeExecution(ctx, sel, v)
+}
+
 func (ec *executionContext) unmarshalNNodeStatus2githubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐNodeStatus(ctx context.Context, v any) (gqlmodel.NodeStatus, error) {
 	var res gqlmodel.NodeStatus
 	err := res.UnmarshalGQL(v)
@@ -29946,6 +30059,53 @@ func (ec *executionContext) marshalONode2githubᚗcomᚋreearthᚋreearthᚑflow
 		return graphql.Null
 	}
 	return ec._Node(ctx, sel, v)
+}
+
+func (ec *executionContext) marshalONodeExecution2ᚕᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐNodeExecutionᚄ(ctx context.Context, sel ast.SelectionSet, v []*gqlmodel.NodeExecution) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	ret := make(graphql.Array, len(v))
+	var wg sync.WaitGroup
+	isLen1 := len(v) == 1
+	if !isLen1 {
+		wg.Add(len(v))
+	}
+	for i := range v {
+		i := i
+		fc := &graphql.FieldContext{
+			Index:  &i,
+			Result: &v[i],
+		}
+		ctx := graphql.WithFieldContext(ctx, fc)
+		f := func(i int) {
+			defer func() {
+				if r := recover(); r != nil {
+					ec.Error(ctx, ec.Recover(ctx, r))
+					ret = nil
+				}
+			}()
+			if !isLen1 {
+				defer wg.Done()
+			}
+			ret[i] = ec.marshalNNodeExecution2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐNodeExecution(ctx, sel, v[i])
+		}
+		if isLen1 {
+			f(i)
+		} else {
+			go f(i)
+		}
+
+	}
+	wg.Wait()
+
+	for _, e := range ret {
+		if e == graphql.Null {
+			return graphql.Null
+		}
+	}
+
+	return ret
 }
 
 func (ec *executionContext) marshalONodeExecution2ᚖgithubᚗcomᚋreearthᚋreearthᚑflowᚋapiᚋinternalᚋadapterᚋgqlᚋgqlmodelᚐNodeExecution(ctx context.Context, sel ast.SelectionSet, v *gqlmodel.NodeExecution) graphql.Marshaler {

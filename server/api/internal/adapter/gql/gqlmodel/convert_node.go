@@ -17,6 +17,20 @@ func ToNodeExecution(e *graph.NodeExecution) *NodeExecution {
 	}
 }
 
+func ToNodeExecutions(nodes []*graph.NodeExecution) []*NodeExecution {
+	if nodes == nil {
+		return nil
+	}
+
+	result := make([]*NodeExecution, 0, len(nodes))
+	for _, n := range nodes {
+		if ne := ToNodeExecution(n); ne != nil {
+			result = append(result, ne)
+		}
+	}
+	return result
+}
+
 func ToNodeStatus(status graph.Status) NodeStatus {
 	switch status {
 	case graph.StatusStarting:
