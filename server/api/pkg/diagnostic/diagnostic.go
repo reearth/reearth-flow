@@ -75,6 +75,16 @@ type Diagnostic struct {
 	severity             string
 	message              string
 	jobID                id.JobID
+	// terminal is true when this row was persisted at job-completion merge
+	// time (interactor/job.go's persistTerminalDiagnostics, mongodoc schema
+	// "job-complete.v1") rather than mirrored live off the subscriber's
+	// per-event DiagnosticEvent stream (mongodoc schema "diagnostic.v1").
+	// It is an internal read-path signal only — never wire/GraphQL-exposed
+	// (see gqlmodel.ToDiagnostic, which does not carry it across) — used to
+	// dedupe a diagnostic that rode both paths (see
+	// interactor/diagnostic.go's dedupeDiagnostics) in favor of its durable
+	// terminal copy.
+	terminal bool
 }
 
 func (d *Diagnostic) JobID() id.JobID {
@@ -127,4 +137,8 @@ func (d *Diagnostic) Aggregated() *AggregateInfo {
 
 func (d *Diagnostic) SourceSpan() *SourceSpan {
 	return d.sourceSpan
+}
+
+func (d *Diagnostic) Terminal() bool {
+	return d.terminal
 }

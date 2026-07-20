@@ -68,8 +68,9 @@ type mockDiagnosticsRepo struct {
 	byJobErr        error
 	saveErr         error
 	summaryErr      error
-	summary         *uint64
 	lastDropped     *uint64
+	summary         *uint64
+	lastWorkflowID  string
 	byNode          []*diagnostic.Diagnostic
 	lastFailedNodes []*diagnostic.Diagnostic
 	lastAggregated  []*diagnostic.Diagnostic
@@ -93,6 +94,7 @@ func (m *mockDiagnosticsRepo) FindJobSummary(ctx context.Context, jobID id.JobID
 func (m *mockDiagnosticsRepo) SaveTerminalDiagnostics(
 	ctx context.Context,
 	jobID id.JobID,
+	workflowID string,
 	timestamp time.Time,
 	failedNodes []*diagnostic.Diagnostic,
 	aggregated []*diagnostic.Diagnostic,
@@ -100,6 +102,7 @@ func (m *mockDiagnosticsRepo) SaveTerminalDiagnostics(
 ) error {
 	m.saveCalls++
 	m.lastJobID = jobID
+	m.lastWorkflowID = workflowID
 	m.lastTimestamp = timestamp
 	m.lastFailedNodes = failedNodes
 	m.lastAggregated = aggregated
@@ -131,7 +134,13 @@ func TestNodeDiagnostics_GetNodeDiagnostics(t *testing.T) {
 	ctx := context.Background()
 	jobID := id.NewJobID()
 
-	t.Run("Redis has rows: Mongo is never consulted", func(t *testing.T) {
+	t.Run("Redis and Mongo rows are merged, not short-circuited", func(t *testing.T) {
+		// Pins Important-3's fix: previously a non-empty Redis result
+		// short-circuited Mongo entirely, hiding a Mongo-only terminal row
+		// (e.g. a node's terminal fatal, which is never written to Redis —
+		// see interactor/job.go's persistTerminalDiagnostics) until the
+		// Redis event's 24h TTL expired. Both sources must now always be
+		// consulted and merged.
 		redisRows := []*diagnostic.Diagnostic{newTestDiagnostic(t, jobID, "redis.code")}
 		redisMock := &mockDiagnosticsRedis{nodeDiagnostics: redisRows}
 		repoMock := &mockDiagnosticsRepo{byNode: []*diagnostic.Diagnostic{newTestDiagnostic(t, jobID, "mongo.code")}}
@@ -140,8 +149,52 @@ func TestNodeDiagnostics_GetNodeDiagnostics(t *testing.T) {
 		i := NewNodeDiagnostics(repoMock, jobRepo, redisMock, alwaysAllowPermissionChecker())
 		got, err := i.GetNodeDiagnostics(ctx, jobID, "node-1")
 		assert.NoError(t, err)
+		require.Len(t, got, 2)
+		codes := []string{got[0].Code(), got[1].Code()}
+		assert.ElementsMatch(t, []string{"redis.code", "mongo.code"}, codes)
+	})
+
+	t.Run("a fatal that rode both the live and terminal paths dedupes to its terminal copy", func(t *testing.T) {
+		nodeID := "node-1"
+		fatal := fatalEffectiveDisposition
+		olderTimestamp := time.Now().Add(-time.Hour)
+		newerTimestamp := time.Now()
+
+		liveRow, err := diagnostic.NewBuilder().
+			JobID(jobID).
+			NodeID(&nodeID).
+			Timestamp(olderTimestamp).
+			Code("internal.invariant_violation").
+			Category("internal").
+			Severity("fatal").
+			EffectiveDisposition(&fatal).
+			Message("live copy").
+			Build()
+		require.NoError(t, err)
+
+		terminalRow, err := diagnostic.NewBuilder().
+			JobID(jobID).
+			NodeID(&nodeID).
+			Timestamp(newerTimestamp).
+			Code("internal.invariant_violation").
+			Category("internal").
+			Severity("fatal").
+			EffectiveDisposition(&fatal).
+			Terminal(true).
+			Message("terminal copy").
+			Build()
+		require.NoError(t, err)
+
+		redisMock := &mockDiagnosticsRedis{nodeDiagnostics: []*diagnostic.Diagnostic{liveRow}}
+		repoMock := &mockDiagnosticsRepo{byNode: []*diagnostic.Diagnostic{terminalRow}}
+		jobRepo := &mockJobRepo{}
+
+		i := NewNodeDiagnostics(repoMock, jobRepo, redisMock, alwaysAllowPermissionChecker())
+		got, err := i.GetNodeDiagnostics(ctx, jobID, nodeID)
+		assert.NoError(t, err)
 		require.Len(t, got, 1)
-		assert.Equal(t, "redis.code", got[0].Code())
+		assert.True(t, got[0].Terminal())
+		assert.Equal(t, "terminal copy", got[0].Message())
 	})
 
 	t.Run("Redis empty: falls back to Mongo", func(t *testing.T) {
@@ -200,7 +253,7 @@ func TestNodeDiagnostics_GetJobDiagnostics(t *testing.T) {
 	ctx := context.Background()
 	jobID := id.NewJobID()
 
-	t.Run("Redis has rows: Mongo is never consulted", func(t *testing.T) {
+	t.Run("Redis and Mongo rows are merged, not short-circuited", func(t *testing.T) {
 		redisRows := []*diagnostic.Diagnostic{newTestDiagnostic(t, jobID, "redis.code")}
 		redisMock := &mockDiagnosticsRedis{jobDiagnostics: redisRows}
 		repoMock := &mockDiagnosticsRepo{byJob: []*diagnostic.Diagnostic{newTestDiagnostic(t, jobID, "mongo.code")}}
@@ -209,8 +262,9 @@ func TestNodeDiagnostics_GetJobDiagnostics(t *testing.T) {
 		i := NewNodeDiagnostics(repoMock, jobRepo, redisMock, alwaysAllowPermissionChecker())
 		got, err := i.GetJobDiagnostics(ctx, jobID)
 		assert.NoError(t, err)
-		require.Len(t, got, 1)
-		assert.Equal(t, "redis.code", got[0].Code())
+		require.Len(t, got, 2)
+		codes := []string{got[0].Code(), got[1].Code()}
+		assert.ElementsMatch(t, []string{"redis.code", "mongo.code"}, codes)
 	})
 
 	t.Run("Redis empty: falls back to Mongo", func(t *testing.T) {
@@ -295,6 +349,51 @@ func TestNodeDiagnostics_GetFailedNodes(t *testing.T) {
 		assert.Equal(t, "internal.invariant_violation", got[0].Code())
 	})
 
+	t.Run("a fatal persisted via both the live and terminal paths dedupes to one, preferring terminal", func(t *testing.T) {
+		// Pins Important-2's fix: FindByJobID returns both a live
+		// diagnostic.v1-mirrored row and the terminal job-complete.v1
+		// failedNodes row for the SAME reported fatal (see the "no-silent-
+		// fatal guarantee" doc comment on GetFailedNodes/dedupeDiagnostics)
+		// — without the dedupe, this fatal would surface twice in
+		// GraphQL's Job.failedNodes.
+		nodeID := "node-1"
+		fatal := fatalEffectiveDisposition
+
+		liveRow, err := diagnostic.NewBuilder().
+			JobID(jobID).
+			NodeID(&nodeID).
+			Timestamp(time.Now()).
+			Code("internal.invariant_violation").
+			Category("internal").
+			Severity("fatal").
+			EffectiveDisposition(&fatal).
+			Message("live copy").
+			Build()
+		require.NoError(t, err)
+
+		terminalRow, err := diagnostic.NewBuilder().
+			JobID(jobID).
+			NodeID(&nodeID).
+			Timestamp(time.Now()).
+			Code("internal.invariant_violation").
+			Category("internal").
+			Severity("fatal").
+			EffectiveDisposition(&fatal).
+			Terminal(true).
+			Message("terminal copy").
+			Build()
+		require.NoError(t, err)
+
+		repoMock := &mockDiagnosticsRepo{byJob: []*diagnostic.Diagnostic{liveRow, terminalRow}}
+		jobRepo := &mockJobRepo{}
+
+		i := NewNodeDiagnostics(repoMock, jobRepo, nil, alwaysAllowPermissionChecker())
+		got, err := i.GetFailedNodes(ctx, jobID)
+		assert.NoError(t, err)
+		require.Len(t, got, 1)
+		assert.True(t, got[0].Terminal())
+	})
+
 	t.Run("no rows: empty, not error", func(t *testing.T) {
 		repoMock := &mockDiagnosticsRepo{}
 		jobRepo := &mockJobRepo{}
@@ -305,12 +404,17 @@ func TestNodeDiagnostics_GetFailedNodes(t *testing.T) {
 		assert.Empty(t, got)
 	})
 
-	t.Run("nil repo: empty, not error", func(t *testing.T) {
+	t.Run("nil repo: empty slice, not nil, not error", func(t *testing.T) {
+		// [] not null: Job.failedNodes and NodeExecution.diagnostics both
+		// normalize their no-data state to an empty list (see
+		// gqlmodel.ToDiagnostics), so this usecase must return a non-nil
+		// empty slice too, not a nil one.
 		jobRepo := &mockJobRepo{}
 
 		i := NewNodeDiagnostics(nil, jobRepo, nil, alwaysAllowPermissionChecker())
 		got, err := i.GetFailedNodes(ctx, jobID)
 		assert.NoError(t, err)
+		assert.NotNil(t, got)
 		assert.Empty(t, got)
 	})
 

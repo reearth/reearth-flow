@@ -62,9 +62,11 @@ func TestNodeDiagnostics_FindByJobNodeID_And_FindByJobID(t *testing.T) {
 		Build()
 	require.NoError(t, err)
 
+	const workflowID = "11111111-1111-1111-1111-111111111111"
+
 	dropped := uint64(2)
 	require.NoError(t, r.SaveTerminalDiagnostics(
-		ctx, jobID, now,
+		ctx, jobID, workflowID, now,
 		[]*diagnostic.Diagnostic{failedNode, cascadeFailedNode},
 		[]*diagnostic.Diagnostic{aggregated},
 		&dropped,
@@ -98,7 +100,7 @@ func TestNodeDiagnostics_FindByJobNodeID_And_FindByJobID(t *testing.T) {
 		// redelivery after an earlier persist failure) must not duplicate
 		// rows: the deterministic ID upserts in place.
 		require.NoError(t, r.SaveTerminalDiagnostics(
-			ctx, jobID, now,
+			ctx, jobID, workflowID, now,
 			[]*diagnostic.Diagnostic{failedNode},
 			nil, nil,
 		))
@@ -106,6 +108,78 @@ func TestNodeDiagnostics_FindByJobNodeID_And_FindByJobID(t *testing.T) {
 		got, err := r.FindByJobID(ctx, jobID)
 		assert.NoError(t, err)
 		require.Len(t, got, 3)
+	})
+
+	// Pins Important-2's fix: the SAME fatal (nodeId, code) pair can be
+	// persisted twice — once as a live row mirroring the subscriber's
+	// diagnostic.v1 DiagnosticEvent (report()'s "no-silent-fatal guarantee"
+	// stamps effective_disposition=fatal on the live event too, see
+	// engine's executor_operation.rs), and once as the terminal
+	// job-complete.v1 failedNodes row persisted at job-completion merge time
+	// (SaveTerminalDiagnostics above). FindByJobID (the repo layer) is not
+	// where dedup happens — it returns both, undifferentiated except by the
+	// Terminal() flag Model() derives from the stored schema tag — so a
+	// caller (interactor/diagnostic.go's GetFailedNodes) can filter to
+	// EffectiveDisposition=="fatal" (the literal hardcoded string under
+	// test here, matching the engine's wire value) and then dedupe by
+	// (nodeId, code) preferring the Terminal() row.
+	t.Run("a fatal persisted via both the live and terminal paths is distinguishable only by Terminal()", func(t *testing.T) {
+		dupJobID := id.NewJobID()
+		dupNode := "subgraph-a.node-9"
+
+		fatal := "fatal"
+		terminalFatal, err := diagnostic.NewBuilder().
+			JobID(dupJobID).
+			NodeID(&dupNode).
+			Timestamp(now).
+			Code("internal.invariant_violation").
+			Category("internal").
+			Severity("fatal").
+			EffectiveDisposition(&fatal).
+			Message("invariant violation").
+			Build()
+		require.NoError(t, err)
+
+		require.NoError(t, r.SaveTerminalDiagnostics(
+			ctx, dupJobID, workflowID, now,
+			[]*diagnostic.Diagnostic{terminalFatal},
+			nil, nil,
+		))
+
+		liveFatalDoc := mongodoc.DiagnosticDocument{
+			Timestamp:            now,
+			EffectiveDisposition: &fatal,
+			NodeID:               &dupNode,
+			ID:                   dupJobID.String() + ":" + dupNode + ":507f1f77bcf86cd799439099",
+			JobID:                dupJobID.String(),
+			WorkflowID:           workflowID,
+			Schema:               "diagnostic.v1",
+			Code:                 "internal.invariant_violation",
+			Category:             "internal",
+			Severity:             "fatal",
+			Message:              "invariant violation",
+		}
+		impl, ok := r.(*NodeDiagnostics)
+		require.True(t, ok)
+		require.NoError(t, impl.client.SaveOne(ctx, liveFatalDoc.ID, liveFatalDoc))
+
+		got, err := r.FindByJobID(ctx, dupJobID)
+		assert.NoError(t, err)
+		require.Len(t, got, 2, "the repo layer itself does not dedupe: both rows are returned")
+
+		var terminalCount, liveCount int
+		for _, d := range got {
+			assert.Equal(t, "internal.invariant_violation", d.Code())
+			require.NotNil(t, d.EffectiveDisposition())
+			assert.Equal(t, "fatal", *d.EffectiveDisposition())
+			if d.Terminal() {
+				terminalCount++
+			} else {
+				liveCount++
+			}
+		}
+		assert.Equal(t, 1, terminalCount)
+		assert.Equal(t, 1, liveCount)
 	})
 
 	t.Run("FindJobSummary reads the droppedEventCount persisted above", func(t *testing.T) {

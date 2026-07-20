@@ -31,10 +31,13 @@ func TestDiagnosticDocument_Model_RoundTripsFixture(t *testing.T) {
 	domainDiagnostic, err := wire.ToDomain(jobID, timestamp)
 	require.NoError(t, err)
 
-	doc := NewFailedNodeDocument(jobID, domainDiagnostic)
+	const workflowID = "11111111-1111-1111-1111-111111111111"
+	doc := NewFailedNodeDocument(jobID, workflowID, domainDiagnostic)
 	assert.Equal(t, jobID.String()+":subgraph-a.node-4:failed:gltf.zero_face_solid", doc.ID)
 	assert.Equal(t, "gltf.zero_face_solid", doc.Code)
 	assert.Equal(t, jobID.String(), doc.JobID)
+	assert.Equal(t, workflowID, doc.WorkflowID)
+	assert.Equal(t, jobCompleteDiagnosticSchemaTag, doc.Schema)
 
 	modelDiagnostic, err := doc.Model()
 	require.NoError(t, err)
@@ -46,6 +49,35 @@ func TestDiagnosticDocument_Model_RoundTripsFixture(t *testing.T) {
 	assert.Equal(t, "subgraph-a.node-4", *modelDiagnostic.NodeID())
 	require.NotNil(t, modelDiagnostic.Aggregated())
 	assert.Equal(t, uint64(5), modelDiagnostic.Aggregated().Count())
+	// A row written through NewFailedNodeDocument carries the
+	// job-complete.v1 schema tag, so Model() must mark it Terminal — this is
+	// the signal interactor/diagnostic.go's dedupeDiagnostics uses to
+	// prefer a terminal row over its live diagnostic.v1 counterpart.
+	assert.True(t, modelDiagnostic.Terminal())
+}
+
+// TestDiagnosticDocument_Model_LiveRowIsNotTerminal pins the other half of
+// the Terminal() signal: a row shaped like what the subscriber writes for a
+// live DiagnosticEvent (schema "diagnostic.v1", not "job-complete.v1") must
+// decode with Terminal() == false.
+func TestDiagnosticDocument_Model_LiveRowIsNotTerminal(t *testing.T) {
+	jobID := id.NewJobID()
+	nodeID := "subgraph-a.node-4"
+	doc := DiagnosticDocument{
+		Timestamp: time.Now(),
+		NodeID:    &nodeID,
+		ID:        jobID.String() + ":subgraph-a.node-4:507f1f77bcf86cd799439011",
+		JobID:     jobID.String(),
+		Schema:    "diagnostic.v1",
+		Code:      "internal.unclassified",
+		Category:  "internal",
+		Severity:  "warn",
+		Message:   "live diagnostic",
+	}
+
+	modelDiagnostic, err := doc.Model()
+	require.NoError(t, err)
+	assert.False(t, modelDiagnostic.Terminal())
 }
 
 func TestNewFailedNodeDocument_FallsBackToJobSegment(t *testing.T) {
@@ -60,7 +92,7 @@ func TestNewFailedNodeDocument_FallsBackToJobSegment(t *testing.T) {
 		Build()
 	require.NoError(t, err)
 
-	doc := NewFailedNodeDocument(jobID, d)
+	doc := NewFailedNodeDocument(jobID, "", d)
 	assert.Equal(t, jobID.String()+":_job:failed:internal.unclassified", doc.ID)
 	// The nodeId bson field carries the same "_job" sentinel as the ID
 	// segment (T5 normalization fix), not nil/the raw empty string.
@@ -131,9 +163,11 @@ func TestNewAggregatedDiagnosticDocument(t *testing.T) {
 		Build()
 	require.NoError(t, err)
 
-	doc := NewAggregatedDiagnosticDocument(jobID, d)
+	const workflowID = "11111111-1111-1111-1111-111111111111"
+	doc := NewAggregatedDiagnosticDocument(jobID, workflowID, d)
 	assert.Equal(t, jobID.String()+":subgraph-a.node-4:aggregated:gltf.zero_face_solid", doc.ID)
 	assert.Equal(t, "gltf.zero_face_solid", doc.Code)
+	assert.Equal(t, workflowID, doc.WorkflowID)
 	require.NotNil(t, doc.Aggregated)
 	assert.Equal(t, uint64(5), doc.Aggregated.Count)
 }

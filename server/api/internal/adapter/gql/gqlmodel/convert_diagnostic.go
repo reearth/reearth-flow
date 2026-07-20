@@ -44,11 +44,11 @@ func ToDiagnostic(d *diagnostic.Diagnostic) *Diagnostic {
 }
 
 // ToDiagnostics converts a slice of domain Diagnostics, skipping nil entries.
+// ToDiagnostics always returns a non-nil slice, even for a nil/empty input:
+// Job.failedNodes and NodeExecution.diagnostics both back onto this
+// converter, and both must marshal a no-data state as GraphQL `[]`, not
+// `null` — a nil Go slice for a `[Diagnostic!]` field marshals as `null`.
 func ToDiagnostics(ds []*diagnostic.Diagnostic) []*Diagnostic {
-	if ds == nil {
-		return nil
-	}
-
 	res := make([]*Diagnostic, 0, len(ds))
 	for _, d := range ds {
 		if converted := ToDiagnostic(d); converted != nil {

@@ -452,11 +452,25 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 		// NOT abort the status merge (the job is saved with its terminal
 		// status either way — mirrors the subscriber's own
 		// Mongo-write-is-best-effort posture, e.g. node_subscriber.go), but
-		// it MUST prevent the source Redis event from being deleted, so the
-		// next checkJobStatus poll re-reads the same event and retries
-		// persistence (safe: SaveTerminalDiagnostics upserts by
-		// deterministic ID). Ordering: persist -> save job -> delete event
-		// only if persist succeeded.
+		// it MUST prevent the source Redis event from being deleted.
+		//
+		// That "prevent the delete" step does NOT actually buy a retry:
+		// checkJobStatus's only production caller is runMonitoringLoop,
+		// which re-fetches the job at the top of every tick and returns
+		// immediately (stopping the loop) once the job's persisted status is
+		// terminal — which this same call is about to set, in the Save
+		// below, regardless of whether persist succeeded. So the very next
+		// tick sees a terminal job and never calls checkJobStatus again; the
+		// undeleted Redis event is never re-read. A single persist failure
+		// therefore permanently loses that job's terminal diagnostics
+		// (failedNodes/aggregatedDiagnostics/droppedEventCount), bounded
+		// only by the JobCompleteEvent's own 24h Redis TTL, after which the
+		// orphaned event expires too. Restructuring the poll loop to
+		// actually retry is a separate, riskier change and out of scope
+		// here. Ordering below is still worth preserving as-is: persist ->
+		// save job -> delete event only if persist succeeded, since leaving
+		// the event undeleted on failure is harmless (just inert) and keeps
+		// a manual/future retry path possible without extra work.
 		diagnosticsPersisted := true
 		if workerEvent != nil {
 			if err := i.persistTerminalDiagnostics(ctx, currentJob.ID(), workerEvent); err != nil {
@@ -720,7 +734,7 @@ func (i *Job) persistTerminalDiagnostics(ctx context.Context, jobID id.JobID, ev
 		return fmt.Errorf("failed to convert aggregated diagnostics: %w", err)
 	}
 
-	return i.nodeDiagnosticsRepo.SaveTerminalDiagnostics(ctx, jobID, event.Timestamp, failedNodes, aggregated, event.DroppedEventCount)
+	return i.nodeDiagnosticsRepo.SaveTerminalDiagnostics(ctx, jobID, event.WorkflowID, event.Timestamp, failedNodes, aggregated, event.DroppedEventCount)
 }
 
 // wireDiagnosticsToDomain converts a JobCompleteEvent's wire diagnostics

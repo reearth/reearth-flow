@@ -98,8 +98,10 @@ func TestToDiagnostic(t *testing.T) {
 }
 
 func TestToDiagnostics(t *testing.T) {
-	t.Run("nil input", func(t *testing.T) {
-		assert.Nil(t, ToDiagnostics(nil))
+	t.Run("nil input normalizes to an empty, non-nil slice (GraphQL [] not null)", func(t *testing.T) {
+		got := ToDiagnostics(nil)
+		assert.NotNil(t, got)
+		assert.Empty(t, got)
 	})
 
 	t.Run("empty input", func(t *testing.T) {

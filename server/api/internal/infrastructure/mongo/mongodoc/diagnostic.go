@@ -106,7 +106,8 @@ func (d *DiagnosticDocument) Model() (*diagnostic.Diagnostic, error) {
 		ActionType(d.ActionType).
 		FeatureID(d.FeatureID).
 		Message(d.Message).
-		Help(d.Help)
+		Help(d.Help).
+		Terminal(d.Schema == jobCompleteDiagnosticSchemaTag)
 
 	if d.Aggregated != nil {
 		b = b.Aggregated(diagnostic.NewAggregateInfo(d.Aggregated.Count, d.Aggregated.SampleFeatureIDs))
@@ -130,8 +131,8 @@ const jobCompleteDiagnosticSchemaTag = "job-complete.v1"
 // is deterministic ({jobId}:{nodeId-or-_job}:failed:{code}) rather than a
 // random ObjectID suffix: JobCompleteEvent redeliveries (retry-after-
 // persist-failure) must upsert the SAME row instead of appending duplicates.
-func NewFailedNodeDocument(jobID id.JobID, d *diagnostic.Diagnostic) DiagnosticDocument {
-	return newTerminalDiagnosticDocument(jobID, d, "failed")
+func NewFailedNodeDocument(jobID id.JobID, workflowID string, d *diagnostic.Diagnostic) DiagnosticDocument {
+	return newTerminalDiagnosticDocument(jobID, workflowID, d, "failed")
 }
 
 // NewAggregatedDiagnosticDocument builds a terminal-diagnostic row for one
@@ -141,11 +142,11 @@ func NewFailedNodeDocument(jobID id.JobID, d *diagnostic.Diagnostic) DiagnosticD
 // discoverable through FindByJobNodeID for the node it pertains to. The ID
 // is deterministic ({jobId}:{nodeId-or-_job}:aggregated:{code}), idempotent
 // across JobCompleteEvent redeliveries.
-func NewAggregatedDiagnosticDocument(jobID id.JobID, d *diagnostic.Diagnostic) DiagnosticDocument {
-	return newTerminalDiagnosticDocument(jobID, d, "aggregated")
+func NewAggregatedDiagnosticDocument(jobID id.JobID, workflowID string, d *diagnostic.Diagnostic) DiagnosticDocument {
+	return newTerminalDiagnosticDocument(jobID, workflowID, d, "aggregated")
 }
 
-func newTerminalDiagnosticDocument(jobID id.JobID, d *diagnostic.Diagnostic, kind string) DiagnosticDocument {
+func newTerminalDiagnosticDocument(jobID id.JobID, workflowID string, d *diagnostic.Diagnostic, kind string) DiagnosticDocument {
 	nodeSegment := normalizedNodeSegment(d.NodeID())
 
 	doc := DiagnosticDocument{
@@ -157,6 +158,7 @@ func newTerminalDiagnosticDocument(jobID id.JobID, d *diagnostic.Diagnostic, kin
 		Help:                 d.Help(),
 		ID:                   jobID.String() + ":" + nodeSegment + ":" + kind + ":" + d.Code(),
 		JobID:                jobID.String(),
+		WorkflowID:           workflowID,
 		Schema:               jobCompleteDiagnosticSchemaTag,
 		Code:                 d.Code(),
 		Category:             d.Category(),

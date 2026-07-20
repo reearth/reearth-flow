@@ -236,6 +236,7 @@ func TestJob_checkJobStatus_TerminalDiagnosticsMerge(t *testing.T) {
 	// Rows persisted before the event was deleted.
 	assert.Equal(t, 1, diagRepo.saveCalls)
 	assert.Equal(t, jobID, diagRepo.lastJobID)
+	assert.Equal(t, event.WorkflowID, diagRepo.lastWorkflowID)
 	require.Len(t, diagRepo.lastFailedNodes, 2)
 	assert.Equal(t, "internal.invariant_violation", diagRepo.lastFailedNodes[0].Code())
 	assert.Equal(t, "internal.unclassified", diagRepo.lastFailedNodes[1].Code())

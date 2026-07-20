@@ -98,3 +98,11 @@ func (b *Builder) SourceSpan(sourceSpan *SourceSpan) *Builder {
 	b.d.sourceSpan = sourceSpan
 	return b
 }
+
+// Terminal marks this row as persisted at job-completion merge time (see
+// Diagnostic.terminal). Defaults to false; only mongodoc's Model() sets it
+// true, for rows whose stored schema is the job-complete.v1 tag.
+func (b *Builder) Terminal(terminal bool) *Builder {
+	b.d.terminal = terminal
+	return b
+}

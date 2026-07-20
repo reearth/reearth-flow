@@ -16,19 +16,21 @@ import (
 
 // NodeDiagnostics reads structured diagnostics for a job/node.
 //
-// Backend policy: Redis first, Mongo fallback. The subscriber writes every
-// diagnostic to both stores (see server/subscriber's diagnostic ingestion),
-// but Redis lists carry a 24h TTL while the Mongo nodeDiagnostics collection
-// is durable. So: try Redis (fresh/live — this is where a still-running or
-// recently-finished job's diagnostics live); if Redis returned nothing
-// (empty, TTL-expired, or erroring), fall back to Mongo (works for
-// long-finished/terminal jobs, and for job-completion merge-persisted
-// failed-node/aggregated rows, which are ONLY ever written to Mongo — see
-// interactor/job.go's persistTerminalDiagnostics). This mirrors
-// interactor/node.go's Redis-live / Mongo-durable split, but as a single
-// fallback chain rather than two separate methods: callers here always want
-// "whatever we still have," not NodeExecution's live-vs-terminal
-// distinction.
+// Backend policy: Redis (live, 24h TTL) MERGED with Mongo (durable —
+// mirrors every live diagnostic.v1 row the subscriber ingests, plus the
+// job-completion job-complete.v1 terminal rows persisted by
+// interactor/job.go's persistTerminalDiagnostics, which are ONLY ever
+// written to Mongo, never Redis). Both sources are always consulted — this
+// used to short-circuit on a non-empty Redis result, which hid Mongo-only
+// terminal rows (a node's terminal fatal row) until the Redis TTL expired.
+// The merge is deduped by dedupeDiagnostics, keyed on (nodeId, code): the
+// engine's "no-silent-fatal guarantee" (report()'s record_fatal, see
+// executor_operation.rs) means a live-reported Fatal diagnostic always also
+// lands in the terminal failedNodes fold (dag_executor.rs's fold_outcomes),
+// so the same reported fatal can legitimately appear as both a live
+// diagnostic.v1 row and a terminal job-complete.v1 row; the dedupe collapses
+// that pair to the terminal copy without dropping anything else (distinct
+// live warnings/rejects have distinct codes and pass through unchanged).
 type NodeDiagnostics struct {
 	diagnosticsRepo   repo.NodeDiagnostics
 	jobRepo           repo.Job
@@ -66,24 +68,26 @@ func (i *NodeDiagnostics) GetNodeDiagnostics(ctx context.Context, jobID id.JobID
 		return nil, err
 	}
 
+	var rows []*diagnostic.Diagnostic
+
 	if i.redisGateway != nil {
-		rows, err := i.redisGateway.GetNodeDiagnostics(ctx, jobID, nodeID)
+		liveRows, err := i.redisGateway.GetNodeDiagnostics(ctx, jobID, nodeID)
 		if err != nil {
 			log.Warnfc(ctx, "diagnostic: failed to get node diagnostics from Redis: %v", err)
-		} else if len(rows) > 0 {
-			return rows, nil
+		} else {
+			rows = append(rows, liveRows...)
 		}
 	}
 
-	if i.diagnosticsRepo == nil {
-		return nil, nil
+	if i.diagnosticsRepo != nil {
+		mongoRows, err := i.diagnosticsRepo.FindByJobNodeID(ctx, jobID, nodeID)
+		if err != nil {
+			return nil, err
+		}
+		rows = append(rows, mongoRows...)
 	}
 
-	rows, err := i.diagnosticsRepo.FindByJobNodeID(ctx, jobID, nodeID)
-	if err != nil {
-		return nil, err
-	}
-	return rows, nil
+	return dedupeDiagnostics(rows), nil
 }
 
 func (i *NodeDiagnostics) GetJobDiagnostics(ctx context.Context, jobID id.JobID) ([]*diagnostic.Diagnostic, error) {
@@ -91,24 +95,26 @@ func (i *NodeDiagnostics) GetJobDiagnostics(ctx context.Context, jobID id.JobID)
 		return nil, err
 	}
 
+	var rows []*diagnostic.Diagnostic
+
 	if i.redisGateway != nil {
-		rows, err := i.redisGateway.GetJobDiagnostics(ctx, jobID)
+		liveRows, err := i.redisGateway.GetJobDiagnostics(ctx, jobID)
 		if err != nil {
 			log.Warnfc(ctx, "diagnostic: failed to get job diagnostics from Redis: %v", err)
-		} else if len(rows) > 0 {
-			return rows, nil
+		} else {
+			rows = append(rows, liveRows...)
 		}
 	}
 
-	if i.diagnosticsRepo == nil {
-		return nil, nil
+	if i.diagnosticsRepo != nil {
+		mongoRows, err := i.diagnosticsRepo.FindByJobID(ctx, jobID)
+		if err != nil {
+			return nil, err
+		}
+		rows = append(rows, mongoRows...)
 	}
 
-	rows, err := i.diagnosticsRepo.FindByJobID(ctx, jobID)
-	if err != nil {
-		return nil, err
-	}
-	return rows, nil
+	return dedupeDiagnostics(rows), nil
 }
 
 // fatalEffectiveDisposition is the wire/domain string value of the engine's
@@ -128,17 +134,25 @@ const fatalEffectiveDisposition = "fatal"
 // exclusively at job-completion merge time (interactor/job.go's
 // persistTerminalDiagnostics) and are never written to Redis, so consulting
 // Redis here (as GetJobDiagnostics does for live per-event diagnostics)
-// would be reading the wrong store. FindByJobID returns both failedNodes-
-// and aggregatedDiagnostics-derived rows undifferentiated (both carry a
-// "code" field); the fatalEffectiveDisposition filter recovers exactly the
-// failedNodes subset.
+// would be reading the wrong store. FindByJobID returns every schema-tagged
+// row undifferentiated (failedNodes-derived, aggregatedDiagnostics-derived,
+// AND the subscriber's own live-mirrored diagnostic.v1 rows all carry a
+// "code" field); the fatalEffectiveDisposition filter recovers the fatal
+// subset, and dedupeDiagnostics then collapses a fatal that rode both the
+// live event stream and the terminal fold into its single terminal copy
+// (see the package doc comment above and dedupeDiagnostics itself for why
+// that pairing exists and why the dedupe is complete: a fatal that never
+// rode the live stream at all — the fold's synthesized/"fatal-backstop"
+// case for a node that died without ever calling ctx.report() — still
+// lands here because it exists ONLY as a terminal row, which passes through
+// dedupeDiagnostics unchanged).
 func (i *NodeDiagnostics) GetFailedNodes(ctx context.Context, jobID id.JobID) ([]*diagnostic.Diagnostic, error) {
 	if err := i.checkJobPermission(ctx, jobID); err != nil {
 		return nil, err
 	}
 
 	if i.diagnosticsRepo == nil {
-		return nil, nil
+		return []*diagnostic.Diagnostic{}, nil
 	}
 
 	rows, err := i.diagnosticsRepo.FindByJobID(ctx, jobID)
@@ -152,7 +166,77 @@ func (i *NodeDiagnostics) GetFailedNodes(ctx context.Context, jobID id.JobID) ([
 			failed = append(failed, row)
 		}
 	}
-	return failed, nil
+	return dedupeDiagnostics(failed), nil
+}
+
+// dedupeDiagnostics collapses rows that share the same (nodeId, code) key
+// down to one representative row, keeping input order for the first
+// occurrence of each key. It exists because Mongo (and, for
+// GetNodeDiagnostics/GetJobDiagnostics, the Redis+Mongo merge) can
+// legitimately hold two rows for the very same reported diagnostic: a live
+// row mirroring the subscriber's per-event diagnostic.v1 ingestion, and a
+// terminal job-complete.v1 row persisted at job-completion merge time (see
+// interactor/job.go's persistTerminalDiagnostics) — the engine's
+// "no-silent-fatal guarantee" (report()'s record_fatal call,
+// executor_operation.rs) means every live-reported Fatal diagnostic is
+// guaranteed to also fail its node and fold into the terminal
+// failedNodes/aggregatedDiagnostics arrays, so this pairing is expected, not
+// a bug to fix upstream.
+//
+// preferOver decides the tie-break: a Terminal() row always wins over a
+// non-terminal one for the same key (it is the durable, authoritative copy
+// once a job has completed); among two rows of equal terminality, the more
+// recent Timestamp wins (live diagnostics can be periodic/aggregated
+// snapshots under the same code — see report()'s WarnDrop/Reject
+// aggregation via DiagnosticsHandle.record — so the latest snapshot carries
+// the fullest count). Rows with no counterpart for their key pass through
+// unchanged.
+func dedupeDiagnostics(rows []*diagnostic.Diagnostic) []*diagnostic.Diagnostic {
+	type dedupeKey struct {
+		nodeID string
+		code   string
+	}
+
+	keyOf := func(d *diagnostic.Diagnostic) dedupeKey {
+		nodeID := ""
+		if d.NodeID() != nil {
+			nodeID = *d.NodeID()
+		}
+		return dedupeKey{nodeID: nodeID, code: d.Code()}
+	}
+
+	order := make([]dedupeKey, 0, len(rows))
+	best := make(map[dedupeKey]*diagnostic.Diagnostic, len(rows))
+	for _, row := range rows {
+		if row == nil {
+			continue
+		}
+		k := keyOf(row)
+		existing, ok := best[k]
+		if !ok {
+			order = append(order, k)
+			best[k] = row
+			continue
+		}
+		if preferOver(row, existing) {
+			best[k] = row
+		}
+	}
+
+	out := make([]*diagnostic.Diagnostic, 0, len(order))
+	for _, k := range order {
+		out = append(out, best[k])
+	}
+	return out
+}
+
+// preferOver reports whether candidate should replace current as
+// dedupeDiagnostics' representative row for a (nodeId, code) key.
+func preferOver(candidate, current *diagnostic.Diagnostic) bool {
+	if candidate.Terminal() != current.Terminal() {
+		return candidate.Terminal()
+	}
+	return candidate.Timestamp().After(current.Timestamp())
 }
 
 // GetDroppedEventCount reads the job's persisted droppedEventCount (GraphQL

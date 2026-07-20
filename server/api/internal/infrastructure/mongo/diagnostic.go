@@ -97,13 +97,14 @@ func (r *NodeDiagnostics) find(ctx context.Context, filter interface{}) ([]*diag
 func (r *NodeDiagnostics) SaveTerminalDiagnostics(
 	ctx context.Context,
 	jobID id.JobID,
+	workflowID string,
 	timestamp time.Time,
 	failedNodes []*diagnostic.Diagnostic,
 	aggregated []*diagnostic.Diagnostic,
 	droppedEventCount *uint64,
 ) error {
 	for _, fn := range failedNodes {
-		doc := mongodoc.NewFailedNodeDocument(jobID, fn)
+		doc := mongodoc.NewFailedNodeDocument(jobID, workflowID, fn)
 		if err := r.client.SaveOne(ctx, doc.ID, doc); err != nil {
 			return rerror.ErrInternalByWithContext(ctx, err)
 		}
@@ -113,7 +114,7 @@ func (r *NodeDiagnostics) SaveTerminalDiagnostics(
 	// not a nested entry inside the summary row below: nesting would make it
 	// invisible to FindByJobNodeID for the node it pertains to.
 	for _, agg := range aggregated {
-		doc := mongodoc.NewAggregatedDiagnosticDocument(jobID, agg)
+		doc := mongodoc.NewAggregatedDiagnosticDocument(jobID, workflowID, agg)
 		if err := r.client.SaveOne(ctx, doc.ID, doc); err != nil {
 			return rerror.ErrInternalByWithContext(ctx, err)
 		}

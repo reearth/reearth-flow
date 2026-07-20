@@ -171,17 +171,14 @@ Deploy order:
 1. **Provision the topic and its pull subscription.**
    - Local (docker compose): already handled by `engine/compose.yml`'s
      pubsub emulator `TOPIC_IDS`, which auto-creates a pull subscription
-     named `{topic}-sub` for every listed topic. **Known naming gap:** the
-     emulator's `TOPIC_IDS` currently lists `flow-worker-diagnostic-topic`,
-     which does **not** match the engine's own default topic name
-     (`flow-diagnostic-topic`, above) — unlike the other four topics in that
-     list, which all match their Rust defaults exactly. Until that entry is
-     corrected, running the worker manually against the local emulator (as
-     in "Run the workflow" below) needs
-     `FLOW_WORKER_DIAGNOSTIC_TOPIC=flow-worker-diagnostic-topic` exported
-     explicitly so publishing lands on the topic the emulator actually
-     created; otherwise the worker's default (`flow-diagnostic-topic`)
-     publishes to a topic with no subscription and every message is dropped.
+     named `{topic}-sub` for every listed topic. `TOPIC_IDS` lists
+     `flow-diagnostic-topic`, matching the engine's own default topic name
+     (above) exactly, like every other topic in that list — no
+     `FLOW_WORKER_DIAGNOSTIC_TOPIC` override is needed to run the worker
+     manually against the local emulator (as in "Run the workflow" below).
+     The emulator's auto-created subscription is named
+     `flow-diagnostic-topic-sub`, matching `.env.example`'s
+     `REEARTH_FLOW_SUBSCRIBER_DIAGNOSTIC_SUBSCRIPTION_ID`.
    - Production/GCP: provision a topic named `flow-diagnostic-topic`
      (matching the engine default) — or any name, with
      `FLOW_WORKER_DIAGNOSTIC_TOPIC` set to match — plus a pull-type

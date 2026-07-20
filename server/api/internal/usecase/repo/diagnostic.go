@@ -40,6 +40,7 @@ type NodeDiagnostics interface {
 	SaveTerminalDiagnostics(
 		ctx context.Context,
 		jobID id.JobID,
+		workflowID string,
 		timestamp time.Time,
 		failedNodes []*diagnostic.Diagnostic,
 		aggregated []*diagnostic.Diagnostic,
