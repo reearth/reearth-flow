@@ -67,23 +67,37 @@ func (e *NodeExecution) CompletedAt() *time.Time {
 }
 
 // FeaturesProcessed is the successfully processed feature count reported by
-// a processor node on its terminal status event. Nil for source/sink nodes
-// and for any node execution predating this field.
+// a processor node on its terminal status event. Meaningful for processor
+// nodes; sink nodes also report metrics but always leave this at 0, since
+// the field does not apply to them. Nil means the node hasn't reached a
+// terminal status yet, is a source node (sources never emit metrics), or
+// the node execution predates this field. Do not infer node kind from
+// nilness — 0 can mean "does not apply to this node kind" just as easily as
+// "genuinely zero".
 func (e *NodeExecution) FeaturesProcessed() *int {
 	return e.featuresProcessed
 }
 
 // FeaturesWritten is the successfully written feature count reported by a
-// sink node on its terminal status event. Nil for source/processor nodes and
-// for any node execution predating this field.
+// sink node on its terminal status event. Meaningful for sink nodes;
+// processor nodes also report metrics but always leave this at 0, since the
+// field does not apply to them. Nil means the node hasn't reached a
+// terminal status yet, is a source node (sources never emit metrics), or
+// the node execution predates this field. Do not infer node kind from
+// nilness — 0 can mean "does not apply to this node kind" just as easily as
+// "genuinely zero".
 func (e *NodeExecution) FeaturesWritten() *int {
 	return e.featuresWritten
 }
 
 // FinishFeatureCount is the feature count a processor node emitted
 // downstream during finish() (meaningful mainly for accumulating/aggregating
-// actions). Nil for source/sink nodes and for any node execution predating
-// this field.
+// actions). Meaningful for processor nodes; sink nodes also report metrics
+// but always leave this at 0, since the field does not apply to them. Nil
+// means the node hasn't reached a terminal status yet, is a source node
+// (sources never emit metrics), or the node execution predates this field.
+// Do not infer node kind from nilness — 0 can mean "does not apply to this
+// node kind" just as easily as "genuinely zero".
 func (e *NodeExecution) FinishFeatureCount() *int {
 	return e.finishFeatureCount
 }
