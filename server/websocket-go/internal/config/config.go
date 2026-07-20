@@ -42,6 +42,12 @@ type Config struct {
 	MaxPeersPerRoom int
 	// MaxRooms caps distinct rooms server-wide (doc_id is client-supplied).
 	MaxRooms int
+	// PeerWriteQueueSize is the per-peer outbound broadcast queue depth; when a
+	// peer's queue fills (slow/lagged connection) ygo disconnects it, forcing a
+	// reconnect-and-resync. Larger values tolerate bigger update bursts before
+	// evicting. ygo's own default is 256; we default higher to match the Rust
+	// server's 512 broadcast buffer.
+	PeerWriteQueueSize int
 
 	// WSAuthEnabled gates protected-mode WS token verification. Default OFF;
 	// when ON the AuthFunc fails closed. Sourced from REEARTH_FLOW_WS_PROTECTED.
@@ -68,9 +74,10 @@ const (
 	defaultLogLevel      = "info"
 	defaultWSPort        = 8000
 
-	defaultMaxConnections  = 10000
-	defaultMaxPeersPerRoom = 256
-	defaultMaxRooms        = 50000
+	defaultMaxConnections     = 10000
+	defaultMaxPeersPerRoom    = 256
+	defaultMaxRooms           = 50000
+	defaultPeerWriteQueueSize = 512
 
 	defaultOTLPExporterType       = "otlp"
 	defaultOTLPServiceName        = "reearth-flow-websocket"
@@ -108,9 +115,10 @@ func Load() *Config {
 		WSPort:        envPort("REEARTH_FLOW_WS_PORT", defaultWSPort),
 		APISecret:     os.Getenv("REEARTH_FLOW_API_SECRET"),
 
-		MaxConnections:  envPositive("REEARTH_FLOW_MAX_CONNECTIONS", defaultMaxConnections),
-		MaxPeersPerRoom: envPositive("REEARTH_FLOW_MAX_PEERS_PER_ROOM", defaultMaxPeersPerRoom),
-		MaxRooms:        envPositive("REEARTH_FLOW_MAX_ROOMS", defaultMaxRooms),
+		MaxConnections:     envPositive("REEARTH_FLOW_MAX_CONNECTIONS", defaultMaxConnections),
+		MaxPeersPerRoom:    envPositive("REEARTH_FLOW_MAX_PEERS_PER_ROOM", defaultMaxPeersPerRoom),
+		MaxRooms:           envPositive("REEARTH_FLOW_MAX_ROOMS", defaultMaxRooms),
+		PeerWriteQueueSize: envPositive("REEARTH_FLOW_PEER_WRITE_QUEUE_SIZE", defaultPeerWriteQueueSize),
 
 		WSAuthEnabled: envBool("REEARTH_FLOW_WS_PROTECTED", false),
 

@@ -26,5 +26,6 @@ func NewWithPersistence(ctx context.Context, cfg *config.Config, p persistence.V
 	s.ws.MaxConnections = cfg.MaxConnections
 	s.ws.MaxPeersPerRoom = cfg.MaxPeersPerRoom
 	s.ws.MaxRooms = cfg.MaxRooms
+	s.ws.PeerWriteQueueSize = cfg.PeerWriteQueueSize
 	return s
 }

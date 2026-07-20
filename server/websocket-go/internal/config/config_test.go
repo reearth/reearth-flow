@@ -339,6 +339,7 @@ func clearEnv(t *testing.T) {
 		"REEARTH_FLOW_MAX_CONNECTIONS",
 		"REEARTH_FLOW_MAX_PEERS_PER_ROOM",
 		"REEARTH_FLOW_MAX_ROOMS",
+		"REEARTH_FLOW_PEER_WRITE_QUEUE_SIZE",
 		"REEARTH_FLOW_ENABLE_OTLP",
 		"REEARTH_FLOW_OTLP_ENDPOINT",
 		"REEARTH_FLOW_GCP_PROJECT_ID",
@@ -352,4 +353,27 @@ func clearEnv(t *testing.T) {
 	} {
 		t.Setenv(k, "")
 	}
+}
+
+func TestLoad_PeerWriteQueueSize(t *testing.T) {
+	t.Run("default is 512", func(t *testing.T) {
+		clearEnv(t)
+		if c := Load(); c.PeerWriteQueueSize != 512 {
+			t.Errorf("PeerWriteQueueSize = %d, want 512", c.PeerWriteQueueSize)
+		}
+	})
+	t.Run("env override", func(t *testing.T) {
+		clearEnv(t)
+		t.Setenv("REEARTH_FLOW_PEER_WRITE_QUEUE_SIZE", "1024")
+		if c := Load(); c.PeerWriteQueueSize != 1024 {
+			t.Errorf("PeerWriteQueueSize = %d, want 1024", c.PeerWriteQueueSize)
+		}
+	})
+	t.Run("non-positive falls back to default", func(t *testing.T) {
+		clearEnv(t)
+		t.Setenv("REEARTH_FLOW_PEER_WRITE_QUEUE_SIZE", "-5")
+		if c := Load(); c.PeerWriteQueueSize != 512 {
+			t.Errorf("PeerWriteQueueSize = %d, want 512", c.PeerWriteQueueSize)
+		}
+	})
 }

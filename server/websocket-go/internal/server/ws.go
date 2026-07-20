@@ -44,6 +44,7 @@ func New(cfg *config.Config) *Server {
 	s.ws.MaxConnections = cfg.MaxConnections
 	s.ws.MaxPeersPerRoom = cfg.MaxPeersPerRoom
 	s.ws.MaxRooms = cfg.MaxRooms
+	s.ws.PeerWriteQueueSize = cfg.PeerWriteQueueSize
 	return s
 }
 
