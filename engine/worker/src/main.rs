@@ -24,10 +24,13 @@ fn main() {
             .as_str(),
     );
 
-    if let Err(err) = logger::setup_logging_and_tracing() {
-        eprintln!("Failed to setup logging: {err}\n");
-        std::process::exit(1);
-    }
+    let otel_guard = match logger::setup_logging_and_tracing() {
+        Ok(guard) => guard,
+        Err(err) => {
+            eprintln!("Failed to setup logging: {err}\n");
+            std::process::exit(1);
+        }
+    };
 
     // `probe-schema` and `schema-events` are read-only, side-effect-free
     // subcommands (schema probe / schema codegen respectively). Everything
@@ -79,5 +82,10 @@ fn main() {
             }
         }
     };
+    // std::process::exit below skips Drop, so any OTel provider guard
+    // must be flushed explicitly here before it would otherwise be lost.
+    if let Some(guard) = otel_guard {
+        guard.shutdown();
+    }
     std::process::exit(return_code)
 }

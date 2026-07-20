@@ -62,6 +62,7 @@ num_cpus.workspace = true
 nutype.workspace = true
 object_store.workspace = true
 once_cell.workspace = true
+opentelemetry_sdk.workspace = true
 parking_lot.workspace = true
 regex.workspace = true
 schemars.workspace = true

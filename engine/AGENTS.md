@@ -63,6 +63,7 @@ Use the `add-action` skill for a full step-by-step guide including i18n workflow
 ## Key Constraints
 
 - Workflow variables use `FLOW_VAR_*` prefix for environment injection
+- `OTEL_COLLECTOR_ENDPOINT` opts the worker and CLI into OTel trace/metric export (OTLP/gRPC); unset by default, which fully disables OTel export with zero overhead — see the env var table in [worker/README.md](worker/README.md)
 
 ## Testing
 
