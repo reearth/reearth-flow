@@ -132,6 +132,61 @@ cp .env.example .env
 make run
 ```
 
+### Diagnostics ingestion (deploy order)
+
+The engine publishes structured per-node/job `DiagnosticEvent`s to a Pub/Sub
+topic, gated behind two env vars read in
+`engine/worker/src/types/diagnostic_event.rs`:
+
+- `FLOW_WORKER_ENABLE_DIAGNOSTICS` — publish gate, defaults to `false` (unset
+  or anything other than `"true"` keeps publishing off).
+- `FLOW_WORKER_DIAGNOSTIC_TOPIC` — the topic name, defaults to
+  `flow-diagnostic-topic` when unset.
+
+Turning this on safely requires bringing the pieces up in a specific order,
+because the two failure modes are asymmetric:
+
+- Publishing before the subscription exists **drops messages** — Pub/Sub
+  cannot buffer for a subscription that isn't there yet.
+- Deploying the subscriber before the engine publishes is **safe**: with
+  `REEARTH_FLOW_SUBSCRIBER_DIAGNOSTIC_SUBSCRIPTION_ID` unset (or the
+  subscription itself absent), the subscriber simply skips starting the
+  diagnostic listener (see `conf.DiagnosticSubscriptionID != ""` in
+  `cmd/reearth-flow-subscriber/main.go`) and the rest of the subscriber runs
+  unaffected.
+
+Deploy order:
+
+1. **Provision the topic and its pull subscription.**
+   - Local (docker compose): already handled by `engine/compose.yml`'s
+     pubsub emulator `TOPIC_IDS`, which auto-creates a pull subscription
+     named `{topic}-sub` for every listed topic. **Known naming gap:** the
+     emulator's `TOPIC_IDS` currently lists `flow-worker-diagnostic-topic`,
+     which does **not** match the engine's own default topic name
+     (`flow-diagnostic-topic`, above) — unlike the other four topics in that
+     list, which all match their Rust defaults exactly. Until that entry is
+     corrected, running the worker manually against the local emulator (as
+     in "Run the workflow" below) needs
+     `FLOW_WORKER_DIAGNOSTIC_TOPIC=flow-worker-diagnostic-topic` exported
+     explicitly so publishing lands on the topic the emulator actually
+     created; otherwise the worker's default (`flow-diagnostic-topic`)
+     publishes to a topic with no subscription and every message is dropped.
+   - Production/GCP: provision a topic named `flow-diagnostic-topic`
+     (matching the engine default) — or any name, with
+     `FLOW_WORKER_DIAGNOSTIC_TOPIC` set to match — plus a pull-type
+     subscription for it.
+2. **Deploy the subscriber with the new env var set** —
+   `REEARTH_FLOW_SUBSCRIBER_DIAGNOSTIC_SUBSCRIPTION_ID` pointed at the
+   subscription from step 1. This is safe ahead of step 3: with the
+   topic/subscription provisioned but the engine flag still off, the
+   subscriber's listener just sits idle waiting for messages that aren't
+   sent yet.
+3. **Only then flip the engine's `FLOW_WORKER_ENABLE_DIAGNOSTICS=true`.**
+   With a live subscription in place and a deployed subscriber pulling from
+   it, enabling publishing is safe: no messages are dropped, and every
+   `DiagnosticEvent` lands in the subscriber's Redis `diagnostics:*` lists
+   and the Mongo `nodeDiagnostics` collection (see the env table above).
+
 ### Prepare Example Workflow
 
 Below is an example demonstrating how to run a workflow (e.g., using cargo run) and retrieve logs via Pub/Sub.
