@@ -17,12 +17,15 @@ const (
 )
 
 type NodeExecution struct {
-	startedAt   *time.Time
-	completedAt *time.Time
-	id          string
-	status      Status
-	jobID       id.JobID
-	nodeID      id.NodeID
+	startedAt          *time.Time
+	completedAt        *time.Time
+	featuresProcessed  *int
+	featuresWritten    *int
+	finishFeatureCount *int
+	id                 string
+	status             Status
+	jobID              id.JobID
+	nodeID             id.NodeID
 }
 
 func NewNodeExecution(
@@ -61,4 +64,26 @@ func (e *NodeExecution) StartedAt() *time.Time {
 
 func (e *NodeExecution) CompletedAt() *time.Time {
 	return e.completedAt
+}
+
+// FeaturesProcessed is the successfully processed feature count reported by
+// a processor node on its terminal status event. Nil for source/sink nodes
+// and for any node execution predating this field.
+func (e *NodeExecution) FeaturesProcessed() *int {
+	return e.featuresProcessed
+}
+
+// FeaturesWritten is the successfully written feature count reported by a
+// sink node on its terminal status event. Nil for source/processor nodes and
+// for any node execution predating this field.
+func (e *NodeExecution) FeaturesWritten() *int {
+	return e.featuresWritten
+}
+
+// FinishFeatureCount is the feature count a processor node emitted
+// downstream during finish() (meaningful mainly for accumulating/aggregating
+// actions). Nil for source/sink nodes and for any node execution predating
+// this field.
+func (e *NodeExecution) FinishFeatureCount() *int {
+	return e.finishFeatureCount
 }

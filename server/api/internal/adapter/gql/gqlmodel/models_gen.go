@@ -391,6 +391,20 @@ type NodeExecution struct {
 	StartedAt   *time.Time    `json:"startedAt,omitempty"`
 	CompletedAt *time.Time    `json:"completedAt,omitempty"`
 	Diagnostics []*Diagnostic `json:"diagnostics,omitempty"`
+	// Successfully processed feature count. Processor nodes only (populated on
+	// the terminal Completed/Failed status); null for source/sink nodes and for
+	// any node execution predating this field.
+	FeaturesProcessed *int `json:"featuresProcessed,omitempty"`
+	// Successfully written feature count. Sink nodes only (populated on the
+	// terminal Completed/Failed status); null for source/processor nodes and for
+	// any node execution predating this field.
+	FeaturesWritten *int `json:"featuresWritten,omitempty"`
+	// Feature count emitted downstream during finish() — meaningful mainly for
+	// accumulating/aggregating processor actions that buffer input and flush
+	// results at finish time rather than per-feature in process(). Processor
+	// nodes only; null for source/sink nodes and for any node execution
+	// predating this field.
+	FinishFeatureCount *int `json:"finishFeatureCount,omitempty"`
 }
 
 func (NodeExecution) IsNode()        {}

@@ -346,14 +346,17 @@ type ComplexityRoot struct {
 	}
 
 	NodeExecution struct {
-		CompletedAt func(childComplexity int) int
-		CreatedAt   func(childComplexity int) int
-		Diagnostics func(childComplexity int) int
-		ID          func(childComplexity int) int
-		JobID       func(childComplexity int) int
-		NodeID      func(childComplexity int) int
-		StartedAt   func(childComplexity int) int
-		Status      func(childComplexity int) int
+		CompletedAt        func(childComplexity int) int
+		CreatedAt          func(childComplexity int) int
+		Diagnostics        func(childComplexity int) int
+		FeaturesProcessed  func(childComplexity int) int
+		FeaturesWritten    func(childComplexity int) int
+		FinishFeatureCount func(childComplexity int) int
+		ID                 func(childComplexity int) int
+		JobID              func(childComplexity int) int
+		NodeID             func(childComplexity int) int
+		StartedAt          func(childComplexity int) int
+		Status             func(childComplexity int) int
 	}
 
 	PageInfo struct {
@@ -2148,6 +2151,24 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.NodeExecution.Diagnostics(childComplexity), true
+	case "NodeExecution.featuresProcessed":
+		if e.complexity.NodeExecution.FeaturesProcessed == nil {
+			break
+		}
+
+		return e.complexity.NodeExecution.FeaturesProcessed(childComplexity), true
+	case "NodeExecution.featuresWritten":
+		if e.complexity.NodeExecution.FeaturesWritten == nil {
+			break
+		}
+
+		return e.complexity.NodeExecution.FeaturesWritten(childComplexity), true
+	case "NodeExecution.finishFeatureCount":
+		if e.complexity.NodeExecution.FinishFeatureCount == nil {
+			break
+		}
+
+		return e.complexity.NodeExecution.FinishFeatureCount(childComplexity), true
 	case "NodeExecution.id":
 		if e.complexity.NodeExecution.ID == nil {
 			break
@@ -4075,6 +4096,26 @@ extend type Subscription {
   startedAt: DateTime
   completedAt: DateTime
   diagnostics: [Diagnostic!]
+  """
+  Successfully processed feature count. Processor nodes only (populated on
+  the terminal Completed/Failed status); null for source/sink nodes and for
+  any node execution predating this field.
+  """
+  featuresProcessed: Int
+  """
+  Successfully written feature count. Sink nodes only (populated on the
+  terminal Completed/Failed status); null for source/processor nodes and for
+  any node execution predating this field.
+  """
+  featuresWritten: Int
+  """
+  Feature count emitted downstream during finish() — meaningful mainly for
+  accumulating/aggregating processor actions that buffer input and flush
+  results at finish time rather than per-feature in process(). Processor
+  nodes only; null for source/sink nodes and for any node execution
+  predating this field.
+  """
+  finishFeatureCount: Int
 }
 
 enum NodeStatus {
@@ -12886,6 +12927,93 @@ func (ec *executionContext) fieldContext_NodeExecution_diagnostics(_ context.Con
 	return fc, nil
 }
 
+func (ec *executionContext) _NodeExecution_featuresProcessed(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.NodeExecution) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_NodeExecution_featuresProcessed,
+		func(ctx context.Context) (any, error) {
+			return obj.FeaturesProcessed, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_NodeExecution_featuresProcessed(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NodeExecution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NodeExecution_featuresWritten(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.NodeExecution) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_NodeExecution_featuresWritten,
+		func(ctx context.Context) (any, error) {
+			return obj.FeaturesWritten, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_NodeExecution_featuresWritten(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NodeExecution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
+func (ec *executionContext) _NodeExecution_finishFeatureCount(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.NodeExecution) (ret graphql.Marshaler) {
+	return graphql.ResolveField(
+		ctx,
+		ec.OperationContext,
+		field,
+		ec.fieldContext_NodeExecution_finishFeatureCount,
+		func(ctx context.Context) (any, error) {
+			return obj.FinishFeatureCount, nil
+		},
+		nil,
+		ec.marshalOInt2ᚖint,
+		true,
+		false,
+	)
+}
+
+func (ec *executionContext) fieldContext_NodeExecution_finishFeatureCount(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+	fc = &graphql.FieldContext{
+		Object:     "NodeExecution",
+		Field:      field,
+		IsMethod:   false,
+		IsResolver: false,
+		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
+			return nil, errors.New("field of type Int does not have child fields")
+		},
+	}
+	return fc, nil
+}
+
 func (ec *executionContext) _PageInfo_totalCount(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.PageInfo) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
@@ -15682,6 +15810,12 @@ func (ec *executionContext) fieldContext_Query_nodeExecution(ctx context.Context
 				return ec.fieldContext_NodeExecution_completedAt(ctx, field)
 			case "diagnostics":
 				return ec.fieldContext_NodeExecution_diagnostics(ctx, field)
+			case "featuresProcessed":
+				return ec.fieldContext_NodeExecution_featuresProcessed(ctx, field)
+			case "featuresWritten":
+				return ec.fieldContext_NodeExecution_featuresWritten(ctx, field)
+			case "finishFeatureCount":
+				return ec.fieldContext_NodeExecution_finishFeatureCount(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type NodeExecution", field.Name)
 		},
@@ -15741,6 +15875,12 @@ func (ec *executionContext) fieldContext_Query_nodeExecutions(ctx context.Contex
 				return ec.fieldContext_NodeExecution_completedAt(ctx, field)
 			case "diagnostics":
 				return ec.fieldContext_NodeExecution_diagnostics(ctx, field)
+			case "featuresProcessed":
+				return ec.fieldContext_NodeExecution_featuresProcessed(ctx, field)
+			case "featuresWritten":
+				return ec.fieldContext_NodeExecution_featuresWritten(ctx, field)
+			case "finishFeatureCount":
+				return ec.fieldContext_NodeExecution_finishFeatureCount(ctx, field)
 			}
 			return nil, fmt.Errorf("no field named %q was found under type NodeExecution", field.Name)
 		},
@@ -24650,6 +24790,12 @@ func (ec *executionContext) _NodeExecution(ctx context.Context, sel ast.Selectio
 			}
 
 			out.Concurrently(i, func(ctx context.Context) graphql.Marshaler { return innerFunc(ctx, out) })
+		case "featuresProcessed":
+			out.Values[i] = ec._NodeExecution_featuresProcessed(ctx, field, obj)
+		case "featuresWritten":
+			out.Values[i] = ec._NodeExecution_featuresWritten(ctx, field, obj)
+		case "finishFeatureCount":
+			out.Values[i] = ec._NodeExecution_finishFeatureCount(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}

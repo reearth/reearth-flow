@@ -7,6 +7,26 @@ type NodeExecution implements Node {
   startedAt: DateTime
   completedAt: DateTime
   diagnostics: [Diagnostic!]
+  """
+  Successfully processed feature count. Processor nodes only (populated on
+  the terminal Completed/Failed status); null for source/sink nodes and for
+  any node execution predating this field.
+  """
+  featuresProcessed: Int
+  """
+  Successfully written feature count. Sink nodes only (populated on the
+  terminal Completed/Failed status); null for source/processor nodes and for
+  any node execution predating this field.
+  """
+  featuresWritten: Int
+  """
+  Feature count emitted downstream during finish() — meaningful mainly for
+  accumulating/aggregating processor actions that buffer input and flush
+  results at finish time rather than per-feature in process(). Processor
+  nodes only; null for source/sink nodes and for any node execution
+  predating this field.
+  """
+  finishFeatureCount: Int
 }
 
 enum NodeStatus {

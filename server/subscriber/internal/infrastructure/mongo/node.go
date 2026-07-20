@@ -98,6 +98,12 @@ func (m *MongoStorage) SaveNodeExecutionToMongo(ctx context.Context, jobID strin
 			update["completedAt"] = nodeExec.CompletedAt
 		}
 
+		if nodeExec.Metrics != nil {
+			update["featuresProcessed"] = nodeExec.Metrics.FeaturesProcessed
+			update["featuresWritten"] = nodeExec.Metrics.FeaturesWritten
+			update["finishFeatureCount"] = nodeExec.Metrics.FinishFeatureCount
+		}
+
 		if err := m.client.UpdateMany(ctx, filter, update); err != nil {
 			log.Printf("ERROR: Failed to update node execution: %v", err)
 			return fmt.Errorf("failed to update node execution: %w", err)
