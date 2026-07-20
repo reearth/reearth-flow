@@ -1,3 +1,39 @@
+//! Regex-based recovery of `UserFacingLogEvent`s from engine log prose (see
+//! `user_facing_log_handler.rs`, the sole production consumer). This is a
+//! retirement *candidate*, not scheduled work — Task 6 of the phase-3 plan
+//! (C11 in the phase-3 survey) only documents the precondition here; it does
+//! not delete anything.
+//!
+//! **Do not delete this module (or `UserFacingLogHandler`/
+//! `UserFacingLogLayer`) until BOTH of the following hold:**
+//!
+//! 1. `UserFacingLogEvent` can be derived from the structured event stream —
+//!    `Event::Diagnostic` (severity → `UserFacingLogLevel`, `message`/`help`)
+//!    plus `Event::NodeStatusChanged` (node identity, start/finish/terminate
+//!    timing) plus the Task-4 `NodeMetrics` carried on the terminal
+//!    `NodeStatusChanged` (`features_processed`/`features_written`/
+//!    `finish_feature_count`) — instead of regexing the log strings this
+//!    parser matches (`:43-48` below: `... process start...`, `... process
+//!    finish. elapsed = ...`, `... terminate ...`, `Error operation,
+//!    processor node name = ...`, `source error:`, `sink error:`). Those
+//!    strings are frozen (LOG-PROSE FREEZE, see `Makefile.toml`/the phase-3
+//!    plan's Global Constraints) precisely so this parser keeps working
+//!    until its replacement lands — freezing them is not itself the
+//!    replacement.
+//! 2. Both UI consumers of the resulting stream keep their `level` field
+//!    (`UserFacingLogLevel`, `UserFacingLogEvent::level`) working end to end:
+//!    the live GraphQL subscription (`GetSubscribedUserFacingLogs`, fed by
+//!    the pubsub publish in this module's call chain) AND the historical
+//!    JSONL download at `Job.userFacingLogsURL` (written by
+//!    `USER_FACING_LOG_FILE_WRITER`, `logger.rs`). Both currently branch UI
+//!    rendering on `level` (`ui/src/components/LogsTable`); a replacement
+//!    that can't populate it for every row is not a drop-in replacement.
+//!
+//! Until both hold, this parser is the only source of `UserFacingLogEvent`s
+//! and `NodeFailureHandler` (`event_handler.rs`) is a related, separately
+//! gated retirement candidate — see its own registration comment in
+//! `command.rs`. Neither is deleted by this task.
+
 use regex::Regex;
 use std::time::Duration;
 

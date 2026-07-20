@@ -164,17 +164,19 @@ fn passing_workflow_yields_ok_summary_with_no_diagnostics() {
 /// a populated `failed_nodes`. This is the thread-error invariant Task 6
 /// explicitly does not change (a later task relaxes it).
 ///
-/// This uses scenario-05, not scenario-06: scenario-06's "Attribute
-/// Aggregator" error is a per-feature `process()` error that — since the
-/// "unify node failure precedence" work (`Event::ProcessorFailed` +
-/// `NodeStatus::Failed`, `runtime/src/executor/processor_node.rs`
-/// `reconcile_terminate_result`) — sets `has_failed`/emits a status event
-/// but does *not* propagate as an `ExecutionError`, so the node thread
-/// itself still returns `Ok(())`. See
-/// `processor_failure_event_can_diverge_from_thread_result` below, which
-/// documents that case directly. Scenario-05's source error, by contrast, is
-/// a genuine `Err` returned from the source thread's `receiver_loop` and so
-/// exercises `DagExecutorJoinHandle::join`'s early-`Err` branch for real.
+/// This uses scenario-05, not scenario-06, purely for setup simplicity:
+/// scenario-05's source error is a `?`-propagated `ExecutionError` straight
+/// out of `SourceNode::run`, with nothing else in the picture. scenario-06's
+/// "Attribute Aggregator" error is a per-feature `process()` error that — as
+/// of Task 6 (C12 convergence) — ALSO now surfaces as an `ExecutionError`
+/// and takes this exact same early-`Err` branch, just via a different route:
+/// it first records a synthesized `internal.unclassified` fatal into the
+/// node's fatal slot (`runtime/src/executor/processor_node.rs`'s
+/// `synthesize_process_error_fatal`, called from `process()`), which
+/// `reconcile_terminate_result`'s `(Ok(()), Some(diag))` arm then turns into
+/// the node thread's own `Err`. See
+/// `processor_failure_event_converges_with_thread_result` below, which
+/// exercises that route directly and inspects the synthesized diagnostic.
 #[test]
 fn failing_source_workflow_yields_err() {
     let err = run_with_event_handler("05_source_error")
@@ -330,30 +332,116 @@ fn run_with_sandbox_root_wrapper_still_returns_err_under_continue_policy() {
     );
 }
 
-/// scenario-06 (processor error): documents the *divergence* case the
-/// worker's belt-and-braces `JobResult` derivation (`worker/src/command.rs`)
-/// exists to catch. The "Attribute Aggregator" node's `process()` returns an
-/// `Err` for a missing attribute, which sets `has_failed`, sends
+/// Scenario-06's failing "ErrorProcessor" node id ("Attribute Aggregator"
+/// action) — no subgraphs in that fixture, so composed id == raw id. Read
+/// straight out of `logging/06_processor_error/workflow.yml`.
+const SCENARIO_06_PROCESSOR_NODE_ID: &str = "b1fa0a3e-61d3-48e2-a328-e7226c2ad1ae";
+
+/// scenario-06 (processor error): the two failure signals converged (C12 /
+/// Task 6). The "Attribute Aggregator" node's `process()` returns an `Err`
+/// for a missing attribute, which sets `has_failed`, sends
 /// `Event::ProcessorFailed`, and emits `NodeStatus::Failed` — the signal
-/// `NodeFailureHandler` (event-driven) keys off — but does not itself
-/// propagate to the node thread's `Result`, so the thread still returns
-/// `Ok(())` and `join()`/`fold_outcomes` sees no failure at all. So, today,
-/// `run_with_event_handler` returns `Ok(summary)` with an *empty*
-/// `failed_nodes` for this fixture even though the run visibly failed a
-/// node. This is exactly why the worker checks both signals and logs when
-/// they disagree, rather than trusting `RunSummary` alone.
+/// `NodeFailureHandler` (event-driven) keys off. That per-feature error also
+/// now records a synthesized `internal.unclassified` fatal `Diagnostic` into
+/// the node's per-node fatal slot (`processor_node.rs`'s
+/// `synthesize_process_error_fatal`, called from `process()`), so
+/// `on_terminate`'s `take_fatal()` sees it and
+/// `reconcile_terminate_result`'s `(Ok(()), Some(diag))` arm fails the node
+/// *thread* with a real `ExecutionError` — exactly the same arm a
+/// `ctx.report()`-originated Fatal already takes.
+///
+/// Under this fixture's default `errorPolicy` (`OnFatalInput::Terminate`),
+/// that thread-level `Err` now makes `DagExecutorJoinHandle::join` — and so
+/// `run_with_event_handler` — return `Err` for the whole run, same as any
+/// other Fatal-classified node failure (see `failing_source_workflow_yields_err`
+/// above): the divergence is gone because both signals now agree this run
+/// failed, instead of `NodeFailureHandler` alone catching it while
+/// `RunSummary` stayed clean. `processor_failure_under_continue_policy_lands_in_failed_nodes`
+/// below exercises the `onFatal: continue` counterpart, where the
+/// convergence is visible directly in `RunSummary.failed_nodes` instead.
 #[test]
-fn processor_failure_event_can_diverge_from_thread_result() {
-    let summary = run_with_event_handler("06_processor_error").expect(
-        "scenario-06's per-feature processor error does not propagate to an ExecutionError, \
-         so the node thread — and therefore run_with_event_handler — still returns Ok",
+fn processor_failure_event_converges_with_thread_result() {
+    use reearth_flow_diagnostics::{Diagnostic, Disposition, ErrorCode};
+    use reearth_flow_runtime::errors::ExecutionError;
+
+    let err = run_with_event_handler("06_processor_error").expect_err(
+        "scenario-06's per-feature processor error now records a synthesized fatal into the \
+         node's fatal slot, so reconcile_terminate_result's (Ok(()), Some(diag)) arm fails the \
+         node thread with a real ExecutionError — under the default onFatal: Terminate policy \
+         that now aborts the whole run, exactly like a ctx.report()-originated Fatal already did",
     );
-    assert!(
-        summary.failed_nodes.is_empty(),
-        "if this now fails, the Attribute Aggregator has started propagating process() errors \
-         as a thread-level ExecutionError (e.g. via ctx.fatal()) — update this test's expectation \
-         and consider whether NodeFailureHandler is now redundant with RunSummary"
+
+    match err {
+        Error::ExecutionError(ExecutionError::Processor(boxed)) => {
+            let diagnostic = boxed.downcast::<Diagnostic>().unwrap_or_else(|e| {
+                panic!("expected the fatal backstop's structured Diagnostic, got a plain error: {e}")
+            });
+            assert_eq!(diagnostic.code, ErrorCode::InternalUnclassified);
+            assert_eq!(
+                diagnostic.node_id.as_deref(),
+                Some(SCENARIO_06_PROCESSOR_NODE_ID)
+            );
+            assert_eq!(
+                diagnostic.action_type.as_deref(),
+                Some("Attribute Aggregator")
+            );
+            assert_eq!(diagnostic.effective_disposition, Some(Disposition::Fatal));
+            assert!(
+                diagnostic.message.contains("nonexistentAttribute"),
+                "expected the rendered process() error text in the message, got: {}",
+                diagnostic.message
+            );
+        }
+        other => panic!(
+            "expected ExecutionError::Processor wrapping the synthesized fatal Diagnostic, got: {other}"
+        ),
+    }
+}
+
+/// Contract (a)'s other half, proven directly: under `onFatal: continue`,
+/// scenario-06's per-feature processor error reaches `RunSummary.failed_nodes`
+/// (composed id + action + `internal.unclassified` + Fatal-stamped), the same
+/// shape `fold_outcomes` already gives every other node-thread failure (see
+/// `failing_source_workflow_under_continue_policy_yields_ok_with_failed_nodes`
+/// above). This is the case Task 6's contract describes literally: the fatal
+/// slot recording "fails the node AND lands it in RunSummary.failed_nodes".
+#[test]
+fn processor_failure_under_continue_policy_lands_in_failed_nodes() {
+    use reearth_flow_diagnostics::{Disposition, ErrorCode};
+    use reearth_flow_types::{ErrorPolicy, OnFatal};
+
+    let mut p = prepare_run("06_processor_error");
+    p.workflow.error_policy = Some(ErrorPolicy {
+        on_fatal: OnFatal::Continue,
+        ..Default::default()
+    });
+
+    let summary = Runner::run_with_event_handler(
+        p.job_id,
+        p.workflow,
+        BUILTIN_ACTION_FACTORIES.clone(),
+        p.logger_factory,
+        p.storage_resolver,
+        p.ingress_state,
+        p.feature_state,
+        None,
+        vec![],
+        p.sandbox_root,
+    )
+    .expect("onFatal: continue must turn the failing processor's Err into Ok(summary)");
+
+    assert_eq!(summary.failed_nodes.len(), 1, "{:?}", summary.failed_nodes);
+    let diagnostic = &summary.failed_nodes[0];
+    assert_eq!(
+        diagnostic.node_id.as_deref(),
+        Some(SCENARIO_06_PROCESSOR_NODE_ID)
     );
+    assert_eq!(
+        diagnostic.action_type.as_deref(),
+        Some("Attribute Aggregator")
+    );
+    assert_eq!(diagnostic.code, ErrorCode::InternalUnclassified);
+    assert_eq!(diagnostic.effective_disposition, Some(Disposition::Fatal));
 }
 
 /// scenario-10 (warn-drop aggregation): the real prize. Proves the

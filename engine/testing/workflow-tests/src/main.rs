@@ -342,7 +342,7 @@ impl TestContext {
             .context("failed to build sandbox_root URI")?;
 
         // Run workflow
-        Runner::run_with_sandbox_root(
+        let result = Runner::run_with_sandbox_root(
             job_id,
             workflow,
             action_factories,
@@ -352,9 +352,38 @@ impl TestContext {
             feature_state,
             None,
             sandbox_root,
-        )?;
+        );
 
-        Ok(())
+        match result {
+            Ok(()) => Ok(()),
+            // `expect_failed_nodes` fixtures intentionally feed malformed
+            // input to prove per-file/per-feature errors are reported via
+            // structured output (CSV/JSON), not by crashing the process —
+            // see the field's doc comment in shared_types.rs. Only the two
+            // node-failure-shaped variants are tolerated here (never a
+            // broader `Err(e) => Ok(())`), so a genuinely unexpected
+            // failure (bad workflow, panic-turned-error, I/O failure, ...)
+            // still fails the test loudly:
+            // - `ExecutionError` is what a failing node's own thread
+            //   returns under the default (`onFatal: Terminate`) policy —
+            //   `join()` short-circuits to this the moment any thread
+            //   errors, without ever building a `RunSummary`.
+            // - `FailedNodes` is `summary_into_unit_result`'s legacy-compat
+            //   mapping of a non-empty `RunSummary.failed_nodes` to `Err`,
+            //   reached instead under an explicit `onFatal: continue`.
+            Err(
+                e @ (reearth_flow_runner::errors::Error::ExecutionError(_)
+                | reearth_flow_runner::errors::Error::FailedNodes(_)),
+            ) if self.profile.expect_failed_nodes => {
+                tracing::info!(
+                    test_name = %self.test_name,
+                    error = %e,
+                    "workflow completed with expected failed node(s); proceeding to output verification"
+                );
+                Ok(())
+            }
+            Err(e) => Err(e.into()),
+        }
     }
 
     pub fn verify_output(&mut self) -> Result<()> {
@@ -1432,6 +1461,7 @@ mod tests {
             summary_output: None,
             expect_result_ok_file: None,
             unexpected_output_validation: None,
+            expect_failed_nodes: false,
         }
     }
 

@@ -11,7 +11,7 @@ use futures::Future;
 use once_cell::sync::Lazy;
 use petgraph::graph::NodeIndex;
 use reearth_flow_common::uri::Uri;
-use reearth_flow_diagnostics::Diagnostic;
+use reearth_flow_diagnostics::{Diagnostic, DiagnosticDraft, Disposition, ErrorCode};
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use tokio::runtime::Handle;
@@ -665,6 +665,7 @@ fn process(
     process_duration_sq_us: Arc<AtomicU64>,
 ) {
     let feature_id = ctx.feature.id;
+    let diagnostics_handle = ctx.diagnostics.clone();
     let channel_manager_guard = channel_manager.read();
     let mut processor_guard = processor.write();
     let channel_manager: &ProcessorChannelForwarder = &channel_manager_guard;
@@ -713,9 +714,58 @@ fn process(
             node: node_handle.clone(),
             name: node_name.clone(),
         });
+
+        // Converge the two failure signals (C12 / Task 6 retirement
+        // precondition for `NodeFailureHandler`): on its own, a per-feature
+        // `process()` error only sets `has_failed` and emits `ProcessorFailed`
+        // above — it never produces a thread-level `Err`, so
+        // `reconcile_terminate_result`'s `(Ok(()), None) => (Ok(()), has_failed)`
+        // arm flips the *status* event to `Failed` while leaving
+        // `RunSummary.failed_nodes` empty (see
+        // `11_run_summary_threading.rs`'s tripwire). Recording a synthesized
+        // fatal into the per-node fatal slot here — the same slot
+        // `ctx.report()`'s Fatal path uses — means `take_fatal()` in
+        // `on_terminate` now sees it, so `reconcile_terminate_result`'s
+        // `(Ok(()), Some(diag))` arm fails the node with a real
+        // `ExecutionError` and it lands in `failed_nodes` too.
+        // `record_fatal` is first-wins, so only the first failing feature's
+        // diagnostic sticks; this block never returns or aborts the loop, so
+        // every later feature in this node still goes through `process()`
+        // normally (log-and-continue is unchanged).
+        if let Some(handle) = &diagnostics_handle {
+            handle.inner.record_fatal(synthesize_process_error_fatal(
+                e.to_string(),
+                handle.inner.node_id().to_string(),
+                handle.inner.action_type().to_string(),
+                feature_id,
+            ));
+        }
     } else {
         features_processed.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     }
+}
+
+/// Synthesizes a fatal `Diagnostic` under `internal.unclassified` for a
+/// per-feature `process()` error, mirroring `dag_executor.rs`'s
+/// `diagnostic_from_execution_error` join-fold fallback (same registry code,
+/// same "render the error's `Display`, stamp node identity" recipe) — but
+/// this one also carries the failing `feature_id`, since it runs while that
+/// identity is still known, unlike the join fold's fallback which runs after
+/// per-feature identity is already lost.
+fn synthesize_process_error_fatal(
+    message: String,
+    node_id: String,
+    action_type: String,
+    feature_id: uuid::Uuid,
+) -> Diagnostic {
+    let mut diagnostic = Diagnostic::from_draft(
+        DiagnosticDraft::new(ErrorCode::InternalUnclassified).with_message(message),
+        Some(node_id),
+        Some(action_type),
+        Some(feature_id),
+    );
+    diagnostic.effective_disposition = Some(Disposition::Fatal);
+    diagnostic
 }
 
 /// Unified failure precedence: a real returned error wins; the fatal slot is
@@ -822,5 +872,38 @@ mod reconcile_tests {
             let superseded = superseded.expect("fatal was present and lost to the terminate error");
             assert_eq!(superseded.message, "fatal");
         }
+    }
+}
+
+#[cfg(test)]
+mod synthesize_process_error_fatal_tests {
+    use super::*;
+    use reearth_flow_diagnostics::{Disposition, ErrorCode};
+
+    /// C12 / Task 6: the synthesized diagnostic must carry the
+    /// `internal.unclassified` registry code, the rendered error text, the
+    /// node's composed identity, and a resolved-fatal disposition — this is
+    /// what lets `take_fatal()` + `reconcile_terminate_result`'s
+    /// `(Ok(()), Some(diag))` arm fail the node and land it in
+    /// `RunSummary.failed_nodes`.
+    #[test]
+    fn carries_error_text_and_node_identity_as_fatal() {
+        let feature_id = uuid::Uuid::new_v4();
+        let diagnostic = synthesize_process_error_fatal(
+            "boom".to_string(),
+            "sub.node-1".to_string(),
+            "AttributeAggregator".to_string(),
+            feature_id,
+        );
+
+        assert_eq!(diagnostic.code, ErrorCode::InternalUnclassified);
+        assert_eq!(diagnostic.message, "boom");
+        assert_eq!(diagnostic.node_id.as_deref(), Some("sub.node-1"));
+        assert_eq!(
+            diagnostic.action_type.as_deref(),
+            Some("AttributeAggregator")
+        );
+        assert_eq!(diagnostic.feature_id, Some(feature_id));
+        assert_eq!(diagnostic.effective_disposition, Some(Disposition::Fatal));
     }
 }
