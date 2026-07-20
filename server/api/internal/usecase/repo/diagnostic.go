@@ -20,6 +20,9 @@ import (
 // JobCompleteEvent's FailedNodes/AggregatedDiagnostics/DroppedEventCount
 // before the source event is deleted from Redis.
 type NodeDiagnostics interface {
+	// FindByJobNodeID scopes to one node's rows. An empty nodeID reads the
+	// job-level bucket, mirroring gateway.Redis.GetNodeDiagnostics' "" →
+	// "_job" fallback (see mongo.NodeDiagnostics.FindByJobNodeID).
 	FindByJobNodeID(ctx context.Context, jobID id.JobID, nodeID string) ([]*diagnostic.Diagnostic, error)
 	FindByJobID(ctx context.Context, jobID id.JobID) ([]*diagnostic.Diagnostic, error)
 	// FindJobSummary reads the single per-job summary row written by

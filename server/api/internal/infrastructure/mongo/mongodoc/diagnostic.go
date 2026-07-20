@@ -23,14 +23,15 @@ type diagnosticAggregateInfoDocument struct {
 	Count            uint64   `bson:"count"`
 }
 
-// DiagnosticDocument is a single per-node (or per-job, when NodeID is nil)
-// diagnostic row in the nodeDiagnostics collection. It is used both for the
-// subscriber's append-only live diagnostic rows (read-only from this
-// module's perspective) and for the terminal failed-node/aggregated rows
-// this module itself writes at job-completion merge time (see
-// NewFailedNodeDocument / NewAggregatedDiagnosticDocument); the latter use a
-// deterministic ID instead of a random ObjectID suffix so JobCompleteEvent
-// redeliveries upsert the same row.
+// DiagnosticDocument is a single per-node (or per-job, when NodeID is the
+// JobDiagnosticNodeSegment sentinel) diagnostic row in the nodeDiagnostics
+// collection. It is used both for the subscriber's append-only live
+// diagnostic rows (read-only from this module's perspective) and for the
+// terminal failed-node/aggregated rows this module itself writes at
+// job-completion merge time (see NewFailedNodeDocument /
+// NewAggregatedDiagnosticDocument); the latter use a deterministic ID
+// instead of a random ObjectID suffix so JobCompleteEvent redeliveries
+// upsert the same row.
 type DiagnosticDocument struct {
 	Timestamp            time.Time                        `bson:"timestamp"`
 	Aggregated           *diagnosticAggregateInfoDocument `bson:"aggregated,omitempty"`
@@ -48,6 +49,23 @@ type DiagnosticDocument struct {
 	Category             string                           `bson:"category"`
 	Severity             string                           `bson:"severity"`
 	Message              string                           `bson:"message"`
+}
+
+// JobDiagnosticNodeSegment is the sentinel node segment used for a
+// diagnostic with no node context (job-level) — both in the
+// {jobId}:{nodeId}:... document ID and in the nodeId bson field itself
+// (mirrors the subscriber's mongodoc.JobDiagnosticNodeSegment; keep the two
+// in lockstep). Model() below strips the sentinel back to nil so it never
+// leaks past the domain layer into GraphQL's Diagnostic.nodeId.
+const JobDiagnosticNodeSegment = "_job"
+
+// normalizedNodeSegment returns nodeID's value, or JobDiagnosticNodeSegment
+// when nodeID is nil or the empty string.
+func normalizedNodeSegment(nodeID *string) string {
+	if nodeID != nil && *nodeID != "" {
+		return *nodeID
+	}
+	return JobDiagnosticNodeSegment
 }
 
 type DiagnosticConsumer = Consumer[*DiagnosticDocument, *diagnostic.Diagnostic]
@@ -68,6 +86,15 @@ func (d *DiagnosticDocument) Model() (*diagnostic.Diagnostic, error) {
 		return nil, err
 	}
 
+	// The nodeId bson field carries the JobDiagnosticNodeSegment sentinel for
+	// job-level rows (see normalizedNodeSegment); translate it back to nil
+	// here so the domain/GraphQL layer keeps its existing nil-means-job-level
+	// semantics instead of leaking the storage convention.
+	nodeID := d.NodeID
+	if nodeID != nil && *nodeID == JobDiagnosticNodeSegment {
+		nodeID = nil
+	}
+
 	b := diagnostic.NewBuilder().
 		JobID(jobID).
 		Timestamp(d.Timestamp).
@@ -75,7 +102,7 @@ func (d *DiagnosticDocument) Model() (*diagnostic.Diagnostic, error) {
 		Category(d.Category).
 		Severity(d.Severity).
 		EffectiveDisposition(d.EffectiveDisposition).
-		NodeID(d.NodeID).
+		NodeID(nodeID).
 		ActionType(d.ActionType).
 		FeatureID(d.FeatureID).
 		Message(d.Message).
@@ -119,15 +146,12 @@ func NewAggregatedDiagnosticDocument(jobID id.JobID, d *diagnostic.Diagnostic) D
 }
 
 func newTerminalDiagnosticDocument(jobID id.JobID, d *diagnostic.Diagnostic, kind string) DiagnosticDocument {
-	nodeSegment := "_job"
-	if d.NodeID() != nil && *d.NodeID() != "" {
-		nodeSegment = *d.NodeID()
-	}
+	nodeSegment := normalizedNodeSegment(d.NodeID())
 
 	doc := DiagnosticDocument{
 		Timestamp:            d.Timestamp(),
 		EffectiveDisposition: d.EffectiveDisposition(),
-		NodeID:               d.NodeID(),
+		NodeID:               &nodeSegment,
 		ActionType:           d.ActionType(),
 		FeatureID:            d.FeatureID(),
 		Help:                 d.Help(),
@@ -176,7 +200,7 @@ type JobDiagnosticsSummaryDocument struct {
 // look the row up directly (upsert or read, see ../diagnostic.go's
 // FindJobSummary) without recomputing the convention.
 func JobDiagnosticsSummaryID(jobID id.JobID) string {
-	return jobID.String() + ":_job:summary"
+	return jobID.String() + ":" + JobDiagnosticNodeSegment + ":summary"
 }
 
 // NewJobDiagnosticsSummaryDocument builds the single per-job summary row

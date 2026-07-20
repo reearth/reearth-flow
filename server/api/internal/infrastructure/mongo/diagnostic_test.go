@@ -5,6 +5,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/reearth/reearth-flow/api/internal/infrastructure/mongo/mongodoc"
 	"github.com/reearth/reearth-flow/api/pkg/diagnostic"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/mongox"
@@ -118,5 +119,38 @@ func TestNodeDiagnostics_FindByJobNodeID_And_FindByJobID(t *testing.T) {
 		got, err := r.FindJobSummary(ctx, id.NewJobID())
 		assert.NoError(t, err)
 		assert.Nil(t, got)
+	})
+
+	// T5 normalization fix pin: simulates a row the subscriber's own
+	// mongodoc.NewDiagnosticDocument writes for a DiagnosticEvent with no
+	// nodeId — the nodeId bson field carries the "_job" sentinel, mirroring
+	// the document ID's "_job" segment (both mongodoc.DiagnosticDocument
+	// shapes are kept in lockstep). Before the fix, the field stayed
+	// nil/raw-empty while only the ID got the sentinel, so this exact
+	// FindByJobNodeID("") lookup could never match.
+	t.Run("FindByJobNodeID with empty nodeID finds a subscriber-written job-level row", func(t *testing.T) {
+		jobLevelJobID := id.NewJobID()
+		nodeSegment := mongodoc.JobDiagnosticNodeSegment
+		subscriberWrittenDoc := mongodoc.DiagnosticDocument{
+			Timestamp:  now,
+			NodeID:     &nodeSegment,
+			ID:         jobLevelJobID.String() + ":_job:507f1f77bcf86cd799439011",
+			JobID:      jobLevelJobID.String(),
+			WorkflowID: "11111111-1111-1111-1111-111111111111",
+			Schema:     "diagnostic.v1",
+			Code:       "internal.unclassified",
+			Category:   "internal",
+			Severity:   "warn",
+			Message:    "job-level diagnostic with no node context",
+		}
+		impl, ok := r.(*NodeDiagnostics)
+		require.True(t, ok)
+		require.NoError(t, impl.client.SaveOne(ctx, subscriberWrittenDoc.ID, subscriberWrittenDoc))
+
+		got, err := r.FindByJobNodeID(ctx, jobLevelJobID, "")
+		assert.NoError(t, err)
+		require.Len(t, got, 1)
+		assert.Equal(t, "internal.unclassified", got[0].Code())
+		assert.Nil(t, got[0].NodeID(), "the _job sentinel must not leak into the domain model")
 	})
 }

@@ -43,19 +43,41 @@ type DiagnosticDocument struct {
 	Message              string                           `bson:"message"`
 }
 
+// JobDiagnosticNodeSegment is the sentinel node segment used for a
+// diagnostic with no node context (job-level) — both in the
+// {jobId}:{nodeId}:{ObjectID} document ID and in the nodeId bson field
+// itself. Storing the sentinel in the field too (not just the ID) keeps the
+// api's FindByJobNodeID field-equality lookups symmetric with the ID
+// convention: previously an absent/empty nodeId left the bson field nil (or
+// the raw empty string) while the ID still got the "_job" segment, so a
+// "_job" lookup against the field could never match these rows.
+const JobDiagnosticNodeSegment = "_job"
+
+// normalizedNodeSegment returns nodeID's value, or JobDiagnosticNodeSegment
+// when nodeID is nil or the empty string.
+func normalizedNodeSegment(nodeID *string) string {
+	if nodeID != nil && *nodeID != "" {
+		return *nodeID
+	}
+	return JobDiagnosticNodeSegment
+}
+
 // NewDiagnosticDocument builds the persisted row for a DiagnosticEvent. The
 // id is synthesized as {jobId}:{nodeId-or-_job}:{ObjectID} so rows append
-// rather than collide, while the jobId/nodeId bson fields stay queryable
-// (NodeID is nil, not the literal "_job", when the event has no nodeId).
+// rather than collide; the nodeId bson field carries the same
+// nodeId-or-_job value (see JobDiagnosticNodeSegment) so field-equality
+// reads stay consistent with the ID convention.
 func NewDiagnosticDocument(event *diagnostic.DiagnosticEvent) DiagnosticDocument {
+	nodeSegment := normalizedNodeSegment(event.NodeID)
+
 	doc := DiagnosticDocument{
 		Timestamp:            event.Timestamp,
 		EffectiveDisposition: event.EffectiveDisposition,
-		NodeID:               event.NodeID,
+		NodeID:               &nodeSegment,
 		ActionType:           event.ActionType,
 		FeatureID:            event.FeatureID,
 		Help:                 event.Help,
-		ID:                   diagnosticDocumentID(event),
+		ID:                   event.JobID + ":" + nodeSegment + ":" + primitive.NewObjectID().Hex(),
 		JobID:                event.JobID,
 		WorkflowID:           event.WorkflowID,
 		Schema:               event.Schema,
@@ -80,12 +102,4 @@ func NewDiagnosticDocument(event *diagnostic.DiagnosticEvent) DiagnosticDocument
 	}
 
 	return doc
-}
-
-func diagnosticDocumentID(event *diagnostic.DiagnosticEvent) string {
-	nodeSegment := "_job"
-	if event.NodeID != nil && *event.NodeID != "" {
-		nodeSegment = *event.NodeID
-	}
-	return event.JobID + ":" + nodeSegment + ":" + primitive.NewObjectID().Hex()
 }

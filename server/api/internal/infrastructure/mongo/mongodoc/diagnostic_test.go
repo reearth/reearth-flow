@@ -62,7 +62,17 @@ func TestNewFailedNodeDocument_FallsBackToJobSegment(t *testing.T) {
 
 	doc := NewFailedNodeDocument(jobID, d)
 	assert.Equal(t, jobID.String()+":_job:failed:internal.unclassified", doc.ID)
-	assert.Nil(t, doc.NodeID)
+	// The nodeId bson field carries the same "_job" sentinel as the ID
+	// segment (T5 normalization fix), not nil/the raw empty string.
+	require.NotNil(t, doc.NodeID)
+	assert.Equal(t, JobDiagnosticNodeSegment, *doc.NodeID)
+
+	// Round-tripping through Model() must strip the sentinel back to nil:
+	// the domain/GraphQL layer's nil-means-job-level semantics must not see
+	// the internal storage convention.
+	modelDiagnostic, err := doc.Model()
+	require.NoError(t, err)
+	assert.Nil(t, modelDiagnostic.NodeID())
 }
 
 func TestDiagnosticDocument_Model_NilReceiver(t *testing.T) {

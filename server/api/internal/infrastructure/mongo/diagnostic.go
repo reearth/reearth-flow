@@ -41,7 +41,16 @@ func (r *NodeDiagnostics) Init(ctx context.Context) error {
 	return createIndexes(ctx, r.client, diagnosticIndexKeys, nil)
 }
 
+// FindByJobNodeID scopes to one node's rows. An empty nodeID (mirroring
+// gateway.Redis.GetNodeDiagnostics' "" → "_job" fallback) reads the
+// job-level bucket: the nodeId bson field itself carries the
+// mongodoc.JobDiagnosticNodeSegment sentinel for those rows (see the T5
+// normalization fix), so this is a plain field-equality match once
+// normalized.
 func (r *NodeDiagnostics) FindByJobNodeID(ctx context.Context, jobID id.JobID, nodeID string) ([]*diagnostic.Diagnostic, error) {
+	if nodeID == "" {
+		nodeID = mongodoc.JobDiagnosticNodeSegment
+	}
 	filter := bson.M{
 		"jobId":  jobID.String(),
 		"nodeId": nodeID,
