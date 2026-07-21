@@ -5136,6 +5136,7 @@ dependencies = [
  "regex",
  "serde",
  "serde_json",
+ "slog",
  "tempfile",
  "thiserror 2.0.18",
  "time",
