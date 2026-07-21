@@ -27,7 +27,7 @@ impl ProcessorFactory for FeatureFilterFactory {
     }
 
     fn description(&self) -> &str {
-        "Filter Features Based on Custom Conditions"
+        "Routes features to named output ports based on user-defined filter conditions."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -159,9 +159,11 @@ struct FeatureFilterParam {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct Condition {
-    /// # Condition expression
+    /// # Condition Expression
+    /// Boolean expression evaluated against each feature; features for which it returns true are routed to this condition's output port.
     expr: Code<{ CodeType::FlowExpr as u32 }>,
-    /// # Output port
+    /// # Output Port
+    /// Name of the output port that receives features matching this condition.
     output_port: Port,
 }
 

@@ -23,7 +23,7 @@ pub(super) struct ClosedCurveFilterFactory;
 
 impl ProcessorFactory for ClosedCurveFilterFactory {
     fn name(&self) -> &str {
-        "ClosedCurveFilter"
+        "Closed Curve Filter"
     }
 
     fn description(&self) -> &str {
@@ -104,7 +104,7 @@ impl Processor for ClosedCurveFilter {
     }
 
     fn name(&self) -> &str {
-        "ClosedCurveFilter"
+        "Closed Curve Filter"
     }
 }
 

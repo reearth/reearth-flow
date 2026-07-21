@@ -31,7 +31,7 @@ use writer::CityGmlXmlWriter;
 /// Write `features` as CityGML 2.0 to `output`, copying texture images alongside it.
 ///
 /// This is the single canonical implementation shared by both the `CityGmlWriter` sink and
-/// the `FeatureWriter` processor.
+/// the `Feature Writer` processor.
 #[cfg(not(feature = "new-geometry"))]
 #[allow(clippy::too_many_arguments)]
 pub fn write_citygml_to_storage(

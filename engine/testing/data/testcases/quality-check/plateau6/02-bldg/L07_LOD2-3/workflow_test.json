@@ -38,7 +38,10 @@
     }
   ],
   "expectedOutput": {
-    "expectedFile": "02_建築物_LOD2以上境界面のエラー.csv"
+    "expectedFile": [
+      "02_建築物_LOD2以上境界面のエラー.csv",
+      "error_geometry/02_建築物_LOD2以上境界面のエラー.geojson"
+    ]
   },
   "summaryOutput": {
     "errorCountSummary": {

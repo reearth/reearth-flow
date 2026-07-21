@@ -19,7 +19,7 @@ pub(super) struct ListIndexerFactory;
 
 impl ProcessorFactory for ListIndexerFactory {
     fn name(&self) -> &str {
-        "ListIndexer"
+        "List Indexer"
     }
 
     fn description(&self) -> &str {
@@ -70,7 +70,7 @@ impl ProcessorFactory for ListIndexerFactory {
     }
 }
 
-/// # ListIndexer Parameters
+/// # List Indexer Parameters
 ///
 /// Configuration for copying attributes from a specific list element to main feature attributes.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -162,6 +162,6 @@ impl Processor for ListIndexer {
     }
 
     fn name(&self) -> &str {
-        "ListIndexer"
+        "List Indexer"
     }
 }

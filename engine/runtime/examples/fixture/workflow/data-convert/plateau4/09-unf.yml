@@ -137,7 +137,7 @@ graphs:
   - id: 278ab965-ce22-473d-98c6-c7b381c38679
     name: GeometryFilter
     type: action
-    action: GeometryFilter
+    action: Geometry Filter
     with:
       filterType: none
   - id: 1787b15c-19b5-4386-a0ff-f0e58f477d07
@@ -336,7 +336,7 @@ graphs:
   - id: e5a9b6c0-1f2d-3e4a-7b8c-d90123d1c702
     name: AttributeDuplicateFilterDict
     type: action
-    action: AttributeDuplicateFilter
+    action: Attribute Duplicate Filter
     with:
       filterBy:
       - feature_type_without_prefix

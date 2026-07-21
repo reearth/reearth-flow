@@ -24,11 +24,11 @@
       }
     },
     {
-      "name": "AreaOnAreaOverlayer",
+      "name": "Area On Area Overlayer",
       "description": "在一个区域上叠加另一个区域",
       "parameterI18n": {
         "": {
-          "title": "AreaOnAreaOverlayer Parameters",
+          "title": "Area On Area Overlayer Parameters",
           "description": "Configure how area overlay analysis is performed"
         },
         "accumulationMode": {
@@ -108,6 +108,20 @@
       }
     },
     {
+      "name": "Attribute Bulk Array Joiner",
+      "description": "将数组属性连接为单个值",
+      "parameterI18n": {
+        "": {
+          "title": "Attribute Bulk Array Joiner Parameters",
+          "description": "Configure which array attributes to join into single values"
+        },
+        "ignoreAttributes": {
+          "title": "Attributes to Ignore",
+          "description": "List of attribute names to skip during array joining process"
+        }
+      }
+    },
+    {
       "name": "Attribute Conversion Table",
       "description": "使用查找表转换要素属性",
       "parameterI18n": {
@@ -145,6 +159,32 @@
           "featureTo": {
             "title": "Attribute to convert to"
           }
+        }
+      }
+    },
+    {
+      "name": "Attribute Duplicate Filter",
+      "description": "筛选具有重复属性的实体",
+      "parameterI18n": {
+        "": {
+          "title": "Attribute Duplicate Filter Parameters"
+        },
+        "filterBy": {
+          "title": "Filter Attributes",
+          "description": "Attributes used to identify duplicate features - features with identical values for these attributes will be deduplicated"
+        }
+      }
+    },
+    {
+      "name": "Attribute File Path Info Extractor",
+      "description": "从属性中提取文件路径信息",
+      "parameterI18n": {
+        "": {
+          "title": "Attribute File Path Info Extractor Parameters"
+        },
+        "attribute": {
+          "title": "Source Path Attribute",
+          "description": "Attribute containing the file path to analyze for extracting file system information"
         }
       }
     },
@@ -224,51 +264,11 @@
       }
     },
     {
-      "name": "AttributeBulkArrayJoiner",
-      "description": "将数组属性连接为单个值",
-      "parameterI18n": {
-        "": {
-          "title": "AttributeBulkArrayJoiner Parameters",
-          "description": "Configure which array attributes to join into single values"
-        },
-        "ignoreAttributes": {
-          "title": "Attributes to Ignore",
-          "description": "List of attribute names to skip during array joining process"
-        }
-      }
-    },
-    {
-      "name": "AttributeDuplicateFilter",
-      "description": "筛选具有重复属性的实体",
-      "parameterI18n": {
-        "": {
-          "title": "AttributeDuplicateFilter Parameters"
-        },
-        "filterBy": {
-          "title": "Filter Attributes",
-          "description": "Attributes used to identify duplicate features - features with identical values for these attributes will be deduplicated"
-        }
-      }
-    },
-    {
-      "name": "AttributeFilePathInfoExtractor",
-      "description": "从属性中提取文件路径信息",
-      "parameterI18n": {
-        "": {
-          "title": "AttributeFilePathInfoExtractor Parameters"
-        },
-        "attribute": {
-          "title": "Source Path Attribute",
-          "description": "Attribute containing the file path to analyze for extracting file system information"
-        }
-      }
-    },
-    {
-      "name": "AttributeRangeMapper",
+      "name": "Attribute Range Mapper",
       "description": "将属性值映射到范围并分配相应的输出值",
       "parameterI18n": {
         "": {
-          "title": "AttributeRangeMapper Parameters"
+          "title": "Attribute Range Mapper Parameters"
         },
         "defaultValue": {
           "title": "Default Value",
@@ -305,11 +305,11 @@
       }
     },
     {
-      "name": "BoundaryExtractor",
+      "name": "Boundary Extractor",
       "description": "提取几何体的边界。对于实体/网格返回边界面，对于面返回边界边，对于封闭面返回空几何体",
       "parameterI18n": {
         "": {
-          "title": "BoundaryExtractor Parameters",
+          "title": "Boundary Extractor Parameters",
           "description": "Configuration for extracting boundaries from geometries."
         },
         "exteriorOnly": {
@@ -448,7 +448,7 @@
       }
     },
     {
-      "name": "CSGBuilder",
+      "name": "CSG Builder",
       "description": "从一对（左、右）实体几何体构建构造实体几何（CSG）表示。检测并集、交集和差集（左-右），但不计算结果几何体。使用CSGEvaluator来评估CSG树。",
       "parameterI18n": {
         "": {
@@ -470,7 +470,7 @@
       }
     },
     {
-      "name": "CSGEvaluator",
+      "name": "CSG Evaluator",
       "description": "对构造实体几何（CSG）树进行求值以生成实体几何体。接受CSG表示，计算布尔运算产生的网格。",
       "parameterI18n": {
         "": {
@@ -574,11 +574,117 @@
       }
     },
     {
-      "name": "CenterPointReplacer",
+      "name": "CZML Reader",
+      "description": "从CZML（Cesium语言）文件读取用于3D可视化的地理要素，支持时间动态属性和时间序列数据",
+      "parameterI18n": {
+        "": {
+          "title": "CZML Reader Parameters",
+          "description": "Configuration for reading CZML files as geographic features."
+        },
+        "dataset": {
+          "title": "File Path",
+          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)"
+        },
+        "force2d": {
+          "title": "Force 2D",
+          "description": "If true, forces all geometries to be 2D (ignoring Z values)"
+        },
+        "inline": {
+          "title": "Inline Content",
+          "description": "Expression that returns the file content as text instead of reading from a file path"
+        },
+        "skipDocumentPacket": {
+          "title": "Skip Document Packet",
+          "description": "If true, skips the document packet (first packet with version/clock info)"
+        },
+        "timeSampling": {
+          "title": "Time Sampling Strategy",
+          "description": "How to handle time-dynamic properties in CZML packets. Defaults to \"preserveRaw\" for lossless round-trip with CZML Writer."
+        }
+      },
+      "enumI18n": {
+        "TimeSamplingStrategy": {
+          "allSamples": {
+            "description": "Extract all time-tagged samples as separate features, each with a `czml.timestamp` and `czml.timeOffset` attribute. Useful when you need per-sample processing in downstream actions."
+          },
+          "firstSampleOnly": {
+            "description": "Keep the first sample only (static geometry). Use this for workflows that don't need timeseries data."
+          },
+          "preserveRaw": {
+            "description": "Embed the full timeseries in one feature per entity. The feature geometry uses the first sample, `czml.timeseries` holds all position samples as a JSON array, and all other CZML packet properties (point, path, orientation, ellipsoid, etc.) are preserved as `czml.<key>` attributes for faithful round-trip through CZML Writer."
+          }
+        }
+      }
+    },
+    {
+      "name": "CZML Writer",
+      "description": "将要素导出为CZML格式用于Cesium可视化，支持时间动态实体和时间序列位置数据",
+      "parameterI18n": {
+        "": {
+          "title": "CZML Writer Parameters",
+          "description": "Configuration for writing geographic features to CZML files. Supports both static entities and time-dynamic entities with interpolated position samples.\n\n## Timeseries Configuration\n\nTo create time-animated entities in Cesium, configure at least the first two parameters below; configure `epoch` only when using numeric time offsets: 1. `timeField` - Attribute containing time values 2. `groupTimeseriesBy` - Attribute to group features into entities 3. `epoch` (optional) - Base time used when `timeField` contains numeric offsets\n\n### Example with ISO 8601 timestamps: ```yaml - action: CZML Writer with: output: \"vehicles.czml\" timeField: \"timestamp\"           # Contains \"2024-01-01T00:00:00Z\", etc. groupTimeseriesBy: \"vehicleId\"   # Groups by vehicle ID interpolationAlgorithm: \"LAGRANGE\" interpolationDegree: 5 ```\n\n### Example with numeric time offsets: ```yaml - action: CZML Writer with: output: \"sensors.czml\" timeField: \"timeOffset\"          # Contains numeric values: 0, 60, 120, etc. groupTimeseriesBy: \"sensorId\" epoch: \"2024-01-01T00:00:00Z\"    # Base time for offsets interpolationAlgorithm: \"LINEAR\" ```"
+        },
+        "colorAttribute": {
+          "title": "Color Attribute",
+          "description": "Attribute containing a hex color string (e.g., \"#ffd8c0\") for polygon fill. Used when polygon geometry is auto-converted from the feature geometry."
+        },
+        "epoch": {
+          "title": "Epoch",
+          "description": "Reference time (ISO 8601 format) used as the base for numeric time offsets.\n\n**When to use:** - Optional but recommended when `timeField` contains numeric values (e.g., \"0\", \"60\", \"3600\") - Not needed when `timeField` contains ISO 8601 datetime strings\n\n**Format:** ISO 8601 datetime string with timezone - Examples: \"2024-01-01T00:00:00Z\", \"2024-06-15T09:00:00+09:00\"\n\n**Auto-detection:** If omitted and all time values are numeric, automatically defaults to Unix epoch \"1970-01-01T00:00:00Z\". For custom time ranges, explicitly set this parameter to your desired base time.\n\n**Example:** ```yaml epoch: \"2024-01-01T00:00:00Z\"  # Time value \"60\" means 2024-01-01T00:01:00Z ```"
+        },
+        "groupBy": {
+          "title": "Group By Attributes",
+          "description": "Attributes used to group features into separate CZML files"
+        },
+        "groupTimeseriesBy": {
+          "title": "Group Timeseries By",
+          "description": "Attribute used to group features into a single time-dynamic CZML entity. Features with the same value for this attribute are merged into one packet with time-tagged positions."
+        },
+        "heightAttribute": {
+          "title": "Height Attribute",
+          "description": "Attribute containing a numeric value for polygon extrusion height. When set, polygons are extruded from ground to this height value."
+        },
+        "interpolationAlgorithm": {
+          "title": "Interpolation Algorithm",
+          "description": "Algorithm used by Cesium to interpolate between time-tagged samples."
+        },
+        "interpolationDegree": {
+          "title": "Interpolation Degree",
+          "description": "Degree of interpolation (1 for LINEAR, 5 typical for LAGRANGE)."
+        },
+        "opacity": {
+          "title": "Opacity",
+          "description": "Alpha value (0–255) for polygon fill color. Default: 180."
+        },
+        "output": {
+          "title": "Output File Path",
+          "description": "Path where the CZML file will be written"
+        },
+        "timeField": {
+          "title": "Time Field",
+          "description": "Attribute containing the timestamp for each feature. Supports two formats: - **ISO 8601 strings**: e.g., \"2024-01-01T00:00:00Z\", \"2024-01-01T12:30:45+09:00\" - **Numeric values**: Seconds as offset from epoch (e.g., \"0\", \"60\", \"120.5\")\n\nWhen set together with `groupTimeseriesBy`, features sharing the same group key are combined into a single CZML entity with time-tagged position samples for animation in Cesium.\n\n**Example workflow configuration:** ```yaml - action: CZML Writer with: output: \"output.czml\" timeField: \"timestamp\" groupTimeseriesBy: \"vehicleId\" epoch: \"2024-01-01T00:00:00Z\"  # Optional for numeric times (auto-defaults to Unix epoch) ```"
+        }
+      },
+      "enumI18n": {
+        "InterpolationAlgorithm": {
+          "HERMITE": {
+            "description": "Hermite spline interpolation using tangent data."
+          },
+          "LAGRANGE": {
+            "description": "Lagrange polynomial interpolation for smooth curves (typical degree 5)."
+          },
+          "LINEAR": {
+            "description": "Linear interpolation between samples (degree 1)."
+          }
+        }
+      }
+    },
+    {
+      "name": "Center Point Replacer",
       "description": "将实体的几何形状替换为位于其包围盒中心、质心或实体区域内部的点。",
       "parameterI18n": {
         "": {
-          "title": "CenterPointReplacerParam"
+          "title": "Center Point ReplacerParam"
         },
         "mode": {
           "description": "The method used to compute the replacement center point."
@@ -603,39 +709,43 @@
       "description": "将实体写入文件",
       "parameterI18n": {
         "": {
-          "title": "Cesium3DTilesWriter Parameters"
+          "title": "Cesium3DTilesWriter 参数"
         },
         "attachTexture": {
-          "title": "Attach Textures",
-          "description": "Whether to include texture information in the generated tiles"
+          "title": "附加纹理",
+          "description": "是否在生成的瓦片中包含纹理信息"
         },
         "compressOutput": {
-          "title": "Compressed Output Path",
-          "description": "Optional path for compressed archive output"
+          "title": "压缩输出路径",
+          "description": "压缩归档输出的可选路径"
+        },
+        "computeFlatNormal": {
+          "title": "计算平面法线",
+          "description": "为光照计算逐多边形的平面法线。默认为 true。禁用时不写入法线，网格更小，但瓦片不包含光照数据（查看器需自行推导平面法线）。"
         },
         "dracoCompression": {
-          "title": "Draco Compression",
-          "description": "Use draco compression. Defaults to true."
+          "title": "Draco 压缩",
+          "description": "使用 Draco 压缩。默认为 true。"
         },
         "maxZoom": {
-          "title": "Maximum Zoom Level",
-          "description": "Maximum zoom level for tile generation (0-24)"
+          "title": "最大缩放级别",
+          "description": "瓦片生成的最大缩放级别（0-24）"
         },
         "minZoom": {
-          "title": "Minimum Zoom Level",
-          "description": "Minimum zoom level for tile generation (0-24)"
+          "title": "最小缩放级别",
+          "description": "瓦片生成的最小缩放级别（0-24）"
         },
         "output": {
-          "title": "Output Path",
-          "description": "Directory path where the 3D tiles will be written"
+          "title": "输出路径",
+          "description": "写入 3D Tiles 的目录路径"
         },
         "schemaKey": {
-          "title": "Schema Key",
-          "description": "Attribute key whose value identifies the schema type and determines the output filename: all features sharing the same value are written to the same file. This attribute is excluded from output."
+          "title": "模式键",
+          "description": "其值用于标识模式类型并决定输出文件名的属性键：所有具有相同值的实体都写入同一文件。该属性会从输出中排除。"
         },
         "skipUnexposedAttributes": {
-          "title": "Skip unexposed Attributes",
-          "description": "Skip attributes with double underscore prefix"
+          "title": "跳过未公开属性",
+          "description": "跳过带有双下划线前缀的属性"
         }
       }
     },
@@ -684,15 +794,15 @@
       "description": "使用裁剪实体来分割候选实体，使内部或外部部分分别输出"
     },
     {
-      "name": "ClosedCurveFilter",
+      "name": "Closed Curve Filter",
       "description": "检查曲线是否形成闭合回路"
     },
     {
-      "name": "ConvexHullAccumulator",
+      "name": "Convex Hull Accumulator",
       "description": "创建凸包",
       "parameterI18n": {
         "": {
-          "title": "ConvexHullAccumulator Parameters"
+          "title": "Convex Hull Accumulator Parameters"
         },
         "groupBy": {
           "title": "Group By Attributes",
@@ -701,7 +811,7 @@
       }
     },
     {
-      "name": "CoordinateExtractor",
+      "name": "Coordinate Extractor",
       "description": "从几何体顶点中提取坐标作为要素属性",
       "parameterI18n": {
         "": {
@@ -718,117 +828,11 @@
       }
     },
     {
-      "name": "CzmlReader",
-      "description": "从CZML（Cesium语言）文件读取用于3D可视化的地理要素，支持时间动态属性和时间序列数据",
-      "parameterI18n": {
-        "": {
-          "title": "CzmlReader Parameters",
-          "description": "Configuration for reading CZML files as geographic features."
-        },
-        "dataset": {
-          "title": "File Path",
-          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)"
-        },
-        "force2d": {
-          "title": "Force 2D",
-          "description": "If true, forces all geometries to be 2D (ignoring Z values)"
-        },
-        "inline": {
-          "title": "Inline Content",
-          "description": "Expression that returns the file content as text instead of reading from a file path"
-        },
-        "skipDocumentPacket": {
-          "title": "Skip Document Packet",
-          "description": "If true, skips the document packet (first packet with version/clock info)"
-        },
-        "timeSampling": {
-          "title": "Time Sampling Strategy",
-          "description": "How to handle time-dynamic properties in CZML packets. Defaults to \"preserveRaw\" for lossless round-trip with CzmlWriter."
-        }
-      },
-      "enumI18n": {
-        "TimeSamplingStrategy": {
-          "allSamples": {
-            "description": "Extract all time-tagged samples as separate features, each with a `czml.timestamp` and `czml.timeOffset` attribute. Useful when you need per-sample processing in downstream actions."
-          },
-          "firstSampleOnly": {
-            "description": "Keep the first sample only (static geometry). Use this for workflows that don't need timeseries data."
-          },
-          "preserveRaw": {
-            "description": "Embed the full timeseries in one feature per entity. The feature geometry uses the first sample, `czml.timeseries` holds all position samples as a JSON array, and all other CZML packet properties (point, path, orientation, ellipsoid, etc.) are preserved as `czml.<key>` attributes for faithful round-trip through CzmlWriter."
-          }
-        }
-      }
-    },
-    {
-      "name": "CzmlWriter",
-      "description": "将要素导出为CZML格式用于Cesium可视化，支持时间动态实体和时间序列位置数据",
-      "parameterI18n": {
-        "": {
-          "title": "CzmlWriter Parameters",
-          "description": "Configuration for writing geographic features to CZML files. Supports both static entities and time-dynamic entities with interpolated position samples.\n\n## Timeseries Configuration\n\nTo create time-animated entities in Cesium, configure at least the first two parameters below; configure `epoch` only when using numeric time offsets: 1. `timeField` - Attribute containing time values 2. `groupTimeseriesBy` - Attribute to group features into entities 3. `epoch` (optional) - Base time used when `timeField` contains numeric offsets\n\n### Example with ISO 8601 timestamps: ```yaml - action: CzmlWriter with: output: \"vehicles.czml\" timeField: \"timestamp\"           # Contains \"2024-01-01T00:00:00Z\", etc. groupTimeseriesBy: \"vehicleId\"   # Groups by vehicle ID interpolationAlgorithm: \"LAGRANGE\" interpolationDegree: 5 ```\n\n### Example with numeric time offsets: ```yaml - action: CzmlWriter with: output: \"sensors.czml\" timeField: \"timeOffset\"          # Contains numeric values: 0, 60, 120, etc. groupTimeseriesBy: \"sensorId\" epoch: \"2024-01-01T00:00:00Z\"    # Base time for offsets interpolationAlgorithm: \"LINEAR\" ```"
-        },
-        "colorAttribute": {
-          "title": "Color Attribute",
-          "description": "Attribute containing a hex color string (e.g., \"#ffd8c0\") for polygon fill. Used when polygon geometry is auto-converted from the feature geometry."
-        },
-        "epoch": {
-          "title": "Epoch",
-          "description": "Reference time (ISO 8601 format) used as the base for numeric time offsets.\n\n**When to use:** - Optional but recommended when `timeField` contains numeric values (e.g., \"0\", \"60\", \"3600\") - Not needed when `timeField` contains ISO 8601 datetime strings\n\n**Format:** ISO 8601 datetime string with timezone - Examples: \"2024-01-01T00:00:00Z\", \"2024-06-15T09:00:00+09:00\"\n\n**Auto-detection:** If omitted and all time values are numeric, automatically defaults to Unix epoch \"1970-01-01T00:00:00Z\". For custom time ranges, explicitly set this parameter to your desired base time.\n\n**Example:** ```yaml epoch: \"2024-01-01T00:00:00Z\"  # Time value \"60\" means 2024-01-01T00:01:00Z ```"
-        },
-        "groupBy": {
-          "title": "Group By Attributes",
-          "description": "Attributes used to group features into separate CZML files"
-        },
-        "groupTimeseriesBy": {
-          "title": "Group Timeseries By",
-          "description": "Attribute used to group features into a single time-dynamic CZML entity. Features with the same value for this attribute are merged into one packet with time-tagged positions."
-        },
-        "heightAttribute": {
-          "title": "Height Attribute",
-          "description": "Attribute containing a numeric value for polygon extrusion height. When set, polygons are extruded from ground to this height value."
-        },
-        "interpolationAlgorithm": {
-          "title": "Interpolation Algorithm",
-          "description": "Algorithm used by Cesium to interpolate between time-tagged samples."
-        },
-        "interpolationDegree": {
-          "title": "Interpolation Degree",
-          "description": "Degree of interpolation (1 for LINEAR, 5 typical for LAGRANGE)."
-        },
-        "opacity": {
-          "title": "Opacity",
-          "description": "Alpha value (0–255) for polygon fill color. Default: 180."
-        },
-        "output": {
-          "title": "Output File Path",
-          "description": "Path where the CZML file will be written"
-        },
-        "timeField": {
-          "title": "Time Field",
-          "description": "Attribute containing the timestamp for each feature. Supports two formats: - **ISO 8601 strings**: e.g., \"2024-01-01T00:00:00Z\", \"2024-01-01T12:30:45+09:00\" - **Numeric values**: Seconds as offset from epoch (e.g., \"0\", \"60\", \"120.5\")\n\nWhen set together with `groupTimeseriesBy`, features sharing the same group key are combined into a single CZML entity with time-tagged position samples for animation in Cesium.\n\n**Example workflow configuration:** ```yaml - action: CzmlWriter with: output: \"output.czml\" timeField: \"timestamp\" groupTimeseriesBy: \"vehicleId\" epoch: \"2024-01-01T00:00:00Z\"  # Optional for numeric times (auto-defaults to Unix epoch) ```"
-        }
-      },
-      "enumI18n": {
-        "InterpolationAlgorithm": {
-          "HERMITE": {
-            "description": "Hermite spline interpolation using tangent data."
-          },
-          "LAGRANGE": {
-            "description": "Lagrange polynomial interpolation for smooth curves (typical degree 5)."
-          },
-          "LINEAR": {
-            "description": "Linear interpolation between samples (degree 1)."
-          }
-        }
-      }
-    },
-    {
-      "name": "DateTimeConverter",
+      "name": "Date Time Converter",
       "description": "在不同格式之间转换日期时间值",
       "parameterI18n": {
         "": {
-          "title": "DateTimeConverter Parameters"
+          "title": "Date Time Converter Parameters"
         },
         "attribute": {
           "description": "Attribute containing the datetime value to convert"
@@ -961,11 +965,11 @@
       }
     },
     {
-      "name": "ExcelWriter",
+      "name": "Excel Writer",
       "description": "将要素写入Microsoft Excel格式（.xlsx文件）",
       "parameterI18n": {
         "": {
-          "title": "ExcelWriter Parameters",
+          "title": "Excel Writer Parameters",
           "description": "Configuration for writing features to Microsoft Excel format."
         },
         "output": {
@@ -987,6 +991,72 @@
         "distance": {
           "title": "Distance",
           "description": "The vertical distance (height) to extrude the polygon. Can be a constant value or an expression"
+        }
+      }
+    },
+    {
+      "name": "Feature CityGML 2 Reader",
+      "description": "读取CityGML 2.0文件：解析文件间的gml:id引用和xlink:href链接",
+      "parameterI18n": {
+        "": {
+          "title": "Feature CityGML 2 Reader Parameters"
+        },
+        "cityGmlAttributesKey": {
+          "title": "CityGML属性键",
+          "description": "设置后，解析的CityGML属性将嵌套在此键下输出到要素中。为null时，属性在顶层输出。默认为null。"
+        },
+        "dataset": {
+          "title": "Dataset",
+          "description": "解析为要读取的CityGML 2.0文件的路径表达式。"
+        },
+        "extractTags": {
+          "title": "提取标签",
+          "description": "要展开为独立要素的要素类型名称。接受限定形式（`bldg:Building`）、本地形式（`Building`）或Clark记法（`{http://…}Building`）。留空表示原样输出所有顶级城市对象。"
+        },
+        "flattenMeasureTypes": {
+          "title": "展平度量类型",
+          "description": "为true时，具有单个`uom`属性和数值文本内容的元素将被转换为数值，单位以兄弟键`{name}_uom`存储。默认为false。"
+        },
+        "flattenSingleChildObjects": {
+          "title": "展平单子对象节点",
+          "description": "为true时，仅包含单个子元素的包装元素将被移除：子元素以其自身标签名为键，始终包裹在数组中并提升至上层。默认为false。"
+        },
+        "keepAttributes": {
+          "title": "保留属性",
+          "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。"
+        }
+      }
+    },
+    {
+      "name": "Feature CityGML 3 Reader",
+      "description": "读取CityGML 3.0文件：解析文件间的gml:id引用和xlink:href链接",
+      "parameterI18n": {
+        "": {
+          "title": "Feature CityGML 3 Reader Parameters"
+        },
+        "cityGmlAttributesKey": {
+          "title": "CityGML属性键",
+          "description": "设置后，解析的CityGML属性将嵌套在此键下输出到要素中。为null时，属性在顶层输出。默认为null。"
+        },
+        "dataset": {
+          "title": "Dataset",
+          "description": "解析为要读取的CityGML 3.0文件的路径表达式。"
+        },
+        "extractTags": {
+          "title": "提取标签",
+          "description": "要展开为独立要素的要素类型名称。接受限定形式（`bldg:Building`）、本地形式（`Building`）或Clark记法（`{http://…}Building`）。留空表示原样输出所有顶级城市对象。"
+        },
+        "flattenMeasureTypes": {
+          "title": "展平度量类型",
+          "description": "为true时，具有单个`uom`属性和数值文本内容的元素将被转换为数值，单位以兄弟键`{name}_uom`存储。默认为false。"
+        },
+        "flattenSingleChildObjects": {
+          "title": "展平单子对象节点",
+          "description": "为true时，仅包含单个子元素的包装元素将被移除：子元素以其自身标签名为键，始终包裹在数组中并提升至上层。默认为false。"
+        },
+        "keepAttributes": {
+          "title": "保留属性",
+          "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。"
         }
       }
     },
@@ -1018,18 +1088,18 @@
       "parameterI18n": {
         "": {
           "title": "Feature Counter Parameters",
-          "description": "Configure how features are counted and grouped, and where to store the count"
+          "description": "Configure how features are numbered and grouped, and where to store the number"
         },
         "countStart": {
           "title": "Start Count",
-          "description": "Starting value for the counter"
+          "description": "Value assigned to the first feature"
         },
         "groupBy": {
           "title": "Group By Attributes",
           "description": "List of attribute names to group features by before counting"
         },
         "outputAttribute": {
-          "title": "Output Attribute",
+          "title": "Count Attribute",
           "description": "Name of the attribute where the count will be stored"
         }
       }
@@ -1047,6 +1117,10 @@
           "description": "Write a script expression that returns a map (single feature) or array of maps (multiple features). Each map represents feature attributes as key-value pairs."
         }
       }
+    },
+    {
+      "name": "Feature Duplicate Filter",
+      "description": "移除重复要素"
     },
     {
       "name": "Feature File Path Extractor",
@@ -1086,11 +1160,26 @@
       "definitionI18n": {
         "Condition": {
           "expr": {
-            "title": "Condition expression"
+            "title": "Condition expression",
+            "description": "Boolean expression evaluated against each feature; features for which it returns true are routed to this condition's output port."
           },
           "outputPort": {
-            "title": "Output port"
+            "title": "Output port",
+            "description": "Name of the output port that receives features matching this condition."
           }
+        }
+      }
+    },
+    {
+      "name": "Feature GeoJSON Writer",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureGeoJsonWriter Parameters",
+          "description": "Configuration for writing features to GeoJSON files."
+        },
+        "output": {
+          "title": "Output",
+          "description": "Path (or expression evaluated per feature) of the GeoJSON file to write. Features sharing a resolved path are written to the same file, so the expression can split features across files by attribute value."
         }
       }
     },
@@ -1103,41 +1192,52 @@
           "description": "Configuration for joining requestor and supplier features based on matching attributes or expressions."
         },
         "conflictResolution": {
+          "title": "Conflict Resolution",
           "description": "Attribute conflict resolution strategy when both requestor and supplier have the same attribute"
         },
         "joinType": {
+          "title": "Join Type",
           "description": "Join type: inner, left, or full"
         },
         "requestorAttribute": {
+          "title": "Requestor Attributes",
           "description": "Attributes from requestor features to use for matching (alternative to requestorAttributeValue)"
         },
         "requestorAttributeValue": {
+          "title": "Requestor Attribute Value",
           "description": "Expression to evaluate for requestor feature matching values (alternative to requestorAttribute)"
         },
         "supplierAttribute": {
+          "title": "Supplier Attributes",
           "description": "Attributes from supplier features to use for matching (alternative to supplierAttributeValue)"
         },
         "supplierAttributeValue": {
+          "title": "Supplier Attribute Value",
           "description": "Expression to evaluate for supplier feature matching values (alternative to supplierAttribute)"
         }
       },
       "enumI18n": {
         "ConflictResolution": {
           "requestorWins": {
+            "title": "Requestor Wins",
             "description": "Requestor attributes win on conflict"
           },
           "supplierWins": {
+            "title": "Supplier Wins",
             "description": "Supplier attributes win on conflict (default)"
           }
         },
         "JoinType": {
           "full": {
+            "title": "Full",
             "description": "Emit all features from both sides"
           },
           "inner": {
+            "title": "Inner",
             "description": "Only emit features where a match exists"
           },
           "left": {
+            "title": "Left",
             "description": "Emit all requestor features (default)"
           }
         }
@@ -1152,6 +1252,7 @@
           "description": "Configuration for filtering features based on Level of Detail (LOD)."
         },
         "filterKey": {
+          "title": "Filter Key",
           "description": "Attribute used to group features for LOD filtering"
         }
       }
@@ -1165,19 +1266,33 @@
           "description": "Configuration for merging requestor and supplier features based on matching attributes or expressions."
         },
         "completeGrouped": {
+          "title": "Complete Grouped",
           "description": "Whether to complete grouped features before processing the next group"
         },
         "requestorAttribute": {
+          "title": "Requestor Attributes",
           "description": "Attributes from requestor features to use for matching (alternative to requestor_attribute_value)"
         },
         "requestorAttributeValue": {
+          "title": "Requestor Attribute Value",
           "description": "Expression to evaluate for requestor feature matching values (alternative to requestor_attribute)"
         },
         "supplierAttribute": {
+          "title": "Supplier Attributes",
           "description": "Attributes from supplier features to use for matching (alternative to supplier_attribute_value)"
         },
         "supplierAttributeValue": {
+          "title": "Supplier Attribute Value",
           "description": "Expression to evaluate for supplier feature matching values (alternative to supplier_attribute)"
+        }
+      }
+    },
+    {
+      "name": "Feature Reader",
+      "description": "根据条件筛选实体",
+      "parameterI18n": {
+        "": {
+          "title": "Feature ReaderParam"
         }
       }
     },
@@ -1190,9 +1305,11 @@
           "description": "Configuration for sorting features based on attribute values."
         },
         "attributes": {
+          "title": "Sort Attributes",
           "description": "Attributes to use for sorting features (sort order based on attribute order)"
         },
         "order": {
+          "title": "Sort Order",
           "description": "Sorting order (ascending or descending)"
         }
       }
@@ -1226,95 +1343,17 @@
           "description": "Configuration for filtering features based on their feature type."
         },
         "targetTypes": {
+          "title": "Target Feature Types",
           "description": "Target feature types"
         }
       }
     },
     {
-      "name": "FeatureCityGml2Reader",
-      "description": "读取CityGML 2.0文件：解析文件间的gml:id引用和xlink:href链接",
-      "parameterI18n": {
-        "": {
-          "title": "FeatureCityGml2Reader Parameters"
-        },
-        "cityGmlAttributesKey": {
-          "title": "CityGML属性键",
-          "description": "设置后，解析的CityGML属性将嵌套在此键下输出到要素中。为null时，属性在顶层输出。默认为null。"
-        },
-        "dataset": {
-          "title": "Dataset",
-          "description": "解析为要读取的CityGML 2.0文件的路径表达式。"
-        },
-        "extractTags": {
-          "title": "提取标签",
-          "description": "要展开为独立要素的要素类型名称。接受限定形式（`bldg:Building`）、本地形式（`Building`）或Clark记法（`{http://…}Building`）。留空表示原样输出所有顶级城市对象。"
-        },
-        "flattenMeasureTypes": {
-          "title": "展平度量类型",
-          "description": "为true时，具有单个`uom`属性和数值文本内容的元素将被转换为数值，单位以兄弟键`{name}_uom`存储。默认为false。"
-        },
-        "flattenSingleChildObjects": {
-          "title": "展平单子对象节点",
-          "description": "为true时，仅包含单个子元素的包装元素将被移除：子元素以其自身标签名为键，始终包裹在数组中并提升至上层。默认为false。"
-        },
-        "keepAttributes": {
-          "title": "保留属性",
-          "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。"
-        }
-      }
-    },
-    {
-      "name": "FeatureCityGml3Reader",
-      "description": "读取CityGML 3.0文件：解析文件间的gml:id引用和xlink:href链接",
-      "parameterI18n": {
-        "": {
-          "title": "FeatureCityGml3Reader Parameters"
-        },
-        "cityGmlAttributesKey": {
-          "title": "CityGML属性键",
-          "description": "设置后，解析的CityGML属性将嵌套在此键下输出到要素中。为null时，属性在顶层输出。默认为null。"
-        },
-        "dataset": {
-          "title": "Dataset",
-          "description": "解析为要读取的CityGML 3.0文件的路径表达式。"
-        },
-        "extractTags": {
-          "title": "提取标签",
-          "description": "要展开为独立要素的要素类型名称。接受限定形式（`bldg:Building`）、本地形式（`Building`）或Clark记法（`{http://…}Building`）。留空表示原样输出所有顶级城市对象。"
-        },
-        "flattenMeasureTypes": {
-          "title": "展平度量类型",
-          "description": "为true时，具有单个`uom`属性和数值文本内容的元素将被转换为数值，单位以兄弟键`{name}_uom`存储。默认为false。"
-        },
-        "flattenSingleChildObjects": {
-          "title": "展平单子对象节点",
-          "description": "为true时，仅包含单个子元素的包装元素将被移除：子元素以其自身标签名为键，始终包裹在数组中并提升至上层。默认为false。"
-        },
-        "keepAttributes": {
-          "title": "保留属性",
-          "description": "为false时，XML属性（如`@gml:id`、`@codeSpace`等`@`前缀条目）将从解析的要素中删除。默认为true。"
-        }
-      }
-    },
-    {
-      "name": "FeatureDuplicateFilter",
-      "description": "移除重复要素"
-    },
-    {
-      "name": "FeatureReader",
-      "description": "根据条件筛选实体",
-      "parameterI18n": {
-        "": {
-          "title": "FeatureReaderParam"
-        }
-      }
-    },
-    {
-      "name": "FeatureWriter",
+      "name": "Feature Writer",
       "description": "将要素写入文件",
       "parameterI18n": {
         "": {
-          "title": "FeatureWriter Parameters",
+          "title": "Feature Writer Parameters",
           "description": "Configuration for writing features to different file formats."
         }
       }
@@ -1445,6 +1484,19 @@
       }
     },
     {
+      "name": "Geometry Coercer",
+      "description": "强制将实体几何转换为特定几何类型",
+      "parameterI18n": {
+        "": {
+          "title": "Geometry Coercer Parameters",
+          "description": "Configuration for coercing geometries to specific target types."
+        },
+        "targetType": {
+          "description": "Target geometry type to coerce features to (e.g., LineString)"
+        }
+      }
+    },
+    {
       "name": "Geometry Extractor",
       "description": "提取实体的几何并作为属性添加",
       "parameterI18n": {
@@ -1455,6 +1507,16 @@
         "outputAttribute": {
           "title": "Output Attribute",
           "description": "Name of the attribute where the extracted geometry data will be stored as compressed JSON"
+        }
+      }
+    },
+    {
+      "name": "Geometry Filter",
+      "description": "根据类型筛选几何",
+      "parameterI18n": {
+        "": {
+          "title": "Geometry Filter Parameters",
+          "description": "Configure how to filter features based on their geometry type"
         }
       }
     },
@@ -1540,82 +1602,8 @@
       }
     },
     {
-      "name": "GeometryCoercer",
-      "description": "强制将实体几何转换为特定几何类型",
-      "parameterI18n": {
-        "": {
-          "title": "GeometryCoercer Parameters",
-          "description": "Configuration for coercing geometries to specific target types."
-        },
-        "targetType": {
-          "description": "Target geometry type to coerce features to (e.g., LineString)"
-        }
-      }
-    },
-    {
-      "name": "GeometryFilter",
-      "description": "根据类型筛选几何",
-      "parameterI18n": {
-        "": {
-          "title": "Geometry Filter Parameters",
-          "description": "Configure how to filter features based on their geometry type"
-        }
-      }
-    },
-    {
-      "name": "GeometryValueFilter",
+      "name": "Geometry Value Filter",
       "description": "根据值筛选几何"
-    },
-    {
-      "name": "GltfReader",
-      "description": "从glTF 2.0文件读取3D模型，支持网格、节点、场景和几何图元",
-      "parameterI18n": {
-        "": {
-          "title": "GltfReaderParam"
-        },
-        "dataset": {
-          "title": "File Path",
-          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)"
-        },
-        "includeNodes": {
-          "title": "Include Nodes",
-          "description": "If true, includes node hierarchy information from the glTF scene graph in feature attributes"
-        },
-        "inline": {
-          "title": "Inline Content",
-          "description": "Expression that returns the file content as text instead of reading from a file path"
-        },
-        "mergeMeshes": {
-          "title": "Merge Meshes",
-          "description": "If true, combines all meshes from the glTF file into a single output feature"
-        },
-        "triangulate": {
-          "title": "Triangulate",
-          "description": "If true, converts all primitives to triangles (reserved for future use - currently all primitives are processed as triangles)"
-        }
-      }
-    },
-    {
-      "name": "GltfWriter",
-      "description": "将实体写入Gltf文件",
-      "parameterI18n": {
-        "": {
-          "title": "GltfWriter Parameters",
-          "description": "Configuration for writing features to GLTF 3D format."
-        },
-        "attachTexture": {
-          "description": "Whether to attach texture information to the GLTF model"
-        },
-        "dracoCompression": {
-          "description": "Apply Draco compression to the geometry"
-        },
-        "output": {
-          "description": "Output file path. When `schemaKey` is set, treated as a directory and each feature type is written to `<output>/<schemaKeyValue>.glb`; otherwise all features are written to this single file."
-        },
-        "schemaKey": {
-          "description": "Features are grouped by this attribute and written to separate files. The key is excluded from output attributes."
-        }
-      }
     },
     {
       "name": "Grid Divider",
@@ -1639,7 +1627,7 @@
       }
     },
     {
-      "name": "HTTPCaller",
+      "name": "HTTP Caller",
       "description": "发起HTTP/HTTPS请求并使用响应数据丰富要素",
       "parameterI18n": {
         "": {
@@ -1963,7 +1951,7 @@
       }
     },
     {
-      "name": "HoleCounter",
+      "name": "Hole Counter",
       "description": "统计几何中的孔数量并作为属性添加",
       "parameterI18n": {
         "": {
@@ -1977,7 +1965,7 @@
       }
     },
     {
-      "name": "HoleExtractor",
+      "name": "Hole Extractor",
       "description": "提取几何中的孔并作为属性添加"
     },
     {
@@ -2032,14 +2020,28 @@
       "description": "用于子工作流中最初一个端口转发的操作",
       "parameterI18n": {
         "": {
-          "title": "InputRouter"
+          "title": "InputRouter",
+          "description": "Configuration for receiving features from the parent workflow."
         },
-        "routingPort": {}
+        "routingPort": {
+          "title": "Routing Port",
+          "description": "Name of the parent workflow port whose features enter the sub-workflow through this router."
+        }
       }
     },
     {
-      "name": "JPStandardGridAccumulator",
+      "name": "JP Standard Grid Accumulator",
       "description": "在日本标准网格上积累要素"
+    },
+    {
+      "name": "JSON Fragmenter",
+      "description": "根据JSONPath查询将JSON文档分割为单独的要素",
+      "parameterI18n": {
+        "": {
+          "title": "JSON Fragmenter Parameters",
+          "description": "Configuration for fragmenting JSON documents into individual features."
+        }
+      }
     },
     {
       "name": "JSON Reader",
@@ -2076,21 +2078,11 @@
       }
     },
     {
-      "name": "JSONFragmenter",
-      "description": "根据JSONPath查询将JSON文档分割为单独的要素",
-      "parameterI18n": {
-        "": {
-          "title": "JSONFragmenter Parameters",
-          "description": "Configuration for fragmenting JSON documents into individual features."
-        }
-      }
-    },
-    {
-      "name": "LineOnLineOverlayer",
+      "name": "Line On Line Overlayer",
       "description": "交点转换为点实体，并可包含原始相交线段组合的属性列表",
       "parameterI18n": {
         "": {
-          "title": "LineOnLineOverlayer Parameters",
+          "title": "Line On Line Overlayer Parameters",
           "description": "Configuration for finding intersection points between line features."
         },
         "groupBy": {},
@@ -2101,24 +2093,11 @@
       }
     },
     {
-      "name": "List Exploder",
-      "description": "将列表类型的属性拆分为多个元素",
-      "parameterI18n": {
-        "": {
-          "title": "ListExploder Parameters",
-          "description": "Configuration for exploding array attributes into individual features."
-        },
-        "sourceAttribute": {
-          "description": "Attribute containing the array to explode (each element becomes a separate feature)"
-        }
-      }
-    },
-    {
-      "name": "ListConcatenator",
+      "name": "List Concatenator",
       "description": "从列表的每个元素中提取特定属性，并将其连接成单个字符串",
       "parameterI18n": {
         "": {
-          "title": "ListConcatenator Parameters",
+          "title": "List Concatenator Parameters",
           "description": "Configuration for concatenating a specific attribute from list elements."
         },
         "attribute": {
@@ -2136,11 +2115,24 @@
       }
     },
     {
-      "name": "ListIndexer",
+      "name": "List Exploder",
+      "description": "将列表类型的属性拆分为多个元素",
+      "parameterI18n": {
+        "": {
+          "title": "ListExploder Parameters",
+          "description": "Configuration for exploding array attributes into individual features."
+        },
+        "sourceAttribute": {
+          "description": "Attribute containing the array to explode (each element becomes a separate feature)"
+        }
+      }
+    },
+    {
+      "name": "List Indexer",
       "description": "将特定列表元素的属性复制为要素的主要属性",
       "parameterI18n": {
         "": {
-          "title": "ListIndexer Parameters",
+          "title": "List Indexer Parameters",
           "description": "Configuration for copying attributes from a specific list element to main feature attributes."
         },
         "copiedAttributePrefix": {
@@ -2204,11 +2196,11 @@
       }
     },
     {
-      "name": "NeighborFinder",
+      "name": "Neighbor Finder",
       "description": "基于空间邻近性，为每个基础要素找到最近的候选要素",
       "parameterI18n": {
         "": {
-          "title": "NeighborFinder Parameters",
+          "title": "Neighbor Finder Parameters",
           "description": "Configuration for finding spatial neighbors between base and candidate features."
         },
         "attributePrefix": {
@@ -2337,11 +2329,11 @@
       }
     },
     {
-      "name": "ObjReader",
+      "name": "OBJ Reader",
       "description": "从Wavefront OBJ文件读取3D模型，支持顶点、面、法线、纹理坐标和材质",
       "parameterI18n": {
         "": {
-          "title": "ObjReader Parameters",
+          "title": "OBJ Reader Parameters",
           "description": "Configuration for reading Wavefront OBJ 3D model files with support for vertices, faces, normals, texture coordinates, and material definitions."
         },
         "dataset": {
@@ -2379,7 +2371,7 @@
       }
     },
     {
-      "name": "ObjWriter",
+      "name": "OBJ Writer",
       "description": "将3D要素写入Wavefront OBJ格式，可选包含材质（MTL）文件",
       "parameterI18n": {
         "": {
@@ -2427,7 +2419,7 @@
       }
     },
     {
-      "name": "OrientationExtractor",
+      "name": "Orientation Extractor",
       "description": "提取实体几何的方向并作为属性添加",
       "parameterI18n": {
         "": {
@@ -2445,9 +2437,13 @@
       "description": "用于子工作流中最后一个端口转发的操作",
       "parameterI18n": {
         "": {
-          "title": "OutputRouter"
+          "title": "OutputRouter",
+          "description": "Configuration for returning features to the parent workflow."
         },
-        "routingPort": {}
+        "routingPort": {
+          "title": "Routing Port",
+          "description": "Name of the output port under which the sub-workflow's features are exposed to the parent workflow."
+        }
       }
     },
     {
@@ -2787,7 +2783,7 @@
           "description": "Attribute name for the GML ID within the list items (default: \"gmlId\")"
         },
         "listAttribute": {
-          "description": "Attribute name containing the list of overlapping features from AreaOnAreaOverlayer (default: \"list\")"
+          "description": "Attribute name containing the list of overlapping features from Area On Area Overlayer (default: \"list\")"
         },
         "pairIdAttribute": {
           "description": "Attribute name to store the pair ID (default: \"pair_id\")"
@@ -2937,7 +2933,7 @@
           "description": "Attribute name for the GML ID within the list items (default: \"gmlId\")"
         },
         "listAttribute": {
-          "description": "Attribute name containing the list of overlapping features from AreaOnAreaOverlayer (default: \"list\")"
+          "description": "Attribute name containing the list of overlapping features from Area On Area Overlayer (default: \"list\")"
         },
         "pairIdAttribute": {
           "description": "Attribute name to store the pair ID (default: \"pair_id\")"
@@ -2961,7 +2957,7 @@
       "name": "PLATEAU6.UnmatchedXlinkDetector"
     },
     {
-      "name": "PlanarityFilter",
+      "name": "Planarity Filter",
       "description": "根据类型筛选几何",
       "parameterI18n": {
         "": {
@@ -2993,11 +2989,11 @@
       "description": "提取多边形要素的法向量和其他属性"
     },
     {
-      "name": "PythonScriptProcessor",
+      "name": "Python Script Processor",
       "description": "执行用于地理空间数据处理的Python脚本",
       "parameterI18n": {
         "": {
-          "title": "PythonScriptProcessorParam"
+          "title": "Python Script ProcessorParam"
         },
         "pythonFile": {
           "title": "Python File",
@@ -3085,11 +3081,11 @@
       "description": "优化几何"
     },
     {
-      "name": "Rotator3D",
+      "name": "Rotator 3D",
       "description": "使用起止向量或轴角规格旋转3D多边形",
       "parameterI18n": {
         "": {
-          "title": "Rotator3D Parameters",
+          "title": "Rotator 3D Parameters",
           "description": "Configure the rotation for a 3D polygon"
         },
         "rotation": {
@@ -3163,7 +3159,7 @@
       }
     },
     {
-      "name": "SolidBoundaryValidator",
+      "name": "Solid Boundary Validator",
       "description": "验证实体边界几何体",
       "parameterI18n": {
         "": {
@@ -3270,25 +3266,7 @@
       }
     },
     {
-      "name": "Three Dimension Forcer",
-      "description": "通过添加Z坐标（高程）将2D几何体转换为3D",
-      "parameterI18n": {
-        "": {
-          "title": "ThreeDimensionForcer Parameters",
-          "description": "Configure how to convert 2D geometries to 3D by adding Z-coordinates"
-        },
-        "elevation": {
-          "title": "Elevation",
-          "description": "The Z-coordinate (elevation) value to add to all points. Can be a constant value or an expression. Defaults to 0.0 if not specified."
-        },
-        "preserveExistingZ": {
-          "title": "Preserve Existing Z Values",
-          "description": "If true, geometries that are already 3D will pass through unchanged. If false, existing Z values will be replaced with the specified elevation. Defaults to false."
-        }
-      }
-    },
-    {
-      "name": "ThreeDimensionBoxReplacer",
+      "name": "Three Dimension Box Replacer",
       "description": "用多边形替换三维盒子",
       "parameterI18n": {
         "": {
@@ -3322,11 +3300,29 @@
       }
     },
     {
-      "name": "ThreeDimensionPlanarityRotator",
+      "name": "Three Dimension Forcer",
+      "description": "通过添加Z坐标（高程）将2D几何体转换为3D",
+      "parameterI18n": {
+        "": {
+          "title": "ThreeDimensionForcer Parameters",
+          "description": "Configure how to convert 2D geometries to 3D by adding Z-coordinates"
+        },
+        "elevation": {
+          "title": "Elevation",
+          "description": "The Z-coordinate (elevation) value to add to all points. Can be a constant value or an expression. Defaults to 0.0 if not specified."
+        },
+        "preserveExistingZ": {
+          "title": "Preserve Existing Z Values",
+          "description": "If true, geometries that are already 3D will pass through unchanged. If false, existing Z values will be replaced with the specified elevation. Defaults to false."
+        }
+      }
+    },
+    {
+      "name": "Three Dimension Planarity Rotator",
       "description": "在3D中旋转平面"
     },
     {
-      "name": "ThreeDimensionRotator",
+      "name": "Three Dimension Rotator",
       "description": "用多边形替换三维盒子",
       "parameterI18n": {
         "": {
@@ -3368,7 +3364,7 @@
       "description": "将几何强制为二维"
     },
     {
-      "name": "VertexCounter",
+      "name": "Vertex Counter",
       "description": "计算几何体顶点数并作为属性存储",
       "parameterI18n": {
         "": {
@@ -3382,7 +3378,7 @@
       }
     },
     {
-      "name": "VertexRemover",
+      "name": "Vertex Remover",
       "description": "从实体的几何中删除特定的顶点"
     },
     {
@@ -3444,6 +3440,57 @@
         },
         "output": {
           "description": "Output path"
+        }
+      }
+    },
+    {
+      "name": "glTF Reader",
+      "description": "从glTF 2.0文件读取3D模型，支持网格、节点、场景和几何图元",
+      "parameterI18n": {
+        "": {
+          "title": "glTF ReaderParam"
+        },
+        "dataset": {
+          "title": "File Path",
+          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)"
+        },
+        "includeNodes": {
+          "title": "Include Nodes",
+          "description": "If true, includes node hierarchy information from the glTF scene graph in feature attributes"
+        },
+        "inline": {
+          "title": "Inline Content",
+          "description": "Expression that returns the file content as text instead of reading from a file path"
+        },
+        "mergeMeshes": {
+          "title": "Merge Meshes",
+          "description": "If true, combines all meshes from the glTF file into a single output feature"
+        },
+        "triangulate": {
+          "title": "Triangulate",
+          "description": "If true, converts all primitives to triangles (reserved for future use - currently all primitives are processed as triangles)"
+        }
+      }
+    },
+    {
+      "name": "glTF Writer",
+      "description": "将实体写入Gltf文件",
+      "parameterI18n": {
+        "": {
+          "title": "glTF Writer Parameters",
+          "description": "Configuration for writing features to GLTF 3D format."
+        },
+        "attachTexture": {
+          "description": "Whether to attach texture information to the GLTF model"
+        },
+        "dracoCompression": {
+          "description": "Apply Draco compression to the geometry"
+        },
+        "output": {
+          "description": "Output file path. When `schemaKey` is set, treated as a directory and each feature type is written to `<output>/<schemaKeyValue>.glb`; otherwise all features are written to this single file."
+        },
+        "schemaKey": {
+          "description": "Features are grouped by this attribute and written to separate files. The key is excluded from output attributes."
         }
       }
     }

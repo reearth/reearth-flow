@@ -42,7 +42,7 @@ graphs:
       - id: c3d4e5f6-a7b8-9012-cdef-345678901234
         name: NeighborFinder
         type: action
-        action: NeighborFinder
+        action: Neighbor Finder
         with:
           numClosest: 2
           maxDistance: 15

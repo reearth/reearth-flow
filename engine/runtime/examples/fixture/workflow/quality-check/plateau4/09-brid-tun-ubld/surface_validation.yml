@@ -110,7 +110,7 @@ nodes:
 - id: a7b3c9e5-4f8d-4c2e-9a1b-6e3f5d8c2a7b
   name: FeatureWriterLod0IncorrectOrientation
   type: action
-  action: FeatureWriter
+  action: Feature Writer
   with:
     format: csv
     output:
@@ -147,7 +147,7 @@ nodes:
 - id: f8e2a4c6-5d9b-4f7e-8c3a-1e6d4b8f2c5a
   name: FeatureWriterLod0InvalidSurface
   type: action
-  action: FeatureWriter
+  action: Feature Writer
   with:
     format: csv
     output:
@@ -280,7 +280,7 @@ nodes:
 - id: d5a7b9f3-6e4c-4d8a-9f2b-3c7e8d5a6b9f
   name: FeatureWriterLod1InvalidSurface
   type: action
-  action: FeatureWriter
+  action: Feature Writer
   with:
     format: csv
     output:
@@ -437,7 +437,7 @@ nodes:
 - id: 9e3c6b8f-5a2d-4f7e-8c1a-4d9b6e3c8f5a
   name: FeatureWriterLod2-4InvalidSurface
   type: action
-  action: FeatureWriter
+  action: Feature Writer
   with:
     format: csv
     output:
@@ -474,7 +474,7 @@ nodes:
 - id: aa1bb2cc-3dd4-4ee5-9ff6-0aa7bb8cc9dd
   name: GeometryCoercerLod0SurfaceIntersection
   type: action
-  action: GeometryCoercer
+  action: Geometry Coercer
   with:
     targetType: lineString
 - id: cc3dd4ee-5ff6-4aa7-9bb8-2cc9dd0ee1aa
@@ -484,7 +484,7 @@ nodes:
 - id: bb2cc3dd-4ee5-4ff6-9aa7-1bb8cc9dd0ee
   name: AreaOnAreaOverlayerLod0
   type: action
-  action: AreaOnAreaOverlayer
+  action: Area On Area Overlayer
   with:
     accumulationMode: dropIncomingAttributes
     outputAttribute: overlap
@@ -502,7 +502,7 @@ nodes:
 - id: ee1ff2aa-3bb4-4cc5-9dd6-7ee8ff3aa9bb
   name: ListIndexer1
   type: action
-  action: ListIndexer
+  action: List Indexer
   with:
     listAttribute: list
     listIndexToCopy: 0
@@ -510,7 +510,7 @@ nodes:
 - id: ff2aa3bb-4cc5-4dd6-9ee7-8ff9aa2bb0cc
   name: ListIndexer2
   type: action
-  action: ListIndexer
+  action: List Indexer
   with:
     listAttribute: list
     listIndexToCopy: 1
@@ -537,7 +537,7 @@ nodes:
 - id: ecaceb7b-ff98-4744-acf7-17e80829d6f3
   name: SolidBoundaryValidator
   type: action
-  action: SolidBoundaryValidator
+  action: Solid Boundary Validator
   with:
     tolerance:
       type: flowExpr
@@ -630,7 +630,7 @@ nodes:
 - id: 89712e8f-e0ac-4bb3-a92f-c5ff06fe4c96
   name: FeatureWriterL14-BoundaryNotClosed
   type: action
-  action: FeatureWriter
+  action: Feature Writer
   with:
     format: csv
     output:
@@ -754,7 +754,7 @@ nodes:
 - id: 527087b4-0411-49bd-ae5f-c1c7f9a5ccb8
   name: FeatureWriterL14-BoundaryOtherIssues
   type: action
-  action: FeatureWriter
+  action: Feature Writer
   with:
     format: csv
     output:

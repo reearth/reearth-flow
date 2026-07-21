@@ -9,8 +9,17 @@ use opentelemetry_sdk::{
     trace::{SdkTracerProvider, Tracer},
 };
 
-static OTEL_COLLECTOR_ENDPOINT: Lazy<Mutex<Option<String>>> =
-    Lazy::new(|| Mutex::new(env::var("OTEL_COLLECTOR_ENDPOINT").ok()));
+// An empty/whitespace value is treated as unset (`None`), matching the
+// `OTEL_ENABLED` gates in the cli/worker loggers: deployment templating
+// commonly materializes optional env vars as empty strings, and an empty
+// endpoint would otherwise be handed to the OTLP exporter and fail init.
+static OTEL_COLLECTOR_ENDPOINT: Lazy<Mutex<Option<String>>> = Lazy::new(|| {
+    Mutex::new(
+        env::var("OTEL_COLLECTOR_ENDPOINT")
+            .ok()
+            .filter(|v| !v.trim().is_empty()),
+    )
+});
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {

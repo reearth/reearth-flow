@@ -74,7 +74,7 @@ nodes:
   - id: d9349887-1920-44a6-93c9-182c8484d1a2
     name: FeatureCityGml3Reader
     type: action
-    action: FeatureCityGml3Reader
+    action: Feature CityGML 3 Reader
     with:
       dataset:
         type: flowExpr
@@ -156,7 +156,7 @@ nodes:
   - id: b06c19d6-0ad0-4a3c-90bf-26d3613d7637
     name: FeatureWriterLod0InvalidSurface
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -170,7 +170,7 @@ nodes:
   - id: 5eb65556-a94e-4b76-a396-1752283d48a4
     name: GeometryCoercerLod0SurfaceIntersection
     type: action
-    action: GeometryCoercer
+    action: Geometry Coercer
     with:
       targetType: lineString
 
@@ -181,7 +181,7 @@ nodes:
   - id: 2edae6ab-44fe-48af-beb4-68c85e26dcdb
     name: AreaOnAreaOverlayerLod0
     type: action
-    action: AreaOnAreaOverlayer
+    action: Area On Area Overlayer
     with:
       accumulationMode: dropIncomingAttributes
       outputAttribute: overlap
@@ -202,7 +202,7 @@ nodes:
   - id: fd8dd5ad-cd3a-4703-87b9-663cd0bfb589
     name: ListIndexer1
     type: action
-    action: ListIndexer
+    action: List Indexer
     with:
       listAttribute: list
       listIndexToCopy: 0
@@ -211,7 +211,7 @@ nodes:
   - id: af899976-7fb2-4c38-a0ff-c76ce7d00709
     name: ListIndexer2
     type: action
-    action: ListIndexer
+    action: List Indexer
     with:
       listAttribute: list
       listIndexToCopy: 1
@@ -260,12 +260,49 @@ nodes:
   - id: acb7b8cf-9059-4c7f-9b51-45cf430be09a
     name: FeatureWriterLod0SurfaceIntersection
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
         type: string
         value: 02_建築物_LOD0面の交差.csv
+
+  # GeoJSON error-detail output for the same check. Coordinates stay in the
+  # inspection CRS (env "prcs"); the intersection-area polygon from
+  # AreaOnAreaOverlayer is the error geometry itself.
+  - id: e3e0a17b-e034-4a68-86df-ccf0f88264b6
+    name: AttributeMapperLod0SurfaceIntersectionGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: check
+          expr:
+            type: string
+            value: LOD0面の交差
+        - attribute: issue
+          valueAttribute: issue
+        - attribute: filename
+          valueAttribute: filename_a
+        - attribute: featureType
+          valueAttribute: feature_type_a
+        - attribute: gmlId
+          valueAttribute: gml_id_a
+        - attribute: relatedGmlId
+          valueAttribute: gml_id_b
+        - attribute: rootGmlId
+          valueAttribute: gml_id_a
+        - attribute: lod
+          valueAttribute: lod_a
+
+  - id: 8c34276b-9f20-42ab-a542-659819a5626e
+    name: FeatureGeoJsonWriterLod0SurfaceIntersection
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: string
+        value: error_geometry/02_建築物_LOD0面の交差.geojson
 
   # --- LOD0 surface orientation pipeline ---
   # SurfaceValidator2D emits LOD0 surfaces whose exterior ring is not
@@ -336,7 +373,7 @@ nodes:
   - id: d0a4c34c-c050-4017-960a-762a0ad09441
     name: FeatureWriterLod0IncorrectOrientation
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -395,7 +432,7 @@ nodes:
   - id: f8589886-0315-441c-bca5-a937f9137e6f
     name: FeatureWriterLod1InvalidSurface
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -409,7 +446,7 @@ nodes:
   - id: 45007e89-4cd7-49aa-b145-a40d6539f83c
     name: SolidBoundaryValidatorLod1
     type: action
-    action: SolidBoundaryValidator
+    action: Solid Boundary Validator
     with:
       tolerance:
         type: flowExpr
@@ -461,7 +498,7 @@ nodes:
   - id: 4261177e-6f06-48cc-aa24-f0a10382b704
     name: FeatureWriterLod1NotClosedSolid
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -503,7 +540,7 @@ nodes:
   - id: 59b03bd3-9e44-453e-92fc-52cc14abcf25
     name: FeatureWriterLod1SolidIssues
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -547,7 +584,7 @@ nodes:
   - id: 3f676870-4b7c-46f0-925e-073c20429200
     name: AreaOnAreaOverlayerSolidIntersectionLod1
     type: action
-    action: AreaOnAreaOverlayer
+    action: Area On Area Overlayer
     with:
       accumulationMode: dropIncomingAttributes
       outputAttribute: overlap
@@ -593,7 +630,7 @@ nodes:
   - id: 585e54ec-2814-4e67-a5b2-33e16007110a
     name: CSGBuilderLod1
     type: action
-    action: CSGBuilder
+    action: CSG Builder
     with:
       pairIdAttribute:
         type: flowExpr
@@ -604,7 +641,7 @@ nodes:
   - id: 8c37d786-50f7-4aba-8737-5422da3ba79b
     name: CSGEvaluatorLod1
     type: action
-    action: CSGEvaluator
+    action: CSG Evaluator
     with:
       operation: intersection
       tolerance:
@@ -676,7 +713,7 @@ nodes:
   - id: 073a86d1-e1d0-497d-803f-6398518f0c1a
     name: FeatureWriterLod1SolidIntersection
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -901,7 +938,7 @@ nodes:
   - id: 501a24e8-b919-4f3b-9706-9ae6228f2bfd
     name: FeatureWriterCsv
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -1040,7 +1077,7 @@ nodes:
   - id: 4375b01b-c253-475b-8737-08736f4961f8
     name: FeatureWriterJson
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: json
       converter:
@@ -1169,18 +1206,104 @@ nodes:
   - id: 9989e9e9-6b77-41f9-a1ee-3fd3f58ee5a3
     name: FeatureWriterLod23InvalidSurface
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
         type: string
         value: 02_建築物_LOD2以上境界面のエラー.csv
 
+  # GeoJSON error-detail output for the LOD2/LOD3 boundary-surface check.
+  # The CityGML reader already emits each con:*Surface (wall/roof/ground) as its
+  # own feature, so the geometry pinpoints the offending boundary surface rather
+  # than the whole building. Coordinates stay in the inspection CRS (env "prcs");
+  # the validator rotates near-horizontal surfaces by ~identity, so the emitted
+  # ground-surface geometry matches the real-world footprint. LOD2 and LOD3 share
+  # one writer and merge into a single GeoJSON, mirroring the combined CSV.
+  - id: 8047c601-56d5-42c0-8854-a6d35c631f2f
+    name: AttributeMapperLod2InvalidSurfaceGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: check
+          expr:
+            type: string
+            value: LOD2以上境界面のエラー
+        - attribute: issue
+          expr:
+            type: flowExpr
+            value: |
+              vr = attributes.get("validationResult");
+              if vr != null and "details" in vr {
+                vr["details"][0][0]
+              } else if "issue" in attributes {
+                attributes["issue"]
+              } else {
+                "UnknownError"
+              }
+        - attribute: filename
+          valueAttribute: name
+        - attribute: featureType
+          valueAttribute: __citygml_feature_type
+        - attribute: gmlId
+          valueAttribute: __citygml_gml_id
+        - attribute: parentGmlId
+          valueAttribute: __citygml_parent_gml_id
+        - attribute: rootGmlId
+          valueAttribute: __citygml_root_gml_id
+        - attribute: lod
+          valueAttribute: lod
+
+  - id: 223edd04-27c5-4e61-a524-313b7cd9303f
+    name: AttributeMapperLod3InvalidSurfaceGeoJson
+    type: action
+    action: Attribute Mapper
+    with:
+      mappers:
+        - attribute: check
+          expr:
+            type: string
+            value: LOD2以上境界面のエラー
+        - attribute: issue
+          expr:
+            type: flowExpr
+            value: |
+              vr = attributes.get("validationResult");
+              if vr != null and "details" in vr {
+                vr["details"][0][0]
+              } else if "issue" in attributes {
+                attributes["issue"]
+              } else {
+                "UnknownError"
+              }
+        - attribute: filename
+          valueAttribute: name
+        - attribute: featureType
+          valueAttribute: __citygml_feature_type
+        - attribute: gmlId
+          valueAttribute: __citygml_gml_id
+        - attribute: parentGmlId
+          valueAttribute: __citygml_parent_gml_id
+        - attribute: rootGmlId
+          valueAttribute: __citygml_root_gml_id
+        - attribute: lod
+          valueAttribute: lod
+
+  - id: 84bf2d44-a30e-436b-b0ca-3fa81504ab49
+    name: FeatureGeoJsonWriterLod23InvalidSurface
+    type: action
+    action: Feature GeoJSON Writer
+    with:
+      output:
+        type: string
+        value: error_geometry/02_建築物_LOD2以上境界面のエラー.geojson
+
   # --- LOD2 solid-boundary validation pipeline (L14) ---
   - id: f2cfc80d-26e2-43e9-9038-89f698e84147
     name: SolidBoundaryValidatorLod2
     type: action
-    action: SolidBoundaryValidator
+    action: Solid Boundary Validator
     with:
       tolerance:
         type: flowExpr
@@ -1265,7 +1388,7 @@ nodes:
   - id: de965e92-16ac-4d49-ad14-5e5a688d1de6
     name: SolidBoundaryValidatorLod3
     type: action
-    action: SolidBoundaryValidator
+    action: Solid Boundary Validator
     with:
       tolerance:
         type: flowExpr
@@ -1370,7 +1493,7 @@ nodes:
   - id: 2fcd2ca5-e9fd-444a-b989-c2318bb1f141
     name: AreaOnAreaOverlayerSolidIntersectionLod2
     type: action
-    action: AreaOnAreaOverlayer
+    action: Area On Area Overlayer
     with:
       accumulationMode: dropIncomingAttributes
       outputAttribute: overlap
@@ -1416,7 +1539,7 @@ nodes:
   - id: 07c7d3b8-a6db-4bfe-9f13-7af2adf1e3e6
     name: CSGBuilderLod2
     type: action
-    action: CSGBuilder
+    action: CSG Builder
     with:
       pairIdAttribute:
         type: flowExpr
@@ -1427,7 +1550,7 @@ nodes:
   - id: 5cd3ac4e-a574-4b98-a321-dcc8a7fe12e0
     name: CSGEvaluatorLod2
     type: action
-    action: CSGEvaluator
+    action: CSG Evaluator
     with:
       operation: intersection
       tolerance:
@@ -1520,7 +1643,7 @@ nodes:
   - id: daecf1b8-ac79-475f-b956-93d50667bda5
     name: AreaOnAreaOverlayerSolidIntersectionLod3
     type: action
-    action: AreaOnAreaOverlayer
+    action: Area On Area Overlayer
     with:
       accumulationMode: dropIncomingAttributes
       outputAttribute: overlap
@@ -1566,7 +1689,7 @@ nodes:
   - id: 6aa26006-ada2-4031-8f5b-005f3f9bff31
     name: CSGBuilderLod3
     type: action
-    action: CSGBuilder
+    action: CSG Builder
     with:
       pairIdAttribute:
         type: flowExpr
@@ -1577,7 +1700,7 @@ nodes:
   - id: 646133fe-0c98-4a73-8d6a-f21011005e19
     name: CSGEvaluatorLod3
     type: action
-    action: CSGEvaluator
+    action: CSG Evaluator
     with:
       operation: intersection
       tolerance:
@@ -1901,7 +2024,7 @@ nodes:
   - id: c1b00007-0000-4000-8000-000000000007
     name: FeatureWriterDuplicateBuildingId
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -1997,7 +2120,7 @@ nodes:
   - id: c1b00012-0000-4000-8000-000000000012
     name: FeatureWriterInvalidBuildingIdFormat
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -2069,7 +2192,7 @@ nodes:
   - id: c1b00023-0000-4000-8000-000000000023
     name: FeatureWriterUsageError
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -2125,7 +2248,7 @@ nodes:
   - id: c1b00042-0000-4000-8000-000000000042
     name: FeatureWriterCityCodeError
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -2246,7 +2369,7 @@ nodes:
   - id: c1b00055-0000-4000-8000-000000000055
     name: FeatureWriterLbldg06
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -2328,7 +2451,7 @@ nodes:
   - id: c1b00064-0000-4000-8000-000000000064
     name: DeduplicateBuildingPartsL02
     type: action
-    action: FeatureDuplicateFilter
+    action: Feature Duplicate Filter
 
   - id: c1b00065-0000-4000-8000-000000000065
     name: AttributeMapperLbldg02
@@ -2356,7 +2479,7 @@ nodes:
   - id: c1b00066-0000-4000-8000-000000000066
     name: FeatureWriterLbldg02
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -2441,7 +2564,7 @@ nodes:
   - id: c1b00073-0000-4000-8000-000000000073
     name: FeatureWriterIncorrectMeshCode
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -2514,7 +2637,7 @@ nodes:
   - id: c1b00082-0000-4000-8000-000000000082
     name: FeatureWriterLod0Or1BuildingPart
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -2673,6 +2796,24 @@ edges:
   # Route the written LOD0 intersection CSV into the result zip.
   - id: 6d38927a-36c8-45af-93e8-083c2d233b7b
     from: acb7b8cf-9059-4c7f-9b51-45cf430be09a
+    to: 3730412c-8a45-417c-a669-fa10fec80028
+    fromPort: features
+    toPort: features
+  # Counter.complete -> GeoJSON attribute mapper (parallel to the CSV writer)
+  - id: 2cf00a25-3a9f-4006-ace8-c2895cc870db
+    from: 86da6c18-1b32-4443-9d24-9a0c3d6d060c
+    to: e3e0a17b-e034-4a68-86df-ccf0f88264b6
+    fromPort: complete
+    toPort: features
+  # GeoJSON attribute mapper -> GeoJSON writer
+  - id: 7ec0821e-35b9-4415-ba7c-a43283856e18
+    from: e3e0a17b-e034-4a68-86df-ccf0f88264b6
+    to: 8c34276b-9f20-42ab-a542-659819a5626e
+    fromPort: features
+    toPort: features
+  # Route the written LOD0 intersection GeoJSON into the result zip.
+  - id: 5fcf22da-e6c2-4e30-9aea-f8f91e01e068
+    from: 8c34276b-9f20-42ab-a542-659819a5626e
     to: 3730412c-8a45-417c-a669-fa10fec80028
     fromPort: features
     toPort: features
@@ -3185,6 +3326,37 @@ edges:
   # Route the combined LOD2/LOD3 boundary CSV into the result zip.
   - id: 927a80f0-8583-4675-8323-ee333d256c7d
     from: 9989e9e9-6b77-41f9-a1ee-3fd3f58ee5a3
+    to: 3730412c-8a45-417c-a669-fa10fec80028
+    fromPort: features
+    toPort: features
+  # GeoJSON error-detail branch (parallel to the CSV writers).
+  # LOD2 counter.complete -> LOD2 GeoJSON attribute mapper
+  - id: 16bb53a6-c03d-4a14-ac1e-4667ab7afc17
+    from: bd42447c-1efd-4ebb-813b-3cd44d174272
+    to: 8047c601-56d5-42c0-8854-a6d35c631f2f
+    fromPort: complete
+    toPort: features
+  # LOD2 GeoJSON mapper -> shared GeoJSON writer
+  - id: 873720f1-a260-497c-8e73-9067cd7c9ea0
+    from: 8047c601-56d5-42c0-8854-a6d35c631f2f
+    to: 84bf2d44-a30e-436b-b0ca-3fa81504ab49
+    fromPort: features
+    toPort: features
+  # LOD3 counter.complete -> LOD3 GeoJSON attribute mapper
+  - id: 4fac2cb4-ebac-48a7-abd3-a6d51d61c5f5
+    from: 95cbdea7-0b8b-406f-bd8b-b0ad53139e53
+    to: 223edd04-27c5-4e61-a524-313b7cd9303f
+    fromPort: complete
+    toPort: features
+  # LOD3 GeoJSON mapper -> shared GeoJSON writer
+  - id: 9cae6b29-e7ef-4dcd-bafb-712c7e963149
+    from: 223edd04-27c5-4e61-a524-313b7cd9303f
+    to: 84bf2d44-a30e-436b-b0ca-3fa81504ab49
+    fromPort: features
+    toPort: features
+  # Route the combined LOD2/LOD3 boundary GeoJSON into the result zip.
+  - id: 43333752-31af-4fc6-95ab-c69f7614da4a
+    from: 84bf2d44-a30e-436b-b0ca-3fa81504ab49
     to: 3730412c-8a45-417c-a669-fa10fec80028
     fromPort: features
     toPort: features

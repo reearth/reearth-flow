@@ -33,7 +33,7 @@ nodes:
   - id: 9e8f7a6b-5c4d-3e2f-1a0b-9c8d7e6f5a4b
     name: CsvWriterBuildingPartLod0Or1
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -90,7 +90,7 @@ nodes:
   - id: a6f7b8c9-0d1e-2f3a-4b5c-6d7e8f9a0b1c
     name: DeduplicateBuildingIds
     type: action
-    action: FeatureDuplicateFilter
+    action: Feature Duplicate Filter
 
   # Counter for LOD2~4 BuildingPart connectivity errors (L-bldg-02)
   - id: b7a8c9d0-1e2f-3a4b-5c6d-7e8f9a0b1c2d
@@ -133,7 +133,7 @@ nodes:
   - id: d9c0e1f2-3a4b-5c6d-7e8f-9a0b1c2d3e4f
     name: CsvWriterLbldg02Errors
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:

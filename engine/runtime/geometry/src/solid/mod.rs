@@ -61,6 +61,12 @@ pub struct Solid {
 }
 
 impl Solid {
+    /// The coordinate frame this solid's shells are expressed in.
+    #[inline]
+    pub fn frame(&self) -> &CoordinateFrame {
+        &self.frame
+    }
+
     /// The exterior boundary shell.
     #[inline]
     pub fn exterior(&self) -> &Shell {

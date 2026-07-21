@@ -112,7 +112,7 @@ impl ProcessorFactory for FeatureSorterFactory {
     }
 
     fn description(&self) -> &str {
-        "Sorts features based on specified attributes in ascending or descending order"
+        "Sorts features based on specified attributes in ascending or descending order."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -121,10 +121,6 @@ impl ProcessorFactory for FeatureSorterFactory {
 
     fn categories(&self) -> &[&'static str] {
         &["Merge"]
-    }
-
-    fn tags(&self) -> &[&'static str] {
-        &["sort"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -183,15 +179,17 @@ struct FeatureSorter {
     executor_id: Option<uuid::Uuid>,
 }
 
-/// # FeatureSorter Parameters
+/// # Feature Sorter Parameters
 ///
 /// Configuration for sorting features based on attribute values.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct FeatureSorterParam {
-    /// Attributes to use for sorting features (sort order based on attribute order)
+    /// # Sort Attributes
+    /// Attributes to sort by; earlier attributes take precedence.
     attributes: Vec<Attribute>,
-    /// Sorting order (ascending or descending)
+    /// # Sort Order
+    /// Whether features are sorted in ascending or descending order.
     order: Order,
 }
 

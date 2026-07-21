@@ -61,9 +61,10 @@ pub(super) struct GeoBox {
 }
 
 impl GeoBox {
-    /// The bounding box of `points` (lon, lat, height triples); `None` if empty.
+    /// The bounding box of `points` (lat, lon, height triples — WGS84/EPSG:4979's
+    /// own axis order); `None` if empty.
     pub(super) fn of(points: &[[f64; 3]]) -> Option<Self> {
-        points.iter().fold(None, |acc, &[lon, lat, height]| {
+        points.iter().fold(None, |acc, &[lat, lon, height]| {
             Some(match acc {
                 None => GeoBox {
                     west: lon,

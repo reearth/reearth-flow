@@ -157,29 +157,28 @@ mod tests {
     use super::*;
 
     /// Sends a single `Event::Diagnostic(Arc::new(diagnostic))` through
-    /// `LogEventHandler::on_event`, then flushes and returns the resulting
-    /// per-job `{job_id}.log` contents.
+    /// `LogEventHandler::on_event`, then returns the resulting per-job
+    /// `{job_id}.log` contents once the record has reached disk.
     ///
     /// `LoggerFactory::action_logger(&job_id.to_string())` (called from
     /// `LogEventHandler::new`) names the per-job log file after the action
-    /// string it's given — `{job_id}.log` — and wraps its drain in
-    /// `slog_async::Async` (see `action-log/src/split.rs`): writes are
-    /// enqueued to a background thread, not applied synchronously.
-    /// `slog-async`'s `AsyncCore::drop` only sends the flush/terminate
-    /// message and joins that thread once the *last* reference to the
-    /// drain's `Arc` is dropped. `LogEventHandler` is the sole owner of its
-    /// `Arc<ActionLogger>` here (never cloned), so dropping `handler` on
-    /// this thread — never the background writer thread itself —
-    /// deterministically blocks until every record enqueued on the per-job
-    /// drain has been written to `{job_id}.log`, with no sleep/poll needed
-    /// before reading.
+    /// string it's given — `{job_id}.log`. Dropping `handler` flushes the
+    /// per-job `slog_async::Async` drain built in `action-log/src/split.rs`,
+    /// but that drain's file half (`drain2`) is a `sloggers` file logger
+    /// which is *itself* asynchronous: the record is handed off to a second,
+    /// independent writer thread that `drop(handler)` does not join. So the
+    /// on-disk write completes shortly after the drop rather than
+    /// synchronously with it — on a loaded CI runner the file can briefly
+    /// not exist yet. We therefore poll for the completed single-line write
+    /// with a generous bound instead of reading exactly once. The record is
+    /// never lost (slog-async processes queued messages as they arrive), so
+    /// the poll only ever waits out a slow writer, never a dropped message.
     ///
-    /// We deliberately do NOT read `all.log` here: it's produced by
-    /// `factory::create_root_logger`, whose async drain is the shared
-    /// parent of every per-job logger and stays alive on `logger_factory`
-    /// after `handler` is dropped. Its background thread is never joined
-    /// by this test, so a read of `all.log` would depend on scheduling
-    /// luck rather than the deterministic drop-flush guaranteed above.
+    /// We deliberately do NOT read `all.log`: it's produced by
+    /// `factory::create_root_logger`, whose async drain stays alive on
+    /// `logger_factory` after `handler` is dropped, so its `{job_id}` record
+    /// would be interleaved with unrelated lines and gated on yet another
+    /// unjoined thread.
     fn render_diagnostic_to_action_log(diagnostic: Diagnostic) -> String {
         let tempdir = tempfile::tempdir().unwrap();
         let action_log_dir = tempdir.path().join("action-log");
@@ -195,28 +194,40 @@ mod tests {
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(handler.on_event(&event));
 
-        // Flush: see the doc comment above for why this drop must happen
-        // here, before the read below.
+        // Flush the per-job async drain (see the doc comment for why this
+        // still doesn't make the on-disk write synchronous).
         drop(handler);
 
         let job_log_path = action_log_dir.join(format!("{job_id}.log"));
-        fs::read_to_string(&job_log_path).unwrap_or_else(|e| {
-            let listing = fs::read_dir(&action_log_dir)
-                .map(|entries| {
-                    entries
-                        .filter_map(|entry| {
-                            entry
-                                .ok()
-                                .map(|e| e.file_name().to_string_lossy().into_owned())
-                        })
-                        .collect::<Vec<_>>()
-                })
-                .unwrap_or_default();
-            panic!(
-                "failed to read {}: {e}; action-log dir contains: {listing:?}",
-                job_log_path.display()
-            )
-        })
+        // 10s is far beyond the time a single line takes to reach disk; it
+        // only bounds a genuinely stuck writer so the test fails loudly
+        // instead of hanging forever.
+        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
+        loop {
+            if let Ok(content) = fs::read_to_string(&job_log_path) {
+                if content.lines().any(|l| !l.trim().is_empty()) {
+                    return content;
+                }
+            }
+            if std::time::Instant::now() >= deadline {
+                let listing = fs::read_dir(&action_log_dir)
+                    .map(|entries| {
+                        entries
+                            .filter_map(|entry| {
+                                entry
+                                    .ok()
+                                    .map(|e| e.file_name().to_string_lossy().into_owned())
+                            })
+                            .collect::<Vec<_>>()
+                    })
+                    .unwrap_or_default();
+                panic!(
+                    "timed out waiting for {} to contain a log line; action-log dir contains: {listing:?}",
+                    job_log_path.display()
+                );
+            }
+            std::thread::sleep(std::time::Duration::from_millis(25));
+        }
     }
 
     fn single_json_line(content: &str) -> serde_json::Value {

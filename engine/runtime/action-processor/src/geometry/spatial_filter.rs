@@ -31,7 +31,7 @@ impl ProcessorFactory for SpatialFilterFactory {
     }
 
     fn description(&self) -> &str {
-        "Filter Features by Spatial Relationship"
+        "Filters candidate features based on their spatial relationship to filter geometry."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -40,6 +40,10 @@ impl ProcessorFactory for SpatialFilterFactory {
 
     fn categories(&self) -> &[&'static str] {
         &["Filter"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["spatial"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -79,12 +83,12 @@ impl ProcessorFactory for SpatialFilterFactory {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 #[schemars(
-    title = "SpatialFilter Parameters",
+    title = "Spatial Filter Parameters",
     description = "Configure spatial relationship testing between filter and candidate geometries"
 )]
 pub struct SpatialFilterParams {
     /// # Spatial Predicate
-    /// The spatial relationship to test between filter and candidate geometries
+    /// The spatial relationship to test between filter and candidate geometries.
     #[serde(default)]
     pub predicate: SpatialPredicate,
 
@@ -93,25 +97,20 @@ pub struct SpatialFilterParams {
     #[serde(default = "default_pass_on_multiple")]
     pub pass_on_multiple_matches: bool,
 
-    /// # Output Match Count Attribute
-    /// Optional attribute name to store the number of matching filters
-    #[serde(default)]
-    pub output_match_count_attribute: Option<Attribute>,
-
     /// # Merge Filter Attributes
-    /// If true, copy attributes from matched filter feature(s) onto the candidate.
-    /// Only applies to features routed to the passed port.
-    /// In OR mode (pass_on_multiple_matches: true), only the first matching filter's
-    /// attributes are merged. In AND mode, attributes from all matched filters are
-    /// merged in order; if multiple filters share a key, the last filter's value wins.
+    /// If true, copies attributes from the matched filter feature(s) onto passing candidates. When multiple matched filters share an attribute, the last filter's value wins.
     #[serde(default)]
     pub merge_filter_attributes: bool,
 
     /// # Merged Attributes Prefix
-    /// Optional prefix applied to merged filter attribute names to avoid collisions.
-    /// For example, a prefix of "filter_" turns a filter attribute "zone" into "filter_zone".
+    /// Optional prefix applied to merged filter attribute names to avoid collisions. For example, a prefix of "filter_" turns a filter attribute "zone" into "filter_zone".
     #[serde(default)]
     pub merged_attributes_prefix: Option<String>,
+
+    /// # Output Match Count Attribute
+    /// Optional attribute name to store the number of matching filters.
+    #[serde(default)]
+    pub output_match_count_attribute: Option<Attribute>,
 }
 
 fn default_pass_on_multiple() -> bool {

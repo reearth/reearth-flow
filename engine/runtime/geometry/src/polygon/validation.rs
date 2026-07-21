@@ -81,12 +81,16 @@ impl Validate for Polygon2D {
     }
 
     fn check_orientation(&self, _params: &ValidationParams) -> ValidationReport {
-        // Flow orients 2D faces counter-clockwise: the exterior ring must wind
-        // CCW, each hole clockwise.
+        // Flow orients 2D faces counter-clockwise in canonical orientation: the
+        // exterior ring must wind CCW, each hole clockwise, after applying the
+        // frame's orientation sign. An undeterminable frame skips the check.
         ValidationReport::ran(|r| {
-            check_ring_orientation_2d(&self.frame, self.exterior(), true, r);
+            let Ok(sign) = self.frame.orientation_sign() else {
+                return;
+            };
+            check_ring_orientation_2d(&self.frame, sign, self.exterior(), true, r);
             for hole in self.interiors() {
-                check_ring_orientation_2d(&self.frame, hole, false, r);
+                check_ring_orientation_2d(&self.frame, sign, hole, false, r);
             }
         })
     }
@@ -143,7 +147,7 @@ impl Validate for Polygon3D {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::coordinate::CoordinateFrame;
+    use crate::coordinate::{CoordinateFrame, EpsgCode};
     use crate::polygon::Polygon2D;
     use crate::validation_next::{validate_one, ValidationParams, ValidationResult};
 
@@ -276,6 +280,29 @@ mod tests {
         let cw = [[0.0, 0.0], [0.0, 4.0], [4.0, 4.0], [4.0, 0.0], [0.0, 0.0]];
         let p = Polygon2D::from_rings(CoordinateFrame::Euclidean, cw, Vec::<Vec<[f64; 2]>>::new());
         assert_eq!(failures(&p, ValidationType::Orientation).len(), 1);
+    }
+
+    #[test]
+    fn winding_is_judged_in_canonical_orientation() {
+        // EPSG:6697 is lat-first (orientation sign -1), so canonical winding is the
+        // raw winding flipped. The CCW `square()` is therefore canonically clockwise
+        // and misoriented as an exterior, while its reversed (raw CW) ring is
+        // canonically counter-clockwise and valid.
+        let reflected = CoordinateFrame::Crs(EpsgCode::new(6697));
+        let ccw_raw =
+            Polygon2D::from_rings(reflected.clone(), square(), Vec::<Vec<[f64; 2]>>::new());
+        assert_eq!(failures(&ccw_raw, ValidationType::Orientation).len(), 1);
+
+        let cw_raw = [[0.0, 0.0], [0.0, 4.0], [4.0, 4.0], [4.0, 0.0], [0.0, 0.0]];
+        let p = Polygon2D::from_rings(reflected, cw_raw, Vec::<Vec<[f64; 2]>>::new());
+        assert_eq!(
+            validate_one(
+                &p,
+                ValidationType::Orientation,
+                &ValidationParams::default()
+            ),
+            ValidationResult::Success
+        );
     }
 
     #[test]

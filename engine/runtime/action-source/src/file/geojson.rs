@@ -102,7 +102,6 @@ impl Source for GeoJsonReader {
         Ok(vec![])
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     async fn start(
         &mut self,
         ctx: NodeContext,

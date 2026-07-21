@@ -33,7 +33,7 @@ pub struct SolidBoundaryValidatorFactory;
 
 impl ProcessorFactory for SolidBoundaryValidatorFactory {
     fn name(&self) -> &str {
-        "SolidBoundaryValidator"
+        "Solid Boundary Validator"
     }
 
     fn description(&self) -> &str {
@@ -293,7 +293,7 @@ impl Processor for SolidBoundaryValidator {
     }
 
     fn name(&self) -> &str {
-        "SolidBoundaryValidator"
+        "Solid Boundary Validator"
     }
 }
 

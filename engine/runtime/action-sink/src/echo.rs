@@ -15,7 +15,7 @@ impl SinkFactory for EchoSinkFactory {
     }
 
     fn description(&self) -> &str {
-        "Debug Echo Features to Logs"
+        "Echoes features to logs and discards them."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -24,6 +24,10 @@ impl SinkFactory for EchoSinkFactory {
 
     fn categories(&self) -> &[&'static str] {
         &["Debug"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["logging"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {

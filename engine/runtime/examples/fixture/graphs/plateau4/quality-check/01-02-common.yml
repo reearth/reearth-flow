@@ -80,7 +80,7 @@ nodes:
   - id: 4f62f8b0-b326-4aef-a779-a5324fab66fa
     name: FeatureWriterBySummary
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: json
       converter:
@@ -123,7 +123,7 @@ nodes:
   - id: 23f7da40-5f92-4c14-a4fe-7a160361be6b
     name: FeatureWriterByRequired
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -147,7 +147,7 @@ nodes:
   - id: c528f544-4a0f-43dd-9fd8-725d546963b8
     name: FeatureWriterByTarget
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -181,7 +181,7 @@ nodes:
   - id: 9e23b4c5-d6e7-4f89-a012-3b4c5d6e7f8a
     name: FeatureWriterByC07
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -215,7 +215,7 @@ nodes:
   - id: b245c6d7-f8a9-4b01-c234-5d6e7f8a9b0c
     name: FeatureWriterByC08
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:

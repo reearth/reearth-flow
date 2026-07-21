@@ -292,15 +292,19 @@ impl Validate for PolygonMesh2D {
 
     fn check_orientation(&self, _params: &ValidationParams) -> ValidationReport {
         // Each face's exterior ring must wind counter-clockwise, its holes
-        // clockwise.
+        // clockwise, in canonical orientation (after applying the frame's
+        // orientation sign). An undeterminable frame skips the check.
         ValidationReport::ran(|r| {
+            let Ok(sign) = self.frame.orientation_sign() else {
+                return;
+            };
             for_each_ring(
                 &self.face_indices,
                 &self.face_offsets,
                 &self.interior_offsets,
                 |ring, is_exterior| {
                     let coords = ring_coords(&self.vertices, ring);
-                    check_ring_orientation_2d(&self.frame, &coords, is_exterior, r);
+                    check_ring_orientation_2d(&self.frame, sign, &coords, is_exterior, r);
                 },
             );
         })

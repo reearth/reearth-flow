@@ -6,14 +6,16 @@ use indexmap::IndexMap;
 use quick_xml::events::Event;
 use quick_xml::name::ResolveResult;
 use quick_xml::NsReader;
+use reearth_flow_geometry::coordinate::EpsgCode;
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, CitygmlFeatureExt, Feature};
 use url::Url;
 
 use super::geometry;
 use super::resolver::GeomRegistry;
+use super::srsname;
 use super::utils::{
-    gml_id_attr, local_name as utils_local_name, xlink_href_attr, NamespaceRegistry, NsId, QName,
-    XmlChild, XmlNode, EMPTY_NS_ID, GML_NS_311_ID, GML_NS_ID, XLINK_NS_ID,
+    gml_id_attr, local_name as utils_local_name, srs_name_attr, xlink_href_attr, NamespaceRegistry,
+    NsId, QName, XmlChild, XmlNode, EMPTY_NS_ID, GML_NS_311_ID, GML_NS_ID, XLINK_NS_ID,
 };
 
 pub(super) type RawNodeKey = (String, String); // (file_url, gml_id)
@@ -33,6 +35,22 @@ pub(crate) enum RawChild {
 }
 
 pub(crate) type RawRegistry = HashMap<RawNodeKey, Arc<RawNode>>;
+
+/// Everything [`Parser::finish`] hands off to pass-2 reference resolution.
+pub(super) struct ParserOutput {
+    /// The features awaiting geometry resolution.
+    pub(super) pending: Vec<PendingFeature>,
+    /// Attribute trees, keyed for `xlink:href` lookup.
+    pub(super) raw_registry: RawRegistry,
+    /// Parsed geometry nodes, keyed for `xlink:href` lookup.
+    pub(super) geom_registry: GeomRegistry,
+    /// Retained appearance member roots.
+    pub(super) appearance_members: Vec<Arc<RawNode>>,
+    /// Each file's CRS, parsed from its `gml:boundedBy/gml:Envelope/@srsName`.
+    pub(super) srs_by_file: HashMap<String, EpsgCode>,
+    /// Interned namespace URIs.
+    pub(super) ns_registry: NamespaceRegistry,
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum ParseError {
@@ -54,7 +72,7 @@ pub enum ParseError {
 /// the state for pass-2 reference resolution.
 pub struct Parser {
     raw_registry: RawRegistry,
-    geom_registry: GeomRegistry,
+    pub(super) geom_registry: GeomRegistry,
     /// The `app:appearanceMember` roots, retained for pass-2 indexing once every
     /// `gml:id` is known, so a surface data or appearance reached by `xlink:href`
     /// resolves.
@@ -63,7 +81,10 @@ pub struct Parser {
     pending: Vec<PendingFeature>,
     /// Whether to record each geometry's enclosing `gml:id`s, needed only when
     /// `flatten` will hoist children into separate features.
-    track_owners: bool,
+    pub(super) track_owners: bool,
+    /// Each file's CRS, parsed from its `gml:boundedBy/gml:Envelope/@srsName`; a
+    /// file with no entry declared no (or an unrecognized) srsName.
+    pub(super) srs_by_file: HashMap<String, EpsgCode>,
 }
 
 impl Default for Parser {
@@ -97,6 +118,7 @@ impl Parser {
             ns_registry: NamespaceRegistry::new(),
             pending: Vec::new(),
             track_owners,
+            srs_by_file: HashMap::new(),
         }
     }
 
@@ -134,11 +156,7 @@ impl Parser {
                                 _ => None,
                             })
                         {
-                            let (stripped, geoms) = geometry::split_geometry(
-                                &feature_node,
-                                &mut self.geom_registry,
-                                self.track_owners,
-                            );
+                            let (stripped, geoms) = self.split_geometry(&feature_node);
                             collect_ids(&stripped, source_url_arc.as_str(), &mut self.raw_registry);
                             collect_nested_appearances(&stripped, &mut self.appearance_members);
                             self.pending.push(PendingFeature {
@@ -161,6 +179,19 @@ impl Parser {
                         )?);
                         collect_ids(&member, source_url_arc.as_str(), &mut self.raw_registry);
                         self.appearance_members.push(member);
+                    } else if ln == "boundedBy" {
+                        let bounded_by = parse_element(
+                            &mut reader,
+                            &mut buf,
+                            name,
+                            attrs,
+                            &source_url_arc,
+                            &mut self.ns_registry,
+                        )?;
+                        if let Some(epsg) = envelope_epsg(&bounded_by) {
+                            self.srs_by_file
+                                .insert(source_url_arc.as_str().to_string(), epsg);
+                        }
                     } else {
                         skip_element(&mut reader, &mut buf, &mut self.ns_registry)?;
                     }
@@ -194,26 +225,40 @@ impl Parser {
         Ok(())
     }
 
-    /// Consume the parser and return the pending features, the attribute and
-    /// geometry registries, the retained appearance member roots, and the namespace
-    /// registry for pass-2 resolution.
-    pub(super) fn finish(
-        self,
-    ) -> (
-        Vec<PendingFeature>,
-        RawRegistry,
-        GeomRegistry,
-        Vec<Arc<RawNode>>,
-        NamespaceRegistry,
-    ) {
-        (
-            self.pending,
-            self.raw_registry,
-            self.geom_registry,
-            self.appearance_members,
-            self.ns_registry,
-        )
+    /// Consume the parser and hand off its state for pass-2 resolution.
+    pub(super) fn finish(self) -> ParserOutput {
+        ParserOutput {
+            pending: self.pending,
+            raw_registry: self.raw_registry,
+            geom_registry: self.geom_registry,
+            appearance_members: self.appearance_members,
+            srs_by_file: self.srs_by_file,
+            ns_registry: self.ns_registry,
+        }
     }
+}
+
+/// The EPSG code declared by a `gml:boundedBy` element's `gml:Envelope/@srsName`.
+/// New-geometry only tracks EPSG CRSes; a present-but-unrecognized srsName is an
+/// error and is treated as no declaration.
+fn envelope_epsg(bounded_by: &RawNode) -> Option<EpsgCode> {
+    bounded_by.children.iter().find_map(|child| {
+        let RawChild::Element(node) = child else {
+            return None;
+        };
+        if local_name(&node.name.0) != "Envelope" {
+            return None;
+        }
+        let srs_name = srs_name_attr(&node.attrs)?;
+        let epsg = srsname::parse_epsg(srs_name);
+        if epsg.is_none() {
+            tracing::error!(
+                srs_name,
+                "citygml: gml:Envelope srsName is not a recognized EPSG CRS, ignored"
+            );
+        }
+        epsg
+    })
 }
 
 /// A top-level city object awaiting pass-2 resolution: its attribute tree, with
@@ -614,7 +659,7 @@ mod tests {
 
         let mut parser = Parser::new();
         parser.parse(xml, &dummy_url()).unwrap();
-        let (pending, _, _, _, _) = parser.finish();
+        let ParserOutput { pending, .. } = parser.finish();
 
         assert_eq!(pending.len(), 2);
         assert_eq!(raw_gml_id(&pending[0].root), Some("bldg001".to_string()));
@@ -636,7 +681,11 @@ mod tests {
 
         let mut parser = Parser::new();
         parser.parse(xml, &dummy_url()).unwrap();
-        let (pending, raw_reg, _, _, _) = parser.finish();
+        let ParserOutput {
+            pending,
+            raw_registry: raw_reg,
+            ..
+        } = parser.finish();
         assert_eq!(raw_gml_id(&pending[0].root), Some("bldg001".to_string()));
         assert!(raw_reg.contains_key(&(dummy_url().to_string(), "bldg001".to_string())));
     }
@@ -657,7 +706,10 @@ mod tests {
 
         let mut parser = Parser::new();
         parser.parse(xml, &dummy_url()).unwrap();
-        let (_, raw_reg, _, _, _) = parser.finish();
+        let ParserOutput {
+            raw_registry: raw_reg,
+            ..
+        } = parser.finish();
 
         let url = dummy_url().to_string();
         assert!(raw_reg.contains_key(&(url.clone(), "bldg001".to_string())));
@@ -682,7 +734,10 @@ mod tests {
         let mut parser = Parser::new();
         parser.parse(xml, &url_a).unwrap();
         parser.parse(xml, &url_b).unwrap();
-        let (_, raw_reg, _, _, _) = parser.finish();
+        let ParserOutput {
+            raw_registry: raw_reg,
+            ..
+        } = parser.finish();
 
         assert_eq!(raw_reg.len(), 2);
         assert!(raw_reg.contains_key(&(url_a.to_string(), "shared001".to_string())));
@@ -711,8 +766,33 @@ mod tests {
 
         let mut parser = Parser::new();
         parser.parse(xml, &dummy_url()).unwrap();
-        let (pending, _, _, _, _) = parser.finish();
+        let ParserOutput { pending, .. } = parser.finish();
         assert_eq!(pending.len(), 1);
+    }
+
+    #[test]
+    fn parse_records_srs_from_envelope() {
+        let xml = br#"
+<core:CityModel
+  xmlns:core="http://www.opengis.net/citygml/3.0"
+  xmlns:bldg="http://www.opengis.net/citygml/building/3.0"
+  xmlns:gml="http://www.opengis.net/gml/3.2">
+  <gml:boundedBy>
+    <gml:Envelope srsName="urn:ogc:def:crs:EPSG::6697"/>
+  </gml:boundedBy>
+  <core:cityObjectMember>
+    <bldg:Building gml:id="bldg001"/>
+  </core:cityObjectMember>
+</core:CityModel>"#;
+
+        let mut parser = Parser::new();
+        parser.parse(xml, &dummy_url()).unwrap();
+        let ParserOutput { srs_by_file, .. } = parser.finish();
+
+        assert_eq!(
+            srs_by_file.get(&dummy_url().to_string()),
+            Some(&EpsgCode::new(6697))
+        );
     }
 
     #[test]
@@ -744,7 +824,7 @@ mod tests {
 
         let mut parser = Parser::new();
         parser.parse(xml, &dummy_url()).unwrap();
-        let (pending, _, _, _, _) = parser.finish();
+        let ParserOutput { pending, .. } = parser.finish();
         assert_eq!(pending.len(), 1);
     }
 
@@ -808,7 +888,7 @@ mod tests {
 
         let mut parser = Parser::new();
         parser.parse(xml, &dummy_url()).unwrap();
-        let (pending, _, _, _, _) = parser.finish();
+        let ParserOutput { pending, .. } = parser.finish();
 
         assert_eq!(
             pending[0]

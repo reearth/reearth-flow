@@ -95,7 +95,7 @@ pub(super) struct CoordinateExtractorFactory;
 
 impl ProcessorFactory for CoordinateExtractorFactory {
     fn name(&self) -> &str {
-        "CoordinateExtractor"
+        "Coordinate Extractor"
     }
 
     fn description(&self) -> &str {
@@ -273,7 +273,7 @@ impl Processor for CoordinateExtractor {
     }
 
     fn name(&self) -> &str {
-        "CoordinateExtractor"
+        "Coordinate Extractor"
     }
 }
 
