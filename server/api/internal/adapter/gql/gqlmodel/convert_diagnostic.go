@@ -6,8 +6,7 @@ import (
 
 // ToDiagnostic converts a domain Diagnostic into its GraphQL representation.
 // category/severity/effectiveDisposition pass through as plain strings
-// verbatim (see gql/diagnostic.graphql's doc comment on the Diagnostic
-// type) — no enum mapping/validation here, by design.
+// verbatim — no enum mapping/validation, by design.
 func ToDiagnostic(d *diagnostic.Diagnostic) *Diagnostic {
 	if d == nil {
 		return nil
@@ -43,11 +42,9 @@ func ToDiagnostic(d *diagnostic.Diagnostic) *Diagnostic {
 	return res
 }
 
-// ToDiagnostics converts a slice of domain Diagnostics, skipping nil entries.
-// ToDiagnostics always returns a non-nil slice, even for a nil/empty input:
-// Job.failedNodes and NodeExecution.diagnostics both back onto this
-// converter, and both must marshal a no-data state as GraphQL `[]`, not
-// `null` — a nil Go slice for a `[Diagnostic!]` field marshals as `null`.
+// ToDiagnostics converts a slice, skipping nil entries. Always returns a
+// non-nil slice, even for nil/empty input: a nil Go slice would marshal as
+// GraphQL `null` instead of `[]` for a `[Diagnostic!]` field.
 func ToDiagnostics(ds []*diagnostic.Diagnostic) []*Diagnostic {
 	res := make([]*Diagnostic, 0, len(ds))
 	for _, d := range ds {

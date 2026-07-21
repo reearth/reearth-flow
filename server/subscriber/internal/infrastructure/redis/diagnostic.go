@@ -10,15 +10,10 @@ import (
 	"github.com/reearth/reearth-flow/subscriber/pkg/diagnostic"
 )
 
-// SaveDiagnosticToRedis writes a DiagnosticEvent to two Redis list keys:
-//   - diagnostics:{jobId}:{nodeId} — per-node diagnostics (nodeId absent or
-//     empty falls back to the literal "_job" segment for job-level
-//     diagnostics)
-//   - diagnostics:{jobId} — the whole-job index list
-//
-// Both lists get a 24h TTL (mirrors redis/node.go's LPUSH+EXPIRE list
-// pattern; an EXPIRE failure is logged but does not fail the write since
-// the LPUSH already succeeded).
+// SaveDiagnosticToRedis writes a DiagnosticEvent to two 24h-TTL Redis list
+// keys: diagnostics:{jobId}:{nodeId} (nodeId falls back to "_job") and
+// diagnostics:{jobId} as the whole-job index; an EXPIRE failure is logged
+// but does not fail the write.
 func (r *RedisStorage) SaveDiagnosticToRedis(ctx context.Context, event *diagnostic.DiagnosticEvent) error {
 	if event == nil {
 		log.Printf("ERROR: Attempt to save nil diagnostic event to Redis")

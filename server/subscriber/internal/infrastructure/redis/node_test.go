@@ -13,12 +13,9 @@ import (
 	"github.com/reearth/reearth-flow/subscriber/pkg/node"
 )
 
-// nodeStatusTerminalFixturePath is the SHARED fixture (duplicated, by design,
-// on the api side at api/internal/infrastructure/redis/node_test.go) proving
-// the exact flat JSON blob `SaveNodeEventToRedis` writes to the individual
-// `node:{jobId}:{nodeId}` Redis key is the same shape the api's `NodeEntry`
-// reads back — i.e. that `NodeMetrics` fields survive
-// subscriber -> Redis -> api.
+// nodeStatusTerminalFixturePath is shared, by design, with the api side
+// (api/internal/infrastructure/redis/node_test.go): it pins that
+// `NodeMetrics` fields survive subscriber -> Redis -> api unchanged.
 const nodeStatusTerminalFixturePath = "../../../../testdata/node/node_status_terminal.json"
 
 func TestRedisStorage_SaveNodeEventToRedis_WithMetrics_MatchesSharedFixture(t *testing.T) {
@@ -55,10 +52,8 @@ func TestRedisStorage_SaveNodeEventToRedis_WithMetrics_MatchesSharedFixture(t *t
 	assert.NoError(t, err)
 	mClient.AssertExpectations(t)
 
-	// Pull out exactly what was written to the individual node key (the
-	// third "Set" call's "value" argument) and compare it, field-by-field
-	// via JSON, against the shared fixture — this is the wire shape the api
-	// side's NodeEntry unmarshals straight off of.
+	// Compare the individual node key's Set payload against the shared
+	// fixture (the wire shape api's NodeEntry unmarshals from).
 	var setCall *mock.Call
 	for i, c := range mClient.Calls {
 		if c.Method == "Set" {

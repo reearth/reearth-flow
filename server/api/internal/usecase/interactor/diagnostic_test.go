@@ -16,9 +16,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// mockDiagnosticsRedis is a dedicated gateway.Redis fake for these tests,
-// since the shared mockLogGateway/mockUserFacingLogGateway always return
-// nil for GetNodeDiagnostics/GetJobDiagnostics.
+// mockDiagnosticsRedis is a dedicated gateway.Redis fake: the shared
+// mockLogGateway/mockUserFacingLogGateway always return nil for
+// GetNodeDiagnostics/GetJobDiagnostics.
 type mockDiagnosticsRedis struct {
 	nodeDiagnosticsErr error
 	jobDiagnosticsErr  error
@@ -58,10 +58,9 @@ func (m *mockDiagnosticsRedis) GetJobDiagnostics(ctx context.Context, jobID id.J
 	return m.jobDiagnostics, m.jobDiagnosticsErr
 }
 
-// mockDiagnosticsRepo is a dedicated repo.NodeDiagnostics fake. It is also
-// reused (not redefined) by job_test.go's checkJobStatus merge tests, which
-// additionally inspect the lastX fields SaveTerminalDiagnostics records to
-// assert on exactly what was persisted.
+// mockDiagnosticsRepo is a dedicated repo.NodeDiagnostics fake, reused (not
+// redefined) by job_test.go's checkJobStatus merge tests, which inspect the
+// lastX fields SaveTerminalDiagnostics records.
 type mockDiagnosticsRepo struct {
 	lastTimestamp   time.Time
 	byNodeErr       error
@@ -135,12 +134,9 @@ func TestNodeDiagnostics_GetNodeDiagnostics(t *testing.T) {
 	jobID := id.NewJobID()
 
 	t.Run("Redis and Mongo rows are merged, not short-circuited", func(t *testing.T) {
-		// Pins Important-3's fix: previously a non-empty Redis result
-		// short-circuited Mongo entirely, hiding a Mongo-only terminal row
-		// (e.g. a node's terminal fatal, which is never written to Redis —
-		// see interactor/job.go's persistTerminalDiagnostics) until the
-		// Redis event's 24h TTL expired. Both sources must now always be
-		// consulted and merged.
+		// A non-empty Redis result must not short-circuit Mongo: a Mongo-only
+		// terminal row (e.g. a node's terminal fatal, never written to Redis)
+		// would otherwise stay hidden until the Redis TTL expired.
 		redisRows := []*diagnostic.Diagnostic{newTestDiagnostic(t, jobID, "redis.code")}
 		redisMock := &mockDiagnosticsRedis{nodeDiagnostics: redisRows}
 		repoMock := &mockDiagnosticsRepo{byNode: []*diagnostic.Diagnostic{newTestDiagnostic(t, jobID, "mongo.code")}}
@@ -155,12 +151,9 @@ func TestNodeDiagnostics_GetNodeDiagnostics(t *testing.T) {
 	})
 
 	t.Run("an aggregated summary that rode both the live and terminal paths dedupes to its terminal copy", func(t *testing.T) {
-		// This is the real duplicate dedupeDiagnostics fixes (see the package
-		// doc comment): emit_summaries publishes each finish()-time
-		// WarnDrop/Reject/WarnContinue summary live AND folds the same
-		// summary into RunSummary.aggregated_diagnostics, persisted again as
-		// a terminal row at job completion. Fatal diagnostics never take this
-		// path — they're never published live in the first place.
+		// emit_summaries publishes each finish()-time summary live AND folds
+		// it into aggregated_diagnostics again at job completion;
+		// dedupeDiagnostics must collapse the live+terminal pair to one row.
 		nodeID := "node-1"
 		warnDrop := "warn_drop"
 		olderTimestamp := time.Now().Add(-time.Hour)
@@ -317,11 +310,9 @@ func TestNodeDiagnostics_GetJobDiagnostics(t *testing.T) {
 	})
 }
 
-// fatalDiagnostic/nonFatalDiagnostic build test rows mirroring the two wire
-// arrays FindByJobID mixes together in Mongo: a failedNodes-derived row
-// (effectiveDisposition="fatal") and an aggregatedDiagnostics-derived row
-// (no fatal effectiveDisposition — see fatalEffectiveDisposition's doc
-// comment on the engine guarantee this rests on).
+// fatalDiagnostic/nonFatalDiagnostic mirror the two wire arrays FindByJobID
+// mixes in Mongo: a failedNodes-derived fatal row vs. an
+// aggregatedDiagnostics-derived non-fatal row.
 func fatalDiagnostic(t *testing.T, jobID id.JobID, code string) *diagnostic.Diagnostic {
 	t.Helper()
 	fatal := fatalEffectiveDisposition
@@ -356,13 +347,9 @@ func TestNodeDiagnostics_GetFailedNodes(t *testing.T) {
 	})
 
 	t.Run("two fatal rows sharing a key still dedupe to one, preferring terminal", func(t *testing.T) {
-		// Fatal diagnostics are never published live (see the package doc
-		// comment), so this exact pairing isn't reachable in production —
-		// GetFailedNodes' dedupe here is a defensive backstop, not the
-		// live/terminal merge GetNodeDiagnostics/GetJobDiagnostics rely on.
-		// This pins that the backstop still resolves a same-key collision
-		// deterministically (terminal wins) rather than dropping one at
-		// random, should two rows ever land on the same key.
+		// This live+terminal pairing isn't reachable in production (fatals are
+		// never published live) — it pins that GetFailedNodes' dedupe backstop
+		// still resolves a same-key collision deterministically (terminal wins).
 		nodeID := "node-1"
 		fatal := fatalEffectiveDisposition
 
@@ -412,10 +399,9 @@ func TestNodeDiagnostics_GetFailedNodes(t *testing.T) {
 	})
 
 	t.Run("nil repo: empty slice, not nil, not error", func(t *testing.T) {
-		// [] not null: Job.failedNodes and NodeExecution.diagnostics both
-		// normalize their no-data state to an empty list (see
-		// gqlmodel.ToDiagnostics), so this usecase must return a non-nil
-		// empty slice too, not a nil one.
+		// [] not null: Job.failedNodes/NodeExecution.diagnostics normalize
+		// no-data to an empty list (gqlmodel.ToDiagnostics), so this must
+		// return non-nil empty, not nil.
 		jobRepo := &mockJobRepo{}
 
 		i := NewNodeDiagnostics(nil, jobRepo, nil, alwaysAllowPermissionChecker())
@@ -449,11 +435,10 @@ func TestNodeDiagnostics_GetFailedNodes(t *testing.T) {
 	})
 }
 
-// TestDedupeDiagnostics exercises dedupeDiagnostics directly rather than
-// through a NodeDiagnostics method, since the case it pins — a failedNodes
-// row and an aggregatedDiagnostics row sharing (nodeId, code) — can only
-// reach dedupeDiagnostics through FindByJobID's undifferentiated mix, which
-// GetFailedNodes deliberately filters away before deduping.
+// TestDedupeDiagnostics exercises dedupeDiagnostics directly: the case it
+// pins (a failedNodes row and an aggregatedDiagnostics row sharing nodeId+
+// code) only reaches it via FindByJobID's mix, which GetFailedNodes filters
+// away first.
 func TestDedupeDiagnostics(t *testing.T) {
 	jobID := id.NewJobID()
 	nodeID := "node-1"
@@ -493,13 +478,10 @@ func TestDedupeDiagnostics(t *testing.T) {
 	})
 
 	t.Run("a failedNodes row and an aggregatedDiagnostics row sharing (nodeId, code) both survive", func(t *testing.T) {
-		// The bug the widened key fixes: with the old (nodeId, code)-only
-		// key, these two structurally different rows — this node/code
-		// failed the run fatally, AND the same node/code was separately
-		// warn-dropped some number of times — would collapse into one via
-		// preferOver's Terminal+Timestamp tie-break, nondeterministically
-		// dropping whichever lost. Both are real, distinct information and
-		// must both survive.
+		// With the old (nodeId, code)-only key, a fatal failedNodes row and a
+		// distinct warn-dropped aggregated row for the same node/code would
+		// nondeterministically collapse into one via preferOver's tie-break;
+		// both must survive.
 		fatal := fatalEffectiveDisposition
 		warnDrop := "warn_drop"
 

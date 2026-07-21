@@ -66,38 +66,26 @@ func (e *NodeExecution) CompletedAt() *time.Time {
 	return e.completedAt
 }
 
-// FeaturesProcessed is the successfully processed feature count reported by
-// a processor node on its terminal status event. Meaningful for processor
-// nodes; sink nodes also report metrics but always leave this at 0, since
-// the field does not apply to them. Nil means the node hasn't reached a
-// terminal status yet, is a source node (sources never emit metrics), or
-// the node execution predates this field. Do not infer node kind from
-// nilness — 0 can mean "does not apply to this node kind" just as easily as
-// "genuinely zero".
+// FeaturesProcessed is the successfully processed feature count from a
+// processor node's terminal status event; always 0 for sink nodes (does not
+// apply). Nil means not-yet-terminal, a source node, or predates this
+// field — do not infer node kind from a 0 value.
 func (e *NodeExecution) FeaturesProcessed() *int {
 	return e.featuresProcessed
 }
 
-// FeaturesWritten is the successfully written feature count reported by a
-// sink node on its terminal status event. Meaningful for sink nodes;
-// processor nodes also report metrics but always leave this at 0, since the
-// field does not apply to them. Nil means the node hasn't reached a
-// terminal status yet, is a source node (sources never emit metrics), or
-// the node execution predates this field. Do not infer node kind from
-// nilness — 0 can mean "does not apply to this node kind" just as easily as
-// "genuinely zero".
+// FeaturesWritten is the successfully written feature count from a sink
+// node's terminal status event; always 0 for processor nodes (does not
+// apply). Nil means not-yet-terminal, a source node, or predates this
+// field — do not infer node kind from a 0 value.
 func (e *NodeExecution) FeaturesWritten() *int {
 	return e.featuresWritten
 }
 
 // FinishFeatureCount is the feature count a processor node emitted
-// downstream during finish() (meaningful mainly for accumulating/aggregating
-// actions). Meaningful for processor nodes; sink nodes also report metrics
-// but always leave this at 0, since the field does not apply to them. Nil
-// means the node hasn't reached a terminal status yet, is a source node
-// (sources never emit metrics), or the node execution predates this field.
-// Do not infer node kind from nilness — 0 can mean "does not apply to this
-// node kind" just as easily as "genuinely zero".
+// downstream during finish() (mainly for accumulating/aggregating actions);
+// always 0 for sink nodes. Nil means not-yet-terminal, a source node, or
+// predates this field — do not infer node kind from a 0 value.
 func (e *NodeExecution) FinishFeatureCount() *int {
 	return e.finishFeatureCount
 }

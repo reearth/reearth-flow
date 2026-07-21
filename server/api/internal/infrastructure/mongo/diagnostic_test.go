@@ -14,11 +14,9 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestNodeDiagnostics_FindByJobNodeID_And_FindByJobID exercises the read
-// path against a real MongoDB (via mongotest.Connect, which self-skips when
-// no test DB URI is configured — see mongotest.Env, only wired in e2e/
-// common.go for e2e runs, so this test skips under plain `make test` and
-// runs under CI's `ci-api-test` job which starts a mongo service).
+// TestNodeDiagnostics_FindByJobNodeID_And_FindByJobID exercises the read path
+// against a real MongoDB (mongotest.Connect self-skips without a test DB
+// URI, so this runs under CI's ci-api-test job, not plain `make test`).
 func TestNodeDiagnostics_FindByJobNodeID_And_FindByJobID(t *testing.T) {
 	c := mongotest.Connect(t)(t)
 	ctx := context.Background()
@@ -96,9 +94,8 @@ func TestNodeDiagnostics_FindByJobNodeID_And_FindByJobID(t *testing.T) {
 	})
 
 	t.Run("SaveTerminalDiagnostics upserts the same failed-node row idempotently", func(t *testing.T) {
-		// Re-persisting the same failedNode (simulating a JobCompleteEvent
-		// redelivery after an earlier persist failure) must not duplicate
-		// rows: the deterministic ID upserts in place.
+		// Re-persisting the same failedNode (a JobCompleteEvent redelivery)
+		// must not duplicate rows: the deterministic ID upserts in place.
 		require.NoError(t, r.SaveTerminalDiagnostics(
 			ctx, jobID, workflowID, now,
 			[]*diagnostic.Diagnostic{failedNode},
@@ -110,19 +107,11 @@ func TestNodeDiagnostics_FindByJobNodeID_And_FindByJobID(t *testing.T) {
 		require.Len(t, got, 3)
 	})
 
-	// Pins Important-2's fix: the SAME fatal (nodeId, code) pair can be
-	// persisted twice — once as a live row mirroring the subscriber's
-	// diagnostic.v1 DiagnosticEvent (report()'s "no-silent-fatal guarantee"
-	// stamps effective_disposition=fatal on the live event too, see
-	// engine's executor_operation.rs), and once as the terminal
-	// job-complete.v1 failedNodes row persisted at job-completion merge time
-	// (SaveTerminalDiagnostics above). FindByJobID (the repo layer) is not
-	// where dedup happens — it returns both, undifferentiated except by the
-	// Terminal() flag Model() derives from the stored schema tag — so a
-	// caller (interactor/diagnostic.go's GetFailedNodes) can filter to
-	// EffectiveDisposition=="fatal" (the literal hardcoded string under
-	// test here, matching the engine's wire value) and then dedupe by
-	// (nodeId, code) preferring the Terminal() row.
+	// The same fatal (nodeId, code) pair can be persisted twice: once as a
+	// live diagnostic.v1 row and once as a terminal job-complete.v1
+	// failedNodes row. FindByJobID doesn't dedupe — it returns both,
+	// distinguishable only by Terminal(); the caller (GetFailedNodes) is
+	// responsible for deduping.
 	t.Run("a fatal persisted via both the live and terminal paths is distinguishable only by Terminal()", func(t *testing.T) {
 		dupJobID := id.NewJobID()
 		dupNode := "subgraph-a.node-9"
@@ -195,13 +184,10 @@ func TestNodeDiagnostics_FindByJobNodeID_And_FindByJobID(t *testing.T) {
 		assert.Nil(t, got)
 	})
 
-	// T5 normalization fix pin: simulates a row the subscriber's own
-	// mongodoc.NewDiagnosticDocument writes for a DiagnosticEvent with no
-	// nodeId — the nodeId bson field carries the "_job" sentinel, mirroring
-	// the document ID's "_job" segment (both mongodoc.DiagnosticDocument
-	// shapes are kept in lockstep). Before the fix, the field stayed
-	// nil/raw-empty while only the ID got the sentinel, so this exact
-	// FindByJobNodeID("") lookup could never match.
+	// Simulates a row the subscriber writes for a DiagnosticEvent with no
+	// nodeId: the nodeId bson field carries the "_job" sentinel too,
+	// mirroring the ID's "_job" segment — this FindByJobNodeID("") lookup
+	// depends on that.
 	t.Run("FindByJobNodeID with empty nodeID finds a subscriber-written job-level row", func(t *testing.T) {
 		jobLevelJobID := id.NewJobID()
 		nodeSegment := mongodoc.JobDiagnosticNodeSegment

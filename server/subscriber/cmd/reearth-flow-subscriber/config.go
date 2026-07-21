@@ -19,16 +19,10 @@ type Config struct {
 	AssetBaseURL string `envconfig:"ASSET_BASE_URL" default:"http://localhost:8080/assets"`
 	DB           string `default:"mongodb://localhost"`
 	Dev          bool   `pp:",omitempty"`
-	// DiagnosticSubscriptionID has NO default (unlike the sibling
-	// subscription IDs above): the diagnostics subscription does not exist
-	// in any deployed environment yet. Defaulting it to a name would defeat
-	// the "if conf.DiagnosticSubscriptionID != ''" gate below and the one in
-	// main.go — the subscriber would always try to open a subscriber for a
-	// subscription that was never provisioned, and since a listener error
-	// calls cancel() on the root context (main.go), that crash-loops the
-	// ENTIRE subscriber, taking down log/node/job ingestion with it. Leave
-	// this empty until the subscription is explicitly provisioned and wired
-	// per environment (see README.md's "Diagnostics ingestion" section).
+	// DiagnosticSubscriptionID has NO default: an empty/defaulted value
+	// makes the subscriber try to open a listener for an unprovisioned
+	// subscription, which crash-loops the ENTIRE subscriber (a listener
+	// error cancels the root context), taking down all ingestion with it.
 	DiagnosticSubscriptionID    string `envconfig:"DIAGNOSTIC_SUBSCRIPTION_ID" default:""`
 	GCPProject                  string `envconfig:"GOOGLE_CLOUD_PROJECT" pp:",omitempty"`
 	GCSBucket                   string `envconfig:"GCS_BUCKET" pp:",omitempty"`

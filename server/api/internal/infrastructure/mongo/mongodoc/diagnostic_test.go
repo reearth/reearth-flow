@@ -14,8 +14,7 @@ import (
 )
 
 // diagnosticEventFixturePath is the shared wire-shape fixture also used by
-// the api gateway package's own diagnostic tests (see
-// internal/usecase/gateway/diagnostic_test.go) and by the subscriber module.
+// internal/usecase/gateway/diagnostic_test.go and the subscriber module.
 const diagnosticEventFixturePath = "../../../../../testdata/diagnostics/diagnostic_event.json"
 
 func TestDiagnosticDocument_Model_RoundTripsFixture(t *testing.T) {
@@ -49,16 +48,14 @@ func TestDiagnosticDocument_Model_RoundTripsFixture(t *testing.T) {
 	assert.Equal(t, "subgraph-a.node-4", *modelDiagnostic.NodeID())
 	require.NotNil(t, modelDiagnostic.Aggregated())
 	assert.Equal(t, uint64(5), modelDiagnostic.Aggregated().Count())
-	// A row written through NewFailedNodeDocument carries the
-	// job-complete.v1 schema tag, so Model() must mark it Terminal — this is
-	// the signal interactor/diagnostic.go's dedupeDiagnostics uses to
-	// prefer a terminal row over its live diagnostic.v1 counterpart.
+	// A row from NewFailedNodeDocument carries the job-complete.v1 schema
+	// tag, so Model() must mark it Terminal — the signal dedupeDiagnostics
+	// uses to prefer it over the live diagnostic.v1 counterpart.
 	assert.True(t, modelDiagnostic.Terminal())
 }
 
 // TestDiagnosticDocument_Model_LiveRowIsNotTerminal pins the other half of
-// the Terminal() signal: a row shaped like what the subscriber writes for a
-// live DiagnosticEvent (schema "diagnostic.v1", not "job-complete.v1") must
+// the Terminal() signal: a live-shaped row (schema diagnostic.v1) must
 // decode with Terminal() == false.
 func TestDiagnosticDocument_Model_LiveRowIsNotTerminal(t *testing.T) {
 	jobID := id.NewJobID()
@@ -95,13 +92,13 @@ func TestNewFailedNodeDocument_FallsBackToJobSegment(t *testing.T) {
 	doc := NewFailedNodeDocument(jobID, "", d)
 	assert.Equal(t, jobID.String()+":_job:failed:internal.unclassified", doc.ID)
 	// The nodeId bson field carries the same "_job" sentinel as the ID
-	// segment (T5 normalization fix), not nil/the raw empty string.
+	// segment, not nil/the raw empty string.
 	require.NotNil(t, doc.NodeID)
 	assert.Equal(t, JobDiagnosticNodeSegment, *doc.NodeID)
 
 	// Round-tripping through Model() must strip the sentinel back to nil:
-	// the domain/GraphQL layer's nil-means-job-level semantics must not see
-	// the internal storage convention.
+	// the domain layer's nil-means-job-level semantics must not see the
+	// storage convention.
 	modelDiagnostic, err := doc.Model()
 	require.NoError(t, err)
 	assert.Nil(t, modelDiagnostic.NodeID())

@@ -7,9 +7,9 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// diagnosticSourceSpanDocument / diagnosticAggregateInfoDocument are bson
-// mirrors of diagnostic.WireSourceSpan / diagnostic.WireAggregateInfo (those
-// pkg types only carry json tags, since they are the pub/sub wire shape).
+// diagnosticSourceSpanDocument / diagnosticAggregateInfoDocument mirror
+// diagnostic.WireSourceSpan / WireAggregateInfo in bson (those pkg types
+// only carry json tags).
 type diagnosticSourceSpanDocument struct {
 	Length *uint `bson:"length,omitempty"`
 	Offset uint  `bson:"offset"`
@@ -21,9 +21,8 @@ type diagnosticAggregateInfoDocument struct {
 }
 
 // DiagnosticDocument is a single per-node (or per-job, when NodeID is nil)
-// diagnostic row in the nodeDiagnostics collection. Unlike
-// NodeExecutionDocument, rows are appended rather than upserted: ID is
-// unique per event, not per {jobId,nodeId}.
+// row in the nodeDiagnostics collection. Unlike NodeExecutionDocument, rows
+// are appended rather than upserted: ID is unique per event.
 type DiagnosticDocument struct {
 	Timestamp            time.Time                        `bson:"timestamp"`
 	Aggregated           *diagnosticAggregateInfoDocument `bson:"aggregated,omitempty"`
@@ -43,14 +42,10 @@ type DiagnosticDocument struct {
 	Message              string                           `bson:"message"`
 }
 
-// JobDiagnosticNodeSegment is the sentinel node segment used for a
-// diagnostic with no node context (job-level) — both in the
-// {jobId}:{nodeId}:{ObjectID} document ID and in the nodeId bson field
-// itself. Storing the sentinel in the field too (not just the ID) keeps the
-// api's FindByJobNodeID field-equality lookups symmetric with the ID
-// convention: previously an absent/empty nodeId left the bson field nil (or
-// the raw empty string) while the ID still got the "_job" segment, so a
-// "_job" lookup against the field could never match these rows.
+// JobDiagnosticNodeSegment is the sentinel node segment for a diagnostic
+// with no node context, used both in the {jobId}:{nodeId}:{ObjectID}
+// document ID and the nodeId bson field itself, so the api's
+// FindByJobNodeID field-equality lookups stay symmetric with the ID.
 const JobDiagnosticNodeSegment = "_job"
 
 // normalizedNodeSegment returns nodeID's value, or JobDiagnosticNodeSegment
@@ -62,11 +57,9 @@ func normalizedNodeSegment(nodeID *string) string {
 	return JobDiagnosticNodeSegment
 }
 
-// NewDiagnosticDocument builds the persisted row for a DiagnosticEvent. The
-// id is synthesized as {jobId}:{nodeId-or-_job}:{ObjectID} so rows append
-// rather than collide; the nodeId bson field carries the same
-// nodeId-or-_job value (see JobDiagnosticNodeSegment) so field-equality
-// reads stay consistent with the ID convention.
+// NewDiagnosticDocument builds the persisted row for a DiagnosticEvent; the
+// id is {jobId}:{nodeId-or-_job}:{ObjectID} so rows append rather than
+// collide.
 func NewDiagnosticDocument(event *diagnostic.DiagnosticEvent) DiagnosticDocument {
 	nodeSegment := normalizedNodeSegment(event.NodeID)
 

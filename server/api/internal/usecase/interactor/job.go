@@ -447,30 +447,11 @@ func (i *Job) checkJobStatus(ctx context.Context, j *job.Job) error {
 	if statusChanged {
 		currentJob.SetStatus(currentJob.Status())
 
-		// Diagnostics persistence runs BEFORE the job save + event delete
-		// below, and its outcome gates the delete: a persist failure must
-		// NOT abort the status merge (the job is saved with its terminal
-		// status either way — mirrors the subscriber's own
-		// Mongo-write-is-best-effort posture, e.g. node_subscriber.go), but
-		// it MUST prevent the source Redis event from being deleted.
-		//
-		// That "prevent the delete" step does NOT actually buy a retry:
-		// checkJobStatus's only production caller is runMonitoringLoop,
-		// which re-fetches the job at the top of every tick and returns
-		// immediately (stopping the loop) once the job's persisted status is
-		// terminal — which this same call is about to set, in the Save
-		// below, regardless of whether persist succeeded. So the very next
-		// tick sees a terminal job and never calls checkJobStatus again; the
-		// undeleted Redis event is never re-read. A single persist failure
-		// therefore permanently loses that job's terminal diagnostics
-		// (failedNodes/aggregatedDiagnostics/droppedEventCount), bounded
-		// only by the JobCompleteEvent's own 24h Redis TTL, after which the
-		// orphaned event expires too. Restructuring the poll loop to
-		// actually retry is a separate, riskier change and out of scope
-		// here. Ordering below is still worth preserving as-is: persist ->
-		// save job -> delete event only if persist succeeded, since leaving
-		// the event undeleted on failure is harmless (just inert) and keeps
-		// a manual/future retry path possible without extra work.
+		// Persist runs before save+delete below; a failure must block the
+		// event delete, not the status save. This buys no real retry — the
+		// job goes terminal in Save regardless, so the next monitoring tick
+		// never re-enters this path, permanently dropping the terminal
+		// diagnostics until the event's 24h Redis TTL expires.
 		diagnosticsPersisted := true
 		if workerEvent != nil {
 			if err := i.persistTerminalDiagnostics(ctx, currentJob.ID(), workerEvent); err != nil {
@@ -700,19 +681,10 @@ func (i *Job) Unsubscribe(jobID id.JobID, ch chan job.Status) {
 	}
 }
 
-// persistTerminalDiagnostics snapshots a JobCompleteEvent's
-// FailedNodes/AggregatedDiagnostics/DroppedEventCount into the durable
-// nodeDiagnostics collection (repo.NodeDiagnostics.SaveTerminalDiagnostics)
-// so job.failedNodes stays readable after the source Redis event is deleted
-// — see the ordering comment at the checkJobStatus call site, which deletes
-// the event only once this returns nil.
-//
-// Old-wire events (an engine build predating diagnostics, so all three
-// fields are empty/nil) are a deliberate no-op: there is nothing to persist,
-// and callers must proceed exactly as before (event still gets deleted).
-// A nil nodeDiagnosticsRepo (e.g. a Job built without one) is likewise a
-// no-op rather than an error, mirroring interactor/diagnostic.go's
-// nil-repo tolerance.
+// persistTerminalDiagnostics snapshots a JobCompleteEvent's terminal
+// diagnostics into Mongo (repo.NodeDiagnostics.SaveTerminalDiagnostics) so
+// job.failedNodes stays readable after the source Redis event is deleted.
+// Old-wire events and a nil nodeDiagnosticsRepo are no-ops, not errors.
 func (i *Job) persistTerminalDiagnostics(ctx context.Context, jobID id.JobID, event *gateway.JobCompleteEvent) error {
 	if event == nil {
 		return nil
@@ -737,10 +709,8 @@ func (i *Job) persistTerminalDiagnostics(ctx context.Context, jobID id.JobID, ev
 	return i.nodeDiagnosticsRepo.SaveTerminalDiagnostics(ctx, jobID, event.WorkflowID, event.Timestamp, failedNodes, aggregated, event.DroppedEventCount)
 }
 
-// wireDiagnosticsToDomain converts a JobCompleteEvent's wire diagnostics
-// slice (FailedNodes or AggregatedDiagnostics) into domain rows, applying
-// the envelope's jobID/timestamp to each (WireDiagnostic itself carries
-// neither — see gateway.WireDiagnostic.ToDomain).
+// wireDiagnosticsToDomain converts a JobCompleteEvent wire diagnostics slice
+// into domain rows, applying the envelope's jobID/timestamp to each.
 func wireDiagnosticsToDomain(jobID id.JobID, timestamp time.Time, wire []gateway.WireDiagnostic) ([]*diagnostic.Diagnostic, error) {
 	if len(wire) == 0 {
 		return nil, nil

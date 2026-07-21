@@ -15,18 +15,15 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// diagnosticIndexKeys mirrors the subscriber's index declarations
-// (server/subscriber/internal/infrastructure/mongo/diagnostic.go) so both
-// sides converge on the same {jobId,nodeId} + {jobId} indexes. No unique
-// index: the subscriber's own rows are append-only (random ObjectID-suffixed
-// IDs); this repo's SaveTerminalDiagnostics writes rely on SaveOne's upsert
-// (ReplaceOne) semantics against deterministic IDs instead.
+// diagnosticIndexKeys mirrors the subscriber's index declarations so both
+// sides converge on the same indexes. No unique index: SaveTerminalDiagnostics
+// relies on SaveOne's upsert (ReplaceOne) semantics against deterministic
+// IDs instead.
 var diagnosticIndexKeys = []string{"jobId,nodeId", "jobId"}
 
-// diagnosticHasCodeFilter scopes reads to rows carrying a top-level "code"
-// field, excluding the single per-job JobDiagnosticsSummaryDocument row
-// (see mongodoc.NewJobDiagnosticsSummaryDocument), which has no such field
-// and would otherwise decode into a mostly-empty Diagnostic.
+// diagnosticHasCodeFilter scopes reads to rows with a top-level "code"
+// field, excluding the per-job JobDiagnosticsSummaryDocument row (which has
+// none and would otherwise decode into a mostly-empty Diagnostic).
 var diagnosticHasCodeFilter = bson.M{"$exists": true}
 
 type NodeDiagnostics struct {
@@ -43,10 +40,7 @@ func (r *NodeDiagnostics) Init(ctx context.Context) error {
 
 // FindByJobNodeID scopes to one node's rows. An empty nodeID (mirroring
 // gateway.Redis.GetNodeDiagnostics' "" → "_job" fallback) reads the
-// job-level bucket: the nodeId bson field itself carries the
-// mongodoc.JobDiagnosticNodeSegment sentinel for those rows (see the T5
-// normalization fix), so this is a plain field-equality match once
-// normalized.
+// job-level bucket via the normalized sentinel nodeId field.
 func (r *NodeDiagnostics) FindByJobNodeID(ctx context.Context, jobID id.JobID, nodeID string) ([]*diagnostic.Diagnostic, error) {
 	if nodeID == "" {
 		nodeID = mongodoc.JobDiagnosticNodeSegment
@@ -110,9 +104,8 @@ func (r *NodeDiagnostics) SaveTerminalDiagnostics(
 		}
 	}
 
-	// Each aggregated diagnostic gets its own row (like failedNodes above),
-	// not a nested entry inside the summary row below: nesting would make it
-	// invisible to FindByJobNodeID for the node it pertains to.
+	// Each aggregated diagnostic gets its own row (like failedNodes above)
+	// so it stays visible to FindByJobNodeID.
 	for _, agg := range aggregated {
 		doc := mongodoc.NewAggregatedDiagnosticDocument(jobID, workflowID, agg)
 		if err := r.client.SaveOne(ctx, doc.ID, doc); err != nil {

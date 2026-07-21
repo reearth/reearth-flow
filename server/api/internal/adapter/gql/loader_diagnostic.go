@@ -11,23 +11,18 @@ import (
 )
 
 // DiagnosticLoader wraps interfaces.NodeDiagnostics for the GraphQL layer.
-// GetFailedNodes/GetDroppedEventCount mirror the thin non-batching wrapper
-// pattern used by LogLoader/NodeExLoader (each backs exactly one resolver
-// field on a single parent object, called at most once per request).
-// GetNodeDiagnostics does not: NodeExecution.diagnostics is resolved once
-// per sibling NodeExecution in a job's node list, all sharing the same
-// jobID, which was an N+1 (one permission check + one Redis/Mongo round
-// trip per node) — see jobDiagnosticsFetch below.
+// GetFailedNodes/GetDroppedEventCount are thin non-batching wrappers, like
+// LogLoader/NodeExLoader. GetNodeDiagnostics is not: it batches via
+// jobDiagnosticsFetch below to avoid an N+1 across a job's node list.
 type DiagnosticLoader struct {
 	usecase  interfaces.NodeDiagnostics
 	jobFetch map[id.JobID]*jobDiagnosticsFetch
 	mu       sync.Mutex
 }
 
-// jobDiagnosticsFetch memoizes one in-flight or completed
-// usecase.GetJobDiagnostics call for a jobID, so concurrent/sequential
-// GetNodeDiagnostics calls for different nodes of the same job share a
-// single fetch instead of issuing one each.
+// jobDiagnosticsFetch memoizes one in-flight/completed GetJobDiagnostics
+// call per jobID, so concurrent GetNodeDiagnostics calls for the same job
+// share a single fetch instead of issuing one each.
 type jobDiagnosticsFetch struct {
 	err  error
 	done chan struct{}
@@ -38,19 +33,10 @@ func NewDiagnosticLoader(usecase interfaces.NodeDiagnostics) *DiagnosticLoader {
 	return &DiagnosticLoader{usecase: usecase}
 }
 
-// GetNodeDiagnostics backs NodeExecution.diagnostics. Rather than calling
-// usecase.GetNodeDiagnostics(jobID, nodeID) once per node (an N+1 across a
-// job's node list — see resolver_nodeExecution.go), it fetches the whole
-// job's diagnostics ONCE per DiagnosticLoader instance (a fresh instance is
-// built per GraphQL request by NewLoaders/AttachUsecases — see context.go —
-// so this cannot leak state across requests) via the already-merged/deduped
-// usecase.GetJobDiagnostics, then partitions by nodeID in memory. This is
-// correct because GetJobDiagnostics is a strict superset of any single
-// node's rows: the subscriber pushes every diagnostic (node-scoped or
-// job-level) onto both the per-node AND the whole-job Redis list (see
-// server/subscriber's SaveDiagnosticToRedis), and Mongo's FindByJobID is
-// unfiltered by node. Same permission scope too: both methods call the
-// identical i.checkJobPermission(ctx, jobID).
+// GetNodeDiagnostics backs NodeExecution.diagnostics. Avoids an N+1 by
+// fetching the whole job's diagnostics once (via loadJobDiagnostics) and
+// partitioning by nodeID in memory — safe because GetJobDiagnostics is a
+// strict superset of any single node's rows, with the same permission scope.
 func (l *DiagnosticLoader) GetNodeDiagnostics(ctx context.Context, jobID gqlmodel.ID, nodeID string) ([]*gqlmodel.Diagnostic, error) {
 	jId, err := id.JobIDFrom(string(jobID))
 	if err != nil {
@@ -75,9 +61,9 @@ func (l *DiagnosticLoader) GetNodeDiagnostics(ctx context.Context, jobID gqlmode
 	return gqlmodel.ToDiagnostics(filtered), nil
 }
 
-// loadJobDiagnostics fetches and memoizes usecase.GetJobDiagnostics(jobID)
-// once per (loader instance, jobID) pair. Concurrent callers for the same
-// jobID block on the same in-flight fetch rather than issuing their own.
+// loadJobDiagnostics fetches and memoizes GetJobDiagnostics(jobID) once per
+// (loader instance, jobID) pair; concurrent callers for the same jobID
+// block on the in-flight fetch.
 func (l *DiagnosticLoader) loadJobDiagnostics(ctx context.Context, jobID id.JobID) ([]*diagnostic.Diagnostic, error) {
 	l.mu.Lock()
 	fetch, ok := l.jobFetch[jobID]

@@ -12,11 +12,9 @@ import (
 	reearth_log "github.com/reearth/reearthx/log"
 )
 
-// DiagnosticEntry is the wire shape the subscriber pushes onto the
-// diagnostics:{jobId}[:{nodeId}] Redis lists (see server/subscriber's
-// diagnostic.DiagnosticEvent, whose fields are top-level siblings of
-// schema/workflowId/jobId/timestamp — gateway.WireDiagnostic is embedded,
-// not nested, to match that flattened shape on Unmarshal).
+// DiagnosticEntry is the wire shape pushed onto the diagnostics:{jobId}
+// [:{nodeId}] Redis lists; WireDiagnostic is embedded, not nested, to match
+// the subscriber's flattened JSON shape on Unmarshal.
 type DiagnosticEntry struct {
 	Timestamp  time.Time `json:"timestamp"`
 	WorkflowID string    `json:"workflowId"`
@@ -33,10 +31,8 @@ func (e *DiagnosticEntry) ToDomain() (*diagnostic.Diagnostic, error) {
 	return e.WireDiagnostic.ToDomain(jid, e.Timestamp.UTC())
 }
 
-// GetNodeDiagnostics reads diagnostics:{jobId}:{nodeId} (nodeID "" reads the
-// "_job" bucket, mirroring the subscriber's fallback for job-scoped
-// diagnostics — see server/subscriber/internal/infrastructure/redis/
-// diagnostic.go).
+// GetNodeDiagnostics reads diagnostics:{jobId}:{nodeId} (nodeID "" reads
+// the "_job" bucket, mirroring the subscriber's fallback).
 func (r *redisLog) GetNodeDiagnostics(
 	ctx context.Context,
 	jobID id.JobID,
@@ -51,8 +47,7 @@ func (r *redisLog) GetNodeDiagnostics(
 }
 
 // GetJobDiagnostics reads diagnostics:{jobId}, the whole-job index list the
-// subscriber double-writes every diagnostic event onto (in addition to the
-// per-node list).
+// subscriber double-writes every diagnostic event onto.
 func (r *redisLog) GetJobDiagnostics(
 	ctx context.Context,
 	jobID id.JobID,

@@ -1,7 +1,6 @@
 // Package diagnostic holds the wire form of a structured engine Diagnostic,
-// shared (by duplication, not by import — subscriber and api are independent
-// Go modules) with the api-side equivalent in
-// internal/usecase/gateway/diagnostic.go.
+// duplicated in lockstep (not imported — separate Go modules) with the
+// api-side equivalent in internal/usecase/gateway/diagnostic.go.
 package diagnostic
 
 // WireSourceSpan is the wire mirror of reearth_flow_diagnostics::SourceSpan.
@@ -16,19 +15,12 @@ type WireAggregateInfo struct {
 	Count            uint64   `json:"count"`
 }
 
-// WireDiagnostic is the wire form of a structured Diagnostic published by the
-// engine (see engine/schema/diagnostic_event.json and
-// engine/schema/job_complete_event.json, generated from the Rust
-// reearth_flow_diagnostics types). It is used both standalone (embedded in a
-// future DiagnosticEvent) and nested inside JobCompleteEvent's failedNodes /
-// aggregatedDiagnostics arrays.
-//
-// Category, Severity and EffectiveDisposition are carried as plain strings
-// rather than a closed Go enum: the engine renders them as their snake_case
-// string values specifically so unknown or newer values survive a Go round
-// trip verbatim instead of failing to deserialize (forward-compat
-// requirement, spec diagnostic.v1 4.7). Do NOT validate these strings
-// against a known set.
+// WireDiagnostic is the wire form of a structured Diagnostic published by
+// the engine (engine/schema/diagnostic_event.json), used standalone and
+// nested inside JobCompleteEvent's failedNodes/aggregatedDiagnostics.
+// Category, Severity and EffectiveDisposition are plain strings, not a
+// closed enum, so unknown/newer values round-trip verbatim — do not
+// validate them against a known set.
 type WireDiagnostic struct {
 	Aggregated           *WireAggregateInfo `json:"aggregated,omitempty"`
 	SourceSpan           *WireSourceSpan    `json:"sourceSpan,omitempty"`

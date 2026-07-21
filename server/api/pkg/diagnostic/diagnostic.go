@@ -1,9 +1,7 @@
 // Package diagnostic holds the domain representation of a structured engine
 // Diagnostic, read either from the live per-event stream the subscriber
-// persists (nodeDiagnostics Mongo collection / diagnostics:{jobId}[:{nodeId}]
-// Redis lists — see server/subscriber's diagnostic ingestion) or from a
-// terminal snapshot persisted at job completion (interactor/job.go's status
-// merge).
+// persists (Mongo/Redis) or from a terminal snapshot persisted at job
+// completion (interactor/job.go's status merge).
 package diagnostic
 
 import (
@@ -12,8 +10,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 )
 
-// SourceSpan mirrors the wire SourceSpan (gateway.WireSourceSpan / the
-// subscriber's diagnostic.WireSourceSpan): an optional byte offset+length
+// SourceSpan mirrors the wire SourceSpan: an optional byte offset+length
 // into the source document a diagnostic refers to.
 type SourceSpan struct {
 	length *uint
@@ -53,14 +50,10 @@ func (a *AggregateInfo) SampleFeatureIDs() []string {
 
 // Diagnostic is a single structured diagnostic row.
 //
-// NodeID is a plain string, NOT id.NodeID: the engine may emit composed node
-// identities with dots (e.g. "subgraph-a.sink-writer-2") or a synthesized
-// cascade id, neither of which is a valid UUID (see
-// engine/schema/job_complete_event.json's consumer contract, commit
-// 46a4bfd25). Category/Severity/EffectiveDisposition stay plain strings for
-// the same forward-compat reason gateway.WireDiagnostic does: unknown/newer
-// engine-emitted values must survive a round trip verbatim rather than fail
-// to deserialize.
+// NodeID is a plain string, not id.NodeID: the engine may emit composed
+// node identities (e.g. "subgraph-a.sink-writer-2") that aren't valid
+// UUIDs. Category/Severity/EffectiveDisposition stay plain strings too, so
+// unknown/newer engine values survive a round trip verbatim.
 type Diagnostic struct {
 	timestamp            time.Time
 	featureID            *string
@@ -75,15 +68,10 @@ type Diagnostic struct {
 	severity             string
 	message              string
 	jobID                id.JobID
-	// terminal is true when this row was persisted at job-completion merge
-	// time (interactor/job.go's persistTerminalDiagnostics, mongodoc schema
-	// "job-complete.v1") rather than mirrored live off the subscriber's
-	// per-event DiagnosticEvent stream (mongodoc schema "diagnostic.v1").
-	// It is an internal read-path signal only — never wire/GraphQL-exposed
-	// (see gqlmodel.ToDiagnostic, which does not carry it across) — used to
-	// dedupe a diagnostic that rode both paths (see
-	// interactor/diagnostic.go's dedupeDiagnostics) in favor of its durable
-	// terminal copy.
+	// terminal is true when persisted at job-completion merge time rather
+	// than mirrored live from the subscriber's event stream. Internal
+	// read-path signal only — never wire/GraphQL-exposed — used by
+	// interactor/diagnostic.go's dedupeDiagnostics.
 	terminal bool
 }
 

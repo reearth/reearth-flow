@@ -5,9 +5,8 @@ import (
 	"time"
 )
 
-// DiagnosticSchemaV1 is the wire schema tag for a DiagnosticEvent
-// (engine/schema/diagnostic_event.json). DiagnosticEvent.Schema must equal
-// this value.
+// DiagnosticSchemaV1 is the wire schema tag a DiagnosticEvent's Schema
+// field must equal (engine/schema/diagnostic_event.json).
 const DiagnosticSchemaV1 = "diagnostic.v1"
 
 // ErrInvalidDiagnosticEvent is returned by NewDiagnosticEvent when the
@@ -15,11 +14,9 @@ const DiagnosticSchemaV1 = "diagnostic.v1"
 var ErrInvalidDiagnosticEvent = errors.New("invalid diagnostic event data")
 
 // DiagnosticEvent is the pub/sub wire event for a single structured
-// Diagnostic published by the engine (engine/schema/diagnostic_event.json).
-// On the wire the WireDiagnostic fields (code/category/severity/...) are
-// top-level siblings of schema/workflowId/jobId/timestamp, so
-// WireDiagnostic is embedded (not nested) to match that flattened shape
-// exactly on both Marshal and Unmarshal.
+// Diagnostic (engine/schema/diagnostic_event.json). WireDiagnostic is
+// embedded, not nested, so its fields sit flat alongside
+// schema/workflowId/jobId/timestamp on the wire.
 type DiagnosticEvent struct {
 	Timestamp  time.Time `json:"timestamp"`
 	WorkflowID string    `json:"workflowId"`
@@ -29,13 +26,9 @@ type DiagnosticEvent struct {
 }
 
 // NewDiagnosticEvent constructs a DiagnosticEvent, validating the wire
-// schema tag and required jobId.
-//
-// Category, Severity and EffectiveDisposition (carried inside wire) are
-// NOT validated against a known set here or anywhere downstream: the
-// engine may introduce new values over time and unknown strings must
-// survive a round trip verbatim (forward-compat requirement, spec
-// diagnostic.v1 4.7).
+// schema tag and required jobId. Category/Severity/EffectiveDisposition
+// are not validated here or downstream — unknown values must round-trip
+// verbatim (see WireDiagnostic).
 func NewDiagnosticEvent(
 	schema string,
 	workflowID string,
