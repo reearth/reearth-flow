@@ -136,16 +136,8 @@ impl Workflow {
     }
 }
 
-/// Workflow-level configuration for how diagnostics of severity `Fatal`
-/// are handled at run time, and per-selector overrides of the default
-/// disposition. Absent (`None`) behaves byte-identically to a workflow
-/// with no error-handling configuration at all — this type is additive.
-///
-/// Registry-aware rules (unknown diagnostic codes, codeless demotion of an
-/// authored-`Fatal` override, node-id existence in the graph) are enforced
-/// later, by the resolver that consumes this configuration — `validate`
-/// here only checks the structural rules that don't need the registry or
-/// graph.
+/// Workflow-level configuration for how `Fatal` diagnostics are handled and
+/// per-selector overrides of the default disposition. Absent (`None`) is byte-identical to no error-handling config — additive. Registry-aware rules are enforced later by the resolver; `validate` here only checks structural rules.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ErrorPolicy {
@@ -155,8 +147,7 @@ pub struct ErrorPolicy {
     pub treat_all_as_fatal: bool,
     #[serde(default)]
     pub allow_relax_internal: bool,
-    /// D7: switch that enables writing rejected features to a side file
-    /// instead of only counting/logging them. Consumed by a later task.
+    /// D7: switch that enables writing rejected features to a side file instead of only counting/logging them.
     #[serde(default)]
     pub side_file: bool,
     #[serde(default)]
@@ -164,11 +155,8 @@ pub struct ErrorPolicy {
 }
 
 impl ErrorPolicy {
-    /// Structural validation only: checks that don't require the
-    /// diagnostic-code registry or the workflow graph. Each violation
-    /// produces one message naming the offending override's index and
-    /// selectors; all violations are collected rather than short-circuiting
-    /// on the first one.
+    /// Structural validation only (no registry/graph access needed). Collects
+    /// every violation (index + selectors) rather than short-circuiting on the first.
     pub fn validate(&self) -> Result<(), Vec<String>> {
         let mut errors = Vec::new();
         for (index, override_) in self.overrides.iter().enumerate() {
@@ -220,9 +208,8 @@ pub enum OnFatal {
     Continue,
 }
 
-/// Overrides the disposition of diagnostics matching the given selectors.
-/// At least one of `node`, `code`, `category` must be set, and `code` and
-/// `category` are mutually exclusive (see `ErrorPolicy::validate`).
+/// Overrides the disposition of diagnostics matching the given selectors. At least
+/// one of `node`/`code`/`category` must be set; `code` and `category` are mutually exclusive (see `ErrorPolicy::validate`).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PolicyOverride {

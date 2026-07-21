@@ -144,16 +144,8 @@ pub(crate) enum NodeErrorKind {
 }
 
 /// Wraps `e` in the `ExecutionError` variant matching `kind`, preserving the
-/// box exactly as received. This replaces the old
-/// `CannotReceiveFromChannel(format!("{e:?}"))` / `CannotSendToChannel(...)`
-/// collapse at the action-error sites (`Sink::process`/`finish`,
-/// `Processor::finish`): when an action's `?`-propagated `ctx.report()`
-/// Fatal surfaces as `e`, the box IS the structured `Diagnostic` carrier
-/// already, so no downcast is needed here to "enrich" it — enrichment is
-/// simply not destroying it with `format!`. The join fold's
-/// `diagnostic_from_execution_error` (Task 5, `dag_executor.rs`) is what
-/// later downcasts `Processor|Sink|Source(b)` back into a `Diagnostic` when
-/// recovering `failed_nodes`.
+/// box exactly as received — a `Diagnostic` carrier must not be collapsed
+/// via `format!`, since the join fold later downcasts it back out.
 pub(crate) fn to_node_error(e: BoxedError, kind: NodeErrorKind) -> ExecutionError {
     match kind {
         NodeErrorKind::Processor => ExecutionError::Processor(e),
@@ -176,10 +168,8 @@ mod to_node_error_tests {
         )
     }
 
-    /// A boxed `Diagnostic` wrapped by `to_node_error` must remain
-    /// recoverable via the same `Box<dyn Error>::downcast::<Diagnostic>()`
-    /// the join fold uses — proving the wrap preserves the structured
-    /// carrier instead of collapsing it to a string.
+    /// A boxed `Diagnostic` must remain recoverable via
+    /// `downcast::<Diagnostic>()`, proving the wrap preserves it structurally.
     #[test]
     fn boxed_diagnostic_round_trips_through_each_kind() {
         for kind in [

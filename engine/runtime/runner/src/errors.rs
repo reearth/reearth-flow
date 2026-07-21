@@ -41,25 +41,12 @@ pub enum Error {
         "sandbox_root `file:///` is reserved as the `Runner::run` (unsandboxed) sentinel and must not be used with `run_with_sandbox_root`"
     )]
     UnsandboxedSentinelRejected,
-    /// Legacy-compat representation of "the run completed but one or more
-    /// nodes failed", surfaced by the unit-returning `Runner`/`AsyncRunner`
-    /// wrappers (via `summary_into_unit_result`) and by CLI callers that map
-    /// a by-value `RunSummary` to the same Err/exit-1 path. Deliberately not
-    /// `ExecutionError::{Source,Processor,Sink}` — those name a specific
-    /// pipeline stage, which would misrepresent the failure's kind when
-    /// folding an arbitrary `RunSummary::failed_nodes` entry (the failure
-    /// could originate from any node kind, or be synthesized).
+    /// Legacy-compat: "the run completed but one or more nodes failed" (not
+    /// `ExecutionError::{Source,Processor,Sink}` since the failed node's kind is arbitrary).
     #[error("{0}")]
     FailedNodes(String),
-    /// The workflow's `errorPolicy` block failed structural validation
-    /// (`ErrorPolicy::validate`), registry-aware compilation
-    /// (`DispositionPolicy::compile`), or load-time node-selector matching
-    /// (`policy::validate_node_selectors`) — every message collected, one
-    /// per line. Surfaced by `Orchestrator::run_apps` before DAG
-    /// construction (validate/compile) or right after (node matching),
-    /// aborting the run the same way a workflow-parse failure aborts it
-    /// upstream in the worker, just via this crate's `Error` type rather
-    /// than `Workflow::try_from`'s.
+    /// The workflow's `errorPolicy` failed validation, compilation, or
+    /// node-selector matching; messages collected one per line.
     #[error("workflow errorPolicy is invalid:\n{0}")]
     PolicyValidationError(String),
 }

@@ -37,15 +37,11 @@ pub struct Context {
     pub storage_resolver: Arc<StorageResolver>,
     pub kv_store: Arc<dyn KvStore>,
     pub event_hub: EventHub,
-    /// Per-job sandbox root for sink writes. Production callers (worker, CLI)
-    /// MUST set this to the resolved workerArtifactPath URI; production
-    /// entrypoints (`Runner::run_with_sandbox_root`) reject the `file:///`
-    /// sentinel. Tests using `NodeContext::default()` get `file:///`, which
-    /// `sandbox::ensure_under` treats as "no sandbox" for any candidate scheme.
+    /// Per-job sandbox root for sink writes. Production callers MUST set
+    /// this; `file:///` (test/legacy default) disables sandbox enforcement.
     pub sandbox_root: Uri,
-    /// Per-node diagnostics handle for the `report`/`warn`/`warn_once` API.
-    /// `None` for fresh/legacy contexts; derived contexts propagate it from
-    /// their source.
+    /// Per-node diagnostics handle for `report`/`warn`/`warn_once`. `None`
+    /// for fresh/legacy contexts; derived contexts propagate it.
     pub diagnostics: Option<crate::diagnostics::SharedNodeDiagnostics>,
 }
 
@@ -115,15 +111,11 @@ pub struct ExecutorContext {
     pub storage_resolver: Arc<StorageResolver>,
     pub kv_store: Arc<dyn KvStore>,
     pub event_hub: EventHub,
-    /// Per-job sandbox root for sink writes. Production callers (worker, CLI)
-    /// MUST set this to the resolved workerArtifactPath URI; production
-    /// entrypoints (`Runner::run_with_sandbox_root`) reject the `file:///`
-    /// sentinel. Tests using `NodeContext::default()` get `file:///`, which
-    /// `sandbox::ensure_under` treats as "no sandbox" for any candidate scheme.
+    /// Per-job sandbox root for sink writes. Production callers MUST set
+    /// this; `file:///` (test/legacy default) disables sandbox enforcement.
     pub sandbox_root: Uri,
-    /// Per-node diagnostics handle for the `report`/`warn`/`warn_once` API.
-    /// `None` for fresh/legacy contexts; derived contexts propagate it from
-    /// their source.
+    /// Per-node diagnostics handle for `report`/`warn`/`warn_once`. `None`
+    /// for fresh/legacy contexts; derived contexts propagate it.
     pub diagnostics: Option<crate::diagnostics::SharedNodeDiagnostics>,
 }
 
@@ -247,27 +239,18 @@ impl ExecutorContext {
         self.event_hub.diagnostic(diagnostic.clone());
     }
 
-    /// Report a feature-disposition decision (drop / reject / fail).
-    /// Auto-injects node_id, action_type and the current feature id.
-    /// Fatal is returned as Err(diagnostic) — `ctx.report(draft)?` is the
-    /// idiomatic call shape — but the no-silent-fatal guarantee is executor-side:
-    /// the fatal is recorded in the per-node slot BEFORE Err is returned, and the
-    /// executor fails the node at drain end even if the action swallowed the Err.
-    // `Diagnostic` is the deliberate error type here (actions match on
-    // `effective_disposition`/`?`-propagate it as a `BoxedError`); boxing it
-    // would break the interface this task specifies.
+    /// Reports a feature-disposition decision (drop/reject/fail). The fatal
+    /// is recorded in the per-node slot BEFORE `Err` is returned, so the
+    /// executor fails the node at drain end even if the caller swallows it.
+    // `Diagnostic` is deliberately unboxed here — actions match on
+    // `effective_disposition` and `?`-propagate it as a `BoxedError`.
     #[allow(clippy::result_large_err)]
     pub fn report(&self, draft: DiagnosticDraft) -> Result<Disposition, Diagnostic> {
         let (node_id, action_type) = self.diagnostic_identity();
         let mut diagnostic =
             Diagnostic::from_draft(draft, node_id, action_type, Some(self.feature.id));
-        // The compiled policy's resolve() ladder decides the effective
-        // disposition when this context has a diagnostics handle (i.e. a
-        // real node context); a handle-less context (tests/legacy paths)
-        // has no composed node id or policy to resolve against, so it
-        // falls back to the registry default — matching `Default::default()`
-        // for `DispositionPolicy`, which always resolves every code to its
-        // registry default anyway.
+        // With a diagnostics handle, resolve() applies the compiled policy;
+        // a handle-less context (tests/legacy) falls back to the registry default.
         let effective = match &self.diagnostics {
             Some(handle) => handle.resolve(diagnostic.code),
             None => diagnostic.default_disposition,
@@ -291,18 +274,9 @@ impl ExecutorContext {
                         handle
                             .inner
                             .record(kind, diagnostic.code, Some(self.feature.id));
-                        // D7 (Task 5): capture a side-file row alongside the
-                        // aggregation bucket above. `record_reject_row` is a
-                        // no-op unless this handle belongs to a sink node
-                        // under a `side_file()` policy, so this is free on
-                        // every other path. `self.feature` is live here (this
-                        // is the per-feature report() path), so
-                        // `has_geometry` is always known (`Some`, computed
-                        // for real rather than guessed). Finish()-time
-                        // `report_drop` (`NodeContext::report_drop` below)
-                        // threads the same tri-state field through, but its
-                        // callers often have no live `Feature` and may pass
-                        // `None` instead.
+                        // Reject also captures a side-file row (no-op unless
+                        // sink + side_file()). `has_geometry` is always
+                        // `Some` here since `self.feature` is live.
                         if effective == Disposition::Reject {
                             handle.record_reject_row(
                                 Some(self.feature.id),
@@ -334,12 +308,9 @@ impl ExecutorContext {
         }
     }
 
-    /// Run-level notice: one immediate line per run per code, bypasses the aggregator.
-    /// On a context without a diagnostics handle (`self.diagnostics == None`),
-    /// there is no dedup ledger to consult, so `first` is unconditionally
-    /// `true` and this degrades to warn-every-time instead of once-per-run;
-    /// that's a test-only/legacy situation — production contexts are always
-    /// stamped with a diagnostics handle.
+    /// Run-level notice: one immediate line per run per code, bypasses the
+    /// aggregator. Without a diagnostics handle, dedup can't apply and this
+    /// degrades to warn-every-time (test-only/legacy; production always has a handle).
     pub fn warn_once(&self, draft: DiagnosticDraft) {
         let first = match &self.diagnostics {
             Some(handle) => handle.inner.try_mark_warn_once(draft.code),
@@ -360,15 +331,11 @@ pub struct NodeContext {
     pub storage_resolver: Arc<StorageResolver>,
     pub kv_store: Arc<dyn KvStore>,
     pub event_hub: EventHub,
-    /// Per-job sandbox root for sink writes. Production callers (worker, CLI)
-    /// MUST set this to the resolved workerArtifactPath URI; production
-    /// entrypoints (`Runner::run_with_sandbox_root`) reject the `file:///`
-    /// sentinel. Tests using `NodeContext::default()` get `file:///`, which
-    /// `sandbox::ensure_under` treats as "no sandbox" for any candidate scheme.
+    /// Per-job sandbox root for sink writes. Production callers MUST set
+    /// this; `file:///` (test/legacy default) disables sandbox enforcement.
     pub sandbox_root: Uri,
-    /// Per-node diagnostics handle for the `report`/`warn`/`warn_once` API.
-    /// `None` for fresh/legacy contexts; derived contexts propagate it from
-    /// their source.
+    /// Per-node diagnostics handle for `report`/`warn`/`warn_once`. `None`
+    /// for fresh/legacy contexts; derived contexts propagate it.
     pub diagnostics: Option<crate::diagnostics::SharedNodeDiagnostics>,
 }
 
@@ -405,10 +372,8 @@ impl Default for NodeContext {
             storage_resolver: Arc::new(StorageResolver::new()),
             kv_store: Arc::new(crate::kvs::create_kv_store()),
             event_hub: EventHub::new(30),
-            // Permissive sentinel: `file:///` is treated by
-            // `sandbox::ensure_under` as "no sandbox" — any candidate URI,
-            // regardless of scheme, passes. Only used by tests / the legacy
-            // `Runner::run` path; production entrypoints reject this value.
+            // Permissive sentinel: `file:///` disables sandbox enforcement
+            // (test/legacy only; production entrypoints reject it).
             sandbox_root: std::str::FromStr::from_str("file:///")
                 .expect("'file:///' is always a valid URI"),
             diagnostics: None,
@@ -455,11 +420,9 @@ impl NodeContext {
 }
 
 impl NodeContext {
-    /// finish()-time drop reporting (sinks run finish with only a NodeContext).
-    /// `has_geometry` threads through to `NodeDiagnosticsHandle::report_drop`
-    /// verbatim (tri-state: `None` = unknown, not `false` — see
-    /// `RejectRow`'s doc comment); the no-handle fallback below doesn't need
-    /// it, since it never captures a side-file row.
+    /// finish()-time drop reporting (sinks run finish with only a
+    /// `NodeContext`); `has_geometry` threads through verbatim to
+    /// `NodeDiagnosticsHandle::report_drop`.
     pub fn report_drop(
         &self,
         code: ErrorCode,
@@ -486,18 +449,11 @@ pub struct ExecutorOptions {
     pub thread_pool_size: usize,
     pub feature_flush_threshold: usize,
     /// Per-job sandbox root for sink writes, wired from the worker's resolved
-    /// `workerArtifactPath`. CLI callers set this too (Task 5). Tests and legacy
-    /// callers that do not set it via the builder will get the permissive
-    /// `file:///` sentinel through `ExecutorOptions::default()`.
+    /// `workerArtifactPath`. Unset builders default to the permissive `file:///` sentinel.
     pub sandbox_root: Uri,
-    /// The workflow's compiled `errorPolicy` (`DispositionPolicy::compile`,
-    /// done once at load by the runner before DAG construction — see
-    /// `reearth_flow_runner::orchestrator`). `DagExecutor::start` clones this
-    /// into every node's `NodeDiagnosticsHandle`, which resolves against it
-    /// on every `report()`/`report_drop()` call. Defaults to
-    /// `DispositionPolicy::default()`, the empty policy that resolves every
-    /// code to its registry default — i.e. byte-identical to Phase 1 for any
-    /// workflow with no `errorPolicy` block.
+    /// The workflow's compiled `errorPolicy`, cloned into every node's
+    /// `NodeDiagnosticsHandle` to resolve `report()`/`report_drop()` calls.
+    /// Defaults to the empty policy (registry defaults for every code).
     pub disposition_policy: std::sync::Arc<DispositionPolicy>,
 }
 
@@ -626,9 +582,8 @@ mod diagnostics_tests {
         );
     }
 
-    /// D7 (Task 5): a resolved `Reject` under a sink handle with
-    /// `side_file()` enabled captures a row (feature id + has_geometry +
-    /// code), not just the aggregation bucket.
+    /// A resolved `Reject` under `side_file()` captures a row (feature id +
+    /// has_geometry + code), not just the aggregation bucket.
     #[test]
     fn report_resolves_a_promoting_override_to_reject_and_captures_a_side_file_row() {
         let policy = DispositionPolicy::compile(PolicyInput {
@@ -656,9 +611,8 @@ mod diagnostics_tests {
         assert_eq!(rows[0].code, ErrorCode::Cesium3dtilesEmptyGeometry);
     }
 
-    /// Same promoting override, but without `side_file()` — the aggregation
-    /// bucket still records `Reject` (unchanged, pre-Task-5 behavior); no
-    /// row is captured since there's nowhere configured to flush it.
+    /// Without `side_file()`, the bucket still records `Reject` but no row
+    /// is captured.
     #[test]
     fn report_resolves_a_promoting_override_to_reject_without_side_file_captures_no_row() {
         let policy = DispositionPolicy::compile(PolicyInput {
@@ -777,15 +731,8 @@ mod diagnostics_tests {
         assert!(handle.inner.take_fatal().is_none());
     }
 
-    /// Final-review fix round, Item 1: the same promoting override, but
-    /// through a sink handle under `side_file()` — proves
-    /// `NodeContext::report_drop` threads `has_geometry` all the way to a
-    /// captured side-file row matching the bucket count, not just the
-    /// aggregation bucket. This is the exact call shape the production
-    /// `citygml.rs`/`image_rasterizer.rs` call sites use (they call
-    /// `NodeDiagnosticsHandle::report_drop` directly, but
-    /// `NodeContext::report_drop` above is a thin, behavior-preserving
-    /// pass-through to it).
+    /// Proves `NodeContext::report_drop` threads `has_geometry` through to a
+    /// captured side-file row — the exact call shape production sink actions use.
     #[test]
     fn report_drop_resolves_a_promoting_override_to_reject_and_captures_a_side_file_row_via_node_context(
     ) {

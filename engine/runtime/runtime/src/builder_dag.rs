@@ -21,18 +21,8 @@ use crate::{
 pub struct NodeType {
     pub handle: NodeHandle,
     pub name: String,
-    /// The action string this node was built from (`node.node.action()` in
-    /// the description DAG), e.g. "Cesium 3D Tiles Writer". Validated equal
-    /// to the *factory*'s `SourceFactory::name()`/`ProcessorFactory::
-    /// name()`/`SinkFactory::name()` at build time (see the
-    /// `ActionNameMismatch` checks below) — NOT necessarily equal to the
-    /// *built instance*'s `Source::name()`/`Processor::name()`/`Sink::
-    /// name()` (a different trait; some factories intentionally return a
-    /// profile-namespaced key from the factory while the built instance
-    /// returns a generic display name, e.g. PLATEAU's `UDXFolderExtractor`).
-    /// Kept here so identity (composed id + action) survives past the point
-    /// where `kind` is later `take()`n by the node loops, for diagnostics
-    /// attribution and the policy resolver.
+    /// The action string this node was built from; validated against the
+    /// factory's `name()`, NOT the built instance's (a different trait).
     pub action: String,
     pub kind: NodeKind,
     /// Output ports for this node: factory-declared ports merged with
@@ -68,11 +58,7 @@ impl NodeType {
     }
 
     /// The node's identity for diagnostics/logging/policy resolution (spec
-    /// 4.2/4.3): `"{subgraph_prefix}.{handle.id}"` when this node lives
-    /// inside one or more instantiated subgraphs, else just `handle.id`.
-    /// Mirrors the dotted-prefix convention `dag_schemas.rs` already builds
-    /// for `subgraph_prefix` itself (`"{parent_prefix}.{entity_id}"`) — the
-    /// two must be kept in sync.
+    /// 4.2/4.3): `"{subgraph_prefix}.{handle.id}"`, or just `handle.id`.
     pub fn composed_id(&self) -> String {
         match &self.subgraph_prefix {
             Some(prefix) => format!("{prefix}.{}", self.handle.id),

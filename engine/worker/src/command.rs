@@ -244,10 +244,8 @@ impl RunWorkerCommand {
         };
 
         let workflow_id = workflow.id;
-        // Kept registered as a cross-check against `RunSummary.failed_nodes`
-        // during the Phase 2a transition, but no longer the sole source of
-        // truth for job success. Delete once Phase 2b confirms the two
-        // signals always agree in production.
+        // Kept registered as a cross-check against `RunSummary.failed_nodes`, not the sole
+        // source of truth for job success — remove once the two signals are proven to agree.
         let node_failure_handler = Arc::new(NodeFailureHandler::new());
         let result = AsyncRunner::run_with_event_handler(
             meta.job_id,
@@ -268,11 +266,8 @@ impl RunWorkerCommand {
                 let handler_success = node_failure_handler.all_success();
                 let summary_success = summary.failed_nodes.is_empty();
                 if handler_success != summary_success {
-                    // Belt-and-braces transition period: NodeFailureHandler
-                    // (event-driven) and RunSummary (by-value, collect-all
-                    // fold) are expected to agree. A divergence here is
-                    // diagnostic gold — it means one of the two signals is
-                    // missing/duplicating a node failure.
+                    // NodeFailureHandler (event-driven) and RunSummary (fold-based) are expected
+                    // to agree; a divergence means one signal is missing/duplicating a failure.
                     tracing::warn!(
                         "NodeFailureHandler/RunSummary disagree on run success: handler_success={}, summary_success={}, handler_failed_nodes={:?}, summary_failed_nodes={:?}",
                         handler_success,
@@ -291,36 +286,19 @@ impl RunWorkerCommand {
         };
         self.cleanup(&meta, &storage_resolver).await?;
         let complete_event = match &run_summary {
-            // `with_summary` applies the JOB_COMPLETE_TOP_K wire bound
-            // internally now (2a-policy Task 7 hardening) -- pass the
-            // uncapped summary; capping it again here would double-cap
-            // an already-capped overflow marker (see with_summary's doc).
+            // `with_summary` caps internally now — pass the uncapped summary; capping twice
+            // would double-cap an already-capped overflow marker (see its doc).
             Some(summary) => JobCompleteEvent::with_summary(
                 workflow_id,
                 meta.job_id,
                 job_result.clone(),
                 summary,
             ),
-            // No summary means the runner returned `Err`: publish the
-            // pre-Task-10 shape (no diagnostics fields) exactly as before.
-            //
-            // KNOWN LIMITATION (Task 6, per-feature-error convergence): under
-            // the production-default `onFatal: Terminate` policy, a
-            // per-feature `process()` error now takes this same `Err` path
-            // (previously it could only reach here via a node-level
-            // `ctx.report()`/`report_drop()` Fatal). `run_summary` is `None`
-            // for that run class too, so this event carries no
-            // `droppedEventCount` and no terminal `aggregatedDiagnostics`
-            // rows even though the run genuinely produced them. The job is
-            // still correctly labeled Failed either way (see `job_result`
-            // above, derived from the `Err(_) => derive_job_result(None,
-            // false)` arm), and live `Event::Diagnostic` rows for the same
-            // run still reach the server via the event stream unaffected —
-            // only this terminal summary snapshot is short. A structural fix
-            // (making `join()` return `(Option<RunSummary>, Result<..>)`
-            // under `Terminate`, or running `fold_outcomes` before the
-            // short-circuit check) is deferred past Phase 3; see
-            // `.superpowers/sdd/progress.md`.
+            // No summary means the runner returned `Err`: publishes the pre-diagnostics shape.
+            // Known gap: per-feature errors under `onFatal: Terminate` also take this `Err`
+            // path, so aggregatedDiagnostics/droppedEventCount go missing here even though the
+            // run produced them (job is still correctly labeled Failed either way, and live
+            // `Event::Diagnostic` rows still reach the server unaffected).
             None => JobCompleteEvent::new(workflow_id, meta.job_id, job_result.clone()),
         };
         match &pubsub {
@@ -589,15 +567,8 @@ impl RunWorkerCommand {
     }
 }
 
-/// Belt-and-braces `JobResult` derivation from the two independent
-/// success signals: `NodeFailureHandler` (event-driven) and `RunSummary`
-/// (by-value, thread-Result-driven).
-///
-/// `summary_success` encodes the outcome of `AsyncRunner::run_with_event_handler`:
-/// `Err(_)` (the run itself failed) maps to `None`, `Ok(summary)` maps to
-/// `Some(summary.failed_nodes.is_empty())`. `handler_all_success` is
-/// `NodeFailureHandler::all_success()`. The two signals are expected to
-/// agree; a job is only reported `Success` when both do.
+/// Derives `JobResult` from two independent success signals — `NodeFailureHandler`
+/// (event-driven) and `RunSummary` (thread-Result fold) — `Success` only when both agree.
 fn derive_job_result(summary_success: Option<bool>, handler_all_success: bool) -> JobResult {
     match summary_success {
         None => JobResult::Failed,
@@ -623,8 +594,7 @@ mod tests {
 
     #[test]
     fn derive_job_result_failed_when_handler_catches_what_summary_missed() {
-        // scenario-06 divergence: NodeFailureHandler saw a failure that
-        // RunSummary's thread-Result-driven fold did not.
+        // NodeFailureHandler saw a failure that RunSummary's fold did not.
         let result = derive_job_result(Some(true), false);
         assert!(matches!(result, JobResult::Failed));
     }

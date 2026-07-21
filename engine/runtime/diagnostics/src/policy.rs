@@ -1,50 +1,21 @@
-//! The disposition-policy resolver (spec 4.2, "Disposition & policy resolution").
-//!
-//! This is the pure heart of the policy phase: given a workflow's
-//! `errorPolicy` configuration (already parsed by the `types` crate — see
-//! `reearth_flow_types::workflow::ErrorPolicy`), compile it once against
-//! this crate's `ErrorCode` registry into a [`DispositionPolicy`], then
-//! resolve the effective [`Disposition`] for any `(node, code)` pair with
-//! [`DispositionPolicy::resolve`].
-//!
-//! This module has **no dependency on the types crate** — the runner (Task
-//! 3) maps `reearth_flow_types::ErrorPolicy` into the crate-local
-//! [`PolicyInput`] seam defined here; string `code`/`category` values
-//! arrive raw and are only resolved against the registry at [`compile`]
-//! time.
-//!
-//! Nothing calls [`DispositionPolicy::resolve`] in production yet —
-//! `ExecutorContext::report()` still stamps the registry default directly
-//! until Task 3 threads a compiled policy through. This module is
-//! self-contained and behavior-inert until then.
+//! The disposition-policy resolver (spec 4.2): compiles a workflow's `ErrorPolicy`
+//! into a [`DispositionPolicy`] and resolves [`Disposition`] per `(node, code)`. No dependency on `types` by design; not yet wired into production.
 
 use crate::{Disposition, ErrorCategory, ErrorCode};
 
-// ---------------------------------------------------------------------
-// Input seam
-// ---------------------------------------------------------------------
-
-/// What to do when a `Fatal`-severity diagnostic is raised (after override
-/// resolution) and is not otherwise handled. Mirrors
-/// `reearth_flow_types::workflow::OnFatal` one-for-one; this crate does not
-/// depend on `types`, so the runner maps between the two in Task 3.
+/// What to do when a resolved `Fatal` diagnostic is unhandled. Mirrors
+/// `reearth_flow_types::workflow::OnFatal` one-for-one (no dependency on `types`).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub enum OnFatalInput {
     /// Stop the run. This is the safe default.
     #[default]
     Terminate,
-    /// Keep running, treating the diagnostic as non-terminating (applied at
-    /// the join level — see spec 4.2 — never as a disposition demotion).
+    /// Keep running; applied at the join level (spec 4.2), never as a disposition demotion.
     Continue,
 }
 
-/// One raw override selector, as authored in workflow YAML and parsed by
-/// the types crate. `node`/`code`/`category` are raw strings here — only
-/// [`DispositionPolicy::compile`] resolves `code`/`category` against the
-/// registry. Structural rules (both `code` and `category` set, no selector
-/// at all, duplicate selector tuples) are validated upstream by
-/// `ErrorPolicy::validate` in the types crate; `compile` debug_asserts the
-/// simplest of them defensively but does not re-report them.
+/// One raw override selector as parsed from workflow YAML. `code`/`category`
+/// are raw strings until [`DispositionPolicy::compile`] resolves them against the registry; structural validation happens upstream in `ErrorPolicy::validate`.
 #[derive(Debug, Clone)]
 pub struct OverrideInput {
     pub node: Option<String>,
@@ -64,14 +35,8 @@ pub struct PolicyInput {
     pub overrides: Vec<OverrideInput>,
 }
 
-// ---------------------------------------------------------------------
-// Compiled form
-// ---------------------------------------------------------------------
-
-/// A single override with `code`/`category` already resolved against the
-/// registry. Private: the only way to observe a `DispositionPolicy`'s
-/// overrides from outside this module is through `resolve` and the other
-/// public accessors below.
+/// `code`/`category` already resolved against the registry. Private —
+/// only observable from outside via `resolve` and the accessors below.
 #[derive(Debug, Clone)]
 struct CompiledOverride {
     node: Option<String>,
@@ -98,10 +63,8 @@ impl CompiledOverride {
     }
 }
 
-/// A compiled, validated disposition policy: the pure resolver described by
-/// spec 4.2. Construct via [`DispositionPolicy::compile`] (registry-aware,
-/// fallible) or [`Default::default`] (the empty policy, whose `resolve`
-/// always returns the registry default for every code).
+/// A compiled, validated disposition policy (spec 4.2). Construct via
+/// [`DispositionPolicy::compile`] or [`Default::default`] (empty policy; `resolve` always returns the registry default).
 #[derive(Debug, Clone, Default)]
 pub struct DispositionPolicy {
     on_fatal: OnFatalInput,
@@ -183,35 +146,8 @@ fn max_disposition(a: Disposition, b: Disposition) -> Disposition {
 }
 
 impl DispositionPolicy {
-    /// Compiles a raw [`PolicyInput`] into a [`DispositionPolicy`],
-    /// resolving every override's `code`/`category` against this crate's
-    /// `ErrorCode` registry and enforcing the load-time rules that need
-    /// that registry (spec 4.2):
-    ///
-    /// 1. `code` strings must name a known [`ErrorCode`] — unknown names
-    ///    the string and the nearest registry matches.
-    /// 2. `category` strings must name a known [`ErrorCategory`] (snake
-    ///    case) — unknown names the string and the valid category set.
-    /// 3. The codeless-demotion guard (only codeless overrides may never
-    ///    demote) is enforced structurally at *resolve* time (see
-    ///    `resolve`'s doc comment) rather than rejected at compile time —
-    ///    a codeless override with a demoting disposition is legal to
-    ///    author, it simply never wins its rung for codes it would demote.
-    /// 4. The Internal floor: a *per-code* override that demotes a
-    ///    `category == Internal` code below that code's own registry
-    ///    default is rejected unless `allow_relax_internal` is set. (A
-    ///    codeless override can never demote in the first place — rule 3 —
-    ///    so this rejection is scoped to `code`-bearing overrides.)
-    ///
-    /// All violations are collected (no short-circuiting) so the caller
-    /// can report every problem in one pass, matching
-    /// `ErrorPolicy::validate`'s convention in the types crate.
-    ///
-    /// Structural rules (both `code` and `category` set on one override, no
-    /// selector at all, duplicate-specificity overrides) were already
-    /// enforced by `ErrorPolicy::validate` in the types crate before this
-    /// seam is populated; `compile` debug_asserts the simplest of them
-    /// defensively but does not re-report them here.
+    /// Compiles a [`PolicyInput`] against the registry (spec 4.2): resolves
+    /// `code`/`category`, rejecting unknown values (with nearest-match suggestions) and per-code overrides that demote an `Internal` code below its registry default unless `allow_relax_internal`. Violations are collected, not short-circuited.
     pub fn compile(input: PolicyInput) -> Result<DispositionPolicy, Vec<String>> {
         let mut errors = Vec::new();
         let mut overrides = Vec::with_capacity(input.overrides.len());
@@ -258,15 +194,8 @@ impl DispositionPolicy {
                 None => None,
             };
 
-            // Floor (rule 4): a per-code override on an Internal-category
-            // code may never demote it below its own registry default
-            // unless allow_relax_internal is set. This is deliberately
-            // relative to the code's own default (not an unconditional
-            // "force Fatal"): `internal.diagnostics_overflow` is Internal
-            // but defaults to WarnDrop, and the Default (empty) policy
-            // must resolve every code to its registry default, including
-            // that one — see `resolve`'s doc comment for the matching
-            // resolve-time clamp.
+            // Floor: a per-code Internal override may never demote below that code's
+            // own registry default unless allow_relax_internal — relative to the code's own default, not an unconditional "force Fatal" (e.g. diagnostics_overflow defaults to WarnDrop).
             if let Some(code) = code {
                 if code.category() == ErrorCategory::Internal {
                     let default = code.default_disposition();
@@ -305,37 +234,8 @@ impl DispositionPolicy {
         })
     }
 
-    /// Resolves the effective disposition for one `(node, code)` pair, per
-    /// spec 4.2's ladder:
-    ///
-    /// ```text
-    /// node+code > node+category > node > code > category > default_disposition
-    /// then clamp (Internal floor), then treat_all_as_fatal
-    /// ```
-    ///
-    /// `category` for matching is always `code.category()`.
-    ///
-    /// **Codeless-demotion guard:** a codeless rung (`node+category`,
-    /// `node`, or `category`) only wins if its disposition does not demote
-    /// the code below its own registry default (`disposition_rank(rung) >=
-    /// disposition_rank(code.default_disposition())`); otherwise that rung
-    /// is skipped and resolution falls through to the next, less specific,
-    /// rung. Code-bearing rungs (`node+code`, `code`) may demote freely.
-    ///
-    /// **Floor:** after the ladder picks a value (or falls through to the
-    /// registry default), if `code.category() == ErrorCategory::Internal`
-    /// and `!allow_relax_internal`, the result is raised to at least the
-    /// code's own registry default (`max(result, code.default_disposition())`
-    /// using `Fatal > Reject > WarnDrop`). For the two Internal codes whose
-    /// default is `Fatal` this is exactly "can never resolve below Fatal";
-    /// for `internal.diagnostics_overflow` (Internal, default `WarnDrop`)
-    /// it is a no-op, since nothing ranks below `WarnDrop` — which is why
-    /// the Default (empty) policy still resolves every code, including
-    /// that one, to its registry default.
-    ///
-    /// **`treat_all_as_fatal`:** applied last, unconditionally promoting
-    /// the (already clamped) result to `Fatal`. Never touches `ctx.warn()`
-    /// diagnostics — that path never calls `resolve`.
+    /// Resolves the effective disposition per spec 4.2's ladder: `node+code >
+    /// node+category > node > code > category > default`, then the Internal floor clamp, then `treat_all_as_fatal`. A codeless rung only wins if it doesn't demote the code below its own registry default; otherwise resolution falls through to the next rung.
     pub fn resolve(&self, composed_node_id: &str, code: ErrorCode) -> Disposition {
         let category = code.category();
         let default = code.default_disposition();
@@ -412,29 +312,21 @@ impl DispositionPolicy {
         self.on_fatal
     }
 
-    /// D7: whether rejected features should additionally be written to a
-    /// side file (consumed by a later task).
+    /// D7: whether rejected features are additionally written to a side file.
     pub fn side_file(&self) -> bool {
         self.side_file
     }
 
-    /// Whether any override in this policy names `composed_node_id`
-    /// specifically. Intended for load-time node-existence checks (Task
-    /// 5) — a policy that references a node id absent from the composed
-    /// graph is very likely an authoring mistake.
+    /// Whether any override in this policy names `composed_node_id` specifically —
+    /// used for load-time checks that a referenced node id actually exists in the composed graph.
     pub fn overrides_touching_node(&self, composed_node_id: &str) -> bool {
         self.overrides
             .iter()
             .any(|o| o.matches_node(composed_node_id))
     }
 
-    /// Conservative (over-approximating) check: could `resolve` ever
-    /// return `Disposition::Reject` for `code`, under *some* node? Ignores
-    /// which specific node an override targets (this accessor is
-    /// node-agnostic), but does honor `treat_all_as_fatal`, the Internal
-    /// floor, and the codeless-demotion guard, since those never depend on
-    /// which node is asked. Used by Task 5's validation to decide whether
-    /// the D7 side-file machinery needs to be wired up for a workflow.
+    /// Conservative (over-approximating) check: could `resolve` ever return
+    /// `Disposition::Reject` for `code`, under some node? Node-agnostic, but honors `treat_all_as_fatal`, the Internal floor, and the codeless-demotion guard.
     pub fn may_resolve_to_reject(&self, code: ErrorCode) -> bool {
         if self.treat_all_as_fatal {
             return false;
@@ -494,10 +386,7 @@ mod tests {
         }
     }
 
-    // -------------------------------------------------------------
-    // Ladder rungs: each rung must beat every less-specific rung.
-    // GltfZeroFaceSolid: category geometry, registry default WarnDrop.
-    // -------------------------------------------------------------
+    // Ladder rungs: each must beat every less-specific rung (fixture: GltfZeroFaceSolid, geometry, default WarnDrop).
 
     const NODE: &str = "node-a";
 
@@ -622,13 +511,7 @@ mod tests {
         );
     }
 
-    // -------------------------------------------------------------
-    // Codeless-demotion guard, exercised through the floor-exempt path
-    // (allow_relax_internal: true) so it is provably independent of the
-    // Internal floor: a category-level demotion of an authored-Fatal code
-    // still skips (falls through to the registry default, Fatal), while a
-    // code-level demotion of the SAME code succeeds.
-    // -------------------------------------------------------------
+    // Codeless-demotion guard, exercised via the floor-exempt path (allow_relax_internal: true) to prove it's independent of the Internal floor.
 
     #[test]
     fn codeless_category_override_never_demotes_authored_fatal_code() {
@@ -668,16 +551,8 @@ mod tests {
         );
     }
 
-    // -------------------------------------------------------------
-    // Internal floor: resolve-time clamp, independent of the compile-time
-    // gate. Constructed via a direct struct literal (this test module is
-    // inside policy.rs, so it can see private fields) specifically to
-    // prove the clamp is a real, independent property of `resolve` itself
-    // — not merely an artifact of `compile` never letting such a policy
-    // exist. `compile` DOES reject this exact override when
-    // allow_relax_internal is false (see the compile-error test below);
-    // this test isolates the resolve()-side half of that guarantee.
-    // -------------------------------------------------------------
+    // Internal floor: resolve-time clamp, independent of compile-time rejection.
+    // Uses a direct struct literal (private-field access) to prove the clamp holds even when compile() would have rejected this policy.
 
     #[test]
     fn floor_forces_fatal_at_resolve_time_even_if_a_demoting_override_is_present() {
@@ -699,9 +574,7 @@ mod tests {
 
     #[test]
     fn floor_is_a_no_op_for_an_internal_code_whose_default_is_not_fatal() {
-        // internal.diagnostics_overflow: category Internal, default WarnDrop.
-        // The floor raises a result to at least the code's own default, so
-        // for a WarnDrop-default code it never has anything to do.
+        // diagnostics_overflow is Internal but defaults to WarnDrop, so the floor (which raises to at least the code's own default) is a no-op here.
         let policy = compile(PolicyInput {
             overrides: vec![override_all(
                 None,
@@ -756,10 +629,8 @@ mod tests {
 
     #[test]
     fn compile_allows_codeless_internal_override_with_non_fatal_disposition_without_flag() {
-        // Rule 4's hard rejection is scoped to code-bearing overrides only;
-        // a codeless override targeting category=internal always compiles,
-        // since it can never demote an authored-Fatal code anyway (the
-        // codeless-demotion guard handles that at resolve time).
+        // Rule 4's rejection is scoped to code-bearing overrides; a codeless
+        // override can never demote an authored-Fatal code anyway (the codeless-demotion guard handles that at resolve time).
         let policy = DispositionPolicy::compile(PolicyInput {
             allow_relax_internal: false,
             overrides: vec![override_all(
@@ -773,10 +644,7 @@ mod tests {
         assert!(policy.is_ok());
     }
 
-    // -------------------------------------------------------------
-    // treat_all_as_fatal: post-clamp, promotes an effective WarnDrop AND
-    // an effective Reject to Fatal.
-    // -------------------------------------------------------------
+    // treat_all_as_fatal: post-clamp, promotes an effective WarnDrop or Reject to Fatal.
 
     #[test]
     fn treat_all_as_fatal_promotes_an_effective_warn_drop() {
@@ -807,10 +675,6 @@ mod tests {
             Disposition::Fatal
         );
     }
-
-    // -------------------------------------------------------------
-    // Compile-time validation errors.
-    // -------------------------------------------------------------
 
     #[test]
     fn compile_rejects_unknown_code_and_lists_nearest_matches() {
@@ -858,10 +722,6 @@ mod tests {
         assert_eq!(errors.len(), 2);
     }
 
-    // -------------------------------------------------------------
-    // Default policy.
-    // -------------------------------------------------------------
-
     #[test]
     fn default_policy_resolves_every_code_to_its_registry_default() {
         let policy = DispositionPolicy::default();
@@ -882,10 +742,6 @@ mod tests {
         assert!(!policy.side_file());
         assert!(!policy.overrides_touching_node(NODE));
     }
-
-    // -------------------------------------------------------------
-    // Accessors.
-    // -------------------------------------------------------------
 
     #[test]
     fn on_fatal_and_side_file_reflect_compiled_input() {

@@ -156,20 +156,8 @@ mod tests {
 
     use super::*;
 
-    /// A synchronous slog drain that records each log call's level and
-    /// rendered message into a shared buffer.
-    ///
-    /// The production per-job logger (`LoggerFactory::action_logger`) wraps a
-    /// `slog_async::Async` around a `sloggers` file logger that is *itself*
-    /// asynchronous, so observing a rendered record through it means waiting
-    /// on two independent, unjoined writer threads and reading back a temp
-    /// file — racy enough that the record could still be in flight when the
-    /// test reads (it was, on CI: the file never appeared). These tests only
-    /// need to prove that a diagnostic's `Severity` drives the slog level the
-    /// handler emits at, so we bypass the file entirely and capture the
-    /// record synchronously, in-process. `LogEventHandler`'s fields are
-    /// `pub(crate)`, so the test builds one directly around this drain
-    /// instead of going through `new()` and the async factory.
+    /// Synchronous slog drain that captures records in-process — the
+    /// production logger is doubly-async over a temp file, which was racy on CI.
     struct CaptureDrain {
         records: Arc<Mutex<Vec<(Level, String)>>>,
     }
@@ -216,13 +204,8 @@ mod tests {
         records[0].clone()
     }
 
-    /// Proof of the CRITICAL path at the handler level (2a Task 12): a
-    /// Fatal-disposition code (`InternalInvariantViolation`, whose registry
-    /// default disposition is `Fatal`) defaults to `Severity::Fatal` per
-    /// `Diagnostic::from_draft` (2a Task 2), and `LogEventHandler::on_event`
-    /// renders `Severity::Fatal` through `action_critical_log!`, which emits
-    /// at slog's `Critical` level (the production `Json` drain serializes
-    /// that as `"level":"CRITICAL"`).
+    /// Fatal-severity diagnostics render through `action_critical_log!` at
+    /// slog's `Critical` level (serialized as `"level":"CRITICAL"` in prod).
     #[test]
     fn fatal_diagnostic_renders_as_a_single_critical_line() {
         let d = Diagnostic::from_draft(
@@ -243,9 +226,8 @@ mod tests {
         );
     }
 
-    /// Companion case: a Warn-severity diagnostic renders at slog's `Warning`
-    /// level through the exact same handler path, proving `Severity` — not
-    /// the call site — drives the emitted log level.
+    /// Warn-severity diagnostics render at slog's `Warning` level — proves
+    /// `Severity`, not call site, drives the emitted log level.
     #[test]
     fn warn_diagnostic_renders_as_a_single_warning_line() {
         let d = Diagnostic::from_draft(

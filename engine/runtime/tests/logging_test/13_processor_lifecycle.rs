@@ -1,21 +1,8 @@
-//! Phase 3 Task 4 (engine lifecycle) coverage:
-//!  - a processor whose `initialize()` fails emits exactly one
-//!    `NodeStatusChanged{Failed}` (previously: no status event at all, so
-//!    the node appeared permanently stuck at `Starting` — `processor_node.rs`
-//!    used to propagate the `initialize()` error via a bare `?`).
-//!  - a processor that completes successfully emits `Event::ProcessorFinished`
-//!    exactly once, alongside `NodeStatusChanged{Completed}`, and that
-//!    terminal status event carries `NodeMetrics` with the node's actual
-//!    `features_processed` / `finish_feature_count` counts.
-//!
-//! Uses `Runner::run_with_event_handler` directly (the same harness
-//! `11_run_summary_threading.rs` uses for its D8 inline-yaml scenario)
-//! rather than the log-file golden harness in `logging_helper.rs`: these
-//! tests assert on captured `Event`s, not on action-log/user-facing-log
-//! content, and need a custom action factory (`FailInitProcessor`) that no
-//! real action provides — no shipped `Processor` impl overrides the
-//! trait's default `initialize() -> Ok(())`, so this bug path is otherwise
-//! unreachable from any real workflow.
+//! Processor lifecycle coverage: a processor whose `initialize()` fails
+//! emits exactly one `NodeStatusChanged{Failed}` (previously the node
+//! appeared permanently stuck at `Starting`); a processor that completes
+//! successfully emits `Event::ProcessorFinished` exactly once, alongside a
+//! `Completed` status carrying real `NodeMetrics` counts.
 
 #[allow(dead_code)]
 mod logging_helper;
@@ -49,12 +36,8 @@ fn init_test_env() {
     });
 }
 
-// ---------------------------------------------------------------------------
-// FailInitProcessor: a minimal test-only Processor whose `initialize()`
-// always fails. No shipped action does this (every real `Processor` impl
-// relies on the trait's default `Ok(())`), so this is the only way to
-// exercise `processor_node.rs`'s initialize-failure path end to end.
-// ---------------------------------------------------------------------------
+// Test-only Processor whose initialize() always fails — no shipped action
+// does this, so it's the only way to exercise the initialize-failure path.
 
 #[derive(Debug, Clone)]
 struct FailInitProcessor;
@@ -125,10 +108,6 @@ fn factories_with_fail_init_processor() -> HashMap<String, NodeKind> {
     factories
 }
 
-// ---------------------------------------------------------------------------
-// Event capture
-// ---------------------------------------------------------------------------
-
 #[derive(Default)]
 struct NodeStatusRecorder {
     statuses: Mutex<Vec<(String, NodeStatus, Option<NodeMetrics>)>>,
@@ -183,12 +162,9 @@ impl EventHandler for NodeStatusRecorder {
     }
 }
 
-// ---------------------------------------------------------------------------
-// Minimal run harness (mirrors `11_run_summary_threading.rs`'s
-// `prepare_run_from_yaml` + `run_with_event_handler`, but parameterized on a
-// custom action-factory map so `FailInitProcessor` can be registered).
-// ---------------------------------------------------------------------------
-
+// Mirrors `11_run_summary_threading.rs`'s `prepare_run_from_yaml` +
+// `run_with_event_handler`, parameterized on a factory map so
+// `FailInitProcessor` can be registered.
 fn run_workflow_yaml(
     workflow_yaml: &str,
     factories: HashMap<String, NodeKind>,
@@ -320,10 +296,6 @@ graphs:
     )
 }
 
-// ---------------------------------------------------------------------------
-// Part 1: processor initialize() failure status hole
-// ---------------------------------------------------------------------------
-
 #[test]
 fn processor_initialize_failure_emits_exactly_one_failed_status() {
     let workflow_yaml = source_middle_sink_workflow("FailInitProcessor", 1);
@@ -384,10 +356,6 @@ fn processor_initialize_failure_emits_exactly_one_failed_status() {
     );
 }
 
-// ---------------------------------------------------------------------------
-// Part 2 + Part 4: ProcessorFinished cardinality + terminal NodeMetrics
-// ---------------------------------------------------------------------------
-
 #[test]
 fn processor_success_emits_processor_finished_once_with_metrics() {
     const FEATURE_COUNT: usize = 3;
@@ -407,10 +375,8 @@ fn processor_success_emits_processor_finished_once_with_metrics() {
         .expect("a plain rename-and-write workflow is expected to succeed");
     assert!(summary.failed_nodes.is_empty());
 
-    // Identify the processor node: the one with a Processing status (unlike
-    // the init-failure test, this fixture always reaches it) that is neither
-    // the source (never reaches Processing/Completed via NodeStatusChanged
-    // status-wise the same way) nor emits `features_written` in its metrics.
+    // Identify the processor node by its terminal metrics: features_processed
+    // == FEATURE_COUNT distinguishes it from the source and sink.
     let all_statuses = recorder.statuses.lock().unwrap().clone();
     let mut by_node: HashMap<String, Vec<(NodeStatus, Option<NodeMetrics>)>> = HashMap::new();
     for (id, status, metrics) in &all_statuses {
