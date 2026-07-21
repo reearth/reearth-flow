@@ -5236,6 +5236,15 @@ Validate Feature Geometry Quality
       "items": {
         "$ref": "#/definitions/ValidationType"
       }
+    },
+    "disabledOptionalChecks": {
+      "title": "Disabled Optional Checks",
+      "description": "Advisory checks to disable. Disabled checks do not run and are treated as passing; core validity checks always run. Empty by default, so every optional check runs. Applies only under the new geometry backend.",
+      "default": [],
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/OptionalCheck"
+      }
     }
   },
   "definitions": {
@@ -5294,6 +5303,16 @@ Validate Feature Geometry Quality
           },
           "additionalProperties": false
         }
+      ]
+    },
+    "OptionalCheck": {
+      "description": "An advisory (optional) validation check that can be individually disabled. A disabled check does not run and is treated as passing. Only checks that the geometry crate classifies as optional are listed here; core validity checks always run and cannot be disabled.",
+      "type": "string",
+      "enum": [
+        "duplicatePoints",
+        "orientable",
+        "orientation",
+        "shellOrientation"
       ]
     }
   }

@@ -1590,6 +1590,10 @@
           "title": "Geometry Validator Parameters",
           "description": "Configure which validation checks to perform on feature geometries"
         },
+        "disabledOptionalChecks": {
+          "title": "Disabled Optional Checks",
+          "description": "Advisory checks to disable. Disabled checks do not run and are treated as passing; core validity checks always run. Empty by default, so every optional check runs. Applies only under the new geometry backend."
+        },
         "validationTypes": {
           "title": "Validation Types",
           "description": "List of validation checks to perform on the geometry (duplicate points, corrupt geometry, self-intersection)"

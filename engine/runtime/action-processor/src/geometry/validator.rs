@@ -107,6 +107,35 @@ pub enum ValidationType {
     SelfIntersection(Option<f64>),
 }
 
+/// An advisory (optional) validation check that can be individually disabled.
+/// A disabled check does not run and is treated as passing. Only checks that the
+/// geometry crate classifies as optional are listed here; core validity checks
+/// always run and cannot be disabled.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, JsonSchema)]
+pub enum OptionalCheck {
+    #[serde(rename = "duplicatePoints")]
+    DuplicatePoints,
+    #[serde(rename = "orientable")]
+    Orientable,
+    #[serde(rename = "orientation")]
+    Orientation,
+    #[serde(rename = "shellOrientation")]
+    ShellOrientation,
+}
+
+#[cfg(feature = "new-geometry")]
+impl From<OptionalCheck> for reearth_flow_geometry::validation_next::ValidationType {
+    fn from(check: OptionalCheck) -> Self {
+        use reearth_flow_geometry::validation_next::ValidationType;
+        match check {
+            OptionalCheck::DuplicatePoints => ValidationType::DuplicatePoints,
+            OptionalCheck::Orientable => ValidationType::Orientable,
+            OptionalCheck::Orientation => ValidationType::Orientation,
+            OptionalCheck::ShellOrientation => ValidationType::ShellOrientation,
+        }
+    }
+}
+
 #[cfg(not(feature = "new-geometry"))]
 impl From<ValidationType> for reearth_flow_geometry::validation::ValidationType {
     fn from(validation_type: ValidationType) -> Self {
@@ -176,6 +205,14 @@ pub struct GeometryValidator {
     #[serde(default)]
     #[cfg_attr(feature = "new-geometry", allow(dead_code))]
     validation_types: Vec<ValidationType>,
+
+    /// # Disabled Optional Checks
+    /// Advisory checks to disable. Disabled checks do not run and are treated as passing;
+    /// core validity checks always run. Empty by default, so every optional check runs.
+    /// Applies only under the new geometry backend.
+    #[serde(default)]
+    #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
+    disabled_optional_checks: Vec<OptionalCheck>,
 }
 
 impl Processor for GeometryValidator {
@@ -233,7 +270,7 @@ impl Processor for GeometryValidator {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         use reearth_flow_geometry::validation_next::{
-            has_non_metric_frame, validate, ValidationResult,
+            has_non_metric_frame, validate_with, ValidationParams, ValidationResult,
         };
         use reearth_flow_geometry::Geometry;
 
@@ -257,9 +294,14 @@ impl Processor for GeometryValidator {
             );
         }
 
+        let mut params = ValidationParams::default();
+        for check in &self.disabled_optional_checks {
+            params.disabled_checks.insert((*check).into());
+        }
+
         let mut checks = serde_json::Map::new();
         let mut error_count = 0usize;
-        for (check, result) in validate(feature.geometry.as_ref()) {
+        for (check, result) in validate_with(feature.geometry.as_ref(), &params) {
             if let ValidationResult::Failed(positions) = result {
                 error_count += positions.len();
                 checks.insert(check.to_string(), serde_json::json!(positions.len()));

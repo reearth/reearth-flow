@@ -126,6 +126,13 @@ pub struct ValidationParams {
     /// [`Degenerate`](ValidationType::Degenerate): the smallest measure a geometry
     /// may have before it counts as degenerate.
     pub degenerate: DegenerateThresholds,
+    /// Optional (advisory) checks the caller disabled. A disabled optional check
+    /// does not run and reports [`Success`](ValidationResult::Success), so it
+    /// neither flags problems nor blocks a dependent check. A non-optional check
+    /// listed here is ignored: core validity checks always run. Populated
+    /// programmatically, not from the serialized form.
+    #[serde(skip)]
+    pub disabled_checks: HashSet<ValidationType>,
 }
 
 impl Default for ValidationParams {
@@ -134,6 +141,7 @@ impl Default for ValidationParams {
             duplicate_tolerance: None,
             planarity_tolerance: 0.001,
             degenerate: DegenerateThresholds::default(),
+            disabled_checks: HashSet::new(),
         }
     }
 }
@@ -237,6 +245,7 @@ impl ValidationReport {
 pub(crate) fn run_checks(
     applicable: &[ValidationType],
     is_metric: bool,
+    disabled: &HashSet<ValidationType>,
     mut run_one: impl FnMut(ValidationType) -> ValidationReport,
 ) -> ValidationResults {
     let applicable_set: HashSet<ValidationType> = applicable.iter().copied().collect();
@@ -246,6 +255,7 @@ pub(crate) fn run_checks(
             check,
             &applicable_set,
             is_metric,
+            disabled,
             &mut results,
             &mut run_one,
         );
@@ -271,11 +281,19 @@ fn resolve(
     check: ValidationType,
     applicable: &HashSet<ValidationType>,
     is_metric: bool,
+    disabled: &HashSet<ValidationType>,
     results: &mut ValidationResults,
     run_one: &mut impl FnMut(ValidationType) -> ValidationReport,
 ) -> ValidationResult {
     if let Some(result) = results.get(&check) {
         return result.clone();
+    }
+    // A disabled optional check does not run and counts as passing, so it
+    // neither reports problems nor blocks its dependents. Core checks always
+    // run, ignoring the disabled set.
+    if check.is_optional() && disabled.contains(&check) {
+        results.insert(check, ValidationResult::Success);
+        return ValidationResult::Success;
     }
     if is_metric_required(check) && !is_metric {
         let result = ValidationResult::Skipped(SkipReason::NonMetricFrame);
@@ -285,7 +303,8 @@ fn resolve(
     let mut blocked = false;
     for &dep in check.dependencies() {
         if applicable.contains(&dep)
-            && resolve(dep, applicable, is_metric, results, run_one) != ValidationResult::Success
+            && resolve(dep, applicable, is_metric, disabled, results, run_one)
+                != ValidationResult::Success
         {
             blocked = true;
         }
@@ -511,9 +530,12 @@ pub(crate) fn validate_leaf<T: Validate + ?Sized>(
     leaf: &T,
     params: &ValidationParams,
 ) -> ValidationResults {
-    run_checks(leaf.applicable_checks(), leaf.is_metric(), |check| {
-        dispatch(leaf, check, params)
-    })
+    run_checks(
+        leaf.applicable_checks(),
+        leaf.is_metric(),
+        &params.disabled_checks,
+        |check| dispatch(leaf, check, params),
+    )
 }
 
 /// Resolve a single check for a leaf, running only its applicable prerequisites,
@@ -532,6 +554,7 @@ pub(crate) fn validate_one<T: Validate + ?Sized>(
         check,
         &applicable,
         leaf.is_metric(),
+        &params.disabled_checks,
         &mut results,
         &mut |c| dispatch(leaf, c, params),
     )
@@ -1363,6 +1386,42 @@ mod tests {
             results[&ValidationType::DuplicatePoints],
             ValidationResult::Unvalidated
         );
+    }
+
+    #[test]
+    fn disabling_an_optional_check_forces_success_without_running() {
+        // A repeated coordinate fails the (optional) DuplicatePoints check.
+        let ls = LineString3D::from_coords(
+            CoordinateFrame::Euclidean,
+            [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
+        );
+        assert!(matches!(
+            validate_one(&ls, ValidationType::DuplicatePoints, &params()),
+            ValidationResult::Failed(_)
+        ));
+        // Disabled: the check is not run and reports success.
+        let mut disabled = params();
+        disabled
+            .disabled_checks
+            .insert(ValidationType::DuplicatePoints);
+        assert_eq!(
+            validate_one(&ls, ValidationType::DuplicatePoints, &disabled),
+            ValidationResult::Success
+        );
+    }
+
+    #[test]
+    fn disabling_a_core_check_is_ignored() {
+        // TooFewPoints is a core check, so the disabled set does not apply to it.
+        let ls = LineString3D::from_coords(CoordinateFrame::Euclidean, [[0.0, 0.0, 0.0]]);
+        let mut disabled = params();
+        disabled
+            .disabled_checks
+            .insert(ValidationType::TooFewPoints);
+        assert!(matches!(
+            validate_one(&ls, ValidationType::TooFewPoints, &disabled),
+            ValidationResult::Failed(_)
+        ));
     }
 
     #[test]
