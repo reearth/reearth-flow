@@ -27,7 +27,7 @@ graphs:
       - id: c1a91180-ab88-4c1a-aab5-48c242a218eb
         name: AttributeRangeMapper
         type: action
-        action: AttributeRangeMapper
+        action: Attribute Range Mapper
         with:
           inputAttribute: "depth"
           outputAttribute: "color"

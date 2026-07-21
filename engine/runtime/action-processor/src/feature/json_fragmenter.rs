@@ -21,7 +21,7 @@ pub(super) struct JSONFragmenterFactory;
 
 impl ProcessorFactory for JSONFragmenterFactory {
     fn name(&self) -> &str {
-        "JSONFragmenter"
+        "JSON Fragmenter"
     }
 
     fn description(&self) -> &str {
@@ -93,7 +93,7 @@ pub(crate) struct JSONFragmenterOptions {
     reject_no_fragments: bool,
 }
 
-/// # JSONFragmenter Parameters
+/// # JSON Fragmenter Parameters
 ///
 /// Configuration for fragmenting JSON documents into individual features.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -278,7 +278,7 @@ impl Processor for JSONFragmenter {
     }
 
     fn name(&self) -> &str {
-        "JSONFragmenter"
+        "JSON Fragmenter"
     }
 }
 

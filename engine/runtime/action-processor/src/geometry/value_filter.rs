@@ -21,7 +21,7 @@ pub struct GeometryValueFilterFactory;
 
 impl ProcessorFactory for GeometryValueFilterFactory {
     fn name(&self) -> &str {
-        "GeometryValueFilter"
+        "Geometry Value Filter"
     }
 
     fn description(&self) -> &str {
@@ -127,7 +127,7 @@ impl Processor for GeometryValueFilter {
     }
 
     fn name(&self) -> &str {
-        "GeometryValueFilter"
+        "Geometry Value Filter"
     }
 }
 

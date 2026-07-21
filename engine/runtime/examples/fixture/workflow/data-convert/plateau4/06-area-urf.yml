@@ -241,7 +241,7 @@ graphs:
   - id: b5c6d7e8-f9a0-1b2c-3d4e-5f6a7b8c9d0e
     name: AttributeDuplicateFilter
     type: action
-    action: AttributeDuplicateFilter
+    action: Attribute Duplicate Filter
     with:
       filterBy:
       - feature_type

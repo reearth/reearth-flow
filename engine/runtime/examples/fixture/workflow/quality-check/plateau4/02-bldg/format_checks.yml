@@ -119,7 +119,7 @@ nodes:
   - id: 7debf320-37c4-414e-acab-9f2fb41e2848
     name: FileTSVWriterC02
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -167,7 +167,7 @@ nodes:
   - id: 72b70428-0bb9-401b-a295-881556adc526
     name: FileTSVWriterLBDLG04-05
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -193,7 +193,7 @@ nodes:
   - id: ab3505ad-4e89-4442-ab36-c52ac29c332e
     name: FileTSVWriterCityCodeError
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -305,7 +305,7 @@ nodes:
   - id: 4c5d6e7f-8a9b-0c1d-2e3f-4a5b6c7d8e9f
     name: FeatureWriter-invalid-building-id-format
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -410,7 +410,7 @@ nodes:
   - id: bba483d0-9813-499e-a0f6-22874646450d
     name: FeatureWriterCsv-c-bldg-01
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:

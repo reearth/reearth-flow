@@ -42,7 +42,7 @@ pub struct PythonScriptProcessorFactory;
 
 impl ProcessorFactory for PythonScriptProcessorFactory {
     fn name(&self) -> &str {
-        "PythonScriptProcessor"
+        "Python Script Processor"
     }
 
     fn description(&self) -> &str {
@@ -906,7 +906,7 @@ print(json.dumps(output))
     }
 
     fn name(&self) -> &str {
-        "PythonScriptProcessor"
+        "Python Script Processor"
     }
 }
 
@@ -966,7 +966,7 @@ mod tests {
 
         assert!(result.is_ok());
         let processor = result.unwrap();
-        assert_eq!(processor.name(), "PythonScriptProcessor");
+        assert_eq!(processor.name(), "Python Script Processor");
     }
 
     #[test]
@@ -1275,7 +1275,7 @@ mod tests {
     fn test_processor_factory_metadata() {
         let factory = PythonScriptProcessorFactory;
 
-        assert_eq!(factory.name(), "PythonScriptProcessor");
+        assert_eq!(factory.name(), "Python Script Processor");
         assert_eq!(
             factory.description(),
             "Execute Python Scripts with Geospatial Data Processing"

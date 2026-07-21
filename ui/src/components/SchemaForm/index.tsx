@@ -67,7 +67,7 @@ const buildExprUiSchema = (
   if (isExprType) {
     const fieldName = path.split(".").pop() || "";
     const isPythonScript =
-      actionName === "PythonScriptProcessor" && fieldName === "script";
+      actionName === "Python Script Processor" && fieldName === "script";
     return { "ui:exprType": isPythonScript ? "python" : "flowExpr" };
   }
 

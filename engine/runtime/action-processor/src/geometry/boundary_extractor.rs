@@ -25,7 +25,7 @@ pub(super) struct BoundaryExtractorFactory;
 
 impl ProcessorFactory for BoundaryExtractorFactory {
     fn name(&self) -> &str {
-        "BoundaryExtractor"
+        "Boundary Extractor"
     }
 
     fn description(&self) -> &str {
@@ -73,7 +73,7 @@ impl ProcessorFactory for BoundaryExtractorFactory {
     }
 }
 
-/// # BoundaryExtractor Parameters
+/// # Boundary Extractor Parameters
 ///
 /// Configuration for extracting boundaries from geometries.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
@@ -162,7 +162,7 @@ impl Processor for BoundaryExtractor {
     }
 
     fn name(&self) -> &str {
-        "BoundaryExtractor"
+        "Boundary Extractor"
     }
 
     fn num_threads(&self) -> usize {

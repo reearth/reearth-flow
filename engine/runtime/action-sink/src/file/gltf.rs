@@ -30,7 +30,7 @@ pub struct GltfWriterSinkFactory;
 
 impl SinkFactory for GltfWriterSinkFactory {
     fn name(&self) -> &str {
-        "GltfWriter"
+        "glTF Writer"
     }
 
     fn description(&self) -> &str {
@@ -148,7 +148,7 @@ pub struct GltfWriter {
     schema_key: Option<String>,
 }
 
-/// # GltfWriter Parameters
+/// # glTF Writer Parameters
 ///
 /// Configuration for writing features to GLTF 3D format.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -169,7 +169,7 @@ pub struct GltfWriterParam {
 
 impl Sink for GltfWriter {
     fn name(&self) -> &str {
-        "GltfWriter"
+        "glTF Writer"
     }
 
     #[cfg(not(feature = "new-geometry"))]
@@ -696,7 +696,7 @@ mod tests {
         let result = GltfWriterSinkFactory.build(
             ctx,
             EventHub::new(10),
-            "GltfWriter".to_string(),
+            "glTF Writer".to_string(),
             Some(with),
         );
         assert!(
@@ -714,7 +714,7 @@ mod tests {
         let result = GltfWriterSinkFactory.build(
             ctx,
             EventHub::new(10),
-            "GltfWriter".to_string(),
+            "glTF Writer".to_string(),
             Some(with),
         );
         assert!(

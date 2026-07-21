@@ -166,7 +166,7 @@ These dependencies are automatically included in Docker images.
 
 - **VerticalReprojector**: Transform Z coordinates between vertical datums (Japanese coordinate systems)
 - **GeometryValidator**: Validate geometry structure before/after transformation
-- **GeometryCoercer**: Convert between geometry types
+- **Geometry Coercer**: Convert between geometry types
 
 ### Troubleshooting
 

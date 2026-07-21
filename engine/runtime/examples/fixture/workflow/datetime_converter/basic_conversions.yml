@@ -22,7 +22,7 @@ graphs:
       - id: 550e8400-e29b-41d4-a716-446655440103
         name: "DateTimeConverter"
         type: action
-        action: DateTimeConverter
+        action: Date Time Converter
         with:
           attribute: timestamp
           inputFormat: auto
@@ -31,7 +31,7 @@ graphs:
       - id: 550e8400-e29b-41d4-a716-446655440104
         name: "Output"
         type: action
-        action: FeatureWriter
+        action: Feature Writer
         with:
           format: json
           output:
