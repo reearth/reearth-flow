@@ -1,38 +1,7 @@
 //! Regex-based recovery of `UserFacingLogEvent`s from engine log prose (see
-//! `user_facing_log_handler.rs`, the sole production consumer). This is a
-//! retirement *candidate*, not scheduled work — Task 6 of the phase-3 plan
-//! (C11 in the phase-3 survey) only documents the precondition here; it does
-//! not delete anything.
-//!
-//! **Do not delete this module (or `UserFacingLogHandler`/
-//! `UserFacingLogLayer`) until BOTH of the following hold:**
-//!
-//! 1. `UserFacingLogEvent` can be derived from the structured event stream —
-//!    `Event::Diagnostic` (severity → `UserFacingLogLevel`, `message`/`help`)
-//!    plus `Event::NodeStatusChanged` (node identity, start/finish/terminate
-//!    timing) plus the Task-4 `NodeMetrics` carried on the terminal
-//!    `NodeStatusChanged` (`features_processed`/`features_written`/
-//!    `finish_feature_count`) — instead of regexing the log strings this
-//!    parser matches (`:43-48` below: `... process start...`, `... process
-//!    finish. elapsed = ...`, `... terminate ...`, `Error operation,
-//!    processor node name = ...`, `source error:`, `sink error:`). Those
-//!    strings are frozen (LOG-PROSE FREEZE, see `Makefile.toml`/the phase-3
-//!    plan's Global Constraints) precisely so this parser keeps working
-//!    until its replacement lands — freezing them is not itself the
-//!    replacement.
-//! 2. Both UI consumers of the resulting stream keep their `level` field
-//!    (`UserFacingLogLevel`, `UserFacingLogEvent::level`) working end to end:
-//!    the live GraphQL subscription (`GetSubscribedUserFacingLogs`, fed by
-//!    the pubsub publish in this module's call chain) AND the historical
-//!    JSONL download at `Job.userFacingLogsURL` (written by
-//!    `USER_FACING_LOG_FILE_WRITER`, `logger.rs`). Both currently branch UI
-//!    rendering on `level` (`ui/src/components/LogsTable`); a replacement
-//!    that can't populate it for every row is not a drop-in replacement.
-//!
-//! Until both hold, this parser is the only source of `UserFacingLogEvent`s
-//! and `NodeFailureHandler` (`event_handler.rs`) is a related, separately
-//! gated retirement candidate — see its own registration comment in
-//! `command.rs`. Neither is deleted by this task.
+//! `user_facing_log_handler.rs`). Do not delete until `UserFacingLogEvent` can be derived from
+//! the structured event stream instead and both UI consumers work off that path — the log
+//! strings matched below are LOG-PROSE FROZEN and must match engine output verbatim.
 
 use regex::Regex;
 use std::time::Duration;
@@ -83,19 +52,9 @@ impl LogParser {
             source_error: Regex::new(r#"([\w][\w ]*) source error: (.+)"#).unwrap(),
             sink_error: Regex::new(r#"([\w][\w ]*) sink error: (.+)"#).unwrap(),
             workflow_failed: Regex::new(r"Failed nodes:").unwrap(),
-            // Phase 2a-policy Task 4: `errorPolicy: { onFatal: continue }`
-            // reworded the engine's "N failed node(s)" completion line from
-            // `(success, N failed node(s))` to `(completed with N failed
-            // node(s))` — a failure-accurate label, since that line is now
-            // reachable for a run that finished with per-node failures
-            // rather than a clean success. Both the old and new forms must
-            // keep matching (old-shape engines may still be in a rolling
-            // deploy), and either still yields `LogPattern::WorkflowCompleted`
-            // here — `UserFacingLogHandler` derives success/failure from the
-            // `workflow_error_occurred` flag (set by prior `NodeError`/
-            // `WorkflowFailed` events), not from this regex's capture, so a
-            // "completed with N failed node(s)" line is already reported to
-            // users as a failure via that flag, not via this pattern.
+            // Must keep matching both the old `(success|failed)` forms and the newer
+            // `completed with N failed node(s)` form; either yields `WorkflowCompleted` here —
+            // success/failure is read from the `workflow_error_occurred` flag, not this regex.
             workflow_completed: Regex::new(
                 r"Finish workflow = .* \((success|failed|completed with \d+ failed node\(s\))\)",
             )
@@ -258,12 +217,9 @@ impl LogParser {
 
 #[cfg(test)]
 mod workflow_completed_shape_tests {
-    //! Phase 2a-policy Task 4: `onFatal: continue` made the engine's
-    //! "N failed node(s)" completion line reachable (previously dead code
-    //! under the old fail-fast `join()`). The line's wording changed from
-    //! `(success, N failed node(s))` to the failure-accurate `(completed
-    //! with N failed node(s))`; `workflow_completed` must keep matching the
-    //! pre-existing `(success)`/`(failed)` forms AND the new one.
+    //! `onFatal: continue` made the "completed with N failed node(s))" completion line
+    //! reachable; `workflow_completed` must keep matching it alongside the pre-existing
+    //! `(success)`/`(failed)` forms.
     use super::*;
 
     #[test]
@@ -311,16 +267,9 @@ mod workflow_completed_shape_tests {
 
 #[cfg(test)]
 mod sink_and_processor_error_shape_tests {
-    //! Phase 2a Task 8 rewired `SinkNode`/`ProcessorNode` finish()/process()
-    //! failures to preserve structured diagnostics: the wrapping
-    //! `ExecutionError` variant changed from `CannotReceiveFromChannel`
-    //! (Display: "Cannot receive from channel: {0}") to `Sink`/`Processor`
-    //! (Display: "Sink error: {0}"/"Processor error: {0}"). These tests lock
-    //! in that `sink_error` still parses both the legacy Debug-wrapper shape
-    //! (kept matching for the deploy gap, per the migration posture) and the
-    //! new structured shape, and that `processor_error` — which matches an
-    //! unrelated per-feature `process()` log line, not the finish() path
-    //! Task 8 touched — is unaffected either way.
+    //! `sink_error` must keep parsing both the legacy `CannotReceiveFromChannel(...)`
+    //! Debug-wrapper shape and the newer structured `Sink error: {0}`/`Processor error: {0}`
+    //! shape during rollout; `processor_error` (an unrelated per-feature log line) is unaffected.
     use super::*;
 
     fn node_error(pattern: LogPattern) -> (String, Option<String>, String) {
@@ -334,14 +283,8 @@ mod sink_and_processor_error_shape_tests {
         }
     }
 
-    /// Legacy shape, from before Task 8: the sink log line's `{}` formatted
-    /// an `ExecutionError::CannotReceiveFromChannel(format!("{e:?}"))`,
-    /// whose Display is "Cannot receive from channel: {0}" — but the
-    /// unwrap's `CHANNEL_ERROR_PREFIX` check targets the *Debug* tuple-variant
-    /// syntax, `CannotReceiveFromChannel("...")`, matching an older log
-    /// format. Keeping this parseable maintains compatibility with any
-    /// still-running old-shape worker/engine build pairing during a
-    /// rolling deploy.
+    /// Legacy Debug-wrapper shape (`CannotReceiveFromChannel("...")`), kept parseable for
+    /// compatibility with old-shape builds during a rolling deploy.
     #[test]
     fn sink_error_strips_legacy_debug_wrapper_when_present() {
         let parser = LogParser::new();
@@ -355,12 +298,8 @@ mod sink_and_processor_error_shape_tests {
         assert_eq!(error, "boom");
     }
 
-    /// New shape, post-Task-8: the sink log line's `{}` now formats
-    /// `ExecutionError::Sink(e)` directly, Display "Sink error: {0}". This
-    /// doesn't start with `CannotReceiveFromChannel("` so the legacy unwrap
-    /// is a no-op and the full structured text passes through untouched —
-    /// which is the desired, MORE informative user-facing message (no
-    /// longer mislabeled as a channel error).
+    /// New structured shape (`Sink error: {0}`): the legacy-wrapper unwrap is a no-op, so the
+    /// full text passes through untouched.
     #[test]
     fn sink_error_passes_through_new_structured_shape_untouched() {
         let parser = LogParser::new();
@@ -374,11 +313,8 @@ mod sink_and_processor_error_shape_tests {
         assert_eq!(error, "Sink error: boom");
     }
 
-    /// `processor_error` matches the per-feature `process()` failure log
-    /// line ("Error operation, processor node name = ..."), which is
-    /// produced independently of the `ExecutionError` enum Task 8 changed
-    /// (it Debug-formats the action's raw error directly). Confirms Task 8
-    /// left this pattern's behavior untouched.
+    /// `processor_error` matches an unrelated per-feature `process()` log line, independent of
+    /// the `ExecutionError` enum — confirms this pattern is unaffected.
     #[test]
     fn processor_error_shape_is_unaffected_by_the_executionerror_display_change() {
         let parser = LogParser::new();
@@ -395,11 +331,8 @@ mod sink_and_processor_error_shape_tests {
         assert_eq!(error, "Attribute not found: nonexistentAttribute");
     }
 
-    /// Real production shape from pre-enrichment legacy logs: the sink log
-    /// line's `{}` formatted an `ExecutionError::CannotReceiveFromChannel`
-    /// whose Display is "Cannot receive from channel: {0}". This captures
-    /// the actual production Display output when an action's error is wrapped
-    /// with `format!("{e:?}")` inside the variant.
+    /// Real production Display output for `ExecutionError::CannotReceiveFromChannel` wrapped
+    /// with `format!("{e:?}")`.
     #[test]
     fn sink_error_parses_real_legacy_channel_display_text() {
         let parser = LogParser::new();

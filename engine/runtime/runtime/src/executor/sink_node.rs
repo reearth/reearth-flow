@@ -61,16 +61,12 @@ pub struct SinkNode<F> {
     /// State for writing source intermediate data
     feature_state: Arc<State>,
     incremental_mode: bool,
-    /// This node's report/warn/warn_once diagnostics handle. Stamped onto
-    /// every `ExecutorContext`/`NodeContext` this node receives so
-    /// process()/finish()-time reports are attributed to this node.
+    /// This node's diagnostics handle, stamped onto every context so
+    /// process()/finish()-time reports attribute to this node.
     diagnostics: crate::diagnostics::SharedNodeDiagnostics,
-    /// Sink for this node's finish()-time diagnostic summaries
-    /// (`emit_summaries`'s return value), written by `on_terminate` and read
-    /// by the spawning thread (`start_sink` in `dag_executor.rs`) after
-    /// `run()` returns. Exists to carry a `Vec<Diagnostic>` out of the
-    /// `ReceiverLoop`/`Node` traits' `Result<(), ExecutionError>`-only
-    /// return type without changing either trait's signature.
+    /// Finish()-time diagnostic summaries; written by `on_terminate`, read by
+    /// the spawning thread after `run()` returns (carries a `Vec<Diagnostic>`
+    /// out despite the trait's `Result<(), ExecutionError>`-only signature).
     summaries_sink: Arc<parking_lot::Mutex<Vec<Diagnostic>>>,
 }
 
@@ -97,15 +93,9 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
         let NodeKind::Sink(sink) = kind else {
             panic!("Must pass in a sink node");
         };
-        // NOTE: `action` is NOT asserted equal to `sink.name()` here. See the
-        // matching note in `processor_node.rs::ProcessorNode::new`:
-        // `builder_dag.rs`'s `ActionNameMismatch` check validates the
-        // *factory's* `SinkFactory::name()` against `node.node.action()` at
-        // build time (`action`'s provenance) — the *built instance*'s
-        // `Sink::name()` is a different trait and can legitimately diverge
-        // (e.g. profile-namespaced factory keys vs. a generic instance
-        // display name), as proven for the processor case by the
-        // quality-check workflow fixtures.
+        // NOTE: `action` is not asserted equal to `sink.name()` — the built
+        // instance's `Sink::name()` can legitimately diverge from the
+        // factory-validated `action` (see `processor_node.rs`).
         let (node_handles, receivers) = dag.collect_receivers(node_index);
 
         let source_intermediate_recorder =
@@ -129,8 +119,8 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
             action,
             warn_once,
             disposition_policy,
-            // D7 (Task 5): every SinkNode may capture reject rows — the
-            // handle itself gates capture further on `side_file()`.
+            // Every SinkNode may capture reject rows; the handle gates
+            // capture further on `side_file()`.
             true,
         ));
         Self {
@@ -160,18 +150,14 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
         &self.node_handle
     }
 
-    /// Clone of the handle `on_terminate` writes this node's drained
-    /// finish()-time summaries into. Call before consuming `self` via
-    /// `run()`/`receiver_loop()` so the summaries can still be read after.
+    /// Clone of the summaries handle; call before `run()` consumes `self` so
+    /// summaries remain readable after it returns.
     pub fn summaries_sink(&self) -> Arc<parking_lot::Mutex<Vec<Diagnostic>>> {
         self.summaries_sink.clone()
     }
 
-    /// This node's `(composed_id, action)`, read off the same diagnostics
-    /// handle every `report()`/`report_drop()` call resolves against.
-    /// `start_sink` (`dag_executor.rs`) carries this alongside the spawned
-    /// thread's `JoinHandle` so the collect-all fold can attribute a
-    /// synthesized failure diagnostic to this node.
+    /// This node's `(composed_id, action)`, used by `start_sink`'s
+    /// collect-all fold to attribute synthesized failure diagnostics.
     pub fn node_meta(&self) -> super::dag_executor::NodeMeta {
         super::dag_executor::NodeMeta {
             composed_id: self.diagnostics.inner.node_id().to_string(),
@@ -399,13 +385,9 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                             tracing::error!("Sink node {} termination failed", self.node_handle.id);
                         }
 
-                        // Unified failure precedence: a real error returned during
-                        // processing (`first_error`) always wins; a real error from
-                        // `on_terminate` (finish()/terminate-send) wins next; the
-                        // fatal slot is a swallowed-fatal backstop, consulted only
-                        // when nothing else failed. Exactly one
-                        // NodeStatusChanged{Failed|Completed} is emitted below, from
-                        // the single reconciled outcome.
+                        // Failure precedence: first_error (process()) >
+                        // terminate_result (finish()) > fatal slot backstop.
+                        // Exactly one NodeStatusChanged is emitted below.
                         let fatal = self.diagnostics.inner.take_fatal();
                         let (final_result, node_failed, superseded_fatal) =
                             reconcile_sink_terminate_result(
@@ -415,12 +397,9 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
                                 has_failed,
                             );
 
-                        // 2a-core T1 ledger item: a swallowed-fatal `report()`
-                        // that loses precedence to a real returned error must
-                        // not vanish silently — warn once, naming the
-                        // superseded diagnostic's code, so operators can see
-                        // both failures happened even though only one wins
-                        // the final `Result`.
+                        // A swallowed-fatal report() that loses precedence to
+                        // a real error must not vanish silently — warn once,
+                        // naming its code.
                         if let Some(superseded) = superseded_fatal {
                             self.event_hub.warn_log_with_node_info(
                                 Some(span.clone()),
@@ -468,35 +447,24 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
     }
 
     fn on_terminate(&mut self, ctx: NodeContext) -> Result<(), ExecutionError> {
-        // The incoming ctx was built by the upstream sender (or, for the
-        // last-writer-wins multi-input case, whichever sender terminated
-        // last) — overwrite with this node's own handle before finish() runs
-        // so finish()-time drops are attributed to this node, not the sender.
+        // Overwrite with this node's own handle before finish() runs so
+        // drops attribute to this node, not the last-terminated sender.
         let mut ctx = ctx;
         ctx.diagnostics = Some(self.diagnostics.clone());
         let mut result = self
             .sink
             .finish(ctx)
             .map_err(|e| to_node_error(e, NodeErrorKind::Sink));
-        // Emit this node's aggregated warn/drop/reject summaries regardless of
-        // whether finish() itself succeeded — reports recorded during
-        // process()/finish() must not be silently dropped just because
-        // finish() failed.
-        // Stashed in `summaries_sink` for the spawning thread to read after
-        // `run()` returns and fold into the run's `RunSummary` (Task 5).
+        // Emit aggregated summaries regardless of finish() outcome — reports
+        // must not be dropped just because finish() failed. Stashed for the
+        // spawning thread to fold into the run's RunSummary.
         let summaries = crate::diagnostics::emit_summaries(&self.event_hub, &self.diagnostics);
         *self.summaries_sink.lock() = summaries;
 
-        // D7 (Task 5): flush any buffered reject rows to this node's side-
-        // file shard, alongside emit_summaries above — same "always run,
-        // never silently skip" shape. `drain_reject_rows` is `None` unless
-        // reject capture was enabled for this node (`policy.side_file()` at
-        // construction time), so this is a no-op for every no-policy or
-        // side_file-disabled run. A flush failure doesn't override a real
-        // finish() error (that failure already has precedence downstream in
-        // `reconcile_sink_terminate_result`), but if finish() itself
-        // succeeded, a flush failure still fails the node — rejected-row
-        // evidence must not vanish silently.
+        // Flush buffered reject rows to this node's side-file shard (no-op
+        // unless reject capture was enabled for this node). A flush failure
+        // doesn't override a real finish() error, but does fail the node if
+        // finish() itself succeeded — rejected-row evidence must not vanish.
         if let Some((rows, overflow)) = self.diagnostics.drain_reject_rows() {
             if let Err(e) = self.flush_reject_shard(rows, overflow) {
                 if result.is_ok() {
@@ -514,11 +482,9 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
 }
 
 impl<F> SinkNode<F> {
-    /// Write this node's D7 reject-shard side file
-    /// (`rejected/{composed_id}.jsonl`, spec §7) under `self.sandbox_root`.
-    /// `put`/overwrite-only, one shard per node — the composed id keys the
-    /// path, so distinct sink nodes never clobber each other's shard even
-    /// when they share a run.
+    /// Write this node's reject-shard side file (`rejected/{composed_id}.jsonl`,
+    /// spec §7) under `self.sandbox_root`; composed-id keying ensures
+    /// distinct nodes never clobber each other's shard.
     fn flush_reject_shard(
         &self,
         rows: Vec<crate::diagnostics::RejectRow>,
@@ -535,27 +501,16 @@ impl<F> SinkNode<F> {
     }
 }
 
-/// The D7 reject-shard's path, relative to `sandbox_root` (spec §7:
-/// `rejected/{composed_id}.jsonl`). Pure/no I/O — the composed-id-keying
-/// invariant (distinct nodes never share a shard) is directly unit-testable
-/// without a sandbox.
+/// The reject-shard's path, relative to `sandbox_root` (spec §7). Pure/no
+/// I/O, so the composed-id-keying invariant is directly unit-testable.
 fn reject_shard_relative_path(composed_id: &str) -> String {
     format!("rejected/{composed_id}.jsonl")
 }
 
-/// Minimal, runtime-crate-local re-implementation of the sandbox-join-and-
-/// put invariant `action-sink::SinkOutput` (its full API, including request
-/// validation only meaningful for user-authored paths) already implements
-/// for every other sink write — duplicated rather than reused because
-/// `action-sink` depends on this crate (`reearth-flow-runtime`, for the
-/// `Sink`/`Processor`/`Source` traits every action implements), so a
-/// `runtime -> action-sink` dependency the other way would be circular. The
-/// *invariant* is the requirement (put/overwrite-only, resolves strictly
-/// under `sandbox_root`, no `..` escape survives the join) — not the
-/// specific `SinkOutput` type — so this reimplements only that: no leading-
-/// `/`/`~`/whitespace/empty-path hygiene checks, since `relative_path` here
-/// is always program-built (`reject_shard_relative_path`), never directly
-/// user-authored.
+/// Re-implements the sandbox-join-and-put invariant from
+/// `action-sink::SinkOutput` (duplicated, not reused, to avoid a runtime ->
+/// action-sink circular dependency); skips path hygiene checks since
+/// `relative_path` is always program-built, never user-authored.
 fn write_sandboxed_reject_shard(
     sandbox_root: &Uri,
     relative_path: &str,
@@ -585,12 +540,8 @@ fn write_sandboxed_reject_shard(
 }
 
 /// Segment-aligned "resolved is under sandbox_root" check, mirroring
-/// `action-sink::sandbox::ensure_under` (see `write_sandboxed_reject_shard`
-/// for why this is duplicated rather than reused). `file:///` is treated as
-/// "no sandbox" — same permissive sentinel `NodeContext::default()`/
-/// `ExecutorOptions::default()` use for tests — otherwise any `..` segment
-/// surviving the join, or a resolved URI that isn't a same-scheme/authority
-/// prefix of `sandbox_root`, is rejected.
+/// `action-sink::sandbox::ensure_under`. `file:///` is treated as "no
+/// sandbox" (test sentinel); any `..` escape or non-prefix URI is rejected.
 fn ensure_under_sandbox(sandbox_root: &Uri, resolved: &Uri) -> Result<(), ExecutionError> {
     if sandbox_root.as_str() == "file:///" || sandbox_root.as_str() == resolved.as_str() {
         return Ok(());
@@ -614,20 +565,10 @@ fn ensure_under_sandbox(sandbox_root: &Uri, resolved: &Uri) -> Result<(), Execut
     Ok(())
 }
 
-/// Unified failure precedence for the sink drain end: a real returned error
-/// wins; the fatal slot is only a backstop for swallowed `report()` fatals.
-/// Precedence: `first_error` (from process()) > `terminate_result` Err
-/// (from finish()/terminate-send) > fatal slot.
-///
-/// Returns `(final_result, node_failed, superseded_fatal)`. `superseded_fatal`
-/// is `Some(diag)` exactly when a swallowed fatal was present but lost
-/// precedence to a real returned error (the first two match arms) — i.e. it
-/// was recorded via `ctx.fatal()`/`report()` but never surfaces in
-/// `final_result`. The 2a-core T1 ledger item: this must not vanish
-/// silently, so the call site (`receiver_loop`) warns once using this
-/// indicator. It is `None` both when there is no fatal to begin with and
-/// when the fatal slot itself wins (it's already reflected in
-/// `final_result` there, so nothing was superseded).
+/// Failure precedence for the sink drain end: `first_error` (process()) >
+/// `terminate_result` Err (finish()/terminate-send) > fatal slot backstop.
+/// Returns `superseded_fatal` — the diagnostic that lost precedence, for the
+/// caller's warn-once — or `None` if nothing was superseded.
 fn reconcile_sink_terminate_result(
     first_error: Option<ExecutionError>,
     terminate_result: Result<(), ExecutionError>,
@@ -650,8 +591,8 @@ mod reject_shard_tests {
 
     use super::*;
 
-    /// Composed-id keying (Task 5 brief): two distinct composed ids produce
-    /// two distinct shard paths, each keyed under `rejected/`.
+    /// Two distinct composed ids produce two distinct shard paths, each
+    /// keyed under `rejected/`.
     #[test]
     fn reject_shard_relative_path_keys_by_composed_id() {
         assert_eq!(
@@ -689,9 +630,7 @@ mod reject_shard_tests {
     }
 
     /// Two distinct shard paths under the same sandbox never clobber each
-    /// other — the reject-shard no-clobber invariant at the write-helper
-    /// level (the runner-level test covers it end to end through a real
-    /// two-sink run).
+    /// other (write-helper level; a runner-level test covers this end to end).
     #[test]
     fn write_sandboxed_reject_shard_does_not_clobber_a_sibling_shard() {
         let tmp = tempdir().unwrap();
@@ -849,10 +788,9 @@ mod reconcile_tests {
         }
     }
 
-    /// The 2a-core T1 ledger item, unit-tested directly on the reconcile
-    /// helper: when a swallowed fatal loses to a real error, the returned
-    /// indicator must carry the SAME diagnostic that was superseded (not
-    /// just `Some(_)`) so the call site's WARN can name its code.
+    /// When a swallowed fatal loses to a real error, the returned indicator
+    /// must carry the SAME diagnostic (not just `Some(_)`) so the caller's
+    /// WARN can name its code.
     #[test]
     fn superseded_fatal_indicator_carries_the_original_diagnostic() {
         let fatal = dummy_diagnostic("fatal");

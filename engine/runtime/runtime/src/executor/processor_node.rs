@@ -68,15 +68,10 @@ pub struct ProcessorNode<F> {
     num_threads: usize,
     thread_counter: Arc<AtomicU32>,
     features_processed: Arc<AtomicU64>,
-    /// Feature count sent downstream during `finish()`
-    /// (`ChannelManager::get_send_count()`, read in `on_terminate`).
-    /// `on_terminate` runs as a plain method call from `receiver_loop`
-    /// (not a spawned thread), but it returns only `Result<(), ExecutionError>`
-    /// (the `ReceiverLoop` trait's fixed signature) — this field is the same
-    /// "carry a value out through a fixed-signature method" pattern
-    /// `summaries_sink` already uses, so `receiver_loop` can read the count
-    /// back after calling `on_terminate` and put it on the terminal
-    /// `NodeStatusChanged`'s `NodeMetrics`.
+    /// Feature count sent downstream during `finish()`; carried out of
+    /// `on_terminate`'s fixed `Result<(), ExecutionError>` signature the same
+    /// way `summaries_sink` is, so `receiver_loop` can read it back for the
+    /// terminal `NodeStatusChanged`'s `NodeMetrics`.
     finish_feature_count: Arc<AtomicU64>,
     /// Cumulative process() duration in microseconds.
     process_duration_us: Arc<AtomicU64>,
@@ -91,16 +86,12 @@ pub struct ProcessorNode<F> {
     /// State for writing source intermediate data
     feature_state: Arc<State>,
     incremental_mode: bool,
-    /// This node's report/warn/warn_once diagnostics handle. Stamped onto
-    /// every `ExecutorContext`/`NodeContext` this node receives so
-    /// process()/finish()-time reports are attributed to this node.
+    /// This node's diagnostics handle, stamped onto every context so
+    /// process()/finish()-time reports attribute to this node.
     diagnostics: crate::diagnostics::SharedNodeDiagnostics,
-    /// Sink for this node's finish()-time diagnostic summaries
-    /// (`emit_summaries`'s return value), written by `on_terminate` and read
-    /// by the spawning thread (`start_processor` in `dag_executor.rs`) after
-    /// `run()` returns. Exists to carry a `Vec<Diagnostic>` out of the
-    /// `ReceiverLoop`/`Node` traits' `Result<(), ExecutionError>`-only
-    /// return type without changing either trait's signature.
+    /// Finish()-time diagnostic summaries; written by `on_terminate`, read by
+    /// the spawning thread after `run()` returns (carries a `Vec<Diagnostic>`
+    /// out despite the trait's `Result<(), ExecutionError>`-only signature).
     summaries_sink: Arc<parking_lot::Mutex<Vec<Diagnostic>>>,
 }
 
@@ -127,18 +118,10 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
         let NodeKind::Processor(processor) = kind else {
             panic!("Must pass in a processor node");
         };
-        // NOTE: `action` is NOT asserted equal to `processor.name()` here.
-        // `builder_dag.rs`'s `ActionNameMismatch` check validates the
-        // *factory's* `ProcessorFactory::name()` against `node.node.action()`
-        // at build time — that's `action`'s provenance. The *built instance*'s
-        // `Processor::name()` (`processor` here) is a different trait and is
-        // not guaranteed to match: e.g. `UDXFolderExtractorFactory::name()`
-        // returns a PLATEAU-profile-namespaced key ("PLATEAU6.
-        // UDXFolderExtractor", the registry/action-selection identity) while
-        // the built `UDXFolderExtractor::name()` hardcodes the generic
-        // "UDXFolderExtractor" (a display label shared across profiles) — a
-        // real, intentional divergence discovered by an earlier (now-removed)
-        // assertion here against the quality-check workflow fixtures.
+        // NOTE: `action` is not asserted equal to `processor.name()` — e.g.
+        // `UDXFolderExtractorFactory::name()` returns a PLATEAU-namespaced
+        // key while the built `UDXFolderExtractor::name()` is generic; a
+        // real, intentional divergence between the two traits.
         let (node_handles, receivers) = dag.collect_receivers(node_index);
 
         let senders = dag.collect_senders(node_index);
@@ -180,9 +163,8 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             action,
             warn_once,
             disposition_policy,
-            // D7 (Task 5): reject-row capture is sink-only — a processor
-            // routes rejected features via the `rejected` output port
-            // instead (see the runner's load-time validation).
+            // Reject-row capture is sink-only — a processor routes rejected
+            // features via the `rejected` output port instead.
             false,
         ));
 
@@ -223,18 +205,14 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
         &self.node_handle
     }
 
-    /// Clone of the handle `on_terminate` writes this node's drained
-    /// finish()-time summaries into. Call before consuming `self` via
-    /// `run()`/`receiver_loop()` so the summaries can still be read after.
+    /// Clone of the summaries handle; call before `run()` consumes `self` so
+    /// summaries remain readable after it returns.
     pub fn summaries_sink(&self) -> Arc<parking_lot::Mutex<Vec<Diagnostic>>> {
         self.summaries_sink.clone()
     }
 
-    /// This node's `(composed_id, action)`, read off the same diagnostics
-    /// handle every `report()`/`report_drop()` call resolves against.
-    /// `start_processor` (`dag_executor.rs`) carries this alongside the
-    /// spawned thread's `JoinHandle` so the collect-all fold can attribute a
-    /// synthesized failure diagnostic to this node.
+    /// This node's `(composed_id, action)`, used by `start_processor`'s
+    /// collect-all fold to attribute synthesized failure diagnostics.
     pub fn node_meta(&self) -> super::dag_executor::NodeMeta {
         super::dag_executor::NodeMeta {
             composed_id: self.diagnostics.inner.node_id().to_string(),
@@ -293,10 +271,8 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
             ))
             .map_err(ExecutionError::Processor);
 
-        // Mirrors the sink's initialize-failure handling (`sink_node.rs`):
-        // without this, an `initialize()` error used to propagate via `?`
-        // with no status event at all, leaving the node stuck at `Starting`
-        // forever from any observer's point of view.
+        // Mirrors the sink's initialize-failure handling: without this, an
+        // `initialize()` error left the node stuck at `Starting` forever.
         if let Err(ref e) = init_result {
             self.event_hub.error_log_with_node_info(
                 Some(span.clone()),
@@ -394,22 +370,17 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                         self.event_hub.clone(),
                         self.sandbox_root.clone(),
                     );
-                    // Receive-site stamping: this is a fresh context built for
-                    // finish(), not derived from anything upstream, so stamp
-                    // this node's own diagnostics handle onto it directly.
+                    // Fresh context built for finish(), so stamp this node's
+                    // own diagnostics handle onto it directly.
                     finish_ctx.diagnostics = Some(self.diagnostics.clone());
                     let terminate_result = self.on_terminate(finish_ctx);
                     let finish_feature_count = self
                         .finish_feature_count
                         .load(std::sync::atomic::Ordering::Relaxed);
 
-                    // Unified failure precedence: a real error returned by
-                    // `on_terminate` (finish() or the downstream terminate-send)
-                    // always wins over the fatal slot; the fatal slot is a
-                    // swallowed-fatal backstop, consulted only when
-                    // `on_terminate` succeeded and no earlier process() call
-                    // failed. Exactly one NodeStatusChanged{Failed|Completed}
-                    // is emitted below, from the single reconciled outcome.
+                    // Failure precedence: a real `on_terminate` error always
+                    // wins over the fatal slot backstop. Exactly one
+                    // NodeStatusChanged is emitted below.
                     let fatal = self.diagnostics.inner.take_fatal();
                     let (final_result, node_failed, superseded_fatal) = reconcile_terminate_result(
                         terminate_result,
@@ -417,11 +388,9 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                         has_failed.load(std::sync::atomic::Ordering::SeqCst),
                     );
 
-                    // Mirrors the sink's superseded-fatal backstop
-                    // (`sink_node.rs`): a swallowed-fatal `report()`/`ctx.fatal()`
-                    // that loses precedence to a real `on_terminate` error must
-                    // not vanish silently — warn once, naming the superseded
-                    // diagnostic's code.
+                    // Mirrors sink_node.rs: a swallowed fatal that loses
+                    // precedence must not vanish silently — warn once,
+                    // naming its code.
                     if let Some(superseded) = superseded_fatal {
                         self.event_hub.warn_log_with_node_info(
                             Some(span.clone()),
@@ -451,13 +420,9 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                         }),
                     });
 
-                    // `ProcessorFinished` is per-NODE (emitted exactly once
-                    // here, only on the success path), deliberately NOT a 1:1
-                    // counterpart to its sibling `ProcessorFailed`, which is
-                    // emitted per-FEATURE from the rayon pool (see `process()`
-                    // below, on a failed `process()` call). This point is
-                    // after `on_terminate` (finish()) and the reconcile above,
-                    // so a node whose finish() failed never emits this.
+                    // `ProcessorFinished` is per-NODE, emitted once on the
+                    // success path — unlike its per-FEATURE sibling
+                    // `ProcessorFailed` (emitted from the rayon pool below).
                     if !node_failed {
                         self.event_hub.send(Event::ProcessorFinished {
                             node: self.node_handle.clone(),
@@ -467,13 +432,8 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
 
                     return final_result;
                 }
-                // Polling-backoff for the busy-wait that drains `thread_counter`
-                // after all inputs have terminated. A 100µs sleep keeps CPU usage
-                // negligible (~10,000 polls/sec at most) while still being fast
-                // enough that detection latency for the counter reaching 0 is
-                // imperceptible. `yield_now()` would spin at ~100% CPU on cores
-                // with no other runnable threads, which can stretch into seconds
-                // for large processors.
+                // 100µs polling backoff draining `thread_counter`; `yield_now()`
+                // would spin at ~100% CPU with no other runnable threads.
                 std::thread::sleep(Duration::from_micros(100));
                 continue;
             }
@@ -548,8 +508,8 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
         mut ctx: ExecutorContext,
         has_failed: Arc<std::sync::atomic::AtomicBool>,
     ) -> Result<(), ExecutionError> {
-        // Receive-site stamping: this node's own diagnostics handle wins over
-        // whatever the upstream sender's context carried.
+        // This node's own diagnostics handle wins over whatever the upstream
+        // sender's context carried.
         ctx.diagnostics = Some(self.diagnostics.clone());
         let channel_manager = Arc::clone(&self.channel_manager);
         let processor = Arc::clone(&self.processor);
@@ -600,26 +560,20 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
             None
         };
 
-        // Enable spill mode: if finish() emits more features than the bounded
-        // channel can hold, excess features are written to disk as JSONL files
-        // instead of blocking on send(). This prevents shutdown deadlocks where
-        // finish() blocks on a full channel that the downstream can't drain.
+        // Spill excess finish()-emitted features to disk instead of blocking
+        // on send(), preventing shutdown deadlocks on a full channel.
         channel_manager.enable_spill_mode();
         channel_manager.reset_send_count();
         let result = processor
             .write()
             .finish(ctx.clone(), channel_manager)
             .map_err(|e| to_node_error(e, NodeErrorKind::Processor));
-        // Emit this node's aggregated warn/drop/reject summaries regardless of
-        // whether finish() itself succeeded — reports recorded during
-        // process()/finish() must not be silently dropped just because
-        // finish() failed.
-        // Stashed in `summaries_sink` for the spawning thread to read after
-        // `run()` returns and fold into the run's `RunSummary` (Task 5).
+        // Emit aggregated summaries regardless of finish() outcome — reports
+        // must not be dropped just because finish() failed. Stashed for the
+        // spawning thread to fold into the run's RunSummary.
         let summaries = crate::diagnostics::emit_summaries(&self.event_hub, &self.diagnostics);
         *self.summaries_sink.lock() = summaries;
-        // Flush any features that were spilled to disk during finish().
-        // These are sent as FileBackedOps which the downstream already handles.
+        // Flush spilled-to-disk features as FileBackedOps the downstream handles.
         channel_manager.flush_spill_files(&ctx.as_context());
         let finish_feature_count = channel_manager.get_send_count();
         self.finish_feature_count
@@ -715,23 +669,11 @@ fn process(
             name: node_name.clone(),
         });
 
-        // Converge the two failure signals (C12 / Task 6 retirement
-        // precondition for `NodeFailureHandler`): on its own, a per-feature
-        // `process()` error only sets `has_failed` and emits `ProcessorFailed`
-        // above — it never produces a thread-level `Err`, so
-        // `reconcile_terminate_result`'s `(Ok(()), None) => (Ok(()), has_failed)`
-        // arm flips the *status* event to `Failed` while leaving
-        // `RunSummary.failed_nodes` empty (see
-        // `11_run_summary_threading.rs`'s tripwire). Recording a synthesized
-        // fatal into the per-node fatal slot here — the same slot
-        // `ctx.report()`'s Fatal path uses — means `take_fatal()` in
-        // `on_terminate` now sees it, so `reconcile_terminate_result`'s
-        // `(Ok(()), Some(diag))` arm fails the node with a real
-        // `ExecutionError` and it lands in `failed_nodes` too.
-        // `record_fatal` is first-wins, so only the first failing feature's
-        // diagnostic sticks; this block never returns or aborts the loop, so
-        // every later feature in this node still goes through `process()`
-        // normally (log-and-continue is unchanged).
+        // A per-feature error alone only sets `has_failed`/emits
+        // `ProcessorFailed`, leaving `RunSummary.failed_nodes` empty.
+        // Recording a synthesized fatal here (first-wins) lets
+        // `reconcile_terminate_result` fail the node for real. Later
+        // features still process normally (log-and-continue unchanged).
         if let Some(handle) = &diagnostics_handle {
             handle.inner.record_fatal(synthesize_process_error_fatal(
                 e.to_string(),
@@ -745,13 +687,8 @@ fn process(
     }
 }
 
-/// Synthesizes a fatal `Diagnostic` under `internal.unclassified` for a
-/// per-feature `process()` error, mirroring `dag_executor.rs`'s
-/// `diagnostic_from_execution_error` join-fold fallback (same registry code,
-/// same "render the error's `Display`, stamp node identity" recipe) — but
-/// this one also carries the failing `feature_id`, since it runs while that
-/// identity is still known, unlike the join fold's fallback which runs after
-/// per-feature identity is already lost.
+/// Synthesizes a fatal `Diagnostic` for a per-feature `process()` error;
+/// unlike `dag_executor.rs`'s join-fold fallback, still knows `feature_id`.
 fn synthesize_process_error_fatal(
     message: String,
     node_id: String,
@@ -768,19 +705,8 @@ fn synthesize_process_error_fatal(
     diagnostic
 }
 
-/// Unified failure precedence: a real returned error wins; the fatal slot is
-/// only a backstop for swallowed `report()` fatals.
-///
-/// Returns `(final_result, node_failed, superseded_fatal)`. `superseded_fatal`
-/// is `Some(diag)` exactly when a swallowed fatal was present but lost
-/// precedence to a real `on_terminate` error — i.e. it was recorded via
-/// `ctx.fatal()`/`report()` but never surfaces in `final_result`. Mirrors
-/// `sink_node.rs::reconcile_sink_terminate_result`'s indicator (minus
-/// `first_error`, which the processor loop has no equivalent of: per-feature
-/// `process()` failures are tracked only as the `has_failed` bool, not as a
-/// carried error). It is `None` both when there is no fatal to begin with and
-/// when the fatal slot itself wins (already reflected in `final_result`
-/// there, so nothing was superseded).
+/// Failure precedence: a real returned error wins; the fatal slot is only a
+/// backstop for swallowed `report()` fatals. Mirrors `sink_node.rs`'s version.
 fn reconcile_terminate_result(
     terminate_result: Result<(), ExecutionError>,
     fatal: Option<Diagnostic>,
@@ -832,8 +758,7 @@ mod reconcile_tests {
                 Err(ExecutionError::Processor(e)) => assert!(e.to_string().contains("fatal")),
                 other => panic!("expected the fatal backstop to fire, got {other:?}"),
             }
-            // The fatal slot itself won here (it's reflected in `result`), so
-            // nothing was superseded — no WARN should fire for this case.
+            // Fatal slot won here — nothing superseded, no WARN expected.
             assert!(superseded.is_none());
         }
     }
@@ -867,8 +792,7 @@ mod reconcile_tests {
                     "expected the real terminate error to win over the fatal backstop, got {other:?}"
                 ),
             }
-            // A real terminate error superseded the fatal slot: the WARN
-            // backstop's indicator must carry the same diagnostic that lost.
+            // The WARN indicator must carry the same diagnostic that lost.
             let superseded = superseded.expect("fatal was present and lost to the terminate error");
             assert_eq!(superseded.message, "fatal");
         }
@@ -880,12 +804,8 @@ mod synthesize_process_error_fatal_tests {
     use super::*;
     use reearth_flow_diagnostics::{Disposition, ErrorCode};
 
-    /// C12 / Task 6: the synthesized diagnostic must carry the
-    /// `internal.unclassified` registry code, the rendered error text, the
-    /// node's composed identity, and a resolved-fatal disposition — this is
-    /// what lets `take_fatal()` + `reconcile_terminate_result`'s
-    /// `(Ok(()), Some(diag))` arm fail the node and land it in
-    /// `RunSummary.failed_nodes`.
+    /// The synthesized diagnostic must carry the `internal.unclassified`
+    /// code, error text, node identity, and a resolved-fatal disposition.
     #[test]
     fn carries_error_text_and_node_identity_as_fatal() {
         let feature_id = uuid::Uuid::new_v4();

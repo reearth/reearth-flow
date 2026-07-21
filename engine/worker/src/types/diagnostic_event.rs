@@ -13,10 +13,8 @@ use crate::pubsub::{
     topic::Topic,
 };
 
-/// Gate for `DiagnosticEvent` publishing. Defaults to `false`: as of Phase
-/// 2a the Go subscriber for `flow-diagnostic-topic` does not exist yet, so
-/// publishing must stay off until that consumer ships (deploy-order step 1
-/// in the diagnostics wire spec — publish only after a consumer exists).
+/// Gate for `DiagnosticEvent` publishing; defaults to `false` until the Go subscriber for
+/// `flow-diagnostic-topic` exists — publish only after a consumer ships.
 pub static ENABLE_DIAGNOSTICS: Lazy<bool> = Lazy::new(|| {
     env::var("FLOW_WORKER_ENABLE_DIAGNOSTICS")
         .ok()
@@ -64,15 +62,8 @@ impl From<&AggregateInfo> for WireAggregateInfo {
     }
 }
 
-/// Serializes an enum whose derived `Serialize` renders it as a bare JSON
-/// string (every `snake_case`-renamed enum in the diagnostics crate) into
-/// that string. Kept generic instead of hand-written per-enum `match`es so
-/// this mapping cannot silently fall out of sync with the diagnostics
-/// crate's own enum variants.
-///
-/// Only valid for unit-variant (C-like) enums that serialize to a bare JSON
-/// string; a non-unit-variant enum (struct/tuple variants, or `#[serde(tag =
-/// ..)]`) would serialize to an object/array and hit the `unreachable!` below.
+/// Extracts the bare JSON string a unit-variant enum serializes to; panics via `unreachable!`
+/// if given a non-unit-variant enum instead.
 fn enum_to_string<T: Serialize>(value: &T) -> String {
     match serde_json::to_value(value) {
         Ok(serde_json::Value::String(s)) => s,
@@ -80,10 +71,8 @@ fn enum_to_string<T: Serialize>(value: &T) -> String {
     }
 }
 
-/// Wire form of `Diagnostic`. Enums are carried as their `snake_case`
-/// string values rather than native/tagged JSON enums so unknown or newer
-/// values survive a Go round-trip verbatim instead of failing to
-/// deserialize (forward-compat requirement, spec diagnostic.v1 4.7).
+/// Wire form of `Diagnostic`. Enums are carried as `snake_case` strings rather than
+/// tagged JSON so unknown/newer values survive a Go round-trip instead of failing to deserialize.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct WireDiagnostic {
@@ -118,9 +107,8 @@ impl From<&Diagnostic> for WireDiagnostic {
     }
 }
 
-/// Pubsub wire event for a single `Diagnostic`. Gated by
-/// `ENABLE_DIAGNOSTICS` (see above) — construction itself is unconditional,
-/// callers decide whether to publish it.
+/// Pubsub wire event for a single `Diagnostic`. Construction is unconditional; publishing is
+/// gated by `ENABLE_DIAGNOSTICS`.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct DiagnosticEvent {
@@ -152,7 +140,6 @@ impl EncodableMessage for DiagnosticEvent {
         Topic::new(DIAGNOSTIC_TOPIC.clone())
     }
 
-    /// Encode the message payload.
     fn encode(&self) -> crate::errors::Result<ValidatedMessage<Bytes>> {
         serde_json::to_string(self)
             .map_err(crate::errors::Error::FailedToEncode)
@@ -172,11 +159,8 @@ mod tests {
         Uuid::from_bytes([byte; 16])
     }
 
-    /// A fully-populated `Diagnostic`: every optional field set except
-    /// `feature_id`, which is `None` because this is an aggregated
-    /// (finish()-time, node-level) summary rather than a per-feature one —
-    /// the two are mutually exclusive in practice (see `Diagnostic` doc
-    /// comment in the diagnostics crate).
+    /// Fully-populated `Diagnostic` except `feature_id` (None): aggregated node-level
+    /// diagnostics and per-feature ones are mutually exclusive in practice.
     fn full_diagnostic() -> Diagnostic {
         Diagnostic {
             code: ErrorCode::Cesium3dtilesEmptyGeometry,
@@ -214,11 +198,8 @@ mod tests {
         }
     }
 
-    /// Explicit nulls, not omission: this mirrors `NodeStatusEvent` and
-    /// `LogStreamEvent`, which also serialize their `Option` fields as
-    /// literal `null` rather than using `skip_serializing_if`. Kept
-    /// consistent with that convention rather than introducing a new one
-    /// for just this event type.
+    /// Explicit nulls, not omission — matches `NodeStatusEvent`/`LogStreamEvent`'s convention
+    /// of serializing `Option` fields as literal `null` rather than `skip_serializing_if`.
     #[test]
     fn diagnostic_event_serializes_camel_case_with_explicit_nulls_for_absent_fields() {
         let event = fixed_event();
@@ -305,10 +286,8 @@ mod tests {
 
     #[test]
     fn diagnostic_topic_defaults_when_env_unset() {
-        // Only asserts the default; explicitly setting/unsetting the env var
-        // here would race with other tests reading the same process-global
-        // `Lazy`, since whichever test's environment is visible at first
-        // read wins for the lifetime of the process.
+        // Only asserts the default; setting/unsetting the env var here would race other tests
+        // reading the same process-global `Lazy`.
         let event = fixed_event();
         assert_eq!(event.topic().to_string(), "flow-diagnostic-topic");
     }

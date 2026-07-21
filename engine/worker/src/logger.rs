@@ -31,14 +31,9 @@ static ENABLE_JSON_LOG: Lazy<bool> = Lazy::new(|| {
         .unwrap_or(false)
 });
 
-/// Gates optional OTel trace/metric export. Absent OR empty (the default)
-/// means `setup_logging_and_tracing` never calls into
-/// `reearth_flow_telemetry` at all, so the subscriber stack it builds is
-/// byte-identical to the pre-OTel behavior — zero overhead, no extra layer,
-/// no background exporter threads. An empty/whitespace value is treated as
-/// unset: deployment templating routinely materializes optional env vars as
-/// empty strings, and an empty endpoint would otherwise enable OTel only to
-/// fail exporter init.
+/// Gates optional OTel trace/metric export; absent or empty (the default) means zero overhead —
+/// no OTel calls at all. Empty/whitespace counts as unset since deployment templating often
+/// leaves optional env vars blank rather than omitting them.
 static OTEL_ENABLED: Lazy<bool> = Lazy::new(|| {
     env::var("OTEL_COLLECTOR_ENDPOINT")
         .map(|v| !v.trim().is_empty())
@@ -159,13 +154,9 @@ impl<'a> tracing_subscriber::fmt::MakeWriter<'a> for DynamicUserFacingLogFileWri
     }
 }
 
-/// Holds the OTel SDK providers alive for the process lifetime. Dropping
-/// them without calling `shutdown()` silently discards any spans/metrics
-/// still buffered for export — the classic OTel wiring bug. There is
-/// deliberately no `Drop` impl: every caller here ends by calling
-/// `std::process::exit`, which does not run destructors, so a `Drop` impl
-/// would give a false sense of safety. Callers MUST call `shutdown()`
-/// explicitly before exiting.
+/// Holds the OTel SDK providers alive for the process lifetime. No `Drop` impl on purpose —
+/// every caller here exits via `std::process::exit` (skips destructors), so `shutdown()` MUST
+/// be called explicitly before exiting.
 pub struct OtelGuard {
     tracer_provider: SdkTracerProvider,
     meter_provider: SdkMeterProvider,
@@ -182,19 +173,9 @@ impl OtelGuard {
     }
 }
 
-/// Initializes the OTel SDK tracer + meter providers for `service_name`
-/// when `enabled`, returning the `Tracer` to bridge into the
-/// `tracing_subscriber` registry plus the `OtelGuard` that owns both
-/// providers. Returns `Ok(None)` without calling
-/// `reearth_flow_telemetry::init_tracing`/`init_metrics` at all when
-/// `enabled` is false — this is the seam that guarantees the
-/// `OTEL_COLLECTOR_ENDPOINT`-absent path never touches OTel.
-///
-/// Takes `enabled` as a plain argument (rather than reading the memoized
-/// `OTEL_ENABLED` static directly) so the gate can be exercised by a test
-/// without the process-global, once-only
-/// `tracing_subscriber::registry()...try_init()` call that
-/// `setup_logging_and_tracing` performs around it.
+/// Initializes OTel tracer+meter providers when `enabled`; returns `Ok(None)` without touching
+/// `reearth_flow_telemetry` when disabled. Takes `enabled` as a param (not reading `OTEL_ENABLED`
+/// directly) so tests can exercise the gate without the process-global `try_init()` call.
 fn init_otel_providers(
     enabled: bool,
     service_name: &str,
@@ -233,11 +214,8 @@ pub fn setup_logging_and_tracing() -> crate::errors::Result<Option<OtelGuard>> {
     let registry = tracing_subscriber::registry().with(env_filter);
     let user_facing_layer = GlobalUserFacingLogLayer;
 
-    // Absent OTEL_COLLECTOR_ENDPOINT => otel_layer is `None`, which is a
-    // no-op `Layer` impl (tracing_subscriber's `impl<L, S> Layer<S> for
-    // Option<L>`), and `init_tracing`/`init_metrics` are never called —
-    // the subscriber stack below is then byte-identical to before this
-    // wiring existed.
+    // Absent OTEL_COLLECTOR_ENDPOINT => otel_layer is `None` (a no-op `Layer` impl) and
+    // init_tracing/init_metrics are never called — byte-identical to pre-OTel behavior.
     let otel = init_otel_providers(*OTEL_ENABLED, env!("CARGO_PKG_NAME"))?;
     let (otel_layer, otel_guard) = match otel {
         Some((tracer, guard)) => (
@@ -363,20 +341,13 @@ pub fn enable_user_facing_log_file(job_id: uuid::Uuid) -> crate::errors::Result<
 mod otel_gate_tests {
     use super::init_otel_providers;
 
-    // `setup_logging_and_tracing` installs a process-global tracing
-    // subscriber via `try_init()`, which can only succeed once per
-    // process — a second call in another test would observably fail.
-    // That makes the full function resistant to direct unit testing.
-    // These tests instead exercise `init_otel_providers`, the pure gate
-    // function it delegates to, which carries the actual "absent env var
-    // => no OTel calls at all" safety property under test.
+    // `setup_logging_and_tracing` installs a process-global subscriber via `try_init()` (only
+    // succeeds once per process), so these tests exercise `init_otel_providers` instead.
 
     #[test]
     fn disabled_gate_never_touches_otel() {
-        // This is the binding safety property from the OTel wiring plan:
-        // when disabled, `init_otel_providers` returns `Ok(None)` without
-        // calling `reearth_flow_telemetry::init_tracing`/`init_metrics`,
-        // so no OTel layer and no provider guard are ever produced.
+        // When disabled, `init_otel_providers` returns `Ok(None)` without calling
+        // `init_tracing`/`init_metrics` — no OTel layer or guard is ever produced.
         let result = init_otel_providers(false, "reearth-flow-worker-test");
         assert!(matches!(result, Ok(None)));
     }

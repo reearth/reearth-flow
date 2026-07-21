@@ -1,18 +1,6 @@
-//! Maps the workflow-level `errorPolicy` (parsed by `reearth_flow_types`)
-//! into the diagnostics crate's compile-time input seam (`PolicyInput`),
-//! and validates policy-override `node` selectors against the flattened,
-//! composed-id DAG once it has been built (spec 4.2's load-time
-//! node-matching rule, plus the multiply-instantiated-subgraph ambiguity
-//! rule), plus the load-time Reject-routing validation (spec 4.4, Task 5).
-//!
-//! This is the runner's half of the Task 3 policy-threading contract: the
-//! diagnostics crate (`reearth_flow_diagnostics::policy`) deliberately has
-//! no dependency on `reearth_flow_types`, so this module is where the two
-//! seams meet. `Orchestrator::run_apps` calls `map_error_policy` +
-//! `DispositionPolicy::compile` once at load, before DAG construction, and
-//! `validate_node_selectors` + `validate_reject_routing` once the DAG
-//! exists (`DagExecutor::node_identities` / `DagExecutor::
-//! reject_routing_info`).
+//! Maps the workflow-level `errorPolicy` into the diagnostics crate's
+//! compile-time input seam, and validates policy-override node selectors
+//! and Reject-routing against the built DAG.
 
 use std::collections::{HashMap, HashSet};
 
@@ -23,10 +11,8 @@ use reearth_flow_runtime::executor::dag_executor::{NodeKindTag, RejectRoutingInf
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_types::{ErrorPolicy, OnFatal, PolicyDisposition, PolicyOverride};
 
-/// Pure field-by-field mapping from the workflow-level `ErrorPolicy` (types
-/// crate) to the diagnostics crate's compile-time input seam. No behavior
-/// of its own — `DispositionPolicy::compile` does all the registry-aware
-/// validation once this seam is populated.
+/// Field-by-field mapping from `ErrorPolicy` to the diagnostics crate's
+/// input seam; validation happens in `DispositionPolicy::compile`, not here.
 pub fn map_error_policy(policy: &ErrorPolicy) -> PolicyInput {
     PolicyInput {
         on_fatal: map_on_fatal(&policy.on_fatal),
@@ -61,19 +47,8 @@ fn map_override(o: &PolicyOverride) -> OverrideInput {
     }
 }
 
-/// Load-time node-matching check (spec 4.2): every override's `node` value
-/// must equal a composed id in the flattened DAG built from this workflow.
-/// Additionally, if an override's `node` value equals the raw (un-prefixed)
-/// id of a node that was instantiated more than once (a subgraph used at
-/// multiple call sites, each producing a distinct composed id), that's
-/// flagged as ambiguous rather than "not found" — the author almost
-/// certainly meant one specific instance and needs to supply its composed
-/// id.
-///
-/// `node_identities` is `(composed_id, raw_id)` for every node in the built
-/// DAG (`DagExecutor::node_identities`). Returns every problem found, not
-/// just the first (mirrors `ErrorPolicy::validate`'s collect-everything
-/// convention).
+/// Checks every override's `node` matches a composed DAG id; a raw id shared
+/// by multiple subgraph instances is flagged "ambiguous" rather than "not found".
 pub fn validate_node_selectors(
     policy: &ErrorPolicy,
     node_identities: &[(String, String)],
@@ -116,31 +91,9 @@ pub fn validate_node_selectors(
     }
 }
 
-/// Load-time Reject-routing validation (spec 4.4, Task 5): for every
-/// non-source node, if any error code could resolve to `Reject` for it
-/// under the compiled policy, the workflow must declare where those
-/// rejected features go, or fail to load:
-///   - a processor must declare `REJECTED_PORT` among its output ports
-///     AND have at least one edge wired from it;
-///   - a sink must have `policy.side_file()` set.
-///
-/// Source nodes are skipped — sources don't report `Reject`. With zero
-/// authored-`Reject` registry codes (checked as of Task 5), only an
-/// override can trigger this, so a no-policy workflow never hits it —
-/// zero behavior change, per this task's binding constraint.
-///
-/// `rejecting_codes` combines the node-agnostic `may_resolve_to_reject`
-/// fast gate with the node-aware `resolve` ladder: `may_resolve_to_reject`
-/// is node-agnostic *by design* (T2's accessor contract — it proves a
-/// `Reject` is possible *somewhere* in the policy, not at which node), so
-/// used alone per-node it would over-flag every node in the DAG the moment
-/// any single override anywhere promotes to `Reject`. `resolve` already
-/// implements the full node+code/category/default ladder (spec 4.2), so
-/// layering it on top is what actually scopes the requirement to the node(s)
-/// an override targets — this is the follow-up test the T2 review requested
-/// (see `validate_reject_routing_only_flags_the_overridden_node` below),
-/// applied at this validation layer rather than to the node-agnostic
-/// accessor itself.
+/// Load-time check: any non-source node where the policy could resolve an
+/// error code to `Reject` must have somewhere to route rejected features —
+/// a processor needs a wired `rejected` port, a sink needs `sideFile`.
 pub fn validate_reject_routing(
     policy: &DispositionPolicy,
     nodes: &[RejectRoutingInfo],
@@ -196,10 +149,8 @@ pub fn validate_reject_routing(
     }
 }
 
-/// Every registry `ErrorCode` that could resolve to `Reject` specifically
-/// at `composed_id` under `policy`. See `validate_reject_routing`'s doc
-/// comment for why this needs both `may_resolve_to_reject` (fast, but
-/// node-agnostic) and `resolve` (node-aware, the actual decision).
+/// Registry error codes that could resolve to `Reject` at `composed_id`;
+/// combines the node-agnostic fast check with the node-aware `resolve` ladder.
 fn rejecting_codes(policy: &DispositionPolicy, composed_id: &str) -> Vec<ErrorCode> {
     ErrorCode::ALL
         .iter()
@@ -211,11 +162,8 @@ fn rejecting_codes(policy: &DispositionPolicy, composed_id: &str) -> Vec<ErrorCo
         .collect()
 }
 
-/// Simple Levenshtein edit distance, used only to surface "nearest match"
-/// suggestions in unmatched-node-id errors — mirrors
-/// `reearth_flow_diagnostics::policy`'s private helper of the same shape
-/// (duplicated rather than shared: that helper is private to the
-/// diagnostics crate and this crate has no other reason to depend on it).
+/// Levenshtein distance for "nearest match" suggestions in unmatched-node-id
+/// errors; duplicated from a private helper in the diagnostics crate.
 fn levenshtein_distance(a: &str, b: &str) -> usize {
     let a: Vec<char> = a.chars().collect();
     let b: Vec<char> = b.chars().collect();
@@ -430,10 +378,6 @@ mod tests {
         assert_eq!(errors.len(), 2);
     }
 
-    // -----------------------------------------------------------------
-    // validate_reject_routing (spec 4.4, Task 5)
-    // -----------------------------------------------------------------
-
     fn diag_override(
         node: Option<&str>,
         code: Option<&str>,
@@ -596,11 +540,8 @@ mod tests {
         assert!(validate_reject_routing(&policy, &nodes).is_ok());
     }
 
-    /// The T2-review follow-up (see `validate_reject_routing`'s doc
-    /// comment): `may_resolve_to_reject` is node-agnostic by design, so this
-    /// exercises the *validation layer's* node scoping instead — a
-    /// Reject-promoting override that targets one sink must not require
-    /// side-file routing on an unrelated sink in the same workflow.
+    /// A Reject-promoting override on one sink must not require side-file
+    /// routing on an unrelated sink — proves the validation layer's node scoping.
     #[test]
     fn validate_reject_routing_only_flags_the_overridden_node() {
         let policy = compile_policy(

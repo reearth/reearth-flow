@@ -10,25 +10,13 @@ use uuid::Uuid;
 use crate::event::EventHub;
 use crate::node::NodeHandle;
 
-/// D7 (spec §7 / Task 5): hard cap on buffered reject rows per node before
-/// the side-file flush degrades to counting-only. Rows beyond the cap are
-/// never buffered — only counted — so a pathological run can't grow this
-/// unboundedly in memory; the residual count surfaces as one overflow
-/// marker row at flush time (see `render_reject_jsonl`).
+/// Hard cap on buffered reject rows per node; rows beyond the cap are
+/// counted, not buffered, and surface as one overflow marker row at flush
+/// (see `render_reject_jsonl`).
 pub const REJECT_ROW_CAP: usize = 10_000;
 
-/// One row of the D7 sink reject side-file (`rejected/{composed_id}.jsonl`,
-/// flushed by `SinkNode::on_terminate`). PII-minimal by design: only the
-/// feature id, whether it had geometry, and the diagnostic code — no
-/// feature attributes (opt-in attribute capture is deferred, see Task 5's
-/// brief).
-///
-/// `has_geometry` is tri-state (`Option<bool>`, serializing to a nullable
-/// `hasGeometry` in the JSONL row): `report()`'s per-feature path always
-/// knows it (`Some`, computed from the live `Feature`), but a finish()-time
-/// `report_drop` caller may have no `Feature` to derive it from honestly —
-/// `None` means "unknown", not "false" (2a-policy final-review fix round,
-/// Item 1).
+/// One row of the D7 reject side-file. PII-minimal (no feature attributes).
+/// `has_geometry` is tri-state: `None` means unknown, not `false`.
 #[derive(Debug, Clone)]
 pub struct RejectRow {
     pub feature_id: Option<Uuid>,
@@ -36,10 +24,8 @@ pub struct RejectRow {
     pub code: ErrorCode,
 }
 
-/// Sink-only buffer for D7 reject rows, owned by `NodeDiagnosticsHandle`
-/// (`Some` only when constructed for a sink node under a `side_file()`
-/// policy — see `NodeDiagnosticsHandle::new`). Hard-capped at
-/// `REJECT_ROW_CAP` rows.
+/// Sink-only buffer for D7 reject rows; `None` unless side_file() policy
+/// applies to a sink node (see `NodeDiagnosticsHandle::new`).
 #[derive(Debug, Default)]
 struct RejectCapture {
     rows: Mutex<Vec<RejectRow>>,
@@ -73,11 +59,8 @@ impl RejectCapture {
     }
 }
 
-/// Render buffered D7 reject rows as newline-delimited JSON — one object
-/// per row (`{"featureId":...,"hasGeometry":...,"code":"..."}`), plus one
-/// trailing overflow-marker row when `overflow > 0` (spec: "an overflow
-/// marker row at flush notes the residual count"). Pure/no I/O so the cap
-/// and shape are directly unit-testable.
+/// Renders buffered D7 reject rows as newline-delimited JSON, plus one
+/// trailing overflow-marker row when `overflow > 0`.
 pub fn render_reject_jsonl(rows: &[RejectRow], overflow: u64) -> Vec<u8> {
     let mut buf = Vec::new();
     for row in rows {
@@ -100,32 +83,17 @@ pub fn render_reject_jsonl(rows: &[RejectRow], overflow: u64) -> Vec<u8> {
     buf
 }
 
-/// Runtime-side wrapper pairing the crate-agnostic aggregator with the
-/// runtime identities needed to emit `Event::Diagnostic`s.
-///
-/// `inner`'s `node_id` is the *composed* id (`builder_dag::NodeType::
-/// composed_id`, `"{subgraph_prefix}.{raw_id}"` or just the raw id with no
-/// subgraph) — the identity used for diagnostic/log attribution text and
-/// policy resolution (spec 4.2/4.3). `node_handle` and `node_name` below
-/// deliberately stay the *raw*, un-composed identity and are kept even
-/// though nothing in this module reads them back: they mirror the same two
-/// fields every `ProcessorNode`/`SinkNode` already carries, where
-/// `node_handle` is what `Event::Log`'s `node_handle` field is keyed off
-/// (see `event.rs` — that wire shape is the description-DAG id, not the
-/// subgraph-composed one) and `node_name` is what feeds
-/// `node_info_tls`/`UserFacingLogHandler` attribution via those same
-/// `Event::Log` fields. Keeping both here too means a caller holding only a
-/// `SharedNodeDiagnostics` never has to go find the owning node struct to
-/// recover the raw identity.
+/// Pairs the aggregator with runtime identities for `Event::Diagnostic`s.
+/// `node_handle`/`node_name` are unused here but must stay — `Event::Log`
+/// keys off them for log attribution.
 #[derive(Debug)]
 pub struct NodeDiagnosticsHandle {
     pub node_handle: NodeHandle,
     pub node_name: String,
     pub inner: Arc<NodeDiagnostics>,
     disposition_policy: Arc<DispositionPolicy>,
-    /// D7 (Task 5): `Some` only when this handle was constructed for a sink
-    /// node (`is_sink: true`) under a `side_file()` policy — see `new`.
-    /// Everywhere else `record_reject_row`/`drain_reject_rows` are no-ops.
+    /// `Some` only for a sink node under a `side_file()` policy (see `new`);
+    /// otherwise `record_reject_row`/`drain_reject_rows` are no-ops.
     reject_capture: Option<RejectCapture>,
 }
 
@@ -153,12 +121,8 @@ impl NodeDiagnosticsHandle {
         }
     }
 
-    /// D7: buffer one rejected-feature row for the sink side-file flush
-    /// (`SinkNode::on_terminate`). No-op unless this handle was constructed
-    /// for a sink node under a `side_file()` policy (see `new`) — the
-    /// buffer simply doesn't exist otherwise, so this never allocates for a
-    /// no-policy or non-sink node. `has_geometry` is tri-state — see
-    /// `RejectRow`'s doc comment.
+    /// Buffers one rejected-feature row for the sink side-file flush. No-op
+    /// unless constructed for a sink under `side_file()` policy (see `new`).
     pub fn record_reject_row(
         &self,
         feature_id: Option<Uuid>,
@@ -170,41 +134,21 @@ impl NodeDiagnosticsHandle {
         }
     }
 
-    /// Drain buffered D7 reject rows for flush (see `record_reject_row`).
-    /// `None` when reject capture isn't enabled for this node, or nothing
-    /// was ever captured.
+    /// Drains buffered reject rows for flush. `None` when capture isn't
+    /// enabled, or nothing was ever captured.
     pub fn drain_reject_rows(&self) -> Option<(Vec<RejectRow>, u64)> {
         self.reject_capture.as_ref().and_then(RejectCapture::drain)
     }
 
-    /// Resolves the effective disposition for `code` at this node
-    /// (`inner.node_id()`, the composed id) via the compiled policy —
-    /// `ExecutorContext::report()`'s resolve() ladder (spec 4.2).
+    /// Resolves the effective disposition for `code` at this node via the
+    /// compiled policy (same ladder as `ExecutorContext::report()`).
     pub fn resolve(&self, code: ErrorCode) -> Disposition {
         self.disposition_policy.resolve(self.inner.node_id(), code)
     }
 
-    /// finish()-time drop reporting for code without an ExecutorContext.
-    /// Despite the name, this is no longer unconditionally a WarnDrop: it
-    /// runs the same `resolve()` ladder `report()` does, since policy can
-    /// promote/demote the code just as freely for a finish()-time drop as
-    /// for a per-feature one. `WarnDrop`/`Reject` land in the normal
-    /// aggregation bucket; a resolved `Fatal` can't be returned as an `Err`
-    /// here (finish()-time drop sites are fire-and-forget, unlike
-    /// `report()`), so it goes to the fatal slot instead — the same
-    /// drain-end backstop `report()`'s Fatal branch relies on
-    /// (`take_fatal()` in `processor_node.rs`/`sink_node.rs`'s
-    /// `on_terminate` reconciliation) fails the node from there.
-    ///
-    /// `has_geometry` (2a-policy final-review fix round, Item 1): a resolved
-    /// `Reject` now also reaches the side-file capture
-    /// (`record_reject_row`), same as `report()`'s per-feature path — an
-    /// override promoting a finish()-time code to `reject` used to count the
-    /// rejection in the bucket but write no side-file row at all, not even
-    /// an empty one. Unlike `report()`, callers here often have no live
-    /// `Feature` to derive `has_geometry` from, so it's threaded through as
-    /// a caller-supplied tri-state (`None` = unknown, not `false`) rather
-    /// than computed here.
+    /// finish()-time drop reporting: runs the same resolve() ladder as
+    /// `report()`, but a resolved `Fatal` lands in the fatal slot, not `Err`
+    /// (finish()-time sites are fire-and-forget, unlike `report()`).
     pub fn report_drop(
         &self,
         code: ErrorCode,
@@ -230,12 +174,8 @@ impl NodeDiagnosticsHandle {
                     DiagnosticKind::Reject
                 };
                 self.inner.record(kind, code, feature_id);
-                // D7 (final-review fix round, Item 1): capture a side-file
-                // row alongside the aggregation bucket above, same shape as
-                // `ExecutorContext::report()`'s `Reject` branch.
-                // `record_reject_row` is a no-op unless this handle belongs
-                // to a sink node under a `side_file()` policy, so this stays
-                // free on every other path.
+                // Reject also captures a side-file row (no-op unless sink +
+                // side_file() policy).
                 if effective == Disposition::Reject {
                     self.record_reject_row(feature_id, has_geometry, code);
                 }
@@ -244,11 +184,9 @@ impl NodeDiagnosticsHandle {
     }
 }
 
-/// Drain the node's buckets once and, for each (code, kind) summary, emit a
-/// structured `Event::Diagnostic`. `LogEventHandler` renders it through the
-/// action log (see `runner::log_event_handler`), so no twin `Event::Log` is
-/// sent here. Called once per node after `finish()`. Returns the drained
-/// summaries for callers that need them (e.g. RunSummary, Task 5).
+/// Drains the node's buckets once, emitting a structured `Event::Diagnostic`
+/// per summary (no twin `Event::Log` — `LogEventHandler` renders via the
+/// action log). Called once per node after `finish()`.
 pub fn emit_summaries(
     event_hub: &EventHub,
     handle: &NodeDiagnosticsHandle,
@@ -450,11 +388,6 @@ mod tests {
         assert_eq!(fatal.feature_id, Some(uuid::Uuid::nil()));
     }
 
-    // -----------------------------------------------------------------
-    // D7 (Task 5): reject-row capture (`record_reject_row`/
-    // `drain_reject_rows`) and the JSONL flush rendering.
-    // -----------------------------------------------------------------
-
     #[test]
     fn record_reject_row_is_a_no_op_without_side_file_policy() {
         // is_sink: true, but the default policy has side_file() == false.
@@ -495,9 +428,7 @@ mod tests {
         assert_eq!(rows[1].code, ErrorCode::GltfZeroFaceSolid);
     }
 
-    /// `has_geometry: None` (unknown) buffers just like `Some` — the tri-state
-    /// is opaque to the capture/drain path, only `render_reject_jsonl`
-    /// interprets it (as a nullable `hasGeometry`).
+    /// `None` buffers like `Some` — only `render_reject_jsonl` interprets it.
     #[test]
     fn record_reject_row_buffers_a_none_has_geometry_row_as_unknown() {
         let handle = handle_with_policy_and_sink(side_file_policy(), true);
@@ -516,8 +447,7 @@ mod tests {
         assert!(handle.drain_reject_rows().is_none());
     }
 
-    /// Cap behavior (Task 5 brief): 10_001 records -> 10_000 buffered rows
-    /// plus an overflow count of 1, never growing the buffer past the cap.
+    /// 10_001 records -> 10_000 buffered rows + overflow count 1, cap never exceeded.
     #[test]
     fn record_reject_row_caps_at_reject_row_cap_and_counts_the_residual() {
         let handle = handle_with_policy_and_sink(side_file_policy(), true);
@@ -529,16 +459,8 @@ mod tests {
         assert_eq!(overflow, 1);
     }
 
-    // -----------------------------------------------------------------
-    // Final-review fix round, Item 1: `report_drop`'s Reject branch now
-    // reaches the side-file capture too, not just the aggregation bucket.
-    // -----------------------------------------------------------------
-
-    /// The core regression proof: a Reject-resolving `report_drop` under a
-    /// sink + `side_file()` handle must produce exactly as many side-file
-    /// rows as the aggregation bucket counted (previously it produced zero
-    /// rows for every such drop — no shard was ever written, not even an
-    /// empty one).
+    /// Regression proof: a Reject-resolving `report_drop` must produce a
+    /// side-file row matching the bucket count (previously produced zero).
     #[test]
     fn report_drop_resolving_reject_captures_a_row_matching_the_bucket_count() {
         let policy = DispositionPolicy::compile(PolicyInput {
@@ -578,9 +500,8 @@ mod tests {
         assert_eq!(rows[0].code, ErrorCode::CitygmlEmptyGeometry);
     }
 
-    /// Same override, but the caller has no `Feature` to derive
-    /// `has_geometry` from (the real finish()-time situation for some
-    /// call sites) — `None` is captured verbatim, not guessed as `false`.
+    /// No live `Feature` to derive `has_geometry` from — `None` is captured
+    /// verbatim, not guessed as `false`.
     #[test]
     fn report_drop_resolving_reject_with_unknown_geometry_captures_a_null_row() {
         let policy = DispositionPolicy::compile(PolicyInput {
@@ -605,9 +526,8 @@ mod tests {
         assert_eq!(rows[0].has_geometry, None);
     }
 
-    /// Without `side_file()`, a Reject-resolving `report_drop` still
-    /// increments the aggregation bucket but captures no row — unchanged,
-    /// pre-fix-round behavior for the no-side-file-policy case.
+    /// Without `side_file()`, the bucket still increments but no row is
+    /// captured.
     #[test]
     fn report_drop_resolving_reject_without_side_file_captures_no_row() {
         let policy = DispositionPolicy::compile(PolicyInput {
@@ -668,9 +588,8 @@ mod tests {
         assert_eq!(second["hasGeometry"], serde_json::json!(false));
     }
 
-    /// `has_geometry: None` (unknown, e.g. a finish()-time `report_drop`
-    /// caller with no live `Feature`) renders as a JSON `null`, not `false` —
-    /// the row serialization is honest about "unknown" vs. "known false".
+    /// `None` renders as JSON `null`, not `false` — honest about "unknown"
+    /// vs. "known false".
     #[test]
     fn render_reject_jsonl_emits_null_has_geometry_for_unknown_rows() {
         let rows = vec![RejectRow {

@@ -22,9 +22,8 @@ static JOB_COMPLETE_TOPIC: Lazy<String> = Lazy::new(|| {
         .unwrap_or("flow-job-complete-topic".to_string())
 });
 
-/// Top-K bound (spec 4.7) applied to `RunSummary::capped` before it is
-/// carried on `JobCompleteEvent`, so the wire payload cannot grow unbounded
-/// with pathological runs that produce many distinct diagnostics.
+/// Top-K bound (spec 4.7) applied via `RunSummary::capped` so the wire payload can't grow
+/// unbounded on pathological runs.
 pub const JOB_COMPLETE_TOP_K: usize = 50;
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -41,69 +40,14 @@ pub struct JobCompleteEvent {
     pub job_id: Uuid,
     pub result: JobResult,
     pub timestamp: chrono::DateTime<Utc>,
-    /// Structured per-node fatal failures (`RunSummary::failed_nodes`,
-    /// folded by `DagExecutorJoinHandle::join`'s `fold_outcomes`) — not
-    /// every failure the job ever hit, and not reliably shaped the way a
-    /// first read of the field name suggests. Read carefully before wiring
-    /// a consumer against this:
-    ///
-    /// - Absent (not `null`) when there is no `RunSummary` to report at all
-    ///   (the runner returned `Err` before one was built), so old
-    ///   subscribers that don't know about these fields see exactly the
-    ///   pre-Task-10 wire shape. Present-but-empty (`[]`) means a summary
-    ///   *was* produced and it recorded no structured node failures.
-    ///
-    /// - Consumers MUST NOT infer job failure from this field being empty
-    ///   or absent: `result: "failed"` with an empty or absent
-    ///   `failedNodes` remains common — legacy per-feature error paths
-    ///   still fail the run without ever populating a structured entry
-    ///   here, so the regex log fallback remains the failure-detail source
-    ///   for those.
-    ///
-    /// - A non-empty `failedNodes` IS reachable in production, most
-    ///   visibly under `errorPolicy.onFatal: continue`: the run keeps going
-    ///   past a node failure instead of aborting, and every thread's
-    ///   outcome — including the failed one's — is folded into the
-    ///   returned summary.
-    ///
-    /// - An entry is not always the *original* per-feature diagnostic:
-    ///   when a failed node thread's error doesn't downcast to a
-    ///   recoverable structured `Diagnostic` (e.g. an orphaned downstream
-    ///   sink whose upstream source failed without ever sending it a
-    ///   `Terminate`), `fold_outcomes` synthesizes one under
-    ///   `internal.unclassified` instead, carrying the original error's
-    ///   rendered text in `message` and the failed thread's identity in
-    ///   `nodeId`/`actionType`.
-    ///
-    /// - `nodeId` is the node's *composed* id, not necessarily a bare UUID
-    ///   and not always exactly one node: it may contain subgraph-prefix
-    ///   dots, and a synthesized entry's id may instead be a comma-joined
-    ///   list of several composed ids (`"id1,id2"`, when one thread ran
-    ///   several source nodes and failed without attribution to just one)
-    ///   or the fixed string `"replay-injector"` (the incremental-replay
-    ///   injector thread, which has no DAG node identity of its own).
-    ///
-    /// - Whether an entry is actually fatal must be read from
-    ///   `effectiveDisposition`, not `severity`: `severity` is stamped once
-    ///   from the code's registry-authored default and is never rewritten
-    ///   when a disposition policy promotes it to `fatal` at resolution
-    ///   time, so a policy-promoted fatal entry can carry a non-`"fatal"`
-    ///   `severity` (e.g. `"warn"`) while `effectiveDisposition` reads
-    ///   `"fatal"`.
+    /// Structured per-node fatal failures (`RunSummary::failed_nodes`). Absent = no `RunSummary`
+    /// was produced; empty = one was, with none recorded — never infer job failure from either.
+    /// Fatality must be read from `effectiveDisposition`, not `severity` (the latter isn't
+    /// rewritten when a policy promotes an entry to fatal at resolution time).
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub failed_nodes: Option<Vec<WireDiagnostic>>,
-    /// finish()-time diagnostics aggregated across all nodes
-    /// (`RunSummary::aggregated_diagnostics`, every node's drained
-    /// `WarnDrop`/`Reject`/`WarnContinue` bucket) — never a `Fatal` entry
-    /// (a resolved fatal never reaches this bucket; it surfaces via
-    /// `failedNodes` instead, see that field's contract). Same
-    /// absent-vs-empty contract as `failedNodes` (absent = run aborted
-    /// before a summary existed, empty = run completed with nothing to
-    /// report) — do not infer job failure from this field either. Unlike
-    /// `failedNodes`, every entry here comes from a genuine per-node
-    /// aggregation bucket: no cascade-synthesized `internal.unclassified`
-    /// entries, and `nodeId` is always a real single node's composed id
-    /// (never a comma-joined list or `"replay-injector"`).
+    /// finish()-time diagnostics aggregated per node (`RunSummary::aggregated_diagnostics`);
+    /// never a `Fatal` entry (those surface via `failedNodes`). Same absent-vs-empty contract.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub aggregated_diagnostics: Option<Vec<WireDiagnostic>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -123,22 +67,8 @@ impl JobCompleteEvent {
         }
     }
 
-    /// Builds the event with structured diagnostics populated from `summary`,
-    /// applying the `JOB_COMPLETE_TOP_K` wire bound (spec 4.7) internally via
-    /// `summary.capped(JOB_COMPLETE_TOP_K)` before rendering. Use `new`
-    /// instead when there is no summary to report.
-    ///
-    /// 2a-core review rec 4 hardening: capping used to be the caller's
-    /// responsibility (`with_summary(..., &summary.capped(JOB_COMPLETE_TOP_K))`
-    /// at the single production call site in `command.rs`) — an invariant
-    /// that held only because nothing else called this function. Capping
-    /// internally instead removes that single-call-site drift risk: every
-    /// caller, present or future, gets the wire bound for free and cannot
-    /// forget it. Callers must now pass the *uncapped* `summary` (see
-    /// `command.rs`) — capping twice would be wrong, not just redundant: a
-    /// second `cap_diagnostics` pass over an already-capped (`k`-real +
-    /// 1-overflow-marker) list would fold the prior overflow marker's
-    /// `count` into a new one, understating the true residual.
+    /// Builds the event with diagnostics capped internally via `JOB_COMPLETE_TOP_K` (spec 4.7).
+    /// Pass the *uncapped* `summary` — capping twice would understate the overflow count.
     pub fn with_summary(
         workflow_id: Uuid,
         job_id: Uuid,
@@ -174,7 +104,6 @@ impl EncodableMessage for JobCompleteEvent {
         Topic::new(JOB_COMPLETE_TOPIC.clone())
     }
 
-    /// Encode the message payload.
     fn encode(&self) -> crate::errors::Result<ValidatedMessage<Bytes>> {
         serde_json::to_string(self)
             .map_err(crate::errors::Error::FailedToEncode)
@@ -207,9 +136,8 @@ mod tests {
         event
     }
 
-    /// Locks the wire shape emitted when there is no `RunSummary` (runner
-    /// returned `Err`): must be byte-identical to the pre-Task-10 shape —
-    /// no new keys — so the existing Go subscriber stays safe.
+    /// Locks the wire shape when there's no `RunSummary`: must stay byte-identical (no new
+    /// keys) so the existing Go subscriber stays safe.
     #[test]
     fn event_without_summary_has_pre_task_wire_shape_exactly() {
         let event = bare_event();
@@ -324,14 +252,8 @@ mod tests {
         assert!(back.dropped_event_count.is_none());
     }
 
-    /// An empty `RunSummary` (no failed nodes, no aggregated diagnostics, no
-    /// dropped events) is still a `Some` summary — deliberately distinct
-    /// from `new()`'s `None` fields (see
-    /// `event_without_summary_has_pre_task_wire_shape_exactly`). The wire
-    /// decision: `with_summary` always renders these as PRESENT keys
-    /// (`Some(vec![])` / `Some(0)`), i.e. `[]` / `0`, never omitted, so a
-    /// consumer can distinguish "ran, produced nothing to report" from
-    /// "the runner returned `Err` before a summary existed at all".
+    /// An empty `RunSummary` still renders present-but-empty keys (`[]`/`0`, never omitted) —
+    /// lets a consumer distinguish "ran, nothing to report" from "no summary was ever built".
     #[test]
     fn with_summary_on_empty_run_summary_serializes_present_empty_fields() {
         let empty = RunSummary {
@@ -366,13 +288,8 @@ mod tests {
         assert!(obj.contains_key("droppedEventCount"));
     }
 
-    /// 2a-core review rec 4 hardening: `with_summary` now caps internally,
-    /// so a caller that passes an *uncapped* oversized `RunSummary` (unlike
-    /// the single production call site, which used to have to remember
-    /// `summary.capped(JOB_COMPLETE_TOP_K)` itself) still gets a bounded
-    /// wire payload. `JOB_COMPLETE_TOP_K + 1` distinct failed nodes go in;
-    /// exactly `JOB_COMPLETE_TOP_K` real entries plus one
-    /// `internal.diagnostics_overflow` marker come out.
+    /// `with_summary` caps internally: `JOB_COMPLETE_TOP_K + 1` failed nodes in yields exactly
+    /// `JOB_COMPLETE_TOP_K` real entries plus one `internal.diagnostics_overflow` marker out.
     #[test]
     fn with_summary_caps_an_oversized_run_summary_internally() {
         let failed_nodes: Vec<Diagnostic> = (0..JOB_COMPLETE_TOP_K + 1)
@@ -414,10 +331,8 @@ mod tests {
 
     #[test]
     fn job_complete_topic_defaults_when_env_unset() {
-        // Only asserts the default; explicitly setting/unsetting the env var
-        // here would race with other tests reading the same process-global
-        // `Lazy`, since whichever test's environment is visible at first
-        // read wins for the lifetime of the process.
+        // Only asserts the default; setting/unsetting the env var here would race other tests
+        // reading the same process-global `Lazy`.
         let event = bare_event();
         assert_eq!(event.topic().to_string(), "flow-job-complete-topic");
     }

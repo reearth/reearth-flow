@@ -75,27 +75,13 @@ pub fn run_dag_executor(
         event_handlers,
         executor_id,
     ))?;
-    // `join()` collects every node thread and folds their diagnostics into a
-    // `RunSummary` (Phase 2a Task 5), then forks on the workflow's compiled
-    // `errorPolicy.onFatal` (Phase 2a-policy Task 4): under the default
-    // `Terminate`, it still returns `Err` with the same raw `ExecutionError`
-    // the old fail-fast loop would have returned when any node thread
-    // failed, so every golden logging scenario stays byte-identical through
-    // this call site, and a successful join can never carry a non-empty
-    // `failed_nodes`. Under `Continue`, every thread's outcome — including
-    // failed ones — is folded into `Ok(summary)` instead, so independent
-    // branches that finished cleanly are reported as such even when a
-    // sibling branch's node thread failed (spec D8).
+    // Under `Terminate`, still returns `Err` exactly as the old fail-fast loop
+    // did (golden logs stay byte-identical). Under `Continue`, every thread's
+    // outcome — including failures — folds into `Ok(summary)` instead.
     let mut join_result = join_handle.join().map_err(Error::ExecutionError);
     join_handle.notify();
-    // Deterministic replacement for the old fixed 100ms "settle" sleep
-    // (previously a defensive guess at how long in-flight async tasks /
-    // output flushes might take to drain): the event subscriber's own tokio
-    // task is retained on `DagExecutorJoinHandle` (Phase 2a Task 7), so we
-    // await it directly. `subscribe_event`'s notify arm drains every event
-    // still queued in the broadcast ring — dispatching it to handlers — and
-    // runs `on_shutdown` before that task returns, so this blocks exactly
-    // as long as the real drain takes, no more and no less.
+    // Replaces the old fixed-sleep "settle" hack: awaits the subscriber task
+    // directly, which blocks exactly as long as the real event drain takes.
     if let Some(subscriber) = join_handle.take_subscriber() {
         let _ = runtime.block_on(subscriber);
     }

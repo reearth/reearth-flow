@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DiagnosticEvent",
-  "description": "Pubsub wire event for a single `Diagnostic`. Gated by `ENABLE_DIAGNOSTICS` (see above) — construction itself is unconditional, callers decide whether to publish it.",
+  "description": "Pubsub wire event for a single `Diagnostic`. Construction is unconditional; publishing is gated by `ENABLE_DIAGNOSTICS`.",
   "type": "object",
   "required": [
     "category",

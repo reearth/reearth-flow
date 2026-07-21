@@ -41,42 +41,26 @@ pub enum Event {
         node_handle: NodeHandle,
         status: NodeStatus,
         feature_id: Option<uuid::Uuid>,
-        /// Per-node completion counters, populated only at the terminal
-        /// status emit of each node's receive loop (`Completed`/`Failed`) —
-        /// every other `NodeStatusChanged` (Starting/Processing) carries
-        /// `None`. `Source` nodes never populate this (nothing in
-        /// `NodeMetrics` applies to them); `Processor` populates
-        /// `features_processed`/`finish_feature_count` and leaves
-        /// `features_written` at 0; `Sink` populates `features_written` and
-        /// leaves the other two at 0.
+        /// Per-node completion counters, populated only on the terminal
+        /// status emit (`Completed`/`Failed`); `None` otherwise.
         metrics: Option<NodeMetrics>,
     },
-    /// Structured diagnostic signal; rendered into action logs by
-    /// `LogEventHandler` and consumed directly by other wire handlers.
-    /// `Arc`'d because `EventHub` is a broadcast channel — every subscriber
-    /// gets its own clone of `Event`, and `Diagnostic` is large.
+    /// Structured diagnostic signal, rendered into action logs by
+    /// `LogEventHandler`. `Arc`'d since `Diagnostic` is large and every
+    /// broadcast subscriber gets its own clone of `Event`.
     Diagnostic(Arc<reearth_flow_diagnostics::Diagnostic>),
 }
 
-/// Per-node completion counters carried on the terminal
-/// `Event::NodeStatusChanged` of a node's receive loop. The counts
-/// themselves (`features_processed`, `finish_feature_count`,
-/// `features_written`) are tracked correctly today but, before this type
-/// existed, only ever reached a formatted log line — recoverable downstream
-/// solely by regexing that string (`worker/src/action_log_parser.rs`). This
-/// struct carries the same numbers structurally instead, without touching
-/// the log prose those regexes match.
+/// Per-node completion counters carried on the terminal `NodeStatusChanged`;
+/// previously only reachable by regexing the log line
+/// (`worker/src/action_log_parser.rs`), now carried structurally.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct NodeMetrics {
-    /// Successfully processed feature count (`Processor` only; incremented
-    /// once per successful `process()` call). Always 0 for `Sink`.
+    /// Successfully processed feature count (`Processor` only).
     pub features_processed: u64,
-    /// Successfully written feature count (`Sink` only). Always 0 for
-    /// `Processor`.
+    /// Successfully written feature count (`Sink` only).
     pub features_written: u64,
-    /// Feature count emitted downstream during `finish()` (`Processor`
-    /// only — e.g. an accumulating/aggregating action that buffers input
-    /// and flushes results at finish time). Always 0 for `Sink`.
+    /// Feature count emitted downstream during `finish()` (`Processor` only).
     pub finish_feature_count: u64,
 }
 
@@ -281,11 +265,8 @@ async fn run_shutdown(event_handlers: &[Arc<dyn EventHandler>]) {
     }
 }
 
-/// Drains every event still queued in the broadcast ring — via non-blocking
-/// `try_recv` — dispatching each to `event_handlers` and tallying any
-/// `Lagged` gap into `dropped`. Called right before shutdown so in-flight
-/// events reach handlers deterministically instead of relying on a
-/// fixed-delay sleep after shutdown is signaled.
+/// Drains every event still queued in the broadcast ring via non-blocking
+/// `try_recv`, so in-flight events reach handlers before shutdown runs.
 async fn drain_queued(
     receiver: &mut Receiver<Event>,
     event_handlers: &[Arc<dyn EventHandler>],
@@ -315,10 +296,8 @@ pub async fn subscribe_event(
     loop {
         tokio::select! {
             _ = notify.notified() => {
-                // Real fix for what a fixed-delay "settle" sleep after
-                // shutdown used to paper over: flush whatever is still
-                // queued before running on_shutdown, so completeness no
-                // longer depends on timing.
+                // Flush whatever is still queued before running on_shutdown,
+                // so completeness no longer depends on a fixed-delay sleep.
                 drain_queued(receiver, event_handlers, &dropped).await;
                 run_shutdown(event_handlers).await;
                 return;
@@ -334,15 +313,9 @@ pub async fn subscribe_event(
                         dropped.fetch_add(n, Ordering::Relaxed);
                     }
                     Err(RecvError::Closed) => {
-                        // The hub sender is gone; treat it the same as an
-                        // explicit shutdown notification so handlers still
-                        // get a clean on_shutdown before we return.
-                        // Co-primary termination guarantee alongside the
-                        // `notify` permit above: even if a stray `Sender<Event>`
-                        // clone somehow outlives `join()` and no notify
-                        // permit is ever observed, every sender clone being
-                        // dropped still closes the channel and unblocks
-                        // `receiver.recv()` here.
+                        // The hub sender is gone; run the same clean shutdown
+                        // as an explicit notify, so a stray sender clone
+                        // outliving the notify permit still terminates.
                         run_shutdown(event_handlers).await;
                         return;
                     }
@@ -412,10 +385,8 @@ mod subscribe_event_tests {
         }
     }
 
-    /// (a) A capacity-2 broadcast channel flooded with 5 sends before the
-    /// subscriber ever runs: the broadcast ring can only retain the newest 2,
-    /// so the drain the notify arm performs must report the other 3 as
-    /// dropped while still dispatching the 2 survivors to the handler.
+    /// A capacity-2 channel flooded with 5 sends before the subscriber runs:
+    /// the drain must report 3 dropped while dispatching the 2 survivors.
     #[tokio::test]
     async fn lagged_events_are_counted_and_survivors_dispatched() {
         let (sender, mut receiver) = tokio::sync::broadcast::channel::<Event>(2);
@@ -426,9 +397,7 @@ mod subscribe_event_tests {
         let handler = Arc::new(RecordingHandler::default());
         let handlers: Vec<Arc<dyn EventHandler>> = vec![handler.clone()];
         let notify = Arc::new(Notify::new());
-        // A stored permit (unlike `notify_waiters`) is observed by
-        // `notified()` no matter when it's next polled, so this is seen
-        // regardless of how `subscribe_event`'s internal select! races.
+        // A stored permit is observed by `notified()` regardless of timing.
         notify.notify_one();
         let dropped = Arc::new(AtomicU64::new(0));
 
@@ -508,16 +477,10 @@ mod subscribe_event_tests {
         assert_eq!(handler.event_count(), 0);
     }
 
-    /// Regression test for the `DagExecutorJoinHandle::notify()` bug fixed
-    /// alongside this test: production used to call `notify_waiters()`,
-    /// which stores no permit, so a notification fired before the
-    /// subscriber ever parked in its `select!` was lost, silently pushing
-    /// termination onto the broadcast `Closed` arm as the only backstop.
-    /// This reproduces that exact shape directly against `subscribe_event`
-    /// — `notify_one()` fires while nobody is waiting yet, i.e. before
-    /// `subscribe_event` is even called — and asserts it still terminates
-    /// promptly via the drain-then-shutdown path. Wrapped in a timeout so a
-    /// real regression (a lost wakeup) fails fast instead of hanging CI.
+    /// Regression test: `notify_waiters()` stores no permit, so a
+    /// notification fired before the subscriber parks is lost. Reproduces
+    /// that race and asserts prompt termination, timeout-bounded so a real
+    /// regression fails fast instead of hanging CI.
     #[tokio::test]
     async fn notify_fired_before_any_waiter_is_not_lost() {
         let (sender, mut receiver) = tokio::sync::broadcast::channel::<Event>(4);

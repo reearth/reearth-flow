@@ -23,10 +23,8 @@ use crate::errors::Error;
 use crate::executor::{run_dag_executor, Executor};
 use crate::policy::{map_error_policy, validate_node_selectors, validate_reject_routing};
 
-/// Joins a `Vec<String>` of validation messages (`ErrorPolicy::validate`,
-/// `DispositionPolicy::compile`, `validate_node_selectors`,
-/// `validate_reject_routing`) into the single `Error::PolicyValidationError`
-/// line, one message per line.
+/// Joins validation messages into a single `Error::PolicyValidationError`,
+/// one message per line.
 fn policy_validation_error(errors: Vec<String>) -> Error {
     Error::PolicyValidationError(errors.join("\n"))
 }
@@ -82,14 +80,8 @@ impl Orchestrator {
         event_handlers: Vec<Arc<dyn EventHandler>>,
         sandbox_root: Uri,
     ) -> Result<RunSummary, Error> {
-        // Compile the workflow's errorPolicy at load, before DAG
-        // construction — structural validation (`ErrorPolicy::validate`)
-        // then registry-aware compilation (`DispositionPolicy::compile`).
-        // Every violation is surfaced at once as a run-abort error, mirroring
-        // how a workflow-parse failure aborts the run upstream (the worker's
-        // `Workflow::try_from` path) — this is the same "fail before doing
-        // any real work" shape, just for the policy block instead of the
-        // whole document.
+        // Validate then compile the errorPolicy before DAG construction,
+        // aborting the run on any violation before doing real work.
         let error_policy: ErrorPolicy = workflow.error_policy.clone().unwrap_or_default();
         error_policy.validate().map_err(policy_validation_error)?;
         let disposition_policy = Arc::new(
@@ -120,16 +112,12 @@ impl Orchestrator {
             )
             .await?;
 
-        // Load-time node matching (spec 4.2): every override's `node` value
-        // must equal a composed id in the now-flattened DAG. Needs the built
-        // DAG, so this runs after `create_dag_executor`, unlike the
-        // structural/compile checks above.
+        // Needs the built DAG's composed ids, so this runs after
+        // `create_dag_executor`, unlike the structural/compile checks above.
         validate_node_selectors(&error_policy, &dag_executor.node_identities())
             .map_err(policy_validation_error)?;
 
-        // Load-time Reject-routing validation (spec 4.4, Task 5): colocated
-        // with the node-selector check above — same window (needs the built
-        // DAG's node kinds/ports/wiring), same abort shape.
+        // Colocated with the node-selector check above — same window, same abort shape.
         validate_reject_routing(&disposition_policy, &dag_executor.reject_routing_info())
             .map_err(policy_validation_error)?;
 

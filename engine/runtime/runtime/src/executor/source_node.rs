@@ -289,16 +289,9 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
 }
 
 impl<F> SourceNode<F> {
-    /// This thread's node identity for the fold's synthesized diagnostics
-    /// (`start_source` in `dag_executor.rs` carries this alongside the
-    /// spawned thread's `JoinHandle`). A single `SourceNode` thread can run
-    /// more than one source node (`self.sources: Vec<RunningSource>`), so
-    /// there is no single composed id to report in general: with exactly
-    /// one source, its own identity is used; with zero or several, a
-    /// best-effort summary is reported instead — this is only ever consumed
-    /// by the catch-all diagnostic-synthesis path (a source thread failure
-    /// that isn't a recoverable structured `Diagnostic`), not by
-    /// `report()`/`resolve()`, which sources do not call.
+    /// This thread's node identity for synthesized diagnostics. A thread can
+    /// run more than one source, so with zero or several sources this
+    /// reports a best-effort summary rather than a single composed id.
     pub fn node_meta(&self) -> super::dag_executor::NodeMeta {
         match self.sources.as_slice() {
             [only] => super::dag_executor::NodeMeta {
@@ -324,11 +317,8 @@ struct RunningSource {
     #[allow(dead_code)]
     node_name: String,
     features_produced: Arc<AtomicU64>,
-    /// This source's composed id (`execution_dag::NodeType::composed_id`)
-    /// and action string, captured before `kind.take()` moves the
-    /// `Box<dyn Source>` out of the execution DAG. Used for the per-source
-    /// tracing span (spec 4.3: logs must agree with diagnostic identity)
-    /// and, aggregated across every source in this thread, `node_meta()`.
+    /// This source's composed id and action, captured before `kind.take()`
+    /// moves the `Box<dyn Source>` out of the execution DAG.
     composed_id: String,
     action: String,
 }
@@ -388,15 +378,9 @@ pub async fn create_source_node<F>(
         let NodeKind::Source(source) = node.kind.take().unwrap() else {
             continue;
         };
-        // NOTE: `action` is NOT asserted equal to `source.name()` here. See
-        // the matching note in `processor_node.rs::ProcessorNode::new`:
-        // `builder_dag.rs`'s `ActionNameMismatch` check validates the
-        // *factory's* `SourceFactory::name()` against `node.node.action()` at
-        // build time (`action`'s provenance) — the *built instance*'s
-        // `Source::name()` is a different trait and can legitimately diverge
-        // (e.g. profile-namespaced factory keys vs. a generic instance
-        // display name), as proven for the processor case by the
-        // quality-check workflow fixtures.
+        // NOTE: `action` is not asserted equal to `source.name()` — the built
+        // instance's `Source::name()` can legitimately diverge from the
+        // factory-validated `action` (see `processor_node.rs`).
         let senders = dag.collect_senders(node_index);
         let port_writers = dag.collect_port_writers(node_index);
         let channel_manager = ChannelManager::new(

@@ -9,10 +9,8 @@ use opentelemetry_sdk::{
     trace::{SdkTracerProvider, Tracer},
 };
 
-// An empty/whitespace value is treated as unset (`None`), matching the
-// `OTEL_ENABLED` gates in the cli/worker loggers: deployment templating
-// commonly materializes optional env vars as empty strings, and an empty
-// endpoint would otherwise be handed to the OTLP exporter and fail init.
+// Empty/whitespace treated as unset — deployment templating commonly
+// materializes optional env vars as empty strings, which would otherwise fail OTLP exporter init.
 static OTEL_COLLECTOR_ENDPOINT: Lazy<Mutex<Option<String>>> = Lazy::new(|| {
     Mutex::new(
         env::var("OTEL_COLLECTOR_ENDPOINT")
@@ -32,18 +30,8 @@ pub enum Error {
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-/// Builds an OTel `SdkMeterProvider` for `service_name`. Exports over
-/// OTLP/gRPC to `OTEL_COLLECTOR_ENDPOINT` when that env var is set,
-/// otherwise falls back to a periodic stdout exporter — this fallback is
-/// NOT a no-op, so callers that want a true no-op when the endpoint is
-/// absent must gate the call to `init_metrics` itself rather than relying
-/// on this function's internal branch.
-///
-/// The returned provider owns the periodic export reader (its own
-/// background thread) and MUST be kept alive for the process lifetime.
-/// Call `shutdown()` on it explicitly before the process exits — letting
-/// it drop (or exiting via `std::process::exit`, which skips `Drop`)
-/// discards any metrics not yet flushed.
+/// Builds an OTel `SdkMeterProvider`, exporting to `OTEL_COLLECTOR_ENDPOINT` if set
+/// (else a stdout exporter — not a no-op). Caller MUST call `shutdown()` on the returned provider before exit; dropping it (or `std::process::exit`) discards unflushed metrics.
 pub fn init_metrics(service_name: String) -> Result<SdkMeterProvider> {
     let metrics = match OTEL_COLLECTOR_ENDPOINT.lock().unwrap().clone() {
         Some(endpoint) => {
@@ -86,20 +74,8 @@ pub fn init_metrics(service_name: String) -> Result<SdkMeterProvider> {
     Ok(metrics)
 }
 
-/// Builds an OTel `Tracer` for `service_name`, exporting over OTLP/gRPC
-/// to `OTEL_COLLECTOR_ENDPOINT` when set, otherwise falling back to a
-/// stdout exporter (see the `init_metrics` doc comment — that fallback
-/// is not a no-op either).
-///
-/// Returns the `Tracer` (bridge it into a `tracing_subscriber` registry
-/// via `tracing-opentelemetry`'s `layer().with_tracer(..)`) together with
-/// the underlying `SdkTracerProvider`. The `Tracer` itself holds a clone
-/// of the provider internally, so it alone would keep the provider's
-/// batch exporter alive — but it exposes no `shutdown()`. The provider is
-/// therefore returned separately, and the caller MUST keep it alive for
-/// the process lifetime and call `shutdown()` on it explicitly before
-/// exit: dropping it (or exiting via `std::process::exit`, which skips
-/// `Drop`) silently discards any spans still buffered for export.
+/// Builds an OTel `Tracer` + `SdkTracerProvider` for `service_name` (same
+/// OTLP/stdout fallback as `init_metrics`). The `Tracer` alone can't shut down the exporter — caller MUST keep the provider alive and call `shutdown()` on it before exit, or buffered spans are lost.
 pub fn init_tracing(service_name: String) -> Result<(Tracer, SdkTracerProvider)> {
     let tracer_provider = match OTEL_COLLECTOR_ENDPOINT.lock().unwrap().clone() {
         Some(endpoint) => opentelemetry_sdk::trace::SdkTracerProvider::builder()

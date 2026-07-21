@@ -339,15 +339,8 @@ impl RunCliCommand {
             .map_err(|e| crate::errors::Error::Run(format!("Failed to run workflow: {e}")))
     }
 
-    /// Mirrors `reearth_flow_runner::runner::summary_into_unit_result`,
-    /// which is `pub(crate)` to the runner crate and so not reusable from
-    /// here. Under the default `Terminate` policy, `Ok(summary)` still
-    /// always implies `summary.failed_nodes.is_empty()` (enforced inside
-    /// `DagExecutorJoinHandle::join`), so this always takes the `None` arm.
-    /// Load-bearing under `errorPolicy: { onFatal: continue }`: `join`
-    /// folds every thread's outcome into `Ok(summary)` there, including a
-    /// non-empty `failed_nodes`, and this mapping turns that back into
-    /// `Err` for this unit-returning entrypoint.
+    /// Mirrors `runner::summary_into_unit_result` (not reusable here, it's `pub(crate)`).
+    /// Turns a non-empty `failed_nodes` (reachable under `onFatal: continue`) back into `Err`.
     fn summary_into_unit_result(
         summary: RunSummary,
     ) -> Result<(), reearth_flow_runner::errors::Error> {
@@ -361,15 +354,10 @@ impl RunCliCommand {
         }
     }
 
-    /// Render a run-end summary to stdout: aggregated (finish()-time)
-    /// diagnostics, failed nodes, and dropped event count — each only when
-    /// non-empty. Under the default `Terminate` policy, `Ok(_)` still
-    /// implies `failed_nodes.is_empty()`, so the failed-node list only ever
-    /// prints for `errorPolicy: { onFatal: continue }` runs.
+    /// Render a run-end summary to stdout (diagnostics/failed nodes/dropped count, each only
+    /// when non-empty); the failed-node list only ever prints under `onFatal: continue`.
     fn print_run_summary(summary: &RunSummary) {
-        // Intentionally terse: prints only `diagnostic.message`, not
-        // `Diagnostic`'s fuller `Display` (severity/location/etc.) — this is
-        // a one-line-per-item CLI summary, not a full diagnostic report.
+        // Intentionally terse: only `diagnostic.message`, not the fuller `Display`.
         for diagnostic in &summary.aggregated_diagnostics {
             println!("warning: {}", diagnostic.message);
         }

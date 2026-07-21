@@ -138,10 +138,8 @@ impl std::fmt::Display for Diagnostic {
 
 impl std::error::Error for Diagnostic {}
 
-/// What a call site authors. Everything else is stamped from the registry
-/// via `Diagnostic::from_draft` — the only construction path the runtime's
-/// reporting surfaces use, so diagnostics they emit cannot disagree with
-/// the registry.
+/// What a call site authors; everything else is stamped from the registry
+/// via `Diagnostic::from_draft`, the only construction path reporting surfaces use — so emitted diagnostics can't disagree with the registry.
 #[derive(Debug, Clone)]
 pub struct DiagnosticDraft {
     pub code: ErrorCode,
@@ -183,12 +181,8 @@ impl DiagnosticDraft {
     }
 }
 
-/// Terminal fold of a DAG run, produced by `DagExecutorJoinHandle::join`
-/// (engine/runtime/runtime) once every node thread has been collected.
-/// `failed_nodes` holds one `Diagnostic` per node whose thread returned
-/// `Err` (recovered from the structured fatal-backstop error where
-/// possible, else synthesized); `aggregated_diagnostics` holds every
-/// finish()-time summary emitted across all nodes, in collection order.
+/// Terminal fold of a DAG run (produced by `DagExecutorJoinHandle::join`).
+/// `failed_nodes` holds one `Diagnostic` per node whose thread returned `Err`; `aggregated_diagnostics` holds every finish()-time summary, in collection order.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RunSummary {
     pub failed_nodes: Vec<Diagnostic>,
@@ -196,14 +190,8 @@ pub struct RunSummary {
     pub dropped_event_count: u64,
 }
 
-/// Ranks `items` by `aggregated.count` descending (entries with no count
-/// sort last; ties/None-vs-None keep their original relative order via a
-/// stable sort). When `items.len() <= k` this is a no-op clone. Otherwise
-/// the top `k` are kept (in ranked order) and everything else collapses
-/// into a single `internal.diagnostics_overflow` marker Diagnostic whose
-/// `aggregated.count` is the sum of the collapsed entries' counts (an
-/// entry with no `aggregated.count` contributes 1) and whose
-/// `effective_disposition` is `overflow_disposition`.
+/// Ranks `items` by `aggregated.count` descending (no-count entries sort
+/// last, stable). If `items.len() <= k`, clones through unchanged; otherwise keeps the top `k` and collapses the rest into one `internal.diagnostics_overflow` marker whose count sums the collapsed entries (no-count = 1).
 fn cap_diagnostics(
     items: &[Diagnostic],
     k: usize,
@@ -244,11 +232,8 @@ fn cap_diagnostics(
 }
 
 impl RunSummary {
-    /// Top-K bound for wire payloads (spec 4.7): caps both `failed_nodes`
-    /// and `aggregated_diagnostics` independently at `k` entries each,
-    /// ranked by `aggregated.count` descending, collapsing any remainder
-    /// into one overflow-marker `Diagnostic` per list. `dropped_event_count`
-    /// passes through unchanged.
+    /// Top-K bound for wire payloads (spec 4.7): caps `failed_nodes` and
+    /// `aggregated_diagnostics` independently at `k`, collapsing any remainder into one overflow-marker `Diagnostic` each. `dropped_event_count` passes through.
     pub fn capped(&self, k: usize) -> RunSummary {
         RunSummary {
             failed_nodes: cap_diagnostics(&self.failed_nodes, k, Disposition::Fatal),
@@ -406,9 +391,7 @@ mod run_summary_capped_tests {
             ErrorCode::GltfZeroFaceSolid
         );
 
-        // k=2 forces a sort: the Some(4) entry must come first, the two
-        // None entries retain their relative order (stable) and the later
-        // of the two collapses into the overflow marker.
+        // k=2 forces a sort: Some(4) comes first; the two None entries keep their relative order and the later one collapses into the overflow marker.
         let capped = summary.capped(2);
         assert_eq!(
             capped.aggregated_diagnostics[0].code,
