@@ -128,8 +128,7 @@ pub struct ValidationParams {
     /// Optional (advisory) checks the caller disabled. A disabled optional check
     /// does not run and reports [`Success`](ValidationResult::Success), so it
     /// neither flags problems nor blocks a dependent check. A non-optional check
-    /// listed here is ignored: core validity checks always run. Populated
-    /// programmatically, not from the serialized form.
+    /// listed here is ignored: core validity checks always run.
     #[serde(skip)]
     pub disabled_checks: HashSet<ValidationType>,
 }
@@ -953,9 +952,9 @@ pub(crate) fn check_face_orientation_3d<'a>(
     }
 }
 
-/// Streaming form of [`check_face_orientation_3d`] for meshes: fed each ring in
-/// face order (exterior first, then that face's holes), it checks each hole winds
-/// opposite its face's exterior. Mirrors [`EdgeOrientation`]'s streaming shape.
+/// Checks each hole of a 3D face winds opposite its exterior, fed each ring in
+/// face order (exterior first, then that face's holes) so a mesh can stream its
+/// rings one at a time.
 pub(crate) struct FaceOrientation {
     exterior_normal: Option<[f64; 3]>,
 }

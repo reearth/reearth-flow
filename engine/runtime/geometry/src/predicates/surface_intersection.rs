@@ -1,6 +1,5 @@
-//! Global self-intersection of face sets: the face-vs-face walkers behind
-//! surface and solid validation, kept here so overlay and CSG work can reuse
-//! them. The 2D walker asks whether any two faces of one areal view overlap;
+//! Global self-intersection of face sets.
+//! The 2D walker asks whether any two faces of one areal view overlap;
 //! the 3D walker asks which faces of one or more triangulated surfaces
 //! intersect beyond their shared corners and edges.
 

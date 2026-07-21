@@ -108,8 +108,9 @@ pub(crate) fn check_chain_simple_2d(
     });
 }
 
-/// The 3D twin of [`check_chain_simple_2d`], deciding pairs with the exact 3D
-/// kernel. Coordinates must be finite.
+/// Report a [`SelfIntersection`](super::ValidationType::SelfIntersection)
+/// problem at each point where a 3D chain meets itself, decided with the exact
+/// 3D kernel. Coordinates must be finite.
 pub(crate) fn check_chain_simple_3d(
     frame: &CoordinateFrame,
     coords: &[[f64; 3]],
@@ -173,8 +174,9 @@ pub(crate) fn check_ring_pair_2d(
     }
 }
 
-/// The 3D twin of [`check_ring_pair_2d`], deciding cross-ring edge pairs with
-/// the exact 3D kernel.
+/// Report a [`SelfIntersection`](super::ValidationType::SelfIntersection)
+/// problem where two rings of one face cross, deciding edge pairs with the
+/// exact 3D kernel.
 pub(crate) fn check_ring_pair_3d(
     frame: &CoordinateFrame,
     ring_a: &[[f64; 3]],

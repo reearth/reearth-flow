@@ -64,7 +64,8 @@ pub(crate) fn check_degenerate_chain_2d(
     }
 }
 
-/// The 3D twin of [`check_degenerate_chain_2d`].
+/// Report a [`Degenerate`](super::ValidationType::Degenerate) problem when a
+/// 3D chain's total length is at most `min_length`, positioned at the chain.
 pub(crate) fn check_degenerate_chain_3d(
     frame: &CoordinateFrame,
     coords: &[[f64; 3]],
@@ -95,8 +96,9 @@ pub(crate) fn check_degenerate_ring_2d(
     }
 }
 
-/// The 3D twin of [`check_degenerate_ring_2d`]: the ring's area is half the
-/// magnitude of its Newell vector.
+/// Report a [`Degenerate`](super::ValidationType::Degenerate) problem when a
+/// 3D ring's area (half its Newell vector magnitude) is at most `min_area`,
+/// positioned at the ring.
 pub(crate) fn check_degenerate_ring_3d(
     frame: &CoordinateFrame,
     ring: &[[f64; 3]],
@@ -182,13 +184,11 @@ pub(crate) fn check_planarity_3d<'a>(
     }
 }
 
-/// The minimum height of a convex hull: the smallest vertex-projection extent
-/// over the candidate normal directions. For a convex polytope the minimum
-/// width is achieved along a face normal or along the cross product of two
-/// edges, so both families are tested. The scan stops as soon as the running
-/// minimum falls to `allowance` or below, since any smaller value already
-/// decides the planar verdict; the returned value is then some witness at or
-/// below `allowance`, not necessarily the true minimum.
+/// The minimum height (width) of a convex hull: the smallest vertex-projection
+/// extent over the candidate normal directions (each face normal and each
+/// edge-pair cross product). The scan stops once the running minimum reaches
+/// `allowance` or below, since that already decides the planar verdict, so the
+/// return is a witness at or below `allowance`, not necessarily the true minimum.
 fn hull_min_height(
     vertices: &[Coordinate3D<f64>],
     triangles: &[[usize; 3]],

@@ -52,10 +52,10 @@ pub(crate) fn check_holes_in_exterior_2d<'a>(
     }
 }
 
-/// The 3D form of [`check_holes_in_exterior_2d`]: rings are projected by
-/// dropping the dominant axis of the exterior's Newell vector and tested in
-/// 2D. A degenerate exterior (zero Newell vector) skips the check. The
-/// position is the original 3D hole ring as a LineString.
+/// Report each hole whose representative point lies outside the exterior ring,
+/// with the rings projected to 2D by dropping the dominant axis of the
+/// exterior's Newell vector. A degenerate exterior (zero Newell vector) skips
+/// the check. The position is the offending 3D hole ring as a LineString.
 pub(crate) fn check_holes_in_exterior_3d<'a>(
     frame: &CoordinateFrame,
     exterior: &[[f64; 3]],

@@ -224,7 +224,7 @@ impl From<ValidationProblemReport> for ValidationResult {
 pub struct GeometryValidator {
     /// # Validation Types
     /// List of validation checks to perform on the geometry (duplicate points, corrupt geometry, self-intersection).
-    /// Ignored under the new geometry backend, which runs the full validation matrix the geometry crate defines.
+    /// Currently ignored: the full validation matrix always runs.
     #[serde(default)]
     #[cfg_attr(feature = "new-geometry", allow(dead_code))]
     validation_types: Vec<ValidationType>,
@@ -232,7 +232,6 @@ pub struct GeometryValidator {
     /// # Disabled Optional Checks
     /// Advisory checks to disable. Disabled checks do not run and are treated as passing;
     /// core validity checks always run. Empty by default, so every optional check runs.
-    /// Applies only under the new geometry backend.
     #[serde(default)]
     #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
     disabled_optional_checks: Vec<OptionalCheck>,
@@ -240,7 +239,7 @@ pub struct GeometryValidator {
     /// # Planarity Threshold
     /// Optional override for how the planarity check bounds a face's out-of-plane deviation:
     /// a scale-invariant `ratio` (the default), or an absolute `maxHeight` in metres (metric
-    /// frames only). Applies only under the new geometry backend.
+    /// frames only).
     #[serde(default)]
     #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
     planarity_threshold: Option<PlanarityThreshold>,
