@@ -5227,13 +5227,11 @@ Validate Feature Geometry Quality
   "title": "Geometry Validator Parameters",
   "description": "Configure which validation checks to perform on feature geometries",
   "type": "object",
-  "required": [
-    "validationTypes"
-  ],
   "properties": {
     "validationTypes": {
       "title": "Validation Types",
-      "description": "List of validation checks to perform on the geometry (duplicate points, corrupt geometry, self-intersection)",
+      "description": "List of validation checks to perform on the geometry (duplicate points, corrupt geometry, self-intersection). Ignored under the new geometry backend, which runs the full validation matrix the geometry crate defines.",
+      "default": [],
       "type": "array",
       "items": {
         "$ref": "#/definitions/ValidationType"
