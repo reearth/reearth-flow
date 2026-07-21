@@ -26,7 +26,7 @@ pub struct Rotator3DFactory;
 
 impl ProcessorFactory for Rotator3DFactory {
     fn name(&self) -> &str {
-        "Rotator3D"
+        "Rotator 3D"
     }
 
     fn description(&self) -> &str {
@@ -100,7 +100,7 @@ impl ProcessorFactory for Rotator3DFactory {
     }
 }
 
-/// # Rotator3D Parameters
+/// # Rotator 3D Parameters
 /// Configure the rotation for a 3D polygon
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
@@ -269,7 +269,7 @@ impl Processor for Rotator3D {
     }
 
     fn name(&self) -> &str {
-        "Rotator3D"
+        "Rotator 3D"
     }
 }
 

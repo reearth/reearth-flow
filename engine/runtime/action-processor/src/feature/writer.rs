@@ -25,7 +25,7 @@ pub(super) struct FeatureWriterFactory;
 
 impl ProcessorFactory for FeatureWriterFactory {
     fn name(&self) -> &str {
-        "FeatureWriter"
+        "Feature Writer"
     }
 
     fn description(&self) -> &str {
@@ -159,7 +159,7 @@ struct CommonWriterParam {
     pub(super) output: Code,
 }
 
-/// # FeatureWriter Parameters
+/// # Feature Writer Parameters
 ///
 /// Configuration for writing features to different file formats.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -323,6 +323,6 @@ impl Processor for FeatureWriter {
     }
 
     fn name(&self) -> &str {
-        "FeatureWriter"
+        "Feature Writer"
     }
 }

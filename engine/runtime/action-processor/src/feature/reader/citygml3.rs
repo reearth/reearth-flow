@@ -24,7 +24,7 @@ pub(crate) struct FeatureCityGml3ReaderFactory;
 
 impl ProcessorFactory for FeatureCityGml3ReaderFactory {
     fn name(&self) -> &str {
-        "FeatureCityGml3Reader"
+        "Feature CityGML 3 Reader"
     }
 
     fn description(&self) -> &str {
@@ -92,7 +92,7 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
     }
 }
 
-/// # FeatureCityGml3Reader Parameters
+/// # Feature CityGML 3 Reader Parameters
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct FeatureCityGml3ReaderParam {
@@ -230,6 +230,6 @@ impl Processor for FeatureCityGml3Reader {
     }
 
     fn name(&self) -> &str {
-        "FeatureCityGml3Reader"
+        "Feature CityGML 3 Reader"
     }
 }

@@ -19,7 +19,7 @@ pub(super) struct ListConcatenatorFactory;
 
 impl ProcessorFactory for ListConcatenatorFactory {
     fn name(&self) -> &str {
-        "ListConcatenator"
+        "List Concatenator"
     }
 
     fn description(&self) -> &str {
@@ -70,7 +70,7 @@ impl ProcessorFactory for ListConcatenatorFactory {
     }
 }
 
-/// # ListConcatenator Parameters
+/// # List Concatenator Parameters
 ///
 /// Configuration for concatenating a specific attribute from list elements.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -137,6 +137,6 @@ impl Processor for ListConcatenator {
     }
 
     fn name(&self) -> &str {
-        "ListConcatenator"
+        "List Concatenator"
     }
 }

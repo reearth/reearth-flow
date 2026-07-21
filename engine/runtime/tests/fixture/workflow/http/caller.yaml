@@ -17,7 +17,7 @@ graphs:
       - id: b1a91180-ab88-4c1a-aab5-48c242a218db
         name: HTTP-Caller
         type: action
-        action: HTTPCaller
+        action: HTTP Caller
         with:
           url:
             type: flowExpr

@@ -230,7 +230,7 @@ graphs:
       - id: a453192e-603c-417e-9f65-f57b8e15f7d3
         name: CsvWriterInstanceCount
         type: action
-        action: FeatureWriter
+        action: Feature Writer
         with:
           format: csv
           output:
@@ -292,7 +292,7 @@ graphs:
       - id: 51bdd4e8-1f3d-4745-9e96-9cb53ee92a53
         name: CsvWriterSurfaceValidationErrors
         type: action
-        action: FeatureWriter
+        action: Feature Writer
         with:
           format: csv
           output:
@@ -324,7 +324,7 @@ graphs:
       - id: bf13c543-ca57-4479-be36-47fe5ad34dfc
         name: SolidBoundaryValidator
         type: action
-        action: SolidBoundaryValidator
+        action: Solid Boundary Validator
         with:
           tolerance:
             type: flowExpr
@@ -379,7 +379,7 @@ graphs:
       - id: 89712e8f-e0ac-4bb3-a92f-c5ff06fe4c96
         name: FeatureWriterL14-BoundaryNotClosed
         type: action
-        action: FeatureWriter
+        action: Feature Writer
         with:
           format: csv
           output:
@@ -452,7 +452,7 @@ graphs:
       - id: 527087b4-0411-49bd-ae5f-c1c7f9a5ccb8
         name: FeatureWriterL14-BoundaryOtherIssues
         type: action
-        action: FeatureWriter
+        action: Feature Writer
         with:
           format: csv
           output:
@@ -519,7 +519,7 @@ graphs:
       - id: 1087cae8-2937-4e33-a9ac-d20c9052f80e
         name: CsvWriterGeometryTypeError
         type: action
-        action: FeatureWriter
+        action: Feature Writer
         with:
           format: csv
           output:
@@ -612,7 +612,7 @@ graphs:
       - id: f38c754b-98cd-48e1-bfa7-adbf7c390899
         name: CSVSummaryWriter
         type: action
-        action: FeatureWriter
+        action: Feature Writer
         with:
           format: csv
           output:
@@ -668,7 +668,7 @@ graphs:
       - id: 4ed9ffc0-9509-4037-bcb6-117829aab7d5
         name: JSONSummaryWriter
         type: action
-        action: FeatureWriter
+        action: Feature Writer
         with:
           format: json
           converter:

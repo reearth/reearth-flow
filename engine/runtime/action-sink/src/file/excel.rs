@@ -6,7 +6,7 @@ use reearth_flow_types::{AttributeValue, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
-/// # ExcelWriter Parameters
+/// # Excel Writer Parameters
 ///
 /// Configuration for writing features to Microsoft Excel format.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]

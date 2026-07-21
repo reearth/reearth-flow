@@ -19,7 +19,7 @@ pub(super) struct AttributeDuplicateFilterFactory;
 
 impl ProcessorFactory for AttributeDuplicateFilterFactory {
     fn name(&self) -> &str {
-        "AttributeDuplicateFilter"
+        "Attribute Duplicate Filter"
     }
 
     fn description(&self) -> &str {
@@ -81,7 +81,7 @@ struct AttributeDuplicateFilter {
     buffer: HashMap<String, Feature>,
 }
 
-/// # AttributeDuplicateFilter Parameters
+/// # Attribute Duplicate Filter Parameters
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AttributeDuplicateFilterParam {
@@ -131,6 +131,6 @@ impl Processor for AttributeDuplicateFilter {
     }
 
     fn name(&self) -> &str {
-        "AttributeDuplicateFilter"
+        "Attribute Duplicate Filter"
     }
 }

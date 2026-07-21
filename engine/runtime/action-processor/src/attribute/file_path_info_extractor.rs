@@ -20,7 +20,7 @@ pub(super) struct AttributeFilePathInfoExtractorFactory;
 
 impl ProcessorFactory for AttributeFilePathInfoExtractorFactory {
     fn name(&self) -> &str {
-        "AttributeFilePathInfoExtractor"
+        "Attribute File Path Info Extractor"
     }
 
     fn description(&self) -> &str {
@@ -71,7 +71,7 @@ impl ProcessorFactory for AttributeFilePathInfoExtractorFactory {
     }
 }
 
-/// # AttributeFilePathInfoExtractor Parameters
+/// # Attribute File Path Info Extractor Parameters
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AttributeFilePathInfoExtractor {
@@ -137,6 +137,6 @@ impl Processor for AttributeFilePathInfoExtractor {
     }
 
     fn name(&self) -> &str {
-        "AttributeFilePathInfoExtractor"
+        "Attribute File Path Info Extractor"
     }
 }

@@ -24,7 +24,7 @@ nodes:
   - id: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e90
     name: GeometryFilterLod12
     type: action
-    action: GeometryFilter
+    action: Geometry Filter
     with:
       filterType: geometryType
 
@@ -76,7 +76,7 @@ nodes:
   - id: c3d4e5f6-a7b8-9c0d-1e2f-3a4b5c6d7e91
     name: GeometryFilterLod34
     type: action
-    action: GeometryFilter
+    action: Geometry Filter
     with:
       filterType: geometryType
 
@@ -127,7 +127,7 @@ nodes:
   - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a0c
     name: FeatureWriterInvalidSpatialAttr
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -159,7 +159,7 @@ nodes:
   - id: c9d0e1f2-a3b4-5c6d-7e8f-9a0b1c2d3e50
     name: SolidBoundaryValidatorLod12
     type: action
-    action: SolidBoundaryValidator
+    action: Solid Boundary Validator
     with:
       tolerance:
         type: flowExpr
@@ -209,7 +209,7 @@ nodes:
   - id: f2a3b4c5-d6e7-8f9a-0b1c-2d3e4f5a6b7d
     name: FeatureWriterNotClosed
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -270,7 +270,7 @@ nodes:
   - id: d6e7f8a9-b0c1-2d3e-4f5a-6b7c8d9e0f1b
     name: FeatureWriterOtherSolidErrors
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -362,7 +362,7 @@ nodes:
   - id: 03a3b3c3-d3e3-f3a3-b3c3-d3e3f3a3b3c4
     name: FeatureWriterBoundarySurfaceErrors
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -454,7 +454,7 @@ nodes:
   - id: 12a3b3c3-d3e3-f3a3-b3c3-d3e3f3a3b3c4
     name: FeatureWriterLod34SurfaceErrors
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -534,7 +534,7 @@ nodes:
   - id: 22a3b3c3-d3e3-f3a3-b3c3-d3e3f3a3b3c4
     name: FeatureWriterDiscontinuousCS
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:

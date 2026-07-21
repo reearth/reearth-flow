@@ -19,7 +19,7 @@ pub(super) struct AttributeBulkArrayJoinerFactory;
 
 impl ProcessorFactory for AttributeBulkArrayJoinerFactory {
     fn name(&self) -> &str {
-        "AttributeBulkArrayJoiner"
+        "Attribute Bulk Array Joiner"
     }
 
     fn description(&self) -> &str {
@@ -79,7 +79,7 @@ struct AttributeBulkArrayJoiner {
     ignore_attributes: Vec<Attribute>,
 }
 
-/// # AttributeBulkArrayJoiner Parameters
+/// # Attribute Bulk Array Joiner Parameters
 /// Configure which array attributes to join into single values
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
@@ -143,7 +143,7 @@ impl Processor for AttributeBulkArrayJoiner {
     }
 
     fn name(&self) -> &str {
-        "AttributeBulkArrayJoiner"
+        "Attribute Bulk Array Joiner"
     }
 }
 

@@ -23,7 +23,7 @@ pub struct CSGEvaluatorFactory;
 
 impl ProcessorFactory for CSGEvaluatorFactory {
     fn name(&self) -> &str {
-        "CSGEvaluator"
+        "CSG Evaluator"
     }
 
     fn description(&self) -> &str {
@@ -185,6 +185,6 @@ impl Processor for CSGEvaluator {
     }
 
     fn name(&self) -> &str {
-        "CSGEvaluator"
+        "CSG Evaluator"
     }
 }
