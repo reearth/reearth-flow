@@ -22,10 +22,6 @@ use crate::damage::collect_damage;
 use crate::skyline::SkylinePacker;
 use crate::{remap_polygon_uvs, AtlasError, PolygonUVs, Rect, Result, TextureInput};
 
-/// Extrusion ring (pixels) blitted around each region to stop bilinear bleed;
-/// matches the legacy single-page packer.
-const EXTRUSION: u32 = 1;
-
 /// Decoded-source-image cache, keyed by path. Source textures are shared across
 /// tiles, so decoding is the dominant cost of a tileset build; pass one cache
 /// to every [`build_atlas_multipage`] call so each file is decoded once.
@@ -84,18 +80,22 @@ struct RegionJob {
 /// = full resolution, never upsampled); materials sharing a path take the
 /// largest of their scales.
 ///
+/// `extrusion` is the ring (pixels) blitted around each region to stop bilinear
+/// bleed; pass `0` to disable it.
+///
 /// Returns `Ok(None)` when there is nothing to pack (no UV polygons).
 pub fn build_atlas_multipage(
     materials: &[TextureInput],
     max_atlas_size: u32,
+    extrusion: u32,
     cache: &mut TextureCache,
 ) -> Result<Option<MultiPageAtlas>> {
-    // A 1×1 region plus its extrusion ring needs `1 + 2*EXTRUSION` pixels, so a
+    // A 1×1 region plus its extrusion ring needs `1 + 2*extrusion` pixels, so a
     // smaller page can never hold even one region.
-    if max_atlas_size < 1 + 2 * EXTRUSION {
+    if max_atlas_size < 1 + 2 * extrusion {
         return Err(AtlasError::builder(format!(
             "atlas size {max_atlas_size} too small; must be at least {}",
-            1 + 2 * EXTRUSION
+            1 + 2 * extrusion
         )));
     }
 
@@ -117,7 +117,7 @@ pub fn build_atlas_multipage(
 
     // Flatten every damage region into a placement job, recording where each
     // (damage, region) lands so UV remapping can find it afterwards.
-    let usable = max_atlas_size.saturating_sub(2 * EXTRUSION).max(1);
+    let usable = max_atlas_size.saturating_sub(2 * extrusion).max(1);
     let mut jobs: Vec<RegionJob> = Vec::new();
     let mut region_job: Vec<Vec<usize>> = Vec::with_capacity(damage_list.len());
     for (di, (path, td)) in damage_list.iter().enumerate() {
@@ -174,7 +174,7 @@ pub fn build_atlas_multipage(
             }
         }
         placement[j] = Some(placed.unwrap_or_else(|| {
-            let mut packer = SkylinePacker::new(max_atlas_size, max_atlas_size, EXTRUSION);
+            let mut packer = SkylinePacker::new(max_atlas_size, max_atlas_size, extrusion);
             let frame = packer
                 .pack(w, h)
                 .expect("a region clamped to `usable` always fits an empty page");
@@ -202,7 +202,7 @@ pub fn build_atlas_multipage(
         pages[page]
             .copy_from(&crop, frame.x, frame.y)
             .map_err(|_| AtlasError::builder("Internal bug: failed to copy texture into atlas"))?;
-        fill_frame_extrusion(&mut pages[page], frame, EXTRUSION);
+        fill_frame_extrusion(&mut pages[page], frame, extrusion);
     }
 
     // Remap each material's UVs into atlas space, tagged with its page.
@@ -272,7 +272,7 @@ mod tests {
             vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
             1.0,
         );
-        let built = build_atlas_multipage(&[a], 4096, &mut TextureCache::default())
+        let built = build_atlas_multipage(&[a], 4096, 1, &mut TextureCache::default())
             .unwrap()
             .expect("atlas built");
         assert_eq!(built.pages.len(), 1);
@@ -297,11 +297,12 @@ mod tests {
         let full_atlas = build_atlas_multipage(
             std::slice::from_ref(&full),
             4096,
+            1,
             &mut TextureCache::default(),
         )
         .unwrap()
         .unwrap();
-        let half_atlas = build_atlas_multipage(&[half], 4096, &mut TextureCache::default())
+        let half_atlas = build_atlas_multipage(&[half], 4096, 1, &mut TextureCache::default())
             .unwrap()
             .unwrap();
         // Downscaling to 0.5 must yield a smaller page than full resolution.
@@ -322,7 +323,7 @@ mod tests {
                 )
             })
             .collect();
-        let built = build_atlas_multipage(&mats, 256, &mut TextureCache::default())
+        let built = build_atlas_multipage(&mats, 256, 1, &mut TextureCache::default())
             .unwrap()
             .expect("atlas built");
         assert_eq!(built.pages.len(), 2);
@@ -339,7 +340,7 @@ mod tests {
             vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
             1.0,
         );
-        let built = build_atlas_multipage(&[mat], 128, &mut TextureCache::default())
+        let built = build_atlas_multipage(&[mat], 128, 1, &mut TextureCache::default())
             .unwrap()
             .expect("atlas built");
         assert_eq!(built.pages.len(), 1);

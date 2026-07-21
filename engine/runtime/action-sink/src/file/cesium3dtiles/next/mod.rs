@@ -68,6 +68,10 @@ impl Cesium3DTilesWriter {
             compute_flat_normal: self.params.compute_flat_normal.unwrap_or(true),
             resolution: self.params.resolution.unwrap_or(0.0),
             atlas_size: self.params.atlas_size.unwrap_or(DEFAULT_ATLAS_SIZE),
+            atlas_extrusion: self
+                .params
+                .atlas_extrusion
+                .unwrap_or(DEFAULT_ATLAS_EXTRUSION),
         };
         for ((output, _, _), features) in &self.buffer {
             let built = build(features, options, self.params.max_zoom, render)?;
@@ -118,11 +122,18 @@ pub struct RenderOptions {
     /// spill onto additional pages; a single texture larger than it is
     /// force-shrunk to fit one page.
     pub atlas_size: u32,
+    /// Extrusion ring (pixels) blitted around each atlas region to stop
+    /// bilinear bleed between neighbours. `0` disables it.
+    pub atlas_extrusion: u32,
 }
 
 /// Default atlas page size when the parameter is unset; inherited from the old
 /// writer.
 const DEFAULT_ATLAS_SIZE: u32 = 8192;
+
+/// Default atlas extrusion ring when the parameter is unset; a single pixel is
+/// enough to stop bilinear bleed between packed regions.
+const DEFAULT_ATLAS_EXTRUSION: u32 = 1;
 
 /// Extract and reproject every feature's mesh, place each into the deepest
 /// quadtree cell (bounded by `max_zoom`) that fully contains it, and render
@@ -393,14 +404,15 @@ fn build_textured_pages(
         input.scale = scale;
     }
 
-    let built = match build_atlas_multipage(&inputs, render.atlas_size, textures) {
-        Ok(Some(built)) => built,
-        Ok(None) => return Ok(None),
-        Err(e) => {
-            tracing::error!("Cesium3DTilesWriter: atlas packing failed: {e}; textures dropped");
-            return Ok(None);
-        }
-    };
+    let built =
+        match build_atlas_multipage(&inputs, render.atlas_size, render.atlas_extrusion, textures) {
+            Ok(Some(built)) => built,
+            Ok(None) => return Ok(None),
+            Err(e) => {
+                tracing::error!("Cesium3DTilesWriter: atlas packing failed: {e}; textures dropped");
+                return Ok(None);
+            }
+        };
 
     // WebP has no core-glTF fallback image, so the extension is required.
     builder.require_extension("EXT_texture_webp");

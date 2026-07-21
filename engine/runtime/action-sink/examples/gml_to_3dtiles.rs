@@ -82,6 +82,10 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(8192),
+            atlas_extrusion: std::env::var("ATLAS_EXTRUSION")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(1),
         },
     )?;
 

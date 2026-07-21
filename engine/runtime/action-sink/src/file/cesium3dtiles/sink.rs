@@ -108,6 +108,8 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
                 resolution: params.resolution,
                 #[cfg(feature = "new-geometry")]
                 atlas_size: params.atlas_size,
+                #[cfg(feature = "new-geometry")]
+                atlas_extrusion: params.atlas_extrusion,
                 skip_unexposed_attributes: params.skip_unexposed_attributes.unwrap_or(false),
                 schema_key: params.schema_key,
             },
@@ -162,6 +164,11 @@ pub struct Cesium3DTilesWriterParam {
     /// onto additional atlas pages; a single texture larger than it is
     /// downsampled to fit. Defaults to 8192.
     pub(super) atlas_size: Option<u32>,
+    /// # Atlas Extrusion
+    /// Ring of pixels blitted around each texture region in the atlas to stop
+    /// bilinear bleed between neighbouring regions. Defaults to 1. Set to 0 to
+    /// disable.
+    pub(super) atlas_extrusion: Option<u32>,
     /// # Skip unexposed Attributes
     /// Skip attributes with double underscore prefix
     pub(super) skip_unexposed_attributes: Option<bool>,
@@ -186,6 +193,8 @@ pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) resolution: Option<f64>,
     #[cfg(feature = "new-geometry")]
     pub(super) atlas_size: Option<u32>,
+    #[cfg(feature = "new-geometry")]
+    pub(super) atlas_extrusion: Option<u32>,
     pub(super) skip_unexposed_attributes: bool,
     pub(super) schema_key: Option<String>,
 }
