@@ -121,7 +121,7 @@ script = ['''
 actual=$(mktemp)
 git ls-files 'runtime/action-*' | grep -E '\.rs$' \
   | xargs grep -c -E 'tracing::(warn|error)!|\.(warn_log|error_log|warn_log_with_node_handle|error_log_with_node_handle|error_log_with_node_info)\(|(^|[^:])\b(warn|error)!\(' 2>/dev/null \
-  | grep -v ':0$' | sort > "$actual" || true
+  | grep -v ':0$' | LC_ALL=C sort > "$actual" || true
 if ! diff -u tools/action-tracing-allowlist.txt "$actual"; then
   echo "raw-warn/error call sites (tracing macros or EventHub warn_log/error_log) in action crates changed."
   echo "New sites are forbidden — use ctx.report()/ctx.warn()."
@@ -135,7 +135,7 @@ script = ['''
 #!/usr/bin/env bash -eu
 git ls-files 'runtime/action-*' | grep -E '\.rs$' \
   | xargs grep -c -E 'tracing::(warn|error)!|\.(warn_log|error_log|warn_log_with_node_handle|error_log_with_node_handle|error_log_with_node_info)\(|(^|[^:])\b(warn|error)!\(' 2>/dev/null \
-  | grep -v ':0$' | sort > tools/action-tracing-allowlist.txt
+  | grep -v ':0$' | LC_ALL=C sort > tools/action-tracing-allowlist.txt
 echo "wrote tools/action-tracing-allowlist.txt"
 ''']
 

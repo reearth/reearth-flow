@@ -148,106 +148,81 @@ impl reearth_flow_runtime::event::EventHandler for LogEventHandler {
 
 #[cfg(test)]
 mod tests {
-    use std::fs;
+    use std::sync::Mutex;
 
-    use reearth_flow_action_log::factory;
     use reearth_flow_diagnostics::{Diagnostic, DiagnosticDraft, ErrorCode};
     use reearth_flow_runtime::event::{Event, EventHandler};
+    use slog::{Drain, Level, Logger, Never, OwnedKVList, Record};
 
     use super::*;
 
-    /// Sends a single `Event::Diagnostic(Arc::new(diagnostic))` through
-    /// `LogEventHandler::on_event`, then returns the resulting per-job
-    /// `{job_id}.log` contents once the record has reached disk.
+    /// A synchronous slog drain that records each log call's level and
+    /// rendered message into a shared buffer.
     ///
-    /// `LoggerFactory::action_logger(&job_id.to_string())` (called from
-    /// `LogEventHandler::new`) names the per-job log file after the action
-    /// string it's given — `{job_id}.log`. Dropping `handler` flushes the
-    /// per-job `slog_async::Async` drain built in `action-log/src/split.rs`,
-    /// but that drain's file half (`drain2`) is a `sloggers` file logger
-    /// which is *itself* asynchronous: the record is handed off to a second,
-    /// independent writer thread that `drop(handler)` does not join. So the
-    /// on-disk write completes shortly after the drop rather than
-    /// synchronously with it — on a loaded CI runner the file can briefly
-    /// not exist yet. We therefore poll for the completed single-line write
-    /// with a generous bound instead of reading exactly once. The record is
-    /// never lost (slog-async processes queued messages as they arrive), so
-    /// the poll only ever waits out a slow writer, never a dropped message.
-    ///
-    /// We deliberately do NOT read `all.log`: it's produced by
-    /// `factory::create_root_logger`, whose async drain stays alive on
-    /// `logger_factory` after `handler` is dropped, so its `{job_id}` record
-    /// would be interleaved with unrelated lines and gated on yet another
-    /// unjoined thread.
-    fn render_diagnostic_to_action_log(diagnostic: Diagnostic) -> String {
-        let tempdir = tempfile::tempdir().unwrap();
-        let action_log_dir = tempdir.path().join("action-log");
-        fs::create_dir_all(&action_log_dir).unwrap();
+    /// The production per-job logger (`LoggerFactory::action_logger`) wraps a
+    /// `slog_async::Async` around a `sloggers` file logger that is *itself*
+    /// asynchronous, so observing a rendered record through it means waiting
+    /// on two independent, unjoined writer threads and reading back a temp
+    /// file — racy enough that the record could still be in flight when the
+    /// test reads (it was, on CI: the file never appeared). These tests only
+    /// need to prove that a diagnostic's `Severity` drives the slog level the
+    /// handler emits at, so we bypass the file entirely and capture the
+    /// record synchronously, in-process. `LogEventHandler`'s fields are
+    /// `pub(crate)`, so the test builds one directly around this drain
+    /// instead of going through `new()` and the async factory.
+    struct CaptureDrain {
+        records: Arc<Mutex<Vec<(Level, String)>>>,
+    }
 
-        let root_logger = factory::create_root_logger(action_log_dir.clone());
-        let logger_factory = Arc::new(LoggerFactory::new(root_logger, action_log_dir.clone()));
+    impl Drain for CaptureDrain {
+        type Ok = ();
+        type Err = Never;
 
-        let job_id = uuid::Uuid::new_v4();
-        let handler = LogEventHandler::new(uuid::Uuid::new_v4(), job_id, logger_factory);
+        fn log(&self, record: &Record, _values: &OwnedKVList) -> Result<(), Never> {
+            self.records
+                .lock()
+                .unwrap()
+                .push((record.level(), record.msg().to_string()));
+            Ok(())
+        }
+    }
+
+    /// Sends a single `Event::Diagnostic` through `LogEventHandler::on_event`
+    /// and returns the one slog record it emitted (level + rendered message).
+    fn render_diagnostic(diagnostic: Diagnostic) -> (Level, String) {
+        let records = Arc::new(Mutex::new(Vec::new()));
+        let drain = CaptureDrain {
+            records: records.clone(),
+        };
+        let logger = Logger::root(drain.fuse(), slog::o!());
+
+        let handler = LogEventHandler {
+            workflow_id: uuid::Uuid::new_v4(),
+            job_id: uuid::Uuid::new_v4(),
+            logger: Arc::new(logger),
+        };
 
         let event = Event::Diagnostic(Arc::new(diagnostic));
         let rt = tokio::runtime::Runtime::new().unwrap();
         rt.block_on(handler.on_event(&event));
 
-        // Flush the per-job async drain (see the doc comment for why this
-        // still doesn't make the on-disk write synchronous).
-        drop(handler);
-
-        let job_log_path = action_log_dir.join(format!("{job_id}.log"));
-        // 10s is far beyond the time a single line takes to reach disk; it
-        // only bounds a genuinely stuck writer so the test fails loudly
-        // instead of hanging forever.
-        let deadline = std::time::Instant::now() + std::time::Duration::from_secs(10);
-        loop {
-            if let Ok(content) = fs::read_to_string(&job_log_path) {
-                if content.lines().any(|l| !l.trim().is_empty()) {
-                    return content;
-                }
-            }
-            if std::time::Instant::now() >= deadline {
-                let listing = fs::read_dir(&action_log_dir)
-                    .map(|entries| {
-                        entries
-                            .filter_map(|entry| {
-                                entry
-                                    .ok()
-                                    .map(|e| e.file_name().to_string_lossy().into_owned())
-                            })
-                            .collect::<Vec<_>>()
-                    })
-                    .unwrap_or_default();
-                panic!(
-                    "timed out waiting for {} to contain a log line; action-log dir contains: {listing:?}",
-                    job_log_path.display()
-                );
-            }
-            std::thread::sleep(std::time::Duration::from_millis(25));
-        }
-    }
-
-    fn single_json_line(content: &str) -> serde_json::Value {
-        let lines: Vec<&str> = content.lines().filter(|l| !l.trim().is_empty()).collect();
+        let records = records.lock().unwrap();
         assert_eq!(
-            lines.len(),
+            records.len(),
             1,
-            "expected exactly one action-log line, got {}: {content:?}",
-            lines.len()
+            "expected exactly one slog record, got {}: {records:?}",
+            records.len()
         );
-        serde_json::from_str(lines[0]).expect("action-log line must be valid JSON")
+        records[0].clone()
     }
 
-    /// End-to-end proof of the CRITICAL path at the handler level (2a Task
-    /// 12): a Fatal-disposition code (`InternalInvariantViolation`, whose
-    /// registry default disposition is `Fatal`) defaults to
-    /// `Severity::Fatal` per `Diagnostic::from_draft` (2a Task 2), and
-    /// `LogEventHandler::on_event` renders `Severity::Fatal` through
-    /// `action_critical_log!`, which the `Json` drain serializes as
-    /// `"level":"CRITICAL"` (see `slog::Level::Critical::as_str()`).
+    /// Proof of the CRITICAL path at the handler level (2a Task 12): a
+    /// Fatal-disposition code (`InternalInvariantViolation`, whose registry
+    /// default disposition is `Fatal`) defaults to `Severity::Fatal` per
+    /// `Diagnostic::from_draft` (2a Task 2), and `LogEventHandler::on_event`
+    /// renders `Severity::Fatal` through `action_critical_log!`, which emits
+    /// at slog's `Critical` level (the production `Json` drain serializes
+    /// that as `"level":"CRITICAL"`).
     #[test]
     fn fatal_diagnostic_renders_as_a_single_critical_line() {
         let d = Diagnostic::from_draft(
@@ -259,22 +234,18 @@ mod tests {
         assert_eq!(d.severity, reearth_flow_diagnostics::Severity::Fatal);
         let message = d.message.clone();
 
-        let content = render_diagnostic_to_action_log(d);
-        let parsed = single_json_line(&content);
+        let (level, msg) = render_diagnostic(d);
 
-        assert_eq!(parsed["level"], "CRITICAL");
+        assert_eq!(level, Level::Critical);
         assert!(
-            parsed["msg"]
-                .as_str()
-                .expect("msg must be a string")
-                .contains(&message),
-            "expected msg to contain {message:?}, got {parsed}"
+            msg.contains(&message),
+            "expected msg to contain {message:?}, got {msg:?}"
         );
     }
 
-    /// Companion case: a Warn-severity diagnostic renders at `"WARNING"`
-    /// through the exact same handler path, proving `Severity` — not the
-    /// call site — drives the rendered log level.
+    /// Companion case: a Warn-severity diagnostic renders at slog's `Warning`
+    /// level through the exact same handler path, proving `Severity` — not
+    /// the call site — drives the emitted log level.
     #[test]
     fn warn_diagnostic_renders_as_a_single_warning_line() {
         let d = Diagnostic::from_draft(
@@ -286,16 +257,12 @@ mod tests {
         assert_eq!(d.severity, reearth_flow_diagnostics::Severity::Warn);
         let message = d.message.clone();
 
-        let content = render_diagnostic_to_action_log(d);
-        let parsed = single_json_line(&content);
+        let (level, msg) = render_diagnostic(d);
 
-        assert_eq!(parsed["level"], "WARNING");
+        assert_eq!(level, Level::Warning);
         assert!(
-            parsed["msg"]
-                .as_str()
-                .expect("msg must be a string")
-                .contains(&message),
-            "expected msg to contain {message:?}, got {parsed}"
+            msg.contains(&message),
+            "expected msg to contain {message:?}, got {msg:?}"
         );
     }
 }

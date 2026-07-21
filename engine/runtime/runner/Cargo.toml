@@ -38,4 +38,5 @@ uuid.workspace = true
 
 [dev-dependencies]
 bytes.workspace = true
+slog.workspace = true
 tempfile.workspace = true
