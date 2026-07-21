@@ -59,7 +59,7 @@ export default function Editor({
     refetchWorkflowVariables,
     showSearchPanel,
     openNodePickerViaShortcut,
-    handleDebugRunVariableValueChange,
+    workflowVariableDefaults,
     loadExternalDebugJob,
     handleWorkflowAdd,
     handleWorkflowDeployment,
@@ -87,6 +87,7 @@ export default function Editor({
     handleDebugRunStart,
     handleFromSelectedNodeDebugRunStart,
     handleDebugRunStop,
+    handleResetDebugRunWorkflowVariables,
     schemaProbes,
     readerAttributeSuggestions,
     handleNodeParamsSaved,
@@ -185,6 +186,7 @@ export default function Editor({
             openWorkflows={openWorkflows}
             currentWorkflowId={currentWorkflowId}
             customDebugRunWorkflowVariables={customDebugRunWorkflowVariables}
+            workflowVariableDefaults={workflowVariableDefaults}
             openNodePickerViaShortcut={openNodePickerViaShortcut}
             refetchWorkflowVariables={refetchWorkflowVariables}
             onWorkflowChange={handleWorkflowChange}
@@ -208,7 +210,9 @@ export default function Editor({
               handleFromSelectedNodeDebugRunStart
             }
             onDebugRunStop={handleDebugRunStop}
-            onDebugRunVariableValueChange={handleDebugRunVariableValueChange}
+            onResetDebugRunWorkflowVariables={
+              handleResetDebugRunWorkflowVariables
+            }
             onProjectSnapshotSave={handleProjectSnapshotSave}
             onProjectLockChange={handleProjectLockChange}
             onSpotlightUserSelect={handleSpotlightUserSelect}
