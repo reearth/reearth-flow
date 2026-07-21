@@ -68,10 +68,11 @@ describe("migrateLegacyActionNames", () => {
       node("router", { officialName: "InputRouter" }),
       node("n3", { officialName: "Bufferer" }),
       node("sub", { officialName: "FeatureFilter" }, "subworkflow"),
+      node("n4", { officialName: "HTTPCaller" }),
     ]);
 
     const changed = migrateLegacyActionNames(yWorkflows);
-    expect(changed).toBe(3);
+    expect(changed).toBe(4);
     expect(hasLegacyActionNames(yWorkflows)).toBe(false);
 
     const workflow = rebuildWorkflow(yWorkflows.get("main") as YWorkflow);
@@ -88,6 +89,8 @@ describe("migrateLegacyActionNames", () => {
     // Unrenamed action, user-named subworkflow: unchanged
     expect(byId("n3")?.data.officialName).toBe("Bufferer");
     expect(byId("sub")?.data.officialName).toBe("FeatureFilter");
+    // Hidden (non-base) action renamed in engine PR #2272
+    expect(byId("n4")?.data.officialName).toBe("HTTP Caller");
   });
 
   it("is idempotent", () => {
