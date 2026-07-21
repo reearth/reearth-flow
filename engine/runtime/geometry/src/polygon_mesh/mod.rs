@@ -21,6 +21,8 @@ mod ops;
 #[cfg(feature = "new-geometry")]
 mod validation;
 
+pub(crate) use ops::build_open_rings;
+
 /// A connected, vertex-sharing polygon mesh in 2D space, with optional
 /// per-vertex elevation.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -32,8 +34,10 @@ pub struct PolygonMesh2D {
     /// `Some`, `z.len() == vertices.len()`. `None` = pure 2D.
     z: Option<Box<[f64]>>,
     /// All rings of all faces concatenated; each face is its exterior ring then
-    /// its hole rings. A valid face has the exterior wound CCW and interiors CW.
-    /// Width from `vertices.len() - 1`.
+    /// its hole rings. A valid face has the exterior wound counter-clockwise and
+    /// interiors clockwise in canonical orientation (see [`crate::coordinate`]:
+    /// winding is judged after applying the frame's orientation sign, not in stored
+    /// coordinate order). Width from `vertices.len() - 1`.
     face_indices: IndexBuffer<1>,
     /// Internal face boundaries into `face_indices`: `len() = n_faces - 1`, no
     /// leading 0. `face_offsets[i]` is where face `i+1` begins; face `i` spans
@@ -62,8 +66,9 @@ pub struct PolygonMesh2D {
 pub struct PolygonMesh3DData {
     vertices: Vec<[f64; 3]>,
     /// All rings of all faces concatenated; each face is its exterior ring then
-    /// its hole rings. Each face's normal is determined by the right-hand rule
-    /// with respect to exterior. A valid face has exterior and interior rings wound
+    /// its hole rings. Each face's canonical outward normal is its exterior's
+    /// right-hand-rule normal times the frame's orientation sign (see
+    /// [`crate::coordinate`]). A valid face has exterior and interior rings wound
     /// opposite to each other. Width from `vertices.len() - 1`.
     face_indices: IndexBuffer<1>,
     /// Internal face boundaries into `face_indices`: `len() = n_faces - 1`, no
@@ -101,6 +106,39 @@ impl PolygonMesh3DData {
 }
 
 impl PolygonMesh2D {
+    /// The coordinate frame these vertices are expressed in.
+    #[inline]
+    pub fn frame(&self) -> &CoordinateFrame {
+        &self.frame
+    }
+
+    /// The shared vertex pool.
+    #[inline]
+    pub fn vertices(&self) -> &[[f64; 2]] {
+        &self.vertices
+    }
+
+    /// The number of faces.
+    #[inline]
+    pub fn num_faces(&self) -> usize {
+        if self.face_indices.len() == 0 {
+            0
+        } else {
+            self.face_offsets.len() + 1
+        }
+    }
+
+    /// The CSR ring buffers `(face_indices, face_offsets, interior_offsets)`,
+    /// for the predicate views to decode.
+    #[inline]
+    pub(crate) fn csr_buffers(&self) -> (&IndexBuffer<1>, &IndexBuffer<1>, &IndexBuffer<1>) {
+        (
+            &self.face_indices,
+            &self.face_offsets,
+            &self.interior_offsets,
+        )
+    }
+
     /// Borrow the appearance, if any.
     #[inline]
     pub fn appearance(&self) -> &Option<Appearance> {
@@ -122,6 +160,12 @@ impl PolygonMesh3DData {
 }
 
 impl PolygonMesh3D {
+    /// The coordinate frame the mesh data is expressed in.
+    #[inline]
+    pub fn frame(&self) -> &CoordinateFrame {
+        &self.frame
+    }
+
     /// Borrow the appearance, if any.
     #[inline]
     pub fn appearance(&self) -> &Option<Appearance> {
@@ -139,6 +183,12 @@ impl PolygonMesh3D {
     #[inline]
     pub fn into_data(self) -> PolygonMesh3DData {
         self.data
+    }
+
+    /// Borrow the coordinate-free mesh data, for the predicate views.
+    #[inline]
+    pub(crate) fn data(&self) -> &PolygonMesh3DData {
+        &self.data
     }
 
     /// The number of faces.
@@ -163,6 +213,17 @@ impl PolygonMesh3DData {
         } else {
             self.face_offsets.len() + 1
         }
+    }
+
+    /// The CSR ring buffers `(face_indices, face_offsets, interior_offsets)`,
+    /// for the predicate views to decode.
+    #[inline]
+    pub(crate) fn csr_buffers(&self) -> (&IndexBuffer<1>, &IndexBuffer<1>, &IndexBuffer<1>) {
+        (
+            &self.face_indices,
+            &self.face_offsets,
+            &self.interior_offsets,
+        )
     }
 }
 

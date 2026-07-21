@@ -68,15 +68,20 @@ impl Validate for TriangularMesh2D {
     }
 
     fn check_orientation(&self, _params: &ValidationParams) -> ValidationReport {
-        // Each triangle should wind counter-clockwise.
+        // Each triangle should wind counter-clockwise in canonical orientation
+        // (after applying the frame's orientation sign). An undeterminable frame
+        // skips the check.
         ValidationReport::ran(|r| {
+            let Ok(sign) = self.frame.orientation_sign() else {
+                return;
+            };
             for [a, b, c] in self.triangles() {
                 let ring = [
                     self.vertices[a as usize],
                     self.vertices[b as usize],
                     self.vertices[c as usize],
                 ];
-                check_ring_orientation_2d(&self.frame, &ring, true, r);
+                check_ring_orientation_2d(&self.frame, sign, &ring, true, r);
             }
         })
     }
@@ -138,7 +143,7 @@ impl Validate for TriangularMesh3D {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::coordinate::CoordinateFrame;
+    use crate::coordinate::{CoordinateFrame, EpsgCode};
     use crate::validation_next::{validate_one, ValidationParams, ValidationResult};
 
     // Each helper runs just `check` (and its prerequisites) on the mesh, not the
@@ -175,6 +180,28 @@ mod tests {
         )
         .unwrap();
         assert_eq!(failures(&m, ValidationType::Orientation).len(), 1);
+    }
+
+    #[test]
+    fn triangle_winding_is_judged_in_canonical_orientation() {
+        // EPSG:6697 is lat-first (orientation sign -1), so the raw-CCW triangle is
+        // canonically clockwise and misoriented, while the raw-CW triangle is
+        // canonically counter-clockwise and valid.
+        let reflected = CoordinateFrame::Crs(EpsgCode::new(6697));
+        let ccw_raw = TriangularMesh2D::from_parts(
+            reflected.clone(),
+            vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]],
+            [0u32, 1, 2],
+        )
+        .unwrap();
+        assert_eq!(failures(&ccw_raw, ValidationType::Orientation).len(), 1);
+        let cw_raw = TriangularMesh2D::from_parts(
+            reflected,
+            vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]],
+            [0u32, 2, 1],
+        )
+        .unwrap();
+        assert!(is_success(&cw_raw, ValidationType::Orientation));
     }
 
     fn quad() -> Vec<[f64; 3]> {

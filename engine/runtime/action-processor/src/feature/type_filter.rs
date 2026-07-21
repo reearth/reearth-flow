@@ -26,7 +26,7 @@ impl ProcessorFactory for FeatureTypeFilterFactory {
     }
 
     fn description(&self) -> &str {
-        "Filter CityGML features by feature type"
+        "Filters CityGML features by their feature type."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -35,6 +35,10 @@ impl ProcessorFactory for FeatureTypeFilterFactory {
 
     fn categories(&self) -> &[&'static str] {
         &["Filter"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["citygml"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -73,13 +77,14 @@ impl ProcessorFactory for FeatureTypeFilterFactory {
     }
 }
 
-/// # FeatureTypeFilter Parameters
+/// # Feature Type Filter Parameters
 ///
 /// Configuration for filtering features based on their feature type.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct FeatureTypeFilter {
-    /// Target feature types
+    /// # Target Feature Types
+    /// List of CityGML feature type names to match, such as "bldg:Building" or "tran:TrafficArea".
     target_types: Vec<String>,
 }
 

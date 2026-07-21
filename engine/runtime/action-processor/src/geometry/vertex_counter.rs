@@ -20,7 +20,7 @@ pub struct VertexCounterFactory;
 
 impl ProcessorFactory for VertexCounterFactory {
     fn name(&self) -> &str {
-        "VertexCounter"
+        "Vertex Counter"
     }
 
     fn description(&self) -> &str {
@@ -158,7 +158,7 @@ impl Processor for VertexCounter {
     }
 
     fn name(&self) -> &str {
-        "VertexCounter"
+        "Vertex Counter"
     }
 }
 

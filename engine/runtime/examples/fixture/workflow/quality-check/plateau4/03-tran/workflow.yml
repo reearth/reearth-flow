@@ -190,7 +190,7 @@ graphs:
       - id: 737996be-8410-4447-9986-bba01fe9ce0c
         name: XlinkCsvWriter
         type: action
-        action: FeatureWriter
+        action: Feature Writer
         with:
           format: csv
           output:
@@ -262,7 +262,7 @@ graphs:
       - id: d60f93c1-c55e-49ee-9332-657f4408ba05
         name: OrientationExtractor
         type: action
-        action: OrientationExtractor
+        action: Orientation Extractor
         with:
           outputAttribute: orientation
 
@@ -330,7 +330,7 @@ graphs:
       - id: 2b0d83b3-2c7a-4314-b609-e4f7db379902
         name: CsvWriter
         type: action
-        action: FeatureWriter
+        action: Feature Writer
         with:
           format: csv
           output:
@@ -389,7 +389,7 @@ graphs:
       - id: 959ca2a3-0b83-4e3b-b2b7-2bf6559db2f9
         name: GeometryCoercer
         type: action
-        action: GeometryCoercer
+        action: Geometry Coercer
         with:
           targetType: lineString
 
@@ -413,7 +413,7 @@ graphs:
       - id: b684d916-5efe-4dfa-be20-fed9b101239d
         name: LineOnLineOverlayerLOD1
         type: action
-        action: LineOnLineOverlayer
+        action: Line On Line Overlayer
         with:
           groupBy:
             - lod
@@ -424,7 +424,7 @@ graphs:
       - id: 5dab814a-c4c6-47e0-8688-1c5667c775fb
         name: LineOnLineOverlayerLOD23
         type: action
-        action: LineOnLineOverlayer
+        action: Line On Line Overlayer
         with:
           groupBy:
             - lod
@@ -464,7 +464,7 @@ graphs:
       - id: f94ccdb2-2133-4b0d-886d-9c933c0d645f
         name: DuplicateFilterLineOverlaps
         type: action
-        action: AttributeDuplicateFilter
+        action: Attribute Duplicate Filter
         with:
           filterBy: ["gmlId"]
 
@@ -480,7 +480,7 @@ graphs:
       - id: e85ef1d5-a8fb-49e8-895a-b0a055c7b4c0
         name: AreaOnAreaOverlayer
         type: action
-        action: AreaOnAreaOverlayer
+        action: Area On Area Overlayer
         with:
           groupBy:
             - overlapIndex
@@ -514,7 +514,7 @@ graphs:
       - id: 8d7f5e2a-1b3c-4f9e-a7d8-3e9b6c4a2f1d
         name: ListConcatenator
         type: action
-        action: ListConcatenator
+        action: List Concatenator
         with:
           list: areaOverlapList
           attribute: gmlId
@@ -525,7 +525,7 @@ graphs:
       - id: 518572d2-8561-4b60-ab28-fcd66d90afa2
         name: DuplicateFilter
         type: action
-        action: AttributeDuplicateFilter
+        action: Attribute Duplicate Filter
         with:
           filterBy: ["concatenatedGmlIds"]
 
@@ -577,7 +577,7 @@ graphs:
       - id: e1eb4eb2-b045-4cdb-aa43-922dd5e03a79
         name: OverlapCsvWriter
         type: action
-        action: FeatureWriter
+        action: Feature Writer
         with:
           format: csv
           output:
@@ -588,7 +588,7 @@ graphs:
       - id: 41bd7fb9-6e5b-4ac6-985f-a9abb40fb1c1
         name: SurfaceValidationCsvWriter
         type: action
-        action: FeatureWriter
+        action: Feature Writer
         with:
           format: csv
           output:
@@ -711,7 +711,7 @@ graphs:
       - id: be20e492-76d2-4afc-a985-e040f43d55fb
         name: CSVSummaryWriter
         type: action
-        action: FeatureWriter
+        action: Feature Writer
         with:
           format: csv
           output:
@@ -747,7 +747,7 @@ graphs:
       - id: df88ca31-bbfd-4322-aff2-86990e91a694
         name: JSONSummaryWriter
         type: action
-        action: FeatureWriter
+        action: Feature Writer
         with:
           format: json
           converter:

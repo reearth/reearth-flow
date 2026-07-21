@@ -29,7 +29,7 @@ pub struct OrientationExtractorFactory;
 
 impl ProcessorFactory for OrientationExtractorFactory {
     fn name(&self) -> &str {
-        "OrientationExtractor"
+        "Orientation Extractor"
     }
 
     fn description(&self) -> &str {
@@ -239,7 +239,7 @@ impl Processor for OrientationExtractor {
     }
 
     fn name(&self) -> &str {
-        "OrientationExtractor"
+        "Orientation Extractor"
     }
 }
 

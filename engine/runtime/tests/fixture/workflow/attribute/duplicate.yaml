@@ -17,7 +17,7 @@ graphs:
       - id: a1a91180-ab88-4c1a-aab5-48c242a218cb
         name: Ops-Duplicate-Filter
         type: action
-        action: AttributeDuplicateFilter
+        action: Attribute Duplicate Filter
         with:
           filterBy: ["country"]
 

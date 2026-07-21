@@ -169,14 +169,21 @@ impl Validate for Solid {
     }
 
     fn check_shell_orientation(&self, _params: &ValidationParams) -> ValidationReport {
-        // The exterior shell must enclose positive volume (outward normals); each
-        // void shell negative volume (normals into the void).
+        // In canonical orientation the exterior shell must enclose positive volume
+        // (outward normals) and each void shell negative volume (normals into the
+        // void); a signed volume in a reflected frame carries the opposite sign, so
+        // it is judged after applying the frame's orientation sign (see
+        // [`crate::coordinate`]). An undeterminable frame skips the check.
         ValidationReport::ran(|r| {
-            if self.exterior().signed_volume() <= 0.0 {
+            let Ok(sign) = self.frame.orientation_sign() else {
+                return;
+            };
+            let sign = sign as f64;
+            if self.exterior().signed_volume() * sign <= 0.0 {
                 r.push(self.exterior().to_geometry(&self.frame));
             }
             for void in self.interiors() {
-                if void.signed_volume() >= 0.0 {
+                if void.signed_volume() * sign >= 0.0 {
                     r.push(void.to_geometry(&self.frame));
                 }
             }
@@ -187,6 +194,7 @@ impl Validate for Solid {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::coordinate::EpsgCode;
     use crate::triangular_mesh::TriangularMesh3DData;
     use crate::validation_next::{validate_one, ValidationParams, ValidationResult};
 
@@ -273,5 +281,18 @@ mod tests {
             vec![tetra_outward().into()],
         );
         assert_eq!(failure_count(&bad, ValidationType::ShellOrientation), 1);
+    }
+
+    #[test]
+    fn reflected_frame_inverts_shell_orientation() {
+        // EPSG:6697 is lat-first (orientation sign -1), so a shell's signed volume
+        // carries the opposite sign there: the raw-outward tetra encloses negative
+        // volume and is canonically inward (misoriented as an exterior), while the
+        // raw-inward tetra is canonically outward and valid.
+        let reflected = CoordinateFrame::Crs(EpsgCode::new(6697));
+        let outward = Solid::from_exterior(reflected.clone(), tetra_outward());
+        assert_eq!(failure_count(&outward, ValidationType::ShellOrientation), 1);
+        let inward = Solid::from_exterior(reflected, tetra_inward());
+        assert!(is_success(&inward, ValidationType::ShellOrientation));
     }
 }

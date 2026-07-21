@@ -1008,7 +1008,7 @@ graphs:
   - id: dde1d751-fe3e-4283-8742-ec4a61a41574
     from: c32a279d-97be-4584-b282-4d65627b1132
     to: dc85a21b-4356-4a29-a862-270029071234
-    fromPort: up_to_lod1
+    fromPort: max-lod1
     toPort: features
   - id: dde1d751-fe3e-4283-8742-ec4a61a41575
     from: dc85a21b-4356-4a29-a862-270029071234
@@ -1028,7 +1028,7 @@ graphs:
   - id: 2e6bfbbd-f48f-4cb8-97ac-46fe4ecc30bb
     from: c32a279d-97be-4584-b282-4d65627b1132
     to: dc85a21b-4356-4a29-a862-270029071235
-    fromPort: up_to_lod2
+    fromPort: max-lod2
     toPort: features
   - id: 2e6bfbbd-f48f-4cb8-97ac-46fe4ecc30ba
     from: dc85a21b-4356-4a29-a862-270029071235
@@ -1048,7 +1048,7 @@ graphs:
   - id: 2e6bfbbd-f48f-4cb8-97ac-46fe4ecc30bd
     from: c32a279d-97be-4584-b282-4d65627b1132
     to: dc85a21b-4356-4a29-a862-270029071236
-    fromPort: up_to_lod2
+    fromPort: max-lod2
     toPort: features
   - id: 2e6bfbbd-f48f-4cb8-97ac-46fe4ecc30da
     from: dc85a21b-4356-4a29-a862-270029071236
@@ -1068,7 +1068,7 @@ graphs:
   - id: ce3f3571-053c-4487-8e85-b95fb71a49c7
     from: c32a279d-97be-4584-b282-4d65627b1132
     to: dc85a21b-4356-4a29-a862-270029071237
-    fromPort: up_to_lod3
+    fromPort: max-lod3
     toPort: features
   - id: ce3f3571-053c-4487-8e85-b95fb71a49c8
     from: dc85a21b-4356-4a29-a862-270029071237
@@ -1088,7 +1088,7 @@ graphs:
   - id: ce3f3571-053c-4487-8e85-b95fb71a49c9
     from: c32a279d-97be-4584-b282-4d65627b1132
     to: dc85a21b-4356-4a29-a862-270029071238
-    fromPort: up_to_lod3
+    fromPort: max-lod3
     toPort: features
   - id: ce3f3571-053c-4487-8e85-b95fb71a49ca
     from: dc85a21b-4356-4a29-a862-270029071238
@@ -1108,7 +1108,7 @@ graphs:
   - id: 841f1bed-a4d3-4425-a754-4f0dd7461eac
     from: c32a279d-97be-4584-b282-4d65627b1132
     to: dc85a21b-4356-4a29-a862-270029071239
-    fromPort: up_to_lod4
+    fromPort: max-lod4
     toPort: features
   - id: 841f1bed-a4d3-4425-a754-4f0dd7461eca
     from: dc85a21b-4356-4a29-a862-270029071239
@@ -1128,7 +1128,7 @@ graphs:
   - id: 841f1bed-a4d3-4425-a754-4f0dd7461eae
     from: c32a279d-97be-4584-b282-4d65627b1132
     to: dc85a21b-4356-4a29-a862-270029071240
-    fromPort: up_to_lod4
+    fromPort: max-lod4
     toPort: features
   - id: 841f1bed-a4d3-4425-a754-4f0dd7461eea
     from: dc85a21b-4356-4a29-a862-270029071240

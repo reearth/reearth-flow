@@ -18,7 +18,7 @@ pub(crate) struct ExcelWriterFactory;
 
 impl SinkFactory for ExcelWriterFactory {
     fn name(&self) -> &str {
-        "ExcelWriter"
+        "Excel Writer"
     }
 
     fn description(&self) -> &str {
@@ -82,7 +82,7 @@ pub(super) struct ExcelWriter {
     pub(super) buffer: HashMap<String, (crate::SinkOutput, Vec<Feature>)>,
 }
 
-/// # ExcelWriter Parameters
+/// # Excel Writer Parameters
 ///
 /// Configuration for writing features to Microsoft Excel format.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -96,7 +96,7 @@ pub struct ExcelWriterParam {
 
 impl Sink for ExcelWriter {
     fn name(&self) -> &str {
-        "ExcelWriter"
+        "Excel Writer"
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {

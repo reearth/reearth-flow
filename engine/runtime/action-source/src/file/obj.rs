@@ -39,7 +39,7 @@ pub(crate) struct ObjReaderFactory;
 
 impl SourceFactory for ObjReaderFactory {
     fn name(&self) -> &str {
-        "ObjReader"
+        "OBJ Reader"
     }
 
     fn description(&self) -> &str {
@@ -118,7 +118,7 @@ pub(super) struct ObjReader {
     params: ObjReaderCompiledParam,
 }
 
-/// # ObjReader Parameters
+/// # OBJ Reader Parameters
 ///
 /// Configuration for reading Wavefront OBJ 3D model files with support for
 /// vertices, faces, normals, texture coordinates, and material definitions.
@@ -168,7 +168,7 @@ impl Source for ObjReader {
     async fn initialize(&self, _ctx: NodeContext) {}
 
     fn name(&self) -> &str {
-        "ObjReader"
+        "OBJ Reader"
     }
 
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {

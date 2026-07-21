@@ -26,7 +26,7 @@ pub struct JPStandardGridAccumulatorFactory;
 
 impl ProcessorFactory for JPStandardGridAccumulatorFactory {
     fn name(&self) -> &str {
-        "JPStandardGridAccumulator"
+        "JP Standard Grid Accumulator"
     }
 
     fn description(&self) -> &str {
@@ -130,7 +130,7 @@ impl Processor for JPStandardGridAccumulator {
     }
 
     fn name(&self) -> &str {
-        "JPStandardGridAccumulator"
+        "JP Standard Grid Accumulator"
     }
 }
 

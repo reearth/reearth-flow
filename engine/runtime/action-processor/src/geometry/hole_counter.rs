@@ -20,7 +20,7 @@ pub struct HoleCounterFactory;
 
 impl ProcessorFactory for HoleCounterFactory {
     fn name(&self) -> &str {
-        "HoleCounter"
+        "Hole Counter"
     }
 
     fn description(&self) -> &str {
@@ -142,6 +142,6 @@ impl Processor for HoleCounter {
     }
 
     fn name(&self) -> &str {
-        "HoleCounter"
+        "Hole Counter"
     }
 }

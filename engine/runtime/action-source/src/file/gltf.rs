@@ -29,7 +29,7 @@ pub(crate) struct GltfReaderFactory;
 
 impl SourceFactory for GltfReaderFactory {
     fn name(&self) -> &str {
-        "GltfReader"
+        "glTF Reader"
     }
 
     fn description(&self) -> &str {
@@ -131,7 +131,7 @@ impl Source for GltfReader {
     async fn initialize(&self, _ctx: NodeContext) {}
 
     fn name(&self) -> &str {
-        "GltfReader"
+        "glTF Reader"
     }
 
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {

@@ -55,7 +55,7 @@ pub struct PlanarityFilterFactory;
 
 impl ProcessorFactory for PlanarityFilterFactory {
     fn name(&self) -> &str {
-        "PlanarityFilter"
+        "Planarity Filter"
     }
 
     fn description(&self) -> &str {
@@ -255,7 +255,7 @@ impl Processor for PlanarityFilter {
     }
 
     fn name(&self) -> &str {
-        "PlanarityFilter"
+        "Planarity Filter"
     }
 }
 

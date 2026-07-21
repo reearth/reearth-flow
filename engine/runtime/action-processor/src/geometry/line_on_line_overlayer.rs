@@ -44,7 +44,7 @@ pub struct LineOnLineOverlayerFactory;
 
 impl ProcessorFactory for LineOnLineOverlayerFactory {
     fn name(&self) -> &str {
-        "LineOnLineOverlayer"
+        "Line On Line Overlayer"
     }
 
     fn description(&self) -> &str {
@@ -107,7 +107,7 @@ impl ProcessorFactory for LineOnLineOverlayerFactory {
     }
 }
 
-/// # LineOnLineOverlayer Parameters
+/// # Line On Line Overlayer Parameters
 ///
 /// Configuration for finding intersection points between line features.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -359,7 +359,7 @@ impl Processor for LineOnLineOverlayer {
     }
 
     fn name(&self) -> &str {
-        "LineOnLineOverlayer"
+        "Line On Line Overlayer"
     }
 }
 

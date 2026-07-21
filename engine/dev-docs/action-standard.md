@@ -190,7 +190,7 @@ New categories can be added when a meaningful group of actions does not fit any 
 - Draw from the established vocabulary below; propose additions conservatively
 
 **Established vocabulary:**
-`3d`, `aggregation`, `attribute`, `citygml`, `compression`, `coordinate-system`, `csv`, `database`, `debug`, `file`, `filter`, `geometry`, `geojson`, `geopackage`, `json`, `list`, `mapping`, `raster`, `routing`, `shapefile`, `spatial`, `statistics`, `tiling`, `validation`, `vector`, `xml`
+`3d`, `aggregation`, `attribute`, `citygml`, `compression`, `coordinate-system`, `csv`, `database`, `debug`, `file`, `filter`, `geometry`, `geojson`, `geopackage`, `json`, `list`, `logging`, `mapping`, `raster`, `routing`, `shapefile`, `spatial`, `statistics`, `tiling`, `validation`, `vector`, `xml`
 
 New tags can be proposed when an established term does not adequately describe an action's domain. Avoid adding tags that duplicate an action's category.
 

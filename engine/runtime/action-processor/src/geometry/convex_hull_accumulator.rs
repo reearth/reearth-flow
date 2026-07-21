@@ -27,7 +27,7 @@ pub struct ConvexHullAccumulatorFactory;
 
 impl ProcessorFactory for ConvexHullAccumulatorFactory {
     fn name(&self) -> &str {
-        "ConvexHullAccumulator"
+        "Convex Hull Accumulator"
     }
 
     fn description(&self) -> &str {
@@ -83,7 +83,7 @@ impl ProcessorFactory for ConvexHullAccumulatorFactory {
     }
 }
 
-/// # ConvexHullAccumulator Parameters
+/// # Convex Hull Accumulator Parameters
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ConvexHullAccumulatorParam {
@@ -193,7 +193,7 @@ impl Processor for ConvexHullAccumulator {
     }
 
     fn name(&self) -> &str {
-        "ConvexHullAccumulator"
+        "Convex Hull Accumulator"
     }
 }
 

@@ -24,7 +24,7 @@ pub struct VertexRemoverFactory;
 
 impl ProcessorFactory for VertexRemoverFactory {
     fn name(&self) -> &str {
-        "VertexRemover"
+        "Vertex Remover"
     }
 
     fn description(&self) -> &str {
@@ -104,7 +104,7 @@ impl Processor for VertexRemover {
     }
 
     fn name(&self) -> &str {
-        "VertexRemover"
+        "Vertex Remover"
     }
 }
 
