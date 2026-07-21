@@ -46,16 +46,18 @@ export default ({
     (job) => job.projectId === currentProject?.id,
   );
 
-  const hasRestoredFromJobStateRef = useRef(false);
+  const restoredProjectIdRef = useRef<string | undefined>(undefined);
 
   useEffect(() => {
     if (!workflowVariables || debugRunState === null) return;
 
+    const isFreshProject = restoredProjectIdRef.current !== currentProject?.id;
+    restoredProjectIdRef.current = currentProject?.id;
+
     setCustomDebugRunWorkflowVariables((prev) => {
-      const baseline = hasRestoredFromJobStateRef.current
-        ? prev
+      const baseline = isFreshProject
+        ? debugJob?.variables
         : (prev ?? debugJob?.variables);
-      hasRestoredFromJobStateRef.current = true;
 
       if (!baseline) return workflowVariables;
       return workflowVariables.map((workflowVariable) => {
@@ -67,7 +69,12 @@ export default ({
           : workflowVariable;
       });
     });
-  }, [workflowVariables, debugRunState, debugJob?.variables]);
+  }, [
+    workflowVariables,
+    debugRunState,
+    debugJob?.variables,
+    currentProject?.id,
+  ]);
 
   const runDebugWorkflow = useCallback(
     async (

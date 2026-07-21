@@ -4,7 +4,7 @@ import {
   PencilLineIcon,
 } from "@phosphor-icons/react";
 import { ColumnDef } from "@tanstack/react-table";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import {
   DataTable as Table,
@@ -44,6 +44,13 @@ const DebugWorkflowVariablesDialog: React.FC<Props> = ({
     () => debugRunWorkflowVariables ?? [],
   );
 
+  const hasEditedRef = useRef(false);
+
+  useEffect(() => {
+    if (hasEditedRef.current || !debugRunWorkflowVariables) return;
+    setVariables(debugRunWorkflowVariables);
+  }, [debugRunWorkflowVariables]);
+
   const [startingDebugRun, setStartingDebugRun] = useState(false);
   const [showDialog, setShowDialog] = useState<DialogOptions>(undefined);
   const [activeVariableIndex, setActiveVariableIndex] = useState<number>(0);
@@ -52,6 +59,7 @@ const DebugWorkflowVariablesDialog: React.FC<Props> = ({
 
   const handleDefaultValueChange = useCallback(
     (index: number, newValue: any) => {
+      hasEditedRef.current = true;
       setVariables((prev) =>
         prev.map((variable, i) =>
           i === index ? { ...variable, defaultValue: newValue } : variable,
@@ -67,6 +75,7 @@ const DebugWorkflowVariablesDialog: React.FC<Props> = ({
         (defaultVariable) => defaultVariable.id === variableId,
       );
       if (!original) return;
+      hasEditedRef.current = true;
       setVariables((prev) =>
         prev.map((variable, i) =>
           i === index
