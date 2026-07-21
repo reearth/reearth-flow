@@ -234,6 +234,8 @@ mod tests {
         TextureInput {
             path,
             uvs: vec![uvs.iter().map(|&(u, v)| [u, v]).collect()],
+            #[cfg(feature = "new-geometry")]
+            scale: 1.0,
         }
     }
 
@@ -258,6 +260,8 @@ mod tests {
                 vec![[0.0, 0.5], [0.3, 0.5], [0.3, 1.0], [0.0, 1.0]],
                 vec![[0.7, 0.0], [1.0, 0.0], [1.0, 0.5], [0.7, 0.5]],
             ],
+            #[cfg(feature = "new-geometry")]
+            scale: 1.0,
         };
         let result = collect_damage(&[mat]).unwrap();
         assert_eq!(result.len(), 1);
@@ -279,6 +283,8 @@ mod tests {
                 vec![[0.0, 0.0], [0.6, 0.0], [0.6, 1.0], [0.0, 1.0]],
                 vec![[0.4, 0.0], [1.0, 0.0], [1.0, 1.0], [0.4, 1.0]],
             ],
+            #[cfg(feature = "new-geometry")]
+            scale: 1.0,
         };
         let result = collect_damage(&[mat]).unwrap();
         assert_eq!(result[0].1.rects.len(), 1, "overlapping regions must merge");
