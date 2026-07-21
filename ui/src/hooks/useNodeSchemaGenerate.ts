@@ -20,7 +20,6 @@ export default (
           "The custom name that is shown on the action. If not set, the official name will be used.",
         ),
         format: "text",
-        default: nodeMeta.officialName,
       },
     },
   };

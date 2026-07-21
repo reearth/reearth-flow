@@ -1,32 +1,36 @@
 import * as Y from "yjs";
 
-import {
-  DEFAULT_EDGE_PORT,
-  DEFAULT_ROUTING_PORT,
-} from "@flow/global-constants";
+import { DEFAULT_EDGE_PORT } from "@flow/global-constants";
 
 import type { YWorkflow } from "../types";
 
-// Port name used before the engine renamed its default port to "features"
-// (engine v0.0.429, PR #2236). Projects saved before the rename still
-// reference it and can no longer run against current actions.
+// Port name used before the engine renamed its default port to "features" (engine PR #2236).
 const LEGACY_PORT = "default";
 
+// User-defined condition ports (e.g. FeatureFilter outputPort) may legitimately
+// be named "default" — never rewrite these or their edges.
+const getConditionPorts = (
+  params: unknown,
+  key: "inputPort" | "outputPort",
+): string[] => {
+  const conditions = (params as Record<string, any> | undefined)?.conditions;
+  if (!Array.isArray(conditions)) return [];
+  return conditions
+    .map((condition: any) => condition?.[key])
+    .filter((port: unknown): port is string => typeof port === "string");
+};
+
 /**
- * Walks every workflow in the doc counting references to the legacy
- * "default" port. With apply=true it also rewrites them to the current
- * port names — call inside a transaction when applying.
+ * Counts references to the legacy "default" port; with apply=true also
+ * rewrites them — call inside a transaction when applying.
  *
- * Covered locations (these reference each other by string equality, so
- * exact-match replacement keeps them consistent):
- * - edge sourceHandle / targetHandle
- * - node data.inputs / data.outputs port lists
- * - node data.params.routingPort (InputRouter / OutputRouter)
- * - subworkflow node pseudoInputs / pseudoOutputs portName
- *
- * Composed pseudo port names (e.g. "MyNode-default") are left alone: they
- * are opaque matched pairs between a router's routingPort and the parent
- * edge handle, and don't need to equal any action port name.
+ * Only action-definition ports are rewritten (node data.inputs/outputs and
+ * the edge handles referencing them) — these are what the rename actually
+ * broke. "default" stays a legal name everywhere else: routingPort, subworkflow
+ * pseudo ports and their edge handles (the engine wires routers by string
+ * equality between routingPort and the parent edge port, per dag_schemas.rs),
+ * condition ports, and InputRouter/OutputRouter nodes (their canvas handles
+ * are frontend-only, so existing routers keep "default").
  */
 export function scanLegacyPorts(
   yWorkflows: Y.Map<YWorkflow>,
@@ -36,8 +40,40 @@ export function scanLegacyPorts(
 
   yWorkflows.forEach((yWorkflow) => {
     const yNodes = yWorkflow.get("nodes");
+
+    // Per-node context so edges referencing user-named ports are preserved.
+    const nodeTypes = new Map<string, string>();
+    const routerNodeIds = new Set<string>();
+    const customInputPorts = new Map<string, Set<string>>();
+    const customOutputPorts = new Map<string, Set<string>>();
+
     if (yNodes instanceof Y.Map) {
-      yNodes.forEach((yNode) => {
+      yNodes.forEach((yNode, nodeId) => {
+        nodeTypes.set(nodeId, String((yNode as Y.Map<unknown>).get("type")));
+        const yData = (yNode as Y.Map<unknown>).get("data");
+        if (!(yData instanceof Y.Map)) return;
+        const officialName = String(yData.get("officialName"));
+        if (
+          officialName === "InputRouter" ||
+          officialName === "OutputRouter" ||
+          officialName === "Input Router" ||
+          officialName === "Output Router"
+        ) {
+          routerNodeIds.add(nodeId);
+        }
+        const params = yData.get("params");
+        customInputPorts.set(
+          nodeId,
+          new Set(getConditionPorts(params, "inputPort")),
+        );
+        customOutputPorts.set(
+          nodeId,
+          new Set(getConditionPorts(params, "outputPort")),
+        );
+      });
+
+      yNodes.forEach((yNode, nodeId) => {
+        if (routerNodeIds.has(nodeId)) return;
         const yData = (yNode as Y.Map<unknown>).get("data");
         if (!(yData instanceof Y.Map)) return;
 
@@ -53,45 +89,46 @@ export function scanLegacyPorts(
             }
           }
         }
-
-        for (const key of ["pseudoInputs", "pseudoOutputs"]) {
-          const yPseudoPorts = yData.get(key);
-          if (!(yPseudoPorts instanceof Y.Array)) continue;
-          yPseudoPorts.forEach((yPseudoPort) => {
-            if (!(yPseudoPort instanceof Y.Map)) return;
-            if (String(yPseudoPort.get("portName")) !== LEGACY_PORT) return;
-            count++;
-            if (apply)
-              yPseudoPort.set("portName", new Y.Text(DEFAULT_ROUTING_PORT));
-          });
-        }
-
-        // params is stored as a plain object on the node's data map
-        const params = yData.get("params") as Record<string, any> | undefined;
-        if (
-          params &&
-          typeof params === "object" &&
-          params.routingPort === LEGACY_PORT
-        ) {
-          count++;
-          if (apply)
-            yData.set("params", {
-              ...params,
-              routingPort: DEFAULT_ROUTING_PORT,
-            });
-        }
       });
     }
 
     const yEdges = yWorkflow.get("edges");
     if (yEdges instanceof Y.Map) {
+      const edgeEnds = [
+        {
+          handleKey: "sourceHandle",
+          nodeKey: "source",
+          customPorts: customOutputPorts,
+        },
+        {
+          handleKey: "targetHandle",
+          nodeKey: "target",
+          customPorts: customInputPorts,
+        },
+      ];
+
       yEdges.forEach((yEdge) => {
-        for (const key of ["sourceHandle", "targetHandle"]) {
-          const handle = (yEdge as Y.Map<unknown>).get(key);
+        for (const { handleKey, nodeKey, customPorts } of edgeEnds) {
+          const handle = (yEdge as Y.Map<unknown>).get(handleKey);
           if (handle === undefined || String(handle) !== LEGACY_PORT) continue;
+
+          const nodeId = String((yEdge as Y.Map<unknown>).get(nodeKey));
+          // Subworkflow handles are pseudo ports named after routingPorts —
+          // user space, not action-definition ports.
+          if (nodeTypes.get(nodeId) === "subworkflow") continue;
+
+          // Existing routers keep their "default" handles, so their edges
+          // must too.
+          if (routerNodeIds.has(nodeId)) continue;
+
+          if (customPorts.get(nodeId)?.has(LEGACY_PORT)) continue;
+
           count++;
           if (apply)
-            (yEdge as Y.Map<unknown>).set(key, new Y.Text(DEFAULT_EDGE_PORT));
+            (yEdge as Y.Map<unknown>).set(
+              handleKey,
+              new Y.Text(DEFAULT_EDGE_PORT),
+            );
         }
       });
     }

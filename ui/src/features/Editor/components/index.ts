@@ -2,4 +2,4 @@ export { default as OverlayUI } from "./OverlayUI";
 export { default as WorkflowTabs } from "./WorkflowTabs";
 export { default as ParamsDialog } from "./ParamsDialog";
 export { default as NodeDeletionDialog } from "./NodeDeletionDialog";
-export { default as LegacyPortsDialog } from "./LegacyPortsDialog";
+export { default as LegacyMigrationDialog } from "./LegacyMigrationDialog";

@@ -1,6 +1,8 @@
 import {
   DEFAULT_ENTRY_GRAPH_ID,
   DEFAULT_ROUTING_PORT,
+  INPUT_ROUTER_ACTION,
+  OUTPUT_ROUTER_ACTION,
 } from "@flow/global-constants";
 import type {
   Workflow,
@@ -36,10 +38,10 @@ export const separateWorkflow = async ({
     const pseudoOutputs: PseudoPort[] = [];
 
     workflow.nodes.forEach((node) => {
-      if (node.action === "Input Router") {
+      if (node.action === INPUT_ROUTER_ACTION) {
         const port = node.with.routingPort || DEFAULT_ROUTING_PORT;
         pseudoInputs.push({ nodeId: node.id, portName: port });
-      } else if (node.action === "Output Router") {
+      } else if (node.action === OUTPUT_ROUTER_ACTION) {
         const port = node.with.routingPort || DEFAULT_ROUTING_PORT;
         pseudoOutputs.push({ nodeId: node.id, portName: port });
       }

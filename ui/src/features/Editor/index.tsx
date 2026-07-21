@@ -9,7 +9,7 @@ import {
   OverlayUI,
   ParamsDialog,
   NodeDeletionDialog,
-  LegacyPortsDialog,
+  LegacyMigrationDialog,
 } from "./components";
 import { EditorContextType, EditorProvider } from "./editorContext";
 import useHooks from "./hooks";
@@ -99,9 +99,9 @@ export default function Editor({
     handleProjectSnapshotSave,
     isLocked,
     handleProjectLockChange,
-    showLegacyPortsDialog,
-    handleLegacyPortsMigrate,
-    handleLegacyPortsDialogClose,
+    showLegacyMigrationDialog,
+    handleLegacyMigration,
+    handleLegacyMigrationDialogClose,
     handleSpotlightUserSelect,
     handleSpotlightUserDeselect,
     handleNodesDisable,
@@ -275,11 +275,11 @@ export default function Editor({
               onDialogClose={handleDeleteDialogClose}
             />
           )}
-          {showLegacyPortsDialog && !isLocked && (
-            <LegacyPortsDialog
-              isOpen={showLegacyPortsDialog}
-              onClose={handleLegacyPortsDialogClose}
-              onConfirm={handleLegacyPortsMigrate}
+          {showLegacyMigrationDialog && !isLocked && (
+            <LegacyMigrationDialog
+              isOpen={showLegacyMigrationDialog}
+              onClose={handleLegacyMigrationDialogClose}
+              onConfirm={handleLegacyMigration}
             />
           )}
         </div>
