@@ -217,7 +217,7 @@ impl Validate for Polygon3D {
                 &self.frame,
                 self.exterior(),
                 self.interiors(),
-                params.planarity_tolerance,
+                params.planarity,
                 r,
             )
         })
@@ -854,7 +854,48 @@ mod tests {
     }
 
     #[test]
-    fn default_planarity_tolerance_is_the_standard_ratio() {
-        assert_eq!(ValidationParams::default().planarity_tolerance, 0.001);
+    fn default_planarity_is_the_standard_ratio() {
+        assert_eq!(
+            ValidationParams::default().planarity,
+            crate::validation_next::PlanarityThreshold::Ratio(0.001)
+        );
+    }
+
+    #[test]
+    fn max_height_threshold_bounds_absolute_deviation() {
+        // A 4x4 face with one corner lifted 1.0 out of the plane.
+        let lifted = [
+            [0.0, 0.0, 0.0],
+            [4.0, 0.0, 0.0],
+            [4.0, 4.0, 1.0],
+            [0.0, 4.0, 0.0],
+            [0.0, 0.0, 0.0],
+        ];
+        // A tight absolute allowance flags it; a generous one passes. The same
+        // face, judged in metres rather than as a ratio.
+        let strict = ValidationParams {
+            planarity: crate::validation_next::PlanarityThreshold::MaxHeight(0.01),
+            ..Default::default()
+        };
+        assert!(matches!(
+            validate_one(
+                &poly3(lifted, Vec::new()),
+                ValidationType::Planarity,
+                &strict
+            ),
+            ValidationResult::Failed(_)
+        ));
+        let lenient = ValidationParams {
+            planarity: crate::validation_next::PlanarityThreshold::MaxHeight(10.0),
+            ..Default::default()
+        };
+        assert_eq!(
+            validate_one(
+                &poly3(lifted, Vec::new()),
+                ValidationType::Planarity,
+                &lenient
+            ),
+            ValidationResult::Success
+        );
     }
 }

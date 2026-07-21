@@ -118,11 +118,10 @@ pub struct ValidationParams {
     /// [`DuplicatePoints`](ValidationType::DuplicatePoints): `None` = exact bit
     /// equality; `Some(t)` = two coordinates coincide when within distance `t`.
     pub duplicate_tolerance: Option<f64>,
-    /// [`Planarity`](ValidationType::Planarity): the greatest ratio of the face
-    /// vertices' convex-hull minimum height to the hull's diameter before the
-    /// face is non-planar. Dimensionless, so the verdict is scale-invariant;
-    /// defaults to `0.001`.
-    pub planarity_tolerance: f64,
+    /// [`Planarity`](ValidationType::Planarity): how a face's out-of-plane
+    /// deviation is bounded before the face is non-planar. Defaults to the
+    /// standard scale-invariant ratio, [`Ratio(0.001)`](PlanarityThreshold::Ratio).
+    pub planarity: PlanarityThreshold,
     /// [`Degenerate`](ValidationType::Degenerate): the smallest measure a geometry
     /// may have before it counts as degenerate.
     pub degenerate: DegenerateThresholds,
@@ -139,9 +138,34 @@ impl Default for ValidationParams {
     fn default() -> Self {
         Self {
             duplicate_tolerance: None,
-            planarity_tolerance: 0.001,
+            planarity: PlanarityThreshold::Ratio(0.001),
             degenerate: DegenerateThresholds::default(),
             disabled_checks: HashSet::new(),
+        }
+    }
+}
+
+/// How the [`Planarity`](ValidationType::Planarity) check bounds a face's
+/// out-of-plane deviation, measured as the minimum height (width) of the face
+/// vertices' 3D convex hull.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub enum PlanarityThreshold {
+    /// A dimensionless ratio of the hull's minimum height to its diameter, so
+    /// the verdict is scale-invariant. The standard default is `0.001`.
+    Ratio(f64),
+    /// An absolute maximum height in the frame's linear unit (metres).
+    /// Meaningful only in a metric frame, where
+    /// [`Planarity`](ValidationType::Planarity) runs.
+    MaxHeight(f64),
+}
+
+impl PlanarityThreshold {
+    /// The absolute out-of-plane deviation this threshold allows for a hull of
+    /// extent `scale`: the ratio scaled by `scale`, or the fixed height.
+    pub(crate) fn absolute(self, scale: f64) -> f64 {
+        match self {
+            PlanarityThreshold::Ratio(t) => t * scale,
+            PlanarityThreshold::MaxHeight(h) => h,
         }
     }
 }

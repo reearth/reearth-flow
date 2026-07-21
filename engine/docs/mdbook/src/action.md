@@ -5245,6 +5245,19 @@ Validate Feature Geometry Quality
       "items": {
         "$ref": "#/definitions/OptionalCheck"
       }
+    },
+    "planarityThreshold": {
+      "title": "Planarity Threshold",
+      "description": "Optional override for how the planarity check bounds a face's out-of-plane deviation: a scale-invariant `ratio` (the default), or an absolute `maxHeight` in metres (metric frames only). Applies only under the new geometry backend.",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/PlanarityThreshold"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "definitions": {
@@ -5313,6 +5326,39 @@ Validate Feature Geometry Quality
         "orientable",
         "orientation",
         "shellOrientation"
+      ]
+    },
+    "PlanarityThreshold": {
+      "description": "How the planarity check bounds a face's out-of-plane deviation.",
+      "oneOf": [
+        {
+          "description": "Dimensionless ratio of the face's convex-hull minimum height to its diameter; scale-invariant.",
+          "type": "object",
+          "required": [
+            "ratio"
+          ],
+          "properties": {
+            "ratio": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Absolute maximum out-of-plane height, in the coordinate unit (metres). Applied only in a metric frame, where the planarity check runs.",
+          "type": "object",
+          "required": [
+            "maxHeight"
+          ],
+          "properties": {
+            "maxHeight": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "additionalProperties": false
+        }
       ]
     }
   }

@@ -123,6 +123,29 @@ pub enum OptionalCheck {
     ShellOrientation,
 }
 
+/// How the planarity check bounds a face's out-of-plane deviation.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum PlanarityThreshold {
+    /// Dimensionless ratio of the face's convex-hull minimum height to its
+    /// diameter; scale-invariant.
+    Ratio(f64),
+    /// Absolute maximum out-of-plane height, in the coordinate unit (metres).
+    /// Applied only in a metric frame, where the planarity check runs.
+    MaxHeight(f64),
+}
+
+#[cfg(feature = "new-geometry")]
+impl From<PlanarityThreshold> for reearth_flow_geometry::validation_next::PlanarityThreshold {
+    fn from(threshold: PlanarityThreshold) -> Self {
+        use reearth_flow_geometry::validation_next::PlanarityThreshold as Inner;
+        match threshold {
+            PlanarityThreshold::Ratio(r) => Inner::Ratio(r),
+            PlanarityThreshold::MaxHeight(h) => Inner::MaxHeight(h),
+        }
+    }
+}
+
 #[cfg(feature = "new-geometry")]
 impl From<OptionalCheck> for reearth_flow_geometry::validation_next::ValidationType {
     fn from(check: OptionalCheck) -> Self {
@@ -213,6 +236,14 @@ pub struct GeometryValidator {
     #[serde(default)]
     #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
     disabled_optional_checks: Vec<OptionalCheck>,
+
+    /// # Planarity Threshold
+    /// Optional override for how the planarity check bounds a face's out-of-plane deviation:
+    /// a scale-invariant `ratio` (the default), or an absolute `maxHeight` in metres (metric
+    /// frames only). Applies only under the new geometry backend.
+    #[serde(default)]
+    #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
+    planarity_threshold: Option<PlanarityThreshold>,
 }
 
 impl Processor for GeometryValidator {
@@ -297,6 +328,9 @@ impl Processor for GeometryValidator {
         let mut params = ValidationParams::default();
         for check in &self.disabled_optional_checks {
             params.disabled_checks.insert((*check).into());
+        }
+        if let Some(threshold) = self.planarity_threshold {
+            params.planarity = threshold.into();
         }
 
         let mut checks = serde_json::Map::new();
