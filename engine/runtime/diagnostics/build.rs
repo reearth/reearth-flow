@@ -61,8 +61,13 @@ fn lookup(table: &[(&str, &str)], key: &str, what: &str, code: &str) -> proc_mac
 }
 
 fn main() {
-    let registry_dir = PathBuf::from("../../schema/error-codes");
+    // Anchor the registry path off CARGO_MANIFEST_DIR rather than a bare
+    // relative path so codegen resolves the same directory regardless of the
+    // working directory cargo happens to invoke this build script from.
+    let registry_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../schema/error-codes");
     println!("cargo:rerun-if-changed=build.rs");
+    // Watch the directory so that adding or removing a registry file
+    // retriggers codegen. Individual files are watched in the loop below.
     println!("cargo:rerun-if-changed={}", registry_dir.display());
 
     let mut entries: Vec<RegistryEntry> = Vec::new();
@@ -74,6 +79,10 @@ fn main() {
         .collect();
     paths.sort();
     for path in paths {
+        // Watch each registry file so that editing an existing entry
+        // retriggers codegen even on filesystems whose directory mtime does
+        // not change when a contained file is modified.
+        println!("cargo:rerun-if-changed={}", path.display());
         let raw = fs::read_to_string(&path)
             .unwrap_or_else(|e| panic!("failed to read registry file {}: {e}", path.display()));
         let file: RegistryFile = toml::from_str(&raw)

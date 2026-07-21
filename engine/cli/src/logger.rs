@@ -17,12 +17,19 @@ static ENABLE_JSON_LOG: Lazy<bool> = Lazy::new(|| {
         .unwrap_or(false)
 });
 
-/// Gates optional OTel trace/metric export. Absent (the default) means
-/// `setup_logging_and_tracing` never calls into `reearth_flow_telemetry`
-/// at all, so the subscriber stack it builds is byte-identical to the
-/// pre-OTel behavior — zero overhead, no extra layer, no background
-/// exporter threads.
-static OTEL_ENABLED: Lazy<bool> = Lazy::new(|| env::var("OTEL_COLLECTOR_ENDPOINT").is_ok());
+/// Gates optional OTel trace/metric export. Absent OR empty (the default)
+/// means `setup_logging_and_tracing` never calls into
+/// `reearth_flow_telemetry` at all, so the subscriber stack it builds is
+/// byte-identical to the pre-OTel behavior — zero overhead, no extra layer,
+/// no background exporter threads. An empty/whitespace value is treated as
+/// unset: deployment templating routinely materializes optional env vars as
+/// empty strings, and an empty endpoint would otherwise enable OTel only to
+/// fail exporter init.
+static OTEL_ENABLED: Lazy<bool> = Lazy::new(|| {
+    env::var("OTEL_COLLECTOR_ENDPOINT")
+        .map(|v| !v.trim().is_empty())
+        .unwrap_or(false)
+});
 
 /// Holds the OTel SDK providers alive for the process lifetime. Dropping
 /// them without calling `shutdown()` silently discards any spans/metrics
