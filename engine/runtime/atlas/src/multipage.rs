@@ -41,7 +41,10 @@ impl TextureCache {
             Entry::Occupied(e) => Ok(e.into_mut()),
             Entry::Vacant(e) => {
                 let image = image::open(path).map_err(|err| {
-                    AtlasError::builder(format!("Failed to open texture '{}': {err}", path.display()))
+                    AtlasError::builder(format!(
+                        "Failed to open texture '{}': {err}",
+                        path.display()
+                    ))
                 })?;
                 Ok(e.insert(image))
             }
@@ -282,9 +285,14 @@ mod tests {
             path: half_path,
             uvs: full.uvs.clone(),
         };
-        let full_atlas = build_atlas_multipage(std::slice::from_ref(&full), &[1.0], 4096, &mut TextureCache::default())
-            .unwrap()
-            .unwrap();
+        let full_atlas = build_atlas_multipage(
+            std::slice::from_ref(&full),
+            &[1.0],
+            4096,
+            &mut TextureCache::default(),
+        )
+        .unwrap()
+        .unwrap();
         let half_atlas = build_atlas_multipage(&[half], &[0.5], 4096, &mut TextureCache::default())
             .unwrap()
             .unwrap();

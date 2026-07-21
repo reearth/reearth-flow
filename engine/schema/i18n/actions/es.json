@@ -711,6 +711,10 @@
         "": {
           "title": "Parámetros de Cesium3DTilesWriter"
         },
+        "atlasSize": {
+          "title": "Tamaño del Atlas",
+          "description": "Dimensión máxima del atlas de texturas en píxeles. Las texturas que la superan se distribuyen en páginas de atlas adicionales; una sola textura mayor que este valor se reduce para que quepa. El valor predeterminado es 8192."
+        },
         "attachTexture": {
           "title": "Adjuntar Texturas",
           "description": "Si se debe incluir información de textura en los mosaicos generados"
@@ -738,6 +742,10 @@
         "output": {
           "title": "Ruta de Salida",
           "description": "Ruta del directorio donde se escribirán los 3D Tiles"
+        },
+        "resolution": {
+          "title": "Resolución de Textura",
+          "description": "Nivel de detalle de textura objetivo en metros por píxel. Las texturas más finas que este valor se reducen a él, y establece el límite inferior del error geométrico de cada mosaico. El valor predeterminado es 0, que conserva la resolución completa de la textura."
         },
         "schemaKey": {
           "title": "Clave de Esquema",

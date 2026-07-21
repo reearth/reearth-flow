@@ -405,7 +405,9 @@ fn build_textured_pages(
         let mut webp = Vec::new();
         image::DynamicImage::ImageRgba8(image)
             .write_to(&mut Cursor::new(&mut webp), image::ImageFormat::WebP)
-            .map_err(|e| SinkError::Cesium3DTilesWriter(format!("atlas WebP encode failed: {e}")))?;
+            .map_err(|e| {
+                SinkError::Cesium3DTilesWriter(format!("atlas WebP encode failed: {e}"))
+            })?;
         let image = builder.push_image(&webp, "image/webp");
         textures.push(builder.push_texture(
             None,
@@ -491,10 +493,9 @@ fn polygon_metres_per_pixel(
             let (a, b) = (e, (e + 1) % 3);
             let pa = geom.positions[idx[a] as usize];
             let pb = geom.positions[idx[b] as usize];
-            let world = ((pa[0] - pb[0]).powi(2)
-                + (pa[1] - pb[1]).powi(2)
-                + (pa[2] - pb[2]).powi(2))
-            .sqrt();
+            let world =
+                ((pa[0] - pb[0]).powi(2) + (pa[1] - pb[1]).powi(2) + (pa[2] - pb[2]).powi(2))
+                    .sqrt();
             let ua = geom.corner_uv[tri * 3 + a];
             let ub = geom.corner_uv[tri * 3 + b];
             let du = (ua[0] - ub[0]) * tw as f64;

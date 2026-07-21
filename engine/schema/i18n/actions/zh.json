@@ -711,6 +711,10 @@
         "": {
           "title": "Cesium3DTilesWriter 参数"
         },
+        "atlasSize": {
+          "title": "图集大小",
+          "description": "纹理图集的最大尺寸（像素）。超过此值的纹理会分布到额外的图集页；单个大于此值的纹理会被降采样以适配。默认值为 8192。"
+        },
         "attachTexture": {
           "title": "附加纹理",
           "description": "是否在生成的瓦片中包含纹理信息"
@@ -738,6 +742,10 @@
         "output": {
           "title": "输出路径",
           "description": "写入 3D Tiles 的目录路径"
+        },
+        "resolution": {
+          "title": "纹理分辨率",
+          "description": "目标纹理细节（米/像素）。比此值更精细的纹理会被降采样至该值，并作为每个瓦片几何误差的下限。默认值为 0，即保持完整的纹理分辨率。"
         },
         "schemaKey": {
           "title": "模式键",

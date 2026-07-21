@@ -2176,6 +2176,25 @@
               "null"
             ]
           },
+          "resolution": {
+            "title": "Résolution de Texture",
+            "description": "Niveau de détail de texture cible en mètres par pixel. Les textures plus fines que cette valeur y sont sous-échantillonnées, et elle constitue le plancher de l'erreur géométrique de chaque tuile. La valeur par défaut est 0, qui conserve la résolution complète de la texture.",
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "atlasSize": {
+            "title": "Taille de l'Atlas",
+            "description": "Dimension maximale de l'atlas de textures en pixels. Les textures qui la dépassent débordent sur des pages d'atlas supplémentaires ; une seule texture plus grande que cette valeur est sous-échantillonnée pour s'y adapter. La valeur par défaut est 8192.",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "minimum": 0.0
+          },
           "skipUnexposedAttributes": {
             "title": "Ignorer les Attributs non Exposés",
             "description": "Ignorer les attributs avec un préfixe de double trait de soulignement",

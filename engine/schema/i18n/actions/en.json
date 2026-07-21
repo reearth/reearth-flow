@@ -705,6 +705,10 @@
         "": {
           "title": "Cesium3DTilesWriter Parameters"
         },
+        "atlasSize": {
+          "title": "Atlas Size",
+          "description": "Maximum texture atlas dimension in pixels. Textures exceeding this spill onto additional atlas pages; a single texture larger than it is downsampled to fit. Defaults to 8192."
+        },
         "attachTexture": {
           "title": "Attach Textures",
           "description": "Whether to include texture information in the generated tiles"
@@ -732,6 +736,10 @@
         "output": {
           "title": "Output Path",
           "description": "Directory path where the 3D tiles will be written"
+        },
+        "resolution": {
+          "title": "Texture Resolution",
+          "description": "Target texture detail in metres per pixel. Textures finer than this are downsampled to it, and it floors each tile's geometric error. Defaults to 0, which keeps full texture resolution."
         },
         "schemaKey": {
           "title": "Schema Key",

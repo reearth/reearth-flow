@@ -2176,6 +2176,25 @@
               "null"
             ]
           },
+          "resolution": {
+            "title": "纹理分辨率",
+            "description": "目标纹理细节（米/像素）。比此值更精细的纹理会被降采样至该值，并作为每个瓦片几何误差的下限。默认值为 0，即保持完整的纹理分辨率。",
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "atlasSize": {
+            "title": "图集大小",
+            "description": "纹理图集的最大尺寸（像素）。超过此值的纹理会分布到额外的图集页；单个大于此值的纹理会被降采样以适配。默认值为 8192。",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "minimum": 0.0
+          },
           "skipUnexposedAttributes": {
             "title": "跳过未公开属性",
             "description": "跳过带有双下划线前缀的属性",
