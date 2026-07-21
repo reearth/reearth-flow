@@ -153,6 +153,15 @@ pub struct DegenerateThresholds {
     pub min_volume: f64,
 }
 
+/// Why a check was not run despite being applicable.
+#[derive(Serialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SkipReason {
+    /// The geometry is in a non-metric (geographic / angular-unit) frame, so a
+    /// metric-sensitive check (planarity, surface self-intersection) would be
+    /// unreliable. Reproject to a metric CRS to enable it.
+    NonMetricFrame,
+}
+
 /// The outcome of one [`ValidationType`] check on a geometry.
 #[derive(Serialize, Clone, Debug, PartialEq)]
 pub enum ValidationResult {
@@ -162,6 +171,10 @@ pub enum ValidationResult {
     /// check that is applicable but unimplemented panics instead of reaching this
     /// state.)
     Unvalidated,
+    /// The check was deliberately not run for the given [`SkipReason`]; unlike
+    /// [`Unvalidated`](ValidationResult::Unvalidated) this is not a prerequisite
+    /// failure but an unsuitable input the caller can fix.
+    Skipped(SkipReason),
     /// The check ran and found problems; each [`Geometry`] pinpoints a failing
     /// position (the failed port).
     Failed(Vec<Geometry>),
@@ -223,32 +236,56 @@ impl ValidationReport {
 /// prerequisites passed; it is invoked at most once per check.
 pub(crate) fn run_checks(
     applicable: &[ValidationType],
+    is_metric: bool,
     mut run_one: impl FnMut(ValidationType) -> ValidationReport,
 ) -> ValidationResults {
     let applicable_set: HashSet<ValidationType> = applicable.iter().copied().collect();
     let mut results = ValidationResults::new();
     for &check in applicable {
-        resolve(check, &applicable_set, &mut results, &mut run_one);
+        resolve(
+            check,
+            &applicable_set,
+            is_metric,
+            &mut results,
+            &mut run_one,
+        );
     }
     results
 }
 
+/// Checks that are only meaningful in a metric (linear-unit) frame and are
+/// [`Skipped`](ValidationResult::Skipped) on a non-metric one. The surface
+/// self-intersection scan is guarded inside the mesh/solid checks (its ring-level
+/// part is exact and stays valid), so [`SelfIntersection`](ValidationType::SelfIntersection)
+/// is not listed here.
+fn is_metric_required(check: ValidationType) -> bool {
+    matches!(check, ValidationType::Planarity)
+}
+
 /// Resolve one check, recursing into its applicable prerequisites first. A check
-/// is [`Unvalidated`](ValidationResult::Unvalidated) when any applicable
-/// prerequisite did not end in [`Success`](ValidationResult::Success).
+/// is [`Skipped`](ValidationResult::Skipped) when it needs a metric frame and
+/// `is_metric` is false, or [`Unvalidated`](ValidationResult::Unvalidated) when
+/// any applicable prerequisite did not end in
+/// [`Success`](ValidationResult::Success).
 fn resolve(
     check: ValidationType,
     applicable: &HashSet<ValidationType>,
+    is_metric: bool,
     results: &mut ValidationResults,
     run_one: &mut impl FnMut(ValidationType) -> ValidationReport,
 ) -> ValidationResult {
     if let Some(result) = results.get(&check) {
         return result.clone();
     }
+    if is_metric_required(check) && !is_metric {
+        let result = ValidationResult::Skipped(SkipReason::NonMetricFrame);
+        results.insert(check, result.clone());
+        return result;
+    }
     let mut blocked = false;
     for &dep in check.dependencies() {
         if applicable.contains(&dep)
-            && resolve(dep, applicable, results, run_one) != ValidationResult::Success
+            && resolve(dep, applicable, is_metric, results, run_one) != ValidationResult::Success
         {
             blocked = true;
         }
@@ -283,6 +320,8 @@ fn combine_results(a: ValidationResult, b: ValidationResult) -> ValidationResult
         }
         (Failed(xs), _) | (_, Failed(xs)) => Failed(xs),
         (Unvalidated, _) | (_, Unvalidated) => Unvalidated,
+        // A skip is incompleteness, surfaced over a plain success.
+        (Skipped(r), _) | (_, Skipped(r)) => Skipped(r),
         (Success, Success) => Success,
     }
 }
@@ -312,6 +351,13 @@ macro_rules! validation_checks {
             fn applicable_checks(&self) -> &'static [ValidationType] {
                 &[]
             }
+            /// Whether this leaf's coordinate frame is metric (linear units), so
+            /// that [`metric-required`](is_metric_required) checks are meaningful.
+            /// Defaults to `true`; a leaf with a non-metric-capable frame overrides
+            /// it from its own `frame`.
+            fn is_metric(&self) -> bool {
+                true
+            }
             $(
                 $(#[$m])*
                 fn $method(&self, params: &ValidationParams) -> ValidationReport {
@@ -332,6 +378,9 @@ macro_rules! validation_checks {
         impl<T: Validate + ?Sized> Validate for Box<T> {
             fn applicable_checks(&self) -> &'static [ValidationType] {
                 (**self).applicable_checks()
+            }
+            fn is_metric(&self) -> bool {
+                (**self).is_metric()
             }
             $(
                 fn $method(&self, params: &ValidationParams) -> ValidationReport {
@@ -462,7 +511,7 @@ pub(crate) fn validate_leaf<T: Validate + ?Sized>(
     leaf: &T,
     params: &ValidationParams,
 ) -> ValidationResults {
-    run_checks(leaf.applicable_checks(), |check| {
+    run_checks(leaf.applicable_checks(), leaf.is_metric(), |check| {
         dispatch(leaf, check, params)
     })
 }
@@ -479,9 +528,13 @@ pub(crate) fn validate_one<T: Validate + ?Sized>(
 ) -> ValidationResult {
     let applicable: HashSet<ValidationType> = leaf.applicable_checks().iter().copied().collect();
     let mut results = ValidationResults::new();
-    resolve(check, &applicable, &mut results, &mut |c| {
-        dispatch(leaf, c, params)
-    })
+    resolve(
+        check,
+        &applicable,
+        leaf.is_metric(),
+        &mut results,
+        &mut |c| dispatch(leaf, c, params),
+    )
 }
 
 fn validate_2d(g: &Euclidean2DGeometry, params: &ValidationParams) -> ValidationResults {
@@ -530,6 +583,43 @@ fn merge_members(members: impl IntoIterator<Item = ValidationResults>) -> Valida
         merge_results(&mut acc, member);
     }
     acc
+}
+
+/// Whether `geometry` has any metric-sensitive leaf (a 3D polygon, polygon mesh,
+/// or solid) in a non-metric frame, so [`validate`] skipped its planarity or
+/// surface self-intersection. Callers use this to warn that reprojecting to a
+/// metric CRS would enable those checks. Leaves without a metric-sensitive check
+/// never trigger it.
+pub fn has_non_metric_frame(geometry: &Geometry) -> bool {
+    match geometry {
+        Geometry::None | Geometry::Euclidean2D(_) => false,
+        Geometry::Euclidean3D(g) => non_metric_3d(g),
+        Geometry::GeometryCollection(c) => c.members().iter().any(has_non_metric_frame),
+    }
+}
+
+fn non_metric_3d(g: &Euclidean3DGeometry) -> bool {
+    match g {
+        Euclidean3DGeometry::Collection(c) => c.members().iter().any(non_metric_3d),
+        Euclidean3DGeometry::Csg(csg) => csg_non_metric(csg),
+        // Only Polygon3D / PolygonMesh3D / Solid override `is_metric`; every other
+        // leaf reports the `true` default, so it never triggers a warning.
+        leaf => !leaf.is_metric(),
+    }
+}
+
+fn csg_non_metric(csg: &Csg) -> bool {
+    let (left, right) = match csg {
+        Csg::Union(a, b) | Csg::Intersection(a, b) | Csg::Difference(a, b) => (a, b),
+    };
+    csg_operand_non_metric(left) || csg_operand_non_metric(right)
+}
+
+fn csg_operand_non_metric(operand: &ThreeDimensional) -> bool {
+    match operand {
+        ThreeDimensional::Solid(solid) => !solid.is_metric(),
+        ThreeDimensional::Csg(csg) => csg_non_metric(csg),
+    }
 }
 
 /// A ring stored closed (first == last) with its trailing closing vertex

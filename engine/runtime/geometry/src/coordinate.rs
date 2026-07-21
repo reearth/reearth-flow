@@ -117,6 +117,20 @@ impl CoordinateFrame {
             },
         }
     }
+
+    /// Whether coordinates in this frame are in linear (length) units, so that
+    /// metric-sensitive checks (planarity, surface triangulation) are meaningful.
+    /// `Euclidean` and `Tangent` (in-plane metres) are metric; a `Crs` frame is
+    /// metric iff its horizontal axes use a length unit (projected / geocentric),
+    /// not an angular one (geographic degrees). An undeterminable CRS is treated
+    /// as non-metric so the affected checks are skipped rather than trusted.
+    pub fn is_metric(&self) -> bool {
+        match self {
+            CoordinateFrame::Euclidean => true,
+            CoordinateFrame::Tangent(_) => true,
+            CoordinateFrame::Crs(epsg) => crate::ops::crs_is_metric(*epsg).unwrap_or(false),
+        }
+    }
 }
 
 /// The absolute frame a [`TangentPlane`] is anchored in: exactly the non-tangent

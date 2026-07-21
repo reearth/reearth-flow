@@ -1,0 +1,175 @@
+# Same as workflow.yml, but reprojects each building from JGD2011 geographic
+# (EPSG:6697, lon/lat/height) to a local metric CRS (EPSG:6677, JGD2011 Plane
+# Rectangular CS zone IX, meters) BEFORE validating. Comparing the failure counts
+# against workflow.yml shows how many errors are coordinate-anisotropy artifacts.
+#
+# Requires the engine built with `--features new-geometry`.
+# Pass the GML file with `--var cityGmlPath=/absolute/path/to/foo_bldg.gml`.
+id: d1e2f3a4-b5c6-7d8e-9f00-1122334455ff
+name: "Geometry Validation (CityGML3, reprojected)"
+entryGraphId: e2f3a4b5-c6d7-8e9f-0011-2233445566ff
+with:
+  cityGmlPath:
+graphs:
+  - id: e2f3a4b5-c6d7-8e9f-0011-2233445566ff
+    name: main
+    nodes:
+      - id: 11111111-1111-4111-8111-111111111111
+        name: FeatureCreator
+        type: action
+        action: Feature Creator
+        with:
+          creator:
+            type: flowExpr
+            value: |
+              [
+                { "path": env["cityGmlPath"] },
+              ]
+
+      - id: 22222222-2222-4222-8222-222222222222
+        name: FeatureCityGml3Reader
+        type: action
+        action: FeatureCityGml3Reader
+        with:
+          dataset:
+            type: flowExpr
+            value: attributes["path"]
+          extractTags:
+            - bldg:Building
+
+      - id: 88888888-8888-4888-8888-888888888888
+        name: HorizontalReprojector
+        type: action
+        action: Horizontal Reprojector
+        with:
+          targetEpsgCode:
+            type: flowExpr
+            value: "6677"
+
+      - id: 33333333-3333-4333-8333-333333333333
+        name: GeometryValidator
+        type: action
+        action: Geometry Validator
+        with:
+          validationTypes: []
+
+      - id: 44444444-4444-4444-8444-444444444444
+        name: FailedSummary
+        type: action
+        action: Statistics Calculator
+        with:
+          calculations:
+            - newAttribute: invalidFeatures
+              expr:
+                type: flowExpr
+                value: "1"
+            - newAttribute: totalProblems
+              expr:
+                type: flowExpr
+                value: attributes["validationResult"]["errorCount"]
+            - newAttribute: Finite
+              expr:
+                type: flowExpr
+                value: attributes["validationResult"]["checks"].get("Finite", 0)
+            - newAttribute: TooFewPoints
+              expr:
+                type: flowExpr
+                value: attributes["validationResult"]["checks"].get("TooFewPoints", 0)
+            - newAttribute: DuplicatePoints
+              expr:
+                type: flowExpr
+                value: attributes["validationResult"]["checks"].get("DuplicatePoints", 0)
+            - newAttribute: UnclosedRing
+              expr:
+                type: flowExpr
+                value: attributes["validationResult"]["checks"].get("UnclosedRing", 0)
+            - newAttribute: SelfIntersection
+              expr:
+                type: flowExpr
+                value: attributes["validationResult"]["checks"].get("SelfIntersection", 0)
+            - newAttribute: InteriorRingContainment
+              expr:
+                type: flowExpr
+                value: attributes["validationResult"]["checks"].get("InteriorRingContainment", 0)
+            - newAttribute: Degenerate
+              expr:
+                type: flowExpr
+                value: attributes["validationResult"]["checks"].get("Degenerate", 0)
+            - newAttribute: Planarity
+              expr:
+                type: flowExpr
+                value: attributes["validationResult"]["checks"].get("Planarity", 0)
+            - newAttribute: Orientable
+              expr:
+                type: flowExpr
+                value: attributes["validationResult"]["checks"].get("Orientable", 0)
+            - newAttribute: Orientation
+              expr:
+                type: flowExpr
+                value: attributes["validationResult"]["checks"].get("Orientation", 0)
+            - newAttribute: ShellManifold
+              expr:
+                type: flowExpr
+                value: attributes["validationResult"]["checks"].get("ShellManifold", 0)
+            - newAttribute: ShellOrientation
+              expr:
+                type: flowExpr
+                value: attributes["validationResult"]["checks"].get("ShellOrientation", 0)
+
+      - id: 55555555-5555-4555-8555-555555555555
+        name: FailedEcho
+        type: action
+        action: Echo Sink
+
+      - id: 66666666-6666-4666-8666-666666666666
+        name: SuccessSummary
+        type: action
+        action: Statistics Calculator
+        with:
+          calculations:
+            - newAttribute: validFeatures
+              expr:
+                type: flowExpr
+                value: "1"
+
+      - id: 77777777-7777-4777-8777-777777777777
+        name: SuccessEcho
+        type: action
+        action: Echo Sink
+
+    edges:
+      - id: a0000001-0000-4000-8000-000000000001
+        from: 11111111-1111-4111-8111-111111111111
+        to: 22222222-2222-4222-8222-222222222222
+        fromPort: features
+        toPort: features
+      - id: a0000007-0000-4000-8000-000000000007
+        from: 22222222-2222-4222-8222-222222222222
+        to: 88888888-8888-4888-8888-888888888888
+        fromPort: features
+        toPort: features
+      - id: a0000002-0000-4000-8000-000000000002
+        from: 88888888-8888-4888-8888-888888888888
+        to: 33333333-3333-4333-8333-333333333333
+        fromPort: features
+        toPort: features
+      - id: a0000003-0000-4000-8000-000000000003
+        from: 33333333-3333-4333-8333-333333333333
+        to: 44444444-4444-4444-8444-444444444444
+        fromPort: failed
+        toPort: features
+      - id: a0000004-0000-4000-8000-000000000004
+        from: 44444444-4444-4444-8444-444444444444
+        to: 55555555-5555-4555-8555-555555555555
+        fromPort: features
+        toPort: features
+      - id: a0000005-0000-4000-8000-000000000005
+        from: 33333333-3333-4333-8333-333333333333
+        to: 66666666-6666-4666-8666-666666666666
+        fromPort: success
+        toPort: features
+      - id: a0000006-0000-4000-8000-000000000006
+        from: 66666666-6666-4666-8666-666666666666
+        to: 77777777-7777-4777-8777-777777777777
+        fromPort: features
+        toPort: features

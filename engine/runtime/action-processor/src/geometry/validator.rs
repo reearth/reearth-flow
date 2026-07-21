@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 
+#[cfg(not(feature = "new-geometry"))]
 use num_traits::FromPrimitive;
 use once_cell::sync::Lazy;
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::{
     algorithm::{GeoFloat, GeoNum},
     types::{coordnum::CoordNum, geometry::Geometry as FlowGeometry},
@@ -14,6 +16,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_types::{geometry::CityGmlGeometry, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -104,6 +107,7 @@ pub enum ValidationType {
     SelfIntersection(Option<f64>),
 }
 
+#[cfg(not(feature = "new-geometry"))]
 impl From<ValidationType> for reearth_flow_geometry::validation::ValidationType {
     fn from(validation_type: ValidationType) -> Self {
         match validation_type {
@@ -125,12 +129,14 @@ impl From<ValidationType> for reearth_flow_geometry::validation::ValidationType 
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 #[derive(Serialize, Deserialize, Debug, Clone)]
 struct ValidationResult {
     error_count: usize,
     details: Vec<serde_json::Value>,
 }
 
+#[cfg(not(feature = "new-geometry"))]
 impl ValidationResult {
     fn merge(results: Vec<Self>) -> Self {
         let error_count = results.iter().map(|result| result.error_count).sum();
@@ -145,6 +151,7 @@ impl ValidationResult {
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 impl From<ValidationProblemReport> for ValidationResult {
     fn from(report: ValidationProblemReport) -> Self {
         Self {
@@ -164,7 +171,10 @@ impl From<ValidationProblemReport> for ValidationResult {
 #[serde(rename_all = "camelCase")]
 pub struct GeometryValidator {
     /// # Validation Types
-    /// List of validation checks to perform on the geometry (duplicate points, corrupt geometry, self-intersection)
+    /// List of validation checks to perform on the geometry (duplicate points, corrupt geometry, self-intersection).
+    /// Ignored under the new geometry backend, which runs the full validation matrix the geometry crate defines.
+    #[serde(default)]
+    #[cfg_attr(feature = "new-geometry", allow(dead_code))]
     validation_types: Vec<ValidationType>,
 }
 
@@ -211,11 +221,79 @@ impl Processor for GeometryValidator {
         Ok(())
     }
 
+    /// Validate the feature's geometry with the geometry crate's full validation
+    /// matrix. Features with no geometry go to `rejected`, geometries that pass
+    /// every applicable check go to `success`, and geometries with at least one
+    /// failed check go to `failed` carrying a `validationResult` attribute (the
+    /// total problem count and a per-check problem count).
+    #[cfg(feature = "new-geometry")]
+    fn process(
+        &mut self,
+        ctx: ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        use reearth_flow_geometry::validation_next::{
+            has_non_metric_frame, validate, ValidationResult,
+        };
+        use reearth_flow_geometry::Geometry;
+
+        let feature = &ctx.feature;
+        if matches!(feature.geometry.as_ref(), Geometry::None) {
+            fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+            return Ok(());
+        }
+
+        // Metric-sensitive checks (planarity, 3D surface self-intersection) are
+        // skipped on a non-metric CRS; tell the user how to enable them.
+        if has_non_metric_frame(feature.geometry.as_ref()) {
+            ctx.event_hub.warn_log(
+                Some(ctx.info_span()),
+                format!(
+                    "Feature {}: geometry is in a non-metric (geographic) CRS; \
+                     planarity and 3D surface self-intersection were skipped. \
+                     Reproject to a metric CRS to enable them.",
+                    feature.id
+                ),
+            );
+        }
+
+        let mut checks = serde_json::Map::new();
+        let mut error_count = 0usize;
+        for (check, result) in validate(feature.geometry.as_ref()) {
+            if let ValidationResult::Failed(positions) = result {
+                error_count += positions.len();
+                checks.insert(check.to_string(), serde_json::json!(positions.len()));
+            }
+        }
+
+        if checks.is_empty() {
+            fw.send(ctx.new_with_feature_and_port(feature.clone(), SUCCESS_PORT.clone()));
+        } else {
+            let mut feature = feature.clone();
+            feature.insert(
+                "validationResult",
+                serde_json::json!({ "errorCount": error_count, "checks": checks }).into(),
+            );
+            fw.send(ctx.new_with_feature_and_port(feature, FAILED_PORT.clone()));
+        }
+        Ok(())
+    }
+
+    #[cfg(feature = "new-geometry")]
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        Ok(())
+    }
+
     fn name(&self) -> &str {
         "Geometry Validator"
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 impl GeometryValidator {
     fn process_citygml_geometry(
         &self,

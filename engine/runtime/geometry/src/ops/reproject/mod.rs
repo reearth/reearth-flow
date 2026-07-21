@@ -5,8 +5,8 @@ use crate::error::{Error, Result};
 
 mod ffi;
 
-pub(crate) use ffi::axis_order_sign;
 pub use ffi::ReprojectionCache;
+pub(crate) use ffi::{axis_order_sign, crs_is_metric};
 
 /// Reproject a geometry's coordinates to a target CRS.
 #[enum_dispatch::enum_dispatch]

@@ -134,6 +134,10 @@ impl Validate for Polygon3D {
         &POLYGON_3D_CHECKS
     }
 
+    fn is_metric(&self) -> bool {
+        self.frame.is_metric()
+    }
+
     fn check_finite(&self, _params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| check_finite_3d(&self.frame, self.coords.iter().copied(), r))
     }

@@ -98,6 +98,10 @@ impl Validate for Solid {
         &SOLID_CHECKS
     }
 
+    fn is_metric(&self) -> bool {
+        self.frame.is_metric()
+    }
+
     fn check_finite(&self, _params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
             for shell in self.shells() {
@@ -177,12 +181,18 @@ impl Validate for Solid {
     fn check_self_intersection(&self, _params: &ValidationParams) -> ValidationReport {
         // Per-face ring checks for polygon shells (a proper triangle face is
         // trivially simple), then one global face-vs-face scan across all
-        // shells' triangulated surfaces, so cross-shell pairs are covered.
+        // shells' triangulated surfaces, so cross-shell pairs are covered. The
+        // surface scan triangulates each shell, and triangulation on non-metric
+        // (angular-unit) coordinates is unreliable, so it is skipped there; the
+        // ring checks still run.
         ValidationReport::ran(|r| {
             for shell in self.shells() {
                 if let Shell::PolygonMesh(data) = shell {
                     data.check_ring_self_intersections(&self.frame, r);
                 }
+            }
+            if !self.frame.is_metric() {
+                return;
             }
             let mut cache = Cache::new();
             let sets: Vec<TriangleSet> = self

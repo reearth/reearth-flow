@@ -1,14 +1,21 @@
-use std::{cell::RefCell, collections::HashMap};
+use std::collections::HashMap;
 
+#[cfg(not(feature = "new-geometry"))]
+use std::cell::RefCell;
+
+#[cfg(not(feature = "new-geometry"))]
 use nusamai_projection::crs::EpsgCode;
+#[cfg(not(feature = "new-geometry"))]
 use proj::Proj;
 
 // Thread-local cache for PROJ transformations.
 // Each thread maintains its own cache to ensure thread-safety without requiring
 // unsafe Send/Sync implementations on types containing proj::Proj.
+#[cfg(not(feature = "new-geometry"))]
 thread_local! {
     static PROJ_CACHE: RefCell<HashMap<(String, String), Proj>> = RefCell::new(HashMap::new());
 }
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::types::{
     geometry::{Geometry2D, Geometry3D},
     line::Line,
@@ -26,7 +33,9 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
-use reearth_flow_types::{Code, CodeType, CompiledCode, GeometryValue};
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_types::GeometryValue;
+use reearth_flow_types::{Code, CodeType, CompiledCode};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -34,6 +43,7 @@ use serde_json::Value;
 use super::errors::GeometryProcessorError;
 
 /// Transform a 2D point using proj
+#[cfg(not(feature = "new-geometry"))]
 fn transform_point_2d(point: &Point2D<f64>, proj: &proj::Proj) -> Result<Point2D<f64>, BoxedError> {
     let (x, y) = proj.convert((point.x(), point.y()))?;
     Ok(Point2D::from([x, y]))
@@ -41,6 +51,7 @@ fn transform_point_2d(point: &Point2D<f64>, proj: &proj::Proj) -> Result<Point2D
 
 /// Transform a 3D point using proj
 /// Note: PROJ transforms the X/Y coordinates, Z is passed through unchanged
+#[cfg(not(feature = "new-geometry"))]
 fn transform_point_3d(point: &Point3D<f64>, proj: &proj::Proj) -> Result<Point3D<f64>, BoxedError> {
     let (x, y) = proj.convert((point.x(), point.y()))?;
     // Z coordinate is not transformed by horizontal reprojection
@@ -48,6 +59,7 @@ fn transform_point_3d(point: &Point3D<f64>, proj: &proj::Proj) -> Result<Point3D
 }
 
 /// Transform a 2D geometry using proj
+#[cfg(not(feature = "new-geometry"))]
 fn transform_geometry_2d(
     geom: &Geometry2D<f64>,
     proj: &proj::Proj,
@@ -162,6 +174,7 @@ fn transform_geometry_2d(
 }
 
 /// Transform a 3D geometry using proj
+#[cfg(not(feature = "new-geometry"))]
 fn transform_geometry_3d(
     geom: &Geometry3D<f64>,
     proj: &proj::Proj,
@@ -376,12 +389,16 @@ pub struct HorizontalReprojectorParam {
 
 #[derive(Debug, Clone)]
 pub struct HorizontalReprojector {
+    // The new geometry carries each leaf's source CRS in its coordinate frame, so
+    // the source EPSG parameter is only consulted by the legacy path.
+    #[cfg_attr(feature = "new-geometry", allow(dead_code))]
     source_epsg_ast: Option<CompiledCode>,
     target_epsg_ast: CompiledCode,
 }
 
 /// Helper function to get or create a cached Proj transformation.
 /// Uses thread-local storage to ensure thread-safety.
+#[cfg(not(feature = "new-geometry"))]
 fn get_or_create_proj(from_crs: &str, to_crs: &str) -> Result<(), BoxedError> {
     use std::collections::hash_map::Entry;
     PROJ_CACHE.with(|cache| {
@@ -397,6 +414,7 @@ fn get_or_create_proj(from_crs: &str, to_crs: &str) -> Result<(), BoxedError> {
 
 /// Helper function to use a cached Proj transformation.
 /// The callback receives a reference to the Proj instance.
+#[cfg(not(feature = "new-geometry"))]
 fn with_proj<F, R>(from_crs: &str, to_crs: &str, f: F) -> Result<R, BoxedError>
 where
     F: FnOnce(&Proj) -> Result<R, BoxedError>,
@@ -501,6 +519,48 @@ impl Processor for HorizontalReprojector {
     }
 
     #[cfg(not(feature = "new-geometry"))]
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        Ok(())
+    }
+
+    /// Reproject the feature's geometry to the target EPSG. The source CRS is read
+    /// from each leaf's coordinate frame, so only the target is evaluated here.
+    #[cfg(feature = "new-geometry")]
+    fn process(
+        &mut self,
+        ctx: ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        use reearth_flow_geometry::coordinate::EpsgCode;
+        use reearth_flow_geometry::ops::{Reproject, ReprojectionCache};
+
+        let target = self
+            .target_epsg_ast
+            .eval_int(&ctx.feature, ctx.env_vars.clone())
+            .map_err(|e| {
+                GeometryProcessorError::HorizontalReprojector(format!(
+                    "Failed to evaluate target EPSG expression: {e}"
+                ))
+            })? as u16;
+
+        let mut feature = ctx.feature.clone();
+        let mut geometry = (*feature.geometry).clone();
+        let mut cache = ReprojectionCache::new();
+        geometry
+            .reproject(EpsgCode::new(target), &mut cache)
+            .map_err(|e| {
+                GeometryProcessorError::HorizontalReprojector(format!("Reprojection failed: {e}"))
+            })?;
+        feature.geometry = std::sync::Arc::new(geometry);
+        fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
+        Ok(())
+    }
+
+    #[cfg(feature = "new-geometry")]
     fn finish(
         &mut self,
         _ctx: NodeContext,

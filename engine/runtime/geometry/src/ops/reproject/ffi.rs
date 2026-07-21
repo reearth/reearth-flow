@@ -295,6 +295,121 @@ unsafe fn axis_sign_from_cs(ctx: *mut PJ_CONTEXT, cs: *const PJ, epsg: EpsgCode)
     }
 }
 
+/// Process-wide memoization of CRS linear-unit-ness, keyed by EPSG code. Like
+/// the orientation sign, a CRS's axis units are fixed for the process.
+fn metric_cache() -> &'static RwLock<HashMap<EpsgCode, bool>> {
+    static CACHE: OnceLock<RwLock<HashMap<EpsgCode, bool>>> = OnceLock::new();
+    CACHE.get_or_init(|| RwLock::new(HashMap::new()))
+}
+
+/// Whether `epsg`'s horizontal axes use a linear (length) unit rather than an
+/// angular one: geographic CRSs (degrees) are not linear; projected and
+/// geocentric CRSs (metres) are. Errors when the CRS is unknown.
+///
+/// Memoized per EPSG code.
+pub(crate) fn crs_is_metric(epsg: EpsgCode) -> Result<bool> {
+    if let Some(&metric) = metric_cache().read().get(&epsg) {
+        return Ok(metric);
+    }
+    let metric = crs_is_metric_uncached(epsg)?;
+    metric_cache().write().insert(epsg, metric);
+    Ok(metric)
+}
+
+/// Determine `epsg`'s horizontal-axis unit kind directly from PROJ, without the
+/// cache.
+fn crs_is_metric_uncached(epsg: EpsgCode) -> Result<bool> {
+    // SAFETY: mirrors `axis_order_sign_uncached`; every PROJ object is
+    // null-checked and freed on all paths.
+    unsafe {
+        let ctx = proj_context_create();
+        if ctx.is_null() {
+            return Err(Error::projection("proj_context_create returned null"));
+        }
+        let def = CString::new(format!("EPSG:{epsg}")).map_err(Error::projection)?;
+        let crs = proj_create(ctx, def.as_ptr());
+        if crs.is_null() {
+            let msg = ctx_errno_string(ctx);
+            proj_context_destroy(ctx);
+            return Err(Error::projection(format!(
+                "failed to create CRS EPSG:{epsg}: {msg}"
+            )));
+        }
+        let result = axis_unit_linear_for_crs(ctx, crs, epsg);
+        proj_destroy(crs);
+        proj_context_destroy(ctx);
+        result
+    }
+}
+
+/// Whether a CRS's (horizontal) axes use a linear unit, descending into a
+/// compound CRS's horizontal sub-CRS when needed.
+// SAFETY: `ctx` and `crs` must be valid, non-null PROJ objects.
+unsafe fn axis_unit_linear_for_crs(
+    ctx: *mut PJ_CONTEXT,
+    crs: *const PJ,
+    epsg: EpsgCode,
+) -> Result<bool> {
+    let cs = proj_crs_get_coordinate_system(ctx, crs);
+    if !cs.is_null() {
+        let result = axis_unit_linear_from_cs(ctx, cs, epsg);
+        proj_destroy(cs);
+        return result;
+    }
+    let horizontal = proj_crs_get_sub_crs(ctx, crs, 0);
+    if horizontal.is_null() {
+        return Err(Error::projection(format!(
+            "EPSG:{epsg} has no coordinate system: {}",
+            ctx_errno_string(ctx)
+        )));
+    }
+    let cs = proj_crs_get_coordinate_system(ctx, horizontal);
+    let result = if cs.is_null() {
+        Err(Error::projection(format!(
+            "EPSG:{epsg} horizontal sub-CRS has no coordinate system: {}",
+            ctx_errno_string(ctx)
+        )))
+    } else {
+        let linear = axis_unit_linear_from_cs(ctx, cs, epsg);
+        proj_destroy(cs);
+        linear
+    };
+    proj_destroy(horizontal);
+    result
+}
+
+/// Whether a coordinate system's first axis uses a linear (length) unit, read
+/// from its PROJ unit name.
+// SAFETY: `ctx` and `cs` must be valid, non-null PROJ objects.
+unsafe fn axis_unit_linear_from_cs(
+    ctx: *mut PJ_CONTEXT,
+    cs: *const PJ,
+    epsg: EpsgCode,
+) -> Result<bool> {
+    let mut unit_name: *const c_char = ptr::null();
+    let ok = proj_cs_get_axis_info(
+        ctx,
+        cs,
+        0,
+        ptr::null_mut(),
+        ptr::null_mut(),
+        ptr::null_mut(),
+        ptr::null_mut(),
+        &mut unit_name,
+        ptr::null_mut(),
+        ptr::null_mut(),
+    );
+    if ok == 0 || unit_name.is_null() {
+        return Err(Error::projection(format!("EPSG:{epsg} axis 0 has no unit")));
+    }
+    let unit = CStr::from_ptr(unit_name)
+        .to_string_lossy()
+        .to_ascii_lowercase();
+    // Angular units (degree, grad, radian) are the anisotropy problem; any
+    // linear unit (metre, foot, …) is fine for the ratio / triangulation checks.
+    Ok(!(unit.contains("degree") || unit.contains("grad") || unit.contains("radian")))
+}
+
 /// Map a PROJ axis direction to its `(row, sign)` in the canonical
 /// `(East, North, Up)` basis, or `None` if it is not aligned to an axis.
 ///
@@ -349,6 +464,16 @@ mod tests {
     #[test]
     fn unknown_crs_errors() {
         assert!(axis_order_sign(EpsgCode::new(1)).is_err());
+    }
+
+    #[test]
+    fn geographic_is_not_metric_projected_is() {
+        let m = |code: u16| crs_is_metric(EpsgCode::new(code)).unwrap();
+        assert!(!m(4326)); // WGS84 geographic (degrees)
+        assert!(!m(6697)); // JGD2011 + height (degrees)
+        assert!(m(6677)); // JGD2011 plane rectangular IX (metres)
+        assert!(m(3857)); // Web Mercator (metres)
+        assert!(crs_is_metric(EpsgCode::new(1)).is_err());
     }
 
     #[test]
