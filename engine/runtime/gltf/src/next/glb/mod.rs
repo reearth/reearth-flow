@@ -11,6 +11,7 @@
 //! layer that builds Cesium's metadata extensions on top of this.
 
 mod primitive;
+mod texture;
 
 use std::borrow::Cow;
 use std::collections::{BTreeMap, HashSet};
@@ -18,14 +19,18 @@ use std::collections::{BTreeMap, HashSet};
 use gltf::json;
 use gltf::json::validation::{Checked, USize64};
 
-pub use primitive::{normal, DedupAttribute, Granularity};
+pub use primitive::{normal, texcoord, DedupAttribute, Granularity};
+pub use texture::{ImageRef, MagFilter, MinFilter, SamplerDesc, TextureRef, Wrap};
 
-/// A material's PBR metallic-roughness factors; each primitive is untextured
-/// and single-material.
+/// A material's PBR metallic-roughness description: the base factors, plus an
+/// optional base-color texture. A textured material's primitive must also carry
+/// a `TEXCOORD_0` attribute (see [`texcoord`]) for the texture to sample.
 pub struct MaterialDesc {
     pub base_color_factor: [f32; 4],
     pub metallic_factor: f32,
     pub roughness_factor: f32,
+    /// `baseColorTexture`; `None` for a colour-only material.
+    pub base_color_texture: Option<TextureRef>,
 }
 
 /// Opaque handle to a primitive pushed via [`Builder::push_primitive`], for
@@ -104,6 +109,14 @@ impl Builder {
             extensions: Default::default(),
             extras: Default::default(),
         })
+    }
+
+    /// Mark `name` in both `extensionsUsed` and `extensionsRequired`.
+    pub fn require_extension(&mut self, name: &'static str) {
+        self.mark_extension_used(name);
+        if !self.root.extensions_required.iter().any(|n| n == name) {
+            self.root.extensions_required.push(name.to_string());
+        }
     }
 
     /// Append a `VEC3` f32 accessor (positions or normals); `with_bounds`

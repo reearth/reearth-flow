@@ -322,7 +322,7 @@ fn decode_into(buf: &IndexBuffer<1>, out: &mut Vec<u32>) {
 /// `face_indices` for triangulation. Fills `open_src` with the face-local position
 /// of each corner (each ring's closing duplicate dropped) and `holes` with the
 /// start offset of each hole ring into `open_src`.
-fn build_open_rings(
+pub(crate) fn build_open_rings(
     face_indices: &[u32],
     interior_offsets: &[u32],
     start: usize,

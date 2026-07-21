@@ -717,6 +717,10 @@ fn resolve_uri(source_url: &Url, image: &str) -> Option<Uri> {
 
 /// Parse whitespace-separated `u v` pairs; `None` if any token is unparseable or
 /// the count is not even.
+///
+/// CityGML texture coordinates are bottom-left (v up); flow's canonical UV origin
+/// is top-left (see [`reearth_flow_geometry::appearance::uv`]). This ingest
+/// boundary is where the two reconcile, so `v` is flipped to `1 - v` here.
 fn parse_uv(text: &str) -> Option<Vec<[f64; 2]>> {
     let values: Option<Vec<f64>> = text
         .split_whitespace()
@@ -726,7 +730,7 @@ fn parse_uv(text: &str) -> Option<Vec<[f64; 2]>> {
     if values.is_empty() || !values.len().is_multiple_of(2) {
         return None;
     }
-    Some(values.chunks_exact(2).map(|c| [c[0], c[1]]).collect())
+    Some(values.chunks_exact(2).map(|c| [c[0], 1.0 - c[1]]).collect())
 }
 
 /// Iterate a node's element children.
@@ -880,7 +884,8 @@ mod tests {
         };
         // The ring's four (closed) vertices each carry a UV pair.
         assert_eq!(coords.len(), 4);
-        assert_eq!(coords[1], [1.0, 0.0]);
+        // Source `1 0` (bottom-left); flipped to top-left at ingest.
+        assert_eq!(coords[1], [1.0, 1.0]);
     }
 
     /// The sampler of the polygon's diffuse texture when its `ParameterizedTexture`
@@ -1343,7 +1348,8 @@ mod tests {
         let UvSource::Explicit(coords) = &back.uv else {
             panic!("explicit");
         };
-        assert_eq!(coords[0], [0.1, 0.1], "back side keeps its own UV");
+        // Source `0.1 0.1` (bottom-left); flipped to top-left at ingest.
+        assert_eq!(coords[0], [0.1, 0.9], "back side keeps its own UV");
     }
 
     #[test]
@@ -1458,7 +1464,8 @@ mod tests {
             panic!("expected explicit UV");
         };
         assert_eq!(coords.len(), 4);
-        assert_eq!(coords[1], [1.0, 0.0]);
+        // Source `1 0` (bottom-left); flipped to top-left at ingest.
+        assert_eq!(coords[1], [1.0, 1.0]);
     }
 
     /// The `TriangularMesh` of a feature whose sole geometry is a
@@ -1542,7 +1549,8 @@ mod tests {
         };
         // One UV per triangle corner: the two triangles' first three coordinates.
         assert_eq!(coords.len(), 6);
-        assert_eq!(coords[3], [1.0, 0.0], "second triangle's first corner");
+        // Source `1 0` (bottom-left); flipped to top-left at ingest.
+        assert_eq!(coords[3], [1.0, 1.0], "second triangle's first corner");
     }
 
     /// A texture targeting the surface but referencing a ring id no triangle carries

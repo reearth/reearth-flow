@@ -7,6 +7,8 @@ use reearth_flow_geometry::polygon_mesh::PolygonMesh3D;
 use reearth_flow_geometry::solid::Shell;
 use reearth_flow_geometry::{Euclidean3DGeometry, Geometry};
 
+use super::appearance::{self, ResolvedMaterial};
+
 /// WGS84, 3D geographic (lat, lon, height) — used for the tileset's bounding region.
 const WGS84_GEOGRAPHIC: EpsgCode = EpsgCode::new(4979);
 /// WGS84, geocentric (ECEF) — used for glTF vertex positions.
@@ -39,6 +41,15 @@ pub(super) struct ExtractedMesh {
     pub(super) polygon_normals: Vec<[f64; 3]>,
     /// Output triangle count per source polygon, parallel to `polygon_normals`.
     pub(super) polygon_tris: Vec<u32>,
+    /// Material palette resolved under the default theme, front side (empty when
+    /// the mesh carries no appearance); `triangle_material` indexes it.
+    pub(super) materials: Vec<ResolvedMaterial>,
+    /// Per output-triangle palette index (parallel to `indices`); `None` =
+    /// unbound face, which renders with the writer's default material.
+    pub(super) triangle_material: Vec<Option<u32>>,
+    /// Per output-corner base-map UV, length `3 * indices.len()`; `[0.0, 0.0]`
+    /// where the triangle is untextured.
+    pub(super) corner_uv: Vec<[f64; 2]>,
 }
 
 /// Extract and reproject every `PolygonMesh` reachable from `geometry`, merged
@@ -57,6 +68,9 @@ pub(super) fn extract(geometry: &Geometry, caches: &mut ExtractCaches) -> Option
         indices: Vec::new(),
         polygon_normals: Vec::new(),
         polygon_tris: Vec::new(),
+        materials: Vec::new(),
+        triangle_material: Vec::new(),
+        corner_uv: Vec::new(),
     };
 
     for mesh in meshes {
@@ -76,6 +90,16 @@ pub(super) fn extract(geometry: &Geometry, caches: &mut ExtractCaches) -> Option
             .extend(extracted.geographic_vertices);
         combined.polygon_normals.extend(extracted.polygon_normals);
         combined.polygon_tris.extend(extracted.polygon_tris);
+        // Offset this mesh's binding indices into the running merged palette.
+        let material_base = combined.materials.len() as u32;
+        combined.triangle_material.extend(
+            extracted
+                .triangle_material
+                .into_iter()
+                .map(|opt| opt.map(|m| m + material_base)),
+        );
+        combined.materials.extend(extracted.materials);
+        combined.corner_uv.extend(extracted.corner_uv);
     }
 
     if combined.ecef_vertices.is_empty() {
@@ -171,12 +195,34 @@ fn extract_one(mut mesh: PolygonMesh3D, caches: &mut ExtractCaches) -> Option<Ex
         }
     };
 
+    let indices: Vec<[u32; 3]> = result.mesh.triangles().collect();
+    // Resolve appearance onto the triangulated mesh, or fall back to a fully
+    // unbound / untextured mesh so the merge in `extract` stays uniform.
+    let (materials, triangle_material, corner_uv) = match result.mesh.appearance() {
+        Some(app) => {
+            let resolved = appearance::resolve(app, indices.len());
+            (
+                resolved.materials,
+                resolved.triangle_material,
+                resolved.corner_uv,
+            )
+        }
+        None => (
+            Vec::new(),
+            vec![None; indices.len()],
+            vec![[0.0, 0.0]; indices.len() * 3],
+        ),
+    };
+
     Some(ExtractedMesh {
         ecef_vertices: result.mesh.vertices().to_vec(),
         geographic_vertices,
-        indices: result.mesh.triangles().collect(),
+        indices,
         polygon_normals: result.polygon_normals,
         polygon_tris: result.polygon_tris,
+        materials,
+        triangle_material,
+        corner_uv,
     })
 }
 

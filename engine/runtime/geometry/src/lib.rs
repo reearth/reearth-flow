@@ -33,10 +33,12 @@ pub mod csg;
 pub mod index;
 pub mod line_string;
 pub mod ops;
+pub mod overlay;
 pub mod point;
 pub mod point_cloud;
 pub mod polygon;
 pub mod polygon_mesh;
+pub mod predicates;
 pub mod solid;
 pub mod triangular_mesh;
 #[cfg(feature = "new-geometry")]
@@ -135,6 +137,12 @@ impl GeometryCollection {
     /// The members, in order.
     pub fn members(&self) -> &[Geometry] {
         &self.members
+    }
+
+    /// Per-member attributes, parallel to [`members`](Self::members), or empty
+    /// if no member carries any.
+    pub fn member_attributes(&self) -> &[Attributes] {
+        &self.attrs
     }
 }
 
