@@ -1,6 +1,6 @@
-//! Packing-efficiency benchmark for the multi-page packer. Efficiency is
-//! measured against full `atlas_size^2 * page_count` pages, not the cropped
-//! page images: the new-geometry path stores every page at the full atlas size.
+//! Packing-efficiency benchmark for the multi-page packer. Efficiency uses a
+//! full-page budget (`atlas_size^2 * page_count`), matching the planned no-crop
+//! model; the packer itself still crops pages today.
 //!
 //! With an output path as the first argument, writes a self-contained HTML page
 //! showing the packed pages for the first `RESULTS_PER_TEST` trials per test.
@@ -53,10 +53,10 @@ fn run(
     let mut trials: Vec<Trial> = Vec::new();
 
     let tmp = tempfile::TempDir::new().expect("create temp dir for generated textures");
-    let mut cache = TextureCache::default();
 
     for trial in 0..TOTAL {
         let dims = sample_fn(&mut state);
+        let mut cache = TextureCache::default();
 
         let mut materials: Vec<TextureInput> = Vec::with_capacity(dims.len());
         let mut packed_pixels: u64 = 0;
@@ -69,11 +69,11 @@ fn run(
             materials.push(TextureInput {
                 path,
                 uvs: vec![vec![[0.0, 0.0], [1.0, 0.0], [1.0, 1.0], [0.0, 1.0]]],
+                scale: 1.0,
             });
         }
 
-        let scales = vec![1.0f64; materials.len()];
-        match build_atlas_multipage(&materials, &scales, MAX_ATLAS_SIZE, &mut cache) {
+        match build_atlas_multipage(&materials, MAX_ATLAS_SIZE, &mut cache) {
             Ok(Some(built)) => {
                 let pages = built.pages.len();
                 let budget = (MAX_ATLAS_SIZE as f64).powi(2) * pages as f64;

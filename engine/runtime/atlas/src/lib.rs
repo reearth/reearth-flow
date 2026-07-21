@@ -1,17 +1,24 @@
 mod blit;
 mod damage;
 mod error;
+#[cfg(feature = "new-geometry")]
 mod multipage;
+#[cfg(not(feature = "new-geometry"))]
 mod plan;
 mod skyline;
 
+#[cfg(not(feature = "new-geometry"))]
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+#[cfg(not(feature = "new-geometry"))]
 use damage::{collect_damage, TextureDamage};
 pub use error::{AtlasError, Result};
+#[cfg(not(feature = "new-geometry"))]
 use image::RgbaImage;
+#[cfg(feature = "new-geometry")]
 pub use multipage::{build_atlas_multipage, MultiPageAtlas, PolygonPlacement, TextureCache};
+#[cfg(not(feature = "new-geometry"))]
 pub use plan::plan_layout;
 
 pub type PolygonUVs = Vec<[f64; 2]>;
@@ -51,9 +58,14 @@ impl Rect {
 pub struct TextureInput {
     pub path: PathBuf,
     pub uvs: TextureUVs,
+    /// Fraction of native resolution to keep when packing (`(0, 1]`; `1.0` =
+    /// full resolution). Multipage-only: the legacy packer downsamples globally.
+    #[cfg(feature = "new-geometry")]
+    pub scale: f64,
 }
 
 /// Result of a pure layout pass — no image I/O, no blitting.
+#[cfg(not(feature = "new-geometry"))]
 pub struct LayoutPlan {
     pub atlas_width: u32,
     pub atlas_height: u32,
@@ -63,11 +75,13 @@ pub struct LayoutPlan {
     pub placements: Vec<Rect>,
 }
 
+#[cfg(not(feature = "new-geometry"))]
 pub struct BuiltAtlas {
     pub image: RgbaImage,
     pub remapped_uvs: Vec<TextureUVs>,
 }
 
+#[cfg(not(feature = "new-geometry"))]
 pub const MAX_DOWNSAMPLE_K: u32 = 13;
 
 struct RemapContext {
@@ -121,6 +135,7 @@ pub(crate) fn remap_polygon_uvs(
         .collect()
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn build_remapped_uvs(
     materials: &[TextureInput],
     damage_list: &[(PathBuf, TextureDamage)],
@@ -167,6 +182,7 @@ fn build_remapped_uvs(
 /// Pack `materials` into an atlas image and return remapped UVs.
 /// Returns `Ok(None)` if there are no UV polygons to pack (empty materials or all UVs empty).
 /// Returns `Err` if any texture file cannot be read.
+#[cfg(not(feature = "new-geometry"))]
 pub fn build_atlas(materials: &[TextureInput], max_atlas_size: u32) -> Result<Option<BuiltAtlas>> {
     // Stage 1: collect damage rects (reads image headers only).
     let damage_list = collect_damage(materials)?;
@@ -201,7 +217,7 @@ pub fn build_atlas(materials: &[TextureInput], max_atlas_size: u32) -> Result<Op
     }))
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(feature = "new-geometry")))]
 mod tests {
     use super::*;
     use std::path::PathBuf;

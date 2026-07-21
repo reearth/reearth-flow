@@ -79,19 +79,25 @@ struct RegionJob {
     target_h: u32,
 }
 
-/// Pack `materials` into one or more atlas pages. `target_scales` is parallel to
-/// `materials`: each is the fraction of native resolution to keep for that
-/// texture (`(0, 1]`; `1.0` = full resolution, never upsampled). Materials
-/// sharing a path take the largest of their scales.
+/// Pack `materials` into one or more atlas pages. Each material carries the
+/// fraction of native resolution to keep (`TextureInput::scale`, `(0, 1]`; `1.0`
+/// = full resolution, never upsampled); materials sharing a path take the
+/// largest of their scales.
 ///
 /// Returns `Ok(None)` when there is nothing to pack (no UV polygons).
 pub fn build_atlas_multipage(
     materials: &[TextureInput],
-    target_scales: &[f64],
     max_atlas_size: u32,
     cache: &mut TextureCache,
 ) -> Result<Option<MultiPageAtlas>> {
-    debug_assert_eq!(materials.len(), target_scales.len());
+    // A 1×1 region plus its extrusion ring needs `1 + 2*EXTRUSION` pixels, so a
+    // smaller page can never hold even one region.
+    if max_atlas_size < 1 + 2 * EXTRUSION {
+        return Err(AtlasError::builder(format!(
+            "atlas size {max_atlas_size} too small; must be at least {}",
+            1 + 2 * EXTRUSION
+        )));
+    }
 
     let damage_list = collect_damage(materials)?;
     if damage_list.is_empty() {
@@ -101,8 +107,8 @@ pub fn build_atlas_multipage(
     // One scale per source path (a path may be referenced by several
     // materials); keep the largest, i.e. the least downsampling any use asks for.
     let mut scale_by_path: HashMap<&PathBuf, f64> = HashMap::new();
-    for (mat, &scale) in materials.iter().zip(target_scales) {
-        let scale = scale.clamp(f64::MIN_POSITIVE, 1.0);
+    for mat in materials {
+        let scale = mat.scale.clamp(f64::MIN_POSITIVE, 1.0);
         scale_by_path
             .entry(&mat.path)
             .and_modify(|e| *e = e.max(scale))
@@ -243,10 +249,11 @@ mod tests {
     use super::*;
     use tempfile::TempDir;
 
-    fn material(path: PathBuf, uvs: Vec<(f64, f64)>) -> TextureInput {
+    fn material(path: PathBuf, uvs: Vec<(f64, f64)>, scale: f64) -> TextureInput {
         TextureInput {
             path,
             uvs: vec![uvs.into_iter().map(|(u, v)| [u, v]).collect()],
+            scale,
         }
     }
 
@@ -263,8 +270,9 @@ mod tests {
         let a = material(
             write_texture(tmp.path(), "a.png", 64, 64),
             vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
+            1.0,
         );
-        let built = build_atlas_multipage(&[a], &[1.0], 4096, &mut TextureCache::default())
+        let built = build_atlas_multipage(&[a], 4096, &mut TextureCache::default())
             .unwrap()
             .expect("atlas built");
         assert_eq!(built.pages.len(), 1);
@@ -279,21 +287,21 @@ mod tests {
         let full = material(
             write_texture(tmp.path(), "full.png", 256, 256),
             vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
+            1.0,
         );
-        let half_path = full.path.clone();
         let half = TextureInput {
-            path: half_path,
+            path: full.path.clone(),
             uvs: full.uvs.clone(),
+            scale: 0.5,
         };
         let full_atlas = build_atlas_multipage(
             std::slice::from_ref(&full),
-            &[1.0],
             4096,
             &mut TextureCache::default(),
         )
         .unwrap()
         .unwrap();
-        let half_atlas = build_atlas_multipage(&[half], &[0.5], 4096, &mut TextureCache::default())
+        let half_atlas = build_atlas_multipage(&[half], 4096, &mut TextureCache::default())
             .unwrap()
             .unwrap();
         // Downscaling to 0.5 must yield a smaller page than full resolution.
@@ -310,10 +318,11 @@ mod tests {
                 material(
                     write_texture(tmp.path(), &format!("t{i}.png"), 200, 200),
                     vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
+                    1.0,
                 )
             })
             .collect();
-        let built = build_atlas_multipage(&mats, &[1.0, 1.0], 256, &mut TextureCache::default())
+        let built = build_atlas_multipage(&mats, 256, &mut TextureCache::default())
             .unwrap()
             .expect("atlas built");
         assert_eq!(built.pages.len(), 2);
@@ -328,8 +337,9 @@ mod tests {
         let mat = material(
             write_texture(tmp.path(), "big.png", 512, 512),
             vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
+            1.0,
         );
-        let built = build_atlas_multipage(&[mat], &[1.0], 128, &mut TextureCache::default())
+        let built = build_atlas_multipage(&[mat], 128, &mut TextureCache::default())
             .unwrap()
             .expect("atlas built");
         assert_eq!(built.pages.len(), 1);

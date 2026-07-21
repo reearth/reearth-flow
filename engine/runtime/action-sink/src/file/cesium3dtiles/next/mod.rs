@@ -376,6 +376,7 @@ fn build_textured_pages(
             inputs.push(TextureInput {
                 path: path.clone(),
                 uvs: Vec::new(),
+                scale: 1.0,
             });
             inputs.len() - 1
         });
@@ -387,9 +388,12 @@ fn build_textured_pages(
         tri_off += tris as usize;
     }
 
-    let target_scales = texture_target_scales(textured, &inputs, render.resolution);
+    let scales = texture_target_scales(textured, &inputs, render.resolution);
+    for (input, scale) in inputs.iter_mut().zip(scales) {
+        input.scale = scale;
+    }
 
-    let built = match build_atlas_multipage(&inputs, &target_scales, render.atlas_size, textures) {
+    let built = match build_atlas_multipage(&inputs, render.atlas_size, textures) {
         Ok(Some(built)) => built,
         Ok(None) => return Ok(None),
         Err(e) => {
@@ -400,7 +404,7 @@ fn build_textured_pages(
 
     // WebP has no core-glTF fallback image, so the extension is required.
     builder.require_extension("EXT_texture_webp");
-    let mut textures = Vec::with_capacity(built.pages.len());
+    let mut page_textures = Vec::with_capacity(built.pages.len());
     for image in built.pages {
         let mut webp = Vec::new();
         image::DynamicImage::ImageRgba8(image)
@@ -409,7 +413,7 @@ fn build_textured_pages(
                 SinkError::Cesium3DTilesWriter(format!("atlas WebP encode failed: {e}"))
             })?;
         let image = builder.push_image(&webp, "image/webp");
-        textures.push(builder.push_texture(
+        page_textures.push(builder.push_texture(
             None,
             ATLAS_SAMPLER,
             vec![(
@@ -423,7 +427,7 @@ fn build_textured_pages(
         textured,
         &built.remapped,
         &slots,
-        textures,
+        page_textures,
     )))
 }
 
