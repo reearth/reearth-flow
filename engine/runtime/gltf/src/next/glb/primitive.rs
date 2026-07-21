@@ -7,6 +7,19 @@ use gltf::json;
 
 use super::{Builder, Extension, MaterialDesc, PrimitiveHandle};
 
+/// A per-corner UV (`TEXCOORD_0`), folded into [`Builder::push_primitive`]'s
+/// vertex dedup so corners sharing a position/normal but differing in UV are
+/// kept distinct. `values` is one entry per polygon-vertex, resolved against
+/// `push_primitive`'s `corner_src`.
+pub fn texcoord(values: Vec<[f32; 2]>) -> Box<dyn DedupAttribute> {
+    Box::new(DedupValue {
+        semantic: json::mesh::Semantic::TexCoords(0),
+        granularity: Granularity::PerPolygonCorner,
+        values,
+        out_values: Vec::new(),
+    })
+}
+
 pub(super) struct PrimitiveBuilder {
     pub(super) positions: Vec<[f32; 3]>,
     pub(super) dedup_attrs: Vec<Box<dyn DedupAttribute>>,
@@ -185,11 +198,18 @@ impl Builder {
             }
         }
 
+        let base_color_texture = material.base_color_texture.map(|tex| json::texture::Info {
+            index: tex.index(),
+            tex_coord: 0,
+            extensions: Default::default(),
+            extras: Default::default(),
+        });
         let material_index = self.root.push(json::Material {
             pbr_metallic_roughness: json::material::PbrMetallicRoughness {
                 base_color_factor: json::material::PbrBaseColorFactor(material.base_color_factor),
                 metallic_factor: json::material::StrengthFactor(material.metallic_factor),
                 roughness_factor: json::material::StrengthFactor(material.roughness_factor),
+                base_color_texture,
                 ..Default::default()
             },
             ..Default::default()
@@ -235,6 +255,7 @@ mod tests {
             base_color_factor: [1.0, 1.0, 1.0, 1.0],
             metallic_factor: 0.0,
             roughness_factor: 1.0,
+            base_color_texture: None,
         }
     }
 

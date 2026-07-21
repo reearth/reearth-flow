@@ -84,12 +84,12 @@
       ]
     },
     {
-      "name": "AreaOnAreaOverlayer",
+      "name": "Area On Area Overlayer",
       "type": "processor",
       "description": "Perform Area Overlay Analysis",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "AreaOnAreaOverlayer Parameters",
+        "title": "Area On Area Overlayer Parameters",
         "description": "Configure how area overlay analysis is performed",
         "type": "object",
         "properties": {
@@ -336,6 +336,46 @@
       ]
     },
     {
+      "name": "Attribute Bulk Array Joiner",
+      "type": "processor",
+      "description": "Join Array Attributes Into Single Values",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Attribute Bulk Array Joiner Parameters",
+        "description": "Configure which array attributes to join into single values",
+        "type": "object",
+        "properties": {
+          "ignoreAttributes": {
+            "title": "Attributes to Ignore",
+            "description": "List of attribute names to skip during array joining process",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Attribute"
+      ],
+      "tags": []
+    },
+    {
       "name": "Attribute Conversion Table",
       "type": "processor",
       "description": "Transform Feature Attributes Using Lookup Tables",
@@ -463,6 +503,86 @@
       "tags": [
         "mapping"
       ]
+    },
+    {
+      "name": "Attribute Duplicate Filter",
+      "type": "processor",
+      "description": "Remove Duplicate Features Based on Attribute Values",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Attribute Duplicate Filter Parameters",
+        "type": "object",
+        "required": [
+          "filterBy"
+        ],
+        "properties": {
+          "filterBy": {
+            "title": "Filter Attributes",
+            "description": "Attributes used to identify duplicate features - features with identical values for these attributes will be deduplicated",
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Attribute"
+      ],
+      "tags": []
+    },
+    {
+      "name": "Attribute File Path Info Extractor",
+      "type": "processor",
+      "description": "Extract File System Information from Path Attributes",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Attribute File Path Info Extractor Parameters",
+        "type": "object",
+        "required": [
+          "attribute"
+        ],
+        "properties": {
+          "attribute": {
+            "title": "Source Path Attribute",
+            "description": "Attribute containing the file path to analyze for extracting file system information",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
+      ],
+      "categories": [
+        "Attribute"
+      ],
+      "tags": []
     },
     {
       "name": "Attribute Flattener",
@@ -715,132 +835,12 @@
       ]
     },
     {
-      "name": "AttributeBulkArrayJoiner",
-      "type": "processor",
-      "description": "Join Array Attributes Into Single Values",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "AttributeBulkArrayJoiner Parameters",
-        "description": "Configure which array attributes to join into single values",
-        "type": "object",
-        "properties": {
-          "ignoreAttributes": {
-            "title": "Attributes to Ignore",
-            "description": "List of attribute names to skip during array joining process",
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/definitions/Attribute"
-            }
-          }
-        },
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "features"
-      ],
-      "categories": [
-        "Attribute"
-      ],
-      "tags": []
-    },
-    {
-      "name": "AttributeDuplicateFilter",
-      "type": "processor",
-      "description": "Remove Duplicate Features Based on Attribute Values",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "AttributeDuplicateFilter Parameters",
-        "type": "object",
-        "required": [
-          "filterBy"
-        ],
-        "properties": {
-          "filterBy": {
-            "title": "Filter Attributes",
-            "description": "Attributes used to identify duplicate features - features with identical values for these attributes will be deduplicated",
-            "type": "array",
-            "items": {
-              "$ref": "#/definitions/Attribute"
-            }
-          }
-        },
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "features"
-      ],
-      "categories": [
-        "Attribute"
-      ],
-      "tags": []
-    },
-    {
-      "name": "AttributeFilePathInfoExtractor",
-      "type": "processor",
-      "description": "Extract File System Information from Path Attributes",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "AttributeFilePathInfoExtractor Parameters",
-        "type": "object",
-        "required": [
-          "attribute"
-        ],
-        "properties": {
-          "attribute": {
-            "title": "Source Path Attribute",
-            "description": "Attribute containing the file path to analyze for extracting file system information",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "features",
-        "rejected"
-      ],
-      "categories": [
-        "Attribute"
-      ],
-      "tags": []
-    },
-    {
-      "name": "AttributeRangeMapper",
+      "name": "Attribute Range Mapper",
       "type": "processor",
       "description": "Mapper les valeurs d'attributs aux plages et attribuer les valeurs de sortie correspondantes",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "AttributeRangeMapper Parameters",
+        "title": "Attribute Range Mapper Parameters",
         "type": "object",
         "required": [
           "inputAttribute",
@@ -914,12 +914,12 @@
       "tags": []
     },
     {
-      "name": "BoundaryExtractor",
+      "name": "Boundary Extractor",
       "type": "processor",
       "description": "Extrait la limite des géométries. Pour les solides/maillages, retourne les surfaces limites ; pour les surfaces, retourne les arêtes limites ; pour les surfaces fermées, retourne une géométrie vide",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "BoundaryExtractor Parameters",
+        "title": "Boundary Extractor Parameters",
         "description": "Configuration for extracting boundaries from geometries.",
         "type": "object",
         "properties": {
@@ -1253,9 +1253,9 @@
       "tags": []
     },
     {
-      "name": "CSGBuilder",
+      "name": "CSG Builder",
       "type": "processor",
-      "description": "Construit une représentation de Géométrie Solide Constructive (CSG) à partir d'une paire (Gauche, Droite) de géométries solides. Détecte l'union, l'intersection et la différence (Gauche - Droite), mais ne calcule pas la géométrie résultante. Utilisez CSGEvaluator pour évaluer l'arbre CSG.",
+      "description": "Construit une représentation de Géométrie Solide Constructive (CSG) à partir d'une paire (Gauche, Droite) de géométries solides. Détecte l'union, l'intersection et la différence (Gauche - Droite), mais ne calcule pas la géométrie résultante. Utilisez CSG Evaluator pour évaluer l'arbre CSG.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CSG Builder Parameters",
@@ -1321,7 +1321,7 @@
       "tags": []
     },
     {
-      "name": "CSGEvaluator",
+      "name": "CSG Evaluator",
       "type": "processor",
       "description": "Évalue un arbre de Géométrie Solide Constructive (CSG) pour produire une géométrie solide. Prend une représentation CSG et calcule le maillage résultant des opérations booléennes.",
       "parameter": {
@@ -1724,12 +1724,305 @@
       ]
     },
     {
-      "name": "CenterPointReplacer",
+      "name": "CZML Reader",
+      "type": "source",
+      "description": "Lit les entités géographiques à partir de fichiers CZML (langage Cesium) pour la visualisation 3D, avec prise en charge des propriétés dynamiques dans le temps et des données de séries temporelles",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "CZML Reader Parameters",
+        "description": "Configuration for reading CZML files as geographic features.",
+        "type": "object",
+        "properties": {
+          "force2d": {
+            "title": "Force 2D",
+            "description": "If true, forces all geometries to be 2D (ignoring Z values)",
+            "default": false,
+            "type": "boolean"
+          },
+          "skipDocumentPacket": {
+            "title": "Skip Document Packet",
+            "description": "If true, skips the document packet (first packet with version/clock info)",
+            "default": true,
+            "type": "boolean"
+          },
+          "timeSampling": {
+            "title": "Time Sampling Strategy",
+            "description": "How to handle time-dynamic properties in CZML packets. Defaults to \"preserveRaw\" for lossless round-trip with CZML Writer.",
+            "default": "preserveRaw",
+            "allOf": [
+              {
+                "$ref": "#/definitions/TimeSamplingStrategy"
+              }
+            ]
+          },
+          "dataset": {
+            "title": "File Path",
+            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "inline": {
+            "title": "Inline Content",
+            "description": "Expression that returns the file content as text instead of reading from a file path",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        },
+        "definitions": {
+          "TimeSamplingStrategy": {
+            "description": "Strategy for handling time-dynamic CZML properties.",
+            "oneOf": [
+              {
+                "description": "Extract all time-tagged samples as separate features, each with a `czml.timestamp` and `czml.timeOffset` attribute. Useful when you need per-sample processing in downstream actions.",
+                "type": "string",
+                "enum": [
+                  "allSamples"
+                ]
+              },
+              {
+                "description": "Keep the first sample only (static geometry). Use this for workflows that don't need timeseries data.",
+                "type": "string",
+                "enum": [
+                  "firstSampleOnly"
+                ]
+              },
+              {
+                "description": "Embed the full timeseries in one feature per entity. The feature geometry uses the first sample, `czml.timeseries` holds all position samples as a JSON array, and all other CZML packet properties (point, path, orientation, ellipsoid, etc.) are preserved as `czml.<key>` attributes for faithful round-trip through CZML Writer.",
+                "type": "string",
+                "enum": [
+                  "preserveRaw"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "File"
+      ],
+      "tags": []
+    },
+    {
+      "name": "CZML Writer",
+      "type": "sink",
+      "description": "Exporte les entités au format CZML pour la visualisation Cesium, avec prise en charge des entités dynamiques dans le temps et des positions de séries temporelles",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "CZML Writer Parameters",
+        "description": "Configuration for writing geographic features to CZML files. Supports both static entities and time-dynamic entities with interpolated position samples.\n\n## Timeseries Configuration\n\nTo create time-animated entities in Cesium, configure at least the first two parameters below; configure `epoch` only when using numeric time offsets: 1. `timeField` - Attribute containing time values 2. `groupTimeseriesBy` - Attribute to group features into entities 3. `epoch` (optional) - Base time used when `timeField` contains numeric offsets\n\n### Example with ISO 8601 timestamps: ```yaml - action: CZML Writer with: output: \"vehicles.czml\" timeField: \"timestamp\"           # Contains \"2024-01-01T00:00:00Z\", etc. groupTimeseriesBy: \"vehicleId\"   # Groups by vehicle ID interpolationAlgorithm: \"LAGRANGE\" interpolationDegree: 5 ```\n\n### Example with numeric time offsets: ```yaml - action: CZML Writer with: output: \"sensors.czml\" timeField: \"timeOffset\"          # Contains numeric values: 0, 60, 120, etc. groupTimeseriesBy: \"sensorId\" epoch: \"2024-01-01T00:00:00Z\"    # Base time for offsets interpolationAlgorithm: \"LINEAR\" ```",
+        "type": "object",
+        "required": [
+          "output"
+        ],
+        "properties": {
+          "output": {
+            "title": "Output File Path",
+            "description": "Path where the CZML file will be written",
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "groupBy": {
+            "title": "Group By Attributes",
+            "description": "Attributes used to group features into separate CZML files",
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "timeField": {
+            "title": "Time Field",
+            "description": "Attribute containing the timestamp for each feature. Supports two formats: - **ISO 8601 strings**: e.g., \"2024-01-01T00:00:00Z\", \"2024-01-01T12:30:45+09:00\" - **Numeric values**: Seconds as offset from epoch (e.g., \"0\", \"60\", \"120.5\")\n\nWhen set together with `groupTimeseriesBy`, features sharing the same group key are combined into a single CZML entity with time-tagged position samples for animation in Cesium.\n\n**Example workflow configuration:** ```yaml - action: CZML Writer with: output: \"output.czml\" timeField: \"timestamp\" groupTimeseriesBy: \"vehicleId\" epoch: \"2024-01-01T00:00:00Z\"  # Optional for numeric times (auto-defaults to Unix epoch) ```",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "epoch": {
+            "title": "Epoch",
+            "description": "Reference time (ISO 8601 format) used as the base for numeric time offsets.\n\n**When to use:** - Optional but recommended when `timeField` contains numeric values (e.g., \"0\", \"60\", \"3600\") - Not needed when `timeField` contains ISO 8601 datetime strings\n\n**Format:** ISO 8601 datetime string with timezone - Examples: \"2024-01-01T00:00:00Z\", \"2024-06-15T09:00:00+09:00\"\n\n**Auto-detection:** If omitted and all time values are numeric, automatically defaults to Unix epoch \"1970-01-01T00:00:00Z\". For custom time ranges, explicitly set this parameter to your desired base time.\n\n**Example:** ```yaml epoch: \"2024-01-01T00:00:00Z\"  # Time value \"60\" means 2024-01-01T00:01:00Z ```",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "interpolationAlgorithm": {
+            "title": "Interpolation Algorithm",
+            "description": "Algorithm used by Cesium to interpolate between time-tagged samples.",
+            "default": "LINEAR",
+            "allOf": [
+              {
+                "$ref": "#/definitions/InterpolationAlgorithm"
+              }
+            ]
+          },
+          "interpolationDegree": {
+            "title": "Interpolation Degree",
+            "description": "Degree of interpolation (1 for LINEAR, 5 typical for LAGRANGE).",
+            "default": 1,
+            "type": "integer",
+            "format": "uint32",
+            "minimum": 0.0
+          },
+          "groupTimeseriesBy": {
+            "title": "Group Timeseries By",
+            "description": "Attribute used to group features into a single time-dynamic CZML entity. Features with the same value for this attribute are merged into one packet with time-tagged positions.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "colorAttribute": {
+            "title": "Color Attribute",
+            "description": "Attribute containing a hex color string (e.g., \"#ffd8c0\") for polygon fill. Used when polygon geometry is auto-converted from the feature geometry.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "opacity": {
+            "title": "Opacity",
+            "description": "Alpha value (0–255) for polygon fill color. Default: 180.",
+            "default": 180,
+            "type": "integer",
+            "format": "uint8",
+            "minimum": 0.0
+          },
+          "heightAttribute": {
+            "title": "Height Attribute",
+            "description": "Attribute containing a numeric value for polygon extrusion height. When set, polygons are extruded from ground to this height value.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "InterpolationAlgorithm": {
+            "description": "Interpolation algorithm for Cesium time-dynamic properties.",
+            "oneOf": [
+              {
+                "description": "Linear interpolation between samples (degree 1).",
+                "type": "string",
+                "enum": [
+                  "LINEAR"
+                ]
+              },
+              {
+                "description": "Lagrange polynomial interpolation for smooth curves (typical degree 5).",
+                "type": "string",
+                "enum": [
+                  "LAGRANGE"
+                ]
+              },
+              {
+                "description": "Hermite spline interpolation using tangent data.",
+                "type": "string",
+                "enum": [
+                  "HERMITE"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "File"
+      ],
+      "tags": []
+    },
+    {
+      "name": "Center Point Replacer",
       "type": "processor",
       "description": "Replace Feature Geometry with Center Point",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "CenterPointReplacerParam",
+        "title": "Center Point ReplacerParam",
         "type": "object",
         "properties": {
           "mode": {
@@ -2098,7 +2391,7 @@
       ]
     },
     {
-      "name": "ClosedCurveFilter",
+      "name": "Closed Curve Filter",
       "type": "processor",
       "description": "Filter LineString Features by Closed/Open Status",
       "parameter": null,
@@ -2117,12 +2410,12 @@
       "tags": []
     },
     {
-      "name": "ConvexHullAccumulator",
+      "name": "Convex Hull Accumulator",
       "type": "processor",
       "description": "Generate Convex Hull Polygons from Grouped Features",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ConvexHullAccumulator Parameters",
+        "title": "Convex Hull Accumulator Parameters",
         "type": "object",
         "properties": {
           "groupBy": {
@@ -2157,7 +2450,7 @@
       "tags": []
     },
     {
-      "name": "CoordinateExtractor",
+      "name": "Coordinate Extractor",
       "type": "processor",
       "description": "Extrait les coordonnées des sommets de géométrie en tant qu'attributs d'entité",
       "parameter": {
@@ -2289,305 +2582,12 @@
       "tags": []
     },
     {
-      "name": "CzmlReader",
-      "type": "source",
-      "description": "Lit les entités géographiques à partir de fichiers CZML (langage Cesium) pour la visualisation 3D, avec prise en charge des propriétés dynamiques dans le temps et des données de séries temporelles",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "CzmlReader Parameters",
-        "description": "Configuration for reading CZML files as geographic features.",
-        "type": "object",
-        "properties": {
-          "force2d": {
-            "title": "Force 2D",
-            "description": "If true, forces all geometries to be 2D (ignoring Z values)",
-            "default": false,
-            "type": "boolean"
-          },
-          "skipDocumentPacket": {
-            "title": "Skip Document Packet",
-            "description": "If true, skips the document packet (first packet with version/clock info)",
-            "default": true,
-            "type": "boolean"
-          },
-          "timeSampling": {
-            "title": "Time Sampling Strategy",
-            "description": "How to handle time-dynamic properties in CZML packets. Defaults to \"preserveRaw\" for lossless round-trip with CzmlWriter.",
-            "default": "preserveRaw",
-            "allOf": [
-              {
-                "$ref": "#/definitions/TimeSamplingStrategy"
-              }
-            ]
-          },
-          "dataset": {
-            "title": "File Path",
-            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-            "type": [
-              "object",
-              "null"
-            ],
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr",
-                  "string"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "inline": {
-            "title": "Inline Content",
-            "description": "Expression that returns the file content as text instead of reading from a file path",
-            "type": [
-              "object",
-              "null"
-            ],
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr",
-                  "string"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          }
-        },
-        "definitions": {
-          "TimeSamplingStrategy": {
-            "description": "Strategy for handling time-dynamic CZML properties.",
-            "oneOf": [
-              {
-                "description": "Extract all time-tagged samples as separate features, each with a `czml.timestamp` and `czml.timeOffset` attribute. Useful when you need per-sample processing in downstream actions.",
-                "type": "string",
-                "enum": [
-                  "allSamples"
-                ]
-              },
-              {
-                "description": "Keep the first sample only (static geometry). Use this for workflows that don't need timeseries data.",
-                "type": "string",
-                "enum": [
-                  "firstSampleOnly"
-                ]
-              },
-              {
-                "description": "Embed the full timeseries in one feature per entity. The feature geometry uses the first sample, `czml.timeseries` holds all position samples as a JSON array, and all other CZML packet properties (point, path, orientation, ellipsoid, etc.) are preserved as `czml.<key>` attributes for faithful round-trip through CzmlWriter.",
-                "type": "string",
-                "enum": [
-                  "preserveRaw"
-                ]
-              }
-            ]
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [],
-      "outputPorts": [
-        "features"
-      ],
-      "categories": [
-        "File"
-      ],
-      "tags": []
-    },
-    {
-      "name": "CzmlWriter",
-      "type": "sink",
-      "description": "Exporte les entités au format CZML pour la visualisation Cesium, avec prise en charge des entités dynamiques dans le temps et des positions de séries temporelles",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "CzmlWriter Parameters",
-        "description": "Configuration for writing geographic features to CZML files. Supports both static entities and time-dynamic entities with interpolated position samples.\n\n## Timeseries Configuration\n\nTo create time-animated entities in Cesium, configure at least the first two parameters below; configure `epoch` only when using numeric time offsets: 1. `timeField` - Attribute containing time values 2. `groupTimeseriesBy` - Attribute to group features into entities 3. `epoch` (optional) - Base time used when `timeField` contains numeric offsets\n\n### Example with ISO 8601 timestamps: ```yaml - action: CzmlWriter with: output: \"vehicles.czml\" timeField: \"timestamp\"           # Contains \"2024-01-01T00:00:00Z\", etc. groupTimeseriesBy: \"vehicleId\"   # Groups by vehicle ID interpolationAlgorithm: \"LAGRANGE\" interpolationDegree: 5 ```\n\n### Example with numeric time offsets: ```yaml - action: CzmlWriter with: output: \"sensors.czml\" timeField: \"timeOffset\"          # Contains numeric values: 0, 60, 120, etc. groupTimeseriesBy: \"sensorId\" epoch: \"2024-01-01T00:00:00Z\"    # Base time for offsets interpolationAlgorithm: \"LINEAR\" ```",
-        "type": "object",
-        "required": [
-          "output"
-        ],
-        "properties": {
-          "output": {
-            "title": "Output File Path",
-            "description": "Path where the CZML file will be written",
-            "type": "object",
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr",
-                  "string"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "groupBy": {
-            "title": "Group By Attributes",
-            "description": "Attributes used to group features into separate CZML files",
-            "type": [
-              "array",
-              "null"
-            ],
-            "items": {
-              "$ref": "#/definitions/Attribute"
-            }
-          },
-          "timeField": {
-            "title": "Time Field",
-            "description": "Attribute containing the timestamp for each feature. Supports two formats: - **ISO 8601 strings**: e.g., \"2024-01-01T00:00:00Z\", \"2024-01-01T12:30:45+09:00\" - **Numeric values**: Seconds as offset from epoch (e.g., \"0\", \"60\", \"120.5\")\n\nWhen set together with `groupTimeseriesBy`, features sharing the same group key are combined into a single CZML entity with time-tagged position samples for animation in Cesium.\n\n**Example workflow configuration:** ```yaml - action: CzmlWriter with: output: \"output.czml\" timeField: \"timestamp\" groupTimeseriesBy: \"vehicleId\" epoch: \"2024-01-01T00:00:00Z\"  # Optional for numeric times (auto-defaults to Unix epoch) ```",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "epoch": {
-            "title": "Epoch",
-            "description": "Reference time (ISO 8601 format) used as the base for numeric time offsets.\n\n**When to use:** - Optional but recommended when `timeField` contains numeric values (e.g., \"0\", \"60\", \"3600\") - Not needed when `timeField` contains ISO 8601 datetime strings\n\n**Format:** ISO 8601 datetime string with timezone - Examples: \"2024-01-01T00:00:00Z\", \"2024-06-15T09:00:00+09:00\"\n\n**Auto-detection:** If omitted and all time values are numeric, automatically defaults to Unix epoch \"1970-01-01T00:00:00Z\". For custom time ranges, explicitly set this parameter to your desired base time.\n\n**Example:** ```yaml epoch: \"2024-01-01T00:00:00Z\"  # Time value \"60\" means 2024-01-01T00:01:00Z ```",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "interpolationAlgorithm": {
-            "title": "Interpolation Algorithm",
-            "description": "Algorithm used by Cesium to interpolate between time-tagged samples.",
-            "default": "LINEAR",
-            "allOf": [
-              {
-                "$ref": "#/definitions/InterpolationAlgorithm"
-              }
-            ]
-          },
-          "interpolationDegree": {
-            "title": "Interpolation Degree",
-            "description": "Degree of interpolation (1 for LINEAR, 5 typical for LAGRANGE).",
-            "default": 1,
-            "type": "integer",
-            "format": "uint32",
-            "minimum": 0.0
-          },
-          "groupTimeseriesBy": {
-            "title": "Group Timeseries By",
-            "description": "Attribute used to group features into a single time-dynamic CZML entity. Features with the same value for this attribute are merged into one packet with time-tagged positions.",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "colorAttribute": {
-            "title": "Color Attribute",
-            "description": "Attribute containing a hex color string (e.g., \"#ffd8c0\") for polygon fill. Used when polygon geometry is auto-converted from the feature geometry.",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          },
-          "opacity": {
-            "title": "Opacity",
-            "description": "Alpha value (0–255) for polygon fill color. Default: 180.",
-            "default": 180,
-            "type": "integer",
-            "format": "uint8",
-            "minimum": 0.0
-          },
-          "heightAttribute": {
-            "title": "Height Attribute",
-            "description": "Attribute containing a numeric value for polygon extrusion height. When set, polygons are extruded from ground to this height value.",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              },
-              {
-                "type": "null"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          },
-          "InterpolationAlgorithm": {
-            "description": "Interpolation algorithm for Cesium time-dynamic properties.",
-            "oneOf": [
-              {
-                "description": "Linear interpolation between samples (degree 1).",
-                "type": "string",
-                "enum": [
-                  "LINEAR"
-                ]
-              },
-              {
-                "description": "Lagrange polynomial interpolation for smooth curves (typical degree 5).",
-                "type": "string",
-                "enum": [
-                  "LAGRANGE"
-                ]
-              },
-              {
-                "description": "Hermite spline interpolation using tangent data.",
-                "type": "string",
-                "enum": [
-                  "HERMITE"
-                ]
-              }
-            ]
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [],
-      "categories": [
-        "File"
-      ],
-      "tags": []
-    },
-    {
-      "name": "DateTimeConverter",
+      "name": "Date Time Converter",
       "type": "processor",
       "description": "Convertit les valeurs de date et heure entre différents formats",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "DateTimeConverter Parameters",
+        "title": "Date Time Converter Parameters",
         "type": "object",
         "required": [
           "attribute"
@@ -2626,7 +2626,7 @@
         },
         "definitions": {
           "DateTimeInputFormat": {
-            "description": "Input format options for DateTimeConverter",
+            "description": "Input format options for Date Time Converter",
             "oneOf": [
               {
                 "description": "Auto-detect from known formats. Note: Numeric values are always interpreted as Unix seconds. For milliseconds, use the explicit `unix_ms` input format.",
@@ -2679,7 +2679,7 @@
             ]
           },
           "DateTimeOutputFormat": {
-            "description": "Output format options for DateTimeConverter",
+            "description": "Output format options for Date Time Converter",
             "oneOf": [
               {
                 "description": "Auto: Store as typed DateTime value (preserves the native variant). Use this when you want the datetime as a proper DateTime type rather than a string.",
@@ -2987,12 +2987,12 @@
       ]
     },
     {
-      "name": "ExcelWriter",
+      "name": "Excel Writer",
       "type": "sink",
       "description": "Écrit des entités au format Microsoft Excel (.xlsx)",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ExcelWriter Parameters",
+        "title": "Excel Writer Parameters",
         "description": "Configuration for writing features to Microsoft Excel format.",
         "type": "object",
         "required": [
@@ -3088,6 +3088,174 @@
       "tags": [
         "3d"
       ]
+    },
+    {
+      "name": "Feature CityGML 2 Reader",
+      "type": "processor",
+      "description": "Lit des fichiers CityGML 2.0 : résout les références gml:id et les liens xlink:href entre fichiers",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Feature CityGML 2 Reader Parameters",
+        "type": "object",
+        "required": [
+          "dataset"
+        ],
+        "properties": {
+          "dataset": {
+            "title": "Dataset",
+            "description": "Expression de chemin résolvant vers le fichier CityGML 2.0 à lire.",
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "extractTags": {
+            "title": "Extraire les Balises",
+            "description": "Noms de types d'entité à aplatir en entités individuelles. Accepte la forme qualifiée (`bldg:Building`), locale (`Building`) ou la notation Clark (`{http://…}Building`). Vide signifie émettre tous les objets urbains de niveau supérieur sans modification.",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "keepAttributes": {
+            "title": "Conserver les Attributs",
+            "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true.",
+            "default": true,
+            "type": "boolean"
+          },
+          "flattenSingleChildObjects": {
+            "title": "Aplatir les Nœuds Objet à Enfant Unique",
+            "description": "Lorsque vrai, un élément enveloppant dont le seul contenu est un unique élément enfant est supprimé : l'enfant est hissé et indexé par son propre nom de balise, toujours enveloppé dans un tableau. Par défaut à false.",
+            "default": false,
+            "type": "boolean"
+          },
+          "flattenMeasureTypes": {
+            "title": "Aplatir les Types de Mesure",
+            "description": "Lorsque vrai, les éléments avec un seul attribut `uom` et un contenu textuel numérique sont convertis en valeur numérique, l'unité étant stockée comme clé sœur `{name}_uom`. Par défaut à false.",
+            "default": false,
+            "type": "boolean"
+          },
+          "cityGmlAttributesKey": {
+            "title": "Clé des Attributs CityGML",
+            "description": "Lorsque défini, les attributs CityGML analysés sont imbriqués sous cette clé dans l'entité de sortie. Lorsque nul, les attributs sont émis au niveau supérieur. Par défaut à null.",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Feature"
+      ],
+      "tags": []
+    },
+    {
+      "name": "Feature CityGML 3 Reader",
+      "type": "processor",
+      "description": "Lit des fichiers CityGML 3.0 : résout les références gml:id et les liens xlink:href entre fichiers",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Feature CityGML 3 Reader Parameters",
+        "type": "object",
+        "required": [
+          "dataset"
+        ],
+        "properties": {
+          "dataset": {
+            "title": "Dataset",
+            "description": "Expression de chemin résolvant vers le fichier CityGML 3.0 à lire.",
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "extractTags": {
+            "title": "Extraire les Balises",
+            "description": "Noms de types d'entité à aplatir en entités individuelles. Accepte la forme qualifiée (`bldg:Building`), locale (`Building`) ou la notation Clark (`{http://…}Building`). Vide signifie émettre tous les objets urbains de niveau supérieur sans modification.",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "keepAttributes": {
+            "title": "Conserver les Attributs",
+            "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true.",
+            "default": true,
+            "type": "boolean"
+          },
+          "flattenSingleChildObjects": {
+            "title": "Aplatir les Nœuds Objet à Enfant Unique",
+            "description": "Lorsque vrai, un élément enveloppant dont le seul contenu est un unique élément enfant est supprimé : l'enfant est hissé et indexé par son propre nom de balise, toujours enveloppé dans un tableau. Par défaut à false.",
+            "default": false,
+            "type": "boolean"
+          },
+          "flattenMeasureTypes": {
+            "title": "Aplatir les Types de Mesure",
+            "description": "Lorsque vrai, les éléments avec un seul attribut `uom` et un contenu textuel numérique sont convertis en valeur numérique, l'unité étant stockée comme clé sœur `{name}_uom`. Par défaut à false.",
+            "default": false,
+            "type": "boolean"
+          },
+          "cityGmlAttributesKey": {
+            "title": "Clé des Attributs CityGML",
+            "description": "Lorsque défini, les attributs CityGML analysés sont imbriqués sous cette clé dans l'entité de sortie. Lorsque nul, les attributs sont émis au niveau supérieur. Par défaut à null.",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Feature"
+      ],
+      "tags": []
     },
     {
       "name": "Feature CityGML Reader",
@@ -3276,6 +3444,23 @@
       ],
       "categories": [
         "Input"
+      ],
+      "tags": []
+    },
+    {
+      "name": "Feature Duplicate Filter",
+      "type": "processor",
+      "description": "Filter Out Duplicate Features",
+      "parameter": null,
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Feature"
       ],
       "tags": []
     },
@@ -3808,356 +3993,12 @@
       "tags": []
     },
     {
-      "name": "Feature Sorter",
-      "type": "processor",
-      "description": "Sorts features based on specified attributes in ascending or descending order",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureSorter Parameters",
-        "description": "Configuration for sorting features based on attribute values.",
-        "type": "object",
-        "required": [
-          "attributes",
-          "order"
-        ],
-        "properties": {
-          "attributes": {
-            "title": "Sort Attributes",
-            "description": "Attributes to use for sorting features (sort order based on attribute order)",
-            "type": "array",
-            "items": {
-              "$ref": "#/definitions/Attribute"
-            }
-          },
-          "order": {
-            "title": "Sort Order",
-            "description": "Sorting order (ascending or descending)",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Order"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          },
-          "Order": {
-            "type": "string",
-            "enum": [
-              "ascending",
-              "descending"
-            ]
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "features"
-      ],
-      "categories": [
-        "Merge"
-      ],
-      "tags": []
-    },
-    {
-      "name": "Feature Transformer",
-      "type": "processor",
-      "description": "Applies transformation expressions to modify feature attributes and properties",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureTransformer Parameters",
-        "description": "Configuration for applying transformation expressions to features.",
-        "type": "object",
-        "required": [
-          "transformers"
-        ],
-        "properties": {
-          "transformers": {
-            "description": "List of transformation expressions to apply to each feature",
-            "type": "array",
-            "items": {
-              "$ref": "#/definitions/Transform"
-            }
-          }
-        },
-        "definitions": {
-          "Transform": {
-            "type": "object",
-            "required": [
-              "expr"
-            ],
-            "properties": {
-              "expr": {
-                "description": "Expression that modifies the feature (can access and modify attributes, geometry, etc.)",
-                "type": "object",
-                "format": "code",
-                "required": [
-                  "type",
-                  "value"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flowExpr"
-                    ]
-                  },
-                  "value": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "features"
-      ],
-      "categories": [
-        "Transform"
-      ],
-      "tags": []
-    },
-    {
-      "name": "Feature Type Filter",
-      "type": "processor",
-      "description": "Filters CityGML features by their feature type.",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "Feature Type Filter Parameters",
-        "description": "Configuration for filtering features based on their feature type.",
-        "type": "object",
-        "required": [
-          "targetTypes"
-        ],
-        "properties": {
-          "targetTypes": {
-            "title": "Target Feature Types",
-            "description": "List of CityGML feature type names to match, such as \"bldg:Building\" or \"tran:TrafficArea\".",
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "features",
-        "unfiltered"
-      ],
-      "categories": [
-        "Filter"
-      ],
-      "tags": [
-        "citygml"
-      ]
-    },
-    {
-      "name": "FeatureCityGml2Reader",
-      "type": "processor",
-      "description": "Lit des fichiers CityGML 2.0 : résout les références gml:id et les liens xlink:href entre fichiers",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureCityGml2Reader Parameters",
-        "type": "object",
-        "required": [
-          "dataset"
-        ],
-        "properties": {
-          "dataset": {
-            "title": "Dataset",
-            "description": "Expression de chemin résolvant vers le fichier CityGML 2.0 à lire.",
-            "type": "object",
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr",
-                  "string"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "extractTags": {
-            "title": "Extraire les Balises",
-            "description": "Noms de types d'entité à aplatir en entités individuelles. Accepte la forme qualifiée (`bldg:Building`), locale (`Building`) ou la notation Clark (`{http://…}Building`). Vide signifie émettre tous les objets urbains de niveau supérieur sans modification.",
-            "default": [],
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "keepAttributes": {
-            "title": "Conserver les Attributs",
-            "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true.",
-            "default": true,
-            "type": "boolean"
-          },
-          "flattenSingleChildObjects": {
-            "title": "Aplatir les Nœuds Objet à Enfant Unique",
-            "description": "Lorsque vrai, un élément enveloppant dont le seul contenu est un unique élément enfant est supprimé : l'enfant est hissé et indexé par son propre nom de balise, toujours enveloppé dans un tableau. Par défaut à false.",
-            "default": false,
-            "type": "boolean"
-          },
-          "flattenMeasureTypes": {
-            "title": "Aplatir les Types de Mesure",
-            "description": "Lorsque vrai, les éléments avec un seul attribut `uom` et un contenu textuel numérique sont convertis en valeur numérique, l'unité étant stockée comme clé sœur `{name}_uom`. Par défaut à false.",
-            "default": false,
-            "type": "boolean"
-          },
-          "cityGmlAttributesKey": {
-            "title": "Clé des Attributs CityGML",
-            "description": "Lorsque défini, les attributs CityGML analysés sont imbriqués sous cette clé dans l'entité de sortie. Lorsque nul, les attributs sont émis au niveau supérieur. Par défaut à null.",
-            "default": null,
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "features"
-      ],
-      "categories": [
-        "Feature"
-      ],
-      "tags": []
-    },
-    {
-      "name": "FeatureCityGml3Reader",
-      "type": "processor",
-      "description": "Lit des fichiers CityGML 3.0 : résout les références gml:id et les liens xlink:href entre fichiers",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureCityGml3Reader Parameters",
-        "type": "object",
-        "required": [
-          "dataset"
-        ],
-        "properties": {
-          "dataset": {
-            "title": "Dataset",
-            "description": "Expression de chemin résolvant vers le fichier CityGML 3.0 à lire.",
-            "type": "object",
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr",
-                  "string"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "extractTags": {
-            "title": "Extraire les Balises",
-            "description": "Noms de types d'entité à aplatir en entités individuelles. Accepte la forme qualifiée (`bldg:Building`), locale (`Building`) ou la notation Clark (`{http://…}Building`). Vide signifie émettre tous les objets urbains de niveau supérieur sans modification.",
-            "default": [],
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "keepAttributes": {
-            "title": "Conserver les Attributs",
-            "description": "Lorsque faux, les attributs XML (entrées préfixées par `@` comme `@gml:id`, `@codeSpace`) sont supprimés des entités analysées. Par défaut à true.",
-            "default": true,
-            "type": "boolean"
-          },
-          "flattenSingleChildObjects": {
-            "title": "Aplatir les Nœuds Objet à Enfant Unique",
-            "description": "Lorsque vrai, un élément enveloppant dont le seul contenu est un unique élément enfant est supprimé : l'enfant est hissé et indexé par son propre nom de balise, toujours enveloppé dans un tableau. Par défaut à false.",
-            "default": false,
-            "type": "boolean"
-          },
-          "flattenMeasureTypes": {
-            "title": "Aplatir les Types de Mesure",
-            "description": "Lorsque vrai, les éléments avec un seul attribut `uom` et un contenu textuel numérique sont convertis en valeur numérique, l'unité étant stockée comme clé sœur `{name}_uom`. Par défaut à false.",
-            "default": false,
-            "type": "boolean"
-          },
-          "cityGmlAttributesKey": {
-            "title": "Clé des Attributs CityGML",
-            "description": "Lorsque défini, les attributs CityGML analysés sont imbriqués sous cette clé dans l'entité de sortie. Lorsque nul, les attributs sont émis au niveau supérieur. Par défaut à null.",
-            "default": null,
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "features"
-      ],
-      "categories": [
-        "Feature"
-      ],
-      "tags": []
-    },
-    {
-      "name": "FeatureDuplicateFilter",
-      "type": "processor",
-      "description": "Filter Out Duplicate Features",
-      "parameter": null,
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "features"
-      ],
-      "categories": [
-        "Feature"
-      ],
-      "tags": []
-    },
-    {
-      "name": "FeatureReader",
+      "name": "Feature Reader",
       "type": "processor",
       "description": "Reads features from various file formats (CSV, TSV, JSON) with configurable parsing options",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureReaderParam",
+        "title": "Feature ReaderParam",
         "oneOf": [
           {
             "title": "Common Reader Parameters",
@@ -4345,12 +4186,171 @@
       "tags": []
     },
     {
-      "name": "FeatureWriter",
+      "name": "Feature Sorter",
+      "type": "processor",
+      "description": "Sorts features based on specified attributes in ascending or descending order",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureSorter Parameters",
+        "description": "Configuration for sorting features based on attribute values.",
+        "type": "object",
+        "required": [
+          "attributes",
+          "order"
+        ],
+        "properties": {
+          "attributes": {
+            "title": "Sort Attributes",
+            "description": "Attributes to use for sorting features (sort order based on attribute order)",
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Attribute"
+            }
+          },
+          "order": {
+            "title": "Sort Order",
+            "description": "Sorting order (ascending or descending)",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Order"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          },
+          "Order": {
+            "type": "string",
+            "enum": [
+              "ascending",
+              "descending"
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Merge"
+      ],
+      "tags": []
+    },
+    {
+      "name": "Feature Transformer",
+      "type": "processor",
+      "description": "Applies transformation expressions to modify feature attributes and properties",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "FeatureTransformer Parameters",
+        "description": "Configuration for applying transformation expressions to features.",
+        "type": "object",
+        "required": [
+          "transformers"
+        ],
+        "properties": {
+          "transformers": {
+            "description": "List of transformation expressions to apply to each feature",
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Transform"
+            }
+          }
+        },
+        "definitions": {
+          "Transform": {
+            "type": "object",
+            "required": [
+              "expr"
+            ],
+            "properties": {
+              "expr": {
+                "description": "Expression that modifies the feature (can access and modify attributes, geometry, etc.)",
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Transform"
+      ],
+      "tags": []
+    },
+    {
+      "name": "Feature Type Filter",
+      "type": "processor",
+      "description": "Filters CityGML features by their feature type.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Feature Type Filter Parameters",
+        "description": "Configuration for filtering features based on their feature type.",
+        "type": "object",
+        "required": [
+          "targetTypes"
+        ],
+        "properties": {
+          "targetTypes": {
+            "title": "Target Feature Types",
+            "description": "List of CityGML feature type names to match, such as \"bldg:Building\" or \"tran:TrafficArea\".",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "unfiltered"
+      ],
+      "categories": [
+        "Filter"
+      ],
+      "tags": [
+        "citygml"
+      ]
+    },
+    {
+      "name": "Feature Writer",
       "type": "processor",
       "description": "Writes features from various formats",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "FeatureWriter Parameters",
+        "title": "Feature Writer Parameters",
         "description": "Configuration for writing features to different file formats.",
         "oneOf": [
           {
@@ -5040,6 +5040,51 @@
       ]
     },
     {
+      "name": "Geometry Coercer",
+      "type": "processor",
+      "description": "Coerces and converts feature geometries to specified target geometry types",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Geometry Coercer Parameters",
+        "description": "Configuration for coercing geometries to specific target types.",
+        "type": "object",
+        "required": [
+          "targetType"
+        ],
+        "properties": {
+          "targetType": {
+            "description": "Target geometry type to coerce features to (e.g., LineString)",
+            "allOf": [
+              {
+                "$ref": "#/definitions/CoerceTarget"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "CoerceTarget": {
+            "type": "string",
+            "enum": [
+              "lineString",
+              "polygon",
+              "triangularMesh"
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": []
+    },
+    {
       "name": "Geometry Extractor",
       "type": "processor",
       "description": "Extract Geometry Data to Attribute",
@@ -5074,6 +5119,83 @@
       ],
       "outputPorts": [
         "features"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": []
+    },
+    {
+      "name": "Geometry Filter",
+      "type": "processor",
+      "description": "Filter Features by Geometry Type",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Geometry Filter Parameters",
+        "description": "Configure how to filter features based on their geometry type",
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "filterType"
+            ],
+            "properties": {
+              "filterType": {
+                "type": "string",
+                "enum": [
+                  "none"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "filterType"
+            ],
+            "properties": {
+              "filterType": {
+                "type": "string",
+                "enum": [
+                  "multiple"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "filterType"
+            ],
+            "properties": {
+              "filterType": {
+                "type": "string",
+                "enum": [
+                  "geometryType"
+                ]
+              }
+            }
+          }
+        ]
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "unfiltered",
+        "none",
+        "contains",
+        "solid",
+        "multiSurface",
+        "compositeSurface",
+        "surface",
+        "triangle",
+        "multiCurve",
+        "curve",
+        "multiPoint",
+        "point",
+        "tin"
       ],
       "categories": [
         "Geometry"
@@ -5346,129 +5468,7 @@
       ]
     },
     {
-      "name": "GeometryCoercer",
-      "type": "processor",
-      "description": "Coerces and converts feature geometries to specified target geometry types",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "GeometryCoercer Parameters",
-        "description": "Configuration for coercing geometries to specific target types.",
-        "type": "object",
-        "required": [
-          "targetType"
-        ],
-        "properties": {
-          "targetType": {
-            "description": "Target geometry type to coerce features to (e.g., LineString)",
-            "allOf": [
-              {
-                "$ref": "#/definitions/CoerceTarget"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "CoerceTarget": {
-            "type": "string",
-            "enum": [
-              "lineString",
-              "polygon",
-              "triangularMesh"
-            ]
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "features"
-      ],
-      "categories": [
-        "Geometry"
-      ],
-      "tags": []
-    },
-    {
-      "name": "GeometryFilter",
-      "type": "processor",
-      "description": "Filter Features by Geometry Type",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "Geometry Filter Parameters",
-        "description": "Configure how to filter features based on their geometry type",
-        "oneOf": [
-          {
-            "type": "object",
-            "required": [
-              "filterType"
-            ],
-            "properties": {
-              "filterType": {
-                "type": "string",
-                "enum": [
-                  "none"
-                ]
-              }
-            }
-          },
-          {
-            "type": "object",
-            "required": [
-              "filterType"
-            ],
-            "properties": {
-              "filterType": {
-                "type": "string",
-                "enum": [
-                  "multiple"
-                ]
-              }
-            }
-          },
-          {
-            "type": "object",
-            "required": [
-              "filterType"
-            ],
-            "properties": {
-              "filterType": {
-                "type": "string",
-                "enum": [
-                  "geometryType"
-                ]
-              }
-            }
-          }
-        ]
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "unfiltered",
-        "none",
-        "contains",
-        "solid",
-        "multiSurface",
-        "compositeSurface",
-        "surface",
-        "triangle",
-        "multiCurve",
-        "curve",
-        "multiPoint",
-        "point",
-        "tin"
-      ],
-      "categories": [
-        "Geometry"
-      ],
-      "tags": []
-    },
-    {
-      "name": "GeometryValueFilter",
+      "name": "Geometry Value Filter",
       "type": "processor",
       "description": "Filter Features by Geometry Value Type",
       "parameter": null,
@@ -5484,163 +5484,6 @@
       ],
       "categories": [
         "Geometry"
-      ],
-      "tags": []
-    },
-    {
-      "name": "GltfReader",
-      "type": "source",
-      "description": "Lit des modèles 3D depuis des fichiers glTF 2.0, prenant en charge les maillages, nœuds, scènes et primitives de géométrie",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "GltfReaderParam",
-        "type": "object",
-        "properties": {
-          "triangulate": {
-            "title": "Triangulate",
-            "description": "If true, converts all primitives to triangles (reserved for future use - currently all primitives are processed as triangles)",
-            "default": true,
-            "type": "boolean"
-          },
-          "mergeMeshes": {
-            "title": "Merge Meshes",
-            "description": "If true, combines all meshes from the glTF file into a single output feature",
-            "default": false,
-            "type": "boolean"
-          },
-          "includeNodes": {
-            "title": "Include Nodes",
-            "description": "If true, includes node hierarchy information from the glTF scene graph in feature attributes",
-            "default": true,
-            "type": "boolean"
-          },
-          "dataset": {
-            "title": "File Path",
-            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
-            "type": [
-              "object",
-              "null"
-            ],
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr",
-                  "string"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "inline": {
-            "title": "Inline Content",
-            "description": "Expression that returns the file content as text instead of reading from a file path",
-            "type": [
-              "object",
-              "null"
-            ],
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr",
-                  "string"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [],
-      "outputPorts": [
-        "features"
-      ],
-      "categories": [
-        "File",
-        "3D"
-      ],
-      "tags": []
-    },
-    {
-      "name": "GltfWriter",
-      "type": "sink",
-      "description": "Writes 3D features to GLTF format with optional texture attachment",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "GltfWriter Parameters",
-        "description": "Configuration for writing features to GLTF 3D format.",
-        "type": "object",
-        "required": [
-          "output"
-        ],
-        "properties": {
-          "output": {
-            "description": "Output file path. When `schemaKey` is set, treated as a directory and each feature type is written to `<output>/<schemaKeyValue>.glb`; otherwise all features are written to this single file.",
-            "type": "object",
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr",
-                  "string"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "attachTexture": {
-            "description": "Whether to attach texture information to the GLTF model",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "dracoCompression": {
-            "description": "Apply Draco compression to the geometry",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "schemaKey": {
-            "description": "Features are grouped by this attribute and written to separate files. The key is excluded from output attributes.",
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [],
-      "categories": [
-        "File"
       ],
       "tags": []
     },
@@ -5704,7 +5547,7 @@
       ]
     },
     {
-      "name": "HTTPCaller",
+      "name": "HTTP Caller",
       "type": "processor",
       "description": "Effectuer des requêtes HTTP/HTTPS et enrichir les entités avec les données de réponse",
       "parameter": {
@@ -7053,7 +6896,7 @@
       "tags": []
     },
     {
-      "name": "HoleCounter",
+      "name": "Hole Counter",
       "type": "processor",
       "description": "Count Polygon Holes to Attribute",
       "parameter": {
@@ -7094,7 +6937,7 @@
       "tags": []
     },
     {
-      "name": "HoleExtractor",
+      "name": "Hole Extractor",
       "type": "processor",
       "description": "Extract Polygon Holes as Separate Features",
       "parameter": null,
@@ -7375,7 +7218,7 @@
       ]
     },
     {
-      "name": "JPStandardGridAccumulator",
+      "name": "JP Standard Grid Accumulator",
       "type": "processor",
       "description": "Divides geometries into Japanese standard mesh grid (1km) and adds mesh codes to features",
       "parameter": null,
@@ -7389,6 +7232,152 @@
       ],
       "categories": [
         "Geometry"
+      ],
+      "tags": []
+    },
+    {
+      "name": "JSON Fragmenter",
+      "type": "processor",
+      "description": "Fragmente des documents JSON en entités individuelles basées sur une requête JSONPath",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "JSON Fragmenter Parameters",
+        "description": "Configuration for fragmenting JSON documents into individual features.",
+        "oneOf": [
+          {
+            "description": "Read JSON from a feature attribute",
+            "type": "object",
+            "required": [
+              "inputSource",
+              "jsonAttribute",
+              "jsonQuery"
+            ],
+            "properties": {
+              "inputSource": {
+                "type": "string",
+                "enum": [
+                  "attribute"
+                ]
+              },
+              "jsonAttribute": {
+                "description": "The attribute containing the JSON text to fragment",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  }
+                ]
+              },
+              "jsonQuery": {
+                "description": "JSONPath expression to select elements (e.g., \"$[*]\", \"$.results[*]\")",
+                "type": "string"
+              },
+              "flattenQueryResult": {
+                "description": "If true, flatten JSON object keys into feature attributes",
+                "default": false,
+                "type": "boolean"
+              },
+              "recursivelyFlatten": {
+                "description": "If true, recursively flatten nested objects using dot-separated keys",
+                "default": false,
+                "type": "boolean"
+              },
+              "attributePrefix": {
+                "description": "Optional prefix for flattened attribute names",
+                "default": null,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "rejectNoFragments": {
+                "description": "If true, reject features that produce no fragments",
+                "default": false,
+                "type": "boolean"
+              }
+            }
+          },
+          {
+            "description": "Read JSON from a file path or URL",
+            "type": "object",
+            "required": [
+              "inputSource",
+              "jsonQuery",
+              "path"
+            ],
+            "properties": {
+              "inputSource": {
+                "type": "string",
+                "enum": [
+                  "fileUrl"
+                ]
+              },
+              "path": {
+                "description": "Expression evaluating to the file path or URL containing JSON",
+                "type": "object",
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr",
+                      "string"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              },
+              "jsonQuery": {
+                "description": "JSONPath expression to select elements (e.g., \"$[*]\", \"$.results[*]\")",
+                "type": "string"
+              },
+              "flattenQueryResult": {
+                "description": "If true, flatten JSON object keys into feature attributes",
+                "default": false,
+                "type": "boolean"
+              },
+              "recursivelyFlatten": {
+                "description": "If true, recursively flatten nested objects using dot-separated keys",
+                "default": false,
+                "type": "boolean"
+              },
+              "attributePrefix": {
+                "description": "Optional prefix for flattened attribute names",
+                "default": null,
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "rejectNoFragments": {
+                "description": "If true, reject features that produce no fragments",
+                "default": false,
+                "type": "boolean"
+              }
+            }
+          }
+        ],
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
+      ],
+      "categories": [
+        "Feature"
       ],
       "tags": []
     },
@@ -7538,158 +7527,12 @@
       ]
     },
     {
-      "name": "JSONFragmenter",
-      "type": "processor",
-      "description": "Fragmente des documents JSON en entités individuelles basées sur une requête JSONPath",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "JSONFragmenter Parameters",
-        "description": "Configuration for fragmenting JSON documents into individual features.",
-        "oneOf": [
-          {
-            "description": "Read JSON from a feature attribute",
-            "type": "object",
-            "required": [
-              "inputSource",
-              "jsonAttribute",
-              "jsonQuery"
-            ],
-            "properties": {
-              "inputSource": {
-                "type": "string",
-                "enum": [
-                  "attribute"
-                ]
-              },
-              "jsonAttribute": {
-                "description": "The attribute containing the JSON text to fragment",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Attribute"
-                  }
-                ]
-              },
-              "jsonQuery": {
-                "description": "JSONPath expression to select elements (e.g., \"$[*]\", \"$.results[*]\")",
-                "type": "string"
-              },
-              "flattenQueryResult": {
-                "description": "If true, flatten JSON object keys into feature attributes",
-                "default": false,
-                "type": "boolean"
-              },
-              "recursivelyFlatten": {
-                "description": "If true, recursively flatten nested objects using dot-separated keys",
-                "default": false,
-                "type": "boolean"
-              },
-              "attributePrefix": {
-                "description": "Optional prefix for flattened attribute names",
-                "default": null,
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "rejectNoFragments": {
-                "description": "If true, reject features that produce no fragments",
-                "default": false,
-                "type": "boolean"
-              }
-            }
-          },
-          {
-            "description": "Read JSON from a file path or URL",
-            "type": "object",
-            "required": [
-              "inputSource",
-              "jsonQuery",
-              "path"
-            ],
-            "properties": {
-              "inputSource": {
-                "type": "string",
-                "enum": [
-                  "fileUrl"
-                ]
-              },
-              "path": {
-                "description": "Expression evaluating to the file path or URL containing JSON",
-                "type": "object",
-                "format": "code",
-                "required": [
-                  "type",
-                  "value"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flowExpr",
-                      "string"
-                    ]
-                  },
-                  "value": {
-                    "type": "string"
-                  }
-                }
-              },
-              "jsonQuery": {
-                "description": "JSONPath expression to select elements (e.g., \"$[*]\", \"$.results[*]\")",
-                "type": "string"
-              },
-              "flattenQueryResult": {
-                "description": "If true, flatten JSON object keys into feature attributes",
-                "default": false,
-                "type": "boolean"
-              },
-              "recursivelyFlatten": {
-                "description": "If true, recursively flatten nested objects using dot-separated keys",
-                "default": false,
-                "type": "boolean"
-              },
-              "attributePrefix": {
-                "description": "Optional prefix for flattened attribute names",
-                "default": null,
-                "type": [
-                  "string",
-                  "null"
-                ]
-              },
-              "rejectNoFragments": {
-                "description": "If true, reject features that produce no fragments",
-                "default": false,
-                "type": "boolean"
-              }
-            }
-          }
-        ],
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "features",
-        "rejected"
-      ],
-      "categories": [
-        "Feature"
-      ],
-      "tags": []
-    },
-    {
-      "name": "LineOnLineOverlayer",
+      "name": "Line On Line Overlayer",
       "type": "processor",
       "description": "Intersection points are turned into point features that can contain the merged list of attributes of the original intersected lines.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "LineOnLineOverlayer Parameters",
+        "title": "Line On Line Overlayer Parameters",
         "description": "Configuration for finding intersection points between line features.",
         "type": "object",
         "required": [
@@ -7738,54 +7581,12 @@
       "tags": []
     },
     {
-      "name": "List Exploder",
-      "type": "processor",
-      "description": "Explodes array attributes into separate features, creating one feature per array element",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ListExploder Parameters",
-        "description": "Configuration for exploding array attributes into individual features.",
-        "type": "object",
-        "required": [
-          "sourceAttribute"
-        ],
-        "properties": {
-          "sourceAttribute": {
-            "description": "Attribute containing the array to explode (each element becomes a separate feature)",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "Attribute": {
-            "type": "string"
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "features"
-      ],
-      "categories": [
-        "Transform"
-      ],
-      "tags": [
-        "list"
-      ]
-    },
-    {
-      "name": "ListConcatenator",
+      "name": "List Concatenator",
       "type": "processor",
       "description": "Extrait un attribut spécifique de chaque élément d'une liste et les concatène en une seule chaîne",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ListConcatenator Parameters",
+        "title": "List Concatenator Parameters",
         "description": "Configuration for concatenating a specific attribute from list elements.",
         "type": "object",
         "required": [
@@ -7843,12 +7644,54 @@
       "tags": []
     },
     {
-      "name": "ListIndexer",
+      "name": "List Exploder",
+      "type": "processor",
+      "description": "Explodes array attributes into separate features, creating one feature per array element",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "ListExploder Parameters",
+        "description": "Configuration for exploding array attributes into individual features.",
+        "type": "object",
+        "required": [
+          "sourceAttribute"
+        ],
+        "properties": {
+          "sourceAttribute": {
+            "description": "Attribute containing the array to explode (each element becomes a separate feature)",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Attribute": {
+            "type": "string"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Transform"
+      ],
+      "tags": [
+        "list"
+      ]
+    },
+    {
+      "name": "List Indexer",
       "type": "processor",
       "description": "Copie les attributs d'un élément de liste spécifique pour en faire les attributs principaux d'une entité",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ListIndexer Parameters",
+        "title": "List Indexer Parameters",
         "description": "Configuration for copying attributes from a specific list element to main feature attributes.",
         "type": "object",
         "required": [
@@ -8054,12 +7897,12 @@
       ]
     },
     {
-      "name": "NeighborFinder",
+      "name": "Neighbor Finder",
       "type": "processor",
       "description": "Trouve les entités candidates les plus proches pour chaque entité de base basée sur la proximité spatiale",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "NeighborFinder Parameters",
+        "title": "Neighbor Finder Parameters",
         "description": "Configuration for finding spatial neighbors between base and candidate features.",
         "type": "object",
         "properties": {
@@ -8390,12 +8233,12 @@
       ]
     },
     {
-      "name": "ObjReader",
+      "name": "OBJ Reader",
       "type": "source",
       "description": "Lit des modèles 3D depuis des fichiers Wavefront OBJ, prenant en charge les sommets, faces, normales, coordonnées de texture et matériaux",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ObjReader Parameters",
+        "title": "OBJ Reader Parameters",
         "description": "Configuration for reading Wavefront OBJ 3D model files with support for vertices, faces, normals, texture coordinates, and material definitions.",
         "type": "object",
         "properties": {
@@ -8519,7 +8362,7 @@
       "tags": []
     },
     {
-      "name": "ObjWriter",
+      "name": "OBJ Writer",
       "type": "sink",
       "description": "Écrit des entités 3D au format Wavefront OBJ avec des fichiers de matériaux (MTL) optionnels",
       "parameter": {
@@ -8645,7 +8488,7 @@
       "tags": []
     },
     {
-      "name": "OrientationExtractor",
+      "name": "Orientation Extractor",
       "type": "processor",
       "description": "Extract Polygon Orientation to Attribute",
       "parameter": {
@@ -10086,7 +9929,7 @@
     {
       "name": "PLATEAU4.SolidIntersectionTestPairCreator",
       "type": "processor",
-      "description": "Crée des paires d'entités à partir de la sortie d'AreaOnAreaOverlayer pour les tests d'intersection de solides",
+      "description": "Crée des paires d'entités à partir de la sortie d'Area On Area Overlayer pour les tests d'intersection de solides",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "SolidIntersectionTestPairCreatorParam",
@@ -10098,7 +9941,7 @@
             "type": "string"
           },
           "listAttribute": {
-            "description": "Attribute name containing the list of overlapping features from AreaOnAreaOverlayer (default: \"list\")",
+            "description": "Attribute name containing the list of overlapping features from Area On Area Overlayer (default: \"list\")",
             "default": "list",
             "type": "string"
           },
@@ -10617,7 +10460,7 @@
     {
       "name": "PLATEAU6.SolidIntersectionTestPairCreator",
       "type": "processor",
-      "description": "Creates pairs of features from AreaOnAreaOverlayer output for solid intersection testing",
+      "description": "Creates pairs of features from Area On Area Overlayer output for solid intersection testing",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "SolidIntersectionTestPairCreatorParam",
@@ -10629,7 +10472,7 @@
             "type": "string"
           },
           "listAttribute": {
-            "description": "Attribute name containing the list of overlapping features from AreaOnAreaOverlayer (default: \"list\")",
+            "description": "Attribute name containing the list of overlapping features from Area On Area Overlayer (default: \"list\")",
             "default": "list",
             "type": "string"
           },
@@ -10746,7 +10589,7 @@
       "tags": []
     },
     {
-      "name": "PlanarityFilter",
+      "name": "Planarity Filter",
       "type": "processor",
       "description": "Filter Features by Geometry Planarity",
       "parameter": {
@@ -10846,12 +10689,12 @@
       ]
     },
     {
-      "name": "PythonScriptProcessor",
+      "name": "Python Script Processor",
       "type": "processor",
       "description": "Exécute des scripts Python pour le traitement de données géospatiales",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "PythonScriptProcessorParam",
+        "title": "Python Script ProcessorParam",
         "type": "object",
         "properties": {
           "script": {
@@ -11212,12 +11055,12 @@
       ]
     },
     {
-      "name": "Rotator3D",
+      "name": "Rotator 3D",
       "type": "processor",
       "description": "Fait pivoter un polygone 3D en utilisant des vecteurs de/vers ou une spécification axe-angle",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "Rotator3D Parameters",
+        "title": "Rotator 3D Parameters",
         "description": "Configure the rotation for a 3D polygon",
         "type": "object",
         "required": [
@@ -11725,7 +11568,7 @@
       ]
     },
     {
-      "name": "SolidBoundaryValidator",
+      "name": "Solid Boundary Validator",
       "type": "processor",
       "description": "Valide la géométrie des limites du solide",
       "parameter": {
@@ -12024,63 +11867,7 @@
       ]
     },
     {
-      "name": "Three Dimension Forcer",
-      "type": "processor",
-      "description": "Convertit les géométries 2D en 3D en ajoutant des coordonnées Z (élévation)",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "ThreeDimensionForcer Parameters",
-        "description": "Configure how to convert 2D geometries to 3D by adding Z-coordinates",
-        "type": "object",
-        "properties": {
-          "elevation": {
-            "title": "Elevation",
-            "description": "The Z-coordinate (elevation) value to add to all points. Can be a constant value or an expression. Defaults to 0.0 if not specified.",
-            "type": [
-              "object",
-              "null"
-            ],
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
-          },
-          "preserveExistingZ": {
-            "title": "Preserve Existing Z Values",
-            "description": "If true, geometries that are already 3D will pass through unchanged. If false, existing Z values will be replaced with the specified elevation. Defaults to false.",
-            "default": false,
-            "type": "boolean"
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "features"
-      ],
-      "categories": [
-        "Geometry"
-      ],
-      "tags": [
-        "3d"
-      ]
-    },
-    {
-      "name": "ThreeDimensionBoxReplacer",
+      "name": "Three Dimension Box Replacer",
       "type": "processor",
       "description": "Replace Geometry with 3D Box from Attributes",
       "parameter": {
@@ -12171,7 +11958,63 @@
       "tags": []
     },
     {
-      "name": "ThreeDimensionPlanarityRotator",
+      "name": "Three Dimension Forcer",
+      "type": "processor",
+      "description": "Convertit les géométries 2D en 3D en ajoutant des coordonnées Z (élévation)",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "ThreeDimensionForcer Parameters",
+        "description": "Configure how to convert 2D geometries to 3D by adding Z-coordinates",
+        "type": "object",
+        "properties": {
+          "elevation": {
+            "title": "Elevation",
+            "description": "The Z-coordinate (elevation) value to add to all points. Can be a constant value or an expression. Defaults to 0.0 if not specified.",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "preserveExistingZ": {
+            "title": "Preserve Existing Z Values",
+            "description": "If true, geometries that are already 3D will pass through unchanged. If false, existing Z values will be replaced with the specified elevation. Defaults to false.",
+            "default": false,
+            "type": "boolean"
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": [
+        "3d"
+      ]
+    },
+    {
+      "name": "Three Dimension Planarity Rotator",
       "type": "processor",
       "description": "Rotates a single or a set of 2D geometries in 3D space to align them horizontally.",
       "parameter": null,
@@ -12189,7 +12032,7 @@
       "tags": []
     },
     {
-      "name": "ThreeDimensionRotator",
+      "name": "Three Dimension Rotator",
       "type": "processor",
       "description": "Rotate 3D Geometry Around Arbitrary Axis",
       "parameter": {
@@ -12388,7 +12231,7 @@
       ]
     },
     {
-      "name": "VertexCounter",
+      "name": "Vertex Counter",
       "type": "processor",
       "description": "Compte les sommets de géométrie et les stocke comme attribut",
       "parameter": {
@@ -12429,7 +12272,7 @@
       "tags": []
     },
     {
-      "name": "VertexRemover",
+      "name": "Vertex Remover",
       "type": "processor",
       "description": "Remove Redundant Vertices from Geometry",
       "parameter": null,
@@ -12739,6 +12582,163 @@
         "file-system",
         "compression"
       ]
+    },
+    {
+      "name": "glTF Reader",
+      "type": "source",
+      "description": "Lit des modèles 3D depuis des fichiers glTF 2.0, prenant en charge les maillages, nœuds, scènes et primitives de géométrie",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "glTF ReaderParam",
+        "type": "object",
+        "properties": {
+          "triangulate": {
+            "title": "Triangulate",
+            "description": "If true, converts all primitives to triangles (reserved for future use - currently all primitives are processed as triangles)",
+            "default": true,
+            "type": "boolean"
+          },
+          "mergeMeshes": {
+            "title": "Merge Meshes",
+            "description": "If true, combines all meshes from the glTF file into a single output feature",
+            "default": false,
+            "type": "boolean"
+          },
+          "includeNodes": {
+            "title": "Include Nodes",
+            "description": "If true, includes node hierarchy information from the glTF scene graph in feature attributes",
+            "default": true,
+            "type": "boolean"
+          },
+          "dataset": {
+            "title": "File Path",
+            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "inline": {
+            "title": "Inline Content",
+            "description": "Expression that returns the file content as text instead of reading from a file path",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "File",
+        "3D"
+      ],
+      "tags": []
+    },
+    {
+      "name": "glTF Writer",
+      "type": "sink",
+      "description": "Writes 3D features to GLTF format with optional texture attachment",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "glTF Writer Parameters",
+        "description": "Configuration for writing features to GLTF 3D format.",
+        "type": "object",
+        "required": [
+          "output"
+        ],
+        "properties": {
+          "output": {
+            "description": "Output file path. When `schemaKey` is set, treated as a directory and each feature type is written to `<output>/<schemaKeyValue>.glb`; otherwise all features are written to this single file.",
+            "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "attachTexture": {
+            "description": "Whether to attach texture information to the GLTF model",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "dracoCompression": {
+            "description": "Apply Draco compression to the geometry",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "schemaKey": {
+            "description": "Features are grouped by this attribute and written to separate files. The key is excluded from output attributes.",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [],
+      "categories": [
+        "File"
+      ],
+      "tags": []
     }
   ]
 }

@@ -24,11 +24,11 @@
       }
     },
     {
-      "name": "AreaOnAreaOverlayer",
+      "name": "Area On Area Overlayer",
       "description": "Superpone un área sobre otra área",
       "parameterI18n": {
         "": {
-          "title": "AreaOnAreaOverlayer Parameters",
+          "title": "Area On Area Overlayer Parameters",
           "description": "Configure how area overlay analysis is performed"
         },
         "accumulationMode": {
@@ -108,6 +108,20 @@
       }
     },
     {
+      "name": "Attribute Bulk Array Joiner",
+      "description": "Une atributos de matriz en valores únicos",
+      "parameterI18n": {
+        "": {
+          "title": "Attribute Bulk Array Joiner Parameters",
+          "description": "Configure which array attributes to join into single values"
+        },
+        "ignoreAttributes": {
+          "title": "Attributes to Ignore",
+          "description": "List of attribute names to skip during array joining process"
+        }
+      }
+    },
+    {
       "name": "Attribute Conversion Table",
       "description": "Transforma atributos de características usando tablas de búsqueda",
       "parameterI18n": {
@@ -145,6 +159,32 @@
           "featureTo": {
             "title": "Attribute to convert to"
           }
+        }
+      }
+    },
+    {
+      "name": "Attribute Duplicate Filter",
+      "description": "Filtra las entidades con atributos duplicados",
+      "parameterI18n": {
+        "": {
+          "title": "Attribute Duplicate Filter Parameters"
+        },
+        "filterBy": {
+          "title": "Filter Attributes",
+          "description": "Attributes used to identify duplicate features - features with identical values for these attributes will be deduplicated"
+        }
+      }
+    },
+    {
+      "name": "Attribute File Path Info Extractor",
+      "description": "Extrae información de rutas de archivo a partir de atributos",
+      "parameterI18n": {
+        "": {
+          "title": "Attribute File Path Info Extractor Parameters"
+        },
+        "attribute": {
+          "title": "Source Path Attribute",
+          "description": "Attribute containing the file path to analyze for extracting file system information"
         }
       }
     },
@@ -224,51 +264,11 @@
       }
     },
     {
-      "name": "AttributeBulkArrayJoiner",
-      "description": "Une atributos de matriz en valores únicos",
-      "parameterI18n": {
-        "": {
-          "title": "AttributeBulkArrayJoiner Parameters",
-          "description": "Configure which array attributes to join into single values"
-        },
-        "ignoreAttributes": {
-          "title": "Attributes to Ignore",
-          "description": "List of attribute names to skip during array joining process"
-        }
-      }
-    },
-    {
-      "name": "AttributeDuplicateFilter",
-      "description": "Filtra las entidades con atributos duplicados",
-      "parameterI18n": {
-        "": {
-          "title": "AttributeDuplicateFilter Parameters"
-        },
-        "filterBy": {
-          "title": "Filter Attributes",
-          "description": "Attributes used to identify duplicate features - features with identical values for these attributes will be deduplicated"
-        }
-      }
-    },
-    {
-      "name": "AttributeFilePathInfoExtractor",
-      "description": "Extrae información de rutas de archivo a partir de atributos",
-      "parameterI18n": {
-        "": {
-          "title": "AttributeFilePathInfoExtractor Parameters"
-        },
-        "attribute": {
-          "title": "Source Path Attribute",
-          "description": "Attribute containing the file path to analyze for extracting file system information"
-        }
-      }
-    },
-    {
-      "name": "AttributeRangeMapper",
+      "name": "Attribute Range Mapper",
       "description": "Mapear valores de atributos a rangos y asignar valores de salida correspondientes",
       "parameterI18n": {
         "": {
-          "title": "AttributeRangeMapper Parameters"
+          "title": "Attribute Range Mapper Parameters"
         },
         "defaultValue": {
           "title": "Default Value",
@@ -305,11 +305,11 @@
       }
     },
     {
-      "name": "BoundaryExtractor",
+      "name": "Boundary Extractor",
       "description": "Extrae el límite de geometrías. Para sólidos/mallas devuelve superficies delimitadoras, para superficies devuelve aristas de límite, para superficies cerradas devuelve geometría vacía",
       "parameterI18n": {
         "": {
-          "title": "BoundaryExtractor Parameters",
+          "title": "Boundary Extractor Parameters",
           "description": "Configuration for extracting boundaries from geometries."
         },
         "exteriorOnly": {
@@ -448,8 +448,8 @@
       }
     },
     {
-      "name": "CSGBuilder",
-      "description": "Construye una representación de Geometría Sólida Constructiva (CSG) a partir de un par (Izquierda, Derecha) de geometrías sólidas. Detecta unión, intersección y diferencia (Izq - Der), pero no calcula la geometría resultante. Use CSGEvaluator para evaluar el árbol CSG.",
+      "name": "CSG Builder",
+      "description": "Construye una representación de Geometría Sólida Constructiva (CSG) a partir de un par (Izquierda, Derecha) de geometrías sólidas. Detecta unión, intersección y diferencia (Izq - Der), pero no calcula la geometría resultante. Use CSG Evaluator para evaluar el árbol CSG.",
       "parameterI18n": {
         "": {
           "title": "CSG Builder Parameters",
@@ -470,7 +470,7 @@
       }
     },
     {
-      "name": "CSGEvaluator",
+      "name": "CSG Evaluator",
       "description": "Evalúa un árbol de Geometría Sólida Constructiva (CSG) para producir una geometría sólida. Toma una representación CSG y calcula la malla resultante de las operaciones booleanas.",
       "parameterI18n": {
         "": {
@@ -574,11 +574,117 @@
       }
     },
     {
-      "name": "CenterPointReplacer",
+      "name": "CZML Reader",
+      "description": "Lee características geográficas de archivos CZML (Lenguaje Cesium) para visualización 3D, con soporte para propiedades dinámicas en el tiempo y datos de series temporales",
+      "parameterI18n": {
+        "": {
+          "title": "CZML Reader Parameters",
+          "description": "Configuration for reading CZML files as geographic features."
+        },
+        "dataset": {
+          "title": "File Path",
+          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)"
+        },
+        "force2d": {
+          "title": "Force 2D",
+          "description": "If true, forces all geometries to be 2D (ignoring Z values)"
+        },
+        "inline": {
+          "title": "Inline Content",
+          "description": "Expression that returns the file content as text instead of reading from a file path"
+        },
+        "skipDocumentPacket": {
+          "title": "Skip Document Packet",
+          "description": "If true, skips the document packet (first packet with version/clock info)"
+        },
+        "timeSampling": {
+          "title": "Time Sampling Strategy",
+          "description": "How to handle time-dynamic properties in CZML packets. Defaults to \"preserveRaw\" for lossless round-trip with CZML Writer."
+        }
+      },
+      "enumI18n": {
+        "TimeSamplingStrategy": {
+          "allSamples": {
+            "description": "Extract all time-tagged samples as separate features, each with a `czml.timestamp` and `czml.timeOffset` attribute. Useful when you need per-sample processing in downstream actions."
+          },
+          "firstSampleOnly": {
+            "description": "Keep the first sample only (static geometry). Use this for workflows that don't need timeseries data."
+          },
+          "preserveRaw": {
+            "description": "Embed the full timeseries in one feature per entity. The feature geometry uses the first sample, `czml.timeseries` holds all position samples as a JSON array, and all other CZML packet properties (point, path, orientation, ellipsoid, etc.) are preserved as `czml.<key>` attributes for faithful round-trip through CZML Writer."
+          }
+        }
+      }
+    },
+    {
+      "name": "CZML Writer",
+      "description": "Exporta características como CZML para visualización en Cesium, con soporte para entidades dinámicas en el tiempo y posiciones de series temporales",
+      "parameterI18n": {
+        "": {
+          "title": "CZML Writer Parameters",
+          "description": "Configuration for writing geographic features to CZML files. Supports both static entities and time-dynamic entities with interpolated position samples.\n\n## Timeseries Configuration\n\nTo create time-animated entities in Cesium, configure at least the first two parameters below; configure `epoch` only when using numeric time offsets: 1. `timeField` - Attribute containing time values 2. `groupTimeseriesBy` - Attribute to group features into entities 3. `epoch` (optional) - Base time used when `timeField` contains numeric offsets\n\n### Example with ISO 8601 timestamps: ```yaml - action: CZML Writer with: output: \"vehicles.czml\" timeField: \"timestamp\"           # Contains \"2024-01-01T00:00:00Z\", etc. groupTimeseriesBy: \"vehicleId\"   # Groups by vehicle ID interpolationAlgorithm: \"LAGRANGE\" interpolationDegree: 5 ```\n\n### Example with numeric time offsets: ```yaml - action: CZML Writer with: output: \"sensors.czml\" timeField: \"timeOffset\"          # Contains numeric values: 0, 60, 120, etc. groupTimeseriesBy: \"sensorId\" epoch: \"2024-01-01T00:00:00Z\"    # Base time for offsets interpolationAlgorithm: \"LINEAR\" ```"
+        },
+        "colorAttribute": {
+          "title": "Color Attribute",
+          "description": "Attribute containing a hex color string (e.g., \"#ffd8c0\") for polygon fill. Used when polygon geometry is auto-converted from the feature geometry."
+        },
+        "epoch": {
+          "title": "Epoch",
+          "description": "Reference time (ISO 8601 format) used as the base for numeric time offsets.\n\n**When to use:** - Optional but recommended when `timeField` contains numeric values (e.g., \"0\", \"60\", \"3600\") - Not needed when `timeField` contains ISO 8601 datetime strings\n\n**Format:** ISO 8601 datetime string with timezone - Examples: \"2024-01-01T00:00:00Z\", \"2024-06-15T09:00:00+09:00\"\n\n**Auto-detection:** If omitted and all time values are numeric, automatically defaults to Unix epoch \"1970-01-01T00:00:00Z\". For custom time ranges, explicitly set this parameter to your desired base time.\n\n**Example:** ```yaml epoch: \"2024-01-01T00:00:00Z\"  # Time value \"60\" means 2024-01-01T00:01:00Z ```"
+        },
+        "groupBy": {
+          "title": "Group By Attributes",
+          "description": "Attributes used to group features into separate CZML files"
+        },
+        "groupTimeseriesBy": {
+          "title": "Group Timeseries By",
+          "description": "Attribute used to group features into a single time-dynamic CZML entity. Features with the same value for this attribute are merged into one packet with time-tagged positions."
+        },
+        "heightAttribute": {
+          "title": "Height Attribute",
+          "description": "Attribute containing a numeric value for polygon extrusion height. When set, polygons are extruded from ground to this height value."
+        },
+        "interpolationAlgorithm": {
+          "title": "Interpolation Algorithm",
+          "description": "Algorithm used by Cesium to interpolate between time-tagged samples."
+        },
+        "interpolationDegree": {
+          "title": "Interpolation Degree",
+          "description": "Degree of interpolation (1 for LINEAR, 5 typical for LAGRANGE)."
+        },
+        "opacity": {
+          "title": "Opacity",
+          "description": "Alpha value (0–255) for polygon fill color. Default: 180."
+        },
+        "output": {
+          "title": "Output File Path",
+          "description": "Path where the CZML file will be written"
+        },
+        "timeField": {
+          "title": "Time Field",
+          "description": "Attribute containing the timestamp for each feature. Supports two formats: - **ISO 8601 strings**: e.g., \"2024-01-01T00:00:00Z\", \"2024-01-01T12:30:45+09:00\" - **Numeric values**: Seconds as offset from epoch (e.g., \"0\", \"60\", \"120.5\")\n\nWhen set together with `groupTimeseriesBy`, features sharing the same group key are combined into a single CZML entity with time-tagged position samples for animation in Cesium.\n\n**Example workflow configuration:** ```yaml - action: CZML Writer with: output: \"output.czml\" timeField: \"timestamp\" groupTimeseriesBy: \"vehicleId\" epoch: \"2024-01-01T00:00:00Z\"  # Optional for numeric times (auto-defaults to Unix epoch) ```"
+        }
+      },
+      "enumI18n": {
+        "InterpolationAlgorithm": {
+          "HERMITE": {
+            "description": "Hermite spline interpolation using tangent data."
+          },
+          "LAGRANGE": {
+            "description": "Lagrange polynomial interpolation for smooth curves (typical degree 5)."
+          },
+          "LINEAR": {
+            "description": "Linear interpolation between samples (degree 1)."
+          }
+        }
+      }
+    },
+    {
+      "name": "Center Point Replacer",
       "description": "Reemplaza la geometría de la entidad con un punto que esté en el centro de su caja delimitadora, en su centro de masa o dentro de su área.",
       "parameterI18n": {
         "": {
-          "title": "CenterPointReplacerParam"
+          "title": "Center Point ReplacerParam"
         },
         "mode": {
           "description": "The method used to compute the replacement center point."
@@ -688,15 +794,15 @@
       "description": "Divide las entidades candidatas utilizando entidades recortadoras, de modo que las partes dentro o fuera de las recortadoras se produzcan por separado"
     },
     {
-      "name": "ClosedCurveFilter",
+      "name": "Closed Curve Filter",
       "description": "Comprueba si las curvas forman bucles cerrados"
     },
     {
-      "name": "ConvexHullAccumulator",
+      "name": "Convex Hull Accumulator",
       "description": "Crear envolventes convexas",
       "parameterI18n": {
         "": {
-          "title": "ConvexHullAccumulator Parameters"
+          "title": "Convex Hull Accumulator Parameters"
         },
         "groupBy": {
           "title": "Group By Attributes",
@@ -705,7 +811,7 @@
       }
     },
     {
-      "name": "CoordinateExtractor",
+      "name": "Coordinate Extractor",
       "description": "Extrae coordenadas de vértices de geometría como atributos de entidad",
       "parameterI18n": {
         "": {
@@ -722,117 +828,11 @@
       }
     },
     {
-      "name": "CzmlReader",
-      "description": "Lee características geográficas de archivos CZML (Lenguaje Cesium) para visualización 3D, con soporte para propiedades dinámicas en el tiempo y datos de series temporales",
-      "parameterI18n": {
-        "": {
-          "title": "CzmlReader Parameters",
-          "description": "Configuration for reading CZML files as geographic features."
-        },
-        "dataset": {
-          "title": "File Path",
-          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)"
-        },
-        "force2d": {
-          "title": "Force 2D",
-          "description": "If true, forces all geometries to be 2D (ignoring Z values)"
-        },
-        "inline": {
-          "title": "Inline Content",
-          "description": "Expression that returns the file content as text instead of reading from a file path"
-        },
-        "skipDocumentPacket": {
-          "title": "Skip Document Packet",
-          "description": "If true, skips the document packet (first packet with version/clock info)"
-        },
-        "timeSampling": {
-          "title": "Time Sampling Strategy",
-          "description": "How to handle time-dynamic properties in CZML packets. Defaults to \"preserveRaw\" for lossless round-trip with CzmlWriter."
-        }
-      },
-      "enumI18n": {
-        "TimeSamplingStrategy": {
-          "allSamples": {
-            "description": "Extract all time-tagged samples as separate features, each with a `czml.timestamp` and `czml.timeOffset` attribute. Useful when you need per-sample processing in downstream actions."
-          },
-          "firstSampleOnly": {
-            "description": "Keep the first sample only (static geometry). Use this for workflows that don't need timeseries data."
-          },
-          "preserveRaw": {
-            "description": "Embed the full timeseries in one feature per entity. The feature geometry uses the first sample, `czml.timeseries` holds all position samples as a JSON array, and all other CZML packet properties (point, path, orientation, ellipsoid, etc.) are preserved as `czml.<key>` attributes for faithful round-trip through CzmlWriter."
-          }
-        }
-      }
-    },
-    {
-      "name": "CzmlWriter",
-      "description": "Exporta características como CZML para visualización en Cesium, con soporte para entidades dinámicas en el tiempo y posiciones de series temporales",
-      "parameterI18n": {
-        "": {
-          "title": "CzmlWriter Parameters",
-          "description": "Configuration for writing geographic features to CZML files. Supports both static entities and time-dynamic entities with interpolated position samples.\n\n## Timeseries Configuration\n\nTo create time-animated entities in Cesium, configure at least the first two parameters below; configure `epoch` only when using numeric time offsets: 1. `timeField` - Attribute containing time values 2. `groupTimeseriesBy` - Attribute to group features into entities 3. `epoch` (optional) - Base time used when `timeField` contains numeric offsets\n\n### Example with ISO 8601 timestamps: ```yaml - action: CzmlWriter with: output: \"vehicles.czml\" timeField: \"timestamp\"           # Contains \"2024-01-01T00:00:00Z\", etc. groupTimeseriesBy: \"vehicleId\"   # Groups by vehicle ID interpolationAlgorithm: \"LAGRANGE\" interpolationDegree: 5 ```\n\n### Example with numeric time offsets: ```yaml - action: CzmlWriter with: output: \"sensors.czml\" timeField: \"timeOffset\"          # Contains numeric values: 0, 60, 120, etc. groupTimeseriesBy: \"sensorId\" epoch: \"2024-01-01T00:00:00Z\"    # Base time for offsets interpolationAlgorithm: \"LINEAR\" ```"
-        },
-        "colorAttribute": {
-          "title": "Color Attribute",
-          "description": "Attribute containing a hex color string (e.g., \"#ffd8c0\") for polygon fill. Used when polygon geometry is auto-converted from the feature geometry."
-        },
-        "epoch": {
-          "title": "Epoch",
-          "description": "Reference time (ISO 8601 format) used as the base for numeric time offsets.\n\n**When to use:** - Optional but recommended when `timeField` contains numeric values (e.g., \"0\", \"60\", \"3600\") - Not needed when `timeField` contains ISO 8601 datetime strings\n\n**Format:** ISO 8601 datetime string with timezone - Examples: \"2024-01-01T00:00:00Z\", \"2024-06-15T09:00:00+09:00\"\n\n**Auto-detection:** If omitted and all time values are numeric, automatically defaults to Unix epoch \"1970-01-01T00:00:00Z\". For custom time ranges, explicitly set this parameter to your desired base time.\n\n**Example:** ```yaml epoch: \"2024-01-01T00:00:00Z\"  # Time value \"60\" means 2024-01-01T00:01:00Z ```"
-        },
-        "groupBy": {
-          "title": "Group By Attributes",
-          "description": "Attributes used to group features into separate CZML files"
-        },
-        "groupTimeseriesBy": {
-          "title": "Group Timeseries By",
-          "description": "Attribute used to group features into a single time-dynamic CZML entity. Features with the same value for this attribute are merged into one packet with time-tagged positions."
-        },
-        "heightAttribute": {
-          "title": "Height Attribute",
-          "description": "Attribute containing a numeric value for polygon extrusion height. When set, polygons are extruded from ground to this height value."
-        },
-        "interpolationAlgorithm": {
-          "title": "Interpolation Algorithm",
-          "description": "Algorithm used by Cesium to interpolate between time-tagged samples."
-        },
-        "interpolationDegree": {
-          "title": "Interpolation Degree",
-          "description": "Degree of interpolation (1 for LINEAR, 5 typical for LAGRANGE)."
-        },
-        "opacity": {
-          "title": "Opacity",
-          "description": "Alpha value (0–255) for polygon fill color. Default: 180."
-        },
-        "output": {
-          "title": "Output File Path",
-          "description": "Path where the CZML file will be written"
-        },
-        "timeField": {
-          "title": "Time Field",
-          "description": "Attribute containing the timestamp for each feature. Supports two formats: - **ISO 8601 strings**: e.g., \"2024-01-01T00:00:00Z\", \"2024-01-01T12:30:45+09:00\" - **Numeric values**: Seconds as offset from epoch (e.g., \"0\", \"60\", \"120.5\")\n\nWhen set together with `groupTimeseriesBy`, features sharing the same group key are combined into a single CZML entity with time-tagged position samples for animation in Cesium.\n\n**Example workflow configuration:** ```yaml - action: CzmlWriter with: output: \"output.czml\" timeField: \"timestamp\" groupTimeseriesBy: \"vehicleId\" epoch: \"2024-01-01T00:00:00Z\"  # Optional for numeric times (auto-defaults to Unix epoch) ```"
-        }
-      },
-      "enumI18n": {
-        "InterpolationAlgorithm": {
-          "HERMITE": {
-            "description": "Hermite spline interpolation using tangent data."
-          },
-          "LAGRANGE": {
-            "description": "Lagrange polynomial interpolation for smooth curves (typical degree 5)."
-          },
-          "LINEAR": {
-            "description": "Linear interpolation between samples (degree 1)."
-          }
-        }
-      }
-    },
-    {
-      "name": "DateTimeConverter",
+      "name": "Date Time Converter",
       "description": "Convierte valores de fecha y hora entre diferentes formatos",
       "parameterI18n": {
         "": {
-          "title": "DateTimeConverter Parameters"
+          "title": "Date Time Converter Parameters"
         },
         "attribute": {
           "description": "Attribute containing the datetime value to convert"
@@ -965,11 +965,11 @@
       }
     },
     {
-      "name": "ExcelWriter",
+      "name": "Excel Writer",
       "description": "Escribe entidades en formato Microsoft Excel (.xlsx)",
       "parameterI18n": {
         "": {
-          "title": "ExcelWriter Parameters",
+          "title": "Excel Writer Parameters",
           "description": "Configuration for writing features to Microsoft Excel format."
         },
         "output": {
@@ -991,6 +991,72 @@
         "distance": {
           "title": "Distance",
           "description": "The vertical distance (height) to extrude the polygon. Can be a constant value or an expression"
+        }
+      }
+    },
+    {
+      "name": "Feature CityGML 2 Reader",
+      "description": "Lee archivos CityGML 2.0: resuelve referencias gml:id y enlaces xlink:href entre archivos",
+      "parameterI18n": {
+        "": {
+          "title": "Feature CityGML 2 Reader Parameters"
+        },
+        "cityGmlAttributesKey": {
+          "title": "Clave de Atributos CityGML",
+          "description": "Cuando se establece, los atributos CityGML analizados se anidan bajo esta clave en la entidad de salida. Cuando es nulo, los atributos se emiten al nivel superior. Por defecto es nulo."
+        },
+        "dataset": {
+          "title": "Dataset",
+          "description": "Expresión de ruta que resuelve al archivo CityGML 2.0 a leer."
+        },
+        "extractTags": {
+          "title": "Extraer Etiquetas",
+          "description": "Nombres de tipos de entidad a aplanar como entidades individuales. Acepta forma calificada (`bldg:Building`), local (`Building`) o notación Clark (`{http://…}Building`). Vacío significa emitir todos los objetos urbanos de nivel superior sin cambios."
+        },
+        "flattenMeasureTypes": {
+          "title": "Aplanar Tipos de Medida",
+          "description": "Cuando es verdadero, los elementos con un único atributo `uom` y contenido de texto numérico se convierten a un valor numérico, con la unidad almacenada como clave hermana `{name}_uom`. Por defecto es false."
+        },
+        "flattenSingleChildObjects": {
+          "title": "Aplanar Nodos de Objeto con Hijo Único",
+          "description": "Cuando es verdadero, un elemento envolvente cuyo único contenido es un único elemento hijo se elimina: el hijo se eleva y toma como clave su propio nombre de etiqueta, siempre envuelto en un array. Por defecto es false."
+        },
+        "keepAttributes": {
+          "title": "Conservar Atributos",
+          "description": "Cuando es falso, los atributos XML (entradas con prefijo `@` como `@gml:id`, `@codeSpace`) se eliminan de las entidades analizadas. Por defecto es true."
+        }
+      }
+    },
+    {
+      "name": "Feature CityGML 3 Reader",
+      "description": "Lee archivos CityGML 3.0: resuelve referencias gml:id y enlaces xlink:href entre archivos",
+      "parameterI18n": {
+        "": {
+          "title": "Feature CityGML 3 Reader Parameters"
+        },
+        "cityGmlAttributesKey": {
+          "title": "Clave de Atributos CityGML",
+          "description": "Cuando se establece, los atributos CityGML analizados se anidan bajo esta clave en la entidad de salida. Cuando es nulo, los atributos se emiten al nivel superior. Por defecto es nulo."
+        },
+        "dataset": {
+          "title": "Dataset",
+          "description": "Expresión de ruta que resuelve al archivo CityGML 3.0 a leer."
+        },
+        "extractTags": {
+          "title": "Extraer Etiquetas",
+          "description": "Nombres de tipos de entidad a aplanar como entidades individuales. Acepta forma calificada (`bldg:Building`), local (`Building`) o notación Clark (`{http://…}Building`). Vacío significa emitir todos los objetos urbanos de nivel superior sin cambios."
+        },
+        "flattenMeasureTypes": {
+          "title": "Aplanar Tipos de Medida",
+          "description": "Cuando es verdadero, los elementos con un único atributo `uom` y contenido de texto numérico se convierten a un valor numérico, con la unidad almacenada como clave hermana `{name}_uom`. Por defecto es false."
+        },
+        "flattenSingleChildObjects": {
+          "title": "Aplanar Nodos de Objeto con Hijo Único",
+          "description": "Cuando es verdadero, un elemento envolvente cuyo único contenido es un único elemento hijo se elimina: el hijo se eleva y toma como clave su propio nombre de etiqueta, siempre envuelto en un array. Por defecto es false."
+        },
+        "keepAttributes": {
+          "title": "Conservar Atributos",
+          "description": "Cuando es falso, los atributos XML (entradas con prefijo `@` como `@gml:id`, `@codeSpace`) se eliminan de las entidades analizadas. Por defecto es true."
         }
       }
     },
@@ -1051,6 +1117,10 @@
           "description": "Write a script expression that returns a map (single feature) or array of maps (multiple features). Each map represents feature attributes as key-value pairs."
         }
       }
+    },
+    {
+      "name": "Feature Duplicate Filter",
+      "description": "Elimina características duplicadas"
     },
     {
       "name": "Feature File Path Extractor",
@@ -1218,6 +1288,15 @@
       }
     },
     {
+      "name": "Feature Reader",
+      "description": "Filtra entidades según condiciones",
+      "parameterI18n": {
+        "": {
+          "title": "Feature ReaderParam"
+        }
+      }
+    },
+    {
       "name": "Feature Sorter",
       "description": "Ordena entidades por atributos",
       "parameterI18n": {
@@ -1270,90 +1349,11 @@
       }
     },
     {
-      "name": "FeatureCityGml2Reader",
-      "description": "Lee archivos CityGML 2.0: resuelve referencias gml:id y enlaces xlink:href entre archivos",
-      "parameterI18n": {
-        "": {
-          "title": "FeatureCityGml2Reader Parameters"
-        },
-        "cityGmlAttributesKey": {
-          "title": "Clave de Atributos CityGML",
-          "description": "Cuando se establece, los atributos CityGML analizados se anidan bajo esta clave en la entidad de salida. Cuando es nulo, los atributos se emiten al nivel superior. Por defecto es nulo."
-        },
-        "dataset": {
-          "title": "Dataset",
-          "description": "Expresión de ruta que resuelve al archivo CityGML 2.0 a leer."
-        },
-        "extractTags": {
-          "title": "Extraer Etiquetas",
-          "description": "Nombres de tipos de entidad a aplanar como entidades individuales. Acepta forma calificada (`bldg:Building`), local (`Building`) o notación Clark (`{http://…}Building`). Vacío significa emitir todos los objetos urbanos de nivel superior sin cambios."
-        },
-        "flattenMeasureTypes": {
-          "title": "Aplanar Tipos de Medida",
-          "description": "Cuando es verdadero, los elementos con un único atributo `uom` y contenido de texto numérico se convierten a un valor numérico, con la unidad almacenada como clave hermana `{name}_uom`. Por defecto es false."
-        },
-        "flattenSingleChildObjects": {
-          "title": "Aplanar Nodos de Objeto con Hijo Único",
-          "description": "Cuando es verdadero, un elemento envolvente cuyo único contenido es un único elemento hijo se elimina: el hijo se eleva y toma como clave su propio nombre de etiqueta, siempre envuelto en un array. Por defecto es false."
-        },
-        "keepAttributes": {
-          "title": "Conservar Atributos",
-          "description": "Cuando es falso, los atributos XML (entradas con prefijo `@` como `@gml:id`, `@codeSpace`) se eliminan de las entidades analizadas. Por defecto es true."
-        }
-      }
-    },
-    {
-      "name": "FeatureCityGml3Reader",
-      "description": "Lee archivos CityGML 3.0: resuelve referencias gml:id y enlaces xlink:href entre archivos",
-      "parameterI18n": {
-        "": {
-          "title": "FeatureCityGml3Reader Parameters"
-        },
-        "cityGmlAttributesKey": {
-          "title": "Clave de Atributos CityGML",
-          "description": "Cuando se establece, los atributos CityGML analizados se anidan bajo esta clave en la entidad de salida. Cuando es nulo, los atributos se emiten al nivel superior. Por defecto es nulo."
-        },
-        "dataset": {
-          "title": "Dataset",
-          "description": "Expresión de ruta que resuelve al archivo CityGML 3.0 a leer."
-        },
-        "extractTags": {
-          "title": "Extraer Etiquetas",
-          "description": "Nombres de tipos de entidad a aplanar como entidades individuales. Acepta forma calificada (`bldg:Building`), local (`Building`) o notación Clark (`{http://…}Building`). Vacío significa emitir todos los objetos urbanos de nivel superior sin cambios."
-        },
-        "flattenMeasureTypes": {
-          "title": "Aplanar Tipos de Medida",
-          "description": "Cuando es verdadero, los elementos con un único atributo `uom` y contenido de texto numérico se convierten a un valor numérico, con la unidad almacenada como clave hermana `{name}_uom`. Por defecto es false."
-        },
-        "flattenSingleChildObjects": {
-          "title": "Aplanar Nodos de Objeto con Hijo Único",
-          "description": "Cuando es verdadero, un elemento envolvente cuyo único contenido es un único elemento hijo se elimina: el hijo se eleva y toma como clave su propio nombre de etiqueta, siempre envuelto en un array. Por defecto es false."
-        },
-        "keepAttributes": {
-          "title": "Conservar Atributos",
-          "description": "Cuando es falso, los atributos XML (entradas con prefijo `@` como `@gml:id`, `@codeSpace`) se eliminan de las entidades analizadas. Por defecto es true."
-        }
-      }
-    },
-    {
-      "name": "FeatureDuplicateFilter",
-      "description": "Elimina características duplicadas"
-    },
-    {
-      "name": "FeatureReader",
-      "description": "Filtra entidades según condiciones",
-      "parameterI18n": {
-        "": {
-          "title": "FeatureReaderParam"
-        }
-      }
-    },
-    {
-      "name": "FeatureWriter",
+      "name": "Feature Writer",
       "description": "Escribe características a un archivo",
       "parameterI18n": {
         "": {
-          "title": "FeatureWriter Parameters",
+          "title": "Feature Writer Parameters",
           "description": "Configuration for writing features to different file formats."
         }
       }
@@ -1484,6 +1484,19 @@
       }
     },
     {
+      "name": "Geometry Coercer",
+      "description": "Fuerza la geometría de una entidad a una geometría específica",
+      "parameterI18n": {
+        "": {
+          "title": "Geometry Coercer Parameters",
+          "description": "Configuration for coercing geometries to specific target types."
+        },
+        "targetType": {
+          "description": "Target geometry type to coerce features to (e.g., LineString)"
+        }
+      }
+    },
+    {
       "name": "Geometry Extractor",
       "description": "Extrae la geometría de una entidad y la añade como un atributo.",
       "parameterI18n": {
@@ -1494,6 +1507,16 @@
         "outputAttribute": {
           "title": "Output Attribute",
           "description": "Name of the attribute where the extracted geometry data will be stored as compressed JSON"
+        }
+      }
+    },
+    {
+      "name": "Geometry Filter",
+      "description": "Filtra la geometría por tipo",
+      "parameterI18n": {
+        "": {
+          "title": "Geometry Filter Parameters",
+          "description": "Configure how to filter features based on their geometry type"
         }
       }
     },
@@ -1579,82 +1602,8 @@
       }
     },
     {
-      "name": "GeometryCoercer",
-      "description": "Fuerza la geometría de una entidad a una geometría específica",
-      "parameterI18n": {
-        "": {
-          "title": "GeometryCoercer Parameters",
-          "description": "Configuration for coercing geometries to specific target types."
-        },
-        "targetType": {
-          "description": "Target geometry type to coerce features to (e.g., LineString)"
-        }
-      }
-    },
-    {
-      "name": "GeometryFilter",
-      "description": "Filtra la geometría por tipo",
-      "parameterI18n": {
-        "": {
-          "title": "Geometry Filter Parameters",
-          "description": "Configure how to filter features based on their geometry type"
-        }
-      }
-    },
-    {
-      "name": "GeometryValueFilter",
+      "name": "Geometry Value Filter",
       "description": "Filtra la geometría por valor"
-    },
-    {
-      "name": "GltfReader",
-      "description": "Lee modelos 3D desde archivos glTF 2.0, compatible con mallas, nodos, escenas y primitivas de geometría",
-      "parameterI18n": {
-        "": {
-          "title": "GltfReaderParam"
-        },
-        "dataset": {
-          "title": "File Path",
-          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)"
-        },
-        "includeNodes": {
-          "title": "Include Nodes",
-          "description": "If true, includes node hierarchy information from the glTF scene graph in feature attributes"
-        },
-        "inline": {
-          "title": "Inline Content",
-          "description": "Expression that returns the file content as text instead of reading from a file path"
-        },
-        "mergeMeshes": {
-          "title": "Merge Meshes",
-          "description": "If true, combines all meshes from the glTF file into a single output feature"
-        },
-        "triangulate": {
-          "title": "Triangulate",
-          "description": "If true, converts all primitives to triangles (reserved for future use - currently all primitives are processed as triangles)"
-        }
-      }
-    },
-    {
-      "name": "GltfWriter",
-      "description": "Escribe entidades en un archivo Gltf",
-      "parameterI18n": {
-        "": {
-          "title": "GltfWriter Parameters",
-          "description": "Configuration for writing features to GLTF 3D format."
-        },
-        "attachTexture": {
-          "description": "Whether to attach texture information to the GLTF model"
-        },
-        "dracoCompression": {
-          "description": "Apply Draco compression to the geometry"
-        },
-        "output": {
-          "description": "Output file path. When `schemaKey` is set, treated as a directory and each feature type is written to `<output>/<schemaKeyValue>.glb`; otherwise all features are written to this single file."
-        },
-        "schemaKey": {
-          "description": "Features are grouped by this attribute and written to separate files. The key is excluded from output attributes."
-        }
-      }
     },
     {
       "name": "Grid Divider",
@@ -1678,7 +1627,7 @@
       }
     },
     {
-      "name": "HTTPCaller",
+      "name": "HTTP Caller",
       "description": "Realizar solicitudes HTTP/HTTPS y enriquecer entidades con datos de respuesta",
       "parameterI18n": {
         "": {
@@ -2002,7 +1951,7 @@
       }
     },
     {
-      "name": "HoleCounter",
+      "name": "Hole Counter",
       "description": "Cuenta el número de huecos en una geometría y lo agrega como atributo.",
       "parameterI18n": {
         "": {
@@ -2016,7 +1965,7 @@
       }
     },
     {
-      "name": "HoleExtractor",
+      "name": "Hole Extractor",
       "description": "Extrae los huecos en una geometría y los agrega como atributo."
     },
     {
@@ -2081,8 +2030,18 @@
       }
     },
     {
-      "name": "JPStandardGridAccumulator",
+      "name": "JP Standard Grid Accumulator",
       "description": "Acumula características en la cuadrícula estándar japonesa"
+    },
+    {
+      "name": "JSON Fragmenter",
+      "description": "Fragmenta documentos JSON en entidades individuales basándose en una consulta JSONPath",
+      "parameterI18n": {
+        "": {
+          "title": "JSON Fragmenter Parameters",
+          "description": "Configuration for fragmenting JSON documents into individual features."
+        }
+      }
     },
     {
       "name": "JSON Reader",
@@ -2119,21 +2078,11 @@
       }
     },
     {
-      "name": "JSONFragmenter",
-      "description": "Fragmenta documentos JSON en entidades individuales basándose en una consulta JSONPath",
-      "parameterI18n": {
-        "": {
-          "title": "JSONFragmenter Parameters",
-          "description": "Configuration for fragmenting JSON documents into individual features."
-        }
-      }
-    },
-    {
-      "name": "LineOnLineOverlayer",
+      "name": "Line On Line Overlayer",
       "description": "Los puntos de intersección se convierten en entidades de puntos que pueden contener la lista combinada de atributos de las líneas originales intersectadas.",
       "parameterI18n": {
         "": {
-          "title": "LineOnLineOverlayer Parameters",
+          "title": "Line On Line Overlayer Parameters",
           "description": "Configuration for finding intersection points between line features."
         },
         "groupBy": {},
@@ -2144,24 +2093,11 @@
       }
     },
     {
-      "name": "List Exploder",
-      "description": "Divide en varios elementos los atributos de tipo lista",
-      "parameterI18n": {
-        "": {
-          "title": "ListExploder Parameters",
-          "description": "Configuration for exploding array attributes into individual features."
-        },
-        "sourceAttribute": {
-          "description": "Attribute containing the array to explode (each element becomes a separate feature)"
-        }
-      }
-    },
-    {
-      "name": "ListConcatenator",
+      "name": "List Concatenator",
       "description": "Extrae un atributo específico de cada elemento de una lista y los concatena en una sola cadena de texto",
       "parameterI18n": {
         "": {
-          "title": "ListConcatenator Parameters",
+          "title": "List Concatenator Parameters",
           "description": "Configuration for concatenating a specific attribute from list elements."
         },
         "attribute": {
@@ -2179,11 +2115,24 @@
       }
     },
     {
-      "name": "ListIndexer",
+      "name": "List Exploder",
+      "description": "Divide en varios elementos los atributos de tipo lista",
+      "parameterI18n": {
+        "": {
+          "title": "ListExploder Parameters",
+          "description": "Configuration for exploding array attributes into individual features."
+        },
+        "sourceAttribute": {
+          "description": "Attribute containing the array to explode (each element becomes a separate feature)"
+        }
+      }
+    },
+    {
+      "name": "List Indexer",
       "description": "Copia los atributos de un elemento de lista específico para convertirlos en los atributos principales de una entidad",
       "parameterI18n": {
         "": {
-          "title": "ListIndexer Parameters",
+          "title": "List Indexer Parameters",
           "description": "Configuration for copying attributes from a specific list element to main feature attributes."
         },
         "copiedAttributePrefix": {
@@ -2247,11 +2196,11 @@
       }
     },
     {
-      "name": "NeighborFinder",
+      "name": "Neighbor Finder",
       "description": "Encuentra las entidades candidatas más cercanas para cada entidad base basándose en proximidad espacial",
       "parameterI18n": {
         "": {
-          "title": "NeighborFinder Parameters",
+          "title": "Neighbor Finder Parameters",
           "description": "Configuration for finding spatial neighbors between base and candidate features."
         },
         "attributePrefix": {
@@ -2380,11 +2329,11 @@
       }
     },
     {
-      "name": "ObjReader",
+      "name": "OBJ Reader",
       "description": "Lee modelos 3D desde archivos Wavefront OBJ, compatible con vértices, caras, normales, coordenadas de textura y materiales",
       "parameterI18n": {
         "": {
-          "title": "ObjReader Parameters",
+          "title": "OBJ Reader Parameters",
           "description": "Configuration for reading Wavefront OBJ 3D model files with support for vertices, faces, normals, texture coordinates, and material definitions."
         },
         "dataset": {
@@ -2422,7 +2371,7 @@
       }
     },
     {
-      "name": "ObjWriter",
+      "name": "OBJ Writer",
       "description": "Escribe entidades 3D en formato Wavefront OBJ con archivos de material (MTL) opcionales",
       "parameterI18n": {
         "": {
@@ -2470,7 +2419,7 @@
       }
     },
     {
-      "name": "OrientationExtractor",
+      "name": "Orientation Extractor",
       "description": "Extrae la orientación de una geometría de una entidad y la agrega como un atributo.",
       "parameterI18n": {
         "": {
@@ -2825,7 +2774,7 @@
     },
     {
       "name": "PLATEAU4.SolidIntersectionTestPairCreator",
-      "description": "Crea pares de entidades a partir de la salida de AreaOnAreaOverlayer para pruebas de intersección de sólidos",
+      "description": "Crea pares de entidades a partir de la salida de Area On Area Overlayer para pruebas de intersección de sólidos",
       "parameterI18n": {
         "": {
           "title": "SolidIntersectionTestPairCreatorParam"
@@ -2834,7 +2783,7 @@
           "description": "Attribute name for the GML ID within the list items (default: \"gmlId\")"
         },
         "listAttribute": {
-          "description": "Attribute name containing the list of overlapping features from AreaOnAreaOverlayer (default: \"list\")"
+          "description": "Attribute name containing the list of overlapping features from Area On Area Overlayer (default: \"list\")"
         },
         "pairIdAttribute": {
           "description": "Attribute name to store the pair ID (default: \"pair_id\")"
@@ -2984,7 +2933,7 @@
           "description": "Attribute name for the GML ID within the list items (default: \"gmlId\")"
         },
         "listAttribute": {
-          "description": "Attribute name containing the list of overlapping features from AreaOnAreaOverlayer (default: \"list\")"
+          "description": "Attribute name containing the list of overlapping features from Area On Area Overlayer (default: \"list\")"
         },
         "pairIdAttribute": {
           "description": "Attribute name to store the pair ID (default: \"pair_id\")"
@@ -3008,7 +2957,7 @@
       "name": "PLATEAU6.UnmatchedXlinkDetector"
     },
     {
-      "name": "PlanarityFilter",
+      "name": "Planarity Filter",
       "description": "Filtra la geometría por tipo",
       "parameterI18n": {
         "": {
@@ -3040,11 +2989,11 @@
       "description": "Extrae vectores normales y otras propiedades de entidades de polígono"
     },
     {
-      "name": "PythonScriptProcessor",
+      "name": "Python Script Processor",
       "description": "Ejecuta scripts Python para el procesamiento de datos geoespaciales",
       "parameterI18n": {
         "": {
-          "title": "PythonScriptProcessorParam"
+          "title": "Python Script ProcessorParam"
         },
         "pythonFile": {
           "title": "Python File",
@@ -3132,11 +3081,11 @@
       "description": "Refina la geometría"
     },
     {
-      "name": "Rotator3D",
+      "name": "Rotator 3D",
       "description": "Rota un polígono 3D usando vectores de origen/destino o especificación de eje-ángulo",
       "parameterI18n": {
         "": {
-          "title": "Rotator3D Parameters",
+          "title": "Rotator 3D Parameters",
           "description": "Configure the rotation for a 3D polygon"
         },
         "rotation": {
@@ -3210,7 +3159,7 @@
       }
     },
     {
-      "name": "SolidBoundaryValidator",
+      "name": "Solid Boundary Validator",
       "description": "Valida la geometría del límite del sólido",
       "parameterI18n": {
         "": {
@@ -3317,25 +3266,7 @@
       }
     },
     {
-      "name": "Three Dimension Forcer",
-      "description": "Convierte geometrías 2D a 3D añadiendo coordenadas Z (elevación)",
-      "parameterI18n": {
-        "": {
-          "title": "ThreeDimensionForcer Parameters",
-          "description": "Configure how to convert 2D geometries to 3D by adding Z-coordinates"
-        },
-        "elevation": {
-          "title": "Elevation",
-          "description": "The Z-coordinate (elevation) value to add to all points. Can be a constant value or an expression. Defaults to 0.0 if not specified."
-        },
-        "preserveExistingZ": {
-          "title": "Preserve Existing Z Values",
-          "description": "If true, geometries that are already 3D will pass through unchanged. If false, existing Z values will be replaced with the specified elevation. Defaults to false."
-        }
-      }
-    },
-    {
-      "name": "ThreeDimensionBoxReplacer",
+      "name": "Three Dimension Box Replacer",
       "description": "Reemplaza una caja tridimensional con un polígono.",
       "parameterI18n": {
         "": {
@@ -3369,11 +3300,29 @@
       }
     },
     {
-      "name": "ThreeDimensionPlanarityRotator",
+      "name": "Three Dimension Forcer",
+      "description": "Convierte geometrías 2D a 3D añadiendo coordenadas Z (elevación)",
+      "parameterI18n": {
+        "": {
+          "title": "ThreeDimensionForcer Parameters",
+          "description": "Configure how to convert 2D geometries to 3D by adding Z-coordinates"
+        },
+        "elevation": {
+          "title": "Elevation",
+          "description": "The Z-coordinate (elevation) value to add to all points. Can be a constant value or an expression. Defaults to 0.0 if not specified."
+        },
+        "preserveExistingZ": {
+          "title": "Preserve Existing Z Values",
+          "description": "If true, geometries that are already 3D will pass through unchanged. If false, existing Z values will be replaced with the specified elevation. Defaults to false."
+        }
+      }
+    },
+    {
+      "name": "Three Dimension Planarity Rotator",
       "description": "Rota superficies planares en 3D"
     },
     {
-      "name": "ThreeDimensionRotator",
+      "name": "Three Dimension Rotator",
       "description": "Reemplaza una caja tridimensional con un polígono.",
       "parameterI18n": {
         "": {
@@ -3415,7 +3364,7 @@
       "description": "Fuerza una geometría a ser bidimensional."
     },
     {
-      "name": "VertexCounter",
+      "name": "Vertex Counter",
       "description": "Cuenta los vértices de geometría y los almacena como atributo",
       "parameterI18n": {
         "": {
@@ -3429,7 +3378,7 @@
       }
     },
     {
-      "name": "VertexRemover",
+      "name": "Vertex Remover",
       "description": "Elimina vértices específicos de la geometría de una entidad"
     },
     {
@@ -3491,6 +3440,57 @@
         },
         "output": {
           "description": "Output path"
+        }
+      }
+    },
+    {
+      "name": "glTF Reader",
+      "description": "Lee modelos 3D desde archivos glTF 2.0, compatible con mallas, nodos, escenas y primitivas de geometría",
+      "parameterI18n": {
+        "": {
+          "title": "glTF ReaderParam"
+        },
+        "dataset": {
+          "title": "File Path",
+          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)"
+        },
+        "includeNodes": {
+          "title": "Include Nodes",
+          "description": "If true, includes node hierarchy information from the glTF scene graph in feature attributes"
+        },
+        "inline": {
+          "title": "Inline Content",
+          "description": "Expression that returns the file content as text instead of reading from a file path"
+        },
+        "mergeMeshes": {
+          "title": "Merge Meshes",
+          "description": "If true, combines all meshes from the glTF file into a single output feature"
+        },
+        "triangulate": {
+          "title": "Triangulate",
+          "description": "If true, converts all primitives to triangles (reserved for future use - currently all primitives are processed as triangles)"
+        }
+      }
+    },
+    {
+      "name": "glTF Writer",
+      "description": "Escribe entidades en un archivo Gltf",
+      "parameterI18n": {
+        "": {
+          "title": "glTF Writer Parameters",
+          "description": "Configuration for writing features to GLTF 3D format."
+        },
+        "attachTexture": {
+          "description": "Whether to attach texture information to the GLTF model"
+        },
+        "dracoCompression": {
+          "description": "Apply Draco compression to the geometry"
+        },
+        "output": {
+          "description": "Output file path. When `schemaKey` is set, treated as a directory and each feature type is written to `<output>/<schemaKeyValue>.glb`; otherwise all features are written to this single file."
+        },
+        "schemaKey": {
+          "description": "Features are grouped by this attribute and written to separate files. The key is excluded from output attributes."
         }
       }
     }

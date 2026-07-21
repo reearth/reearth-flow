@@ -26,7 +26,7 @@ pub(super) struct FeatureReaderFactory;
 
 impl ProcessorFactory for FeatureReaderFactory {
     fn name(&self) -> &str {
-        "FeatureReader"
+        "Feature Reader"
     }
 
     fn description(&self) -> &str {
@@ -258,6 +258,6 @@ impl Processor for FeatureReader {
     }
 
     fn name(&self) -> &str {
-        "FeatureReader"
+        "Feature Reader"
     }
 }

@@ -21,7 +21,7 @@ pub(super) struct AttributeRangeMapperFactory;
 
 impl ProcessorFactory for AttributeRangeMapperFactory {
     fn name(&self) -> &str {
-        "AttributeRangeMapper"
+        "Attribute Range Mapper"
     }
 
     fn description(&self) -> &str {
@@ -79,7 +79,7 @@ struct AttributeRangeMapper {
     params: AttributeRangeMapperParam,
 }
 
-/// # AttributeRangeMapper Parameters
+/// # Attribute Range Mapper Parameters
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AttributeRangeMapperParam {
@@ -215,7 +215,7 @@ impl Processor for AttributeRangeMapper {
     }
 
     fn name(&self) -> &str {
-        "AttributeRangeMapper"
+        "Attribute Range Mapper"
     }
 }
 

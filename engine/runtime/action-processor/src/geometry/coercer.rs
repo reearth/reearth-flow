@@ -25,7 +25,7 @@ pub(super) struct GeometryCoercerFactory;
 
 impl ProcessorFactory for GeometryCoercerFactory {
     fn name(&self) -> &str {
-        "GeometryCoercer"
+        "Geometry Coercer"
     }
 
     fn description(&self) -> &str {
@@ -83,7 +83,7 @@ enum CoerceTarget {
     TriangularMesh,
 }
 
-/// # GeometryCoercer Parameters
+/// # Geometry Coercer Parameters
 ///
 /// Configuration for coercing geometries to specific target types.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -133,7 +133,7 @@ impl Processor for GeometryCoercer {
     }
 
     fn name(&self) -> &str {
-        "GeometryCoercer"
+        "Geometry Coercer"
     }
 }
 

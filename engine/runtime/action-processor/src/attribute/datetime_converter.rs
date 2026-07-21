@@ -22,7 +22,7 @@ pub(super) struct DateTimeConverterFactory;
 
 impl ProcessorFactory for DateTimeConverterFactory {
     fn name(&self) -> &str {
-        "DateTimeConverter"
+        "Date Time Converter"
     }
 
     fn description(&self) -> &str {
@@ -129,7 +129,7 @@ struct DateTimeConverter {
     params: DateTimeConverterParam,
 }
 
-/// # DateTimeConverter Parameters
+/// # Date Time Converter Parameters
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct DateTimeConverterParam {
@@ -149,7 +149,7 @@ pub struct DateTimeConverterParam {
     pub output_attribute: Option<String>,
 }
 
-/// Input format options for DateTimeConverter
+/// Input format options for Date Time Converter
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum DateTimeInputFormat {
@@ -170,7 +170,7 @@ pub enum DateTimeInputFormat {
     Custom(String),
 }
 
-/// Output format options for DateTimeConverter
+/// Output format options for Date Time Converter
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum DateTimeOutputFormat {
@@ -245,7 +245,7 @@ impl Processor for DateTimeConverter {
     }
 
     fn name(&self) -> &str {
-        "DateTimeConverter"
+        "Date Time Converter"
     }
 }
 

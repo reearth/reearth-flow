@@ -78,7 +78,7 @@ graphs:
       - id: e5a9b6c0-1f2d-3e4a-7b8c-d90123d1c702
         name: AttributeDuplicateFilterDict
         type: action
-        action: AttributeDuplicateFilter
+        action: Attribute Duplicate Filter
         with:
           filterBy:
             - feature_type_without_prefix

@@ -39,7 +39,7 @@ pub(super) struct AreaOnAreaOverlayerFactory;
 
 impl ProcessorFactory for AreaOnAreaOverlayerFactory {
     fn name(&self) -> &str {
-        "AreaOnAreaOverlayer"
+        "Area On Area Overlayer"
     }
 
     fn description(&self) -> &str {
@@ -109,7 +109,7 @@ impl ProcessorFactory for AreaOnAreaOverlayerFactory {
     }
 }
 
-/// # AreaOnAreaOverlayer Parameters
+/// # Area On Area Overlayer Parameters
 /// Configure how area overlay analysis is performed
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
@@ -481,7 +481,7 @@ impl Processor for AreaOnAreaOverlayer {
     }
 
     fn name(&self) -> &str {
-        "AreaOnAreaOverlayer"
+        "Area On Area Overlayer"
     }
 }
 

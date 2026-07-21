@@ -31,7 +31,7 @@ nodes:
   - id: 5c2a7f4b-8e1d-4f9c-a6e3-4b7f2a5c8e1d
     name: OrientationExtractor
     type: action
-    action: OrientationExtractor
+    action: Orientation Extractor
     with:
       outputAttribute: outerOrientation
 
@@ -72,7 +72,7 @@ nodes:
   - id: 6a1d4f7c-9e2b-4c8a-f5e1-7c2a6f9d4e1b
     name: PlanarityFilter
     type: action
-    action: PlanarityFilter
+    action: Planarity Filter
     with:
       filterType: height
       threshold:
@@ -82,7 +82,7 @@ nodes:
   - id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
     name: Rotator3D
     type: action
-    action: Rotator3D
+    action: Rotator 3D
     with:
       rotation:
         type: fromToVectors
@@ -116,7 +116,7 @@ nodes:
   - id: 1e7a4c9b-3f6d-4a2e-c8b5-9d2a5e8c1b4f
     name: HoleCounter
     type: action
-    action: HoleCounter
+    action: Hole Counter
     with:
       outputAttribute: holeCount
 
@@ -164,14 +164,14 @@ nodes:
   - id: 7f5a8c3b-1d4e-4a9f-c2b7-6e3a7f5c8b1d
     name: GeometryCoercerRingNotClosed
     type: action
-    action: GeometryCoercer
+    action: Geometry Coercer
     with:
       targetType: lineString
 
   - id: 9c1e4a7b-6f2d-4e5c-a8b1-3f6c9e1a4b7d
     name: ClosedCurveFilter
     type: action
-    action: ClosedCurveFilter
+    action: Closed Curve Filter
 
   ## Intersection between Interior and Exterior
   ## Intersection between Interior and Interior
@@ -179,12 +179,12 @@ nodes:
   - id: 2d8a5f3c-4b7e-4c1d-f9a6-8c2d5a8f3b6e
     name: HoleExtractor
     type: action
-    action: HoleExtractor
+    action: Hole Extractor
 
   - id: 4a6c9f2d-7e3b-4d8a-c5f2-1a4c7e9f2d5b
     name: OrientationExtractorOuterShell
     type: action
-    action: OrientationExtractor
+    action: Orientation Extractor
     with:
       outputAttribute: outerOrientation
 
@@ -199,14 +199,14 @@ nodes:
   - id: 8e7c4a1f-2d5b-4f8e-a6c3-7f4e1c8a5b2d
     name: GeometryCoercerOutershell
     type: action
-    action: GeometryCoercer
+    action: Geometry Coercer
     with:
       targetType: lineString
 
   - id: 1c4f7a2e-5b8d-4a3c-f9e6-4c1f8a7e2b5d
     name: GeometryCoercerHole
     type: action
-    action: GeometryCoercer
+    action: Geometry Coercer
     with:
       targetType: lineString
 
@@ -234,7 +234,7 @@ nodes:
   - id: 7d4e9a2c-1f5b-4d8a-e7c4-9a2d7e4c1f5b
     name: LineOnLineOverlayer
     type: action
-    action: LineOnLineOverlayer
+    action: Line On Line Overlayer
     with:
       groupBy:
         - surfaceId
@@ -255,7 +255,7 @@ nodes:
   - id: 2c7f4a9e-8b1d-4f6c-a3e8-7f2c4a9e1b8d
     name: AreaOnAreaOverlayerInteriorAndInterior
     type: action
-    action: AreaOnAreaOverlayer
+    action: Area On Area Overlayer
     with:
       groupBy:
         - surfaceId
@@ -290,7 +290,7 @@ nodes:
   - id: 6b5d8a3f-1c4e-4b7d-a9c2-5d6b8a3f1c4e
     name: OrientationExtractorIncorrectInterior
     type: action
-    action: OrientationExtractor
+    action: Orientation Extractor
     with:
       outputAttribute: innerOrientation
 

@@ -437,7 +437,7 @@ graphs:
   - id: d9e8f7a6-5b4c-4a3d-9e2f-1c8b7a6e5d4c
     name: FeatureWriterNotWellFormedXmlCsv
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -470,7 +470,7 @@ graphs:
   - id: f8e2a1b4-7c3d-4e9f-a2b5-8f6c9d3e1a7b
     name: FeatureWriterInvalidXmlCsv
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -600,7 +600,7 @@ graphs:
   - id: 0e9fd0ce-4607-44be-8cdd-b4b2cc2ae04b
     name: FeatureWriterCsv
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -664,7 +664,7 @@ graphs:
   - id: 50de9474-378b-4878-b85d-516cf8a55547
     name: FeatureWriterJson
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: json
       converter:
@@ -702,7 +702,7 @@ graphs:
   - id: 8e5f9a2b-4c3d-4e7f-b8a5-9d6e4f3a2b1c
     name: FeatureWriterGmlIdNotWellFormed
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -727,7 +727,7 @@ graphs:
   - id: 9d6e4f3a-2b1c-4e0f-9d8c-7b6a5e4d3c2b
     name: FeatureWriterGmlIdNotUnique
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -774,7 +774,7 @@ graphs:
   - id: 1df16bdd-a8f2-5ace-b503-98a877daa7e3
     name: FeatureWriterExtentsValidation
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -805,7 +805,7 @@ graphs:
   - id: 7d9e0f3a-5b6c-4d8e-9f0a-3b4c5d6e7f8a
     name: FeatureWriterCodeValidation
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -836,7 +836,7 @@ graphs:
   - id: 9f0a4b5c-7d6e-4f9a-a0b1-5c6d7e8f9a0b
     name: FeatureWriterInCorrectCodeSpace
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -885,7 +885,7 @@ graphs:
   - id: c5d6e7f8-9a0b-1c2d-3e4f-5a6b7c8d9e0f
     name: FeatureWriterXlinkNoReference
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -918,7 +918,7 @@ graphs:
   - id: e7f8a9b0-1c2d-3e4f-5a6b-7c8d9e0f1a2b
     name: FeatureWriterXlinkInvalidObjectType
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -947,7 +947,7 @@ graphs:
   - id: a9b0c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d
     name: FeatureWriterInvalidLodXGeometry
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -1351,7 +1351,7 @@ graphs:
   - id: 4f62f8b0-b326-4aef-a779-a5324fab66fa
     name: FeatureWriterBySummary
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: json
       converter:
@@ -1392,7 +1392,7 @@ graphs:
   - id: 23f7da40-5f92-4c14-a4fe-7a160361be6b
     name: FeatureWriterByRequired
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -1414,7 +1414,7 @@ graphs:
   - id: c528f544-4a0f-43dd-9fd8-725d546963b8
     name: FeatureWriterByTarget
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -1446,7 +1446,7 @@ graphs:
   - id: 9e23b4c5-d6e7-4f89-a012-3b4c5d6e7f8a
     name: FeatureWriterByC07
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -1478,7 +1478,7 @@ graphs:
   - id: b245c6d7-f8a9-4b01-c234-5d6e7f8a9b0c
     name: FeatureWriterByC08
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -1976,7 +1976,7 @@ graphs:
   - id: 1f2a3b4c-5d6e-7f8a-9b0c-1d2e3f4a5b6c
     name: CSVWriter
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -1991,7 +1991,7 @@ graphs:
   - id: 2a3b4c5d-6e7f-8a9b-0c1d-2e3f4a5b6c7d
     name: JSONWriter
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: json
       converter:

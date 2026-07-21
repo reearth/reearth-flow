@@ -433,7 +433,7 @@ graphs:
   - id: d9e8f7a6-5b4c-4a3d-9e2f-1c8b7a6e5d4c
     name: FeatureWriterNotWellFormedXmlCsv
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -466,7 +466,7 @@ graphs:
   - id: f8e2a1b4-7c3d-4e9f-a2b5-8f6c9d3e1a7b
     name: FeatureWriterInvalidXmlCsv
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -596,7 +596,7 @@ graphs:
   - id: 0e9fd0ce-4607-44be-8cdd-b4b2cc2ae04b
     name: FeatureWriterCsv
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -660,7 +660,7 @@ graphs:
   - id: 50de9474-378b-4878-b85d-516cf8a55547
     name: FeatureWriterJson
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: json
       converter:
@@ -698,7 +698,7 @@ graphs:
   - id: 8e5f9a2b-4c3d-4e7f-b8a5-9d6e4f3a2b1c
     name: FeatureWriterGmlIdNotWellFormed
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -723,7 +723,7 @@ graphs:
   - id: 9d6e4f3a-2b1c-4e0f-9d8c-7b6a5e4d3c2b
     name: FeatureWriterGmlIdNotUnique
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -770,7 +770,7 @@ graphs:
   - id: 1df16bdd-a8f2-5ace-b503-98a877daa7e3
     name: FeatureWriterExtentsValidation
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -801,7 +801,7 @@ graphs:
   - id: 7d9e0f3a-5b6c-4d8e-9f0a-3b4c5d6e7f8a
     name: FeatureWriterCodeValidation
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -832,7 +832,7 @@ graphs:
   - id: 9f0a4b5c-7d6e-4f9a-a0b1-5c6d7e8f9a0b
     name: FeatureWriterInCorrectCodeSpace
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -881,7 +881,7 @@ graphs:
   - id: c5d6e7f8-9a0b-1c2d-3e4f-5a6b7c8d9e0f
     name: FeatureWriterXlinkNoReference
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -914,7 +914,7 @@ graphs:
   - id: e7f8a9b0-1c2d-3e4f-5a6b-7c8d9e0f1a2b
     name: FeatureWriterXlinkInvalidObjectType
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -943,7 +943,7 @@ graphs:
   - id: a9b0c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d
     name: FeatureWriterInvalidLodXGeometry
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -1347,7 +1347,7 @@ graphs:
   - id: 4f62f8b0-b326-4aef-a779-a5324fab66fa
     name: FeatureWriterBySummary
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: json
       converter:
@@ -1388,7 +1388,7 @@ graphs:
   - id: 23f7da40-5f92-4c14-a4fe-7a160361be6b
     name: FeatureWriterByRequired
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -1410,7 +1410,7 @@ graphs:
   - id: c528f544-4a0f-43dd-9fd8-725d546963b8
     name: FeatureWriterByTarget
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -1442,7 +1442,7 @@ graphs:
   - id: 9e23b4c5-d6e7-4f89-a012-3b4c5d6e7f8a
     name: FeatureWriterByC07
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -1474,7 +1474,7 @@ graphs:
   - id: b245c6d7-f8a9-4b01-c234-5d6e7f8a9b0c
     name: FeatureWriterByC08
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -1727,7 +1727,7 @@ graphs:
   - id: 278ab965-ce22-473d-98c6-c7b381c38679
     name: GeometryFilter
     type: action
-    action: GeometryFilter
+    action: Geometry Filter
     with:
       filterType: none
   - id: 1787b15c-19b5-4386-a0ff-f0e58f477d07
@@ -1897,7 +1897,7 @@ graphs:
   - id: 5c2a7f4b-8e1d-4f9c-a6e3-4b7f2a5c8e1d
     name: OrientationExtractor
     type: action
-    action: OrientationExtractor
+    action: Orientation Extractor
     with:
       outputAttribute: outerOrientation
   - id: 7f4a1c6e-b9d2-4c5a-e8f1-6a3c7f4b9e2d
@@ -1932,7 +1932,7 @@ graphs:
   - id: 6a1d4f7c-9e2b-4c8a-f5e1-7c2a6f9d4e1b
     name: PlanarityFilter
     type: action
-    action: PlanarityFilter
+    action: Planarity Filter
     with:
       filterType: height
       threshold:
@@ -1941,7 +1941,7 @@ graphs:
   - id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
     name: Rotator3D
     type: action
-    action: Rotator3D
+    action: Rotator 3D
     with:
       rotation:
         type: fromToVectors
@@ -1973,7 +1973,7 @@ graphs:
   - id: 1e7a4c9b-3f6d-4a2e-c8b5-9d2a5e8c1b4f
     name: HoleCounter
     type: action
-    action: HoleCounter
+    action: Hole Counter
     with:
       outputAttribute: holeCount
   - id: 3b9f6a2d-5c8e-4d1a-f7c4-2e5b8a3f6d9c
@@ -2014,21 +2014,21 @@ graphs:
   - id: 7f5a8c3b-1d4e-4a9f-c2b7-6e3a7f5c8b1d
     name: GeometryCoercerRingNotClosed
     type: action
-    action: GeometryCoercer
+    action: Geometry Coercer
     with:
       targetType: lineString
   - id: 9c1e4a7b-6f2d-4e5c-a8b1-3f6c9e1a4b7d
     name: ClosedCurveFilter
     type: action
-    action: ClosedCurveFilter
+    action: Closed Curve Filter
   - id: 2d8a5f3c-4b7e-4c1d-f9a6-8c2d5a8f3b6e
     name: HoleExtractor
     type: action
-    action: HoleExtractor
+    action: Hole Extractor
   - id: 4a6c9f2d-7e3b-4d8a-c5f2-1a4c7e9f2d5b
     name: OrientationExtractorOuterShell
     type: action
-    action: OrientationExtractor
+    action: Orientation Extractor
     with:
       outputAttribute: outerOrientation
   - id: 6f3b1a8e-9c4d-4a7f-e2c9-3b6f1a8e4c7d
@@ -2040,13 +2040,13 @@ graphs:
   - id: 8e7c4a1f-2d5b-4f8e-a6c3-7f4e1c8a5b2d
     name: GeometryCoercerOutershell
     type: action
-    action: GeometryCoercer
+    action: Geometry Coercer
     with:
       targetType: lineString
   - id: 1c4f7a2e-5b8d-4a3c-f9e6-4c1f8a7e2b5d
     name: GeometryCoercerHole
     type: action
-    action: GeometryCoercer
+    action: Geometry Coercer
     with:
       targetType: lineString
   - id: 3f5a8c1d-7e4b-4c9f-a2e7-6f3a8c1d4e7b
@@ -2071,7 +2071,7 @@ graphs:
   - id: 7d4e9a2c-1f5b-4d8a-e7c4-9a2d7e4c1f5b
     name: LineOnLineOverlayer
     type: action
-    action: LineOnLineOverlayer
+    action: Line On Line Overlayer
     with:
       groupBy:
       - surfaceId
@@ -2089,7 +2089,7 @@ graphs:
   - id: 2c7f4a9e-8b1d-4f6c-a3e8-7f2c4a9e1b8d
     name: AreaOnAreaOverlayerInteriorAndInterior
     type: action
-    action: AreaOnAreaOverlayer
+    action: Area On Area Overlayer
     with:
       groupBy:
       - surfaceId
@@ -2120,7 +2120,7 @@ graphs:
   - id: 6b5d8a3f-1c4e-4b7d-a9c2-5d6b8a3f1c4e
     name: OrientationExtractorIncorrectInterior
     type: action
-    action: OrientationExtractor
+    action: Orientation Extractor
     with:
       outputAttribute: innerOrientation
   - id: 8f2a5c7d-3e6b-4a9f-c1d4-2a8f5c7d3e6b
@@ -2397,19 +2397,19 @@ graphs:
   - id: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e01
     name: GeometryFilterLod1
     type: action
-    action: GeometryFilter
+    action: Geometry Filter
     with:
       filterType: geometryType
   - id: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e02
     name: GeometryFilterLod2
     type: action
-    action: GeometryFilter
+    action: Geometry Filter
     with:
       filterType: geometryType
   - id: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e03
     name: GeometryFilterLod3
     type: action
-    action: GeometryFilter
+    action: Geometry Filter
     with:
       filterType: geometryType
   - id: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e6a
@@ -2477,7 +2477,7 @@ graphs:
   - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6a
     name: CsvWriterSurfaceErrors
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -2506,7 +2506,7 @@ graphs:
   - id: a101a2b3-c4d5-e6f7-a8b9-c0d1e2f3a4b5
     name: SolidBoundaryValidator
     type: action
-    action: SolidBoundaryValidator
+    action: Solid Boundary Validator
     with:
       tolerance:
         type: flowExpr
@@ -2544,7 +2544,7 @@ graphs:
   - id: a104d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e8
     name: FeatureWriterNotClosed
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -2593,7 +2593,7 @@ graphs:
   - id: a120e2f3-a4b5-c6d7-e8f9-f0a1b2c3d4e5
     name: FeatureWriterSolidIssues
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -2658,7 +2658,7 @@ graphs:
   - id: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8e
     name: CsvWriterOrientationErrors
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -3167,7 +3167,7 @@ graphs:
   - id: c1d2e3f4-a5b6-7c8d-9e0f-1a2b3c4d5e80
     name: CSVSummaryWriter
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -3208,7 +3208,7 @@ graphs:
   - id: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a90
     name: JSONSummaryWriter
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: json
       converter:

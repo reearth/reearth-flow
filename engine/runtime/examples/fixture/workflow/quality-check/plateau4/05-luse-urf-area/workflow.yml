@@ -204,7 +204,7 @@ graphs:
       - id: a453192e-603c-417e-9f65-f57b8e15f7d3
         name: CsvWriterInstanceCount
         type: action
-        action: FeatureWriter
+        action: Feature Writer
         with:
           format: csv
           output:
@@ -279,7 +279,7 @@ graphs:
       - id: f0fc0309-6d76-4a6b-9fdf-84c433b615f2
         name: CsvWriterSurfaceOrientationErrors
         type: action
-        action: FeatureWriter
+        action: Feature Writer
         with:
           format: csv
           output:
@@ -347,7 +347,7 @@ graphs:
       - id: eb34119b-592f-4140-b9b9-f3712a805c47
         name: CsvWriterSurfaceErrors
         type: action
-        action: FeatureWriter
+        action: Feature Writer
         with:
           format: csv
           output:
@@ -417,7 +417,7 @@ graphs:
       - id: f38c754b-98cd-48e1-bfa7-adbf7c390899
         name: CSVSummaryWriter
         type: action
-        action: FeatureWriter
+        action: Feature Writer
         with:
           format: csv
           output:
@@ -464,7 +464,7 @@ graphs:
       - id: 4ed9ffc0-9509-4037-bcb6-117829aab7d5
         name: JSONSummaryWriter
         type: action
-        action: FeatureWriter
+        action: Feature Writer
         with:
           format: json
           converter:

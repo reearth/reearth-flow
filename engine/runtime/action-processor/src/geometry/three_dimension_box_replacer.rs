@@ -23,7 +23,7 @@ pub struct ThreeDimensionBoxReplacerFactory;
 
 impl ProcessorFactory for ThreeDimensionBoxReplacerFactory {
     fn name(&self) -> &str {
-        "ThreeDimensionBoxReplacer"
+        "Three Dimension Box Replacer"
     }
 
     fn description(&self) -> &str {
@@ -134,7 +134,7 @@ impl Processor for ThreeDimensionBoxReplacer {
     }
 
     fn name(&self) -> &str {
-        "ThreeDimensionBoxReplacer"
+        "Three Dimension Box Replacer"
     }
 }
 

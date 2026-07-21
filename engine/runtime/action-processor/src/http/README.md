@@ -1,8 +1,8 @@
-# HTTPCaller Action
+# HTTP Caller Action
 
 ## Overview
 
-The HTTPCaller action makes HTTP/HTTPS requests and enriches features with response data. It supports a wide range of HTTP features including various authentication methods, retry logic, rate limiting, and flexible response handling.
+The HTTP Caller action makes HTTP/HTTPS requests and enriches features with response data. It supports a wide range of HTTP features including various authentication methods, retry logic, rate limiting, and flexible response handling.
 
 ## When to Use
 
@@ -19,7 +19,7 @@ The HTTPCaller action makes HTTP/HTTPS requests and enriches features with respo
 
 ```yaml
 - id: fetch_weather
-  type: HTTPCaller
+  type: HTTP Caller
   with:
     url: "https://api.weather.com/current?lat=${feature.latitude}&lon=${feature.longitude}"
     method: GET
@@ -31,7 +31,7 @@ The HTTPCaller action makes HTTP/HTTPS requests and enriches features with respo
 
 ```yaml
 - id: geocode_address
-  type: HTTPCaller
+  type: HTTP Caller
   with:
     url: "https://geocoding.api.com/geocode"
     method: POST
@@ -203,7 +203,7 @@ retry:
 
 ```yaml
 - id: fetch_with_retry
-  type: HTTPCaller
+  type: HTTP Caller
   with:
     url: "https://api.example.com/data"
     retry:
@@ -234,7 +234,7 @@ rateLimit:
 
 ```yaml
 - id: fetch_with_rate_limit
-  type: HTTPCaller
+  type: HTTP Caller
   with:
     url: "https://api.example.com/data/${feature.id}"
     rateLimit:
@@ -291,7 +291,7 @@ observability:
 
 ```yaml
 - id: geocode_addresses
-  type: HTTPCaller
+  type: HTTP Caller
   with:
     url: "https://geocoding.api.com/geocode"
     method: POST
@@ -332,7 +332,7 @@ observability:
 
 ```yaml
 - id: download_image
-  type: HTTPCaller
+  type: HTTP Caller
   with:
     url: "${feature.image_url}"
     method: GET
@@ -357,7 +357,7 @@ observability:
 
 ```yaml
 - id: fetch_user_data
-  type: HTTPCaller
+  type: HTTP Caller
   with:
     url: "https://api.example.com/v1/users/${feature.user_id}"
     method: GET
@@ -385,7 +385,7 @@ observability:
 
 ```yaml
 - id: send_webhook
-  type: HTTPCaller
+  type: HTTP Caller
   with:
     url: "https://webhooks.example.com/notify"
     method: POST

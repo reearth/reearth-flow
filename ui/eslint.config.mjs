@@ -88,6 +88,8 @@ export default [
       "src/lib/gql/__gen__",
       "src/routeTree.gen.ts",
       "CLAUDE.md",
+      // Bundled @reearth/sentinel service worker (vendor artifact).
+      "public/sw.js",
     ],
   },
 ];

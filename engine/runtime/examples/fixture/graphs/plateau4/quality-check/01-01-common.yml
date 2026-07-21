@@ -125,7 +125,7 @@ nodes:
   - id: d9e8f7a6-5b4c-4a3d-9e2f-1c8b7a6e5d4c
     name: FeatureWriterNotWellFormedXmlCsv
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -161,7 +161,7 @@ nodes:
   - id: f8e2a1b4-7c3d-4e9f-a2b5-8f6c9d3e1a7b
     name: FeatureWriterInvalidXmlCsv
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -295,7 +295,7 @@ nodes:
   - id: 0e9fd0ce-4607-44be-8cdd-b4b2cc2ae04b
     name: FeatureWriterCsv
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -370,7 +370,7 @@ nodes:
   - id: 50de9474-378b-4878-b85d-516cf8a55547
     name: FeatureWriterJson
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: json
       converter:
@@ -410,7 +410,7 @@ nodes:
   - id: 8e5f9a2b-4c3d-4e7f-b8a5-9d6e4f3a2b1c
     name: FeatureWriterGmlIdNotWellFormed
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -436,7 +436,7 @@ nodes:
   - id: 9d6e4f3a-2b1c-4e0f-9d8c-7b6a5e4d3c2b
     name: FeatureWriterGmlIdNotUnique
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -488,7 +488,7 @@ nodes:
   - id: 1df16bdd-a8f2-5ace-b503-98a877daa7e3
     name: FeatureWriterExtentsValidation
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -520,7 +520,7 @@ nodes:
   - id: 7d9e0f3a-5b6c-4d8e-9f0a-3b4c5d6e7f8a
     name: FeatureWriterCodeValidation
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -552,7 +552,7 @@ nodes:
   - id: 9f0a4b5c-7d6e-4f9a-a0b1-5c6d7e8f9a0b
     name: FeatureWriterInCorrectCodeSpace
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -603,7 +603,7 @@ nodes:
   - id: c5d6e7f8-9a0b-1c2d-3e4f-5a6b7c8d9e0f
     name: FeatureWriterXlinkNoReference
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -637,7 +637,7 @@ nodes:
   - id: e7f8a9b0-1c2d-3e4f-5a6b-7c8d9e0f1a2b
     name: FeatureWriterXlinkInvalidObjectType
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -667,7 +667,7 @@ nodes:
   - id: a9b0c1d2-3e4f-5a6b-7c8d-9e0f1a2b3c4d
     name: FeatureWriterInvalidLodXGeometry
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:

@@ -74,7 +74,7 @@ nodes:
   - id: d9349887-1920-44a6-93c9-182c8484d1a2
     name: FeatureCityGml3Reader
     type: action
-    action: FeatureCityGml3Reader
+    action: Feature CityGML 3 Reader
     with:
       dataset:
         type: flowExpr
@@ -156,7 +156,7 @@ nodes:
   - id: b06c19d6-0ad0-4a3c-90bf-26d3613d7637
     name: FeatureWriterLod0InvalidSurface
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -170,7 +170,7 @@ nodes:
   - id: 5eb65556-a94e-4b76-a396-1752283d48a4
     name: GeometryCoercerLod0SurfaceIntersection
     type: action
-    action: GeometryCoercer
+    action: Geometry Coercer
     with:
       targetType: lineString
 
@@ -181,7 +181,7 @@ nodes:
   - id: 2edae6ab-44fe-48af-beb4-68c85e26dcdb
     name: AreaOnAreaOverlayerLod0
     type: action
-    action: AreaOnAreaOverlayer
+    action: Area On Area Overlayer
     with:
       accumulationMode: dropIncomingAttributes
       outputAttribute: overlap
@@ -202,7 +202,7 @@ nodes:
   - id: fd8dd5ad-cd3a-4703-87b9-663cd0bfb589
     name: ListIndexer1
     type: action
-    action: ListIndexer
+    action: List Indexer
     with:
       listAttribute: list
       listIndexToCopy: 0
@@ -211,7 +211,7 @@ nodes:
   - id: af899976-7fb2-4c38-a0ff-c76ce7d00709
     name: ListIndexer2
     type: action
-    action: ListIndexer
+    action: List Indexer
     with:
       listAttribute: list
       listIndexToCopy: 1
@@ -260,7 +260,7 @@ nodes:
   - id: acb7b8cf-9059-4c7f-9b51-45cf430be09a
     name: FeatureWriterLod0SurfaceIntersection
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -373,7 +373,7 @@ nodes:
   - id: d0a4c34c-c050-4017-960a-762a0ad09441
     name: FeatureWriterLod0IncorrectOrientation
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -432,7 +432,7 @@ nodes:
   - id: f8589886-0315-441c-bca5-a937f9137e6f
     name: FeatureWriterLod1InvalidSurface
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -446,7 +446,7 @@ nodes:
   - id: 45007e89-4cd7-49aa-b145-a40d6539f83c
     name: SolidBoundaryValidatorLod1
     type: action
-    action: SolidBoundaryValidator
+    action: Solid Boundary Validator
     with:
       tolerance:
         type: flowExpr
@@ -498,7 +498,7 @@ nodes:
   - id: 4261177e-6f06-48cc-aa24-f0a10382b704
     name: FeatureWriterLod1NotClosedSolid
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -540,7 +540,7 @@ nodes:
   - id: 59b03bd3-9e44-453e-92fc-52cc14abcf25
     name: FeatureWriterLod1SolidIssues
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -584,7 +584,7 @@ nodes:
   - id: 3f676870-4b7c-46f0-925e-073c20429200
     name: AreaOnAreaOverlayerSolidIntersectionLod1
     type: action
-    action: AreaOnAreaOverlayer
+    action: Area On Area Overlayer
     with:
       accumulationMode: dropIncomingAttributes
       outputAttribute: overlap
@@ -630,7 +630,7 @@ nodes:
   - id: 585e54ec-2814-4e67-a5b2-33e16007110a
     name: CSGBuilderLod1
     type: action
-    action: CSGBuilder
+    action: CSG Builder
     with:
       pairIdAttribute:
         type: flowExpr
@@ -641,7 +641,7 @@ nodes:
   - id: 8c37d786-50f7-4aba-8737-5422da3ba79b
     name: CSGEvaluatorLod1
     type: action
-    action: CSGEvaluator
+    action: CSG Evaluator
     with:
       operation: intersection
       tolerance:
@@ -713,7 +713,7 @@ nodes:
   - id: 073a86d1-e1d0-497d-803f-6398518f0c1a
     name: FeatureWriterLod1SolidIntersection
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -938,7 +938,7 @@ nodes:
   - id: 501a24e8-b919-4f3b-9706-9ae6228f2bfd
     name: FeatureWriterCsv
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -1077,7 +1077,7 @@ nodes:
   - id: 4375b01b-c253-475b-8737-08736f4961f8
     name: FeatureWriterJson
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: json
       converter:
@@ -1206,7 +1206,7 @@ nodes:
   - id: 9989e9e9-6b77-41f9-a1ee-3fd3f58ee5a3
     name: FeatureWriterLod23InvalidSurface
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -1303,7 +1303,7 @@ nodes:
   - id: f2cfc80d-26e2-43e9-9038-89f698e84147
     name: SolidBoundaryValidatorLod2
     type: action
-    action: SolidBoundaryValidator
+    action: Solid Boundary Validator
     with:
       tolerance:
         type: flowExpr
@@ -1388,7 +1388,7 @@ nodes:
   - id: de965e92-16ac-4d49-ad14-5e5a688d1de6
     name: SolidBoundaryValidatorLod3
     type: action
-    action: SolidBoundaryValidator
+    action: Solid Boundary Validator
     with:
       tolerance:
         type: flowExpr
@@ -1493,7 +1493,7 @@ nodes:
   - id: 2fcd2ca5-e9fd-444a-b989-c2318bb1f141
     name: AreaOnAreaOverlayerSolidIntersectionLod2
     type: action
-    action: AreaOnAreaOverlayer
+    action: Area On Area Overlayer
     with:
       accumulationMode: dropIncomingAttributes
       outputAttribute: overlap
@@ -1539,7 +1539,7 @@ nodes:
   - id: 07c7d3b8-a6db-4bfe-9f13-7af2adf1e3e6
     name: CSGBuilderLod2
     type: action
-    action: CSGBuilder
+    action: CSG Builder
     with:
       pairIdAttribute:
         type: flowExpr
@@ -1550,7 +1550,7 @@ nodes:
   - id: 5cd3ac4e-a574-4b98-a321-dcc8a7fe12e0
     name: CSGEvaluatorLod2
     type: action
-    action: CSGEvaluator
+    action: CSG Evaluator
     with:
       operation: intersection
       tolerance:
@@ -1643,7 +1643,7 @@ nodes:
   - id: daecf1b8-ac79-475f-b956-93d50667bda5
     name: AreaOnAreaOverlayerSolidIntersectionLod3
     type: action
-    action: AreaOnAreaOverlayer
+    action: Area On Area Overlayer
     with:
       accumulationMode: dropIncomingAttributes
       outputAttribute: overlap
@@ -1689,7 +1689,7 @@ nodes:
   - id: 6aa26006-ada2-4031-8f5b-005f3f9bff31
     name: CSGBuilderLod3
     type: action
-    action: CSGBuilder
+    action: CSG Builder
     with:
       pairIdAttribute:
         type: flowExpr
@@ -1700,7 +1700,7 @@ nodes:
   - id: 646133fe-0c98-4a73-8d6a-f21011005e19
     name: CSGEvaluatorLod3
     type: action
-    action: CSGEvaluator
+    action: CSG Evaluator
     with:
       operation: intersection
       tolerance:
@@ -2024,7 +2024,7 @@ nodes:
   - id: c1b00007-0000-4000-8000-000000000007
     name: FeatureWriterDuplicateBuildingId
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -2120,7 +2120,7 @@ nodes:
   - id: c1b00012-0000-4000-8000-000000000012
     name: FeatureWriterInvalidBuildingIdFormat
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -2192,7 +2192,7 @@ nodes:
   - id: c1b00023-0000-4000-8000-000000000023
     name: FeatureWriterUsageError
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -2248,7 +2248,7 @@ nodes:
   - id: c1b00042-0000-4000-8000-000000000042
     name: FeatureWriterCityCodeError
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -2369,7 +2369,7 @@ nodes:
   - id: c1b00055-0000-4000-8000-000000000055
     name: FeatureWriterLbldg06
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -2451,7 +2451,7 @@ nodes:
   - id: c1b00064-0000-4000-8000-000000000064
     name: DeduplicateBuildingPartsL02
     type: action
-    action: FeatureDuplicateFilter
+    action: Feature Duplicate Filter
 
   - id: c1b00065-0000-4000-8000-000000000065
     name: AttributeMapperLbldg02
@@ -2479,7 +2479,7 @@ nodes:
   - id: c1b00066-0000-4000-8000-000000000066
     name: FeatureWriterLbldg02
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -2564,7 +2564,7 @@ nodes:
   - id: c1b00073-0000-4000-8000-000000000073
     name: FeatureWriterIncorrectMeshCode
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -2637,7 +2637,7 @@ nodes:
   - id: c1b00082-0000-4000-8000-000000000082
     name: FeatureWriterLod0Or1BuildingPart
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:

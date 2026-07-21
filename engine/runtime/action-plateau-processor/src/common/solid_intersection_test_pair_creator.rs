@@ -36,7 +36,7 @@ impl ProcessorFactory for SolidIntersectionTestPairCreatorFactory {
     }
 
     fn description(&self) -> &str {
-        "Creates pairs of features from AreaOnAreaOverlayer output for solid intersection testing"
+        "Creates pairs of features from Area On Area Overlayer output for solid intersection testing"
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -95,7 +95,7 @@ pub(crate) struct SolidIntersectionTestPairCreatorParam {
     #[serde(default = "default_pair_id_attribute")]
     pair_id_attribute: String,
 
-    /// Attribute name containing the list of overlapping features from AreaOnAreaOverlayer (default: "list")
+    /// Attribute name containing the list of overlapping features from Area On Area Overlayer (default: "list")
     #[serde(default = "default_list_attribute")]
     list_attribute: String,
 
@@ -160,13 +160,13 @@ impl Processor for SolidIntersectionTestPairCreator {
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
 
-        // Get the list attribute from the AreaOnAreaOverlayer output
+        // Get the list attribute from the Area On Area Overlayer output
         let list_attr = feature
             .attributes
             .get(&Attribute::new(&self.list_attribute))
             .ok_or_else(|| {
                 PlateauProcessorError::SolidIntersectionTestPairCreator(format!(
-                    "Missing '{}' attribute. This processor expects input from AreaOnAreaOverlayer with generateList configured.",
+                    "Missing '{}' attribute. This processor expects input from Area On Area Overlayer with generateList configured.",
                     self.list_attribute
                 ))
             })?;
