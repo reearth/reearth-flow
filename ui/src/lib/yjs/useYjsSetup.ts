@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Awareness } from "y-protocols/awareness";
 import { WebsocketProvider } from "y-websocket";
 import * as Y from "yjs";
@@ -171,17 +171,30 @@ export default ({
 
   const observedMapsRef = useRef(new WeakSet());
 
-  function recursivelyTrackSharedType(sharedType?: Y.Map<any>): void {
+  // Read the current UndoManager through a ref so the long-lived observers
+  // registered below never capture a stale manager from an earlier render. After
+  // a Y.Doc swap, a captured-stale manager belongs to the old (destroyed) doc, so
+  // every subsequent remote update flooded [yjs#509] "Not same Y.Doc" via these
+  // observers. The doc-equality check is yjs's own precondition for addToScope,
+  // so a type from a different doc is skipped rather than warned on.
+  const undoManagerRef = useRef<Y.UndoManager | null>(null);
+  useEffect(() => {
+    undoManagerRef.current = undoManager;
+  }, [undoManager]);
+
+  const trackSharedType = useCallback((sharedType?: Y.Map<any>): void => {
     if (!sharedType) return;
+    const manager = undoManagerRef.current;
+    if (!manager || sharedType.doc !== manager.doc) return;
     if (observedMapsRef.current.has(sharedType)) return;
     observedMapsRef.current.add(sharedType);
 
-    undoManager?.addToScope([sharedType]);
+    manager.addToScope([sharedType]);
 
     if (sharedType instanceof Y.Map) {
       sharedType.forEach((value: any) => {
         if (value instanceof Y.Map) {
-          recursivelyTrackSharedType(value);
+          trackSharedType(value);
         }
       });
 
@@ -190,16 +203,19 @@ export default ({
           if (change.action === "add" || change.action === "update") {
             const newValue: any = sharedType.get(key);
             if (newValue instanceof Y.Map) {
-              recursivelyTrackSharedType(newValue);
+              trackSharedType(newValue);
             }
           }
         });
       });
     }
-  }
+  }, []);
 
-  // Start the recursive tracking
-  recursivelyTrackSharedType(yWorkflows);
+  // Track from an effect (not the render body) once the workflows map and its
+  // matching UndoManager are in place.
+  useEffect(() => {
+    trackSharedType(yWorkflows);
+  }, [yWorkflows, undoManager, trackSharedType]);
 
   return {
     yWorkflows,
