@@ -19,7 +19,7 @@ pub struct HttpCallerFactory;
 
 impl ProcessorFactory for HttpCallerFactory {
     fn name(&self) -> &str {
-        "HTTPCaller"
+        "HTTP Caller"
     }
 
     fn description(&self) -> &str {
@@ -185,7 +185,7 @@ mod tests {
     #[test]
     fn test_factory_name() {
         let factory = HttpCallerFactory;
-        assert_eq!(factory.name(), "HTTPCaller");
+        assert_eq!(factory.name(), "HTTP Caller");
     }
 
     #[test]

@@ -142,7 +142,7 @@ graphs:
   - id: 278ab965-ce22-473d-98c6-c7b381c38679
     name: GeometryFilter
     type: action
-    action: GeometryFilter
+    action: Geometry Filter
     with:
       filterType: none
   - id: 1787b15c-19b5-4386-a0ff-f0e58f477d07
@@ -506,7 +506,7 @@ graphs:
   - id: 6f7a8b9c-0d1e-2f3a-4b5c-6d7e8f9a0b1c
     name: GeometryFilter
     type: action
-    action: GeometryFilter
+    action: Geometry Filter
     with:
       filterType: geometryType
   - id: 9f8e7d6c-5b4a-3c2d-1e0f-8a9b7c6d5e4f

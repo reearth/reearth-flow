@@ -23,21 +23,21 @@ nodes:
   - id: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e01
     name: GeometryFilterLod1
     type: action
-    action: GeometryFilter
+    action: Geometry Filter
     with:
       filterType: geometryType
 
   - id: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e02
     name: GeometryFilterLod2
     type: action
-    action: GeometryFilter
+    action: Geometry Filter
     with:
       filterType: geometryType
 
   - id: c5d6e7f8-a9b0-1c2d-3e4f-5a6b7c8d9e03
     name: GeometryFilterLod3
     type: action
-    action: GeometryFilter
+    action: Geometry Filter
     with:
       filterType: geometryType
 
@@ -118,7 +118,7 @@ nodes:
   - id: e1f2a3b4-c5d6-7e8f-9a0b-1c2d3e4f5a6a
     name: CsvWriterSurfaceErrors
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -152,7 +152,7 @@ nodes:
   - id: a101a2b3-c4d5-e6f7-a8b9-c0d1e2f3a4b5
     name: SolidBoundaryValidator
     type: action
-    action: SolidBoundaryValidator
+    action: Solid Boundary Validator
     with:
       tolerance:
         type: flowExpr
@@ -196,7 +196,7 @@ nodes:
   - id: a104d5e6-f7a8-b9c0-d1e2-f3a4b5c6d7e8
     name: FeatureWriterNotClosed
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -252,7 +252,7 @@ nodes:
   - id: a120e2f3-a4b5-c6d7-e8f9-f0a1b2c3d4e5
     name: FeatureWriterSolidIssues
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:
@@ -321,7 +321,7 @@ nodes:
   - id: e3f4a5b6-c7d8-9e0f-1a2b-3c4d5e6f7a8e
     name: CsvWriterOrientationErrors
     type: action
-    action: FeatureWriter
+    action: Feature Writer
     with:
       format: csv
       output:

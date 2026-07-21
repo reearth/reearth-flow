@@ -340,7 +340,7 @@ graphs:
       - id: 1f2a3b4c-5d6e-7f8a-9b0c-1d2e3f4a5b6c
         name: CSVWriter
         type: action
-        action: FeatureWriter
+        action: Feature Writer
         with:
           format: csv
           output:
@@ -357,7 +357,7 @@ graphs:
       - id: 2a3b4c5d-6e7f-8a9b-0c1d-2e3f4a5b6c7d
         name: JSONWriter
         type: action
-        action: FeatureWriter
+        action: Feature Writer
         with:
           format: json
           converter:

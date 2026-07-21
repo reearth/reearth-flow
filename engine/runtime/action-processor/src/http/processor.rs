@@ -331,7 +331,7 @@ impl Processor for HttpCallerProcessor {
     }
 
     fn name(&self) -> &str {
-        "HTTPCaller"
+        "HTTP Caller"
     }
 }
 
@@ -383,7 +383,7 @@ mod tests {
 
         let processor = HttpCallerProcessor::with_client(Arc::new(mock_client), params, url_ast);
 
-        assert_eq!(processor.name(), "HTTPCaller");
+        assert_eq!(processor.name(), "HTTP Caller");
     }
 
     #[test]

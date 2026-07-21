@@ -49,7 +49,7 @@ pub(super) struct CenterPointReplacerFactory;
 
 impl ProcessorFactory for CenterPointReplacerFactory {
     fn name(&self) -> &str {
-        "CenterPointReplacer"
+        "Center Point Replacer"
     }
 
     fn description(&self) -> &str {
@@ -136,7 +136,7 @@ impl Processor for CenterPointReplacer {
     }
 
     fn name(&self) -> &str {
-        "CenterPointReplacer"
+        "Center Point Replacer"
     }
 }
 

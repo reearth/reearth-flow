@@ -23,7 +23,7 @@ pub struct HoleExtractorFactory;
 
 impl ProcessorFactory for HoleExtractorFactory {
     fn name(&self) -> &str {
-        "HoleExtractor"
+        "Hole Extractor"
     }
 
     fn description(&self) -> &str {
@@ -127,7 +127,7 @@ impl Processor for HoleExtractor {
     }
 
     fn name(&self) -> &str {
-        "HoleExtractor"
+        "Hole Extractor"
     }
 }
 
