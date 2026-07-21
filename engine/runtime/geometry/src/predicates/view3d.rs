@@ -22,7 +22,7 @@ use rstar::{RTree, RTreeObject, SelectionFunction, AABB};
 use crate::coordinate::CoordinateFrame;
 use crate::index::IndexBuffer;
 use crate::line_string::LineString3D;
-use crate::ops::triangulation::{triangulate_3d, Cache};
+use crate::ops::triangulation::{triangulate_3d_cdt, Cache};
 use crate::point::Point3D;
 use crate::polygon::Polygon3D;
 use crate::polygon_mesh::{build_open_rings, PolygonMesh3D, PolygonMesh3DData};
@@ -260,7 +260,7 @@ impl<'a> TriangleSet<'a> {
                         .map(|&p| data.vertices()[face[p as usize] as usize]),
                 );
                 buffers.out.clear();
-                if triangulate_3d(
+                if triangulate_3d_cdt(
                     earcut,
                     &buffers.verts3,
                     num_outer,
@@ -290,8 +290,8 @@ impl<'a> TriangleSet<'a> {
     }
 
     /// Triangulate a polygon without consuming it: its open rings are gathered
-    /// into an owned pool (exterior first, then holes) and earcut through the
-    /// exterior's best-fit plane.
+    /// into an owned pool (exterior first, then holes) and triangulated (via a
+    /// constrained Delaunay triangulation) through the exterior's best-fit plane.
     pub fn from_polygon(polygon: &'a Polygon3D, cache: &mut Cache) -> Self {
         let mut pool: Vec<[f64; 3]> = Vec::new();
         let mut holes: Vec<u32> = Vec::new();
@@ -319,7 +319,7 @@ impl<'a> TriangleSet<'a> {
         let earcut = &mut cache.earcut;
         let out = &mut cache.buffers.out;
         out.clear();
-        triangulate_3d(earcut, &pool, num_outer, &holes, out);
+        triangulate_3d_cdt(earcut, &pool, num_outer, &holes, out);
         let tris: Vec<[u32; 3]> = out.chunks_exact(3).map(|c| [c[0], c[1], c[2]]).collect();
         let face_starts = vec![0, tris.len() as u32];
         TriangleSet {
