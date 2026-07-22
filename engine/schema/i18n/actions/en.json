@@ -1573,7 +1573,7 @@
         },
         "degenerateThresholds": {
           "title": "Degeneracy Thresholds",
-          "description": "Minimum length / area / volume below which the degeneracy check flags a geometry, per dimension. Each defaults to zero, flagging only an exactly-zero measure. Values are in the coordinate unit (metres in a metric frame)."
+          "description": "Minimum length / area / volume below which the degeneracy check flags a geometry, per dimension. Each defaults to zero, flagging only an exactly-zero measure. Values are in the coordinate unit (the frame's linear unit, e.g. metres)."
         },
         "disabledOptionalChecks": {
           "title": "Disabled Optional Checks",
@@ -1585,7 +1585,7 @@
         },
         "planarityThreshold": {
           "title": "Planarity Threshold",
-          "description": "Optional override for how the planarity check bounds a face's out-of-plane deviation: a scale-invariant `ratio` (the default), or an absolute `maxHeight` in metres (metric frames only). Applies only under the new geometry backend."
+          "description": "Optional override for how the planarity check bounds a face's out-of-plane deviation: a scale-invariant `ratio` (the default), or an absolute `maxHeight` in the frame's linear unit (linear-unit frames only). Applies only under the new geometry backend."
         },
         "validationTypes": {
           "title": "Validation Types",

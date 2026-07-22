@@ -631,8 +631,8 @@ impl Validate for PolygonMesh3D {
     fn check_self_intersection(&self, _params: &ValidationParams) -> ValidationReport {
         // Per-face ring simplicity (exact, frame-agnostic) plus the global
         // face-vs-face surface scan. The surface scan triangulates each face, and
-        // triangulation on angular-unit (angular-unit) coordinates is unreliable, so
-        // it is skipped there; the ring checks still run.
+        // triangulation on angular-unit coordinates is unreliable, so it is
+        // skipped there; the ring checks still run.
         ValidationReport::ran(|r| {
             self.data.check_ring_self_intersections(&self.frame, r);
             if self.frame.has_linear_units() {

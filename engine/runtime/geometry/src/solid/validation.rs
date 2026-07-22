@@ -182,8 +182,8 @@ impl Validate for Solid {
         // Per-face ring checks for polygon shells (a proper triangle face is
         // trivially simple), then one global face-vs-face scan across all
         // shells' triangulated surfaces, so cross-shell pairs are covered. The
-        // surface scan triangulates each shell, and triangulation on angular-unit
-        // (angular-unit) coordinates is unreliable, so it is skipped there; the
+        // surface scan triangulates each shell, and triangulation on
+        // angular-unit coordinates is unreliable, so it is skipped there; the
         // ring checks still run.
         ValidationReport::ran(|r| {
             for shell in self.shells() {

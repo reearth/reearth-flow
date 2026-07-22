@@ -187,9 +187,9 @@ pub struct DegenerateThresholds {
 /// Why a check was not run despite being applicable.
 #[derive(Serialize, Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SkipReason {
-    /// The geometry is in a angular-unit (geographic) frame, so a
+    /// The geometry is in an angular-unit (geographic) frame, so a
     /// unit-sensitive check (planarity, surface self-intersection) would be
-    /// unreliable. reproject to a linear-unit CRS to enable it.
+    /// unreliable. Reproject to a linear-unit CRS to enable it.
     AngularFrame,
     /// The geometry's CRS could not be classified by PROJ (e.g. an unknown code
     /// or missing PROJ data), so a unit-sensitive check was skipped rather

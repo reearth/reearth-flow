@@ -360,9 +360,9 @@ impl Processor for GeometryValidator {
             ctx.event_hub.warn_log(
                 Some(ctx.info_span()),
                 format!(
-                    "Feature {}: geometry is in a angular-unit (geographic) CRS; \
+                    "Feature {}: geometry is in an angular-unit (geographic) CRS; \
                      planarity and 3D surface self-intersection were skipped. \
-                     reproject to a linear-unit CRS to enable them.",
+                     Reproject to a linear-unit CRS to enable them.",
                     feature.id
                 ),
             );
