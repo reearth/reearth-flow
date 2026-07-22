@@ -2187,7 +2187,7 @@
           },
           "atlasSize": {
             "title": "Tamaño del Atlas",
-            "description": "Dimensión máxima del atlas de texturas en píxeles. Las texturas que la superan se distribuyen en páginas de atlas adicionales; una sola textura mayor que este valor se reduce para que quepa. El valor predeterminado es 8192.",
+            "description": "Dimensión máxima del atlas de texturas en píxeles. Las texturas que la superan se distribuyen en páginas de atlas adicionales; una sola textura mayor que este valor se reduce para que quepa. El valor predeterminado es 2048.",
             "type": [
               "integer",
               "null"

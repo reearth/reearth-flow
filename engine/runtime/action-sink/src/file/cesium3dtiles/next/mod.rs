@@ -129,7 +129,7 @@ pub struct RenderOptions {
 
 /// Default atlas page size when the parameter is unset; inherited from the old
 /// writer.
-const DEFAULT_ATLAS_SIZE: u32 = 8192;
+const DEFAULT_ATLAS_SIZE: u32 = 2048;
 
 /// Default atlas extrusion ring when the parameter is unset; disabled by
 /// default. Raise it to blit a bleed-guard ring around each packed region.
