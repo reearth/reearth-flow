@@ -12,6 +12,7 @@ use reearth_flow_atlas::{build_atlas_multipage, TextureCache, TextureInput};
 
 const TOTAL: usize = 10;
 const MAX_ATLAS_SIZE: u32 = 1024;
+const EXTRUSION: u32 = 0;
 const RESULTS_PER_TEST: usize = 3;
 
 fn next_u32(state: &mut u64) -> u32 {
@@ -73,7 +74,7 @@ fn run(
             });
         }
 
-        match build_atlas_multipage(&materials, MAX_ATLAS_SIZE, &mut cache) {
+        match build_atlas_multipage(&materials, MAX_ATLAS_SIZE, EXTRUSION, &mut cache) {
             Ok(Some(built)) => {
                 let pages = built.pages.len();
                 let budget = (MAX_ATLAS_SIZE as f64).powi(2) * pages as f64;
