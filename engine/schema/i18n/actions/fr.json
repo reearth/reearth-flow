@@ -714,6 +714,14 @@
           "title": "Paramètres de Cesium3DTilesWriter",
           "description": "Configuration for writing features to Cesium 3D Tiles."
         },
+        "atlasExtrusion": {
+          "title": "Extrusion de l'Atlas",
+          "description": "Anneau de pixels dessiné autour de chaque région de texture de l'atlas pour éviter le débordement bilinéaire entre régions voisines. La valeur par défaut est 0 (désactivé)."
+        },
+        "atlasSize": {
+          "title": "Taille de l'Atlas",
+          "description": "Dimension maximale de l'atlas de textures en pixels. Les textures qui la dépassent débordent sur des pages d'atlas supplémentaires ; une seule texture plus grande que cette valeur est sous-échantillonnée pour s'y adapter. La valeur par défaut est 2048."
+        },
         "attachTexture": {
           "title": "Joindre les Textures",
           "description": "Indique s'il faut inclure les informations de texture dans les tuiles générées"
@@ -749,6 +757,10 @@
         "skipUnexposedAttributes": {
           "title": "Ignorer les Attributs non Exposés",
           "description": "Ignorer les attributs avec un préfixe de double trait de soulignement"
+        },
+        "texelSize": {
+          "title": "Taille de Texel",
+          "description": "Taille de texel cible en mètres par pixel. Les textures plus fines que cette valeur y sont sous-échantillonnées. La valeur par défaut est 0, qui conserve le détail complet de la texture."
         }
       }
     },
@@ -1639,9 +1651,38 @@
           "title": "Geometry Validator Parameters",
           "description": "Configure which validation checks to perform on feature geometries"
         },
+        "degenerateThresholds": {
+          "title": "Degeneracy Thresholds",
+          "description": "Minimum length / area / volume below which the degeneracy check flags a geometry, per dimension. Each defaults to zero, flagging only an exactly-zero measure. Values are in the coordinate unit (the frame's linear unit, e.g. metres)."
+        },
+        "disabledOptionalChecks": {
+          "title": "Disabled Optional Checks",
+          "description": "Advisory checks to disable. Disabled checks do not run and are treated as passing; core validity checks always run. Empty by default, so every optional check runs. Applies only under the new geometry backend."
+        },
+        "duplicateTolerance": {
+          "title": "Duplicate Point Tolerance",
+          "description": "Optional distance within which two coordinates count as duplicates for the duplicate-points check. Omitted (the default) means exact-equality detection."
+        },
+        "planarityThreshold": {
+          "title": "Planarity Threshold",
+          "description": "Optional override for how the planarity check bounds a face's out-of-plane deviation: a scale-invariant `ratio` (the default), or an absolute `maxHeight` in the frame's linear unit (linear-unit frames only). Applies only under the new geometry backend."
+        },
         "validationTypes": {
           "title": "Validation Types",
           "description": "List of validation checks to perform on the geometry (duplicate points, corrupt geometry, self-intersection)"
+        }
+      },
+      "definitionI18n": {
+        "DegenerateThresholds": {
+          "minArea": {
+            "description": "Minimum area of a 2D geometry (face / ring)."
+          },
+          "minLength": {
+            "description": "Minimum length of a 1D geometry (line / ring edge)."
+          },
+          "minVolume": {
+            "description": "Minimum volume of a 3D geometry (solid)."
+          }
         }
       },
       "enumI18n": {
