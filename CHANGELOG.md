@@ -2,6 +2,104 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.0-alpha.28 - 2026-07-22
+
+### Web
+
+#### 🧪 Testing
+
+- Record video for manually created e2e session contexts ([#2243](https://github.com/reearth/reearth-flow/pull/2243)) [`a45fbc`](https://github.com/reearth/reearth-flow/commit/a45fbc)
+
+### Misc
+
+#### ✨ Refactor
+
+- Rename base actions to space-separated title case ([#2240](https://github.com/reearth/reearth-flow/pull/2240)) [`978c84`](https://github.com/reearth/reearth-flow/commit/978c84)
+- Rename default port to features ([#2236](https://github.com/reearth/reearth-flow/pull/2236)) [`e4cf4f`](https://github.com/reearth/reearth-flow/commit/e4cf4f)
+
+#### 
+
+- Typo ([#2242](https://github.com/reearth/reearth-flow/pull/2242)) [`992d3e`](https://github.com/reearth/reearth-flow/commit/992d3e)
+
+### engine
+
+#### 🚀 Features
+
+- Geometric validation for new geometry ([#2276](https://github.com/reearth/reearth-flow/pull/2276)) [`f01ad3`](https://github.com/reearth/reearth-flow/commit/f01ad3)
+- 3D predicates for new geometry ([#2263](https://github.com/reearth/reearth-flow/pull/2263)) [`5335a4`](https://github.com/reearth/reearth-flow/commit/5335a4)
+- 2D predicates and ovelay for new geometry ([#2261](https://github.com/reearth/reearth-flow/pull/2261)) [`feef02`](https://github.com/reearth/reearth-flow/commit/feef02)
+- New cesium writer appearance, flip uv convention, and lod handling ([#2264](https://github.com/reearth/reearth-flow/pull/2264)) [`cef933`](https://github.com/reearth/reearth-flow/commit/cef933)
+- Draco compression for the new cesium writer ([#2256](https://github.com/reearth/reearth-flow/pull/2256)) [`0a37c5`](https://github.com/reearth/reearth-flow/commit/0a37c5)
+- Add GeoJSON error geometry output to plateau6 bldg checks ([#2259](https://github.com/reearth/reearth-flow/pull/2259)) [`8e5404`](https://github.com/reearth/reearth-flow/commit/8e5404)
+- New geometry winding ([#2258](https://github.com/reearth/reearth-flow/pull/2258)) [`f6eed2`](https://github.com/reearth/reearth-flow/commit/f6eed2)
+- Migrate GeoJSON Reader to new geometry behind feature flag ([#2254](https://github.com/reearth/reearth-flow/pull/2254)) [`139aca`](https://github.com/reearth/reearth-flow/commit/139aca)
+- File-level srsName&#x2F;EPSG implementation in new CityGML reader and cesium writer ([#2246](https://github.com/reearth/reearth-flow/pull/2246)) [`d49f87`](https://github.com/reearth/reearth-flow/commit/d49f87)
+- Add FeatureGeoJsonWriter processor and fix Point GeoJSON output ([#2247](https://github.com/reearth/reearth-flow/pull/2247)) [`49770a`](https://github.com/reearth/reearth-flow/commit/49770a)
+- Cesium writer using new geometry and impilcit tiling ([#2229](https://github.com/reearth/reearth-flow/pull/2229)) [`1dfc70`](https://github.com/reearth/reearth-flow/commit/1dfc70)
+- Citygml reader app for new geometry path ([#2239](https://github.com/reearth/reearth-flow/pull/2239)) [`8dc196`](https://github.com/reearth/reearth-flow/commit/8dc196)
+- Validations for new geometry ([#2238](https://github.com/reearth/reearth-flow/pull/2238)) [`47d4c4`](https://github.com/reearth/reearth-flow/commit/47d4c4)
+- Add PLATEAU 6 building (02-bldg) quality checks ([#2231](https://github.com/reearth/reearth-flow/pull/2231)) [`ba53a9`](https://github.com/reearth/reearth-flow/commit/ba53a9)
+
+#### 🔧 Bug Fixes
+
+- Modification to new geom ([#2230](https://github.com/reearth/reearth-flow/pull/2230)) [`296836`](https://github.com/reearth/reearth-flow/commit/296836)
+
+#### ✨ Refactor
+
+- Rename hidden action names to space-separated title case ([#2272](https://github.com/reearth/reearth-flow/pull/2272)) [`eff697`](https://github.com/reearth/reearth-flow/commit/eff697)
+- Improve Filter action descriptions, params, ports, and tags ([#2251](https://github.com/reearth/reearth-flow/pull/2251)) [`1ae7b3`](https://github.com/reearth/reearth-flow/commit/1ae7b3)
+- Improve Merge group actions per action standard ([#2250](https://github.com/reearth/reearth-flow/pull/2250)) [`0b2c3c`](https://github.com/reearth/reearth-flow/commit/0b2c3c)
+- Debug action batch — descriptions, params, ports, tags ([#2249](https://github.com/reearth/reearth-flow/pull/2249)) [`2fac94`](https://github.com/reearth/reearth-flow/commit/2fac94)
+
+#### Miscellaneous Tasks
+
+- Draco-oxide version update ([#2248](https://github.com/reearth/reearth-flow/pull/2248)) [`fc1409`](https://github.com/reearth/reearth-flow/commit/fc1409)
+- Enable schemars preserve_order for declaration-ordered action parameters ([#2234](https://github.com/reearth/reearth-flow/pull/2234)) [`9f7244`](https://github.com/reearth/reearth-flow/commit/9f7244)
+
+### ui
+
+#### 🚀 Features
+
+- Allow for deployments and sharing when project is locked ([#2278](https://github.com/reearth/reearth-flow/pull/2278)) [`7be2d1`](https://github.com/reearth/reearth-flow/commit/7be2d1)
+- Migrate to Re:earth Terrain and Sentinel [FLOW-DEV-210] ([#2206](https://github.com/reearth/reearth-flow/pull/2206)) [`e93219`](https://github.com/reearth/reearth-flow/commit/e93219)
+- Default to Features Ports Migrator and Update Action Params Migrator [FLOW-DEV-224] ([#2244](https://github.com/reearth/reearth-flow/pull/2244)) [`9d7f5e`](https://github.com/reearth/reearth-flow/commit/9d7f5e)
+
+#### 🔧 Bug Fixes
+
+- Remove isLocked checks from ActionBar and DebugActionBar; update job completion status handling in hooks and JobsManager ([#2233](https://github.com/reearth/reearth-flow/pull/2233)) [`5b87ad`](https://github.com/reearth/reearth-flow/commit/5b87ad)
+- Generate multi-file allure report ([#2253](https://github.com/reearth/reearth-flow/pull/2253)) [`1bd7bf`](https://github.com/reearth/reearth-flow/commit/1bd7bf)
+- Revert radix packages ([#2237](https://github.com/reearth/reearth-flow/pull/2237)) [`448f51`](https://github.com/reearth/reearth-flow/commit/448f51)
+
+#### Miscellaneous Tasks
+
+- Remove legacy migration steps [FLOW-DEV-228] ([#2274](https://github.com/reearth/reearth-flow/pull/2274)) [`b29671`](https://github.com/reearth/reearth-flow/commit/b29671)
+- Check FlowExpr ui against Engine spec docs [FLOW-DEV-226] ([#2257](https://github.com/reearth/reearth-flow/pull/2257)) [`15b625`](https://github.com/reearth/reearth-flow/commit/15b625)
+- Remove Radix Dependencies and Refactor Shadcn components for Base UI [FLOW-DEV-222] ([#2241](https://github.com/reearth/reearth-flow/pull/2241)) [`a6e9db`](https://github.com/reearth/reearth-flow/commit/a6e9db)
+
+### websocket-go
+
+#### 🔧 Bug Fixes
+
+- Bump ygo to v1.30.1 to fix nested-parent decode + merge data loss ([#2235](https://github.com/reearth/reearth-flow/pull/2235)) [`1219e3`](https://github.com/reearth/reearth-flow/commit/1219e3)
+- Set GOWORK&#x3D;off in the Go deploy build job ([#2232](https://github.com/reearth/reearth-flow/pull/2232)) [`8f3102`](https://github.com/reearth/reearth-flow/commit/8f3102)
+
+#### Miscellaneous Tasks
+
+- Bump golang.org&#x2F;x&#x2F;text to v0.40.0 (GO-2026-5970) ([#2282](https://github.com/reearth/reearth-flow/pull/2282)) [`ae68b7`](https://github.com/reearth/reearth-flow/commit/ae68b7)
+- Bump ygo to v1.35.0 ([#2269](https://github.com/reearth/reearth-flow/pull/2269)) [`22f84d`](https://github.com/reearth/reearth-flow/commit/22f84d)
+- Bump ygo to v1.34.0 ([#2267](https://github.com/reearth/reearth-flow/pull/2267)) [`059800`](https://github.com/reearth/reearth-flow/commit/059800)
+
+### 
+
+#### ✨ Refactor
+
+- Rename base actions to space-separated title case ([#2240](https://github.com/reearth/reearth-flow/pull/2240)) [`978c84`](https://github.com/reearth/reearth-flow/commit/978c84)
+- Rename default port to features ([#2236](https://github.com/reearth/reearth-flow/pull/2236)) [`e4cf4f`](https://github.com/reearth/reearth-flow/commit/e4cf4f)
+
+#### 
+
+- Typo ([#2242](https://github.com/reearth/reearth-flow/pull/2242)) [`992d3e`](https://github.com/reearth/reearth-flow/commit/992d3e)
+
 ## 0.1.0-alpha.27 - 2026-07-07
 
 ### Misc
