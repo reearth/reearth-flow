@@ -711,6 +711,10 @@
         "": {
           "title": "Parámetros de Cesium3DTilesWriter"
         },
+        "atlasExtrusion": {
+          "title": "Extrusión del Atlas",
+          "description": "Anillo de píxeles dibujado alrededor de cada región de textura del atlas para evitar el sangrado bilineal entre regiones vecinas. El valor predeterminado es 0 (desactivado)."
+        },
         "atlasSize": {
           "title": "Tamaño del Atlas",
           "description": "Dimensión máxima del atlas de texturas en píxeles. Las texturas que la superan se distribuyen en páginas de atlas adicionales; una sola textura mayor que este valor se reduce para que quepa. El valor predeterminado es 8192."

@@ -2196,6 +2196,16 @@
               "null"
             ],
             "format": "uint32",
+            "minimum": 1.0
+          },
+          "atlasExtrusion": {
+            "title": "アトラスの縁取り",
+            "description": "隣接する領域間のバイリニアにじみを防ぐため、アトラス内の各テクスチャ領域の周囲に描画する縁取りのピクセル数。デフォルトは 0（無効）。",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
             "minimum": 0.0
           },
           "skipUnexposedAttributes": {

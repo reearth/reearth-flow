@@ -131,9 +131,9 @@ pub struct RenderOptions {
 /// writer.
 const DEFAULT_ATLAS_SIZE: u32 = 8192;
 
-/// Default atlas extrusion ring when the parameter is unset; a single pixel is
-/// enough to stop bilinear bleed between packed regions.
-const DEFAULT_ATLAS_EXTRUSION: u32 = 1;
+/// Default atlas extrusion ring when the parameter is unset; disabled by
+/// default. Raise it to blit a bleed-guard ring around each packed region.
+const DEFAULT_ATLAS_EXTRUSION: u32 = 0;
 
 /// Extract and reproject every feature's mesh, place each into the deepest
 /// quadtree cell (bounded by `max_zoom`) that fully contains it, and render

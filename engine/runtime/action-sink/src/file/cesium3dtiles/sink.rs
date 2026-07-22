@@ -163,11 +163,11 @@ pub struct Cesium3DTilesWriterParam {
     /// Maximum texture atlas dimension in pixels. Textures exceeding this spill
     /// onto additional atlas pages; a single texture larger than it is
     /// downsampled to fit. Defaults to 8192.
+    #[schemars(range(min = 1))]
     pub(super) atlas_size: Option<u32>,
     /// # Atlas Extrusion
     /// Ring of pixels blitted around each texture region in the atlas to stop
-    /// bilinear bleed between neighbouring regions. Defaults to 1. Set to 0 to
-    /// disable.
+    /// bilinear bleed between neighbouring regions. Defaults to 0 (disabled).
     pub(super) atlas_extrusion: Option<u32>,
     /// # Skip unexposed Attributes
     /// Skip attributes with double underscore prefix

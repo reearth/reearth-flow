@@ -711,6 +711,10 @@
         "": {
           "title": "Cesium3DTilesWriter 参数"
         },
+        "atlasExtrusion": {
+          "title": "图集外扩",
+          "description": "在图集中每个纹理区域周围绘制的像素环，用于防止相邻区域之间的双线性渗色。默认值为 0（禁用）。"
+        },
         "atlasSize": {
           "title": "图集大小",
           "description": "纹理图集的最大尺寸（像素）。超过此值的纹理会分布到额外的图集页；单个大于此值的纹理会被降采样以适配。默认值为 8192。"

@@ -2193,6 +2193,16 @@
               "null"
             ],
             "format": "uint32",
+            "minimum": 1.0
+          },
+          "atlasExtrusion": {
+            "title": "Extrusión del Atlas",
+            "description": "Anillo de píxeles dibujado alrededor de cada región de textura del atlas para evitar el sangrado bilineal entre regiones vecinas. El valor predeterminado es 0 (desactivado).",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
             "minimum": 0.0
           },
           "skipUnexposedAttributes": {

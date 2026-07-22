@@ -711,6 +711,10 @@
         "": {
           "title": "Paramètres de Cesium3DTilesWriter"
         },
+        "atlasExtrusion": {
+          "title": "Extrusion de l'Atlas",
+          "description": "Anneau de pixels dessiné autour de chaque région de texture de l'atlas pour éviter le débordement bilinéaire entre régions voisines. La valeur par défaut est 0 (désactivé)."
+        },
         "atlasSize": {
           "title": "Taille de l'Atlas",
           "description": "Dimension maximale de l'atlas de textures en pixels. Les textures qui la dépassent débordent sur des pages d'atlas supplémentaires ; une seule texture plus grande que cette valeur est sous-échantillonnée pour s'y adapter. La valeur par défaut est 8192."

@@ -2193,6 +2193,16 @@
               "null"
             ],
             "format": "uint32",
+            "minimum": 1.0
+          },
+          "atlasExtrusion": {
+            "title": "图集外扩",
+            "description": "在图集中每个纹理区域周围绘制的像素环，用于防止相邻区域之间的双线性渗色。默认值为 0（禁用）。",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
             "minimum": 0.0
           },
           "skipUnexposedAttributes": {

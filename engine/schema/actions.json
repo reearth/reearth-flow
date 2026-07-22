@@ -2195,6 +2195,16 @@
             "format": "uint32",
             "minimum": 0.0
           },
+          "atlasExtrusion": {
+            "title": "Atlas Extrusion",
+            "description": "Ring of pixels blitted around each texture region in the atlas to stop bilinear bleed between neighbouring regions. Defaults to 0 (disabled).",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "minimum": 0.0
+          },
           "skipUnexposedAttributes": {
             "title": "Skip unexposed Attributes",
             "description": "Skip attributes with double underscore prefix",

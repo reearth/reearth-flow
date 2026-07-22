@@ -705,6 +705,10 @@
         "": {
           "title": "Cesium3DTilesWriter Parameters"
         },
+        "atlasExtrusion": {
+          "title": "Atlas Extrusion",
+          "description": "Ring of pixels blitted around each texture region in the atlas to stop bilinear bleed between neighbouring regions. Defaults to 0 (disabled)."
+        },
         "atlasSize": {
           "title": "Atlas Size",
           "description": "Maximum texture atlas dimension in pixels. Textures exceeding this spill onto additional atlas pages; a single texture larger than it is downsampled to fit. Defaults to 8192."

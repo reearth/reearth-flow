@@ -2155,6 +2155,16 @@ Export Features as Cesium 3D Tiles for Web Visualization
         "null"
       ],
       "format": "uint32",
+      "minimum": 1.0
+    },
+    "atlasExtrusion": {
+      "title": "Atlas Extrusion",
+      "description": "Ring of pixels blitted around each texture region in the atlas to stop bilinear bleed between neighbouring regions. Defaults to 0 (disabled).",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint32",
       "minimum": 0.0
     },
     "skipUnexposedAttributes": {
