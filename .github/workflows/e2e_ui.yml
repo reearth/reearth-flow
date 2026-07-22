@@ -16,7 +16,10 @@ on:
           - smoke # @smoke-tagged sanity check only
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # Workflow-global (not per-ref): serializes every run so there is a single
+  # writer to the shared GCS history.jsonl/index.json objects, and so no two
+  # suites hit the shared e2e environment (FLOW_DASHBOARD_E2E_BASEURL) at once.
+  group: ${{ github.workflow }}
   cancel-in-progress: false
 
 permissions:
@@ -152,8 +155,8 @@ jobs:
 
       - name: Persist Allure history to GCS
         # `allure generate` appended this run to history.jsonl; store it so the
-        # next run restores it. The workflow concurrency group serializes runs,
-        # so there is a single writer and no lost-update race here.
+        # next run restores it. The workflow-global concurrency group serializes
+        # every run, so there is a single writer and no lost-update race here.
         if: ${{ !cancelled() && steps.check-results.outputs.has_results == 'true' }}
         run: |
           if [ -f ./history.jsonl ]; then
