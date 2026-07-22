@@ -186,8 +186,7 @@ pub(super) fn root_ground_diagonal_m(root: &GeoBox) -> f64 {
 /// Geometric error at `level`, halving from the root per level — the fixed
 /// relationship 3D Tiles 1.1 implicit tiling requires (a client derives every
 /// non-root tile's error this way, so the server has no freedom to pick
-/// anything else). Purely geometric: texture detail (`texel_size`) has no
-/// bearing on it.
+/// anything else).
 pub(super) fn geometric_error(root_ground_diagonal_m: f64, level: u32) -> f64 {
     root_ground_diagonal_m / (1u64 << level) as f64
 }
