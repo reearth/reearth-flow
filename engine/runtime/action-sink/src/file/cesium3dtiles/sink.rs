@@ -162,7 +162,7 @@ pub struct Cesium3DTilesWriterParam {
     /// # Atlas Size
     /// Maximum texture atlas dimension in pixels. Textures exceeding this spill
     /// onto additional atlas pages; a single texture larger than it is
-    /// downsampled to fit. Defaults to 8192.
+    /// downsampled to fit. Defaults to 2048.
     #[schemars(range(min = 1))]
     pub(super) atlas_size: Option<u32>,
     /// # Atlas Extrusion

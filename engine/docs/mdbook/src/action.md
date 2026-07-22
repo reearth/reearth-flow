@@ -2149,7 +2149,7 @@ Export Features as Cesium 3D Tiles for Web Visualization
     },
     "atlasSize": {
       "title": "Atlas Size",
-      "description": "Maximum texture atlas dimension in pixels. Textures exceeding this spill onto additional atlas pages; a single texture larger than it is downsampled to fit. Defaults to 8192.",
+      "description": "Maximum texture atlas dimension in pixels. Textures exceeding this spill onto additional atlas pages; a single texture larger than it is downsampled to fit. Defaults to 2048.",
       "type": [
         "integer",
         "null"
