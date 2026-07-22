@@ -14,89 +14,39 @@ Phase 3 quality review of the 73 base actions against [action-standard.md](actio
 
 ---
 
-## Input (10)
+## Deferred: Extended action documentation (not yet started)
 
-<!-- Session 2 -->
+While applying the standard, descriptions and parameter descriptions are being made concise per §2 and §3.3 (1–2 sentences, no reference dumps). This is correct, but some actions carried genuinely useful **reference-level** detail in their descriptions that concise text cannot hold — e.g. the Shapefile/CSV `encoding` params previously enumerated ~20 supported encodings with examples and priority order. That depth is trimmed during the audit and currently survives only in git history and source.
+
+There is no home for this today:
+- The schema `description` is the only user-facing text, and the UI renders it as **plain text** (no markdown) — long structured content renders poorly there anyway.
+- The mdbook `docs/mdbook/src/action.md` is **generated** from the schema (`cargo run -- doc-action`), so it cannot hold anything the schema does not.
+- Hand-written guides in `engine/docs/` (e.g. `czml-timeseries.md`) can hold arbitrary depth but are **orphaned** — not in mdbook `SUMMARY.md`, not linked from any action, not surfaced in the app.
+
+**Task (needs planning before implementation):**
+1. Decide the home + format for per-action extended docs (candidate: `engine/docs/actions/<action>.md`; wire into mdbook `SUMMARY.md` and/or extend `doc-action` to emit a "See also" link; consider a UI affordance linking action → doc).
+2. Fold the existing orphan (`czml-timeseries.md`) into that convention.
+3. Recover the reference detail trimmed during the audit (pull from git history of the touched factory files) and migrate it into the new docs.
+
+Until this is planned, concise wins (Option A) — do not re-inflate descriptions to preserve reference material.
+
+---
+
+## Input — deferred item only (batch resolved in PR)
+
+The Input batch (10 actions) was resolved per the standard. One deferred item remains, split out by decision:
 
 ```
-CityGML Reader
-  params:  flatten — missing title and description (§3.3)
-           dataset — description example "data.csv" copy-pasted from CsvReader; should
-             reference a .gml file (§3.3)
-           ordering — `flatten` sits between `dataset` and `inline`; correct order:
-             dataset → inline → flatten (§3.5)
-
-CSV Reader
-  desc:    title-case — "Read Features from CSV or TSV File"; suggest "Reads features
-             from CSV and TSV files."
-  params:  ordering — `format` is required but is 3rd in properties (after dataset,
-             encoding); move to first (§3.5)
-           encoding — description is paragraph-length; §3.3 prefers ≤2 sentences
-           headerRows — description exceeds 2 sentences (§3.3)
-  tags:    ["csv"] — 1 tag; suggest adding `file`
-
-Feature Creator
-  desc:    title-case — "Generate Custom Features Using Scripts"; suggest "Creates
-             features from a script expression that returns one or more attribute maps."
-  params:  creator — description opens with imperative "Write a script expression…";
-             should describe, not instruct; suggest "Script expression that returns a map
-             (single feature) or an array of maps (multiple features)."
-  tags:    empty — no fitting established vocabulary terms; consider proposing `scripting`
-
-File Path Extractor
-  tags:    ["file-system"] — not in established vocabulary; replace with `file`; 1 tag
-             acceptable (no strong second candidate)
-
-GeoJSON Reader
-  params:  dataset — description example "data.csv" copy-pasted; should reference a
-             .geojson file (§3.3)
-  tags:    ["geojson"] — 1 tag; suggest adding `vector`
-
 GeoPackage Reader
-  params:  schema-level description missing (§3.3)
-           attributeFilter, batchSize, force2D, includeMetadata, layerName, readMode,
-             spatialFilter, tileFormat — all missing title and/or description (§3.3)
-           readMode enum variants ("features", "tiles", "all", "metadataOnly") — no
-             per-variant descriptions (§3.4)
-           tileFormat enum variants ("png", "jpeg", "webp") — no per-variant descriptions
-             (§3.4)
-           10 params — exceeds 8; justification required (§3.5); batchSize looks like
-             implementation leakage — evaluate removal (§3.5)
-           ordering — alphabetical, not usability-ordered; suggest: dataset → readMode →
-             layerName → attributeFilter → spatialFilter → includeMetadata → force2D →
-             tileFormat → batchSize (§3.5)
-  tags:    ["geopackage"] — 1 tag; suggest adding `vector` (and `raster` if tile reading
-             is a primary use case)
-
-JSON Reader
-  tags:    ["json"] — 1 tag; acceptable (no strong second candidate)
-
-Shapefile Reader
-  params:  allowEmptyPath — description mentions "Rhai `()`"; remove implementation
-             detail; suggest "If true, a null dataset path produces zero features instead
-             of an error."
-           encoding — description is paragraph-length; §3.3 prefers ≤2 sentences
-           force2d — should be `force2D` per camelCase (§3.1)
-           dataset — description example "data.csv" copy-pasted; should reference a .zip
-             file (§3.3)
-           ordering — allowEmptyPath (edge-case) is first; correct order: dataset →
-             inline → encoding → force2D → allowEmptyPath (§3.5)
-  tags:    ["shapefile"] — 1 tag; suggest adding `vector`
-
-SQL Reader
-  desc:    title-case — "Read Features from SQL Database"; suggest "Reads features from
-             a SQL database."
-  tags:    ["database"] — 1 tag; acceptable (no strong second candidate)
-
-Feature CityGML Reader
-  desc:    "Reads and processes features from CityGML files with optional flattening" —
-             "reads and processes" is redundant; suggest "Reads CityGML features from a
-             file path stored in the incoming feature, optionally flattening nested
-             attributes."
-  params:  ordering — required `dataset` is not first (codelistsPath is); correct order:
-             dataset → flatten → codelistsPath (§3.5)
-  ports:   inputPorts `default` — global note
-           outputPorts `default` — global note
+  params:  includeMetadata, attributeFilter, batchSize, spatialFilter — these four
+             params are accepted but never read (stored with `_` prefixes, no effect).
+             They should be REMOVED (drops 10→6 params, clears the >8 flag). Removal is
+             deferred to the `feat/engine-geopackage-reader-new-geometry` branch, which
+             is actively editing the same file — folding the removal there avoids a
+             conflicting structural change. The Input PR applied only the safe findings
+             (schema description, titles/descriptions + enum docs for the working params,
+             tags). Once removed, re-check ordering (natural order becomes dataset →
+             inline → readMode → layerName → tileFormat → force2D).
 ```
 
 ---

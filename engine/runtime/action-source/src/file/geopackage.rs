@@ -40,7 +40,7 @@ impl SourceFactory for GeoPackageReaderFactory {
     }
 
     fn description(&self) -> &str {
-        "Reads geographic features from GeoPackage (.gpkg) files with support for vector features, tiles, and metadata"
+        "Reads geographic features from GeoPackage (.gpkg) files, supporting vector features, tiles, and metadata."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -52,7 +52,7 @@ impl SourceFactory for GeoPackageReaderFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["geopackage"]
+        &["geopackage", "vector"]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
@@ -101,22 +101,32 @@ impl SourceFactory for GeoPackageReaderFactory {
     }
 }
 
+/// # GeoPackage Reader Parameters
+/// Configures which content to read from the GeoPackage file and how geometries are produced.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct GeoPackageReaderParam {
     #[serde(flatten)]
     pub(super) common_property: FileReaderCommonParam,
+    /// # Read Mode
+    /// Which content to read from the GeoPackage file. Defaults to reading vector features.
     #[serde(default)]
     read_mode: GeoPackageReadMode,
+    /// # Layer Name
+    /// Name of the layer to read. When omitted, the first available layer is used.
     layer_name: Option<String>,
     #[serde(default)]
     include_metadata: bool,
+    /// # Tile Format
+    /// Image format to decode when reading raster tiles. Defaults to PNG.
     #[serde(default)]
     tile_format: TileFormat,
     #[serde(default)]
     attribute_filter: Option<String>,
     #[serde(default)]
     batch_size: Option<usize>,
+    /// # Force 2D
+    /// If true, forces all geometries to be 2D (ignoring Z values).
     #[serde(default, rename = "force2D")]
     force_2d: bool,
     #[serde(default)]
@@ -126,19 +136,33 @@ pub(super) struct GeoPackageReaderParam {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 #[serde(rename_all = "camelCase")]
 enum GeoPackageReadMode {
+    /// # Features
+    /// Reads vector features (geometry and attributes).
     #[default]
     Features,
+    /// # Tiles
+    /// Reads raster tiles.
     Tiles,
+    /// # All
+    /// Reads both vector features and raster tiles.
     All,
+    /// # Metadata Only
+    /// Reads only the file's metadata, without features or tiles.
     MetadataOnly,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 #[serde(rename_all = "lowercase")]
 enum TileFormat {
+    /// # PNG
+    /// Decodes tiles as PNG images.
     #[default]
     Png,
+    /// # JPEG
+    /// Decodes tiles as JPEG images.
     Jpeg,
+    /// # WebP
+    /// Decodes tiles as WebP images.
     Webp,
 }
 

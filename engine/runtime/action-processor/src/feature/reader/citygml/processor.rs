@@ -34,7 +34,7 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
     }
 
     fn description(&self) -> &str {
-        "Reads and processes features from CityGML files with optional flattening"
+        "Reads CityGML features from a file path stored in the incoming feature, optionally flattening nested attributes."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {

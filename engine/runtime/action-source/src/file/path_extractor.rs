@@ -32,7 +32,7 @@ impl SourceFactory for FilePathExtractorFactory {
     }
 
     fn description(&self) -> &str {
-        "Extracts file paths from directories or archives, creating features for each discovered file"
+        "Extracts file paths from directories or archives, creating features for each discovered file."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -44,7 +44,7 @@ impl SourceFactory for FilePathExtractorFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["file-system"]
+        &["file"]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
