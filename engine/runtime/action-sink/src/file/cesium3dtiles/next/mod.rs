@@ -176,14 +176,15 @@ pub fn build(
     let occupied: BTreeSet<Cell> = by_cell.keys().copied().collect();
     let available_levels = occupied.iter().map(|c| c.level).max().unwrap_or(0) + 1;
 
-    // One decode cache for the whole tileset: source textures are shared across
-    // cells, so decoding them once here rather than per cell dominates runtime.
-    let mut textures = TextureCache::default();
+    // A decode cache per cell, dropped once the cell's glb is built. PLATEAU
+    // textures are per-surface, so a source image is referenced by only one
+    // cell; a tileset-wide cache would grow without bound for no reuse gain.
     let tiles = by_cell
         .into_iter()
         .map(|(cell, indices)| {
             let cell_members: Vec<&(&Feature, mesh::ExtractedMesh)> =
                 indices.iter().map(|&i| &extracted[i]).collect();
+            let mut textures = TextureCache::default();
             let glb = build_cell_glb(&cell_members, options, render, &mut textures)?;
             Ok((content_path(cell), glb))
         })
