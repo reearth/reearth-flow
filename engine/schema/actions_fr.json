@@ -2178,7 +2178,7 @@
           },
           "texelSize": {
             "title": "Taille de Texel",
-            "description": "Taille de texel cible en mètres par pixel. Les textures plus fines que cette valeur y sont sous-échantillonnées, et elle constitue le plancher de l'erreur géométrique de chaque tuile. La valeur par défaut est 0, qui conserve le détail complet de la texture.",
+            "description": "Taille de texel cible en mètres par pixel. Les textures plus fines que cette valeur y sont sous-échantillonnées. La valeur par défaut est 0, qui conserve le détail complet de la texture.",
             "type": [
               "number",
               "null"

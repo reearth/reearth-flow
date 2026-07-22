@@ -115,8 +115,7 @@ pub struct RenderOptions {
     /// Attach per-polygon flat normals for lighting.
     pub compute_flat_normal: bool,
     /// Target texel size in metres per pixel: textures finer than this are
-    /// downsampled to it, and it floors each tile's geometric error. `0.0`
-    /// keeps full texture detail and leaves geometric error untouched.
+    /// downsampled to it. `0.0` keeps full texture detail.
     pub texel_size: f64,
     /// Maximum atlas page dimension (pixels). Textures/atlases exceeding it
     /// spill onto additional pages; a single texture larger than it is

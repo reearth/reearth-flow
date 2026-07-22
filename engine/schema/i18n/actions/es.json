@@ -757,7 +757,7 @@
         },
         "texelSize": {
           "title": "Tamaño de Téxel",
-          "description": "Tamaño de téxel objetivo en metros por píxel. Las texturas más finas que este valor se reducen a él, y establece el límite inferior del error geométrico de cada mosaico. El valor predeterminado es 0, que conserva el detalle completo de la textura."
+          "description": "Tamaño de téxel objetivo en metros por píxel. Las texturas más finas que este valor se reducen a él. El valor predeterminado es 0, que conserva el detalle completo de la textura."
         }
       }
     },

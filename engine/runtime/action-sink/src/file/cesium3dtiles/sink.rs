@@ -156,8 +156,7 @@ pub struct Cesium3DTilesWriterParam {
     pub(super) compute_flat_normal: Option<bool>,
     /// # Texel Size
     /// Target texel size in metres per pixel. Textures finer than this are
-    /// downsampled to it, and it floors each tile's geometric error. Defaults
-    /// to 0, which keeps full texture detail.
+    /// downsampled to it. Defaults to 0, which keeps full texture detail.
     pub(super) texel_size: Option<f64>,
     /// # Atlas Size
     /// Maximum texture atlas dimension in pixels. Textures exceeding this spill
