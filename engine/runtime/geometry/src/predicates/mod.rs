@@ -48,7 +48,7 @@
 
 pub mod contains;
 pub mod distance;
-mod edge_set;
+pub(crate) mod edge_set;
 pub mod intersects;
 pub mod intersects3d;
 pub mod kernel;
@@ -58,6 +58,8 @@ pub mod position3d;
 pub mod projection;
 pub mod ray;
 pub mod relate;
+#[cfg(feature = "new-geometry")]
+pub(crate) mod surface_intersection;
 #[cfg(test)]
 pub(crate) mod test3d;
 pub mod view;

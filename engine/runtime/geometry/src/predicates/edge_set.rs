@@ -108,6 +108,64 @@ impl EdgeSet {
     }
 }
 
+/// One envelope with the index of the element it came from, so an rstar sweep
+/// can report candidate pairs by element index.
+#[cfg(feature = "new-geometry")]
+struct IndexedEnvelope<P: rstar::Point> {
+    index: usize,
+    envelope: rstar::AABB<P>,
+}
+
+#[cfg(feature = "new-geometry")]
+impl<P: rstar::Point> rstar::RTreeObject for IndexedEnvelope<P> {
+    type Envelope = rstar::AABB<P>;
+
+    fn envelope(&self) -> Self::Envelope {
+        self.envelope.clone()
+    }
+}
+
+/// Visit every unordered index pair `(i, j)`, `i < j`, whose envelopes
+/// intersect: a nested scan below the [`should_index`] gate (on the pair
+/// count), an rstar sweep above it. Both strategies visit a superset of the
+/// truly interacting pairs; callers decide each candidate with the exact
+/// kernel, so the strategy never changes an answer.
+#[cfg(feature = "new-geometry")]
+pub(crate) fn for_each_candidate_pair<P: rstar::Point + Copy>(
+    envelopes: &[rstar::AABB<P>],
+    mut visit: impl FnMut(usize, usize),
+) {
+    use rstar::Envelope;
+    let n = envelopes.len();
+    if !should_index(n, n) {
+        for i in 0..n {
+            for j in (i + 1)..n {
+                if envelopes[i].intersects(&envelopes[j]) {
+                    visit(i, j);
+                }
+            }
+        }
+        return;
+    }
+    let tree = RTree::bulk_load(
+        envelopes
+            .iter()
+            .enumerate()
+            .map(|(index, envelope)| IndexedEnvelope {
+                index,
+                envelope: *envelope,
+            })
+            .collect(),
+    );
+    for (i, envelope) in envelopes.iter().enumerate() {
+        for other in tree.locate_in_envelope_intersecting(envelope) {
+            if other.index > i {
+                visit(i, other.index);
+            }
+        }
+    }
+}
+
 /// Every segment of the operand: line chain segments and areal ring edges
 /// (points contribute nothing). Zero-length segments are kept verbatim.
 pub(crate) fn operand_edges(operand: &Operand2D<'_>) -> Vec<Edge2> {
@@ -198,6 +256,59 @@ mod tests {
                     .is_some()
             }));
         }
+    }
+
+    /// Overlapping-interval envelopes: element `i` spans `[i, i + 1.5]` on the
+    /// x axis, so each element's envelope intersects its neighbour's.
+    #[cfg(feature = "new-geometry")]
+    fn interval_envelopes_2d(n: usize) -> Vec<rstar::AABB<[f64; 2]>> {
+        (0..n)
+            .map(|i| {
+                let x = i as f64;
+                rstar::AABB::from_corners([x, 0.0], [x + 1.5, 1.0])
+            })
+            .collect()
+    }
+
+    #[cfg(feature = "new-geometry")]
+    #[test]
+    fn candidate_pairs_match_across_strategies() {
+        // 10 envelopes stay under the index gate, 100 go over it; both must
+        // agree with a direct nested scan.
+        for n in [10, 100] {
+            let envelopes = interval_envelopes_2d(n);
+            let mut expected = Vec::new();
+            for i in 0..n {
+                for j in (i + 1)..n {
+                    use rstar::Envelope;
+                    if envelopes[i].intersects(&envelopes[j]) {
+                        expected.push((i, j));
+                    }
+                }
+            }
+            let mut got = Vec::new();
+            for_each_candidate_pair(&envelopes, |i, j| got.push((i, j)));
+            got.sort_unstable();
+            expected.sort_unstable();
+            assert_eq!(got, expected);
+        }
+    }
+
+    #[cfg(feature = "new-geometry")]
+    #[test]
+    fn candidate_pairs_work_in_3d() {
+        let envelopes: Vec<rstar::AABB<[f64; 3]>> = (0..80)
+            .map(|i| {
+                let x = i as f64;
+                rstar::AABB::from_corners([x, 0.0, 0.0], [x + 1.5, 1.0, 1.0])
+            })
+            .collect();
+        let mut got = Vec::new();
+        for_each_candidate_pair(&envelopes, |i, j| got.push((i, j)));
+        got.sort_unstable();
+        // Each envelope overlaps exactly its two neighbours.
+        let expected: Vec<(usize, usize)> = (0..79).map(|i| (i, i + 1)).collect();
+        assert_eq!(got, expected);
     }
 
     #[test]

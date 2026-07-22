@@ -1,12 +1,25 @@
 //! Validations/predicates on geometry types.
 
+mod containment;
+mod measure;
+mod simplicity;
+
+pub(crate) use containment::{check_holes_in_exterior_2d, check_holes_in_exterior_3d};
+pub(crate) use measure::{
+    check_degenerate_chain_2d, check_degenerate_chain_3d, check_degenerate_ring_2d,
+    check_degenerate_ring_3d, check_planarity_3d,
+};
+pub(crate) use simplicity::{
+    check_chain_simple_2d, check_chain_simple_3d, check_ring_pair_2d, check_ring_pair_3d,
+};
+
 use std::collections::{HashMap, HashSet};
 use std::fmt;
 
 use kiddo::{KdTree, SquaredEuclidean};
 use serde::{Deserialize, Serialize};
 
-use crate::coordinate::CoordinateFrame;
+use crate::coordinate::{CoordinateFrame, UnitKind};
 use crate::csg::{Csg, ThreeDimensional};
 use crate::line_string::{LineString2D, LineString3D};
 use crate::point::{Point2D, Point3D};
@@ -96,21 +109,64 @@ impl fmt::Display for ValidationType {
 
 /// Tunable thresholds for the checks that admit them. Which checks *run* is fixed
 /// per leaf type ([`applicable_checks`](Validate::applicable_checks)); these only
-/// tune *how* a check decides. [`Default`] gives the strictest sensible behavior
-/// (exact-equality duplicates, zero-tolerance planarity and degeneracy), so an
-/// omitted field means "no slack".
-#[derive(Clone, Debug, PartialEq, Serialize, Deserialize, Default)]
+/// tune *how* a check decides. [`Default`] gives exact-equality duplicate
+/// detection, zero-tolerance degeneracy (only exactly zero measures flag), and
+/// the standard planarity ratio.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct ValidationParams {
     /// [`DuplicatePoints`](ValidationType::DuplicatePoints): `None` = exact bit
     /// equality; `Some(t)` = two coordinates coincide when within distance `t`.
     pub duplicate_tolerance: Option<f64>,
-    /// [`Planarity`](ValidationType::Planarity): the greatest distance a ring
-    /// vertex may sit off the ring's best-fit plane before the ring is non-planar.
-    pub planarity_tolerance: f64,
+    /// [`Planarity`](ValidationType::Planarity): how a face's out-of-plane
+    /// deviation is bounded before the face is non-planar. Defaults to the
+    /// standard scale-invariant ratio, [`Ratio(0.001)`](PlanarityThreshold::Ratio).
+    pub planarity: PlanarityThreshold,
     /// [`Degenerate`](ValidationType::Degenerate): the smallest measure a geometry
     /// may have before it counts as degenerate.
     pub degenerate: DegenerateThresholds,
+    /// Optional (advisory) checks the caller disabled. A disabled optional check
+    /// does not run and reports [`Success`](ValidationResult::Success), so it
+    /// neither flags problems nor blocks a dependent check. A non-optional check
+    /// listed here is ignored: core validity checks always run.
+    #[serde(skip)]
+    pub disabled_checks: HashSet<ValidationType>,
+}
+
+impl Default for ValidationParams {
+    fn default() -> Self {
+        Self {
+            duplicate_tolerance: None,
+            planarity: PlanarityThreshold::Ratio(0.001),
+            degenerate: DegenerateThresholds::default(),
+            disabled_checks: HashSet::new(),
+        }
+    }
+}
+
+/// How the [`Planarity`](ValidationType::Planarity) check bounds a face's
+/// out-of-plane deviation, measured as the minimum height (width) of the face
+/// vertices' 3D convex hull.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+pub enum PlanarityThreshold {
+    /// A dimensionless ratio of the hull's minimum height to its diameter, so
+    /// the verdict is scale-invariant. The standard default is `0.001`.
+    Ratio(f64),
+    /// An absolute maximum height in the frame's linear unit (metres).
+    /// Meaningful only in a linear-unit frame, where
+    /// [`Planarity`](ValidationType::Planarity) runs.
+    MaxHeight(f64),
+}
+
+impl PlanarityThreshold {
+    /// The absolute out-of-plane deviation this threshold allows for a hull of
+    /// extent `scale`: the ratio scaled by `scale`, or the fixed height.
+    pub(crate) fn absolute(self, scale: f64) -> f64 {
+        match self {
+            PlanarityThreshold::Ratio(t) => t * scale,
+            PlanarityThreshold::MaxHeight(h) => h,
+        }
+    }
 }
 
 /// The per-dimension measures below which a geometry is
@@ -128,6 +184,21 @@ pub struct DegenerateThresholds {
     pub min_volume: f64,
 }
 
+/// Why a check was not run despite being applicable.
+#[derive(Serialize, Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SkipReason {
+    /// The geometry is in an angular-unit (geographic) frame, so a
+    /// unit-sensitive check (planarity, surface self-intersection) would be
+    /// unreliable. Reproject to a linear-unit CRS to enable it.
+    AngularFrame,
+    /// The geometry's CRS could not be classified by PROJ (e.g. an unknown code
+    /// or missing PROJ data), so a unit-sensitive check was skipped rather
+    /// than run on a frame of unknown units. Distinct from
+    /// [`AngularFrame`](SkipReason::AngularFrame): the frame is not known to
+    /// be geographic, the classification simply failed.
+    UndeterminableFrame,
+}
+
 /// The outcome of one [`ValidationType`] check on a geometry.
 #[derive(Serialize, Clone, Debug, PartialEq)]
 pub enum ValidationResult {
@@ -137,6 +208,10 @@ pub enum ValidationResult {
     /// check that is applicable but unimplemented panics instead of reaching this
     /// state.)
     Unvalidated,
+    /// The check was deliberately not run for the given [`SkipReason`]; unlike
+    /// [`Unvalidated`](ValidationResult::Unvalidated) this is not a prerequisite
+    /// failure but an unsuitable input the caller can fix.
+    Skipped(SkipReason),
     /// The check ran and found problems; each [`Geometry`] pinpoints a failing
     /// position (the failed port).
     Failed(Vec<Geometry>),
@@ -198,32 +273,74 @@ impl ValidationReport {
 /// prerequisites passed; it is invoked at most once per check.
 pub(crate) fn run_checks(
     applicable: &[ValidationType],
+    units: &UnitKind,
+    disabled: &HashSet<ValidationType>,
     mut run_one: impl FnMut(ValidationType) -> ValidationReport,
 ) -> ValidationResults {
     let applicable_set: HashSet<ValidationType> = applicable.iter().copied().collect();
     let mut results = ValidationResults::new();
     for &check in applicable {
-        resolve(check, &applicable_set, &mut results, &mut run_one);
+        resolve(
+            check,
+            &applicable_set,
+            units,
+            disabled,
+            &mut results,
+            &mut run_one,
+        );
     }
     results
 }
 
+/// Checks that are only meaningful in a linear-unit frame and are
+/// [`Skipped`](ValidationResult::Skipped) on an angular-unit one. The surface
+/// self-intersection scan is guarded inside the mesh/solid checks (its ring-level
+/// part is exact and stays valid), so [`SelfIntersection`](ValidationType::SelfIntersection)
+/// is not listed here.
+fn requires_linear_units(check: ValidationType) -> bool {
+    matches!(check, ValidationType::Planarity)
+}
+
 /// Resolve one check, recursing into its applicable prerequisites first. A check
-/// is [`Unvalidated`](ValidationResult::Unvalidated) when any applicable
-/// prerequisite did not end in [`Success`](ValidationResult::Success).
+/// is [`Skipped`](ValidationResult::Skipped) when it needs a linear-unit frame and
+/// `has_linear_units` is false, or [`Unvalidated`](ValidationResult::Unvalidated) when
+/// any applicable prerequisite did not end in
+/// [`Success`](ValidationResult::Success).
 fn resolve(
     check: ValidationType,
     applicable: &HashSet<ValidationType>,
+    units: &UnitKind,
+    disabled: &HashSet<ValidationType>,
     results: &mut ValidationResults,
     run_one: &mut impl FnMut(ValidationType) -> ValidationReport,
 ) -> ValidationResult {
     if let Some(result) = results.get(&check) {
         return result.clone();
     }
+    // A disabled optional check does not run and counts as passing, so it
+    // neither reports problems nor blocks its dependents. Core checks always
+    // run, ignoring the disabled set.
+    if check.is_optional() && disabled.contains(&check) {
+        results.insert(check, ValidationResult::Success);
+        return ValidationResult::Success;
+    }
+    if requires_linear_units(check) {
+        let skip = match units {
+            UnitKind::Linear => None,
+            UnitKind::Angular => Some(SkipReason::AngularFrame),
+            UnitKind::Undeterminable(_) => Some(SkipReason::UndeterminableFrame),
+        };
+        if let Some(reason) = skip {
+            let result = ValidationResult::Skipped(reason);
+            results.insert(check, result.clone());
+            return result;
+        }
+    }
     let mut blocked = false;
     for &dep in check.dependencies() {
         if applicable.contains(&dep)
-            && resolve(dep, applicable, results, run_one) != ValidationResult::Success
+            && resolve(dep, applicable, units, disabled, results, run_one)
+                != ValidationResult::Success
         {
             blocked = true;
         }
@@ -258,6 +375,8 @@ fn combine_results(a: ValidationResult, b: ValidationResult) -> ValidationResult
         }
         (Failed(xs), _) | (_, Failed(xs)) => Failed(xs),
         (Unvalidated, _) | (_, Unvalidated) => Unvalidated,
+        // A skip is incompleteness, surfaced over a plain success.
+        (Skipped(r), _) | (_, Skipped(r)) => Skipped(r),
         (Success, Success) => Success,
     }
 }
@@ -287,6 +406,13 @@ macro_rules! validation_checks {
             fn applicable_checks(&self) -> &'static [ValidationType] {
                 &[]
             }
+            /// How this leaf's coordinate frame classifies for the
+            /// [`linear-unit-required`](requires_linear_units) checks. Defaults to
+            /// [`Linear`](UnitKind::Linear); a leaf with a possibly-angular
+            /// frame overrides it from its own `frame`.
+            fn unit_kind(&self) -> crate::coordinate::UnitKind {
+                crate::coordinate::UnitKind::Linear
+            }
             $(
                 $(#[$m])*
                 fn $method(&self, params: &ValidationParams) -> ValidationReport {
@@ -307,6 +433,9 @@ macro_rules! validation_checks {
         impl<T: Validate + ?Sized> Validate for Box<T> {
             fn applicable_checks(&self) -> &'static [ValidationType] {
                 (**self).applicable_checks()
+            }
+            fn unit_kind(&self) -> crate::coordinate::UnitKind {
+                (**self).unit_kind()
             }
             $(
                 fn $method(&self, params: &ValidationParams) -> ValidationReport {
@@ -437,9 +566,12 @@ pub(crate) fn validate_leaf<T: Validate + ?Sized>(
     leaf: &T,
     params: &ValidationParams,
 ) -> ValidationResults {
-    run_checks(leaf.applicable_checks(), |check| {
-        dispatch(leaf, check, params)
-    })
+    run_checks(
+        leaf.applicable_checks(),
+        &leaf.unit_kind(),
+        &params.disabled_checks,
+        |check| dispatch(leaf, check, params),
+    )
 }
 
 /// Resolve a single check for a leaf, running only its applicable prerequisites,
@@ -454,9 +586,14 @@ pub(crate) fn validate_one<T: Validate + ?Sized>(
 ) -> ValidationResult {
     let applicable: HashSet<ValidationType> = leaf.applicable_checks().iter().copied().collect();
     let mut results = ValidationResults::new();
-    resolve(check, &applicable, &mut results, &mut |c| {
-        dispatch(leaf, c, params)
-    })
+    resolve(
+        check,
+        &applicable,
+        &leaf.unit_kind(),
+        &params.disabled_checks,
+        &mut results,
+        &mut |c| dispatch(leaf, c, params),
+    )
 }
 
 fn validate_2d(g: &Euclidean2DGeometry, params: &ValidationParams) -> ValidationResults {
@@ -507,10 +644,96 @@ fn merge_members(members: impl IntoIterator<Item = ValidationResults>) -> Valida
     acc
 }
 
+/// Why a geometry's unit-sensitive checks (planarity, 3D surface
+/// self-intersection) were skipped, gathered across all its leaves. A leaf
+/// without a unit-sensitive check (a 2D leaf, or any 3D leaf other than a
+/// polygon, polygon mesh, or solid) never contributes.
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct FrameSkips {
+    /// At least one unit-sensitive leaf is in a known angular-unit (geographic)
+    /// frame; reprojecting to a linear-unit CRS would enable those checks.
+    pub angular: bool,
+    /// PROJ could not classify at least one unit-sensitive leaf's CRS; the
+    /// distinct failure messages, to surface rather than silently treat the
+    /// frame as angular.
+    pub undeterminable: Vec<String>,
+}
+
+impl FrameSkips {
+    /// Whether any unit-sensitive check was skipped.
+    pub fn any(&self) -> bool {
+        self.angular || !self.undeterminable.is_empty()
+    }
+
+    /// Fold one leaf's frame classification in, deduplicating repeated PROJ
+    /// failure messages.
+    fn record(&mut self, kind: UnitKind) {
+        match kind {
+            UnitKind::Linear => {}
+            UnitKind::Angular => self.angular = true,
+            UnitKind::Undeterminable(message) => {
+                if !self.undeterminable.contains(&message) {
+                    self.undeterminable.push(message);
+                }
+            }
+        }
+    }
+}
+
+/// Gather why `geometry`'s unit-sensitive checks were skipped, across every
+/// leaf, so a caller can warn that reprojecting to a linear-unit CRS would enable
+/// planarity and 3D surface self-intersection, and can surface a CRS that PROJ
+/// could not classify. A geometry with no unit-sensitive leaf yields an empty
+/// (no-skip) report.
+pub fn frame_skips(geometry: &Geometry) -> FrameSkips {
+    let mut skips = FrameSkips::default();
+    collect_frame_skips(geometry, &mut skips);
+    skips
+}
+
+fn collect_frame_skips(geometry: &Geometry, skips: &mut FrameSkips) {
+    match geometry {
+        Geometry::None | Geometry::Euclidean2D(_) => {}
+        Geometry::Euclidean3D(g) => collect_frame_skips_3d(g, skips),
+        Geometry::GeometryCollection(c) => c
+            .members()
+            .iter()
+            .for_each(|m| collect_frame_skips(m, skips)),
+    }
+}
+
+fn collect_frame_skips_3d(g: &Euclidean3DGeometry, skips: &mut FrameSkips) {
+    match g {
+        Euclidean3DGeometry::Collection(c) => c
+            .members()
+            .iter()
+            .for_each(|m| collect_frame_skips_3d(m, skips)),
+        Euclidean3DGeometry::Csg(csg) => collect_frame_skips_csg(csg, skips),
+        // Only Polygon3D / PolygonMesh3D / Solid override `unit_kind`; every
+        // other leaf reports the `Linear` default, so it never contributes.
+        leaf => skips.record(leaf.unit_kind()),
+    }
+}
+
+fn collect_frame_skips_csg(csg: &Csg, skips: &mut FrameSkips) {
+    let (left, right) = match csg {
+        Csg::Union(a, b) | Csg::Intersection(a, b) | Csg::Difference(a, b) => (a, b),
+    };
+    collect_frame_skips_operand(left, skips);
+    collect_frame_skips_operand(right, skips);
+}
+
+fn collect_frame_skips_operand(operand: &ThreeDimensional, skips: &mut FrameSkips) {
+    match operand {
+        ThreeDimensional::Solid(solid) => skips.record(solid.unit_kind()),
+        ThreeDimensional::Csg(csg) => collect_frame_skips_csg(csg, skips),
+    }
+}
+
 /// A ring stored closed (first == last) with its trailing closing vertex
 /// dropped, so the mandatory closure is not treated as a real element (e.g. a
-/// duplicate point or an extra fan corner). Open rings — and anything too short
-/// to be closed — pass through unchanged.
+/// duplicate point or an extra fan corner). Open rings (and anything too short
+/// to be closed) pass through unchanged.
 pub(crate) fn open_ring<T: PartialEq>(ring: &[T]) -> &[T] {
     match ring.split_last() {
         Some((last, head)) if !head.is_empty() && ring.first() == Some(last) => head,
@@ -630,7 +853,7 @@ pub(crate) fn check_unclosed_ring_3d(
 /// The bit pattern of a coordinate component, normalizing `-0.0` to `+0.0` so the
 /// two hash and compare equal in the exact duplicate scan.
 #[inline]
-fn norm_bits(x: f64) -> u64 {
+pub(crate) fn norm_bits(x: f64) -> u64 {
     (x + 0.0).to_bits()
 }
 
@@ -672,8 +895,8 @@ impl DuplicateCoord for [f64; 3] {
 /// [`dependencies`](ValidationType::dependencies)), so the gated driver never
 /// reaches this check until finiteness has passed, and this routine relies on
 /// that rather than re-checking. A non-finite coordinate would corrupt
-/// detection — [`norm_bits`] collides distinct NaNs into a false duplicate, and a
-/// NaN poisons the k-d tree — so any caller outside the gated driver must uphold
+/// detection: [`norm_bits`] collides distinct NaNs into a false duplicate, and a
+/// NaN poisons the k-d tree, so any caller outside the gated driver must uphold
 /// it.
 pub(crate) fn check_duplicate_points<const N: usize>(
     frame: &CoordinateFrame,
@@ -713,7 +936,7 @@ pub(crate) fn check_duplicate_points<const N: usize>(
 /// Twice the signed area of a 2D ring (shoelace), wrapping the last vertex back
 /// to the first. Positive = counter-clockwise, negative = clockwise, zero =
 /// degenerate / collinear.
-fn signed_area_2d(ring: &[[f64; 2]]) -> f64 {
+pub(crate) fn signed_area_2d(ring: &[[f64; 2]]) -> f64 {
     let n = ring.len();
     let mut acc = 0.0;
     for i in 0..n {
@@ -791,9 +1014,9 @@ pub(crate) fn check_face_orientation_3d<'a>(
     }
 }
 
-/// Streaming form of [`check_face_orientation_3d`] for meshes: fed each ring in
-/// face order (exterior first, then that face's holes), it checks each hole winds
-/// opposite its face's exterior. Mirrors [`EdgeOrientation`]'s streaming shape.
+/// Checks each hole of a 3D face winds opposite its exterior, fed each ring in
+/// face order (exterior first, then that face's holes) so a mesh can stream its
+/// rings one at a time.
 pub(crate) struct FaceOrientation {
     exterior_normal: Option<[f64; 3]>,
 }
@@ -1219,13 +1442,16 @@ mod tests {
     #[test]
     #[should_panic(expected = "SelfIntersection validation is not implemented")]
     fn applicable_but_unimplemented_check_panics() {
-        // `SelfIntersection` applies to a line string but is a TODO; reaching it
-        // (its prerequisites hold) must panic rather than report `Unvalidated`.
-        let ls = LineString3D::from_coords(
-            CoordinateFrame::Euclidean,
-            [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]],
-        );
-        let _ = validate_one(&ls, ValidationType::SelfIntersection, &params());
+        // A leaf listing a check it does not implement must panic loudly when
+        // the check is reached, rather than report `Unvalidated`. No shipped
+        // leaf is in that state anymore, so a stub stands in.
+        struct Stub;
+        impl Validate for Stub {
+            fn applicable_checks(&self) -> &'static [ValidationType] {
+                &[ValidationType::SelfIntersection]
+            }
+        }
+        let _ = validate_one(&Stub, ValidationType::SelfIntersection, &params());
     }
 
     #[test]
@@ -1245,6 +1471,42 @@ mod tests {
             results[&ValidationType::DuplicatePoints],
             ValidationResult::Unvalidated
         );
+    }
+
+    #[test]
+    fn disabling_an_optional_check_forces_success_without_running() {
+        // A repeated coordinate fails the (optional) DuplicatePoints check.
+        let ls = LineString3D::from_coords(
+            CoordinateFrame::Euclidean,
+            [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 0.0, 0.0]],
+        );
+        assert!(matches!(
+            validate_one(&ls, ValidationType::DuplicatePoints, &params()),
+            ValidationResult::Failed(_)
+        ));
+        // Disabled: the check is not run and reports success.
+        let mut disabled = params();
+        disabled
+            .disabled_checks
+            .insert(ValidationType::DuplicatePoints);
+        assert_eq!(
+            validate_one(&ls, ValidationType::DuplicatePoints, &disabled),
+            ValidationResult::Success
+        );
+    }
+
+    #[test]
+    fn disabling_a_core_check_is_ignored() {
+        // TooFewPoints is a core check, so the disabled set does not apply to it.
+        let ls = LineString3D::from_coords(CoordinateFrame::Euclidean, [[0.0, 0.0, 0.0]]);
+        let mut disabled = params();
+        disabled
+            .disabled_checks
+            .insert(ValidationType::TooFewPoints);
+        assert!(matches!(
+            validate_one(&ls, ValidationType::TooFewPoints, &disabled),
+            ValidationResult::Failed(_)
+        ));
     }
 
     #[test]
