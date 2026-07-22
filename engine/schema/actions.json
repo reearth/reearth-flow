@@ -5381,7 +5381,6 @@
         "properties": {
           "validationTypes": {
             "title": "Validation Types",
-            "description": "List of validation checks to perform on the geometry (duplicate points, corrupt geometry, self-intersection). Ignored under the new geometry backend, which runs the full validation matrix the geometry crate defines.",
             "default": [],
             "type": "array",
             "items": {
@@ -5390,7 +5389,7 @@
           },
           "disabledOptionalChecks": {
             "title": "Disabled Optional Checks",
-            "description": "Advisory checks to disable. Disabled checks do not run and are treated as passing; core validity checks always run. Empty by default, so every optional check runs. Applies only under the new geometry backend.",
+            "description": "Advisory checks to disable. Disabled checks do not run and are treated as passing; core validity checks always run. Empty by default, so every optional check runs.",
             "default": [],
             "type": "array",
             "items": {
@@ -5399,7 +5398,7 @@
           },
           "planarityThreshold": {
             "title": "Planarity Threshold",
-            "description": "Optional override for how the planarity check bounds a face's out-of-plane deviation: a scale-invariant `ratio` (the default), or an absolute `maxHeight` in metres (metric frames only). Applies only under the new geometry backend.",
+            "description": "Optional override for how the planarity check bounds a face's out-of-plane deviation: a scale-invariant `ratio` (the default), or an absolute `maxHeight` in metres (metric frames only).",
             "default": null,
             "anyOf": [
               {
@@ -5407,6 +5406,30 @@
               },
               {
                 "type": "null"
+              }
+            ]
+          },
+          "duplicateTolerance": {
+            "title": "Duplicate Point Tolerance",
+            "description": "Optional distance within which two coordinates count as duplicates for the duplicate-points check. Omitted (the default) means exact-equality detection.",
+            "default": null,
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "degenerateThresholds": {
+            "title": "Degeneracy Thresholds",
+            "description": "Minimum length / area / volume below which the degeneracy check flags a geometry, per dimension. Each defaults to zero, flagging only an exactly-zero measure. Values are in the coordinate unit (metres in a metric frame).",
+            "default": {
+              "minLength": 0.0,
+              "minArea": 0.0,
+              "minVolume": 0.0
+            },
+            "allOf": [
+              {
+                "$ref": "#/definitions/DegenerateThresholds"
               }
             ]
           }
@@ -5511,6 +5534,30 @@
                 "additionalProperties": false
               }
             ]
+          },
+          "DegenerateThresholds": {
+            "description": "The smallest measure a geometry may have before the degeneracy check flags it, per dimension. Each threshold applies to geometries of its dimension. Values are in the coordinate unit (metres in a metric frame). Each defaults to zero, flagging only an exactly-zero measure.",
+            "type": "object",
+            "properties": {
+              "minLength": {
+                "description": "Minimum length of a 1D geometry (line / ring edge).",
+                "default": 0.0,
+                "type": "number",
+                "format": "double"
+              },
+              "minArea": {
+                "description": "Minimum area of a 2D geometry (face / ring).",
+                "default": 0.0,
+                "type": "number",
+                "format": "double"
+              },
+              "minVolume": {
+                "description": "Minimum volume of a 3D geometry (solid).",
+                "default": 0.0,
+                "type": "number",
+                "format": "double"
+              }
+            }
           }
         }
       },

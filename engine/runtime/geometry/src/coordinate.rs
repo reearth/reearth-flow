@@ -120,17 +120,42 @@ impl CoordinateFrame {
 
     /// Whether coordinates in this frame are in linear (length) units, so that
     /// metric-sensitive checks (planarity, surface triangulation) are meaningful.
+    /// True only for a definitely-metric frame; a non-metric or undeterminable
+    /// `Crs` both yield false, so the affected checks are skipped rather than
+    /// trusted. Use [`metric_kind`](Self::metric_kind) to tell those two apart.
+    pub fn is_metric(&self) -> bool {
+        matches!(self.metric_kind(), MetricKind::Metric)
+    }
+
+    /// Classify whether coordinates in this frame are in linear (length) units.
     /// `Euclidean` and `Tangent` (in-plane metres) are metric; a `Crs` frame is
     /// metric iff its horizontal axes use a length unit (projected / geocentric),
-    /// not an angular one (geographic degrees). An undeterminable CRS is treated
-    /// as non-metric so the affected checks are skipped rather than trusted.
-    pub fn is_metric(&self) -> bool {
+    /// not an angular one (geographic degrees), and
+    /// [`Undeterminable`](MetricKind::Undeterminable) when PROJ cannot classify
+    /// it (e.g. an unknown code or missing PROJ data).
+    pub fn metric_kind(&self) -> MetricKind {
         match self {
-            CoordinateFrame::Euclidean => true,
-            CoordinateFrame::Tangent(_) => true,
-            CoordinateFrame::Crs(epsg) => crate::ops::crs_is_metric(*epsg).unwrap_or(false),
+            CoordinateFrame::Euclidean | CoordinateFrame::Tangent(_) => MetricKind::Metric,
+            CoordinateFrame::Crs(epsg) => match crate::ops::crs_is_metric(*epsg) {
+                Ok(true) => MetricKind::Metric,
+                Ok(false) => MetricKind::NonMetric,
+                Err(e) => MetricKind::Undeterminable(e.to_string()),
+            },
         }
     }
+}
+
+/// Whether a coordinate frame's units are linear (metric), angular (non-metric),
+/// or could not be classified.
+#[derive(Clone, Debug, PartialEq)]
+pub enum MetricKind {
+    /// Linear (length) units: metric-sensitive checks are meaningful.
+    Metric,
+    /// Angular units (geographic degrees): metric-sensitive checks are skipped.
+    NonMetric,
+    /// PROJ could not classify the CRS; carries the failure reason so a caller
+    /// can surface it rather than silently treating the frame as non-metric.
+    Undeterminable(String),
 }
 
 /// The absolute frame a [`TangentPlane`] is anchored in: exactly the non-tangent
@@ -165,6 +190,26 @@ pub struct TangentPlane {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn metric_kind_classifies_frames() {
+        assert_eq!(CoordinateFrame::Euclidean.metric_kind(), MetricKind::Metric);
+        // EPSG:6677 is a projected CRS in metres; EPSG:4326 is geographic.
+        assert_eq!(
+            CoordinateFrame::Crs(EpsgCode::new(6677)).metric_kind(),
+            MetricKind::Metric
+        );
+        assert_eq!(
+            CoordinateFrame::Crs(EpsgCode::new(4326)).metric_kind(),
+            MetricKind::NonMetric
+        );
+        // EPSG:1 is not a real CRS, so PROJ cannot classify it: undeterminable
+        // rather than silently non-metric.
+        assert!(matches!(
+            CoordinateFrame::Crs(EpsgCode::new(1)).metric_kind(),
+            MetricKind::Undeterminable(_)
+        ));
+    }
 
     #[test]
     fn crs_sign_follows_axis_order() {

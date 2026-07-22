@@ -584,8 +584,8 @@ impl Validate for PolygonMesh3D {
         &POLYGON_MESH_3D_CHECKS
     }
 
-    fn is_metric(&self) -> bool {
-        self.frame.is_metric()
+    fn metric_kind(&self) -> crate::coordinate::MetricKind {
+        self.frame.metric_kind()
     }
 
     fn check_finite(&self, _params: &ValidationParams) -> ValidationReport {

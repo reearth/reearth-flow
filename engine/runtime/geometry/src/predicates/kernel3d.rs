@@ -106,6 +106,7 @@ pub fn segments_intersect_3d(p1: [f64; 3], p2: [f64; 3], q1: [f64; 3], q2: [f64;
 /// direction: exactly collinear with matching per-axis difference signs. The
 /// sign of an IEEE subtraction is exact, so this is exact for distinct
 /// endpoints.
+#[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
 pub(crate) fn same_direction_3d(origin: [f64; 3], u: [f64; 3], w: [f64; 3]) -> bool {
     fn sign(v: f64) -> i8 {
         if v > 0.0 {
@@ -121,6 +122,7 @@ pub(crate) fn same_direction_3d(origin: [f64; 3], u: [f64; 3], w: [f64; 3]) -> b
 
 /// The classified intersection of two closed 3D segments.
 #[derive(PartialEq, Clone, Copy, Debug)]
+#[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
 pub(crate) enum SegmentContact3D {
     /// A single crossing point interior to both segments.
     Proper([f64; 3]),
@@ -140,6 +142,7 @@ pub(crate) enum SegmentContact3D {
 /// exactly: `None` when disjoint (including skew and parallel-disjoint pairs),
 /// otherwise the contact class. The class decision is robust; the `Proper`
 /// coordinate is a constructed f64 witness. Coordinates must be finite.
+#[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
 pub(crate) fn classify_segments_3d(
     p1: [f64; 3],
     p2: [f64; 3],
@@ -198,6 +201,7 @@ pub(crate) fn classify_segments_3d(
 /// The contact of two proper segments whose four endpoints are collinear in
 /// 3D: a 1D interval question decided by which endpoints lie on the other
 /// segment.
+#[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
 fn collinear_segments_contact_3d(
     p1: [f64; 3],
     p2: [f64; 3],
@@ -232,6 +236,7 @@ fn collinear_segments_contact_3d(
 /// The 3D endpoint behind an improper single-point 2D contact: such a contact
 /// always includes a segment endpoint, and the projection is injective on the
 /// carrying plane, so the endpoint projecting onto it is the witness.
+#[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
 fn touch_witness_3d(projected: [f64; 2], axis: usize, endpoints: [[f64; 3]; 4]) -> [f64; 3] {
     for e in endpoints {
         if drop_axis(e, axis) == projected {
@@ -244,6 +249,7 @@ fn touch_witness_3d(projected: [f64; 2], axis: usize, endpoints: [[f64; 3]; 4]) 
 /// Lift a projected point back onto the 3D segment `[a, b]` by interpolating
 /// along the dominant projected direction. A constructed fallback witness, not
 /// a decision input.
+#[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
 fn lift_onto_segment(w: [f64; 2], axis: usize, a: [f64; 3], b: [f64; 3]) -> [f64; 3] {
     let (a2, b2) = (drop_axis(a, axis), drop_axis(b, axis));
     let d = [b2[0] - a2[0], b2[1] - a2[1]];
@@ -360,6 +366,7 @@ pub fn triangles_intersect_3d(t: [[f64; 3]; 3], s: [[f64; 3]; 3]) -> bool {
 
 /// How two triangles from different faces share corners (by coordinate).
 #[derive(PartialEq, Clone, Copy, Debug)]
+#[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
 pub(crate) enum TriangleContact {
     /// No equal corners.
     None,
@@ -392,6 +399,7 @@ pub(crate) enum TriangleContact {
 /// for face-vs-face self-intersection, where a contact confined to the shared
 /// corners or shared edge is legitimate. Both triangles must be proper
 /// (non-degenerate) and `contact` must describe their actual shared corners.
+#[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
 pub(crate) fn triangles_overlap_beyond_contact(
     t: [[f64; 3]; 3],
     s: [[f64; 3]; 3],
@@ -434,6 +442,7 @@ pub(crate) fn triangles_overlap_beyond_contact(
 /// Whether an edge from the shared corner `v` to either of `rest` lies in
 /// `other`'s plane and meets `other` at some point besides `v`. `other` must
 /// be a proper triangle with `v` as one of its corners.
+#[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
 fn wing_reaches_triangle(v: [f64; 3], rest: [[f64; 3]; 2], other: [[f64; 3]; 3]) -> bool {
     let axis = projection_axis(other);
     let tri = project_triangle(other, axis);

@@ -19,7 +19,7 @@ use std::fmt;
 use kiddo::{KdTree, SquaredEuclidean};
 use serde::{Deserialize, Serialize};
 
-use crate::coordinate::CoordinateFrame;
+use crate::coordinate::{CoordinateFrame, MetricKind};
 use crate::csg::{Csg, ThreeDimensional};
 use crate::line_string::{LineString2D, LineString3D};
 use crate::point::{Point2D, Point3D};
@@ -191,6 +191,12 @@ pub enum SkipReason {
     /// metric-sensitive check (planarity, surface self-intersection) would be
     /// unreliable. Reproject to a metric CRS to enable it.
     NonMetricFrame,
+    /// The geometry's CRS could not be classified by PROJ (e.g. an unknown code
+    /// or missing PROJ data), so a metric-sensitive check was skipped rather
+    /// than run on a frame of unknown units. Distinct from
+    /// [`NonMetricFrame`](SkipReason::NonMetricFrame): the frame is not known to
+    /// be geographic, the classification simply failed.
+    UndeterminableFrame,
 }
 
 /// The outcome of one [`ValidationType`] check on a geometry.
@@ -267,7 +273,7 @@ impl ValidationReport {
 /// prerequisites passed; it is invoked at most once per check.
 pub(crate) fn run_checks(
     applicable: &[ValidationType],
-    is_metric: bool,
+    metric: &MetricKind,
     disabled: &HashSet<ValidationType>,
     mut run_one: impl FnMut(ValidationType) -> ValidationReport,
 ) -> ValidationResults {
@@ -277,7 +283,7 @@ pub(crate) fn run_checks(
         resolve(
             check,
             &applicable_set,
-            is_metric,
+            metric,
             disabled,
             &mut results,
             &mut run_one,
@@ -303,7 +309,7 @@ fn is_metric_required(check: ValidationType) -> bool {
 fn resolve(
     check: ValidationType,
     applicable: &HashSet<ValidationType>,
-    is_metric: bool,
+    metric: &MetricKind,
     disabled: &HashSet<ValidationType>,
     results: &mut ValidationResults,
     run_one: &mut impl FnMut(ValidationType) -> ValidationReport,
@@ -318,15 +324,22 @@ fn resolve(
         results.insert(check, ValidationResult::Success);
         return ValidationResult::Success;
     }
-    if is_metric_required(check) && !is_metric {
-        let result = ValidationResult::Skipped(SkipReason::NonMetricFrame);
-        results.insert(check, result.clone());
-        return result;
+    if is_metric_required(check) {
+        let skip = match metric {
+            MetricKind::Metric => None,
+            MetricKind::NonMetric => Some(SkipReason::NonMetricFrame),
+            MetricKind::Undeterminable(_) => Some(SkipReason::UndeterminableFrame),
+        };
+        if let Some(reason) = skip {
+            let result = ValidationResult::Skipped(reason);
+            results.insert(check, result.clone());
+            return result;
+        }
     }
     let mut blocked = false;
     for &dep in check.dependencies() {
         if applicable.contains(&dep)
-            && resolve(dep, applicable, is_metric, disabled, results, run_one)
+            && resolve(dep, applicable, metric, disabled, results, run_one)
                 != ValidationResult::Success
         {
             blocked = true;
@@ -393,12 +406,12 @@ macro_rules! validation_checks {
             fn applicable_checks(&self) -> &'static [ValidationType] {
                 &[]
             }
-            /// Whether this leaf's coordinate frame is metric (linear units), so
-            /// that [`metric-required`](is_metric_required) checks are meaningful.
-            /// Defaults to `true`; a leaf with a non-metric-capable frame overrides
-            /// it from its own `frame`.
-            fn is_metric(&self) -> bool {
-                true
+            /// How this leaf's coordinate frame classifies for the
+            /// [`metric-required`](is_metric_required) checks. Defaults to
+            /// [`Metric`](MetricKind::Metric); a leaf with a non-metric-capable
+            /// frame overrides it from its own `frame`.
+            fn metric_kind(&self) -> crate::coordinate::MetricKind {
+                crate::coordinate::MetricKind::Metric
             }
             $(
                 $(#[$m])*
@@ -421,8 +434,8 @@ macro_rules! validation_checks {
             fn applicable_checks(&self) -> &'static [ValidationType] {
                 (**self).applicable_checks()
             }
-            fn is_metric(&self) -> bool {
-                (**self).is_metric()
+            fn metric_kind(&self) -> crate::coordinate::MetricKind {
+                (**self).metric_kind()
             }
             $(
                 fn $method(&self, params: &ValidationParams) -> ValidationReport {
@@ -555,7 +568,7 @@ pub(crate) fn validate_leaf<T: Validate + ?Sized>(
 ) -> ValidationResults {
     run_checks(
         leaf.applicable_checks(),
-        leaf.is_metric(),
+        &leaf.metric_kind(),
         &params.disabled_checks,
         |check| dispatch(leaf, check, params),
     )
@@ -576,7 +589,7 @@ pub(crate) fn validate_one<T: Validate + ?Sized>(
     resolve(
         check,
         &applicable,
-        leaf.is_metric(),
+        &leaf.metric_kind(),
         &params.disabled_checks,
         &mut results,
         &mut |c| dispatch(leaf, c, params),
@@ -631,40 +644,89 @@ fn merge_members(members: impl IntoIterator<Item = ValidationResults>) -> Valida
     acc
 }
 
-/// Whether `geometry` has any metric-sensitive leaf (a 3D polygon, polygon mesh,
-/// or solid) in a non-metric frame, so [`validate`] skipped its planarity or
-/// surface self-intersection. Callers use this to warn that reprojecting to a
-/// metric CRS would enable those checks. Leaves without a metric-sensitive check
-/// never trigger it.
-pub fn has_non_metric_frame(geometry: &Geometry) -> bool {
+/// Why a geometry's metric-sensitive checks (planarity, 3D surface
+/// self-intersection) were skipped, gathered across all its leaves. A leaf
+/// without a metric-sensitive check (a 2D leaf, or any 3D leaf other than a
+/// polygon, polygon mesh, or solid) never contributes.
+#[derive(Debug, Default, Clone, PartialEq)]
+pub struct FrameSkips {
+    /// At least one metric-sensitive leaf is in a known non-metric (geographic)
+    /// frame; reprojecting to a metric CRS would enable those checks.
+    pub non_metric: bool,
+    /// PROJ could not classify at least one metric-sensitive leaf's CRS; the
+    /// distinct failure messages, to surface rather than silently treat the
+    /// frame as non-metric.
+    pub undeterminable: Vec<String>,
+}
+
+impl FrameSkips {
+    /// Whether any metric-sensitive check was skipped.
+    pub fn any(&self) -> bool {
+        self.non_metric || !self.undeterminable.is_empty()
+    }
+
+    /// Fold one leaf's frame classification in, deduplicating repeated PROJ
+    /// failure messages.
+    fn record(&mut self, kind: MetricKind) {
+        match kind {
+            MetricKind::Metric => {}
+            MetricKind::NonMetric => self.non_metric = true,
+            MetricKind::Undeterminable(message) => {
+                if !self.undeterminable.contains(&message) {
+                    self.undeterminable.push(message);
+                }
+            }
+        }
+    }
+}
+
+/// Gather why `geometry`'s metric-sensitive checks were skipped, across every
+/// leaf, so a caller can warn that reprojecting to a metric CRS would enable
+/// planarity and 3D surface self-intersection, and can surface a CRS that PROJ
+/// could not classify. A geometry with no metric-sensitive leaf yields an empty
+/// (no-skip) report.
+pub fn frame_skips(geometry: &Geometry) -> FrameSkips {
+    let mut skips = FrameSkips::default();
+    collect_frame_skips(geometry, &mut skips);
+    skips
+}
+
+fn collect_frame_skips(geometry: &Geometry, skips: &mut FrameSkips) {
     match geometry {
-        Geometry::None | Geometry::Euclidean2D(_) => false,
-        Geometry::Euclidean3D(g) => non_metric_3d(g),
-        Geometry::GeometryCollection(c) => c.members().iter().any(has_non_metric_frame),
+        Geometry::None | Geometry::Euclidean2D(_) => {}
+        Geometry::Euclidean3D(g) => collect_frame_skips_3d(g, skips),
+        Geometry::GeometryCollection(c) => c
+            .members()
+            .iter()
+            .for_each(|m| collect_frame_skips(m, skips)),
     }
 }
 
-fn non_metric_3d(g: &Euclidean3DGeometry) -> bool {
+fn collect_frame_skips_3d(g: &Euclidean3DGeometry, skips: &mut FrameSkips) {
     match g {
-        Euclidean3DGeometry::Collection(c) => c.members().iter().any(non_metric_3d),
-        Euclidean3DGeometry::Csg(csg) => csg_non_metric(csg),
-        // Only Polygon3D / PolygonMesh3D / Solid override `is_metric`; every other
-        // leaf reports the `true` default, so it never triggers a warning.
-        leaf => !leaf.is_metric(),
+        Euclidean3DGeometry::Collection(c) => c
+            .members()
+            .iter()
+            .for_each(|m| collect_frame_skips_3d(m, skips)),
+        Euclidean3DGeometry::Csg(csg) => collect_frame_skips_csg(csg, skips),
+        // Only Polygon3D / PolygonMesh3D / Solid override `metric_kind`; every
+        // other leaf reports the `Metric` default, so it never contributes.
+        leaf => skips.record(leaf.metric_kind()),
     }
 }
 
-fn csg_non_metric(csg: &Csg) -> bool {
+fn collect_frame_skips_csg(csg: &Csg, skips: &mut FrameSkips) {
     let (left, right) = match csg {
         Csg::Union(a, b) | Csg::Intersection(a, b) | Csg::Difference(a, b) => (a, b),
     };
-    csg_operand_non_metric(left) || csg_operand_non_metric(right)
+    collect_frame_skips_operand(left, skips);
+    collect_frame_skips_operand(right, skips);
 }
 
-fn csg_operand_non_metric(operand: &ThreeDimensional) -> bool {
+fn collect_frame_skips_operand(operand: &ThreeDimensional, skips: &mut FrameSkips) {
     match operand {
-        ThreeDimensional::Solid(solid) => !solid.is_metric(),
-        ThreeDimensional::Csg(csg) => csg_non_metric(csg),
+        ThreeDimensional::Solid(solid) => skips.record(solid.metric_kind()),
+        ThreeDimensional::Csg(csg) => collect_frame_skips_csg(csg, skips),
     }
 }
 

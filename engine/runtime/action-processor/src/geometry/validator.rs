@@ -135,6 +135,35 @@ pub enum PlanarityThreshold {
     MaxHeight(f64),
 }
 
+/// The smallest measure a geometry may have before the degeneracy check flags
+/// it, per dimension. Each threshold applies to geometries of its dimension.
+/// Values are in the coordinate unit (metres in a metric frame). Each defaults
+/// to zero, flagging only an exactly-zero measure.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Default, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct DegenerateThresholds {
+    /// Minimum length of a 1D geometry (line / ring edge).
+    #[serde(default)]
+    min_length: f64,
+    /// Minimum area of a 2D geometry (face / ring).
+    #[serde(default)]
+    min_area: f64,
+    /// Minimum volume of a 3D geometry (solid).
+    #[serde(default)]
+    min_volume: f64,
+}
+
+#[cfg(feature = "new-geometry")]
+impl From<DegenerateThresholds> for reearth_flow_geometry::validation_next::DegenerateThresholds {
+    fn from(thresholds: DegenerateThresholds) -> Self {
+        Self {
+            min_length: thresholds.min_length,
+            min_area: thresholds.min_area,
+            min_volume: thresholds.min_volume,
+        }
+    }
+}
+
 #[cfg(feature = "new-geometry")]
 impl From<PlanarityThreshold> for reearth_flow_geometry::validation_next::PlanarityThreshold {
     fn from(threshold: PlanarityThreshold) -> Self {
@@ -223,10 +252,8 @@ impl From<ValidationProblemReport> for ValidationResult {
 #[serde(rename_all = "camelCase")]
 pub struct GeometryValidator {
     /// # Validation Types
-    /// List of validation checks to perform on the geometry (duplicate points, corrupt geometry, self-intersection).
-    /// Currently ignored: the full validation matrix always runs.
     #[serde(default)]
-    #[cfg_attr(feature = "new-geometry", allow(dead_code))]
+    #[cfg(not(feature = "new-geometry"))]
     validation_types: Vec<ValidationType>,
 
     /// # Disabled Optional Checks
@@ -243,6 +270,21 @@ pub struct GeometryValidator {
     #[serde(default)]
     #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
     planarity_threshold: Option<PlanarityThreshold>,
+
+    /// # Duplicate Point Tolerance
+    /// Optional distance within which two coordinates count as duplicates for the duplicate-points
+    /// check. Omitted (the default) means exact-equality detection.
+    #[serde(default)]
+    #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
+    duplicate_tolerance: Option<f64>,
+
+    /// # Degeneracy Thresholds
+    /// Minimum length / area / volume below which the degeneracy check flags a geometry, per
+    /// dimension. Each defaults to zero, flagging only an exactly-zero measure. Values are in the
+    /// coordinate unit (metres in a metric frame).
+    #[serde(default)]
+    #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
+    degenerate_thresholds: DegenerateThresholds,
 }
 
 impl Processor for GeometryValidator {
@@ -300,7 +342,7 @@ impl Processor for GeometryValidator {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         use reearth_flow_geometry::validation_next::{
-            has_non_metric_frame, validate_with, ValidationParams, ValidationResult,
+            frame_skips, validate_with, ValidationParams, ValidationResult,
         };
         use reearth_flow_geometry::Geometry;
 
@@ -311,8 +353,10 @@ impl Processor for GeometryValidator {
         }
 
         // Metric-sensitive checks (planarity, 3D surface self-intersection) are
-        // skipped on a non-metric CRS; tell the user how to enable them.
-        if has_non_metric_frame(feature.geometry.as_ref()) {
+        // skipped on a non-metric or unclassifiable CRS; tell the user why and
+        // how to enable them.
+        let skips = frame_skips(feature.geometry.as_ref());
+        if skips.non_metric {
             ctx.event_hub.warn_log(
                 Some(ctx.info_span()),
                 format!(
@@ -323,8 +367,23 @@ impl Processor for GeometryValidator {
                 ),
             );
         }
+        for reason in &skips.undeterminable {
+            ctx.event_hub.warn_log(
+                Some(ctx.info_span()),
+                format!(
+                    "Feature {}: geometry's CRS could not be classified by PROJ \
+                     ({reason}); planarity and 3D surface self-intersection were \
+                     skipped. Verify the CRS code and that PROJ data is available.",
+                    feature.id
+                ),
+            );
+        }
 
-        let mut params = ValidationParams::default();
+        let mut params = ValidationParams {
+            duplicate_tolerance: self.duplicate_tolerance,
+            degenerate: self.degenerate_thresholds.into(),
+            ..ValidationParams::default()
+        };
         for check in &self.disabled_optional_checks {
             params.disabled_checks.insert((*check).into());
         }

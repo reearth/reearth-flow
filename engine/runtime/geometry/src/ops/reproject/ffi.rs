@@ -319,8 +319,7 @@ pub(crate) fn crs_is_metric(epsg: EpsgCode) -> Result<bool> {
 /// Determine `epsg`'s horizontal-axis unit kind directly from PROJ, without the
 /// cache.
 fn crs_is_metric_uncached(epsg: EpsgCode) -> Result<bool> {
-    // SAFETY: mirrors `axis_order_sign_uncached`; every PROJ object is
-    // null-checked and freed on all paths.
+    // SAFETY: every PROJ object is null-checked and freed on all paths.
     unsafe {
         let ctx = proj_context_create();
         if ctx.is_null() {
@@ -405,9 +404,15 @@ unsafe fn axis_unit_linear_from_cs(
     let unit = CStr::from_ptr(unit_name)
         .to_string_lossy()
         .to_ascii_lowercase();
-    // Angular units (degree, grad, radian) are the anisotropy problem; any
-    // linear unit (metre, foot, …) is fine for the ratio / triangulation checks.
-    Ok(!(unit.contains("degree") || unit.contains("grad") || unit.contains("radian")))
+    // Match linear units positively: a length unit (metre / foot and their
+    // spellings and multiples, e.g. kilometre, US survey foot) is fine for the
+    // ratio / triangulation checks, and any unit we do not recognise as linear
+    // (angular degrees, or an exotic unit) is treated as non-metric so those
+    // checks are skipped rather than run on unsuitable coordinates.
+    Ok(unit.contains("metre")
+        || unit.contains("meter")
+        || unit.contains("foot")
+        || unit.contains("feet"))
 }
 
 /// Map a PROJ axis direction to its `(row, sign)` in the canonical
