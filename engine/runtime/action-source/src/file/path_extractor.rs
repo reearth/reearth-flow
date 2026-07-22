@@ -246,7 +246,7 @@ pub struct FilePathExtractor {
     /// Path or expression pointing to the source directory or archive file
     source_dataset: Code,
     /// # Extract Archive
-    /// Whether to extract files from archives (zip files, etc.) or just list them
+    /// When enabled, archive files (.zip, .7z) are extracted and a feature is emitted for each contained file; when disabled, the archive is emitted as a single file path without extraction.
     extract_archive: bool,
 }
 

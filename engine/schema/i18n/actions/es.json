@@ -1371,7 +1371,7 @@
         },
         "extractArchive": {
           "title": "Extract Archive",
-          "description": "Whether to extract files from archives (zip files, etc.) or just list them"
+          "description": "When enabled, archive files (.zip, .7z) are extracted and a feature is emitted for each contained file; when disabled, the archive is emitted as a single file path without extraction."
         },
         "sourceDataset": {
           "title": "Source Dataset",

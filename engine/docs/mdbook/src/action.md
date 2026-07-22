@@ -3174,7 +3174,7 @@ Reads CityGML 3.0 files: resolves gml:id references and xlink:href links across 
 ### Type
 * processor
 ### Description
-Reads CityGML features from a file path stored in the incoming feature, optionally flattening nested attributes.
+Reads CityGML features from a file path referenced by the incoming feature, optionally extracting nested child city objects as separate features.
 ### Parameters
 ```json
 {
@@ -4491,7 +4491,7 @@ Extracts file paths from directories or archives, creating features for each dis
     },
     "extractArchive": {
       "title": "Extract Archive",
-      "description": "Whether to extract files from archives (zip files, etc.) or just list them",
+      "description": "When enabled, archive files (.zip, .7z) are extracted and a feature is emitted for each contained file; when disabled, the archive is emitted as a single file path without extraction.",
       "type": "boolean"
     }
   }
@@ -4553,7 +4553,7 @@ Projects 3D geometry to XY plane and computes the union footprint (supports soli
 ### Type
 * source
 ### Description
-Reads geographic features from GeoJSON files, supporting both single features and feature collections.
+Reads geographic features from a GeoJSON FeatureCollection file.
 ### Parameters
 ```json
 {

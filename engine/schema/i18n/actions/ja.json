@@ -1068,7 +1068,7 @@
     },
     {
       "name": "Feature CityGML Reader",
-      "description": "受け取った地物に格納されたファイルパスから CityGML 地物を読み取り、任意でネストされた属性をフラット化する",
+      "description": "受け取った地物が参照するファイルパスから CityGML 地物を読み取り、任意でネストされた子都市オブジェクトを個別の地物として抽出する。",
       "parameterI18n": {
         "": {
           "title": "FeatureCityGmlReader パラメータ",
@@ -1374,7 +1374,7 @@
         },
         "extractArchive": {
           "title": "アーカイブを展開",
-          "description": "アーカイブ（ZIP ファイルなど）からファイルを展開するか、一覧表示のみするか"
+          "description": "有効にすると、アーカイブファイル（.zip、.7z）を展開し、含まれる各ファイルごとに地物を出力する。無効にすると、アーカイブを展開せず単一のファイルパスとして出力する。"
         },
         "sourceDataset": {
           "title": "ソースデータセット",
@@ -1401,7 +1401,7 @@
     },
     {
       "name": "GeoJSON Reader",
-      "description": "GeoJSON ファイルから地理地物を読み取る。単一地物とフィーチャーコレクションの両方に対応",
+      "description": "GeoJSON の FeatureCollection ファイルから地理地物を読み取る。",
       "parameterI18n": {
         "": {
           "title": "GeoJsonReader パラメータ",

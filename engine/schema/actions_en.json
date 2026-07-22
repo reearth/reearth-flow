@@ -3262,7 +3262,7 @@
     {
       "name": "Feature CityGML Reader",
       "type": "processor",
-      "description": "Reads CityGML features from a file path stored in the incoming feature, optionally flattening nested attributes.",
+      "description": "Reads CityGML features from a file path referenced by the incoming feature, optionally extracting nested child city objects as separate features.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FeatureCityGmlReader Parameters",
@@ -4610,7 +4610,7 @@
           },
           "extractArchive": {
             "title": "Extract Archive",
-            "description": "Whether to extract files from archives (zip files, etc.) or just list them",
+            "description": "When enabled, archive files (.zip, .7z) are extracted and a feature is emitted for each contained file; when disabled, the archive is emitted as a single file path without extraction.",
             "type": "boolean"
           }
         }
@@ -4685,7 +4685,7 @@
     {
       "name": "GeoJSON Reader",
       "type": "source",
-      "description": "Reads geographic features from GeoJSON files, supporting both single features and feature collections.",
+      "description": "Reads geographic features from a GeoJSON FeatureCollection file.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "GeoJsonReader Parameters",

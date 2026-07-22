@@ -32,9 +32,9 @@ Until this is planned, concise wins (Option A) — do not re-inflate description
 
 ---
 
-## Input — deferred item only (batch resolved in PR)
+## Input — deferred items only (batch resolved in PR)
 
-The Input batch (10 actions) was resolved per the standard. One deferred item remains, split out by decision:
+The Input batch (10 actions) was resolved per the standard. Deferred items remain, split out by decision:
 
 ```
 GeoPackage Reader
@@ -47,6 +47,19 @@ GeoPackage Reader
              (schema description, titles/descriptions + enum docs for the working params,
              tags). Once removed, re-check ordering (natural order becomes dataset →
              inline → readMode → layerName → tileFormat → force2D).
+  desc/enum: tile reading is currently stubbed out — the dispatch in geopackage.rs
+             (`match params.read_mode`) routes `Tiles` and `All` to `read_features`
+             with a `// Temporarily disabled tile processing` comment; `read_tiles` /
+             `read_layer_tiles` exist but are never called, so `tileFormat` has no
+             runtime effect. As a result these texts describe non-functional behavior:
+             the action description ("supporting vector features, tiles, and metadata"),
+             the `Tiles` variant ("Reads raster tiles."), the `All` variant ("Reads both
+             vector features and raster tiles."), and the `tileFormat` param ("Image
+             format to decode when reading raster tiles."). Deferred to the same
+             `feat/engine-geopackage-reader-new-geometry` branch: either re-enable tile
+             reading (making the text accurate) or, if tiles stay out, correct these
+             descriptions. `features`, `metadataOnly`, `layerName`, and `force2D` are
+             accurate.
 ```
 
 ---
