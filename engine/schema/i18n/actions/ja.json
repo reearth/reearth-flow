@@ -1593,9 +1593,38 @@
           "title": "GeometryValidator パラメータ",
           "description": "フィーチャージオメトリに対して実行する検証チェックを設定する"
         },
+        "degenerateThresholds": {
+          "title": "Degeneracy Thresholds",
+          "description": "Minimum length / area / volume below which the degeneracy check flags a geometry, per dimension. Each defaults to zero, flagging only an exactly-zero measure. Values are in the coordinate unit (the frame's linear unit, e.g. metres)."
+        },
+        "disabledOptionalChecks": {
+          "title": "Disabled Optional Checks",
+          "description": "Advisory checks to disable. Disabled checks do not run and are treated as passing; core validity checks always run. Empty by default, so every optional check runs. Applies only under the new geometry backend."
+        },
+        "duplicateTolerance": {
+          "title": "Duplicate Point Tolerance",
+          "description": "Optional distance within which two coordinates count as duplicates for the duplicate-points check. Omitted (the default) means exact-equality detection."
+        },
+        "planarityThreshold": {
+          "title": "Planarity Threshold",
+          "description": "Optional override for how the planarity check bounds a face's out-of-plane deviation: a scale-invariant `ratio` (the default), or an absolute `maxHeight` in the frame's linear unit (linear-unit frames only). Applies only under the new geometry backend."
+        },
         "validationTypes": {
           "title": "検証タイプ",
           "description": "ジオメトリに対して実行する検証チェックのリスト（重複点、破損ジオメトリ、自己交差）"
+        }
+      },
+      "definitionI18n": {
+        "DegenerateThresholds": {
+          "minArea": {
+            "description": "Minimum area of a 2D geometry (face / ring)."
+          },
+          "minLength": {
+            "description": "Minimum length of a 1D geometry (line / ring edge)."
+          },
+          "minVolume": {
+            "description": "Minimum volume of a 3D geometry (solid)."
+          }
         }
       },
       "enumI18n": {
