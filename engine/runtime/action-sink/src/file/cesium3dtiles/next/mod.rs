@@ -4,7 +4,7 @@
 //! materials across a tile share one or more embedded atlas pages (one glTF
 //! primitive per page); wrapping textures and remote/in-memory rasters aren't
 //! handled yet and fall back to colour-only. Texture detail is bounded by the
-//! `resolution` option (metres per pixel); atlas pages are capped at
+//! `texel_size` option (metres per pixel); atlas pages are capped at
 //! `atlas_size` and overflow spills onto further pages.
 
 mod appearance;
@@ -66,7 +66,7 @@ impl Cesium3DTilesWriter {
         let render = RenderOptions {
             draco: self.params.draco_compression.unwrap_or(true),
             compute_flat_normal: self.params.compute_flat_normal.unwrap_or(true),
-            resolution: self.params.resolution.unwrap_or(0.0),
+            texel_size: self.params.texel_size.unwrap_or(0.0),
             atlas_size: self.params.atlas_size.unwrap_or(DEFAULT_ATLAS_SIZE),
             atlas_extrusion: self
                 .params
@@ -114,10 +114,10 @@ pub struct RenderOptions {
     pub draco: bool,
     /// Attach per-polygon flat normals for lighting.
     pub compute_flat_normal: bool,
-    /// Target texture detail in metres per pixel: textures finer than this are
+    /// Target texel size in metres per pixel: textures finer than this are
     /// downsampled to it, and it floors each tile's geometric error. `0.0`
-    /// keeps full texture resolution and leaves geometric error untouched.
-    pub resolution: f64,
+    /// keeps full texture detail and leaves geometric error untouched.
+    pub texel_size: f64,
     /// Maximum atlas page dimension (pixels). Textures/atlases exceeding it
     /// spill onto additional pages; a single texture larger than it is
     /// force-shrunk to fit one page.
@@ -190,7 +190,7 @@ pub fn build(
         })
         .collect::<crate::errors::Result<_>>()?;
 
-    let tileset_bytes = render_tileset_json(&root, available_levels, render.resolution)?;
+    let tileset_bytes = render_tileset_json(&root, available_levels, render.texel_size)?;
     let subtrees = subtree::build_all(&occupied)
         .into_iter()
         .map(|(cell, bytes)| (subtree_path(cell), bytes))
@@ -227,9 +227,9 @@ fn empty_tileset() -> crate::errors::Result<BuiltTileset> {
 fn render_tileset_json(
     root: &GeoBox,
     available_levels: u32,
-    resolution: f64,
+    texel_size: f64,
 ) -> crate::errors::Result<String> {
-    let tileset_json = tileset::build(root, available_levels, resolution);
+    let tileset_json = tileset::build(root, available_levels, texel_size);
     serde_json::to_string_pretty(&tileset_json)
         .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))
 }
@@ -399,7 +399,7 @@ fn build_textured_pages(
         tri_off += tris as usize;
     }
 
-    let scales = texture_target_scales(textured, &inputs, render.resolution);
+    let scales = texture_target_scales(textured, &inputs, render.texel_size);
     for (input, scale) in inputs.iter_mut().zip(scales) {
         input.scale = scale;
     }
@@ -445,15 +445,15 @@ fn build_textured_pages(
 
 /// Per input texture, the fraction of native resolution to keep so its
 /// highest-density (finest metres-per-pixel) face is downsampled to
-/// `resolution` metres per pixel. One scale per texture: the coarser faces
-/// sharing it may end up below `resolution`, the accepted cost of not splitting
-/// a texture by face. `resolution == 0.0` disables downsampling (scale `1.0`).
+/// `texel_size` metres per pixel. One scale per texture: the coarser faces
+/// sharing it may end up below `texel_size`, the accepted cost of not splitting
+/// a texture by face. `texel_size == 0.0` disables downsampling (scale `1.0`).
 fn texture_target_scales(
     textured: &TexturedPrimitive,
     inputs: &[TextureInput],
-    resolution: f64,
+    texel_size: f64,
 ) -> Vec<f64> {
-    if resolution <= 0.0 {
+    if texel_size <= 0.0 {
         return vec![1.0; inputs.len()];
     }
     // Native dimensions per input (header read only); `None` if unreadable.
@@ -485,7 +485,7 @@ fn texture_target_scales(
         .into_iter()
         .map(|mpp| {
             if mpp.is_finite() {
-                (mpp / resolution).min(1.0)
+                (mpp / texel_size).min(1.0)
             } else {
                 1.0
             }

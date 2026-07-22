@@ -741,10 +741,6 @@
           "title": "Output Path",
           "description": "Directory path where the 3D tiles will be written"
         },
-        "resolution": {
-          "title": "Texture Resolution",
-          "description": "Target texture detail in metres per pixel. Textures finer than this are downsampled to it, and it floors each tile's geometric error. Defaults to 0, which keeps full texture resolution."
-        },
         "schemaKey": {
           "title": "Schema Key",
           "description": "Attribute key whose value identifies the schema type and determines the output filename: all features sharing the same value are written to the same file. This attribute is excluded from output."
@@ -752,6 +748,10 @@
         "skipUnexposedAttributes": {
           "title": "Skip unexposed Attributes",
           "description": "Skip attributes with double underscore prefix"
+        },
+        "texelSize": {
+          "title": "Texel Size",
+          "description": "Target texel size in metres per pixel. Textures finer than this are downsampled to it, and it floors each tile's geometric error. Defaults to 0, which keeps full texture detail."
         }
       }
     },

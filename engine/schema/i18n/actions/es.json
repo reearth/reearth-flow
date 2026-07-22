@@ -747,10 +747,6 @@
           "title": "Ruta de Salida",
           "description": "Ruta del directorio donde se escribirán los 3D Tiles"
         },
-        "resolution": {
-          "title": "Resolución de Textura",
-          "description": "Nivel de detalle de textura objetivo en metros por píxel. Las texturas más finas que este valor se reducen a él, y establece el límite inferior del error geométrico de cada mosaico. El valor predeterminado es 0, que conserva la resolución completa de la textura."
-        },
         "schemaKey": {
           "title": "Clave de Esquema",
           "description": "Clave de atributo cuyo valor identifica el tipo de esquema y determina el nombre del archivo de salida: todas las entidades que comparten el mismo valor se escriben en el mismo archivo. Este atributo se excluye de la salida."
@@ -758,6 +754,10 @@
         "skipUnexposedAttributes": {
           "title": "Omitir Atributos no Expuestos",
           "description": "Omitir atributos con prefijo de doble guion bajo"
+        },
+        "texelSize": {
+          "title": "Tamaño de Téxel",
+          "description": "Tamaño de téxel objetivo en metros por píxel. Las texturas más finas que este valor se reducen a él, y establece el límite inferior del error geométrico de cada mosaico. El valor predeterminado es 0, que conserva el detalle completo de la textura."
         }
       }
     },

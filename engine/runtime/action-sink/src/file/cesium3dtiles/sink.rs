@@ -105,7 +105,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
                 #[cfg(feature = "new-geometry")]
                 compute_flat_normal: params.compute_flat_normal,
                 #[cfg(feature = "new-geometry")]
-                resolution: params.resolution,
+                texel_size: params.texel_size,
                 #[cfg(feature = "new-geometry")]
                 atlas_size: params.atlas_size,
                 #[cfg(feature = "new-geometry")]
@@ -154,11 +154,11 @@ pub struct Cesium3DTilesWriterParam {
     /// When disabled, no normals are written and the mesh is smaller, but the
     /// tile carries no lighting data (a viewer must derive flat normals itself).
     pub(super) compute_flat_normal: Option<bool>,
-    /// # Texture Resolution
-    /// Target texture detail in metres per pixel. Textures finer than this are
+    /// # Texel Size
+    /// Target texel size in metres per pixel. Textures finer than this are
     /// downsampled to it, and it floors each tile's geometric error. Defaults
-    /// to 0, which keeps full texture resolution.
-    pub(super) resolution: Option<f64>,
+    /// to 0, which keeps full texture detail.
+    pub(super) texel_size: Option<f64>,
     /// # Atlas Size
     /// Maximum texture atlas dimension in pixels. Textures exceeding this spill
     /// onto additional atlas pages; a single texture larger than it is
@@ -190,7 +190,7 @@ pub struct Cesium3DTilesWriterCompiledParam {
     #[cfg(feature = "new-geometry")]
     pub(super) compute_flat_normal: Option<bool>,
     #[cfg(feature = "new-geometry")]
-    pub(super) resolution: Option<f64>,
+    pub(super) texel_size: Option<f64>,
     #[cfg(feature = "new-geometry")]
     pub(super) atlas_size: Option<u32>,
     #[cfg(feature = "new-geometry")]

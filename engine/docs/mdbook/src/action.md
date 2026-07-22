@@ -2138,9 +2138,9 @@ Export Features as Cesium 3D Tiles for Web Visualization
         "null"
       ]
     },
-    "resolution": {
-      "title": "Texture Resolution",
-      "description": "Target texture detail in metres per pixel. Textures finer than this are downsampled to it, and it floors each tile's geometric error. Defaults to 0, which keeps full texture resolution.",
+    "texelSize": {
+      "title": "Texel Size",
+      "description": "Target texel size in metres per pixel. Textures finer than this are downsampled to it, and it floors each tile's geometric error. Defaults to 0, which keeps full texture detail.",
       "type": [
         "number",
         "null"

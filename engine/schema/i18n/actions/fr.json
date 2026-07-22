@@ -747,10 +747,6 @@
           "title": "Chemin de Sortie",
           "description": "Chemin du répertoire où les 3D Tiles seront écrits"
         },
-        "resolution": {
-          "title": "Résolution de Texture",
-          "description": "Niveau de détail de texture cible en mètres par pixel. Les textures plus fines que cette valeur y sont sous-échantillonnées, et elle constitue le plancher de l'erreur géométrique de chaque tuile. La valeur par défaut est 0, qui conserve la résolution complète de la texture."
-        },
         "schemaKey": {
           "title": "Clé de Schéma",
           "description": "Clé d'attribut dont la valeur identifie le type de schéma et détermine le nom du fichier de sortie : toutes les entités partageant la même valeur sont écrites dans le même fichier. Cet attribut est exclu de la sortie."
@@ -758,6 +754,10 @@
         "skipUnexposedAttributes": {
           "title": "Ignorer les Attributs non Exposés",
           "description": "Ignorer les attributs avec un préfixe de double trait de soulignement"
+        },
+        "texelSize": {
+          "title": "Taille de Texel",
+          "description": "Taille de texel cible en mètres par pixel. Les textures plus fines que cette valeur y sont sous-échantillonnées, et elle constitue le plancher de l'erreur géométrique de chaque tuile. La valeur par défaut est 0, qui conserve le détail complet de la texture."
         }
       }
     },
