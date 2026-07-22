@@ -226,13 +226,11 @@ pub fn build_atlas_multipage(
                     let (page, frame) = placement[job_idx].expect("placed");
                     let src = jobs[job_idx].src;
                     let page_size = (pages[page].width() as f64, pages[page].height() as f64);
-                    let scale = src.w as f64 / frame.w as f64;
                     let uvs = remap_polygon_uvs(
                         poly_uvs,
                         (td.src_width, td.src_height),
                         src,
                         frame,
-                        scale,
                         page_size,
                     );
                     PolygonPlacement { page, uvs }
@@ -345,5 +343,47 @@ mod tests {
             .expect("atlas built");
         assert_eq!(built.pages.len(), 1);
         assert!(built.pages[0].width() <= 128 && built.pages[0].height() <= 128);
+    }
+
+    #[test]
+    fn nonuniform_rounding_maps_uv_span_to_frame_dims() {
+        // A 3x5 region at scale 0.5 rounds to a 2x3 frame: the width ratio
+        // (2/3) and height ratio (3/5) differ, so no single scale fits both
+        // axes. The old remap divided both axes by src.w/frame.w = 1.5, which
+        // is exact horizontally (3/1.5 = 2 px) but stretches the height to
+        // 5/1.5 = 3.33 px instead of the frame's 3 px. Per-axis mapping
+        // reproduces the frame dimensions exactly. Mapping the UV span back
+        // into page pixels must therefore recover 2x3.
+        let tmp = TempDir::new().unwrap();
+        let mat = material(
+            write_texture(tmp.path(), "skew.png", 3, 5),
+            vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
+            0.5,
+        );
+        let built = build_atlas_multipage(&[mat], 64, 0, &mut TextureCache::default())
+            .unwrap()
+            .expect("atlas built");
+        let page_w = built.pages[0].width() as f64;
+        let page_h = built.pages[0].height() as f64;
+
+        let uvs = &built.remapped[0][0].uvs;
+        let (mut min_u, mut max_u, mut min_v, mut max_v) = (f64::MAX, f64::MIN, f64::MAX, f64::MIN);
+        for &[u, v] in uvs {
+            min_u = min_u.min(u);
+            max_u = max_u.max(u);
+            min_v = min_v.min(v);
+            max_v = max_v.max(v);
+        }
+        let mapped_w = (max_u - min_u) * page_w;
+        let mapped_h = (max_v - min_v) * page_h;
+
+        assert!(
+            (mapped_w - 2.0).abs() < 1e-6,
+            "mapped width {mapped_w}, expected 2.0 (frame.w)"
+        );
+        assert!(
+            (mapped_h - 3.0).abs() < 1e-6,
+            "mapped height {mapped_h}, expected 3.0 (frame.h); old single-scale remap yields ~3.33"
+        );
     }
 }
