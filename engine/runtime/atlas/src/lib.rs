@@ -1,15 +1,24 @@
 mod blit;
 mod damage;
 mod error;
+#[cfg(feature = "new-geometry")]
+mod multipage;
+#[cfg(not(feature = "new-geometry"))]
 mod plan;
 mod skyline;
 
+#[cfg(not(feature = "new-geometry"))]
 use std::collections::HashMap;
 use std::path::PathBuf;
 
+#[cfg(not(feature = "new-geometry"))]
 use damage::{collect_damage, TextureDamage};
 pub use error::{AtlasError, Result};
+#[cfg(not(feature = "new-geometry"))]
 use image::RgbaImage;
+#[cfg(feature = "new-geometry")]
+pub use multipage::{build_atlas_multipage, MultiPageAtlas, PolygonPlacement, TextureCache};
+#[cfg(not(feature = "new-geometry"))]
 pub use plan::plan_layout;
 
 pub type PolygonUVs = Vec<[f64; 2]>;
@@ -49,9 +58,14 @@ impl Rect {
 pub struct TextureInput {
     pub path: PathBuf,
     pub uvs: TextureUVs,
+    /// Fraction of native resolution to keep when packing (`(0, 1]`; `1.0` =
+    /// full resolution). Multipage-only: the legacy packer downsamples globally.
+    #[cfg(feature = "new-geometry")]
+    pub scale: f64,
 }
 
 /// Result of a pure layout pass — no image I/O, no blitting.
+#[cfg(not(feature = "new-geometry"))]
 pub struct LayoutPlan {
     pub atlas_width: u32,
     pub atlas_height: u32,
@@ -61,11 +75,13 @@ pub struct LayoutPlan {
     pub placements: Vec<Rect>,
 }
 
+#[cfg(not(feature = "new-geometry"))]
 pub struct BuiltAtlas {
     pub image: RgbaImage,
     pub remapped_uvs: Vec<TextureUVs>,
 }
 
+#[cfg(not(feature = "new-geometry"))]
 pub const MAX_DOWNSAMPLE_K: u32 = 13;
 
 struct RemapContext {
@@ -73,11 +89,15 @@ struct RemapContext {
     damage: Rect,
     frame: Rect,
     atlas_size: (f64, f64),
-    downsample: u32,
 }
 
 fn remap_uv(u: f64, v: f64, ctx: &RemapContext) -> [f64; 2] {
-    let scale = ctx.downsample as f64;
+    // Map the source region's pixel span onto its atlas frame independently per
+    // axis. The multipage packer rounds frame width and height separately, so a
+    // single (horizontal) scale factor drifts the vertical axis; per-axis ratios
+    // map the region edges onto the frame edges exactly regardless of rounding.
+    let sx = ctx.frame.w as f64 / ctx.damage.w as f64;
+    let sy = ctx.frame.h as f64 / ctx.damage.h as f64;
     let px = u * ctx.texture_size.0 as f64 - ctx.damage.x as f64;
     // Pixel row this UV samples, and the row back to a UV — both depend on the
     // v origin. Top-left (new-geometry): v runs with the row index. Bottom-left
@@ -86,8 +106,8 @@ fn remap_uv(u: f64, v: f64, ctx: &RemapContext) -> [f64; 2] {
     let py = v * ctx.texture_size.1 as f64 - ctx.damage.y as f64;
     #[cfg(not(feature = "new-geometry"))]
     let py = (1.0 - v) * ctx.texture_size.1 as f64 - ctx.damage.y as f64;
-    let out_u = (px / scale + ctx.frame.x as f64) / ctx.atlas_size.0;
-    let row = (py / scale + ctx.frame.y as f64) / ctx.atlas_size.1;
+    let out_u = (ctx.frame.x as f64 + px * sx) / ctx.atlas_size.0;
+    let row = (ctx.frame.y as f64 + py * sy) / ctx.atlas_size.1;
     #[cfg(feature = "new-geometry")]
     let out_v = row;
     #[cfg(not(feature = "new-geometry"))]
@@ -95,12 +115,11 @@ fn remap_uv(u: f64, v: f64, ctx: &RemapContext) -> [f64; 2] {
     [out_u, out_v]
 }
 
-fn remap_polygon_uvs(
+pub(crate) fn remap_polygon_uvs(
     poly_uvs: &PolygonUVs,
     texture_size: (u32, u32),
     damage: Rect,
     frame: Rect,
-    downsample: u32,
     atlas_size: (f64, f64),
 ) -> PolygonUVs {
     let ctx = RemapContext {
@@ -108,7 +127,6 @@ fn remap_polygon_uvs(
         damage,
         frame,
         atlas_size,
-        downsample,
     };
     poly_uvs
         .iter()
@@ -116,11 +134,11 @@ fn remap_polygon_uvs(
         .collect()
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn build_remapped_uvs(
     materials: &[TextureInput],
     damage_list: &[(PathBuf, TextureDamage)],
     texture_frames: &blit::TextureFrames,
-    downsample: u32,
     atlas_size: (f64, f64),
 ) -> Vec<TextureUVs> {
     let damage_by_path: HashMap<_, _> = damage_list
@@ -145,14 +163,7 @@ fn build_remapped_uvs(
                 .map(|(polygon_idx, poly_uvs)| {
                     let region_idx = damage.polygon_regions[polygon_idx];
                     let (damage, frame) = frames[region_idx];
-                    remap_polygon_uvs(
-                        poly_uvs,
-                        texture_size,
-                        damage,
-                        frame,
-                        downsample,
-                        atlas_size,
-                    )
+                    remap_polygon_uvs(poly_uvs, texture_size, damage, frame, atlas_size)
                 })
                 .collect()
         })
@@ -162,6 +173,7 @@ fn build_remapped_uvs(
 /// Pack `materials` into an atlas image and return remapped UVs.
 /// Returns `Ok(None)` if there are no UV polygons to pack (empty materials or all UVs empty).
 /// Returns `Err` if any texture file cannot be read.
+#[cfg(not(feature = "new-geometry"))]
 pub fn build_atlas(materials: &[TextureInput], max_atlas_size: u32) -> Result<Option<BuiltAtlas>> {
     // Stage 1: collect damage rects (reads image headers only).
     let damage_list = collect_damage(materials)?;
@@ -183,20 +195,14 @@ pub fn build_atlas(materials: &[TextureInput], max_atlas_size: u32) -> Result<Op
         &plan.placements,
     )?;
     let atlas_size = (image.width() as f64, image.height() as f64);
-    let remapped_uvs = build_remapped_uvs(
-        materials,
-        &damage_list,
-        &texture_frames,
-        plan.downsample,
-        atlas_size,
-    );
+    let remapped_uvs = build_remapped_uvs(materials, &damage_list, &texture_frames, atlas_size);
     Ok(Some(BuiltAtlas {
         image,
         remapped_uvs,
     }))
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(feature = "new-geometry")))]
 mod tests {
     use super::*;
     use std::path::PathBuf;

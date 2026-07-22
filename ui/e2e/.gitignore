@@ -4,6 +4,7 @@ node_modules/
 /blob-report/
 /allure-results/
 /allure-report/
+/history.jsonl
 /playwright/.cache/
 /.auth/
 .env

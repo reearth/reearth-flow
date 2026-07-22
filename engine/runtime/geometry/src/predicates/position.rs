@@ -150,6 +150,50 @@ pub(crate) fn face_position(coord: [f64; 2], face: FaceView<'_>) -> CoordPos {
     }
 }
 
+/// A point strictly inside the face, or `None` when the face has no interior.
+///
+/// Horizontal scanline construction: pick a scan height strictly between two
+/// adjacent vertex levels (so no edge endpoint lies on the line), collect the
+/// edge crossings of all rings, and take the midpoint of an even-odd interior
+/// interval. Every candidate is verified with [`face_position`] before being
+/// returned, so an exotic face can only fail to a `None`, never to a wrong
+/// point.
+pub(crate) fn face_interior_point(face: FaceView<'_>) -> Option<[f64; 2]> {
+    let mut levels: Vec<f64> = face
+        .rings()
+        .flat_map(|r| r.coords().map(|c| c[1]))
+        .collect();
+    levels.sort_by(f64::total_cmp);
+    levels.dedup();
+    if levels.len() < 2 {
+        return None;
+    }
+
+    for pair in levels.windows(2) {
+        let y = (pair[0] + pair[1]) / 2.0;
+        if !(y > pair[0] && y < pair[1]) {
+            continue; // adjacent levels too close for a strict midpoint
+        }
+        // Crossings of the scanline with every ring edge; no endpoint lies on
+        // it, so each edge either straddles cleanly or is skipped.
+        let mut xs: Vec<f64> = Vec::new();
+        for (s, t) in face.edges() {
+            if (s[1] < y && t[1] > y) || (t[1] < y && s[1] > y) {
+                xs.push(s[0] + (y - s[1]) * (t[0] - s[0]) / (t[1] - s[1]));
+            }
+        }
+        xs.sort_by(f64::total_cmp);
+        // Even-odd: [xs[0], xs[1]], [xs[2], xs[3]], … are interior intervals.
+        for span in xs.chunks_exact(2) {
+            let candidate = [(span[0] + span[1]) / 2.0, y];
+            if face_position(candidate, face) == CoordPos::Inside {
+                return Some(candidate);
+            }
+        }
+    }
+    None
+}
+
 /// Position of a coordinate relative to the union of areal views.
 ///
 /// Strictly inside any face is inside the union. On a face boundary, the
