@@ -7,7 +7,7 @@
 //! (2.5D), split out of `[x, y, z]` input. Lines are stored as given (not closed)
 //! and carry no appearance.
 
-use crate::coordinate::Coordinate;
+use crate::coordinate::CoordinateFrame;
 use crate::error::Error;
 
 use super::{LineString2D, LineString3D};
@@ -16,9 +16,9 @@ impl LineString2D {
     /// Build a 2D polyline from `[x, y]` coordinates. The result is pure 2D (no
     /// elevation); for per-vertex elevation use
     /// [`LineString2D::from_coords_with_elevation`].
-    pub fn from_coords(coordinate: Coordinate, coords: impl IntoIterator<Item = [f64; 2]>) -> Self {
+    pub fn from_coords(frame: CoordinateFrame, coords: impl IntoIterator<Item = [f64; 2]>) -> Self {
         Self {
-            coordinate,
+            frame,
             coords: coords.into_iter().collect(),
             z: None,
         }
@@ -27,7 +27,7 @@ impl LineString2D {
     /// Build a 2.5D polyline from `[x, y, z]` coordinates: the `(x, y)` populate
     /// `coords` and the `z` the parallel elevation buffer.
     pub fn from_coords_with_elevation(
-        coordinate: Coordinate,
+        frame: CoordinateFrame,
         coords: impl IntoIterator<Item = [f64; 3]>,
     ) -> Self {
         let coords = coords.into_iter();
@@ -39,7 +39,7 @@ impl LineString2D {
             z.push(elevation);
         }
         Self {
-            coordinate,
+            frame,
             coords: xy.into_boxed_slice(),
             z: Some(z.into_boxed_slice()),
         }
@@ -48,7 +48,7 @@ impl LineString2D {
     /// Build from an already-built coordinate buffer and optional parallel
     /// elevation. Errors if `z` is present and not the same length as `coords`.
     pub fn from_raw_parts(
-        coordinate: Coordinate,
+        frame: CoordinateFrame,
         coords: Box<[[f64; 2]]>,
         z: Option<Box<[f64]>>,
     ) -> Result<Self, Error> {
@@ -61,26 +61,22 @@ impl LineString2D {
                 )));
             }
         }
-        Ok(Self {
-            coordinate,
-            coords,
-            z,
-        })
+        Ok(Self { frame, coords, z })
     }
 }
 
 impl LineString3D {
     /// Build a 3D polyline from `[x, y, z]` coordinates.
-    pub fn from_coords(coordinate: Coordinate, coords: impl IntoIterator<Item = [f64; 3]>) -> Self {
+    pub fn from_coords(frame: CoordinateFrame, coords: impl IntoIterator<Item = [f64; 3]>) -> Self {
         Self {
-            coordinate,
+            frame,
             coords: coords.into_iter().collect(),
         }
     }
 
     /// Build from an already-built coordinate buffer.
-    pub fn from_raw_parts(coordinate: Coordinate, coords: Box<[[f64; 3]]>) -> Self {
-        Self { coordinate, coords }
+    pub fn from_raw_parts(frame: CoordinateFrame, coords: Box<[[f64; 3]]>) -> Self {
+        Self { frame, coords }
     }
 }
 
@@ -90,19 +86,21 @@ mod tests {
 
     #[test]
     fn from_coords_2d_is_open_and_pure() {
-        let l =
-            LineString2D::from_coords(Coordinate::Euclidean, [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]]);
+        let l = LineString2D::from_coords(
+            CoordinateFrame::Euclidean,
+            [[0.0, 0.0], [1.0, 0.0], [1.0, 1.0]],
+        );
         // Stored as given: no closing vertex appended.
         assert_eq!(l.coords.len(), 3);
         assert_eq!(l.coords[0], [0.0, 0.0]);
         assert!(l.z.is_none());
-        assert_eq!(l.coordinate, Coordinate::Euclidean);
+        assert_eq!(l.frame, CoordinateFrame::Euclidean);
     }
 
     #[test]
     fn from_coords_with_elevation_splits_z() {
         let l = LineString2D::from_coords_with_elevation(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             [[0.0, 0.0, 10.0], [1.0, 0.0, 11.0]],
         );
         assert_eq!(l.coords, vec![[0.0, 0.0], [1.0, 0.0]].into_boxed_slice());
@@ -113,7 +111,7 @@ mod tests {
     fn from_raw_parts_2d_rejects_unparallel_z() {
         let coords: Box<[[f64; 2]]> = vec![[0.0, 0.0], [1.0, 0.0]].into_boxed_slice();
         let err = LineString2D::from_raw_parts(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             coords,
             Some(vec![0.0].into_boxed_slice()),
         )
@@ -125,7 +123,7 @@ mod tests {
     fn from_raw_parts_2d_accepts_parallel_z() {
         let coords: Box<[[f64; 2]]> = vec![[0.0, 0.0], [1.0, 0.0]].into_boxed_slice();
         let l = LineString2D::from_raw_parts(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             coords,
             Some(vec![3.0, 4.0].into_boxed_slice()),
         )
@@ -135,8 +133,10 @@ mod tests {
 
     #[test]
     fn from_coords_3d() {
-        let l =
-            LineString3D::from_coords(Coordinate::Euclidean, [[0.0, 0.0, 0.0], [1.0, 2.0, 3.0]]);
+        let l = LineString3D::from_coords(
+            CoordinateFrame::Euclidean,
+            [[0.0, 0.0, 0.0], [1.0, 2.0, 3.0]],
+        );
         assert_eq!(l.coords.len(), 2);
         assert_eq!(l.coords[1], [1.0, 2.0, 3.0]);
     }

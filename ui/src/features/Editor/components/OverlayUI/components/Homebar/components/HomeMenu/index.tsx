@@ -84,12 +84,16 @@ const HomeMenu: React.FC<Props> = ({
   return (
     <>
       <DropdownMenu open={openDialog} onOpenChange={setOpenDialog}>
-        <DropdownMenuTrigger asChild onDoubleClick={handleDoubleClick}>
-          <div className="group flex cursor-pointer items-center gap-1 self-center rounded-md p-1 hover:bg-primary">
-            <FlowLogo className="size-7 transition-all group-hover:text-[#46ce7c]" />
-            <CaretDownIcon weight="thin" size={12} />
-          </div>
-        </DropdownMenuTrigger>
+        <DropdownMenuTrigger
+          nativeButton={false}
+          onDoubleClick={handleDoubleClick}
+          render={
+            <div className="group flex cursor-pointer items-center gap-1 self-center rounded-md p-1 hover:bg-primary">
+              <FlowLogo className="size-7 transition-all group-hover:text-[#46ce7c]" />
+              <CaretDownIcon weight="thin" size={12} />
+            </div>
+          }
+        />
         <DropdownMenuContent
           className="min-w-[175px] bg-primary/50 backdrop-blur"
           side={dropdownPosition}

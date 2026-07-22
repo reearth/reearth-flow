@@ -79,20 +79,23 @@ const SearchFilters = ({
           onChange={(e) => setSearchTerm(e.target.value)}
           className="h-[36px]"
         />
-        <CollapsibleTrigger asChild>
-          <IconButton
-            variant="ghost"
-            size="icon"
-            className="size-8"
-            tooltipText={t("Search Filters")}
-            icon={<FunnelSimpleIcon size={16} weight="light" />}
-          />
-        </CollapsibleTrigger>
+        <CollapsibleTrigger
+          render={
+            <IconButton
+              variant="ghost"
+              size="icon"
+              className="size-8"
+              tooltipText={t("Search Filters")}
+              icon={<FunnelSimpleIcon size={16} weight="light" />}
+            />
+          }
+        />
       </div>
       <CollapsibleContent className="flex gap-2">
         <Select
           value={currentWorkflowFilter}
-          onValueChange={setCurrentWorkflowFilter}>
+          onValueChange={(v) => v != null && setCurrentWorkflowFilter(v)}
+          items={workflows}>
           <SelectTrigger className="h-7 w-full min-w-0">
             <div className="flex min-w-0 flex-1 items-center gap-2">
               <ShareNetworkIcon weight="light" size={14} className="shrink-0" />
@@ -111,7 +114,8 @@ const SearchFilters = ({
         </Select>
         <Select
           value={currentActionTypeFilter}
-          onValueChange={setCurrentActionTypeFilter}>
+          onValueChange={(v) => v != null && setCurrentActionTypeFilter(v)}
+          items={actionTypes}>
           <SelectTrigger className="h-7 w-full min-w-0">
             <div className="flex min-w-0 flex-1 items-center gap-2">
               <StackIcon weight="light" size={14} className="shrink-0" />

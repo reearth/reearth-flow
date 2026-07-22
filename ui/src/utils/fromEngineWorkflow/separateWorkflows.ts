@@ -36,10 +36,10 @@ export const separateWorkflow = async ({
     const pseudoOutputs: PseudoPort[] = [];
 
     workflow.nodes.forEach((node) => {
-      if (node.action === "InputRouter") {
+      if (node.action === "Input Router") {
         const port = node.with.routingPort || DEFAULT_ROUTING_PORT;
         pseudoInputs.push({ nodeId: node.id, portName: port });
-      } else if (node.action === "OutputRouter") {
+      } else if (node.action === "Output Router") {
         const port = node.with.routingPort || DEFAULT_ROUTING_PORT;
         pseudoOutputs.push({ nodeId: node.id, portName: port });
       }

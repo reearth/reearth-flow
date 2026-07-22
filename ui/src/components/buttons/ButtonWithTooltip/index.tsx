@@ -19,10 +19,11 @@ const ButtonWithTooltip: React.FC<ButtonWithTooltipProps> = ({
   delayDuration = 700,
   ...props
 }) => (
-  <Tooltip delayDuration={delayDuration}>
-    <TooltipTrigger asChild>
-      <Button {...props}>{children}</Button>
-    </TooltipTrigger>
+  <Tooltip>
+    <TooltipTrigger
+      delay={delayDuration}
+      render={<Button {...props}>{children}</Button>}
+    />
     <TooltipContent
       side={tooltipPosition}
       sideOffset={tooltipOffset}

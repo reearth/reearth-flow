@@ -9,7 +9,7 @@ graphs:
       - id: a1fc0a3e-61d3-48e2-a328-e7226c2ad1ab
         name: ProcessNode
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
           creator:
             type: flowExpr
@@ -17,7 +17,7 @@ graphs:
       - id: a2fc0a3e-61d3-48e2-a328-e7226c2ad1ab
         name: ProcessNode
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
           creator:
             type: flowExpr
@@ -25,15 +25,15 @@ graphs:
       - id: a3fc0a3e-61d3-48e2-a328-e7226c2ad1ab
         name: ProcessNode
         type: action
-        action: BulkAttributeRenamer
+        action: Bulk Attribute Renamer
         with:
           renameType: All
           renameAction: AddPrefix
           renameValue: "dup_"
       - id: c1fc0a3e-61d3-48e2-a328-e7226c2ad1ab
-        name: JsonWriter
+        name: JSON Writer
         type: action
-        action: JsonWriter
+        action: JSON Writer
         with:
           output:
             type: string
@@ -42,15 +42,15 @@ graphs:
       - id: e1fc0a3e-61d3-48e2-a328-e7226c2ad1ab
         from: a1fc0a3e-61d3-48e2-a328-e7226c2ad1ab
         to: a3fc0a3e-61d3-48e2-a328-e7226c2ad1ab
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: e2fc0a3e-61d3-48e2-a328-e7226c2ad1ab
         from: a2fc0a3e-61d3-48e2-a328-e7226c2ad1ab
         to: a3fc0a3e-61d3-48e2-a328-e7226c2ad1ab
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features
       - id: e3fc0a3e-61d3-48e2-a328-e7226c2ad1ab
         from: a3fc0a3e-61d3-48e2-a328-e7226c2ad1ab
         to: c1fc0a3e-61d3-48e2-a328-e7226c2ad1ab
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features

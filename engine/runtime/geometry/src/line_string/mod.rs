@@ -8,16 +8,18 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::coordinate::Coordinate;
+use crate::coordinate::CoordinateFrame;
 
 mod constructor;
 mod ops;
+#[cfg(feature = "new-geometry")]
+mod validation;
 
 /// A polyline in 2D space, with optional per-vertex elevation (2.5D).
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct LineString2D {
     /// Coordinate frame these coords are expressed in.
-    coordinate: Coordinate,
+    frame: CoordinateFrame,
     coords: Box<[[f64; 2]]>,
     /// Optional per-vertex elevation, parallel to `coords`.
     /// INVARIANT: when `Some`, `z.len() == coords.len()`. `None` = pure 2D.
@@ -28,11 +30,31 @@ pub struct LineString2D {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct LineString3D {
     /// Coordinate frame these coords are expressed in.
-    coordinate: Coordinate,
+    frame: CoordinateFrame,
     coords: Box<[[f64; 3]]>,
 }
 
+impl LineString2D {
+    /// The coordinate frame these coords are expressed in.
+    #[inline]
+    pub fn frame(&self) -> &CoordinateFrame {
+        &self.frame
+    }
+
+    /// The chain's vertices in order.
+    #[inline]
+    pub fn coords(&self) -> &[[f64; 2]] {
+        &self.coords
+    }
+}
+
 impl LineString3D {
+    /// The coordinate frame these coords are expressed in.
+    #[inline]
+    pub fn frame(&self) -> &CoordinateFrame {
+        &self.frame
+    }
+
     /// The chain's vertices in order.
     #[inline]
     pub fn coords(&self) -> &[[f64; 3]] {

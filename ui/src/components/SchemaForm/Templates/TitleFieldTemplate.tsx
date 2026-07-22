@@ -48,11 +48,13 @@ const TitleFieldTemplate = <
           {required && <p className="h-2 font-thin text-destructive">*</p>}
           {isRootTitle && hasDescriptions && (
             <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="cursor-pointer p-1">
-                  <QuestionIcon className="h-5 w-5" weight="thin" />
-                </div>
-              </TooltipTrigger>
+              <TooltipTrigger
+                render={
+                  <div className="cursor-pointer p-1">
+                    <QuestionIcon className="h-5 w-5" weight="thin" />
+                  </div>
+                }
+              />
               <TooltipContent side="top" align="end" className="bg-primary">
                 <div className="max-w-75 text-xs text-muted-foreground">
                   {Object.entries(descriptions).map(([key, value], index) => (

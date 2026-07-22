@@ -10,12 +10,14 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::coordinate::Coordinate;
+use crate::coordinate::CoordinateFrame;
 use crate::polygon_mesh::PolygonMesh3DData;
 use crate::triangular_mesh::TriangularMesh3DData;
 
 mod constructor;
 mod ops;
+#[cfg(feature = "new-geometry")]
+mod validation;
 
 /// One closed boundary of a [`Solid`]: a general polygon mesh or a triangle
 /// mesh, stored as coordinate-free mesh data so the boundary cannot carry a
@@ -52,13 +54,19 @@ impl Shell {
 pub struct Solid {
     /// Coordinate frame this solid's shells are expressed in; the shells
     /// themselves are coordless raw meshes.
-    coordinate: Coordinate,
+    frame: CoordinateFrame,
     exterior: Shell,
     /// Hollow voids.
     interiors: Vec<Shell>,
 }
 
 impl Solid {
+    /// The coordinate frame this solid's shells are expressed in.
+    #[inline]
+    pub fn frame(&self) -> &CoordinateFrame {
+        &self.frame
+    }
+
     /// The exterior boundary shell.
     #[inline]
     pub fn exterior(&self) -> &Shell {

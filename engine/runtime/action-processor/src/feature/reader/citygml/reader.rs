@@ -20,7 +20,7 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     executor_operation::{Context, ExecutorContext},
     forwarder::ProcessorChannelForwarder,
-    node::DEFAULT_PORT,
+    node::FEATURES_PORT,
 };
 use reearth_flow_types::{
     conversion::nusamai::{entity_to_geometry, from_nusamai_citygml_value},
@@ -234,7 +234,7 @@ fn emit_flat_entity(
     fw.send(ExecutorContext::new_with_context_feature_and_port(
         ctx,
         feature,
-        DEFAULT_PORT.clone(),
+        FEATURES_PORT.clone(),
     ));
     Ok(())
 }

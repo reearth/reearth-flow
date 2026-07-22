@@ -107,18 +107,18 @@ const DebugPanel: React.FC = () => {
             <div className="flex w-fit items-center">
               <TabsList className="gap-2">
                 <TabsTrigger
-                  className="group h-8 gap-1 border border-transparent bg-card font-light data-[state=active]:border-logo/40 dark:font-thin"
+                  className="group h-8 gap-1 border border-transparent bg-card font-light data-active:border-logo/40 dark:font-thin"
                   value="debug-logs"
                   onClick={handleTabChange}>
-                  <CodeIcon className="group-data-[state=active]:fill-logo" />
+                  <CodeIcon className="group-data-active:fill-logo" />
                   <p className="text-sm select-none">{t("Workflow Logs")}</p>
                 </TabsTrigger>
                 <TabsTrigger
-                  className="group h-8 gap-1 border border-transparent bg-card font-light data-[state=active]:border-logo/40 dark:font-thin"
+                  className="group h-8 gap-1 border border-transparent bg-card font-light data-active:border-logo/40 dark:font-thin"
                   value="debug-viewer"
                   disabled={!dataURLs?.length}
                   onClick={handleTabChange}>
-                  <EyeIcon className="group-data-[state=active]:fill-logo" />
+                  <EyeIcon className="group-data-active:fill-logo" />
                   <p className="text-sm select-none">{t("Data Preview")}</p>
                 </TabsTrigger>
               </TabsList>
@@ -174,14 +174,16 @@ const DebugPanel: React.FC = () => {
           <TabsContent
             value="debug-logs"
             className="h-[calc(100%-30px)] overflow-scroll"
-            forceMount={debugJobIdRef.current !== debugJobId ? undefined : true}
+            keepMounted={
+              debugJobIdRef.current !== debugJobId ? undefined : true
+            }
             hidden={tabValue !== "debug-logs"}>
             <DebugLogs debugJobId={debugJobId} />
           </TabsContent>
           {dataURLs && (
             <TabsContent
               value="debug-viewer"
-              forceMount={true}
+              keepMounted={true}
               hidden={tabValue !== "debug-viewer"}
               className="h-[calc(100%-32px)] overflow-hidden">
               <ResizablePanelGroup orientation="horizontal">
@@ -193,7 +195,13 @@ const DebugPanel: React.FC = () => {
                     <Select
                       defaultValue={dataURLs[0].key}
                       value={selectedDataURL}
-                      onValueChange={handleSelectedDataChange}>
+                      onValueChange={(v) =>
+                        v != null && handleSelectedDataChange(v)
+                      }
+                      items={dataURLs.map(({ key, name }) => ({
+                        value: key,
+                        label: name,
+                      }))}>
                       <SelectTrigger className="h-[26px] w-auto max-w-[300px] text-xs font-bold">
                         <SelectValue
                           placeholder={t("Select Data to Preview")}

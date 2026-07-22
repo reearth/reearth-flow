@@ -11,11 +11,13 @@
 
 use serde::{Deserialize, Serialize};
 
-use crate::appearance::{Appearance, UvSet};
-use crate::coordinate::Coordinate;
+use crate::appearance::Appearance;
+use crate::coordinate::CoordinateFrame;
 
 mod constructor;
 mod ops;
+#[cfg(feature = "new-geometry")]
+mod validation;
 
 pub use constructor::{state, PolygonBuilder2D, PolygonBuilder3D, PolygonFace};
 
@@ -23,9 +25,12 @@ pub use constructor::{state, PolygonBuilder2D, PolygonBuilder3D, PolygonFace};
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Polygon2D {
     /// Coordinate frame these coords are expressed in.
-    coordinate: Coordinate,
-    /// Exterior ring, then all interior rings (holes), concatenated; each ring
-    /// closed (first == last).
+    frame: CoordinateFrame,
+    /// Exterior ring, then all interior rings (holes), concatenated. A valid polygon
+    /// has each ring closed (first == last), with the exterior wound counter-clockwise
+    /// and interiors clockwise in canonical orientation (see [`crate::coordinate`]:
+    /// winding is judged after applying the frame's orientation sign, not in stored
+    /// coordinate order).
     coords: Box<[[f64; 2]]>,
     /// Start index in `coords` of each interior ring; empty when there are no
     /// holes. exterior = `coords[0 .. first interior start (or end)]`;
@@ -35,10 +40,8 @@ pub struct Polygon2D {
     /// concatenation). INVARIANT: when `Some`, `z.len() == coords.len()`.
     /// `None` = pure 2D (no allocation).
     z: Option<Box<[f64]>>,
-    /// UV parallel to `coords` (same ring concatenation); one set per
-    /// (theme, side, channel).
-    uv_sets: Vec<UvSet>,
-    /// Materials / themes / single-face binding; `None` = bare geometry.
+    /// Materials / themes / single-face binding, incl. per-theme UV parallel to
+    /// `coords`; `None` = bare geometry.
     appearance: Option<Appearance>,
 }
 
@@ -46,23 +49,25 @@ pub struct Polygon2D {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Polygon3D {
     /// Coordinate frame these coords are expressed in.
-    coordinate: Coordinate,
-    /// Exterior ring, then all interior rings (holes), concatenated; each ring
-    /// closed (first == last).
+    frame: CoordinateFrame,
+    /// Exterior ring, then all interior rings (holes), concatenated. Its canonical
+    /// outward normal is the exterior's right-hand-rule normal times the frame's
+    /// orientation sign (see [`crate::coordinate`]). A valid polygon has each ring
+    /// closed (first == last), with exterior and interior rings wound opposite to
+    /// each other.
     coords: Box<[[f64; 3]]>,
     /// Start index in `coords` of each interior ring; empty when there are no holes.
     interior_offsets: Box<[u32]>,
-    /// UV parallel to `coords`; one set per (theme, side, channel).
-    uv_sets: Vec<UvSet>,
-    /// Materials / themes / single-face binding; `None` = bare geometry.
+    /// Materials / themes / single-face binding, incl. per-theme UV parallel to
+    /// `coords`; `None` = bare geometry.
     appearance: Option<Appearance>,
 }
 
 impl Polygon2D {
     /// The coordinate frame these coords are expressed in.
     #[inline]
-    pub fn coordinate(&self) -> &Coordinate {
-        &self.coordinate
+    pub fn frame(&self) -> &CoordinateFrame {
+        &self.frame
     }
 
     /// The exterior ring, as stored verbatim — a well-formed ring is closed
@@ -98,20 +103,13 @@ impl Polygon2D {
     pub fn appearance_mut(&mut self) -> &mut Option<Appearance> {
         &mut self.appearance
     }
-
-    /// The UV sets, one per (theme, side, channel); each `Explicit` array is
-    /// parallel to `coords` (exterior then interiors, closed).
-    #[inline]
-    pub fn uv_sets(&self) -> &[UvSet] {
-        &self.uv_sets
-    }
 }
 
 impl Polygon3D {
     /// The coordinate frame these coords are expressed in.
     #[inline]
-    pub fn coordinate(&self) -> &Coordinate {
-        &self.coordinate
+    pub fn frame(&self) -> &CoordinateFrame {
+        &self.frame
     }
 
     /// The exterior ring, as stored verbatim — a well-formed ring is closed
@@ -146,12 +144,5 @@ impl Polygon3D {
     #[inline]
     pub fn appearance_mut(&mut self) -> &mut Option<Appearance> {
         &mut self.appearance
-    }
-
-    /// The UV sets, one per (theme, side, channel); each `Explicit` array is
-    /// parallel to `coords` (exterior then interiors, closed).
-    #[inline]
-    pub fn uv_sets(&self) -> &[UvSet] {
-        &self.uv_sets
     }
 }

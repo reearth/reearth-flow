@@ -6,7 +6,7 @@ use reearth_flow_common::str::to_hash;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
+use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
 use reearth_flow_types::{Attribute, AttributeValue, Code, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -19,7 +19,7 @@ pub(crate) struct GeoJsonWriterFactory;
 
 impl SinkFactory for GeoJsonWriterFactory {
     fn name(&self) -> &str {
-        "GeoJsonWriter"
+        "GeoJSON Writer"
     }
 
     fn description(&self) -> &str {
@@ -39,7 +39,7 @@ impl SinkFactory for GeoJsonWriterFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn prepare(&self) -> Result<(), BoxedError> {
@@ -111,7 +111,7 @@ pub(super) struct GeoJsonWriterParam {
 
 impl Sink for GeoJsonWriter {
     fn name(&self) -> &str {
-        "GeoJsonWriter"
+        "GeoJSON Writer"
     }
 
     #[cfg(not(feature = "new-geometry"))]
@@ -134,6 +134,7 @@ impl Sink for GeoJsonWriter {
         self.buffer.entry(key).or_default().push(feature.clone());
         Ok(())
     }
+
     #[cfg(not(feature = "new-geometry"))]
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
         let path = self.output.as_str();
@@ -143,31 +144,157 @@ impl Sink for GeoJsonWriter {
             } else {
                 format!("{}/{}.geojson", path, to_hash(key.to_string().as_str()))
             };
+
+            // Keep the sandbox gate at flush time via SinkOutput, then delegate
+            // the actual serialization/write to the shared helper.
             let out = crate::SinkOutput::new(&ctx.sandbox_root, &out_path, &ctx.storage_resolver)
                 .map_err(crate::errors::SinkError::geojson_writer)?;
-
-            let mut buffer = Vec::from(b"{\"type\":\"FeatureCollection\",\"features\":[");
-
-            let geojsons: Vec<geojson::Feature> = features
-                .iter()
-                .flat_map(|f| {
-                    let geojsons: Option<Vec<geojson::Feature>> = f.clone().try_into().ok();
-                    geojsons
-                })
-                .flatten()
-                .collect();
-            for (index, geojson) in geojsons.iter().enumerate() {
-                if index > 0 {
-                    buffer.push(b',');
-                }
-                let bytes = serde_json::to_vec(&geojson)
-                    .map_err(|e| crate::errors::SinkError::GeoJsonWriter(format!("{e}")))?;
-                buffer.extend(bytes);
-            }
-            buffer.extend(Vec::from(b"]}\n"));
-            out.write(Bytes::from(buffer))
-                .map_err(crate::errors::SinkError::geojson_writer)?;
+            write_geojson_to_storage(&out, features)?;
         }
         Ok(())
+    }
+}
+
+/// Serialize `features` as a GeoJSON `FeatureCollection` and write it to `output`.
+///
+/// This is the single canonical implementation shared by both the `GeoJsonWriter`
+/// sink and the `FeatureGeoJsonWriter` processor. It is gated on
+/// `not(new-geometry)` because it relies on `TryFrom<Feature> for
+/// Vec<geojson::Feature>`, which is only provided in the current geometry world.
+///
+/// It takes a [`SinkOutput`](crate::SinkOutput) rather than a bare `Uri` so the
+/// sandbox gate stays coupled to the write: callers must go through
+/// `SinkOutput::new` (which validates the path against the sandbox root and
+/// acquires the storage backend) before they can reach this helper.
+#[cfg(not(feature = "new-geometry"))]
+pub fn write_geojson_to_storage(
+    output: &crate::SinkOutput,
+    features: &[Feature],
+) -> Result<(), SinkError> {
+    let mut geojson_features: Vec<geojson::Feature> = Vec::with_capacity(features.len());
+    let mut emitted: Vec<Feature> = Vec::with_capacity(features.len());
+    let mut failed = 0usize;
+
+    for feature in features {
+        match TryInto::<Vec<geojson::Feature>>::try_into(feature.clone()) {
+            Ok(mut converted) => {
+                geojson_features.append(&mut converted);
+                emitted.push(feature.clone());
+            }
+            Err(e) => {
+                failed += 1;
+                tracing::warn!(feature_id = %feature.id, error = %e, "failed to convert feature to GeoJSON; omitting it");
+            }
+        }
+    }
+
+    let feature_collection = geojson::FeatureCollection {
+        bbox: None,
+        features: geojson_features,
+        foreign_members: crs_foreign_members(&emitted),
+    };
+    let buffer = serde_json::to_vec(&feature_collection)
+        .map_err(|e| SinkError::GeoJsonWriter(format!("{e}")))?;
+    output
+        .write(Bytes::from(buffer))
+        .map_err(SinkError::geojson_writer)?;
+
+    if failed > 0 {
+        tracing::warn!(
+            failed,
+            "{failed} feature(s) could not be converted to GeoJSON and were omitted from {}",
+            output.uri()
+        );
+    }
+    Ok(())
+}
+
+/// Build the `crs` foreign member for a `FeatureCollection` from the geometry
+/// EPSG codes of the features actually emitted to the output.
+///
+/// Used by quality-check error detail files. Quality checks run on a non-WGS84
+/// CRS and output the source coordinates as-is, so the CRS must be recorded via
+/// this legacy GeoJSON 2008 `crs` member (non-standard under RFC 7946, which
+/// fixes coordinates to WGS84).
+///
+/// Returns `None` when no feature carries an EPSG code, or when features carry
+/// multiple distinct codes (no single correct CRS).
+#[cfg(not(feature = "new-geometry"))]
+fn crs_foreign_members(features: &[Feature]) -> Option<geojson::JsonObject> {
+    let mut epsg: Option<u16> = None;
+    for feature in features {
+        let Some(code) = feature.geometry.epsg else {
+            continue;
+        };
+        match epsg {
+            None => epsg = Some(code),
+            Some(existing) if existing != code => {
+                tracing::warn!(
+                    first = existing,
+                    other = code,
+                    "GeoJSON features have mixed EPSG codes; omitting the `crs` member"
+                );
+                return None;
+            }
+            Some(_) => {}
+        }
+    }
+
+    let epsg = epsg?;
+    let mut properties = geojson::JsonObject::new();
+    properties.insert(
+        "name".to_string(),
+        Value::String(format!("urn:ogc:def:crs:EPSG::{epsg}")),
+    );
+    let mut crs = geojson::JsonObject::new();
+    crs.insert("type".to_string(), Value::String("name".to_string()));
+    crs.insert("properties".to_string(), Value::Object(properties));
+
+    let mut foreign_members = geojson::JsonObject::new();
+    foreign_members.insert("crs".to_string(), Value::Object(crs));
+    Some(foreign_members)
+}
+
+#[cfg(all(test, not(feature = "new-geometry")))]
+mod tests {
+    use super::*;
+    use reearth_flow_types::{Geometry, GeometryValue};
+
+    fn feature_with_epsg(epsg: Option<u16>) -> Feature {
+        Feature::new_with_attributes_and_geometry(
+            indexmap::IndexMap::new(),
+            Geometry {
+                epsg,
+                value: GeometryValue::None,
+            },
+        )
+    }
+
+    fn crs_name(members: &geojson::JsonObject) -> &str {
+        members["crs"]["properties"]["name"].as_str().unwrap()
+    }
+
+    #[test]
+    fn crs_member_from_single_epsg() {
+        let features = vec![feature_with_epsg(Some(6675))];
+        let members = crs_foreign_members(&features).expect("crs member expected");
+        assert_eq!(members["crs"]["type"], "name");
+        assert_eq!(crs_name(&members), "urn:ogc:def:crs:EPSG::6675");
+    }
+
+    #[test]
+    fn no_crs_member_when_all_epsg_missing() {
+        let features = vec![feature_with_epsg(None), feature_with_epsg(None)];
+        assert!(crs_foreign_members(&features).is_none());
+    }
+
+    #[test]
+    fn no_crs_member_when_epsg_mixed() {
+        let features = vec![
+            feature_with_epsg(None),
+            feature_with_epsg(Some(6675)),
+            feature_with_epsg(Some(6669)),
+        ];
+        assert!(crs_foreign_members(&features).is_none());
     }
 }

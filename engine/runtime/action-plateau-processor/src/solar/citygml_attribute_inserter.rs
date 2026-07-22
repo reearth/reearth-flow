@@ -14,7 +14,7 @@ use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::forwarder::ProcessorChannelForwarder;
-use reearth_flow_runtime::node::{Port, Processor, ProcessorFactory, DEFAULT_PORT};
+use reearth_flow_runtime::node::{Port, Processor, ProcessorFactory, FEATURES_PORT};
 use reearth_flow_types::{Attribute, AttributeValue, Code, CodeType, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -55,7 +55,7 @@ impl ProcessorFactory for CityGmlAttributeInserterFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -360,7 +360,7 @@ impl Processor for CityGmlAttributeInserter {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
                 tex_feature,
-                DEFAULT_PORT.clone(),
+                FEATURES_PORT.clone(),
             ));
 
             Some(fname)
@@ -439,7 +439,7 @@ impl Processor for CityGmlAttributeInserter {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
                 feature,
-                DEFAULT_PORT.clone(),
+                FEATURES_PORT.clone(),
             ));
 
             // Copy original texture image files referenced by the GML.
@@ -516,7 +516,7 @@ impl Processor for CityGmlAttributeInserter {
                 fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                     &ctx,
                     tex_feature,
-                    DEFAULT_PORT.clone(),
+                    FEATURES_PORT.clone(),
                 ));
             }
         }

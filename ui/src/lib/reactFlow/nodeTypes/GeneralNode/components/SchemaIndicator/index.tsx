@@ -49,11 +49,13 @@ const SchemaIndicator: React.FC<Props> = ({ schema }) => {
     return (
       <TooltipProvider>
         <Tooltip>
-          <TooltipTrigger asChild>
-            <div className="flex translate-x-0.5 items-center">
-              <WarningCircleIcon className="size-3 text-warning" />
-            </div>
-          </TooltipTrigger>
+          <TooltipTrigger
+            render={
+              <div className="flex translate-x-0.5 items-center">
+                <WarningCircleIcon className="size-3 text-warning" />
+              </div>
+            }
+          />
           <TooltipContent side="bottom" className="max-w-64">
             <div className="flex flex-col gap-1">
               <span>{t("Schema preview failed. Re-save to retry.")}</span>
@@ -74,11 +76,13 @@ const SchemaIndicator: React.FC<Props> = ({ schema }) => {
   return (
     <TooltipProvider>
       <Tooltip>
-        <TooltipTrigger asChild>
-          <div className="flex translate-x-0.5 items-center">
-            <InfoIcon className="size-3 text-muted-foreground hover:text-foreground" />
-          </div>
-        </TooltipTrigger>
+        <TooltipTrigger
+          render={
+            <div className="flex translate-x-0.5 items-center">
+              <InfoIcon className="size-3 text-muted-foreground hover:text-foreground" />
+            </div>
+          }
+        />
         <TooltipContent side="bottom" className="w-64 p-0">
           <div className="flex items-center gap-2 border-b border-border px-3 py-2">
             <span className="text-xs font-medium">{t("Attributes")}</span>

@@ -1,6 +1,8 @@
 pub(crate) mod errors;
 pub(crate) mod geometry;
 pub(crate) mod metadata;
+#[cfg(feature = "new-geometry")]
+pub mod next;
 pub(crate) mod reader;
 pub(crate) mod scene;
 pub(crate) mod utils;

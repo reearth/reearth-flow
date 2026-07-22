@@ -83,7 +83,9 @@ const createActionNode = async (
   position: XYPosition,
 ): Promise<Node | null> => {
   const { api } = config();
-  const action = await fetcher<Action>(`${api}/actions/${name}`);
+  const action = await fetcher<Action>(
+    `${api}/actions/${encodeURIComponent(name)}`,
+  );
   if (!action) return null;
 
   const patchedParams = patchAnyOfAndOneOfType(
@@ -121,6 +123,9 @@ const createActionNode = async (
       inputs: [...action.inputPorts],
       outputs: [...action.outputPorts],
       params: defaultParams,
+      // Baseline schema for migration detection: if the action's schema
+      // changes on the API later, ParamEditor compares against this copy.
+      paramsSchema: action.parameter,
     },
   };
 

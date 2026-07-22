@@ -11,7 +11,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Code, CodeType, CompiledCode, Feature};
 use schemars::JsonSchema;
@@ -25,7 +25,7 @@ pub struct XmlFragmenterFactory;
 
 impl ProcessorFactory for XmlFragmenterFactory {
     fn name(&self) -> &str {
-        "XMLFragmenter"
+        "XML Fragmenter"
     }
 
     fn description(&self) -> &str {
@@ -45,11 +45,11 @@ impl ProcessorFactory for XmlFragmenterFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -392,7 +392,7 @@ fn generate_fragment_streaming(
                         .for_each(|(k, v)| {
                             value.attributes_mut().insert(k, v);
                         });
-                    fw.send(ctx.new_with_feature_and_port(value, DEFAULT_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(value, FEATURES_PORT.clone()));
                     // Matched element's subtree is fully consumed; do NOT push to parent_stack
                 } else {
                     // Non-matched element: push to stack for parent lookups

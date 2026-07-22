@@ -266,9 +266,14 @@ export const ArrayEditor: React.FC<Props> = ({
             </Label>
             <Select
               value={arrayConfig.itemType || "string"}
-              onValueChange={(value: "string" | "number" | "boolean") =>
-                handleConfigChange({ itemType: value })
-              }>
+              onValueChange={(value) =>
+                value != null && handleConfigChange({ itemType: value })
+              }
+              items={[
+                { value: "string", label: t("Text") },
+                { value: "number", label: t("Number") },
+                { value: "boolean", label: t("True/False") },
+              ]}>
               <SelectTrigger>
                 <SelectValue placeholder={t("Select item type")} />
               </SelectTrigger>

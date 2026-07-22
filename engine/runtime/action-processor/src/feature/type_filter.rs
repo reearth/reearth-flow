@@ -6,7 +6,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::CitygmlFeatureExt;
 use schemars::JsonSchema;
@@ -22,11 +22,11 @@ pub(super) struct FeatureTypeFilterFactory;
 
 impl ProcessorFactory for FeatureTypeFilterFactory {
     fn name(&self) -> &str {
-        "FeatureTypeFilter"
+        "Feature Type Filter"
     }
 
     fn description(&self) -> &str {
-        "Filter CityGML features by feature type"
+        "Filters CityGML features by their feature type."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -37,12 +37,16 @@ impl ProcessorFactory for FeatureTypeFilterFactory {
         &["Filter"]
     }
 
+    fn tags(&self) -> &[&'static str] {
+        &["citygml"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone(), UNFILTERED_PORT.clone()]
+        vec![FEATURES_PORT.clone(), UNFILTERED_PORT.clone()]
     }
 
     fn build(
@@ -73,13 +77,14 @@ impl ProcessorFactory for FeatureTypeFilterFactory {
     }
 }
 
-/// # FeatureTypeFilter Parameters
+/// # Feature Type Filter Parameters
 ///
 /// Configuration for filtering features based on their feature type.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct FeatureTypeFilter {
-    /// Target feature types
+    /// # Target Feature Types
+    /// List of CityGML feature type names to match, such as "bldg:Building" or "tran:TrafficArea".
     target_types: Vec<String>,
 }
 
@@ -95,7 +100,7 @@ impl Processor for FeatureTypeFilter {
             return Ok(());
         };
         if self.target_types.contains(&feature_type) {
-            fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
         } else {
             fw.send(ctx.new_with_feature_and_port(feature.clone(), UNFILTERED_PORT.clone()));
         }
@@ -111,6 +116,6 @@ impl Processor for FeatureTypeFilter {
     }
 
     fn name(&self) -> &str {
-        "FeatureTypeFilter"
+        "Feature Type Filter"
     }
 }

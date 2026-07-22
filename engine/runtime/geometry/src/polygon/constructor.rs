@@ -37,7 +37,7 @@
 //! CSR buffers directly and validate the layout invariants, returning [`Error`] on
 //! violation rather than panicking.
 //!
-//! Constructed polygons are *bare*: no UV sets and no appearance. Appearance is
+//! Constructed polygons are *bare*: no appearance. Appearance is
 //! attached afterwards (CityGML binds it by `gml:id` in a later pass than the
 //! geometry) via the validated [`Polygon2D::set_appearance`] /
 //! [`Polygon2D::set_two_sided_appearance`] setters below — or the raw
@@ -51,7 +51,7 @@ use crate::appearance::{
     append_theme, single_channel_uv, validate_uv_coupling, Appearance, ChannelId, FaceBinding,
     Material, MaterialIndex, Side, ThemeId, UvSet, UvSource,
 };
-use crate::coordinate::Coordinate;
+use crate::coordinate::CoordinateFrame;
 use crate::error::Error;
 
 use super::{Polygon2D, Polygon3D};
@@ -88,7 +88,7 @@ impl Polygon2D {
     /// Rings are concatenated exterior-first and stored verbatim — *not* closed, so
     /// an open ring (first != last) is left as-is for later validation; empty
     /// interior rings are dropped.
-    pub fn from_rings<E, I, R>(coordinate: Coordinate, exterior: E, interiors: I) -> Self
+    pub fn from_rings<E, I, R>(frame: CoordinateFrame, exterior: E, interiors: I) -> Self
     where
         E: IntoIterator<Item = [f64; 2]>,
         I: IntoIterator<Item = R>,
@@ -96,11 +96,10 @@ impl Polygon2D {
     {
         let (coords, interior_offsets) = flatten_rings::<2, _, _, _>(exterior, interiors);
         Self {
-            coordinate,
+            frame,
             coords: coords.into_boxed_slice(),
             interior_offsets: interior_offsets.into_boxed_slice(),
             z: None,
-            uv_sets: Vec::new(),
             appearance: None,
         }
     }
@@ -110,7 +109,7 @@ impl Polygon2D {
     /// that carry elevation on an otherwise 2D footprint (e.g. a height-tagged
     /// shapefile or GeoPackage layer).
     pub fn from_rings_with_elevation<E, I, R>(
-        coordinate: Coordinate,
+        frame: CoordinateFrame,
         exterior: E,
         interiors: I,
     ) -> Self
@@ -127,11 +126,10 @@ impl Polygon2D {
             z.push(zz);
         }
         Self {
-            coordinate,
+            frame,
             coords: coords.into_boxed_slice(),
             interior_offsets: interior_offsets.into_boxed_slice(),
             z: Some(z.into_boxed_slice()),
-            uv_sets: Vec::new(),
             appearance: None,
         }
     }
@@ -144,7 +142,7 @@ impl Polygon2D {
     /// offset in `1..coords.len()` (every ring non-empty, exterior included).
     /// Violations return [`Error::InvalidGeometry`].
     pub fn from_raw_parts(
-        coordinate: Coordinate,
+        frame: CoordinateFrame,
         coords: Box<[[f64; 2]]>,
         interior_offsets: Box<[u32]>,
         z: Option<Box<[f64]>>,
@@ -160,11 +158,10 @@ impl Polygon2D {
         }
         check_offsets(&interior_offsets, coords.len())?;
         Ok(Self {
-            coordinate,
+            frame,
             coords,
             interior_offsets,
             z,
-            uv_sets: Vec::new(),
             appearance: None,
         })
     }
@@ -177,7 +174,7 @@ impl Polygon3D {
     /// Rings are concatenated exterior-first and stored verbatim — *not* closed, so
     /// an open ring (first != last) is left as-is for later validation; empty
     /// interior rings are dropped.
-    pub fn from_rings<E, I, R>(coordinate: Coordinate, exterior: E, interiors: I) -> Self
+    pub fn from_rings<E, I, R>(frame: CoordinateFrame, exterior: E, interiors: I) -> Self
     where
         E: IntoIterator<Item = [f64; 3]>,
         I: IntoIterator<Item = R>,
@@ -185,10 +182,9 @@ impl Polygon3D {
     {
         let (coords, interior_offsets) = flatten_rings::<3, _, _, _>(exterior, interiors);
         Self {
-            coordinate,
+            frame,
             coords: coords.into_boxed_slice(),
             interior_offsets: interior_offsets.into_boxed_slice(),
-            uv_sets: Vec::new(),
             appearance: None,
         }
     }
@@ -197,16 +193,15 @@ impl Polygon3D {
     /// be strictly increasing with each offset in `1..coords.len()`; violations
     /// return [`Error::InvalidGeometry`].
     pub fn from_raw_parts(
-        coordinate: Coordinate,
+        frame: CoordinateFrame,
         coords: Box<[[f64; 3]]>,
         interior_offsets: Box<[u32]>,
     ) -> Result<Self, Error> {
         check_offsets(&interior_offsets, coords.len())?;
         Ok(Self {
-            coordinate,
+            frame,
             coords,
             interior_offsets,
-            uv_sets: Vec::new(),
             appearance: None,
         })
     }
@@ -226,33 +221,33 @@ impl Polygon3D {
 /// compile:
 ///
 /// ```compile_fail
-/// use reearth_flow_geometry::coordinate::Coordinate;
+/// use reearth_flow_geometry::coordinate::CoordinateFrame;
 /// use reearth_flow_geometry::polygon::PolygonBuilder2D;
 /// // No `build` on the `Empty` state.
-/// let _ = PolygonBuilder2D::new(Coordinate::Euclidean).build();
+/// let _ = PolygonBuilder2D::new(CoordinateFrame::Euclidean).build();
 /// ```
 ///
 /// ```compile_fail
-/// use reearth_flow_geometry::coordinate::Coordinate;
+/// use reearth_flow_geometry::coordinate::CoordinateFrame;
 /// use reearth_flow_geometry::polygon::PolygonBuilder2D;
 /// // No `push_interior` before `set_exterior`.
-/// let _ = PolygonBuilder2D::new(Coordinate::Euclidean).push_interior([[0.0, 0.0]]);
+/// let _ = PolygonBuilder2D::new(CoordinateFrame::Euclidean).push_interior([[0.0, 0.0]]);
 /// ```
 ///
 /// Produces a pure-2D polygon (no elevation).
 #[derive(Debug, Clone)]
 pub struct PolygonBuilder2D<S: BuilderState = Empty> {
-    coordinate: Coordinate,
+    frame: CoordinateFrame,
     coords: Vec<[f64; 2]>,
     interior_offsets: Vec<u32>,
     _state: PhantomData<S>,
 }
 
 impl PolygonBuilder2D<Empty> {
-    /// Start an empty builder in `coordinate`, awaiting an exterior ring.
-    pub fn new(coordinate: Coordinate) -> Self {
+    /// Start an empty builder in `frame`, awaiting an exterior ring.
+    pub fn new(frame: CoordinateFrame) -> Self {
         Self {
-            coordinate,
+            frame,
             coords: Vec::new(),
             interior_offsets: Vec::new(),
             _state: PhantomData,
@@ -266,7 +261,7 @@ impl PolygonBuilder2D<Empty> {
         R: IntoIterator<Item = [f64; 2]>,
     {
         PolygonBuilder2D {
-            coordinate: self.coordinate,
+            frame: self.frame,
             coords: ring.into_iter().collect(),
             interior_offsets: Vec::new(),
             _state: PhantomData,
@@ -295,7 +290,7 @@ impl PolygonBuilder2D<HasExterior> {
     /// exterior ring (see [`Polygon2D::from_raw_parts`]).
     pub fn build(self) -> Result<Polygon2D, Error> {
         Polygon2D::from_raw_parts(
-            self.coordinate,
+            self.frame,
             self.coords.into_boxed_slice(),
             self.interior_offsets.into_boxed_slice(),
             None,
@@ -307,17 +302,17 @@ impl PolygonBuilder2D<HasExterior> {
 /// [`PolygonBuilder2D`], with rings of `[x, y, z]` and the same typestate machine.
 #[derive(Debug, Clone)]
 pub struct PolygonBuilder3D<S: BuilderState = Empty> {
-    coordinate: Coordinate,
+    frame: CoordinateFrame,
     coords: Vec<[f64; 3]>,
     interior_offsets: Vec<u32>,
     _state: PhantomData<S>,
 }
 
 impl PolygonBuilder3D<Empty> {
-    /// Start an empty builder in `coordinate`, awaiting an exterior ring.
-    pub fn new(coordinate: Coordinate) -> Self {
+    /// Start an empty builder in `frame`, awaiting an exterior ring.
+    pub fn new(frame: CoordinateFrame) -> Self {
         Self {
-            coordinate,
+            frame,
             coords: Vec::new(),
             interior_offsets: Vec::new(),
             _state: PhantomData,
@@ -331,7 +326,7 @@ impl PolygonBuilder3D<Empty> {
         R: IntoIterator<Item = [f64; 3]>,
     {
         PolygonBuilder3D {
-            coordinate: self.coordinate,
+            frame: self.frame,
             coords: ring.into_iter().collect(),
             interior_offsets: Vec::new(),
             _state: PhantomData,
@@ -359,7 +354,7 @@ impl PolygonBuilder3D<HasExterior> {
     /// problem the type system cannot rule out (see [`Polygon3D::from_raw_parts`]).
     pub fn build(self) -> Result<Polygon3D, Error> {
         Polygon3D::from_raw_parts(
-            self.coordinate,
+            self.frame,
             self.coords.into_boxed_slice(),
             self.interior_offsets.into_boxed_slice(),
         )
@@ -456,7 +451,6 @@ impl Polygon2D {
         add_polygon_theme(
             self.coords.len(),
             &mut self.appearance,
-            &mut self.uv_sets,
             theme,
             PolygonFace::single(material, uv),
             None,
@@ -475,7 +469,6 @@ impl Polygon2D {
         add_polygon_theme(
             self.coords.len(),
             &mut self.appearance,
-            &mut self.uv_sets,
             theme,
             front,
             Some(back),
@@ -495,7 +488,6 @@ impl Polygon3D {
         add_polygon_theme(
             self.coords.len(),
             &mut self.appearance,
-            &mut self.uv_sets,
             theme,
             PolygonFace::single(material, uv),
             None,
@@ -513,7 +505,6 @@ impl Polygon3D {
         add_polygon_theme(
             self.coords.len(),
             &mut self.appearance,
-            &mut self.uv_sets,
             theme,
             front,
             Some(back),
@@ -521,7 +512,7 @@ impl Polygon3D {
     }
 }
 
-/// Add one theme's appearance to a single-face polygon's `appearance` / `uv_sets`.
+/// Add one theme's appearance to a single-face polygon's `appearance`.
 /// `corner_count` is the polygon's coordinate count. The `front` face is required;
 /// `back` adds a distinct back-side material/UV. Shared by the 2D and 3D setters
 /// so the invariants live in one place.
@@ -532,7 +523,6 @@ impl Polygon3D {
 fn add_polygon_theme(
     corner_count: usize,
     appearance: &mut Option<Appearance>,
-    uv_sets: &mut Vec<UvSet>,
     theme: ThemeId,
     front: PolygonFace,
     back: Option<PolygonFace>,
@@ -545,7 +535,6 @@ fn add_polygon_theme(
         &mut materials,
         &mut new_uv_sets,
         corner_count,
-        theme.clone(),
         Side::Front,
         front,
     )?;
@@ -554,7 +543,6 @@ fn add_polygon_theme(
             &mut materials,
             &mut new_uv_sets,
             corner_count,
-            theme.clone(),
             Side::Back,
             face,
         )?),
@@ -563,7 +551,6 @@ fn add_polygon_theme(
 
     append_theme(
         appearance,
-        uv_sets,
         theme,
         materials,
         front_binding,
@@ -578,19 +565,13 @@ fn push_face(
     materials: &mut Vec<Material>,
     uv_sets: &mut Vec<UvSet>,
     corner_count: usize,
-    theme: ThemeId,
     side: Side,
     face: PolygonFace,
 ) -> Result<FaceBinding, Error> {
     validate_uv_coupling(&face.material.referenced_channels(), &face.uv, corner_count)?;
 
     for (channel, uv) in face.uv {
-        uv_sets.push(UvSet {
-            theme: Some(theme.clone()),
-            side,
-            channel,
-            uv,
-        });
+        uv_sets.push(UvSet { side, channel, uv });
     }
 
     let index = u32::try_from(materials.len())
@@ -611,7 +592,7 @@ mod tests {
     #[test]
     fn from_rings_stores_exterior_verbatim() {
         let p = Polygon2D::from_rings(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]],
             Vec::<Vec<[f64; 2]>>::new(),
         );
@@ -619,7 +600,7 @@ mod tests {
         assert_ne!(p.coords[0], p.coords[p.coords.len() - 1]);
         assert!(p.interior_offsets.is_empty());
         assert!(p.z.is_none());
-        assert_eq!(p.coordinate, Coordinate::Euclidean);
+        assert_eq!(p.frame, CoordinateFrame::Euclidean);
     }
 
     // An empty exterior yields an empty polygon with its holes dropped — never an
@@ -627,7 +608,7 @@ mod tests {
     #[test]
     fn from_rings_empty_exterior_drops_holes() {
         let p = Polygon3D::from_rings(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             Vec::<[f64; 3]>::new(),
             vec![vec![[1.0, 1.0, 0.0], [2.0, 1.0, 0.0], [2.0, 2.0, 0.0]]],
         );
@@ -638,7 +619,7 @@ mod tests {
     #[test]
     fn from_rings_keeps_closed_exterior() {
         let p = Polygon2D::from_rings(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [0.0, 0.0]],
             Vec::<Vec<[f64; 2]>>::new(),
         );
@@ -648,7 +629,7 @@ mod tests {
     #[test]
     fn from_rings_with_one_hole() {
         let p = Polygon2D::from_rings(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0]],
             vec![vec![[1.0, 1.0], [2.0, 1.0], [2.0, 2.0]]],
         );
@@ -664,7 +645,7 @@ mod tests {
     #[test]
     fn from_rings_drops_empty_interior() {
         let p = Polygon2D::from_rings(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]],
             vec![Vec::<[f64; 2]>::new()],
         );
@@ -675,7 +656,7 @@ mod tests {
     #[test]
     fn from_rings_with_elevation_splits_z() {
         let p = Polygon2D::from_rings_with_elevation(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             [[0.0, 0.0, 10.0], [1.0, 0.0, 11.0], [0.0, 1.0, 12.0]],
             Vec::<Vec<[f64; 3]>>::new(),
         );
@@ -689,7 +670,7 @@ mod tests {
     #[test]
     fn from_rings_3d() {
         let p = Polygon3D::from_rings(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 1.0]],
             Vec::<Vec<[f64; 3]>>::new(),
         );
@@ -702,13 +683,16 @@ mod tests {
     fn from_raw_parts_stores_buffers() {
         let coords: Box<[[f64; 2]]> =
             vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [0.0, 0.0]].into_boxed_slice();
-        let p =
-            Polygon2D::from_raw_parts(Coordinate::Euclidean, coords.clone(), Box::new([]), None)
-                .expect("valid layout");
+        let p = Polygon2D::from_raw_parts(
+            CoordinateFrame::Euclidean,
+            coords.clone(),
+            Box::new([]),
+            None,
+        )
+        .expect("valid layout");
         assert_eq!(p.coords, coords);
         assert!(p.interior_offsets.is_empty());
         assert!(p.z.is_none());
-        assert!(p.uv_sets.is_empty());
         assert!(p.appearance.is_none());
     }
 
@@ -716,7 +700,7 @@ mod tests {
     fn from_raw_parts_rejects_unparallel_z() {
         let coords: Box<[[f64; 2]]> = vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]].into_boxed_slice();
         let err = Polygon2D::from_raw_parts(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             coords,
             Box::new([]),
             Some(vec![0.0, 0.0].into_boxed_slice()),
@@ -735,18 +719,23 @@ mod tests {
         ]
         .into_boxed_slice();
         // Offset 0 would leave the exterior empty.
-        assert!(
-            Polygon3D::from_raw_parts(Coordinate::Euclidean, coords.clone(), Box::new([0]))
-                .is_err()
-        );
+        assert!(Polygon3D::from_raw_parts(
+            CoordinateFrame::Euclidean,
+            coords.clone(),
+            Box::new([0])
+        )
+        .is_err());
         // Offset == coords.len() leaves a zero-length interior.
-        assert!(
-            Polygon3D::from_raw_parts(Coordinate::Euclidean, coords.clone(), Box::new([4]))
-                .is_err()
-        );
+        assert!(Polygon3D::from_raw_parts(
+            CoordinateFrame::Euclidean,
+            coords.clone(),
+            Box::new([4])
+        )
+        .is_err());
         // Non-increasing offsets.
         assert!(
-            Polygon3D::from_raw_parts(Coordinate::Euclidean, coords, Box::new([2, 2])).is_err()
+            Polygon3D::from_raw_parts(CoordinateFrame::Euclidean, coords, Box::new([2, 2]))
+                .is_err()
         );
     }
 
@@ -754,14 +743,14 @@ mod tests {
     // runtime-rejection tests; see the `compile_fail` doctests on `PolygonBuilder2D`.
     #[test]
     fn builder_streams_rings() {
-        let built = PolygonBuilder2D::new(Coordinate::Euclidean)
+        let built = PolygonBuilder2D::new(CoordinateFrame::Euclidean)
             .set_exterior([[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0]])
             .push_interior([[1.0, 1.0], [2.0, 1.0], [2.0, 2.0]])
             .build()
             .unwrap();
 
         let batch = Polygon2D::from_rings(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0]],
             vec![vec![[1.0, 1.0], [2.0, 1.0], [2.0, 2.0]]],
         );
@@ -770,13 +759,13 @@ mod tests {
 
     #[test]
     fn builder_streams_rings_3d() {
-        let built = PolygonBuilder3D::new(Coordinate::Euclidean)
+        let built = PolygonBuilder3D::new(CoordinateFrame::Euclidean)
             .set_exterior([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 1.0]])
             .build()
             .unwrap();
 
         let batch = Polygon3D::from_rings(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 1.0]],
             Vec::<Vec<[f64; 3]>>::new(),
         );
@@ -788,7 +777,7 @@ mod tests {
     /// A 3-corner triangle polygon (open ring), so `coords.len() == 3`.
     fn triangle() -> Polygon3D {
         Polygon3D::from_rings(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
             Vec::<Vec<[f64; 3]>>::new(),
         )
@@ -801,22 +790,23 @@ mod tests {
             .unwrap();
 
         let app = p.appearance().as_ref().unwrap();
-        assert_eq!(app.materials.len(), 1);
-        assert_eq!(app.themes.len(), 1);
-        assert_eq!(app.default_theme, theme("rgb"));
-        assert!(matches!(app.themes[0].front, FaceBinding::Uniform(_)));
-        assert!(app.themes[0].back.is_none());
-        assert_eq!(p.uv_sets.len(), 1);
-        assert_eq!(p.uv_sets[0].theme.as_ref(), Some(&theme("rgb")));
-        assert_eq!(p.uv_sets[0].side, Side::Front);
+        assert_eq!(app.materials().len(), 1);
+        assert_eq!(app.themes().len(), 1);
+        assert_eq!(*app.default_theme(), theme("rgb"));
+        assert!(matches!(app.themes()[0].front, FaceBinding::Uniform(_)));
+        assert!(app.themes()[0].back.is_none());
+        assert_eq!(app.themes()[0].theme, theme("rgb"));
+        assert_eq!(app.themes()[0].uv_sets.len(), 1);
+        assert_eq!(app.themes()[0].uv_sets[0].side, Side::Front);
     }
 
     #[test]
     fn bare_material_with_no_uv_is_accepted() {
         let mut p = triangle();
         p.set_appearance(theme("rgb"), bare(), None).unwrap();
-        assert_eq!(p.appearance().as_ref().unwrap().materials.len(), 1);
-        assert!(p.uv_sets.is_empty());
+        let app = p.appearance().as_ref().unwrap();
+        assert_eq!(app.materials().len(), 1);
+        assert!(app.themes()[0].uv_sets.is_empty());
     }
 
     #[test]
@@ -854,7 +844,10 @@ mod tests {
         let mut p = triangle();
         let m = UvSource::WorldToTexture(TexMatrix([[0.0; 4]; 3]));
         p.set_appearance(theme("rgb"), textured(), Some(m)).unwrap();
-        assert_eq!(p.uv_sets.len(), 1);
+        assert_eq!(
+            p.appearance().as_ref().unwrap().themes()[0].uv_sets.len(),
+            1
+        );
     }
 
     #[test]
@@ -864,8 +857,8 @@ mod tests {
         p.set_appearance(theme("rgb"), bare(), None).unwrap();
 
         let app = p.appearance().as_ref().unwrap();
-        assert_eq!(app.default_theme, theme("infrared"));
-        assert_eq!(app.themes.len(), 2);
+        assert_eq!(*app.default_theme(), theme("infrared"));
+        assert_eq!(app.themes().len(), 2);
     }
 
     #[test]
@@ -884,11 +877,12 @@ mod tests {
         p.set_appearance(theme("infrared"), bare(), None).unwrap();
 
         let app = p.appearance().as_ref().unwrap();
-        assert_eq!(app.materials.len(), 2);
-        assert_eq!(app.themes.len(), 2);
-        // Only the textured theme contributes a UV set.
-        assert_eq!(p.uv_sets.len(), 1);
-        assert_eq!(p.uv_sets[0].theme.as_ref(), Some(&theme("rgb")));
+        assert_eq!(app.materials().len(), 2);
+        assert_eq!(app.themes().len(), 2);
+        // Only the textured theme (added first, so index 0) contributes a UV set.
+        assert_eq!(app.themes()[0].theme, theme("rgb"));
+        assert_eq!(app.themes()[0].uv_sets.len(), 1);
+        assert!(app.themes()[1].uv_sets.is_empty());
     }
 
     #[test]
@@ -899,10 +893,10 @@ mod tests {
             .unwrap();
 
         let app = p.appearance().as_ref().unwrap();
-        assert_eq!(app.materials.len(), 2);
-        assert!(app.themes[0].back.is_some());
-        assert_eq!(p.uv_sets.len(), 2);
-        let sides: Vec<Side> = p.uv_sets.iter().map(|u| u.side).collect();
+        assert_eq!(app.materials().len(), 2);
+        assert!(app.themes()[0].back.is_some());
+        assert_eq!(app.themes()[0].uv_sets.len(), 2);
+        let sides: Vec<Side> = app.themes()[0].uv_sets.iter().map(|u| u.side).collect();
         assert!(sides.contains(&Side::Front) && sides.contains(&Side::Back));
     }
 }

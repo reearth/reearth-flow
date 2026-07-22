@@ -40,12 +40,12 @@ impl LogParser {
     pub fn new() -> Self {
         Self {
             workflow_start: Regex::new(r"Start workflow =").unwrap(),
-            node_start: Regex::new(r#"(\w+) (process start|sink start|source start)\.\.\."#).unwrap(),
-            node_finish: Regex::new(r#"(\w+) (process finish|sink finish|source finish)\. elapsed = ([\d\.]+)(m?s|µs)"#).unwrap(),
-            node_terminate: Regex::new(r#"(\w+) (process terminate|sink terminate|source terminate)\. elapsed = ([\d\.]+)(m?s|µs)"#).unwrap(),
-            processor_error: Regex::new(r#"Error operation, processor node name = (\w+) \((\w+)\), node_id = ([a-f0-9-]+), .+, error = (.+)"#).unwrap(),
-            source_error: Regex::new(r#"(\w+) source error: (.+)"#).unwrap(),
-            sink_error: Regex::new(r#"(\w+) sink error: (.+)"#).unwrap(),
+            node_start: Regex::new(r#"([\w][\w ]*) (process start|sink start|source start)\.\.\."#).unwrap(),
+            node_finish: Regex::new(r#"([\w][\w ]*) (process finish|sink finish|source finish)\. elapsed = ([\d\.]+)(m?s|µs)"#).unwrap(),
+            node_terminate: Regex::new(r#"([\w][\w ]*) (process terminate|sink terminate|source terminate)\. elapsed = ([\d\.]+)(m?s|µs)"#).unwrap(),
+            processor_error: Regex::new(r#"Error operation, processor node name = ([\w][\w ]*) \(([^)]+)\), node_id = ([a-f0-9-]+), .+, error = (.+)"#).unwrap(),
+            source_error: Regex::new(r#"([\w][\w ]*) source error: (.+)"#).unwrap(),
+            sink_error: Regex::new(r#"([\w][\w ]*) sink error: (.+)"#).unwrap(),
             workflow_failed: Regex::new(r"Failed nodes:").unwrap(),
             workflow_completed: Regex::new(r"Finish workflow = .* \((success|failed)\)").unwrap(),
             factory_error: Regex::new(r#"Failed to workflow: ExecutionError\(Factory \{ node_id: "([^"]+)", node_name: "([^"]+)", error: ([^(]+)\("#).unwrap(),

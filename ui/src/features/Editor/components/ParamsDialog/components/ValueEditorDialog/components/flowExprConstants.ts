@@ -34,8 +34,7 @@ export const FLOWEXPR_BUILTIN_FUNCTIONS = [
   "float",
   "bool",
   "list",
-  "map",
-  "Url",
+  "dict",
   "attributes",
   "env",
   "print",
@@ -166,15 +165,8 @@ export const getFlowExprAutocompleteSuggestions = (
     label: "env",
     insertText: 'env["{{cursor}}"]',
     type: "function",
-    description: t("Read an environment variable"),
-    detail: 'env["VAR_NAME"] → string',
-  },
-  {
-    label: "Url",
-    insertText: "Url({{cursor}})",
-    type: "function",
-    description: t("Construct a URL/path value"),
-    detail: "Url(path: string) → Url",
+    description: t("Read a workflow variable"),
+    detail: 'env["VAR_NAME"] → any',
   },
   {
     label: "str",
@@ -212,18 +204,18 @@ export const getFlowExprAutocompleteSuggestions = (
     detail: "list(value) → array",
   },
   {
-    label: "map",
-    insertText: "map({{cursor}})",
+    label: "dict",
+    insertText: "dict({{cursor}})",
     type: "function",
     description: t("Convert to map"),
-    detail: "map(value) → map",
+    detail: "dict(value) → map",
   },
   {
     label: "print",
     insertText: "print({{cursor}})",
     type: "function",
-    description: t("Debug print (returns first argument)"),
-    detail: "print(...) → any",
+    description: t("Debug print (returns null)"),
+    detail: "print(...) → null",
   },
   {
     label: "len",
@@ -236,17 +228,17 @@ export const getFlowExprAutocompleteSuggestions = (
     label: "type",
     insertText: "type({{cursor}})",
     type: "function",
-    description: t("Return the type name of a value"),
-    detail: "type(value) → string",
+    description: t("Return the type object of a value"),
+    detail: "type(value) → type",
   },
 
   // String methods
   {
-    label: "trim",
-    insertText: "trim()",
+    label: "strip",
+    insertText: "strip()",
     type: "function",
     description: t("Trim leading/trailing whitespace"),
-    detail: "s.trim() → string",
+    detail: "s.strip() → string",
   },
   {
     label: "split",
@@ -321,29 +313,6 @@ export const getFlowExprAutocompleteSuggestions = (
     detail: "m.get(key: string) → any",
   },
 
-  // Url properties (accessed without parentheses)
-  {
-    label: "parent",
-    insertText: "parent",
-    type: "variable",
-    description: t("Parent directory of URL path"),
-    detail: "url.parent → Url",
-  },
-  {
-    label: "name",
-    insertText: "name",
-    type: "variable",
-    description: t("Final path component of URL"),
-    detail: "url.name → string",
-  },
-  {
-    label: "suffix",
-    insertText: "suffix",
-    type: "variable",
-    description: t("File extension of URL path"),
-    detail: "url.suffix → string",
-  },
-
   // Math module (access as math.function)
   {
     label: "sin",
@@ -364,14 +333,14 @@ export const getFlowExprAutocompleteSuggestions = (
     insertText: "floor({{cursor}})",
     type: "function",
     description: t("Floor — math module"),
-    detail: "math.floor(x: float) → float",
+    detail: "math.floor(x: float) → int",
   },
   {
     label: "round",
     insertText: "round({{cursor}})",
     type: "function",
     description: t("Round away from zero — math module"),
-    detail: "math.round(x: float) → float",
+    detail: "math.round(x: float) → int",
   },
   {
     label: "log",

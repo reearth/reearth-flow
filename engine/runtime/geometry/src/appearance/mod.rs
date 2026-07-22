@@ -1,11 +1,16 @@
 //! Surface appearance: a small graph of types hung off a surface geometry.
 //!
-//! Top-down: a geometry optionally has one `Appearance` and owns a pool of
-//! `UvSet`s; an `Appearance` is a material palette plus, per theme, a per-side
-//! (front / optional back) face-to-material binding; a `Material` is exactly one
-//! of two shading models,
-//! each with a fixed set of texture slots; a `Texture` samples one `UvSet` from
-//! the geometry's pool, and several textures may share the same one.
+//! Top-down: a geometry optionally has one `Appearance`; an `Appearance` is a
+//! material palette plus, per theme, a [`ThemeBinding`] — a per-side (front /
+//! optional back) face-to-material binding together with that theme's own pool of
+//! [`UvSet`]s; a `Material` is exactly one of two shading models, each with a
+//! fixed set of texture slots; a `Texture` samples one `UvSet` from its theme's
+//! pool, and several textures may share the same one.
+//!
+//! `Appearance` is a sealed type: its fields are private and it can only be built
+//! through [`append_theme`] / [`Appearance::from_parts`], both crate-internal and
+//! fed the host geometry's corner count so a `UvSet` can never outlive the
+//! corner-buffer alignment it depends on.
 //!
 //! Appearance attaches to `Polygon`, `PolygonMesh` and `TriangularMesh` as an
 //! `Option<Appearance>`. `Solid` and `Csg` carry none of their own; their meshes
@@ -93,19 +98,72 @@ impl<'de> Deserialize<'de> for MaterialIndex {
     }
 }
 
-/// Materials, themes and per-face bindings for a surface geometry.
+/// Materials, themes, per-face bindings and per-theme UV for a surface geometry.
+///
+/// Sealed: the fields are private and every value is built through
+/// [`append_theme`] or [`Appearance::from_parts`]. A `UvSet` inside a
+/// [`ThemeBinding`] must stay length-matched to the host geometry's corner
+/// buffer — a fact `Appearance` cannot check on its own — so construction is
+/// confined to the geometry crate, where the corner count is in hand. Read
+/// through [`materials`](Self::materials) / [`themes`](Self::themes) /
+/// [`default_theme`](Self::default_theme).
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Appearance {
     /// Palette; bindings index into it.
-    pub materials: Vec<Material>,
+    materials: Vec<Material>,
     /// One independent binding per theme; length >= 1.
-    pub themes: Vec<ThemeBinding>,
+    themes: Vec<ThemeBinding>,
     /// Active theme for single-theme sinks (glTF / OBJ / CZML / 3D Tiles).
-    pub default_theme: ThemeId,
+    default_theme: ThemeId,
 }
 
-/// One theme's per-side face-to-material binding.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+impl Appearance {
+    /// The material palette; bindings index into it.
+    #[inline]
+    pub fn materials(&self) -> &[Material] {
+        &self.materials
+    }
+
+    /// The per-theme bindings; length >= 1.
+    #[inline]
+    pub fn themes(&self) -> &[ThemeBinding] {
+        &self.themes
+    }
+
+    /// The active theme for single-theme sinks.
+    #[inline]
+    pub fn default_theme(&self) -> &ThemeId {
+        &self.default_theme
+    }
+
+    /// Every UV set across all themes, in theme then set order. The theme each
+    /// belongs to is lost; use [`themes`](Self::themes) when it matters.
+    pub fn uv_iter(&self) -> impl Iterator<Item = &UvSet> {
+        self.themes.iter().flat_map(|theme| theme.uv_sets.iter())
+    }
+
+    /// Assemble an appearance from already-validated parts.
+    pub(crate) fn from_parts(
+        materials: Vec<Material>,
+        themes: Vec<ThemeBinding>,
+        default_theme: ThemeId,
+    ) -> Self {
+        Appearance {
+            materials,
+            themes,
+            default_theme,
+        }
+    }
+
+    /// Decompose into `(materials, themes, default_theme)`.
+    pub(crate) fn into_parts(self) -> (Vec<Material>, Vec<ThemeBinding>, ThemeId) {
+        (self.materials, self.themes, self.default_theme)
+    }
+}
+
+/// One theme's per-side face-to-material binding together with the UV sets that
+/// theme's textured materials sample.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct ThemeBinding {
     pub theme: ThemeId,
     /// Front-side face-to-material binding.
@@ -114,6 +172,9 @@ pub struct ThemeBinding {
     /// When `Some`, the back side has its own face-to-material mapping: it may
     /// bind different materials, or leave faces unbound.
     pub back: Option<FaceBinding>,
+    /// This theme's UV pool; one set per (side, channel) its materials reference.
+    /// Each `Explicit` array is parallel to the host geometry's corner buffer.
+    pub uv_sets: Vec<UvSet>,
 }
 
 /// Which side of an oriented surface an appearance applies to. The front side
@@ -241,22 +302,16 @@ impl Appearance {
 }
 
 /// Append one theme's already-validated appearance to a geometry's accumulated
-/// `appearance` / `uv_sets`. `front` / `back` index `materials` locally; they are
-/// offset into the running palette here. Shared by the polygon and triangular-mesh
-/// setters so the palette bookkeeping lives in one place.
-///
-/// Additive and atomic: errors — leaving both `appearance` and `uv_sets` untouched
-/// — if `theme` is already set or a local index overflows the merged palette. The
-/// first theme appended becomes the default. The caller validates the bindings and
-/// UV before calling (the two setters validate in different ways).
+/// `appearance`. `front` / `back` index `materials` locally; they are offset into
+/// the running palette here. The theme's own `uv_sets` ride inside the appended
+/// [`ThemeBinding`].
 pub(crate) fn append_theme(
     appearance: &mut Option<Appearance>,
-    uv_sets: &mut Vec<UvSet>,
     theme: ThemeId,
     materials: Vec<Material>,
     front: FaceBinding,
     back: Option<FaceBinding>,
-    new_uv_sets: Vec<UvSet>,
+    uv_sets: Vec<UvSet>,
 ) -> Result<(), Error> {
     if let Some(app) = appearance.as_ref() {
         if app.themes.iter().any(|b| b.theme == theme) {
@@ -282,8 +337,12 @@ pub(crate) fn append_theme(
         default_theme: theme.clone(),
     });
     app.materials.extend(materials);
-    app.themes.push(ThemeBinding { theme, front, back });
-    uv_sets.extend(new_uv_sets);
+    app.themes.push(ThemeBinding {
+        theme,
+        front,
+        back,
+        uv_sets,
+    });
     Ok(())
 }
 
@@ -335,18 +394,14 @@ pub(crate) fn validate_uv_coupling(
     Ok(())
 }
 
-/// Strip all back-side appearance from a mesh's `(appearance, uv_sets)`: drop each
-/// theme's back binding, remove every `Side::Back` UV set, and compact the palette
-/// so now-orphaned back-only materials are dropped. Shared by the polygon-mesh and
-/// triangular-mesh `make_front_only` shells — a [`Solid`](crate::solid::Solid)'s
-/// back face is its interior (or the inside of a void), which is never rendered, so
-/// back appearance is meaningless there; `Solid` construction calls this on every
-/// shell.
-pub(crate) fn make_front_only(appearance: &mut Option<Appearance>, uv_sets: &mut Vec<UvSet>) {
-    uv_sets.retain(|uv| uv.side != Side::Back);
+/// Strip all back-side appearance from a mesh's `appearance`: drop each theme's
+/// back binding, remove every `Side::Back` UV set from that theme's pool, and
+/// compact the palette so now-orphaned back-only materials are dropped.
+pub(crate) fn make_front_only(appearance: &mut Option<Appearance>) {
     if let Some(app) = appearance {
         for binding in &mut app.themes {
             binding.back = None;
+            binding.uv_sets.retain(|uv| uv.side != Side::Back);
         }
         app.compact_materials();
     }
@@ -408,6 +463,11 @@ mod tests {
     #[test]
     fn make_front_only_drops_back_and_compacts_palette() {
         let theme = ThemeId(Arc::from("rgb"));
+        let uv = |side| UvSet {
+            side,
+            channel: ChannelId::default(),
+            uv: UvSource::Explicit(Box::new([])),
+        };
         // Material 0 is front-only, material 1 is back-only.
         let mut appearance = Some(Appearance {
             materials: vec![phong(1.0), phong(2.0)],
@@ -415,18 +475,12 @@ mod tests {
                 theme: theme.clone(),
                 front: FaceBinding::Uniform(MaterialIndex::new(0).unwrap()),
                 back: Some(FaceBinding::Uniform(MaterialIndex::new(1).unwrap())),
+                uv_sets: vec![uv(Side::Front), uv(Side::Back)],
             }],
             default_theme: theme.clone(),
         });
-        let uv = |side| UvSet {
-            theme: Some(theme.clone()),
-            side,
-            channel: ChannelId::default(),
-            uv: UvSource::Explicit(Box::new([])),
-        };
-        let mut uv_sets = vec![uv(Side::Front), uv(Side::Back)];
 
-        make_front_only(&mut appearance, &mut uv_sets);
+        make_front_only(&mut appearance);
 
         let app = appearance.unwrap();
         // The back binding is gone and its now-orphaned material dropped, leaving
@@ -435,8 +489,8 @@ mod tests {
         assert!(app.themes[0].back.is_none());
         assert!(matches!(app.themes[0].front, FaceBinding::Uniform(i) if i.get() == 0));
         // The back UV set is stripped; only the front survives.
-        assert_eq!(uv_sets.len(), 1);
-        assert_eq!(uv_sets[0].side, Side::Front);
+        assert_eq!(app.themes[0].uv_sets.len(), 1);
+        assert_eq!(app.themes[0].uv_sets[0].side, Side::Front);
     }
 
     #[test]
@@ -453,6 +507,7 @@ mod tests {
                     Some(MaterialIndex::new(3).unwrap()),
                 ]),
                 back: None,
+                uv_sets: Vec::new(),
             }],
             default_theme: theme,
         };
@@ -491,6 +546,7 @@ mod tests {
                 theme: theme.clone(),
                 front: FaceBinding::Uniform(MaterialIndex::new(5).unwrap()),
                 back: None,
+                uv_sets: Vec::new(),
             }],
             default_theme: theme,
         };

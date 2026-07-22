@@ -16,7 +16,7 @@ use reearth_flow_geometry::types::polygon::Polygon3D;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{Context, ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
+use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
 use reearth_flow_types::{Attribute, AttributeValue, Code, Feature, GeometryValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -31,7 +31,7 @@ pub(crate) struct CzmlWriterFactory;
 
 impl SinkFactory for CzmlWriterFactory {
     fn name(&self) -> &str {
-        "CzmlWriter"
+        "CZML Writer"
     }
 
     fn description(&self) -> &str {
@@ -47,7 +47,7 @@ impl SinkFactory for CzmlWriterFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn prepare(&self) -> Result<(), BoxedError> {
@@ -124,7 +124,7 @@ pub(crate) struct CzmlWriter {
     pub(super) buffer: HashMap<AttributeValue, Vec<Feature>>,
 }
 
-/// # CzmlWriter Parameters
+/// # CZML Writer Parameters
 ///
 /// Configuration for writing geographic features to CZML files. Supports both
 /// static entities and time-dynamic entities with interpolated position samples.
@@ -139,7 +139,7 @@ pub(crate) struct CzmlWriter {
 ///
 /// ### Example with ISO 8601 timestamps:
 /// ```yaml
-/// - action: CzmlWriter
+/// - action: CZML Writer
 ///   with:
 ///     output: "vehicles.czml"
 ///     timeField: "timestamp"           # Contains "2024-01-01T00:00:00Z", etc.
@@ -150,7 +150,7 @@ pub(crate) struct CzmlWriter {
 ///
 /// ### Example with numeric time offsets:
 /// ```yaml
-/// - action: CzmlWriter
+/// - action: CZML Writer
 ///   with:
 ///     output: "sensors.czml"
 ///     timeField: "timeOffset"          # Contains numeric values: 0, 60, 120, etc.
@@ -178,7 +178,7 @@ pub(crate) struct CzmlWriterParam {
     ///
     /// **Example workflow configuration:**
     /// ```yaml
-    /// - action: CzmlWriter
+    /// - action: CZML Writer
     ///   with:
     ///     output: "output.czml"
     ///     timeField: "timestamp"
@@ -313,7 +313,7 @@ impl std::fmt::Display for InterpolationAlgorithm {
 
 impl Sink for CzmlWriter {
     fn name(&self) -> &str {
-        "CzmlWriter"
+        "CZML Writer"
     }
 
     #[cfg(not(feature = "new-geometry"))]

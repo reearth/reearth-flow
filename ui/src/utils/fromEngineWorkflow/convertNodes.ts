@@ -26,7 +26,9 @@ export const convertNodes = async (
     engineNodes.map(async (en) => {
       let action: Action | undefined;
       if (en.action) {
-        action = await fetcher<Action>(`${api}/actions/${en.action}`);
+        action = await fetcher<Action>(
+          `${api}/actions/${encodeURIComponent(en.action)}`,
+        );
       }
 
       const canvasNodeType =

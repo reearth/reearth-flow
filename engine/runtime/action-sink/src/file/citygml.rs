@@ -11,7 +11,7 @@ use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
+use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::geometry::GeometryValue;
 use reearth_flow_types::lod::LodMask;
@@ -29,7 +29,7 @@ use writer::CityGmlXmlWriter;
 /// Write `features` as CityGML 2.0 to `output`, copying texture images alongside it.
 ///
 /// This is the single canonical implementation shared by both the `CityGmlWriter` sink and
-/// the `FeatureWriter` processor.
+/// the `Feature Writer` processor.
 #[cfg(not(feature = "new-geometry"))]
 pub fn write_citygml_to_storage(
     output: &Uri,
@@ -232,7 +232,7 @@ pub struct CityGmlWriterFactory;
 
 impl SinkFactory for CityGmlWriterFactory {
     fn name(&self) -> &str {
-        "CityGmlWriter"
+        "CityGML Writer"
     }
 
     fn description(&self) -> &str {
@@ -252,7 +252,7 @@ impl SinkFactory for CityGmlWriterFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn prepare(&self) -> Result<(), BoxedError> {
@@ -358,7 +358,7 @@ struct CityGmlWriterSink {
 
 impl Sink for CityGmlWriterSink {
     fn name(&self) -> &str {
-        "CityGmlWriter"
+        "CityGML Writer"
     }
 
     #[cfg(not(feature = "new-geometry"))]

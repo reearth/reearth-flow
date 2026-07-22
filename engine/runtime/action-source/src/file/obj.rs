@@ -17,7 +17,7 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
+    node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{
     Attribute, AttributeValue, Code, CompiledCode, Feature, Geometry, GeometryValue,
@@ -39,7 +39,7 @@ pub(crate) struct ObjReaderFactory;
 
 impl SourceFactory for ObjReaderFactory {
     fn name(&self) -> &str {
-        "ObjReader"
+        "OBJ Reader"
     }
 
     fn description(&self) -> &str {
@@ -55,7 +55,7 @@ impl SourceFactory for ObjReaderFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -118,7 +118,7 @@ pub(super) struct ObjReader {
     params: ObjReaderCompiledParam,
 }
 
-/// # ObjReader Parameters
+/// # OBJ Reader Parameters
 ///
 /// Configuration for reading Wavefront OBJ 3D model files with support for
 /// vertices, faces, normals, texture coordinates, and material definitions.
@@ -168,7 +168,7 @@ impl Source for ObjReader {
     async fn initialize(&self, _ctx: NodeContext) {}
 
     fn name(&self) -> &str {
-        "ObjReader"
+        "OBJ Reader"
     }
 
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {
@@ -460,7 +460,7 @@ async fn read_obj(
 
         sender
             .send((
-                DEFAULT_PORT.clone(),
+                FEATURES_PORT.clone(),
                 IngestionMessage::OperationEvent { feature },
             ))
             .await
@@ -533,7 +533,7 @@ async fn read_obj(
 
             sender
                 .send((
-                    DEFAULT_PORT.clone(),
+                    FEATURES_PORT.clone(),
                     IngestionMessage::OperationEvent { feature },
                 ))
                 .await

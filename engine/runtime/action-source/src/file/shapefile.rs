@@ -22,7 +22,7 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
+    node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
 use schemars::JsonSchema;
@@ -96,7 +96,7 @@ pub(crate) struct ShapefileReaderFactory;
 
 impl SourceFactory for ShapefileReaderFactory {
     fn name(&self) -> &str {
-        "ShapefileReader"
+        "Shapefile Reader"
     }
 
     fn description(&self) -> &str {
@@ -116,7 +116,7 @@ impl SourceFactory for ShapefileReaderFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -223,7 +223,7 @@ impl Source for ShapefileReader {
     async fn initialize(&self, _ctx: NodeContext) {}
 
     fn name(&self) -> &str {
-        "ShapefileReader"
+        "Shapefile Reader"
     }
 
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {
@@ -276,7 +276,7 @@ async fn read_shapefile(
 
         sender
             .send((
-                DEFAULT_PORT.clone(),
+                FEATURES_PORT.clone(),
                 IngestionMessage::OperationEvent { feature },
             ))
             .await

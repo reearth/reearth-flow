@@ -1,5 +1,5 @@
 {
-  "description": "Test quality check L02 for plateau6 (CityGML 3.0). The L02 schema error is injected on con:dateOfConstruction (the CityGML 3.0 replacement for bldg:yearOfConstruction) with an invalid xs:date value. The objectlist xlsx under fixtures/plateau6-citymodel/ is a stand-in (copied from plateau4) until the i-UR 4.0 取得項目一覧 is finalized.",
+  "description": "Test L02 for plateau6. A schema error on con:dateOfConstruction with an invalid xs:date value.",
   "workflowPath": "quality-check/plateau6/01-common/workflow.yml",
   "workflowVariables": [
     {

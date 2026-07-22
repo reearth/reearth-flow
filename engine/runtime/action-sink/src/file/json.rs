@@ -5,7 +5,7 @@ use bytes::Bytes;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
+use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
 use reearth_flow_types::{create_batch_feature, Code, CodeType, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -19,7 +19,7 @@ pub(crate) struct JsonWriterFactory;
 
 impl SinkFactory for JsonWriterFactory {
     fn name(&self) -> &str {
-        "JsonWriter"
+        "JSON Writer"
     }
 
     fn description(&self) -> &str {
@@ -39,7 +39,7 @@ impl SinkFactory for JsonWriterFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn prepare(&self) -> Result<(), BoxedError> {
@@ -107,7 +107,7 @@ pub(super) struct JsonWriterParam {
 
 impl Sink for JsonWriter {
     fn name(&self) -> &str {
-        "JsonWriter"
+        "JSON Writer"
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {

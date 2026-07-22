@@ -132,11 +132,8 @@ const ValueEditorDialog: React.FC<Props> = ({
 
   return (
     <>
-      <Dialog open={open} onOpenChange={onClose}>
-        <DialogContent
-          size={isFullscreen ? "full" : "3xl"}
-          onInteractOutside={(e) => e.preventDefault()}
-          hideCloseButton>
+      <Dialog open={open} disablePointerDismissal onOpenChange={onClose}>
+        <DialogContent size={isFullscreen ? "full" : "3xl"} hideCloseButton>
           <DialogHeader>
             <DialogTitle className="relative flex h-[52px] items-center justify-between">
               <div className="flex flex-1 gap-4">
@@ -165,12 +162,14 @@ const ValueEditorDialog: React.FC<Props> = ({
                   </Button>
                   {workflowVariables && workflowVariables.length > 0 && (
                     <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="outline" size="sm">
-                          <CircleIcon className="h-4 w-4" />
-                          {t("Variables")}
-                        </Button>
-                      </DropdownMenuTrigger>
+                      <DropdownMenuTrigger
+                        render={
+                          <Button variant="outline" size="sm">
+                            <CircleIcon className="h-4 w-4" />
+                            {t("Variables")}
+                          </Button>
+                        }
+                      />
                       <DropdownMenuContent align="end" className="w-64">
                         {workflowVariables.map((variable) => (
                           <DropdownMenuItem
@@ -226,11 +225,13 @@ const ValueEditorDialog: React.FC<Props> = ({
                 data-placeholder={t("Enter expression...")}
               />
               <Tooltip>
-                <TooltipTrigger asChild>
-                  <div className="absolute right-2 bottom-2 cursor-pointer p-1">
-                    <QuestionIcon className="h-6 w-6" weight="thin" />
-                  </div>
-                </TooltipTrigger>
+                <TooltipTrigger
+                  render={
+                    <div className="absolute right-2 bottom-2 cursor-pointer p-1">
+                      <QuestionIcon className="h-6 w-6" weight="thin" />
+                    </div>
+                  }
+                />
                 <TooltipContent side="top" align="end">
                   <p className="text-sm">{t("Expression Editor Help")}</p>
                   <p className="mt-1 max-w-[200px] text-xs text-muted-foreground">

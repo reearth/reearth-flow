@@ -15,7 +15,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
 };
 use reearth_flow_types::{
     Attribute, AttributeValue, Code, CodeType, CompiledCode, Feature, Geometry as FlowGeometry,
@@ -48,12 +48,12 @@ impl ProcessorFactory for CityGmlMeshBuilderFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
         vec![
-            DEFAULT_PORT.clone(),
+            FEATURES_PORT.clone(),
             Port::new("not_closed"),
             Port::new("incorrect_vertices"),
             Port::new("wrong_orientation"),
@@ -152,7 +152,7 @@ impl Processor for CityGmlMeshBuilder {
             }
             _ => {
                 // No path attribute, pass through unchanged
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
                 // Also send summary feature for consistency
                 let mut summary_feature = feature.clone();
                 summary_feature.geometry = Arc::new(FlowGeometry::default());
@@ -175,7 +175,7 @@ impl Processor for CityGmlMeshBuilder {
                         self.params.error_attribute.clone(),
                         AttributeValue::String(format!("Failed to parse CityGML: {e}")),
                     );
-                    fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
                     // Also send summary feature for consistency
                     let mut summary_feature = feature.clone();
                     summary_feature.geometry = Arc::new(FlowGeometry::default());
@@ -216,7 +216,7 @@ impl Processor for CityGmlMeshBuilder {
             feature.geometry = Arc::new(geometry);
 
             // Send to default port
-            fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
             return Ok(());
         }
 

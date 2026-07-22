@@ -13,7 +13,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Code};
 use reearth_flow_types::{Feature, Geometry, GeometryValue};
@@ -42,7 +42,7 @@ pub struct PythonScriptProcessorFactory;
 
 impl ProcessorFactory for PythonScriptProcessorFactory {
     fn name(&self) -> &str {
-        "PythonScriptProcessor"
+        "Python Script Processor"
     }
 
     fn description(&self) -> &str {
@@ -58,11 +58,11 @@ impl ProcessorFactory for PythonScriptProcessorFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -867,7 +867,7 @@ print(json.dumps(output))
                         }
                     }
 
-                    fw.send(ctx.new_with_feature_and_port(output_feature, DEFAULT_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(output_feature, FEATURES_PORT.clone()));
                 }
             }
         } else {
@@ -890,7 +890,7 @@ print(json.dumps(output))
                 }
             }
 
-            fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
         }
 
         Ok(())
@@ -906,7 +906,7 @@ print(json.dumps(output))
     }
 
     fn name(&self) -> &str {
-        "PythonScriptProcessor"
+        "Python Script Processor"
     }
 }
 
@@ -966,7 +966,7 @@ mod tests {
 
         assert!(result.is_ok());
         let processor = result.unwrap();
-        assert_eq!(processor.name(), "PythonScriptProcessor");
+        assert_eq!(processor.name(), "Python Script Processor");
     }
 
     #[test]
@@ -1275,7 +1275,7 @@ mod tests {
     fn test_processor_factory_metadata() {
         let factory = PythonScriptProcessorFactory;
 
-        assert_eq!(factory.name(), "PythonScriptProcessor");
+        assert_eq!(factory.name(), "Python Script Processor");
         assert_eq!(
             factory.description(),
             "Execute Python Scripts with Geospatial Data Processing"

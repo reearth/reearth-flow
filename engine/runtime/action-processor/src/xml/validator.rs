@@ -18,7 +18,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{AttributeValue, Feature};
 use serde_json::Value;
@@ -180,7 +180,7 @@ pub struct XmlValidatorFactory;
 
 impl ProcessorFactory for XmlValidatorFactory {
     fn name(&self) -> &str {
-        "XMLValidator"
+        "XML Validator"
     }
 
     fn description(&self) -> &str {
@@ -200,7 +200,7 @@ impl ProcessorFactory for XmlValidatorFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
@@ -294,7 +294,7 @@ impl Processor for XmlValidator {
     }
 
     fn name(&self) -> &str {
-        "XMLValidator"
+        "XML Validator"
     }
 }
 
@@ -932,7 +932,7 @@ mod tests {
             let handle = tokio::task::spawn_blocking(move || {
                 let exec_ctx = ExecutorContext::new(
                     feature,
-                    DEFAULT_PORT.clone(),
+                    FEATURES_PORT.clone(),
                     env_vars,
                     storage_resolver,
                     kv_store,

@@ -16,7 +16,10 @@ on:
           - smoke # @smoke-tagged sanity check only
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
+  # Workflow-global (not per-ref): serializes every run so there is a single
+  # writer to the shared GCS history.jsonl/index.json objects, and so no two
+  # suites hit the shared e2e environment (FLOW_DASHBOARD_E2E_BASEURL) at once.
+  group: ${{ github.workflow }}
   cancel-in-progress: false
 
 permissions:
@@ -86,7 +89,7 @@ jobs:
         if: ${{ !cancelled() && steps.check-results.outputs.has_results == 'true' }}
         uses: google-github-actions/setup-gcloud@e427ad8a34f8676edf47cf7d7925499adf3eb74f # v2.2.1
 
-      - name: Load dashboard index and history from GCS
+      - name: Load dashboard index and Allure history from GCS
         if: ${{ !cancelled() && steps.check-results.outputs.has_results == 'true' }}
         run: |
           # Download index or create empty one if it does not exist
@@ -105,32 +108,21 @@ jobs:
           fi
           rm -f /tmp/gsutil_index_err.log || true
 
-          # Get most recent run for history
-          MOST_RECENT_RUN=$(python3 -c "
-          import json, sys
-          try:
-              with open('/tmp/index.json') as f:
-                  data = json.load(f)
-              print(data[0]['id'] if data else '')
-          except Exception:
-              print('')
-          ")
-
-          if [ -n "$MOST_RECENT_RUN" ]; then
-            echo "Found previous run: $MOST_RECENT_RUN"
-            mkdir -p ./allure-results/history
-            if ! gsutil -m rsync -r "gs://$BUCKET/runs/$MOST_RECENT_RUN/history/" ./allure-results/history/ 2>/tmp/gsutil_history_err.log; then
-              if grep -qE "Matched 0 objects|No URLs matched" /tmp/gsutil_history_err.log; then
-                echo "No history objects found for run $MOST_RECENT_RUN; continuing without history."
-              else
-                echo "Error syncing history from GCS:" >&2
-                cat /tmp/gsutil_history_err.log >&2
-              fi
-            fi
-            rm -f /tmp/gsutil_history_err.log || true
+          # Allure 3 keeps cross-run trends in a single history file rather than a
+          # per-run history/ folder (see historyPath in allurerc.mjs). Restore it so
+          # the generated report shows trend/retry charts; the generate step below
+          # reads it and appends this run, and a later step re-uploads it.
+          if gsutil cp "gs://$BUCKET/history.jsonl" ./history.jsonl 2>/tmp/gsutil_history_err.log; then
+            echo "Restored Allure history from GCS ($(wc -l < ./history.jsonl) entries)."
+          elif grep -qiE "No URLs matched|Matched no objects|404" /tmp/gsutil_history_err.log; then
+            echo "No existing history.jsonl in bucket; starting fresh."
           else
-            echo "No previous runs, starting fresh"
+            echo "Failed to download history.jsonl from GCS. Error output:" >&2
+            cat /tmp/gsutil_history_err.log >&2
+            rm -f /tmp/gsutil_history_err.log
+            exit 1
           fi
+          rm -f /tmp/gsutil_history_err.log || true
 
       - name: Generate Allure report
         if: ${{ !cancelled() && steps.check-results.outputs.has_results == 'true' }}
@@ -157,14 +149,45 @@ jobs:
           RUN_ID: ${{ steps.run-id.outputs.run_id }}
         run: |
           gsutil -m rsync -r -d ./allure-report "gs://$BUCKET/runs/$RUN_ID/"
-          if [ -f "./allure-report/widgets/summary.json" ]; then
-            gsutil cp ./allure-report/widgets/summary.json "gs://$BUCKET/runs/$RUN_ID/summary.json"
+          if [ -f "./allure-report/summary.json" ]; then
+            gsutil cp ./allure-report/summary.json "gs://$BUCKET/runs/$RUN_ID/summary.json"
           fi
 
-      - name: Publish latest report to bucket root
+      - name: Persist Allure history to GCS
+        # `allure generate` appended this run to history.jsonl; store it so the
+        # next run restores it. The workflow-global concurrency group serializes
+        # every run, so there is a single writer and no lost-update race here.
         if: ${{ !cancelled() && steps.check-results.outputs.has_results == 'true' }}
         run: |
-          gsutil -h "Cache-Control:no-cache" cp ./allure-report/index.html "gs://$BUCKET/index.html"
+          if [ -f ./history.jsonl ]; then
+            gsutil -h "Cache-Control:no-cache" cp ./history.jsonl "gs://$BUCKET/history.jsonl"
+            echo "Persisted Allure history to GCS ($(wc -l < ./history.jsonl) entries)."
+          else
+            echo "No history.jsonl produced; skipping history upload."
+          fi
+
+      - name: Point bucket root at latest report
+        if: ${{ !cancelled() && steps.check-results.outputs.has_results == 'true' }}
+        env:
+          RUN_ID: ${{ steps.run-id.outputs.run_id }}
+        run: |
+          # The report links its assets (styles-*.css, app-*.js, fonts) relatively,
+          # so the root must redirect into runs/$RUN_ID/ where those assets live.
+          # Copying the report's own index.html here would 404 every asset because
+          # they are not uploaded to the bucket root.
+          if ! gsutil -q stat "gs://$BUCKET/runs/${RUN_ID}/index.html"; then
+            echo "Report not found in GCS, keeping existing root index.html"
+            exit 0
+          fi
+          cat > /tmp/root-index.html <<EOF
+          <!doctype html>
+          <meta charset="utf-8">
+          <meta http-equiv="refresh" content="0; url=runs/${RUN_ID}/index.html">
+          <title>Re:Earth Flow E2E</title>
+          <a href="runs/${RUN_ID}/index.html">Latest report</a>
+          EOF
+          gsutil -h "Content-Type:text/html" -h "Cache-Control:no-cache" \
+            cp /tmp/root-index.html "gs://$BUCKET/index.html"
 
       - name: Update dashboard index.json
         if: ${{ !cancelled() && steps.check-results.outputs.has_results == 'true' }}

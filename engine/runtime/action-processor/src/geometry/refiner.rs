@@ -11,7 +11,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REMAIN_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REMAIN_PORT},
 };
 use reearth_flow_types::geometry::Geometry as TypeGeometry;
 use reearth_flow_types::Feature;
@@ -48,11 +48,11 @@ impl ProcessorFactory for RefinerFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone(), REMAIN_PORT.clone()]
+        vec![FEATURES_PORT.clone(), REMAIN_PORT.clone()]
     }
 
     fn build(
@@ -103,7 +103,7 @@ impl Processor for Refiner {
                         }),
                         attributes: attributes.clone(),
                     };
-                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
                 }
             }
             GeometryValue::FlowGeometry3D(flow_3d) => {
@@ -117,7 +117,7 @@ impl Processor for Refiner {
                         }),
                         attributes: attributes.clone(),
                     };
-                    fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
                 }
             }
         };

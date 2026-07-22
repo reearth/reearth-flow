@@ -65,12 +65,11 @@ export default function VariableArrayInput({
           {typeof item === "string" &&
             showVariableDialog &&
             activeItemIndex === index && (
-              <Dialog open onOpenChange={onVariableDialogClose}>
-                <DialogContent
-                  size="lg"
-                  position="center"
-                  className="p-2"
-                  onInteractOutside={(e) => e.preventDefault()}>
+              <Dialog
+                open
+                disablePointerDismissal
+                onOpenChange={onVariableDialogClose}>
+                <DialogContent size="lg" position="center" className="p-2">
                   <DialogHeader>
                     <DialogTitle>
                       <div className="flex items-center gap-2">

@@ -20,6 +20,26 @@ pub(crate) enum PlateauProcessorError {
     MissingAttributeDetectorFactory(String),
     #[error("MissingAttributeDetector error: {0}")]
     MissingAttributeDetector(String),
+    #[error("BuildingUsageAttributeValidator Factory error: {0}")]
+    BuildingUsageAttributeValidatorFactory(String),
+    #[error("BuildingUsageAttributeValidator error: {0}")]
+    BuildingUsageAttributeValidator(String),
+    #[error("BuildingPartConnectivityChecker Factory error: {0}")]
+    BuildingPartConnectivityCheckerFactory(String),
+    #[error("BuildingPartConnectivityChecker error: {0}")]
+    BuildingPartConnectivityChecker(String),
+    #[error("SolidIntersectionTestPairCreator Factory error: {0}")]
+    SolidIntersectionTestPairCreatorFactory(String),
+    #[error("SolidIntersectionTestPairCreator error: {0}")]
+    SolidIntersectionTestPairCreator(String),
+    #[error("Unmatched Xlink Detector Factory error: {0}")]
+    UnmatchedXlinkDetectorFactory(String),
+    #[error("Unmatched Xlink Detector error: {0}")]
+    UnmatchedXlinkDetector(String),
+    #[error("DestinationMeshCodeExtractor Factory error: {0}")]
+    DestinationMeshCodeExtractorFactory(String),
+    #[error("DestinationMeshCodeExtractor error: {0}")]
+    DestinationMeshCodeExtractor(String),
 }
 
 pub(crate) type Result<T, E = PlateauProcessorError> = std::result::Result<T, E>;

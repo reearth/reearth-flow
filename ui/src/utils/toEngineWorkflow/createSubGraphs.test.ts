@@ -64,8 +64,8 @@ describe("createSubGraphs", () => {
         id: "edge1",
         from: "node1",
         to: "node2",
-        fromPort: "default",
-        toPort: "default",
+        fromPort: "features",
+        toPort: "features",
       },
     ];
 
@@ -135,8 +135,8 @@ describe("createSubGraphs", () => {
           id: edge.id,
           from: edge.source,
           to: edge.target,
-          fromPort: "default",
-          toPort: "default",
+          fromPort: "features",
+          toPort: "features",
         })),
     );
 
@@ -152,8 +152,8 @@ describe("createSubGraphs", () => {
             id: "edge1",
             from: "node1",
             to: "node2",
-            fromPort: "default",
-            toPort: "default",
+            fromPort: "features",
+            toPort: "features",
           },
         ],
       },
@@ -166,8 +166,8 @@ describe("createSubGraphs", () => {
             id: "edge2",
             from: "node2",
             to: "node3",
-            fromPort: "default",
-            toPort: "default",
+            fromPort: "features",
+            toPort: "features",
           },
         ],
       },

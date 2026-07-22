@@ -13,7 +13,7 @@ use reearth_flow_runtime::event::Event;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::Context;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
+use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
 use reearth_flow_types::geometry as geometry_types;
 use reearth_flow_types::{Attribute, Code, CompiledCode, Feature};
 use schemars::JsonSchema;
@@ -31,7 +31,7 @@ pub struct MVTSinkFactory;
 
 impl SinkFactory for MVTSinkFactory {
     fn name(&self) -> &str {
-        "MVTWriter"
+        "MVT Writer"
     }
 
     fn description(&self) -> &str {
@@ -51,7 +51,7 @@ impl SinkFactory for MVTSinkFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone(), SCHEMA_PORT.clone()]
+        vec![FEATURES_PORT.clone(), SCHEMA_PORT.clone()]
     }
 
     fn prepare(&self) -> Result<(), BoxedError> {
@@ -180,7 +180,7 @@ pub struct MVTWriterCompiledParam {
 
 impl Sink for MVTWriter {
     fn name(&self) -> &str {
-        "MVTWriter"
+        "MVT Writer"
     }
 
     #[cfg(not(feature = "new-geometry"))]

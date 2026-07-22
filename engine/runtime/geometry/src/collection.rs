@@ -3,7 +3,7 @@
 //! Each embedding's `Collection` holds primitives of the same intrinsic
 //! dimension with no shared vertex topology (equivalent to `Multi*` in
 //! GeoJSON/GML). Members are not required to share a coordinate frame: every
-//! leaf carries its own `coordinate`. Both collections carry per-child
+//! leaf carries its own `frame`. Both collections carry per-child
 //! attributes (`attrs`, parallel to `members`), used to preserve a child's
 //! attributes; they are not exposed as the feature's own attributes.
 
@@ -14,6 +14,8 @@ use crate::coordinate::EpsgCode;
 use crate::error::Error;
 use crate::ops::union_results;
 use crate::ops::{Aabb, BoundingBox, Reproject, ReprojectionCache, UnsupportedOperation};
+#[cfg(feature = "new-geometry")]
+use crate::validation_next::Validate;
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry};
 
 /// A `Multi*` collection of 2D geometries; members may differ in coordinate frame.
@@ -68,6 +70,11 @@ impl Collection2D {
     /// The members, mutable.
     pub(crate) fn members_mut(&mut self) -> &mut [Euclidean2DGeometry] {
         &mut self.members
+    }
+
+    /// The members, in order.
+    pub fn members(&self) -> &[Euclidean2DGeometry] {
+        &self.members
     }
 }
 
@@ -159,17 +166,26 @@ impl Reproject for Collection3D {
 crate::unsupported!(Collection2D: Triangulate);
 crate::unsupported!(Collection3D: Triangulate);
 
+// A collection validates by recursing into its members (see
+// `validation_next::validate`), so it declares no direct checks and inherits
+// every `Validate` default.
+#[cfg(feature = "new-geometry")]
+impl Validate for Collection2D {}
+
+#[cfg(feature = "new-geometry")]
+impl Validate for Collection3D {}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::coordinate::Coordinate;
+    use crate::coordinate::CoordinateFrame;
     use crate::point::{Point2D, Point3D};
 
     #[test]
     fn new_2d_collects_members_without_attrs() {
         let c = Collection2D::new([
-            Euclidean2DGeometry::Point(Point2D::new(Coordinate::Euclidean, [0.0, 0.0])),
-            Euclidean2DGeometry::Point(Point2D::new(Coordinate::Euclidean, [1.0, 1.0])),
+            Euclidean2DGeometry::Point(Point2D::new(CoordinateFrame::Euclidean, [0.0, 0.0])),
+            Euclidean2DGeometry::Point(Point2D::new(CoordinateFrame::Euclidean, [1.0, 1.0])),
         ]);
         assert_eq!(c.members.len(), 2);
         assert!(c.attrs.is_empty());
@@ -178,7 +194,7 @@ mod tests {
     #[test]
     fn with_attributes_rejects_length_mismatch() {
         let members = vec![Euclidean3DGeometry::Point(Point3D::new(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             [0.0, 0.0, 0.0],
         ))];
         assert!(Collection3D::with_attributes(members, vec![Attributes::default(); 2]).is_err());
@@ -187,8 +203,8 @@ mod tests {
     #[test]
     fn collection2d_box_merges_members() {
         let c = Collection2D::new([
-            Euclidean2DGeometry::Point(Point2D::new(Coordinate::Euclidean, [0.0, 3.0])),
-            Euclidean2DGeometry::Point(Point2D::new(Coordinate::Euclidean, [4.0, -1.0])),
+            Euclidean2DGeometry::Point(Point2D::new(CoordinateFrame::Euclidean, [0.0, 3.0])),
+            Euclidean2DGeometry::Point(Point2D::new(CoordinateFrame::Euclidean, [4.0, -1.0])),
         ]);
         assert_eq!(
             c.bounding_box().unwrap(),
@@ -202,8 +218,8 @@ mod tests {
     #[test]
     fn collection3d_box_merges_members() {
         let c = Collection3D::new([
-            Euclidean3DGeometry::Point(Point3D::new(Coordinate::Euclidean, [0.0, 3.0, 1.0])),
-            Euclidean3DGeometry::Point(Point3D::new(Coordinate::Euclidean, [4.0, -1.0, 7.0])),
+            Euclidean3DGeometry::Point(Point3D::new(CoordinateFrame::Euclidean, [0.0, 3.0, 1.0])),
+            Euclidean3DGeometry::Point(Point3D::new(CoordinateFrame::Euclidean, [4.0, -1.0, 7.0])),
         ]);
         assert_eq!(
             c.bounding_box().unwrap(),

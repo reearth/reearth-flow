@@ -7,7 +7,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{AttributeValue, Code, CompiledCode, Feature, FilePath};
 use schemars::JsonSchema;
@@ -25,7 +25,7 @@ pub(super) struct FeatureFilePathExtractorFactory;
 
 impl ProcessorFactory for FeatureFilePathExtractorFactory {
     fn name(&self) -> &str {
-        "FeatureFilePathExtractor"
+        "Feature File Path Extractor"
     }
 
     fn description(&self) -> &str {
@@ -45,11 +45,11 @@ impl ProcessorFactory for FeatureFilePathExtractorFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone(), UNFILTERED_PORT.clone()]
+        vec![FEATURES_PORT.clone(), UNFILTERED_PORT.clone()]
     }
 
     fn build(
@@ -184,7 +184,7 @@ impl Processor for FeatureFilePathExtractor {
                         .map(|(k, v)| (k.clone(), v.clone()))
                         .collect::<HashMap<_, _>>(),
                 );
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
             }
         } else if source_dataset.is_dir() {
             let entries = storage
@@ -201,7 +201,7 @@ impl Processor for FeatureFilePathExtractor {
                         .map(|(k, v)| (k.clone(), v.clone()))
                         .collect::<HashMap<_, _>>(),
                 );
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
             }
         } else {
             let attribute_value = AttributeValue::try_from(FilePath::try_from(source_dataset)?)?;
@@ -213,7 +213,7 @@ impl Processor for FeatureFilePathExtractor {
                     .map(|(k, v)| (k.clone(), v.clone()))
                     .collect::<HashMap<_, _>>(),
             );
-            fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
         }
         Ok(())
     }
@@ -227,7 +227,7 @@ impl Processor for FeatureFilePathExtractor {
     }
 
     fn name(&self) -> &str {
-        "FeatureFilePathExtractor"
+        "Feature File Path Extractor"
     }
 }
 

@@ -6,7 +6,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{
     Attribute, AttributeValue, Attributes, Code, CodeType, CompiledCode, Feature,
@@ -71,7 +71,7 @@ pub(super) struct StatisticsCalculatorFactory;
 
 impl ProcessorFactory for StatisticsCalculatorFactory {
     fn name(&self) -> &str {
-        "StatisticsCalculator"
+        "Statistics Calculator"
     }
 
     fn description(&self) -> &str {
@@ -91,11 +91,11 @@ impl ProcessorFactory for StatisticsCalculatorFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone(), COMPLETE_PORT.clone()]
+        vec![FEATURES_PORT.clone(), COMPLETE_PORT.clone()]
     }
 
     fn build(
@@ -171,12 +171,12 @@ impl ProcessorFactory for StatisticsCalculatorFactory {
 
         // `complete` port: identity passthrough of the input feature.
         let complete_schema = inputs
-            .get(&DEFAULT_PORT.clone())
+            .get(&FEATURES_PORT.clone())
             .cloned()
             .unwrap_or_else(AttrSchema::open);
 
         Some(HashMap::from([
-            (DEFAULT_PORT.clone(), default_schema),
+            (FEATURES_PORT.clone(), default_schema),
             (COMPLETE_PORT.clone(), complete_schema),
         ]))
     }
@@ -337,14 +337,14 @@ impl Processor for StatisticsCalculator {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
                 feature,
-                DEFAULT_PORT.clone(),
+                FEATURES_PORT.clone(),
             ));
         }
         Ok(())
     }
 
     fn name(&self) -> &str {
-        "StatisticsCalculator"
+        "Statistics Calculator"
     }
 }
 
@@ -374,13 +374,13 @@ mod tests {
         let mut input = AttrSchema::empty();
         input.insert(attr("junk"), AttrField::always(AttrType::String));
         let mut inputs = HashMap::new();
-        inputs.insert(DEFAULT_PORT.clone(), input);
+        inputs.insert(FEATURES_PORT.clone(), input);
 
         let out = StatisticsCalculatorFactory
             .infer_output_schema(&inputs, &with)
             .expect("inference should succeed");
         let schema = out
-            .get(&DEFAULT_PORT.clone())
+            .get(&FEATURES_PORT.clone())
             .expect("default port present");
 
         assert!(!schema.open, "default schema must be closed");
@@ -424,7 +424,7 @@ mod tests {
         input.insert(attr("a"), AttrField::always(AttrType::String));
         input.insert(attr("b"), AttrField::always(AttrType::Number));
         let mut inputs = HashMap::new();
-        inputs.insert(DEFAULT_PORT.clone(), input.clone());
+        inputs.insert(FEATURES_PORT.clone(), input.clone());
 
         let out = StatisticsCalculatorFactory
             .infer_output_schema(&inputs, &with)
@@ -451,7 +451,7 @@ mod tests {
             .infer_output_schema(&inputs, &with)
             .expect("inference should succeed");
         let schema = out
-            .get(&DEFAULT_PORT.clone())
+            .get(&FEATURES_PORT.clone())
             .expect("default port present");
 
         assert!(!schema.open);

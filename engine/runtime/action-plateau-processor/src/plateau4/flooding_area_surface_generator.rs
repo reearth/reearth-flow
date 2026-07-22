@@ -14,7 +14,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
 use schemars::JsonSchema;
@@ -83,11 +83,11 @@ impl ProcessorFactory for FloodingAreaSurfaceGeneratorFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -203,13 +203,13 @@ impl Processor for FloodingAreaSurfaceGenerator {
                 Geometry3D::MultiPolygon(multi_polygon) => multi_polygon.0.clone(),
                 _ => {
                     // Non-polygon geometry, pass through
-                    fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+                    fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
                     return Ok(());
                 }
             },
             _ => {
                 // Non-3D geometry, pass through
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
                 return Ok(());
             }
         };
@@ -251,7 +251,7 @@ impl Processor for FloodingAreaSurfaceGenerator {
             });
         }
 
-        fw.send(ctx.new_with_feature_and_port(out_feature, DEFAULT_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(out_feature, FEATURES_PORT.clone()));
         Ok(())
     }
 
@@ -308,7 +308,7 @@ impl Processor for FloodingAreaSurfaceGenerator {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
                 feature,
-                DEFAULT_PORT.clone(),
+                FEATURES_PORT.clone(),
             ));
         }
 

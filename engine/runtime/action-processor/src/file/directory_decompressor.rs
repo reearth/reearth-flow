@@ -6,7 +6,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::{Attribute, AttributeValue};
@@ -19,7 +19,7 @@ pub(super) struct DirectoryDecompressorFactory;
 
 impl ProcessorFactory for DirectoryDecompressorFactory {
     fn name(&self) -> &str {
-        "DirectoryDecompressor"
+        "Directory Decompressor"
     }
 
     fn description(&self) -> &str {
@@ -39,11 +39,11 @@ impl ProcessorFactory for DirectoryDecompressorFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -131,7 +131,7 @@ impl Processor for DirectoryDecompressor {
                 AttributeValue::String(root_output_path.to_string()),
             );
         }
-        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
         Ok(())
     }
 
@@ -144,7 +144,7 @@ impl Processor for DirectoryDecompressor {
     }
 
     fn name(&self) -> &str {
-        "DirectoryDecompressor"
+        "Directory Decompressor"
     }
 }
 

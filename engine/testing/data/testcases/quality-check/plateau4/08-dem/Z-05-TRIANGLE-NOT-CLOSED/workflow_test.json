@@ -39,7 +39,7 @@
   ],
   "intermediateAssertions": [
     {
-      "outputPort": "b66b8ba8-f685-4d01-83ef-2aaddebbc9eb.default",
+      "outputPort": "b66b8ba8-f685-4d01-83ef-2aaddebbc9eb.features",
       "expectedFile": "intermediate_not_closed.jsonl",
       "jsonFilter": "{attributes}"
     }

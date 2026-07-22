@@ -4,7 +4,7 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
+    node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -20,7 +20,7 @@ pub(crate) struct JsonReaderFactory;
 
 impl SourceFactory for JsonReaderFactory {
     fn name(&self) -> &str {
-        "JsonReader"
+        "JSON Reader"
     }
 
     fn description(&self) -> &str {
@@ -40,7 +40,7 @@ impl SourceFactory for JsonReaderFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -93,7 +93,7 @@ impl Source for JsonReader {
     async fn initialize(&self, _ctx: NodeContext) {}
 
     fn name(&self) -> &str {
-        "JsonReader"
+        "JSON Reader"
     }
 
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {

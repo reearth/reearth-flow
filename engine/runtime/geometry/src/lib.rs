@@ -33,12 +33,16 @@ pub mod csg;
 pub mod index;
 pub mod line_string;
 pub mod ops;
+pub mod overlay;
 pub mod point;
 pub mod point_cloud;
 pub mod polygon;
 pub mod polygon_mesh;
+pub mod predicates;
 pub mod solid;
 pub mod triangular_mesh;
+#[cfg(feature = "new-geometry")]
+pub mod validation_next;
 
 #[cfg(test)]
 mod test_support;
@@ -49,6 +53,11 @@ use serde::{Deserialize, Serialize};
 
 use ops::triangulation::Cache;
 use ops::{Aabb, BoundingBox, Reproject, ReprojectionCache, Triangulate, UnsupportedOperation};
+// `ValidationParams` / `ValidationType` / `ValidationReport` are named by the
+// `enum_dispatch`-generated `Validate` impls on the geometry enums, so they must
+// be in scope here.
+#[cfg(feature = "new-geometry")]
+use validation_next::{Validate, ValidationParams, ValidationReport, ValidationType};
 
 use coordinate::EpsgCode;
 
@@ -129,6 +138,12 @@ impl GeometryCollection {
     pub fn members(&self) -> &[Geometry] {
         &self.members
     }
+
+    /// Per-member attributes, parallel to [`members`](Self::members), or empty
+    /// if no member carries any.
+    pub fn member_attributes(&self) -> &[Attributes] {
+        &self.attrs
+    }
 }
 
 /// 2D-embedded geometry. All coordinates are 2D `(x, y)`; some leaves carry an
@@ -138,7 +153,14 @@ impl GeometryCollection {
 /// common variants don't inflate the enum — and `Geometry` with them — to the
 /// size of the largest leaf. The small tier (`Point`, `LineString`,
 /// `Collection`) stays inline.
-#[enum_dispatch(BoundingBox, Triangulate, Reproject)]
+#[cfg_attr(
+    not(feature = "new-geometry"),
+    enum_dispatch(BoundingBox, Triangulate, Reproject)
+)]
+#[cfg_attr(
+    feature = "new-geometry",
+    enum_dispatch(BoundingBox, Triangulate, Reproject, Validate)
+)]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Euclidean2DGeometry {
     Point(Point2D),
@@ -160,7 +182,14 @@ pub enum Euclidean2DGeometry {
 /// with them — to the size of the largest leaf. The small tier (`Point`,
 /// `LineString`, `Csg`, `Collection`) stays inline; `Csg` already boxes its own
 /// operands.
-#[enum_dispatch(BoundingBox, Triangulate, Reproject)]
+#[cfg_attr(
+    not(feature = "new-geometry"),
+    enum_dispatch(BoundingBox, Triangulate, Reproject)
+)]
+#[cfg_attr(
+    feature = "new-geometry",
+    enum_dispatch(BoundingBox, Triangulate, Reproject, Validate)
+)]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Euclidean3DGeometry {
     Point(Point3D),
@@ -260,14 +289,14 @@ impl Reproject for GeometryCollection {
 #[cfg(test)]
 mod bounding_box_tests {
     use super::*;
-    use coordinate::Coordinate;
+    use coordinate::CoordinateFrame;
     use point::{Point2D, Point3D};
     use polygon::Polygon2D;
 
     #[test]
     fn dispatch_reaches_inline_leaf_through_dimension_enum() {
         let g = Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             [1.0, 2.0, 3.0],
         )));
         assert_eq!(
@@ -283,7 +312,7 @@ mod bounding_box_tests {
     fn dispatch_reaches_boxed_leaf_through_dimension_enum() {
         // The `Box<Polygon2D>` variant exercises the `Box<T>` blanket impl.
         let p = Polygon2D::from_rings(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 0.0]],
             Vec::<Vec<[f64; 2]>>::new(),
         );
@@ -305,11 +334,11 @@ mod bounding_box_tests {
     #[test]
     fn geometry_collection_mixing_2d_and_3d_promotes_to_3d() {
         let p2 = Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             [0.0, 0.0],
         )));
         let p3 = Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             [4.0, 4.0, 9.0],
         )));
         let gc = Geometry::GeometryCollection(GeometryCollection::new([p2, p3]));
@@ -334,7 +363,7 @@ mod bounding_box_tests {
 #[cfg(test)]
 mod triangulate_tests {
     use super::*;
-    use coordinate::Coordinate;
+    use coordinate::CoordinateFrame;
     use point::Point2D;
     use polygon::{Polygon2D, Polygon3D};
     use polygon_mesh::{PolygonMesh2D, PolygonMesh3D, PolygonMesh3DData};
@@ -344,7 +373,7 @@ mod triangulate_tests {
     /// A spread of supported inputs covering both embeddings, holes, elevation,
     /// multi-face meshes, and a degenerate face.
     fn sample_geometries() -> Vec<Geometry> {
-        let e = Coordinate::Euclidean;
+        let e = CoordinateFrame::Euclidean;
         let square = [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]];
         let hole = vec![[1.0, 1.0], [3.0, 1.0], [3.0, 3.0], [1.0, 3.0], [1.0, 1.0]];
 
@@ -477,7 +506,11 @@ mod triangulate_tests {
     #[test]
     fn triangulate_dispatches_through_geometry_to_polygon() {
         let square = [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]];
-        let p = Polygon2D::from_rings(Coordinate::Euclidean, square, Vec::<Vec<[f64; 2]>>::new());
+        let p = Polygon2D::from_rings(
+            CoordinateFrame::Euclidean,
+            square,
+            Vec::<Vec<[f64; 2]>>::new(),
+        );
         let mut g = Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(p)));
         let out = g.triangulate(&mut Cache::new()).unwrap();
         match out {
@@ -491,7 +524,7 @@ mod triangulate_tests {
     #[test]
     fn triangulate_is_unsupported_for_non_polygonal_types() {
         let mut point = Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             [0.0, 0.0],
         )));
         assert!(point.triangulate(&mut Cache::new()).is_err());

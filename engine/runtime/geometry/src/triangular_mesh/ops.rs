@@ -1,5 +1,5 @@
 use super::{TriangularMesh2D, TriangularMesh3D};
-use crate::coordinate::{Coordinate, EpsgCode};
+use crate::coordinate::{CoordinateFrame, EpsgCode};
 use crate::ops::reproject::{transform_coords_2d, transform_coords_3d};
 use crate::ops::{Aabb, BoundingBox, Reproject, ReprojectionCache, UnsupportedOperation};
 
@@ -27,7 +27,7 @@ impl Reproject for TriangularMesh2D {
         target: EpsgCode,
         cache: &mut ReprojectionCache,
     ) -> crate::error::Result<()> {
-        let from = self.coordinate.require_crs()?;
+        let from = self.frame.require_crs()?;
         if from != target {
             transform_coords_2d(
                 cache,
@@ -36,7 +36,7 @@ impl Reproject for TriangularMesh2D {
                 &mut self.vertices,
                 self.z.as_deref_mut(),
             )?;
-            self.coordinate = Coordinate::Crs(target);
+            self.frame = CoordinateFrame::Crs(target);
         }
         Ok(())
     }
@@ -48,10 +48,10 @@ impl Reproject for TriangularMesh3D {
         target: EpsgCode,
         cache: &mut ReprojectionCache,
     ) -> crate::error::Result<()> {
-        let from = self.coordinate.require_crs()?;
+        let from = self.frame.require_crs()?;
         if from != target {
             transform_coords_3d(cache, from, target, self.data.vertices_mut())?;
-            self.coordinate = Coordinate::Crs(target);
+            self.frame = CoordinateFrame::Crs(target);
         }
         Ok(())
     }
@@ -60,12 +60,12 @@ impl Reproject for TriangularMesh3D {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::coordinate::Coordinate;
+    use crate::coordinate::CoordinateFrame;
 
     #[test]
     fn triangular_mesh2d_box() {
         let m = TriangularMesh2D::from_soup(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             [[0.0, 0.0], [3.0, 0.0], [3.0, 2.0]],
         );
         assert_eq!(
@@ -80,7 +80,7 @@ mod tests {
     #[test]
     fn triangular_mesh3d_box() {
         let m = TriangularMesh3D::from_soup(
-            Coordinate::Euclidean,
+            CoordinateFrame::Euclidean,
             [[0.0, 0.0, 0.0], [3.0, 0.0, 1.0], [3.0, 2.0, -1.0]],
         );
         assert_eq!(

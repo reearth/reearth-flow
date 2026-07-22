@@ -143,14 +143,16 @@ const DebugPreview: React.FC<Props> = ({
                 )}
               </div>
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <IconButton
-                    className="w-[25px]"
-                    tooltipText={t("Additional actions")}
-                    tooltipOffset={12}
-                    icon={<DotsThreeVerticalIcon size={18} />}
-                  />
-                </DropdownMenuTrigger>
+                <DropdownMenuTrigger
+                  render={
+                    <IconButton
+                      className="w-[25px]"
+                      tooltipText={t("Additional actions")}
+                      tooltipOffset={12}
+                      icon={<DotsThreeVerticalIcon size={18} />}
+                    />
+                  }
+                />
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={handleGeoViewerReset}>
                     <CornersOutIcon />
@@ -207,14 +209,16 @@ const DebugPreview: React.FC<Props> = ({
                 )}
               </div>
               <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <IconButton
-                    className="w-[25px]"
-                    tooltipText={t("Additional actions")}
-                    tooltipOffset={12}
-                    icon={<DotsThreeVerticalIcon size={18} />}
-                  />
-                </DropdownMenuTrigger>
+                <DropdownMenuTrigger
+                  render={
+                    <IconButton
+                      className="w-[25px]"
+                      tooltipText={t("Additional actions")}
+                      tooltipOffset={12}
+                      icon={<DotsThreeVerticalIcon size={18} />}
+                    />
+                  }
+                />
                 <DropdownMenuContent align="end">
                   <DropdownMenuItem onClick={handleThreeJsReset}>
                     <TargetIcon />

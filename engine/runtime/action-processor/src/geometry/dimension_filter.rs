@@ -6,7 +6,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
 };
 use reearth_flow_types::GeometryValue;
 use serde_json::Value;
@@ -19,11 +19,11 @@ pub struct DimensionFilterFactory;
 
 impl ProcessorFactory for DimensionFilterFactory {
     fn name(&self) -> &str {
-        "DimensionFilter"
+        "Dimension Filter"
     }
 
     fn description(&self) -> &str {
-        "Filter Features by Geometry Dimension"
+        "Routes features to output ports based on the number of geometry dimensions."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -35,11 +35,11 @@ impl ProcessorFactory for DimensionFilterFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["2d", "3d"]
+        &["3d", "geometry"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
@@ -125,6 +125,6 @@ impl Processor for DimensionFilter {
     }
 
     fn name(&self) -> &str {
-        "DimensionFilter"
+        "Dimension Filter"
     }
 }

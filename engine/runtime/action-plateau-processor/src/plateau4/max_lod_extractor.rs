@@ -4,7 +4,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{Context, ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, CitygmlFeatureExt, Feature};
 use schemars::JsonSchema;
@@ -33,11 +33,11 @@ impl ProcessorFactory for MaxLodExtractorFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -160,7 +160,7 @@ impl MaxLodExtractor {
                     self.max_lod_attribute.clone(),
                     AttributeValue::Number(serde_json::Number::from(buffer.max_lod)),
                 );
-                fw.send(ctx.as_executor_context(feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.as_executor_context(feature, FEATURES_PORT.clone()));
             }
         });
     }

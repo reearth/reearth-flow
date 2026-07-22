@@ -39,7 +39,7 @@
   ],
   "intermediateAssertions": [
     {
-      "outputPort": "38b40d0a-42a8-43e5-8978-898a723fddc8.default",
+      "outputPort": "38b40d0a-42a8-43e5-8978-898a723fddc8.features",
       "expectedFile": "intermediate_incorrect_num_vertices.jsonl",
       "jsonFilter": "{attributes}"
     }

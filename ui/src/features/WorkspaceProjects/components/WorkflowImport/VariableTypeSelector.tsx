@@ -21,7 +21,11 @@ export default function VariableTypeSelector({
 }: VariableTypeSelectorProps) {
   const { userFacingName } = useWorkflowVars();
   return (
-    <Select value={value} onValueChange={onValueChange} disabled={disabled}>
+    <Select
+      value={value}
+      onValueChange={(v) => v != null && onValueChange(v)}
+      disabled={disabled}
+      items={userFacingName}>
       <SelectTrigger className="w-full">
         <SelectValue placeholder="Select variable type" />
       </SelectTrigger>

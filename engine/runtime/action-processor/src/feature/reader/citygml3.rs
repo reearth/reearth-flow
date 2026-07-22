@@ -7,7 +7,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attributes, Code, CompiledCode};
 use schemars::JsonSchema;
@@ -24,7 +24,7 @@ pub(crate) struct FeatureCityGml3ReaderFactory;
 
 impl ProcessorFactory for FeatureCityGml3ReaderFactory {
     fn name(&self) -> &str {
-        "FeatureCityGml3Reader"
+        "Feature CityGML 3 Reader"
     }
 
     fn description(&self) -> &str {
@@ -40,11 +40,11 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -92,7 +92,7 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
     }
 }
 
-/// # FeatureCityGml3Reader Parameters
+/// # Feature CityGML 3 Reader Parameters
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct FeatureCityGml3ReaderParam {
@@ -223,13 +223,13 @@ impl Processor for FeatureCityGml3Reader {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
                 feature,
-                DEFAULT_PORT.clone(),
+                FEATURES_PORT.clone(),
             ));
         }
         Ok(())
     }
 
     fn name(&self) -> &str {
-        "FeatureCityGml3Reader"
+        "Feature CityGML 3 Reader"
     }
 }

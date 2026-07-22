@@ -95,7 +95,8 @@ const TriggerEditDialog: React.FC<Props> = ({
             </Label>
             <Select
               value={updatedEventSource}
-              onValueChange={handleEventSourceChange}>
+              onValueChange={(v) => v != null && handleEventSourceChange(v)}
+              items={eventSources}>
               <SelectTrigger>
                 <SelectValue placeholder={eventSources[updatedEventSource]} />
               </SelectTrigger>
@@ -127,8 +128,10 @@ const TriggerEditDialog: React.FC<Props> = ({
               <Select
                 value={updatedTimeInterval || "EVERY_DAY"}
                 onValueChange={(value) =>
+                  value != null &&
                   handleTimeIntervalChange(value.toString() as TimeInterval)
-                }>
+                }
+                items={timeIntervals}>
                 <SelectTrigger>
                   <SelectValue placeholder={timeIntervals.EVERY_DAY} />
                 </SelectTrigger>

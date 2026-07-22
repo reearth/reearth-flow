@@ -12,7 +12,7 @@ use reearth_flow_gltf::{BoundingVolume, MetadataEncoder};
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
+use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
 use reearth_flow_types::material::{self, Material};
 use reearth_flow_types::{attribute_value_to_citygml_attribute, Code, GeometryType};
 use schemars::JsonSchema;
@@ -30,7 +30,7 @@ pub struct GltfWriterSinkFactory;
 
 impl SinkFactory for GltfWriterSinkFactory {
     fn name(&self) -> &str {
-        "GltfWriter"
+        "glTF Writer"
     }
 
     fn description(&self) -> &str {
@@ -46,7 +46,7 @@ impl SinkFactory for GltfWriterSinkFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn prepare(&self) -> Result<(), BoxedError> {
@@ -148,7 +148,7 @@ pub struct GltfWriter {
     schema_key: Option<String>,
 }
 
-/// # GltfWriter Parameters
+/// # glTF Writer Parameters
 ///
 /// Configuration for writing features to GLTF 3D format.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -169,7 +169,7 @@ pub struct GltfWriterParam {
 
 impl Sink for GltfWriter {
     fn name(&self) -> &str {
-        "GltfWriter"
+        "glTF Writer"
     }
 
     #[cfg(not(feature = "new-geometry"))]
@@ -696,7 +696,7 @@ mod tests {
         let result = GltfWriterSinkFactory.build(
             ctx,
             EventHub::new(10),
-            "GltfWriter".to_string(),
+            "glTF Writer".to_string(),
             Some(with),
         );
         assert!(
@@ -714,7 +714,7 @@ mod tests {
         let result = GltfWriterSinkFactory.build(
             ctx,
             EventHub::new(10),
-            "GltfWriter".to_string(),
+            "glTF Writer".to_string(),
             Some(with),
         );
         assert!(

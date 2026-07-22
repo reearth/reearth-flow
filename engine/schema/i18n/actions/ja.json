@@ -1,11 +1,11 @@
 {
   "actions": [
     {
-      "name": "AppearanceRemover",
+      "name": "Appearance Remover",
       "description": "CityGMLジオメトリから外観情報（マテリアル、テクスチャ）を削除する"
     },
     {
-      "name": "AreaCalculator",
+      "name": "Area Calculator",
       "description": "ポリゴンジオメトリの平面または傾斜面積を計算し、結果を属性として追加する",
       "parameterI18n": {
         "": {
@@ -27,11 +27,11 @@
       }
     },
     {
-      "name": "AreaOnAreaOverlayer",
+      "name": "Area On Area Overlayer",
       "description": "あるエリアの上に別のエリアを重ね合わせる",
       "parameterI18n": {
         "": {
-          "title": "AreaOnAreaOverlayer パラメータ",
+          "title": "Area On Area Overlayer パラメータ",
           "description": "エリアオーバーレイ解析の実行方法を設定する"
         },
         "accumulationMode": {
@@ -57,7 +57,7 @@
       }
     },
     {
-      "name": "AttributeAggregator",
+      "name": "Attribute Aggregator",
       "description": "属性に基づいて地物をグルーピングする",
       "parameterI18n": {
         "": {
@@ -111,11 +111,11 @@
       }
     },
     {
-      "name": "AttributeBulkArrayJoiner",
+      "name": "Attribute Bulk Array Joiner",
       "description": "配列属性を単一の値に結合する",
       "parameterI18n": {
         "": {
-          "title": "AttributeBulkArrayJoiner パラメータ",
+          "title": "Attribute Bulk Array Joiner パラメータ",
           "description": "単一の値に結合する配列属性を設定する"
         },
         "ignoreAttributes": {
@@ -125,7 +125,7 @@
       }
     },
     {
-      "name": "AttributeConversionTable",
+      "name": "Attribute Conversion Table",
       "description": "ルックアップテーブルを使用して地物属性を変換する",
       "parameterI18n": {
         "": {
@@ -166,11 +166,11 @@
       }
     },
     {
-      "name": "AttributeDuplicateFilter",
+      "name": "Attribute Duplicate Filter",
       "description": "重複した属性を持つ地物をフィルタリングする",
       "parameterI18n": {
         "": {
-          "title": "AttributeDuplicateFilter パラメータ"
+          "title": "Attribute Duplicate Filter パラメータ"
         },
         "filterBy": {
           "title": "フィルター属性",
@@ -179,11 +179,11 @@
       }
     },
     {
-      "name": "AttributeFilePathInfoExtractor",
+      "name": "Attribute File Path Info Extractor",
       "description": "属性からファイルパス情報を抽出する",
       "parameterI18n": {
         "": {
-          "title": "AttributeFilePathInfoExtractor パラメータ"
+          "title": "Attribute File Path Info Extractor パラメータ"
         },
         "attribute": {
           "title": "ソースパス属性",
@@ -192,7 +192,7 @@
       }
     },
     {
-      "name": "AttributeFlattener",
+      "name": "Attribute Flattener",
       "description": "ネストされた属性のフラット化",
       "parameterI18n": {
         "": {
@@ -205,7 +205,7 @@
       }
     },
     {
-      "name": "AttributeManager",
+      "name": "Attribute Manager",
       "description": "フィーチャー属性の作成、変換、名前変更、削除",
       "parameterI18n": {
         "": {
@@ -232,7 +232,7 @@
       }
     },
     {
-      "name": "AttributeMapper",
+      "name": "Attribute Mapper",
       "description": "属性をマッピングする",
       "parameterI18n": {
         "": {
@@ -267,11 +267,11 @@
       }
     },
     {
-      "name": "AttributeRangeMapper",
+      "name": "Attribute Range Mapper",
       "description": "属性値を範囲にマッピングし、対応する出力値を割り当てます",
       "parameterI18n": {
         "": {
-          "title": "AttributeRangeMapper パラメータ"
+          "title": "Attribute Range Mapper パラメータ"
         },
         "defaultValue": {
           "title": "デフォルト値",
@@ -308,11 +308,11 @@
       }
     },
     {
-      "name": "BoundaryExtractor",
+      "name": "Boundary Extractor",
       "description": "ジオメトリの境界を抽出する。ソリッド/メッシュは境界サーフェスを、サーフェスは境界エッジを、閉じたサーフェスは空のジオメトリを返す",
       "parameterI18n": {
         "": {
-          "title": "BoundaryExtractor パラメータ",
+          "title": "Boundary Extractor パラメータ",
           "description": "ジオメトリから境界を抽出する設定"
         },
         "exteriorOnly": {
@@ -324,7 +324,7 @@
       }
     },
     {
-      "name": "BoundsExtractor",
+      "name": "Bounds Extractor",
       "description": "境界を抽出する",
       "parameterI18n": {
         "": {
@@ -387,7 +387,7 @@
       }
     },
     {
-      "name": "BulkAttributeRenamer",
+      "name": "Bulk Attribute Renamer",
       "description": "属性名にプレフィックス／サフィックスを追加・削除、またはテキスト置換して一括でリネームする",
       "parameterI18n": {
         "": {
@@ -451,7 +451,7 @@
       }
     },
     {
-      "name": "CSGBuilder",
+      "name": "CSG Builder",
       "description": "一対のソリッドジオメトリ（左・右）からCSG（構成的立体幾何学）表現を構築する。和・積・差（左－右）を検出するが、結果ジオメトリは計算しない。ツリーを評価するにはCSGEvaluatorを使用してください。",
       "parameterI18n": {
         "": {
@@ -473,7 +473,7 @@
       }
     },
     {
-      "name": "CSGEvaluator",
+      "name": "CSG Evaluator",
       "description": "CSG（構成的立体幾何学）ツリーを評価してソリッドジオメトリを生成する。CSG表現を受け取り、ブール演算から得られるメッシュを計算する。",
       "parameterI18n": {
         "": {
@@ -487,151 +487,7 @@
       }
     },
     {
-      "name": "CenterPointReplacer",
-      "description": "地物のジオメトリを、地物のバウンディングボックス中央や質量中心、または地物領域内に確実に収まる点で置き換える",
-      "parameterI18n": {
-        "": {
-          "title": "CenterPointReplacer パラメータ"
-        },
-        "mode": {
-          "description": "置換する中心点の計算方法"
-        }
-      },
-      "enumI18n": {
-        "CenterPointMode": {
-          "anyInsidePoint": {
-            "description": "ジオメトリ内部に確実に収まる点を計算する（到達不能極）。"
-          },
-          "boundingBoxCenter": {
-            "description": "ジオメトリのバウンディングボックスの中心を計算する。"
-          },
-          "centerOfGravity": {
-            "description": "ジオメトリの重心（セントロイド）を計算する。"
-          }
-        }
-      }
-    },
-    {
-      "name": "Cesium3DTilesWriter",
-      "description": "地物をファイルに書き出す",
-      "parameterI18n": {
-        "": {
-          "title": "Cesium3DTilesWriter パラメータ"
-        },
-        "attachTexture": {
-          "title": "テクスチャを添付",
-          "description": "生成するタイルにテクスチャ情報を含めるか"
-        },
-        "compressOutput": {
-          "title": "圧縮出力パス",
-          "description": "圧縮アーカイブ出力の出力先パス（任意）"
-        },
-        "dracoCompression": {
-          "title": "Draco 圧縮",
-          "description": "Draco 圧縮を使用する。デフォルトは true。"
-        },
-        "maxZoom": {
-          "title": "最大ズームレベル",
-          "description": "タイル生成の最大ズームレベル（0〜24）"
-        },
-        "minZoom": {
-          "title": "最小ズームレベル",
-          "description": "タイル生成の最小ズームレベル（0〜24）"
-        },
-        "output": {
-          "title": "出力パス",
-          "description": "3D タイルを書き出すディレクトリパス"
-        },
-        "schemaKey": {
-          "title": "スキーマキー",
-          "description": "スキーマタイプを識別し出力ファイル名を決定する属性キー。同じ値を持つすべてのフィーチャーは同一ファイルに書き出される。この属性は出力から除外される。"
-        },
-        "skipUnexposedAttributes": {
-          "title": "非公開属性をスキップ",
-          "description": "ダブルアンダースコアで始まる属性をスキップする"
-        }
-      }
-    },
-    {
-      "name": "CityGmlReader",
-      "description": "CityGMLファイルから3D都市モデルを読み込む",
-      "parameterI18n": {
-        "": {
-          "title": "CityGmlReader パラメータ",
-          "description": "CityGML ファイルを 3D 都市モデルとして読み込む設定"
-        },
-        "dataset": {
-          "title": "ファイルパス",
-          "description": "入力ファイルのパスを返す式（例: \"data.csv\" や変数参照）"
-        },
-        "flatten": {},
-        "inline": {
-          "title": "インラインコンテンツ",
-          "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式"
-        }
-      }
-    },
-    {
-      "name": "CityGmlWriter",
-      "description": "地物をCityGML 2.0ファイルに書き出す",
-      "parameterI18n": {
-        "": {
-          "title": "CityGmlWriter パラメータ"
-        },
-        "epsgCode": {
-          "description": "座標参照系の EPSG コード"
-        },
-        "lodFilter": {
-          "description": "含める LOD レベル（例: [0, 1, 2]）。空の場合はすべての LOD を含む。"
-        },
-        "output": {
-          "description": "出力ファイルパスの式"
-        },
-        "prettyPrint": {
-          "description": "インデント付きでフォーマット出力するか（デフォルト: true）"
-        }
-      }
-    },
-    {
-      "name": "Clipper",
-      "description": "クリッパー地物を用いて候補地物を分割し、内部または外部の部分を別々に出力する"
-    },
-    {
-      "name": "ClosedCurveFilter",
-      "description": "曲線が閉ループになっているか確認する"
-    },
-    {
-      "name": "ConvexHullAccumulator",
-      "description": "凸包を作成する",
-      "parameterI18n": {
-        "": {
-          "title": "ConvexHullAccumulator パラメータ"
-        },
-        "groupBy": {
-          "title": "グループ化属性",
-          "description": "凸包を作成する前にフィーチャーをグループ化する属性。各グループに固有の凸包が生成される。"
-        }
-      }
-    },
-    {
-      "name": "CoordinateExtractor",
-      "description": "ジオメトリの頂点から座標を地物の属性として抽出する",
-      "parameterI18n": {
-        "": {
-          "title": "CoordinateExtractor パラメータ"
-        },
-        "defaultZValue": {
-          "title": "デフォルト Z 値",
-          "description": "Z 座標を持たない 2D ジオメトリに使用する Z 値"
-        },
-        "mode": {
-          "title": "抽出モード",
-          "description": "ジオメトリの頂点から座標を抽出する方法"
-        }
-      }
-    },
-    {
-      "name": "CsvReader",
+      "name": "CSV Reader",
       "description": "CSVファイルから地物を読み取る",
       "parameterI18n": {
         "": {
@@ -689,7 +545,7 @@
       }
     },
     {
-      "name": "CsvWriter",
+      "name": "CSV Writer",
       "description": "地物をCSVまたはTSVファイルに書き出す",
       "parameterI18n": {
         "": {
@@ -721,11 +577,11 @@
       }
     },
     {
-      "name": "CzmlReader",
+      "name": "CZML Reader",
       "description": "CZML（Cesium言語）ファイルから3D視覚化用の地理的特徴を読み取ります。時系列データや時間動的プロパティに対応",
       "parameterI18n": {
         "": {
-          "title": "CzmlReader パラメータ",
+          "title": "CZML Reader パラメータ",
           "description": "CZML ファイルを地理的フィーチャーとして読み込む設定"
         },
         "dataset": {
@@ -746,7 +602,7 @@
         },
         "timeSampling": {
           "title": "時系列サンプリング戦略",
-          "description": "CZML パケット内の時間動的プロパティの処理方法。CzmlWriter との無損失ラウンドトリップのためデフォルトは \"preserveRaw\"。"
+          "description": "CZML パケット内の時間動的プロパティの処理方法。CZML Writer との無損失ラウンドトリップのためデフォルトは \"preserveRaw\"。"
         }
       },
       "enumI18n": {
@@ -758,18 +614,18 @@
             "description": "最初のサンプルのみを保持する（静的ジオメトリ）。時系列データが不要なワークフローで使用する。"
           },
           "preserveRaw": {
-            "description": "エンティティごとに 1 つのフィーチャーとして時系列全体を埋め込む。フィーチャーのジオメトリは最初のサンプルを使用し、`czml.timeseries` にはすべての位置サンプルが JSON 配列として格納される。その他の CZML パケットプロパティ（point、path、orientation、ellipsoid など）は `czml.<key>` 属性として保持され、CzmlWriter との無損失なラウンドトリップが可能。"
+            "description": "エンティティごとに 1 つのフィーチャーとして時系列全体を埋め込む。フィーチャーのジオメトリは最初のサンプルを使用し、`czml.timeseries` にはすべての位置サンプルが JSON 配列として格納される。その他の CZML パケットプロパティ（point、path、orientation、ellipsoid など）は `czml.<key>` 属性として保持され、CZML Writer との無損失なラウンドトリップが可能。"
           }
         }
       }
     },
     {
-      "name": "CzmlWriter",
+      "name": "CZML Writer",
       "description": "地物をCZMLファイルとしてエクスポートします。時間動的エンティティや時系列位置データに対応",
       "parameterI18n": {
         "": {
-          "title": "CzmlWriter パラメータ",
-          "description": "地理的フィーチャーを CZML ファイルに書き出す設定。静的エンティティと補間位置サンプルを持つ時間動的エンティティの両方に対応。\n\n## 時系列の設定\n\nCesium で時間アニメーションエンティティを作成するには、以下の最初の 2 つのパラメータを設定する。数値タイムオフセット使用時のみ `epoch` を設定: 1. `timeField` - 時刻値を含む属性 2. `groupTimeseriesBy` - フィーチャーをエンティティにグループ化する属性 3. `epoch`（任意）- `timeField` が数値オフセットを含む場合の基準時刻\n\n### ISO 8601 タイムスタンプの例: ```yaml - action: CzmlWriter with: output: \"vehicles.czml\" timeField: \"timestamp\"           # 「2024-01-01T00:00:00Z」などを含む groupTimeseriesBy: \"vehicleId\"   # 車両 ID でグループ化 interpolationAlgorithm: \"LAGRANGE\" interpolationDegree: 5 ```\n\n### 数値タイムオフセットの例: ```yaml - action: CzmlWriter with: output: \"sensors.czml\" timeField: \"timeOffset\"          # 数値（0、60、120 など）を含む groupTimeseriesBy: \"sensorId\" epoch: \"2024-01-01T00:00:00Z\"    # オフセットの基準時刻 interpolationAlgorithm: \"LINEAR\" ```"
+          "title": "CZML Writer パラメータ",
+          "description": "地理的フィーチャーを CZML ファイルに書き出す設定。静的エンティティと補間位置サンプルを持つ時間動的エンティティの両方に対応。\n\n## 時系列の設定\n\nCesium で時間アニメーションエンティティを作成するには、以下の最初の 2 つのパラメータを設定する。数値タイムオフセット使用時のみ `epoch` を設定: 1. `timeField` - 時刻値を含む属性 2. `groupTimeseriesBy` - フィーチャーをエンティティにグループ化する属性 3. `epoch`（任意）- `timeField` が数値オフセットを含む場合の基準時刻\n\n### ISO 8601 タイムスタンプの例: ```yaml - action: CZML Writer with: output: \"vehicles.czml\" timeField: \"timestamp\"           # 「2024-01-01T00:00:00Z」などを含む groupTimeseriesBy: \"vehicleId\"   # 車両 ID でグループ化 interpolationAlgorithm: \"LAGRANGE\" interpolationDegree: 5 ```\n\n### 数値タイムオフセットの例: ```yaml - action: CZML Writer with: output: \"sensors.czml\" timeField: \"timeOffset\"          # 数値（0、60、120 など）を含む groupTimeseriesBy: \"sensorId\" epoch: \"2024-01-01T00:00:00Z\"    # オフセットの基準時刻 interpolationAlgorithm: \"LINEAR\" ```"
         },
         "colorAttribute": {
           "title": "カラー属性",
@@ -827,11 +683,159 @@
       }
     },
     {
-      "name": "DateTimeConverter",
+      "name": "Center Point Replacer",
+      "description": "地物のジオメトリを、地物のバウンディングボックス中央や質量中心、または地物領域内に確実に収まる点で置き換える",
+      "parameterI18n": {
+        "": {
+          "title": "Center Point Replacer パラメータ"
+        },
+        "mode": {
+          "description": "置換する中心点の計算方法"
+        }
+      },
+      "enumI18n": {
+        "CenterPointMode": {
+          "anyInsidePoint": {
+            "description": "ジオメトリ内部に確実に収まる点を計算する（到達不能極）。"
+          },
+          "boundingBoxCenter": {
+            "description": "ジオメトリのバウンディングボックスの中心を計算する。"
+          },
+          "centerOfGravity": {
+            "description": "ジオメトリの重心（セントロイド）を計算する。"
+          }
+        }
+      }
+    },
+    {
+      "name": "Cesium 3D Tiles Writer",
+      "description": "地物をファイルに書き出す",
+      "parameterI18n": {
+        "": {
+          "title": "Cesium3DTilesWriter パラメータ"
+        },
+        "attachTexture": {
+          "title": "テクスチャを添付",
+          "description": "生成するタイルにテクスチャ情報を含めるか"
+        },
+        "compressOutput": {
+          "title": "圧縮出力パス",
+          "description": "圧縮アーカイブ出力の出力先パス（任意）"
+        },
+        "computeFlatNormal": {
+          "title": "フラット法線を計算",
+          "description": "ライティング用にポリゴンごとのフラット法線を計算する。デフォルトは true。無効にすると法線は出力されずメッシュは小さくなるが、タイルにライティング情報が含まれないため、ビューアー側でフラット法線を導出する必要がある。"
+        },
+        "dracoCompression": {
+          "title": "Draco 圧縮",
+          "description": "Draco 圧縮を使用する。デフォルトは true。"
+        },
+        "maxZoom": {
+          "title": "最大ズームレベル",
+          "description": "タイル生成の最大ズームレベル（0〜24）"
+        },
+        "minZoom": {
+          "title": "最小ズームレベル",
+          "description": "タイル生成の最小ズームレベル（0〜24）"
+        },
+        "output": {
+          "title": "出力パス",
+          "description": "3D タイルを書き出すディレクトリパス"
+        },
+        "schemaKey": {
+          "title": "スキーマキー",
+          "description": "スキーマタイプを識別し出力ファイル名を決定する属性キー。同じ値を持つすべてのフィーチャーは同一ファイルに書き出される。この属性は出力から除外される。"
+        },
+        "skipUnexposedAttributes": {
+          "title": "非公開属性をスキップ",
+          "description": "ダブルアンダースコアで始まる属性をスキップする"
+        }
+      }
+    },
+    {
+      "name": "CityGML Reader",
+      "description": "CityGMLファイルから3D都市モデルを読み込む",
+      "parameterI18n": {
+        "": {
+          "title": "CityGmlReader パラメータ",
+          "description": "CityGML ファイルを 3D 都市モデルとして読み込む設定"
+        },
+        "dataset": {
+          "title": "ファイルパス",
+          "description": "入力ファイルのパスを返す式（例: \"data.csv\" や変数参照）"
+        },
+        "flatten": {},
+        "inline": {
+          "title": "インラインコンテンツ",
+          "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式"
+        }
+      }
+    },
+    {
+      "name": "CityGML Writer",
+      "description": "地物をCityGML 2.0ファイルに書き出す",
+      "parameterI18n": {
+        "": {
+          "title": "CityGmlWriter パラメータ"
+        },
+        "epsgCode": {
+          "description": "座標参照系の EPSG コード"
+        },
+        "lodFilter": {
+          "description": "含める LOD レベル（例: [0, 1, 2]）。空の場合はすべての LOD を含む。"
+        },
+        "output": {
+          "description": "出力ファイルパスの式"
+        },
+        "prettyPrint": {
+          "description": "インデント付きでフォーマット出力するか（デフォルト: true）"
+        }
+      }
+    },
+    {
+      "name": "Clipper",
+      "description": "クリッパー地物を用いて候補地物を分割し、内部または外部の部分を別々に出力する"
+    },
+    {
+      "name": "Closed Curve Filter",
+      "description": "曲線が閉ループになっているか確認する"
+    },
+    {
+      "name": "Convex Hull Accumulator",
+      "description": "凸包を作成する",
+      "parameterI18n": {
+        "": {
+          "title": "Convex Hull Accumulator パラメータ"
+        },
+        "groupBy": {
+          "title": "グループ化属性",
+          "description": "凸包を作成する前にフィーチャーをグループ化する属性。各グループに固有の凸包が生成される。"
+        }
+      }
+    },
+    {
+      "name": "Coordinate Extractor",
+      "description": "ジオメトリの頂点から座標を地物の属性として抽出する",
+      "parameterI18n": {
+        "": {
+          "title": "Coordinate Extractor パラメータ"
+        },
+        "defaultZValue": {
+          "title": "デフォルト Z 値",
+          "description": "Z 座標を持たない 2D ジオメトリに使用する Z 値"
+        },
+        "mode": {
+          "title": "抽出モード",
+          "description": "ジオメトリの頂点から座標を抽出する方法"
+        }
+      }
+    },
+    {
+      "name": "Date Time Converter",
       "description": "日時値を異なるフォーマット間で変換する",
       "parameterI18n": {
         "": {
-          "title": "DateTimeConverter パラメータ"
+          "title": "Date Time Converter パラメータ"
         },
         "attribute": {
           "description": "変換する日時値を含む属性"
@@ -884,11 +888,11 @@
       }
     },
     {
-      "name": "DimensionFilter",
-      "description": "地物を次元に基づいてフィルタリングする"
+      "name": "Dimension Filter",
+      "description": "ジオメトリの次元数に基づいて地物を出力ポートに振り分ける"
     },
     {
-      "name": "DirectoryDecompressor",
+      "name": "Directory Decompressor",
       "description": "アーカイブからディレクトリを展開する",
       "parameterI18n": {
         "": {
@@ -942,15 +946,15 @@
       }
     },
     {
-      "name": "EchoProcessor",
-      "description": "地物をエコー出力する"
+      "name": "Echo Processor",
+      "description": "地物をログにエコー出力し、変更せずにそのまま通過させる"
     },
     {
-      "name": "EchoSink",
-      "description": "地物をエコー出力する"
+      "name": "Echo Sink",
+      "description": "地物をログにエコー出力し、破棄する"
     },
     {
-      "name": "ElevationExtractor",
+      "name": "Elevation Extractor",
       "description": "地物の最初のZ座標値を抽出し、属性として格納する",
       "parameterI18n": {
         "": {
@@ -964,11 +968,11 @@
       }
     },
     {
-      "name": "ExcelWriter",
+      "name": "Excel Writer",
       "description": "地物をMicrosoft Excel形式（.xlsx）に書き出す",
       "parameterI18n": {
         "": {
-          "title": "ExcelWriter パラメータ",
+          "title": "Excel Writer パラメータ",
           "description": "フィーチャーを Microsoft Excel 形式に書き出す設定"
         },
         "output": {
@@ -994,11 +998,11 @@
       }
     },
     {
-      "name": "FeatureCityGml2Reader",
+      "name": "Feature CityGML 2 Reader",
       "description": "CityGML 2.0ファイルを読み込む。ファイル間のgml:id参照とxlink:hrefリンクを解決する",
       "parameterI18n": {
         "": {
-          "title": "FeatureCityGml2Reader パラメータ"
+          "title": "Feature CityGML 2 Reader パラメータ"
         },
         "cityGmlAttributesKey": {
           "title": "CityGML属性キー",
@@ -1027,11 +1031,11 @@
       }
     },
     {
-      "name": "FeatureCityGml3Reader",
+      "name": "Feature CityGML 3 Reader",
       "description": "CityGML 3.0ファイルを読み込む。ファイル間のgml:id参照とxlink:hrefリンクを解決する",
       "parameterI18n": {
         "": {
-          "title": "FeatureCityGml3Reader パラメータ"
+          "title": "Feature CityGML 3 Reader パラメータ"
         },
         "cityGmlAttributesKey": {
           "title": "CityGML属性キー",
@@ -1060,7 +1064,7 @@
       }
     },
     {
-      "name": "FeatureCityGmlReader",
+      "name": "Feature CityGML Reader",
       "description": "CityGMLファイルから地物を読み取る",
       "parameterI18n": {
         "": {
@@ -1082,29 +1086,29 @@
       }
     },
     {
-      "name": "FeatureCounter",
-      "description": "地物数をカウントする",
+      "name": "Feature Counter",
+      "description": "各地物に連番を割り当てて属性に格納する（属性値によるグループ化も可能）",
       "parameterI18n": {
         "": {
-          "title": "FeatureCounter パラメータ",
-          "description": "フィーチャーのカウント・グループ化方法と結果の格納先を設定する"
+          "title": "Feature Counter パラメータ",
+          "description": "地物の番号付け・グループ化方法と番号の格納先を設定する"
         },
         "countStart": {
           "title": "カウント開始値",
-          "description": "カウンターの開始値"
+          "description": "最初の地物に割り当てる値"
         },
         "groupBy": {
           "title": "グループ化属性",
-          "description": "カウント前にフィーチャーをグループ化する属性名のリスト"
+          "description": "カウント前に地物をグループ化する属性名のリスト"
         },
         "outputAttribute": {
-          "title": "出力属性",
+          "title": "カウント属性",
           "description": "カウント結果を格納する属性名"
         }
       }
     },
     {
-      "name": "FeatureCreator",
+      "name": "Feature Creator",
       "description": "式に基づいて地物を作成する",
       "parameterI18n": {
         "": {
@@ -1118,11 +1122,11 @@
       }
     },
     {
-      "name": "FeatureDuplicateFilter",
+      "name": "Feature Duplicate Filter",
       "description": "重複した地物を削除する"
     },
     {
-      "name": "FeatureFilePathExtractor",
+      "name": "Feature File Path Extractor",
       "description": "地物からファイルパスを抽出する",
       "parameterI18n": {
         "": {
@@ -1144,143 +1148,177 @@
       }
     },
     {
-      "name": "FeatureFilter",
-      "description": "条件に基づいて地物をフィルタリングする",
+      "name": "Feature Filter",
+      "description": "ユーザー定義のフィルター条件に基づいて地物を指定の出力ポートに振り分ける",
       "parameterI18n": {
         "": {
-          "title": "FeatureFilter パラメータ",
-          "description": "式に基づいてフィーチャーをフィルタリングする条件と出力ポートを設定する"
+          "title": "Feature Filter パラメータ",
+          "description": "式に基づいて地物をフィルタリングする条件と出力ポートを設定する"
         },
         "conditions": {
           "title": "フィルター条件",
-          "description": "フィルタリングされたフィーチャーをルーティングする条件と対応する出力ポートのリスト"
+          "description": "フィルタリングされた地物をルーティングする条件と対応する出力ポートのリスト"
         }
       },
       "definitionI18n": {
         "Condition": {
           "expr": {
-            "title": "条件式"
+            "title": "条件式",
+            "description": "各地物に対して評価されるブール式。true を返した地物はこの条件の出力ポートに振り分けられる"
           },
           "outputPort": {
-            "title": "出力ポート"
+            "title": "出力ポート",
+            "description": "この条件に一致した地物を受け取る出力ポートの名前"
           }
         }
       }
     },
     {
-      "name": "FeatureJoiner",
+      "name": "Feature GeoJSON Writer",
+      "parameterI18n": {
+        "": {
+          "title": "FeatureGeoJsonWriter Parameters",
+          "description": "Configuration for writing features to GeoJSON files."
+        },
+        "output": {
+          "title": "Output",
+          "description": "Path (or expression evaluated per feature) of the GeoJSON file to write. Features sharing a resolved path are written to the same file, so the expression can split features across files by attribute value."
+        }
+      }
+    },
+    {
+      "name": "Feature Joiner",
       "description": "設定可能な結合タイプで、一致する属性値に基づいてリクエスタとサプライヤの地物を結合する",
       "parameterI18n": {
         "": {
-          "title": "FeatureJoiner パラメータ",
-          "description": "属性値または式の一致に基づいてリクエスタとサプライヤのフィーチャーを結合する設定"
+          "title": "Feature Joiner パラメータ",
+          "description": "属性値または式の一致に基づいてリクエスタとサプライヤの地物を結合する設定"
         },
         "conflictResolution": {
+          "title": "競合解決",
           "description": "リクエスタとサプライヤが同じ属性を持つ場合の競合解決戦略"
         },
         "joinType": {
-          "description": "結合タイプ: inner（内部結合）、left（左外部結合）、または full（完全外部結合）"
+          "title": "結合タイプ",
+          "description": "未マッチの地物の扱い方: inner（内部結合）、left（左外部結合）、または full（完全外部結合）"
         },
         "requestorAttribute": {
-          "description": "照合に使用するリクエスタフィーチャーの属性（requestorAttributeValue の代替）"
+          "title": "リクエスタ属性",
+          "description": "照合に使用するリクエスタ地物の属性（requestorAttributeValue の代替）"
         },
         "requestorAttributeValue": {
-          "description": "リクエスタフィーチャーの照合値を評価する式（requestorAttribute の代替）"
+          "title": "リクエスタ属性値",
+          "description": "リクエスタ地物の照合値を評価する式（requestorAttribute の代替）"
         },
         "supplierAttribute": {
-          "description": "照合に使用するサプライヤフィーチャーの属性（supplierAttributeValue の代替）"
+          "title": "サプライヤ属性",
+          "description": "照合に使用するサプライヤ地物の属性（supplierAttributeValue の代替）"
         },
         "supplierAttributeValue": {
-          "description": "サプライヤフィーチャーの照合値を評価する式（supplierAttribute の代替）"
+          "title": "サプライヤ属性値",
+          "description": "サプライヤ地物の照合値を評価する式（supplierAttribute の代替）"
         }
       },
       "enumI18n": {
         "ConflictResolution": {
           "requestorWins": {
+            "title": "リクエスタ優先",
             "description": "競合時はリクエスタの属性が優先される"
           },
           "supplierWins": {
+            "title": "サプライヤ優先",
             "description": "競合時はサプライヤの属性が優先される（デフォルト）"
           }
         },
         "JoinType": {
           "full": {
-            "description": "両側のすべてのフィーチャーを出力する"
+            "title": "完全外部結合",
+            "description": "両側のすべての地物を出力する"
           },
           "inner": {
-            "description": "一致するフィーチャーのみを出力する"
+            "title": "内部結合",
+            "description": "一致する地物のみを出力する"
           },
           "left": {
-            "description": "リクエスタのすべてのフィーチャーを出力する（デフォルト）"
+            "title": "左外部結合",
+            "description": "リクエスタのすべての地物を出力する（一致の有無を問わない）"
           }
         }
       }
     },
     {
-      "name": "FeatureLodFilter",
-      "description": "詳細レベルに基づいてフィルタリングする",
+      "name": "Feature LOD Filter",
+      "description": "地物を LOD（詳細レベル）でフィルタリングし、対応する LOD 出力ポートに出力する",
       "parameterI18n": {
         "": {
-          "title": "FeatureLodFilter パラメータ",
-          "description": "詳細レベル（LOD）に基づいてフィーチャーをフィルタリングする設定"
+          "title": "Feature LOD Filter パラメータ",
+          "description": "詳細レベル（LOD）に基づいて地物をフィルタリングする設定"
         },
         "filterKey": {
-          "description": "LOD フィルタリング用にフィーチャーをグループ化する属性"
+          "title": "フィルターキー",
+          "description": "地物をグループ化する属性。グループごとに利用可能な最大 LOD が決定される"
         }
       }
     },
     {
-      "name": "FeatureMerger",
-      "description": "属性に基づいて地物をマージする",
+      "name": "Feature Merger",
+      "description": "一致する属性値に基づいてリクエスタとサプライヤの地物をマージする",
       "parameterI18n": {
         "": {
-          "title": "FeatureMerger パラメータ",
-          "description": "属性値または式の一致に基づいてリクエスタとサプライヤのフィーチャーをマージする設定"
+          "title": "Feature Merger パラメータ",
+          "description": "属性値または式の一致に基づいてリクエスタとサプライヤの地物をマージする設定"
         },
         "completeGrouped": {
-          "description": "次のグループを処理する前に、グループ化されたフィーチャーを完了するか"
+          "title": "グループ完了処理",
+          "description": "次のグループを処理する前に、グループ化された地物を完了するか"
         },
         "requestorAttribute": {
-          "description": "照合に使用するリクエスタフィーチャーの属性（requestor_attribute_value の代替）"
+          "title": "リクエスタ属性",
+          "description": "照合に使用するリクエスタ地物の属性（requestorAttributeValue の代替）"
         },
         "requestorAttributeValue": {
-          "description": "リクエスタフィーチャーの照合値を評価する式（requestor_attribute の代替）"
+          "title": "リクエスタ属性値",
+          "description": "リクエスタ地物の照合値を評価する式（requestorAttribute の代替）"
         },
         "supplierAttribute": {
-          "description": "照合に使用するサプライヤフィーチャーの属性（supplier_attribute_value の代替）"
+          "title": "サプライヤ属性",
+          "description": "照合に使用するサプライヤ地物の属性（supplierAttributeValue の代替）"
         },
         "supplierAttributeValue": {
-          "description": "サプライヤフィーチャーの照合値を評価する式（supplier_attribute の代替）"
+          "title": "サプライヤ属性値",
+          "description": "サプライヤ地物の照合値を評価する式（supplierAttribute の代替）"
         }
       }
     },
     {
-      "name": "FeatureReader",
+      "name": "Feature Reader",
       "description": "条件に基づいて地物をフィルタリングする",
       "parameterI18n": {
         "": {
-          "title": "FeatureReader パラメータ"
+          "title": "Feature Reader パラメータ"
         }
       }
     },
     {
-      "name": "FeatureSorter",
-      "description": "地物を属性でソートする",
+      "name": "Feature Sorter",
+      "description": "指定した属性に基づいて、地物を昇順または降順でソートする",
       "parameterI18n": {
         "": {
-          "title": "FeatureSorter パラメータ",
-          "description": "属性値に基づいてフィーチャーをソートする設定"
+          "title": "Feature Sorter パラメータ",
+          "description": "属性値に基づいて地物をソートする設定"
         },
         "attributes": {
-          "description": "フィーチャーのソートに使用する属性（属性の順序でソート順が決まる）"
+          "title": "ソート属性",
+          "description": "ソートに使用する属性。先に指定した属性が優先される"
         },
         "order": {
+          "title": "ソート順",
           "description": "ソート順（昇順または降順）"
         }
       }
     },
     {
-      "name": "FeatureTransformer",
+      "name": "Feature Transformer",
       "description": "式を用いて地物を変換する",
       "parameterI18n": {
         "": {
@@ -1300,30 +1338,31 @@
       }
     },
     {
-      "name": "FeatureTypeFilter",
-      "description": "地物タイプに基づいて地物をフィルタリングする",
+      "name": "Feature Type Filter",
+      "description": "CityGML の地物を地物タイプでフィルタリングする",
       "parameterI18n": {
         "": {
-          "title": "FeatureTypeFilter パラメータ",
-          "description": "フィーチャータイプに基づいてフィーチャーをフィルタリングする設定"
+          "title": "Feature Type Filter パラメータ",
+          "description": "地物タイプに基づいて地物をフィルタリングする設定"
         },
         "targetTypes": {
-          "description": "対象フィーチャータイプ"
+          "title": "対象地物タイプ",
+          "description": "一致させる CityGML 地物タイプ名のリスト（例: \"bldg:Building\"、\"tran:TrafficArea\"）"
         }
       }
     },
     {
-      "name": "FeatureWriter",
+      "name": "Feature Writer",
       "description": "地物をファイルに書き込む",
       "parameterI18n": {
         "": {
-          "title": "FeatureWriter パラメータ",
+          "title": "Feature Writer パラメータ",
           "description": "さまざまなファイル形式にフィーチャーを書き出す設定"
         }
       }
     },
     {
-      "name": "FilePathExtractor",
+      "name": "File Path Extractor",
       "description": "ディレクトリまたはアーカイブからファイルを抽出する",
       "parameterI18n": {
         "": {
@@ -1341,7 +1380,7 @@
       }
     },
     {
-      "name": "FilePropertyExtractor",
+      "name": "File Property Extractor",
       "description": "ファイルからプロパティを抽出する",
       "parameterI18n": {
         "": {
@@ -1354,11 +1393,11 @@
       }
     },
     {
-      "name": "FootprintReplacer",
+      "name": "Footprint Replacer",
       "description": "3DジオメトリをXY平面に投影して結合フットプリントを計算する（ソリッド、サーフェス、CityGML対応）"
     },
     {
-      "name": "GeoJsonReader",
+      "name": "GeoJSON Reader",
       "description": "GeoJSONファイルから地物を読み取る",
       "parameterI18n": {
         "": {
@@ -1376,7 +1415,7 @@
       }
     },
     {
-      "name": "GeoJsonWriter",
+      "name": "GeoJSON Writer",
       "description": "地物をGeoJSONファイルに書き出す",
       "parameterI18n": {
         "": {
@@ -1392,7 +1431,7 @@
       }
     },
     {
-      "name": "GeoPackageReader",
+      "name": "GeoPackage Reader",
       "description": "GeoPackage（.gpkg）ファイルからベクター地物、タイル、メタデータを読み取る",
       "parameterI18n": {
         "": {
@@ -1417,7 +1456,7 @@
       }
     },
     {
-      "name": "GeoPackageWriter",
+      "name": "GeoPackage Writer",
       "description": "地物をGeoPackage（.gpkg）ファイルに書き出す。SQLite構造、空間インデックス、メタデータテーブルを適切に作成",
       "parameterI18n": {
         "": {
@@ -1448,11 +1487,11 @@
       }
     },
     {
-      "name": "GeometryCoercer",
+      "name": "Geometry Coercer",
       "description": "地物のジオメトリを特定のジオメトリタイプに強制変換する",
       "parameterI18n": {
         "": {
-          "title": "GeometryCoercer パラメータ",
+          "title": "Geometry Coercer パラメータ",
           "description": "ジオメトリを特定のターゲットタイプに強制変換する設定"
         },
         "targetType": {
@@ -1461,7 +1500,7 @@
       }
     },
     {
-      "name": "GeometryExtractor",
+      "name": "Geometry Extractor",
       "description": "地物からジオメトリを抽出し、属性として追加する",
       "parameterI18n": {
         "": {
@@ -1475,17 +1514,17 @@
       }
     },
     {
-      "name": "GeometryFilter",
+      "name": "Geometry Filter",
       "description": "ジオメトリをタイプに基づいてフィルタリングする",
       "parameterI18n": {
         "": {
-          "title": "GeometryFilter パラメータ",
+          "title": "Geometry Filter パラメータ",
           "description": "ジオメトリタイプに基づいてフィーチャーをフィルタリングする方法を設定する"
         }
       }
     },
     {
-      "name": "GeometryPartExtractor",
+      "name": "Geometry Part Extractor",
       "description": "3Dジオメトリからジオメトリパーツ（サーフェス）を個別の地物として抽出する",
       "parameterI18n": {
         "": {
@@ -1506,11 +1545,11 @@
       }
     },
     {
-      "name": "GeometryRemover",
+      "name": "Geometry Remover",
       "description": "地物からジオメトリを削除する"
     },
     {
-      "name": "GeometryReplacer",
+      "name": "Geometry Replacer",
       "description": "地物のジオメトリを新しいジオメトリで置き換える",
       "parameterI18n": {
         "": {
@@ -1524,7 +1563,7 @@
       }
     },
     {
-      "name": "GeometrySplitter",
+      "name": "Geometry Splitter",
       "description": "ジオメトリをタイプ別に分割する",
       "parameterI18n": {
         "": {
@@ -1547,7 +1586,7 @@
       }
     },
     {
-      "name": "GeometryValidator",
+      "name": "Geometry Validator",
       "description": "地物のジオメトリを検証する",
       "parameterI18n": {
         "": {
@@ -1566,62 +1605,11 @@
       }
     },
     {
-      "name": "GeometryValueFilter",
+      "name": "Geometry Value Filter",
       "description": "値に基づいてジオメトリをフィルタリングする"
     },
     {
-      "name": "GltfReader",
-      "description": "glTF 2.0ファイルから3Dモデルを読み込む。メッシュ、ノード、シーン、ジオメトリプリミティブに対応",
-      "parameterI18n": {
-        "": {
-          "title": "GltfReader パラメータ"
-        },
-        "dataset": {
-          "title": "ファイルパス",
-          "description": "入力ファイルのパスを返す式（例: \"model.glb\" や変数参照）"
-        },
-        "includeNodes": {
-          "title": "ノードを含める",
-          "description": "true の場合、glTF シーングラフのノード階層情報をフィーチャー属性に含める"
-        },
-        "inline": {
-          "title": "インラインコンテンツ",
-          "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式"
-        },
-        "mergeMeshes": {
-          "title": "メッシュをマージ",
-          "description": "true の場合、glTF ファイルのすべてのメッシュを単一の出力フィーチャーに結合する"
-        },
-        "triangulate": {
-          "title": "三角形分割",
-          "description": "true の場合、すべてのプリミティブを三角形に変換する（将来の使用のために予約済み。現在はすべてのプリミティブが三角形として処理される）"
-        }
-      }
-    },
-    {
-      "name": "GltfWriter",
-      "description": "地物をGltfファイルに書き出す",
-      "parameterI18n": {
-        "": {
-          "title": "GltfWriter パラメータ",
-          "description": "フィーチャーを GLTF 3D 形式に書き出す設定"
-        },
-        "attachTexture": {
-          "description": "GLTF モデルにテクスチャ情報を添付するか"
-        },
-        "dracoCompression": {
-          "description": "ジオメトリに Draco 圧縮を適用する"
-        },
-        "output": {
-          "description": "出力ファイルパス。`schemaKey` が設定されている場合はディレクトリとして扱われ、各フィーチャータイプは `<output>/<schemaKeyValue>.glb` に書き出される。それ以外は、すべてのフィーチャーがこの単一ファイルに書き出される。"
-        },
-        "schemaKey": {
-          "description": "フィーチャーはこの属性でグループ化され、別々のファイルに書き出される。このキーは出力属性から除外される。"
-        }
-      }
-    },
-    {
-      "name": "GridDivider",
+      "name": "Grid Divider",
       "description": "ポリゴンを規則的なグリッドセルに分割する",
       "parameterI18n": {
         "": {
@@ -1642,11 +1630,11 @@
       }
     },
     {
-      "name": "HTTPCaller",
+      "name": "HTTP Caller",
       "description": "HTTP/HTTPSリクエストを実行し、レスポンスデータでフィーチャを強化する",
       "parameterI18n": {
         "": {
-          "title": "HTTPCaller パラメータ",
+          "title": "HTTP Caller パラメータ",
           "description": "レスポンスデータでフィーチャーを拡充する HTTP/HTTPS リクエストを設定する"
         },
         "authentication": {
@@ -1966,11 +1954,11 @@
       }
     },
     {
-      "name": "HoleCounter",
+      "name": "Hole Counter",
       "description": "ジオメトリ内の穴の数をカウントし、属性として追加する",
       "parameterI18n": {
         "": {
-          "title": "HoleCounter パラメータ",
+          "title": "Hole Counter パラメータ",
           "description": "ポリゴンジオメトリで検出した穴の数の格納先を設定する"
         },
         "outputAttribute": {
@@ -1980,11 +1968,11 @@
       }
     },
     {
-      "name": "HoleExtractor",
+      "name": "Hole Extractor",
       "description": "ジオメトリ内の穴を抽出し、属性として追加する"
     },
     {
-      "name": "HorizontalReprojector",
+      "name": "Horizontal Reprojector",
       "description": "地物のジオメトリを指定された座標系に水平再投影する",
       "parameterI18n": {
         "": {
@@ -2002,7 +1990,7 @@
       }
     },
     {
-      "name": "ImageRasterizer",
+      "name": "Image Rasterizer",
       "description": "ベクターデータをラスター画像形式に変換する",
       "parameterI18n": {
         "": {
@@ -2031,31 +2019,35 @@
       }
     },
     {
-      "name": "InputRouter",
-      "description": "サブワークフローで最初のポートを転送するアクション",
+      "name": "Input Router",
+      "description": "親ワークフローからサブワークフローへ地物を転送する",
       "parameterI18n": {
         "": {
-          "title": "InputRouter パラメータ"
+          "title": "Input Router パラメータ",
+          "description": "親ワークフローから地物を受け取るための設定"
         },
-        "routingPort": {}
+        "routingPort": {
+          "title": "ルーティングポート",
+          "description": "このルーターを通じて地物がサブワークフローに入る、親ワークフロー側のポート名"
+        }
       }
     },
     {
-      "name": "JPStandardGridAccumulator",
+      "name": "JP Standard Grid Accumulator",
       "description": "日本標準グリッドで地物を蓄積する"
     },
     {
-      "name": "JSONFragmenter",
+      "name": "JSON Fragmenter",
       "description": "JSONPathクエリに基づいてJSONドキュメントを個別の地物に分割する",
       "parameterI18n": {
         "": {
-          "title": "JSONFragmenter パラメータ",
+          "title": "JSON Fragmenter パラメータ",
           "description": "JSON ドキュメントを個別のフィーチャーに分割する設定"
         }
       }
     },
     {
-      "name": "JsonReader",
+      "name": "JSON Reader",
       "description": "JSONファイルから地物を読み込む。単一オブジェクトとオブジェクトの配列に対応",
       "parameterI18n": {
         "": {
@@ -2073,7 +2065,7 @@
       }
     },
     {
-      "name": "JsonWriter",
+      "name": "JSON Writer",
       "description": "地物をJSONファイルに書き出す",
       "parameterI18n": {
         "": {
@@ -2089,11 +2081,11 @@
       }
     },
     {
-      "name": "LineOnLineOverlayer",
+      "name": "Line On Line Overlayer",
       "description": "交点を点地物に変換し、元の交差したラインの属性リストを結合して含めることができる",
       "parameterI18n": {
         "": {
-          "title": "LineOnLineOverlayer パラメータ",
+          "title": "Line On Line Overlayer パラメータ",
           "description": "ラインフィーチャー間の交点を検出する設定"
         },
         "groupBy": {},
@@ -2104,11 +2096,11 @@
       }
     },
     {
-      "name": "ListConcatenator",
+      "name": "List Concatenator",
       "description": "リストの各要素から特定の属性を取り出し、一つの文字列に連結する",
       "parameterI18n": {
         "": {
-          "title": "ListConcatenator パラメータ",
+          "title": "List Concatenator パラメータ",
           "description": "リスト要素から特定の属性を取り出して連結する設定"
         },
         "attribute": {
@@ -2126,7 +2118,7 @@
       }
     },
     {
-      "name": "ListExploder",
+      "name": "List Exploder",
       "description": "リスト属性を複数の要素に分解する",
       "parameterI18n": {
         "": {
@@ -2139,11 +2131,11 @@
       }
     },
     {
-      "name": "ListIndexer",
+      "name": "List Indexer",
       "description": "特定のリスト要素の属性を地物のメイン属性としてコピーする",
       "parameterI18n": {
         "": {
-          "title": "ListIndexer パラメータ",
+          "title": "List Indexer パラメータ",
           "description": "特定のリスト要素の属性をメインのフィーチャー属性にコピーする設定"
         },
         "copiedAttributePrefix": {
@@ -2161,7 +2153,7 @@
       }
     },
     {
-      "name": "MVTWriter",
+      "name": "MVT Writer",
       "description": "地物をファイルに書き出す",
       "parameterI18n": {
         "": {
@@ -2207,11 +2199,11 @@
       }
     },
     {
-      "name": "NeighborFinder",
+      "name": "Neighbor Finder",
       "description": "空間的な近接性に基づいて、各基本地物に対して最も近い候補地物を見つける",
       "parameterI18n": {
         "": {
-          "title": "NeighborFinder パラメータ",
+          "title": "Neighbor Finder パラメータ",
           "description": "基本フィーチャーと候補フィーチャーの間の空間的近傍を検索する設定"
         },
         "attributePrefix": {
@@ -2265,15 +2257,15 @@
       }
     },
     {
-      "name": "NoopProcessor",
-      "description": "地物に対して何も処理しない"
+      "name": "Noop Processor",
+      "description": "地物を変更せずにそのまま通過させる"
     },
     {
-      "name": "NoopSink",
-      "description": "最終的な処理を行わない"
+      "name": "Noop Sink",
+      "description": "受け取ったすべての地物を破棄する"
     },
     {
-      "name": "NullAttributeMapper",
+      "name": "Null Attribute Mapper",
       "description": "null値の属性を設定されたデフォルト値に置き換える",
       "parameterI18n": {
         "": {
@@ -2340,11 +2332,11 @@
       }
     },
     {
-      "name": "ObjReader",
+      "name": "OBJ Reader",
       "description": "Wavefront OBJファイルから3Dモデルを読み込む。頂点、面、法線、テクスチャ座標、マテリアルに対応",
       "parameterI18n": {
         "": {
-          "title": "ObjReader パラメータ",
+          "title": "OBJ Reader パラメータ",
           "description": "頂点、面、法線、テクスチャ座標、マテリアル定義に対応した Wavefront OBJ 3D モデルファイルを読み込む設定"
         },
         "dataset": {
@@ -2382,11 +2374,11 @@
       }
     },
     {
-      "name": "ObjWriter",
+      "name": "OBJ Writer",
       "description": "3D地物をWavefront OBJ形式で書き出す。オプションのマテリアル（MTL）ファイルに対応",
       "parameterI18n": {
         "": {
-          "title": "ObjWriter パラメータ",
+          "title": "OBJ Writer パラメータ",
           "description": "3D フィーチャーを Wavefront OBJ 形式に書き出す設定"
         },
         "output": {
@@ -2430,11 +2422,11 @@
       }
     },
     {
-      "name": "OrientationExtractor",
+      "name": "Orientation Extractor",
       "description": "地物のジオメトリの方向を抽出し、属性として追加する",
       "parameterI18n": {
         "": {
-          "title": "OrientationExtractor パラメータ",
+          "title": "Orientation Extractor パラメータ",
           "description": "抽出したポリゴンの方向情報の格納先を設定する"
         },
         "outputAttribute": {
@@ -2444,13 +2436,17 @@
       }
     },
     {
-      "name": "OutputRouter",
-      "description": "サブワークフローで最後のポートを転送するアクション",
+      "name": "Output Router",
+      "description": "サブワークフローから親ワークフローへ地物を転送する",
       "parameterI18n": {
         "": {
-          "title": "OutputRouter パラメータ"
+          "title": "Output Router パラメータ",
+          "description": "親ワークフローへ地物を返すための設定"
         },
-        "routingPort": {}
+        "routingPort": {
+          "title": "ルーティングポート",
+          "description": "サブワークフローの地物を親ワークフローに公開する出力ポート名"
+        }
       }
     },
     {
@@ -2559,7 +2555,9 @@
         "": {
           "title": "BuildingUsageAttributeValidator パラメータ"
         },
-        "codelistsPath": {}
+        "codelistsPath": {
+          "description": "PLATEAU コードリストディレクトリのパスを表す式"
+        }
       }
     },
     {
@@ -2788,7 +2786,7 @@
           "description": "リストアイテム内の GML ID の属性名（デフォルト: \"gmlId\"）"
         },
         "listAttribute": {
-          "description": "AreaOnAreaOverlayer からの重複フィーチャーのリストを含む属性名（デフォルト: \"list\"）"
+          "description": "Area On Area Overlayer からの重複フィーチャーのリストを含む属性名（デフォルト: \"list\"）"
         },
         "pairIdAttribute": {
           "description": "ペア ID を格納する属性名（デフォルト: \"pair_id\"）"
@@ -2839,6 +2837,66 @@
       }
     },
     {
+      "name": "PLATEAU6.BuildingPartConnectivityChecker",
+      "description": "3Dの境界サーフェスマッチングを使用して、同一建物内のBuildingPart間の接続性を確認する",
+      "parameterI18n": {
+        "": {
+          "title": "BuildingPartConnectivityChecker パラメータ",
+          "description": "BuildingPart 間の接続性チェック方法を設定する"
+        },
+        "buildingIdAttribute": {
+          "title": "建物 ID 属性",
+          "description": "親の Building ID を含む属性（デフォルト: \"gmlId\"）"
+        },
+        "fileIndexAttribute": {
+          "title": "ファイルインデックス属性",
+          "description": "ファイルインデックスを含む属性（デフォルト: \"fileIndex\"）"
+        },
+        "lodAttribute": {
+          "title": "LOD 属性",
+          "description": "詳細レベル（LOD）を含む属性（デフォルト: \"lod\"）"
+        },
+        "partIdAttribute": {
+          "title": "パーツ ID 属性",
+          "description": "BuildingPart ID を含む属性（デフォルト: \"featureId\"）"
+        }
+      }
+    },
+    {
+      "name": "PLATEAU6.BuildingUsageAttributeValidator",
+      "description": "建物利用属性の依存関係違反（L-bldg-04,05）と、市区町村コードを Common_localPublicAuthorities コードリストと照合して検証する。利用属性エラーは l0405BldgError ポート、市区町村コードエラーは cityCodeError ポートへ出力する",
+      "parameterI18n": {
+        "": {
+          "title": "BuildingUsageAttributeValidator パラメータ"
+        },
+        "codelistsPath": {
+          "description": "PLATEAU コードリストディレクトリのパスを表す式"
+        }
+      }
+    },
+    {
+      "name": "PLATEAU6.DestinationMeshCodeExtractor",
+      "description": "PLATEAUの出力ファイル用に日本の標準地域メッシュコードを抽出し、属性として追加する",
+      "parameterI18n": {
+        "": {
+          "title": "DestinationMeshCodeExtractor パラメータ",
+          "description": "日本標準地域メッシュのメッシュコード抽出を設定する"
+        },
+        "epsgCode": {
+          "title": "EPSG コード",
+          "description": "面積計算に使用する日本の平面直角座標系 EPSG コード"
+        },
+        "meshType": {
+          "title": "メッシュタイプ",
+          "description": "日本標準メッシュタイプ: 1=80km、2=10km、3=1km、4=500m、5=250m、6=125m"
+        },
+        "meshcodeAttr": {
+          "title": "メッシュコード属性名",
+          "description": "メッシュコードの出力属性名"
+        }
+      }
+    },
+    {
       "name": "PLATEAU6.DomainOfDefinitionValidator",
       "description": "PLATEAU6の定義領域を検証する",
       "parameterI18n": {
@@ -2872,6 +2930,24 @@
       }
     },
     {
+      "name": "PLATEAU6.SolidIntersectionTestPairCreator",
+      "description": "AreaOnAreaOverlayerの出力からソリッドの交差テスト用の地物ペアを作成する",
+      "parameterI18n": {
+        "": {
+          "title": "SolidIntersectionTestPairCreator パラメータ"
+        },
+        "gmlIdAttribute": {
+          "description": "リストアイテム内の GML ID の属性名（デフォルト: \"gmlId\"）"
+        },
+        "listAttribute": {
+          "description": "Area On Area Overlayer からの重複フィーチャーのリストを含む属性名（デフォルト: \"list\"）"
+        },
+        "pairIdAttribute": {
+          "description": "ペア ID を格納する属性名（デフォルト: \"pair_id\"）"
+        }
+      }
+    },
+    {
       "name": "PLATEAU6.UDXFolderExtractor",
       "description": "PLATEAU6データからUDXフォルダを抽出する",
       "parameterI18n": {
@@ -2885,11 +2961,15 @@
       }
     },
     {
-      "name": "PlanarityFilter",
+      "name": "PLATEAU6.UnmatchedXlinkDetector",
+      "description": "PLATEAUの未一致Xlinkを検出する"
+    },
+    {
+      "name": "Planarity Filter",
       "description": "タイプに基づいてジオメトリをフィルタリングする",
       "parameterI18n": {
         "": {
-          "title": "PlanarityFilter パラメータ",
+          "title": "Planarity Filter パラメータ",
           "description": "ジオメトリの平面性に基づいてフィーチャーをフィルタリングする方法を設定する"
         },
         "filterType": {
@@ -2913,15 +2993,15 @@
       }
     },
     {
-      "name": "PolygonNormalExtractor",
+      "name": "Polygon Normal Extractor",
       "description": "ポリゴン地物の法線ベクトルおよびその他のプロパティを抽出する"
     },
     {
-      "name": "PythonScriptProcessor",
+      "name": "Python Script Processor",
       "description": "地理空間データ処理のためのPythonスクリプトを実行する",
       "parameterI18n": {
         "": {
-          "title": "PythonScriptProcessor パラメータ"
+          "title": "Python Script Processor パラメータ"
         },
         "pythonFile": {
           "title": "Python ファイル",
@@ -2942,7 +3022,7 @@
       }
     },
     {
-      "name": "RayIntersector",
+      "name": "Ray Intersector",
       "description": "レイとジオメトリの交差点を計算する",
       "parameterI18n": {
         "": {
@@ -3009,11 +3089,11 @@
       "description": "ジオメトリを精緻化する"
     },
     {
-      "name": "Rotator3D",
+      "name": "Rotator 3D",
       "description": "始点/終点ベクトルまたは軸-角度指定を使用して3Dポリゴンを回転する",
       "parameterI18n": {
         "": {
-          "title": "Rotator3D パラメータ",
+          "title": "Rotator 3D パラメータ",
           "description": "3D ポリゴンの回転を設定する"
         },
         "rotation": {
@@ -3023,7 +3103,25 @@
       }
     },
     {
-      "name": "ShapefileReader",
+      "name": "SQL Reader",
+      "description": "SQLデータベースから地物を読み取る",
+      "parameterI18n": {
+        "": {
+          "title": "SQL Reader パラメータ",
+          "description": "データベースからフィーチャーを読み取る SQL クエリとデータベース接続を設定する"
+        },
+        "databaseUrl": {
+          "title": "データベース URL",
+          "description": "データベース接続 URL（例: `sqlite:///tests/sqlite/sqlite.db`、`mysql://user:password@localhost:3306/db`、`postgresql://user:password@localhost:5432/db`）"
+        },
+        "sql": {
+          "title": "SQL クエリ",
+          "description": "データ取得のために実行する SQL クエリ式"
+        }
+      }
+    },
+    {
+      "name": "Shapefile Reader",
       "description": "Shapefileアーカイブ（.shp、.dbf、.shxを含む.zip）から地理的地物を読み込む",
       "parameterI18n": {
         "": {
@@ -3053,7 +3151,7 @@
       }
     },
     {
-      "name": "ShapefileWriter",
+      "name": "Shapefile Writer",
       "description": "シェープファイルに地物を書き込む",
       "parameterI18n": {
         "": {
@@ -3069,11 +3167,11 @@
       }
     },
     {
-      "name": "SolidBoundaryValidator",
+      "name": "Solid Boundary Validator",
       "description": "ソリッドの境界ジオメトリを検証する",
       "parameterI18n": {
         "": {
-          "title": "SolidBoundaryValidator パラメータ",
+          "title": "Solid Boundary Validator パラメータ",
           "description": "ソリッド境界ジオメトリの検証パラメータを設定する"
         },
         "tolerance": {
@@ -3083,20 +3181,20 @@
       }
     },
     {
-      "name": "SpatialFilter",
-      "description": "空間的な関係によって地物をフィルタリングする",
+      "name": "Spatial Filter",
+      "description": "フィルタージオメトリとの空間的な関係に基づいて候補の地物をフィルタリングする",
       "parameterI18n": {
         "": {
-          "title": "SpatialFilter パラメータ",
+          "title": "Spatial Filter パラメータ",
           "description": "フィルターと候補ジオメトリ間の空間関係テストを設定する"
         },
         "mergeFilterAttributes": {
           "title": "フィルター属性をマージ",
-          "description": "true の場合、一致したフィルターフィーチャーの属性を候補にコピーする。passed ポートにルーティングされたフィーチャーにのみ適用。OR モード（pass_on_multiple_matches: true）では最初に一致したフィルターの属性のみマージ。AND モードでは一致したすべてのフィルターの属性を順番にマージし、複数のフィルターが同じキーを共有する場合は最後のフィルターの値が優先される。"
+          "description": "true の場合、一致したフィルター地物の属性を通過した候補にコピーする。一致した複数のフィルターが同じ属性を持つ場合は最後のフィルターの値が優先される"
         },
         "mergedAttributesPrefix": {
           "title": "マージ属性プレフィックス",
-          "description": "衝突を避けるためにマージされたフィルター属性名に付加する任意のプレフィックス。例: \"filter_\" を指定するとフィルター属性 \"zone\" が \"filter_zone\" になる。"
+          "description": "衝突を避けるためにマージされたフィルター属性名に付加する任意のプレフィックス。例: \"filter_\" を指定するとフィルター属性 \"zone\" が \"filter_zone\" になる"
         },
         "outputMatchCountAttribute": {
           "title": "マッチ数出力属性",
@@ -3104,7 +3202,7 @@
         },
         "passOnMultipleMatches": {
           "title": "複数マッチ時に通過",
-          "description": "true の場合、いずれかのフィルターが一致すれば通過（OR 論理）。false の場合、すべてのフィルターが一致した場合のみ通過（AND 論理）。"
+          "description": "true の場合、いずれかのフィルターが一致すれば通過（OR 論理）。false の場合、すべてのフィルターが一致した場合のみ通過（AND 論理）"
         },
         "predicate": {
           "title": "空間述語",
@@ -3144,25 +3242,7 @@
       }
     },
     {
-      "name": "SqlReader",
-      "description": "SQLデータベースから地物を読み取る",
-      "parameterI18n": {
-        "": {
-          "title": "SQL Reader パラメータ",
-          "description": "データベースからフィーチャーを読み取る SQL クエリとデータベース接続を設定する"
-        },
-        "databaseUrl": {
-          "title": "データベース URL",
-          "description": "データベース接続 URL（例: `sqlite:///tests/sqlite/sqlite.db`、`mysql://user:password@localhost:3306/db`、`postgresql://user:password@localhost:5432/db`）"
-        },
-        "sql": {
-          "title": "SQL クエリ",
-          "description": "データ取得のために実行する SQL クエリ式"
-        }
-      }
-    },
-    {
-      "name": "StatisticsCalculator",
+      "name": "Statistics Calculator",
       "description": "地物の統計情報を計算する",
       "parameterI18n": {
         "": {
@@ -3194,7 +3274,7 @@
       }
     },
     {
-      "name": "ThreeDimensionBoxReplacer",
+      "name": "Three Dimension Box Replacer",
       "description": "3次元ボックスをポリゴンで置き換える",
       "parameterI18n": {
         "": {
@@ -3228,7 +3308,7 @@
       }
     },
     {
-      "name": "ThreeDimensionForcer",
+      "name": "Three Dimension Forcer",
       "description": "Z座標（高度）を追加して2Dジオメトリを3Dに変換する",
       "parameterI18n": {
         "": {
@@ -3246,11 +3326,11 @@
       }
     },
     {
-      "name": "ThreeDimensionPlanarityRotator",
+      "name": "Three Dimension Planarity Rotator",
       "description": "3Dで平面を回転させる"
     },
     {
-      "name": "ThreeDimensionRotator",
+      "name": "Three Dimension Rotator",
       "description": "3次元ボックスをポリゴンで置き換える",
       "parameterI18n": {
         "": {
@@ -3288,15 +3368,15 @@
       }
     },
     {
-      "name": "TwoDimensionForcer",
+      "name": "Two Dimension Forcer",
       "description": "ジオメトリを2次元に強制する"
     },
     {
-      "name": "VertexCounter",
+      "name": "Vertex Counter",
       "description": "ジオメトリの頂点数を数えて属性として格納する",
       "parameterI18n": {
         "": {
-          "title": "VertexCounter パラメータ",
+          "title": "Vertex Counter パラメータ",
           "description": "ジオメトリで見つかった頂点数の格納先を設定する"
         },
         "outputAttribute": {
@@ -3306,11 +3386,11 @@
       }
     },
     {
-      "name": "VertexRemover",
+      "name": "Vertex Remover",
       "description": "地物のジオメトリから特定の頂点を削除する"
     },
     {
-      "name": "VerticalReprojector",
+      "name": "Vertical Reprojector",
       "description": "地物のジオメトリを指定された座標系に垂直再投影する",
       "parameterI18n": {
         "": {
@@ -3324,7 +3404,7 @@
       }
     },
     {
-      "name": "XMLFragmenter",
+      "name": "XML Fragmenter",
       "description": "XMLを分割する",
       "parameterI18n": {
         "": {
@@ -3334,7 +3414,7 @@
       }
     },
     {
-      "name": "XMLValidator",
+      "name": "XML Validator",
       "description": "XMLコンテンツを検証する",
       "parameterI18n": {
         "": {
@@ -3346,7 +3426,7 @@
       }
     },
     {
-      "name": "XmlWriter",
+      "name": "XML Writer",
       "description": "地物をXMLファイルに書き出す",
       "parameterI18n": {
         "": {
@@ -3359,7 +3439,7 @@
       }
     },
     {
-      "name": "ZipFileWriter",
+      "name": "Zip File Writer",
       "description": "zipファイルに地物を書き込む",
       "parameterI18n": {
         "": {
@@ -3368,6 +3448,57 @@
         },
         "output": {
           "description": "出力パス"
+        }
+      }
+    },
+    {
+      "name": "glTF Reader",
+      "description": "glTF 2.0ファイルから3Dモデルを読み込む。メッシュ、ノード、シーン、ジオメトリプリミティブに対応",
+      "parameterI18n": {
+        "": {
+          "title": "glTF Reader パラメータ"
+        },
+        "dataset": {
+          "title": "ファイルパス",
+          "description": "入力ファイルのパスを返す式（例: \"model.glb\" や変数参照）"
+        },
+        "includeNodes": {
+          "title": "ノードを含める",
+          "description": "true の場合、glTF シーングラフのノード階層情報をフィーチャー属性に含める"
+        },
+        "inline": {
+          "title": "インラインコンテンツ",
+          "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式"
+        },
+        "mergeMeshes": {
+          "title": "メッシュをマージ",
+          "description": "true の場合、glTF ファイルのすべてのメッシュを単一の出力フィーチャーに結合する"
+        },
+        "triangulate": {
+          "title": "三角形分割",
+          "description": "true の場合、すべてのプリミティブを三角形に変換する（将来の使用のために予約済み。現在はすべてのプリミティブが三角形として処理される）"
+        }
+      }
+    },
+    {
+      "name": "glTF Writer",
+      "description": "地物をGltfファイルに書き出す",
+      "parameterI18n": {
+        "": {
+          "title": "glTF Writer パラメータ",
+          "description": "フィーチャーを GLTF 3D 形式に書き出す設定"
+        },
+        "attachTexture": {
+          "description": "GLTF モデルにテクスチャ情報を添付するか"
+        },
+        "dracoCompression": {
+          "description": "ジオメトリに Draco 圧縮を適用する"
+        },
+        "output": {
+          "description": "出力ファイルパス。`schemaKey` が設定されている場合はディレクトリとして扱われ、各フィーチャータイプは `<output>/<schemaKeyValue>.glb` に書き出される。それ以外は、すべてのフィーチャーがこの単一ファイルに書き出される。"
+        },
+        "schemaKey": {
+          "description": "フィーチャーはこの属性でグループ化され、別々のファイルに書き出される。このキーは出力属性から除外される。"
         }
       }
     }

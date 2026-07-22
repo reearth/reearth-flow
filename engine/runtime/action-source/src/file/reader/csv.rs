@@ -3,7 +3,7 @@ use indexmap::IndexMap;
 use reearth_flow_common::csv::{
     auto_generate_header, build_csv_reader, read_merged_header, Delimiter,
 };
-use reearth_flow_runtime::node::{IngestionMessage, Port, DEFAULT_PORT};
+use reearth_flow_runtime::node::{IngestionMessage, Port, FEATURES_PORT};
 use reearth_flow_types::{AttributeValue, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -83,7 +83,7 @@ pub(crate) async fn read_csv(
 
         sender
             .send((
-                DEFAULT_PORT.clone(),
+                FEATURES_PORT.clone(),
                 IngestionMessage::OperationEvent { feature },
             ))
             .await

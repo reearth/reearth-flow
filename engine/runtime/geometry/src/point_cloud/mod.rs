@@ -18,10 +18,12 @@ use kiddo::ImmutableKdTree;
 use serde::{Deserialize, Serialize};
 use smallvec::SmallVec;
 
-use crate::coordinate::Coordinate;
+use crate::coordinate::CoordinateFrame;
 
 mod constructor;
 mod ops;
+#[cfg(feature = "new-geometry")]
+mod validation;
 
 /// Bit positions of the optional primary fields within a [`Segment`]'s
 /// [`FieldMask`]. Private to this module: the full field-bit layout, not all of
@@ -109,7 +111,7 @@ struct Segment {
 #[derive(Serialize, Deserialize)]
 pub struct PointCloud {
     /// Coordinate frame all segments are expressed in.
-    coordinate: Coordinate,
+    frame: CoordinateFrame,
     /// One segment inline (no heap allocation) is the common case.
     segments: SmallVec<[Segment; 1]>,
     /// Built lazily on first spatial query, or pre-built explicitly. Not part of
@@ -124,7 +126,7 @@ impl Clone for PointCloud {
     fn clone(&self) -> Self {
         // The KD-tree is a derived cache, rebuilt lazily; a clone starts fresh.
         PointCloud {
-            coordinate: self.coordinate.clone(),
+            frame: self.frame.clone(),
             segments: self.segments.clone(),
             kdtree: OnceLock::new(),
         }
@@ -134,14 +136,14 @@ impl Clone for PointCloud {
 impl PartialEq for PointCloud {
     fn eq(&self, other: &Self) -> bool {
         // The KD-tree cache is not part of the value.
-        self.coordinate == other.coordinate && self.segments == other.segments
+        self.frame == other.frame && self.segments == other.segments
     }
 }
 
 impl fmt::Debug for PointCloud {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("PointCloud")
-            .field("coordinate", &self.coordinate)
+            .field("frame", &self.frame)
             .field("segments", &self.segments)
             .field("kdtree", &self.kdtree.get().map(|_| "<built>"))
             .finish()

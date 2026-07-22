@@ -6,7 +6,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Code, CodeType, CompiledCode};
 use schemars::JsonSchema;
@@ -20,7 +20,7 @@ pub(super) struct AttributeMapperFactory;
 
 impl ProcessorFactory for AttributeMapperFactory {
     fn name(&self) -> &str {
-        "AttributeMapper"
+        "Attribute Mapper"
     }
 
     fn description(&self) -> &str {
@@ -40,11 +40,11 @@ impl ProcessorFactory for AttributeMapperFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -148,7 +148,7 @@ impl ProcessorFactory for AttributeMapperFactory {
             }
         }
 
-        Some(HashMap::from([(DEFAULT_PORT.clone(), out)]))
+        Some(HashMap::from([(FEATURES_PORT.clone(), out)]))
     }
 }
 
@@ -276,7 +276,7 @@ impl Processor for AttributeMapper {
         fw.send(
             ctx.new_with_feature_and_port(
                 feature.with_attributes(attributes),
-                DEFAULT_PORT.clone(),
+                FEATURES_PORT.clone(),
             ),
         );
         Ok(())
@@ -291,7 +291,7 @@ impl Processor for AttributeMapper {
     }
 
     fn name(&self) -> &str {
-        "AttributeMapper"
+        "Attribute Mapper"
     }
 }
 
@@ -320,13 +320,13 @@ mod tests {
             AttrField::always(AttrType::String),
         );
         let mut inputs = HashMap::new();
-        inputs.insert(DEFAULT_PORT.clone(), input);
+        inputs.insert(FEATURES_PORT.clone(), input);
 
         let out = AttributeMapperFactory
             .infer_output_schema(&inputs, &with)
             .expect("inference should succeed");
         let schema = out
-            .get(&DEFAULT_PORT.clone())
+            .get(&FEATURES_PORT.clone())
             .expect("default port present");
 
         // "a" is present, Unknown + Always.
@@ -357,7 +357,7 @@ mod tests {
             .infer_output_schema(&inputs, &with)
             .expect("inference should succeed");
         let schema = out
-            .get(&DEFAULT_PORT.clone())
+            .get(&FEATURES_PORT.clone())
             .expect("default port present");
 
         assert!(schema.open);
@@ -379,7 +379,7 @@ mod tests {
             .infer_output_schema(&inputs, &with)
             .expect("inference should succeed");
         let schema = out
-            .get(&DEFAULT_PORT.clone())
+            .get(&FEATURES_PORT.clone())
             .expect("default port present");
 
         let field = schema

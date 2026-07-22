@@ -246,12 +246,12 @@ mod tests {
         };
 
         let mut ports: IndexMap<String, PortReport> = IndexMap::new();
-        ports.insert("default".to_string(), PortReport::from_schema(&schema));
+        ports.insert("features".to_string(), PortReport::from_schema(&schema));
         let mut nodes: IndexMap<String, NodeReport> = IndexMap::new();
         nodes.insert(
             "node-1".to_string(),
             NodeReport {
-                name: "GeoJsonReader".to_string(),
+                name: "GeoJSON Reader".to_string(),
                 ports,
                 note: None,
             },
@@ -265,13 +265,13 @@ mod tests {
         let json = serde_json::to_value(&report).unwrap();
         assert_eq!(json["version"], 1);
         assert_eq!(json["sampleSize"], 10);
-        let fields_json = &json["nodes"]["node-1"]["ports"]["default"]["fields"];
+        let fields_json = &json["nodes"]["node-1"]["ports"]["features"]["fields"];
         assert_eq!(fields_json[0]["name"], "myAttribute");
         assert_eq!(fields_json[0]["type"], "String");
         assert_eq!(fields_json[0]["presence"], "always");
         assert_eq!(fields_json[1]["name"], "address");
         assert_eq!(fields_json[1]["presence"], "maybe");
-        assert_eq!(json["nodes"]["node-1"]["ports"]["default"]["open"], false);
+        assert_eq!(json["nodes"]["node-1"]["ports"]["features"]["open"], false);
         // note: None must be omitted
         assert!(json["nodes"]["node-1"].get("note").is_none());
     }

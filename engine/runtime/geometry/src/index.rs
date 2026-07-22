@@ -174,6 +174,17 @@ impl<const N: usize> IndexBuffer<N> {
         }
     }
 
+    /// Iterate the elements as `[u32; N]`, widening each stored index from its
+    /// concrete width. Lets callers read the indices without depending on the
+    /// stored width.
+    pub(crate) fn iter_u32(&self) -> impl Iterator<Item = [u32; N]> + '_ {
+        (0..self.len()).map(move |i| match self {
+            IndexBuffer::U8(v) => v[i].map(|x| x as u32),
+            IndexBuffer::U16(v) => v[i].map(|x| x as u32),
+            IndexBuffer::U32(v) => v[i],
+        })
+    }
+
     /// Build from index elements, choosing the narrowest width that fits them all.
     ///
     /// Width-agnostic: storage starts at `u8` and fattens to `u16` then `u32` only

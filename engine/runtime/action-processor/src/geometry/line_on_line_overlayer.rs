@@ -25,7 +25,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, Feature, Geometry, GeometryValue};
 use rstar::{RTree, RTreeObject, AABB};
@@ -44,7 +44,7 @@ pub struct LineOnLineOverlayerFactory;
 
 impl ProcessorFactory for LineOnLineOverlayerFactory {
     fn name(&self) -> &str {
-        "LineOnLineOverlayer"
+        "Line On Line Overlayer"
     }
 
     fn description(&self) -> &str {
@@ -60,7 +60,7 @@ impl ProcessorFactory for LineOnLineOverlayerFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
@@ -107,7 +107,7 @@ impl ProcessorFactory for LineOnLineOverlayerFactory {
     }
 }
 
-/// # LineOnLineOverlayer Parameters
+/// # Line On Line Overlayer Parameters
 ///
 /// Configuration for finding intersection points between line features.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -359,7 +359,7 @@ impl Processor for LineOnLineOverlayer {
     }
 
     fn name(&self) -> &str {
-        "LineOnLineOverlayer"
+        "Line On Line Overlayer"
     }
 }
 

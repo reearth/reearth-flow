@@ -13,7 +13,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
 use schemars::JsonSchema;
@@ -27,7 +27,7 @@ pub struct ConvexHullAccumulatorFactory;
 
 impl ProcessorFactory for ConvexHullAccumulatorFactory {
     fn name(&self) -> &str {
-        "ConvexHullAccumulator"
+        "Convex Hull Accumulator"
     }
 
     fn description(&self) -> &str {
@@ -43,11 +43,11 @@ impl ProcessorFactory for ConvexHullAccumulatorFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
+        vec![FEATURES_PORT.clone(), REJECTED_PORT.clone()]
     }
 
     fn build(
@@ -83,7 +83,7 @@ impl ProcessorFactory for ConvexHullAccumulatorFactory {
     }
 }
 
-/// # ConvexHullAccumulator Parameters
+/// # Convex Hull Accumulator Parameters
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ConvexHullAccumulatorParam {
@@ -185,7 +185,7 @@ impl Processor for ConvexHullAccumulator {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
                 hull,
-                DEFAULT_PORT.clone(),
+                FEATURES_PORT.clone(),
             ));
         }
 
@@ -193,7 +193,7 @@ impl Processor for ConvexHullAccumulator {
     }
 
     fn name(&self) -> &str {
-        "ConvexHullAccumulator"
+        "Convex Hull Accumulator"
     }
 }
 

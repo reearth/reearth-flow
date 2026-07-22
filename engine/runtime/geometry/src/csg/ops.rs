@@ -24,7 +24,7 @@ fn operand_box(operand: &ThreeDimensional) -> Result<Aabb, UnsupportedOperation>
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::coordinate::Coordinate;
+    use crate::coordinate::CoordinateFrame;
     use crate::solid::Solid;
     use crate::triangular_mesh::TriangularMesh3DData;
 
@@ -35,7 +35,7 @@ mod tests {
             [0u32, 1, 2],
         )
         .unwrap();
-        Solid::from_exterior(Coordinate::Euclidean, shell)
+        Solid::from_exterior(CoordinateFrame::Euclidean, shell)
     }
 
     #[test]

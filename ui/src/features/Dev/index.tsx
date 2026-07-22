@@ -55,7 +55,9 @@ const Dev: FC = () => {
             <Select
               key={formData.machineType ?? "empty"}
               value={formData.machineType}
-              onValueChange={(value) => handleChange("machineType", value)}>
+              onValueChange={(value) =>
+                value != null && handleChange("machineType", value)
+              }>
               <SelectTrigger>
                 <SelectValue placeholder="Select machine type" />
               </SelectTrigger>

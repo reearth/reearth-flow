@@ -27,16 +27,18 @@ const WorkspaceDeletionDialog: React.FC<Props> = ({
   const t = useT();
   return (
     <AlertDialog>
-      <AlertDialogTrigger asChild>
-        <Button
-          variant={"destructive"}
-          disabled={disabled}
-          size="sm"
-          className="self-end">
-          <TrashIcon />
-          {t("Delete")}
-        </Button>
-      </AlertDialogTrigger>
+      <AlertDialogTrigger
+        render={
+          <Button
+            variant={"destructive"}
+            disabled={disabled}
+            size="sm"
+            className="self-end">
+            <TrashIcon />
+            {t("Delete")}
+          </Button>
+        }
+      />
       <AlertDialogContent>
         <AlertDialogHeader>
           <AlertDialogTitle>{t("Are you absolutely sure?")}</AlertDialogTitle>

@@ -1,6 +1,6 @@
 use bytes::Bytes;
 use indexmap::IndexMap;
-use reearth_flow_runtime::node::{IngestionMessage, Port, DEFAULT_PORT};
+use reearth_flow_runtime::node::{IngestionMessage, Port, FEATURES_PORT};
 use reearth_flow_types::{AttributeValue, Feature};
 use tokio::sync::mpsc::Sender;
 
@@ -27,7 +27,7 @@ pub(crate) async fn read_json(
                 );
                 sender
                     .send((
-                        DEFAULT_PORT.clone(),
+                        FEATURES_PORT.clone(),
                         IngestionMessage::OperationEvent { feature },
                     ))
                     .await
@@ -38,7 +38,7 @@ pub(crate) async fn read_json(
             let feature = Feature::from(features);
             sender
                 .send((
-                    DEFAULT_PORT.clone(),
+                    FEATURES_PORT.clone(),
                     IngestionMessage::OperationEvent { feature },
                 ))
                 .await

@@ -10,7 +10,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Feature, GeometryValue};
 use serde_json::Value;
@@ -23,7 +23,7 @@ pub(super) struct ClosedCurveFilterFactory;
 
 impl ProcessorFactory for ClosedCurveFilterFactory {
     fn name(&self) -> &str {
-        "ClosedCurveFilter"
+        "Closed Curve Filter"
     }
 
     fn description(&self) -> &str {
@@ -39,7 +39,7 @@ impl ProcessorFactory for ClosedCurveFilterFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
@@ -104,7 +104,7 @@ impl Processor for ClosedCurveFilter {
     }
 
     fn name(&self) -> &str {
-        "ClosedCurveFilter"
+        "Closed Curve Filter"
     }
 }
 

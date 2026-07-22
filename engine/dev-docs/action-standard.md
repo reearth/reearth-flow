@@ -85,7 +85,7 @@ The parameter schema object itself must have a top-level `description` summarisi
 - `title`: short noun phrase in title case — "Output Attribute", "Target EPSG Code"
 - Prefer one sentence for `description`; two sentences are acceptable when the parameter behaviour is complex enough to warrant it
 - Describes what the parameter controls and what values are valid
-- Does not restate the parameter name or the action name: `"The outputAttribute"` or `"GeometrySplitter Parameters"` adds nothing
+- Does not restate the parameter name or the action name: `"The outputAttribute"` or `"Geometry Splitter Parameters"` adds nothing
 - For enums, describes what each variant does — see §3.4 for the mechanism and when each approach applies
 
 ### 3.4 Enum values
@@ -190,7 +190,7 @@ New categories can be added when a meaningful group of actions does not fit any 
 - Draw from the established vocabulary below; propose additions conservatively
 
 **Established vocabulary:**
-`3d`, `aggregation`, `attribute`, `citygml`, `compression`, `coordinate-system`, `csv`, `database`, `debug`, `file`, `filter`, `geometry`, `geojson`, `geopackage`, `json`, `list`, `mapping`, `raster`, `routing`, `shapefile`, `spatial`, `statistics`, `tiling`, `validation`, `vector`, `xml`
+`3d`, `aggregation`, `attribute`, `citygml`, `compression`, `coordinate-system`, `csv`, `database`, `debug`, `file`, `filter`, `geometry`, `geojson`, `geopackage`, `json`, `list`, `logging`, `mapping`, `raster`, `routing`, `shapefile`, `spatial`, `statistics`, `tiling`, `validation`, `vector`, `xml`
 
 New tags can be proposed when an established term does not adequately describe an action's domain. Avoid adding tags that duplicate an action's category.
 

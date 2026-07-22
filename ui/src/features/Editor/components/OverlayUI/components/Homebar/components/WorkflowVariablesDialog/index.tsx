@@ -273,13 +273,12 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
 
   return (
     <>
-      <Dialog open onOpenChange={handleCancel}>
+      <Dialog open disablePointerDismissal onOpenChange={handleCancel}>
         <DialogContent
           className="h-[50vh]"
           size="2xl"
           position="off-center"
-          hideCloseButton
-          onInteractOutside={(e) => e.preventDefault()}>
+          hideCloseButton>
           <div className="flex h-full flex-col">
             <DialogHeader>
               <DialogTitle>
@@ -316,16 +315,18 @@ const WorkflowVariablesDialog: React.FC<Props> = ({
                     </div>
                   </div>
                   <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button
-                        variant="default"
-                        size="sm"
-                        className="gap-2"
-                        disabled={isLocked}>
-                        <PlusIcon size={16} />
-                        {t("Add Variable")}
-                      </Button>
-                    </DropdownMenuTrigger>
+                    <DropdownMenuTrigger
+                      render={
+                        <Button
+                          variant="default"
+                          size="sm"
+                          className="gap-2"
+                          disabled={isLocked}>
+                          <PlusIcon size={16} />
+                          {t("Add Variable")}
+                        </Button>
+                      }
+                    />
                     <DropdownMenuContent align="end">
                       <DropdownMenuGroup>
                         {allVarTypes.map((type) => (
