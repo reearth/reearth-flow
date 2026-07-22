@@ -401,13 +401,11 @@ fn build_textured_pages(
     }
 
     let built =
-        match build_atlas_multipage(&inputs, render.atlas_size, render.atlas_extrusion, textures) {
-            Ok(Some(built)) => built,
-            Ok(None) => return Ok(None),
-            Err(e) => {
-                tracing::error!("Cesium3DTilesWriter: atlas packing failed: {e}; textures dropped");
-                return Ok(None);
-            }
+        match build_atlas_multipage(&inputs, render.atlas_size, render.atlas_extrusion, textures)
+            .map_err(SinkError::cesium3dtiles_writer)?
+        {
+            Some(built) => built,
+            None => return Ok(None),
         };
 
     // WebP has no core-glTF fallback image, so the extension is required.

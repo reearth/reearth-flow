@@ -83,19 +83,21 @@ struct RegionJob {
 /// `extrusion` is the ring (pixels) blitted around each region to stop bilinear
 /// bleed; pass `0` to disable it.
 ///
-/// Returns `Ok(None)` when there is nothing to pack (no UV polygons).
+/// Returns `Ok(None)` when there is nothing to pack (no UV polygons), and
+/// `Err` when `max_atlas_size < 2 * extrusion + 1` (a page cannot hold even one
+/// 1×1 region plus its extrusion ring) or `2 * extrusion + 1` overflows.
 pub fn build_atlas_multipage(
     materials: &[TextureInput],
     max_atlas_size: u32,
     extrusion: u32,
     cache: &mut TextureCache,
 ) -> Result<Option<MultiPageAtlas>> {
-    // A 1×1 region plus its extrusion ring needs `1 + 2*extrusion` pixels, so a
-    // smaller page can never hold even one region.
-    if max_atlas_size < 1 + 2 * extrusion {
+    // A page must hold one 1×1 region plus its extrusion ring on all sides.
+    let min_atlas_size = extrusion.saturating_mul(2).saturating_add(1);
+    if max_atlas_size < min_atlas_size {
         return Err(AtlasError::builder(format!(
-            "atlas size {max_atlas_size} too small; must be at least {}",
-            1 + 2 * extrusion
+            "atlas size {max_atlas_size} too small for extrusion {extrusion}; \
+             must be at least 2*extrusion+1 = {min_atlas_size}"
         )));
     }
 
