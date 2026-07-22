@@ -23,10 +23,18 @@ static INSTALL_DRIVERS: Lazy<()> = Lazy::new(|| {
     .expect("non-default drivers already installed")
 });
 
-#[derive(Debug, Clone)]
+#[derive(Clone)]
 pub struct SqlAdapter {
     pool: Pool<Any>,
     url: String,
+}
+
+// Manual `Debug` so the connection URL (which can carry credentials for
+// Postgres/MySQL) never reaches debug/log output.
+impl std::fmt::Debug for SqlAdapter {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("SqlAdapter").finish_non_exhaustive()
+    }
 }
 
 impl SqlAdapter {
@@ -45,8 +53,14 @@ impl SqlAdapter {
     /// Fetch rows using the native SQLite driver instead of the generic `Any`
     /// driver. The `Any` driver has no type mapping for several SQLite types
     /// (notably BOOLEAN), so a `SELECT *` over such a column fails; the native
-    /// driver decodes them. Only valid for `sqlite://` connections.
+    /// driver decodes them. Requires a `sqlite://` connection; any other URL
+    /// returns a configuration error rather than a lower-signal pool error.
     pub async fn fetch_many_sqlite(&self, query: &str) -> crate::errors::Result<Vec<SqliteRow>> {
+        if AnyKind::from_str(self.url.as_str())? != AnyKind::Sqlite {
+            return Err(crate::errors::Error::Configuration(
+                "fetch_many_sqlite requires a sqlite:// connection".to_string(),
+            ));
+        }
         let pool = SqlitePoolOptions::new()
             .max_connections(1)
             .connect(self.url.as_str())
@@ -114,5 +128,22 @@ mod tests {
         assert_eq!(rows.len(), 2);
         let flag: bool = rows[0].try_get("flag").unwrap();
         assert!(flag);
+    }
+
+    // The adapter stores its connection URL, which for Postgres/MySQL can carry
+    // credentials. Its `Debug` output must not include the URL.
+    #[tokio::test]
+    async fn debug_does_not_leak_connection_url() {
+        let dir = tempfile::tempdir().unwrap();
+        let url = format!(
+            "sqlite://{}?mode=rwc",
+            dir.path().join("s3cr3t_marker.db").display()
+        );
+        let adapter = SqlAdapter::new(&url, 1).await.unwrap();
+        let rendered = format!("{adapter:?}");
+        assert!(
+            !rendered.contains("s3cr3t_marker"),
+            "Debug leaked the connection URL: {rendered}"
+        );
     }
 }
