@@ -189,7 +189,7 @@ pub fn build(
         })
         .collect::<crate::errors::Result<_>>()?;
 
-    let tileset_bytes = render_tileset_json(&root, available_levels, render.texel_size)?;
+    let tileset_bytes = render_tileset_json(&root, available_levels)?;
     let subtrees = subtree::build_all(&occupied)
         .into_iter()
         .map(|(cell, bytes)| (subtree_path(cell), bytes))
@@ -211,7 +211,7 @@ fn empty_tileset() -> crate::errors::Result<BuiltTileset> {
         min_height: 0.0,
         max_height: 0.0,
     };
-    let tileset_bytes = render_tileset_json(&root, 1, 0.0)?;
+    let tileset_bytes = render_tileset_json(&root, 1)?;
     let subtrees = subtree::build_all(&BTreeSet::new())
         .into_iter()
         .map(|(cell, bytes)| (subtree_path(cell), bytes))
@@ -223,12 +223,8 @@ fn empty_tileset() -> crate::errors::Result<BuiltTileset> {
     })
 }
 
-fn render_tileset_json(
-    root: &GeoBox,
-    available_levels: u32,
-    texel_size: f64,
-) -> crate::errors::Result<String> {
-    let tileset_json = tileset::build(root, available_levels, texel_size);
+fn render_tileset_json(root: &GeoBox, available_levels: u32) -> crate::errors::Result<String> {
+    let tileset_json = tileset::build(root, available_levels);
     serde_json::to_string_pretty(&tileset_json)
         .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))
 }
