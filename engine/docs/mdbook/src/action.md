@@ -2228,8 +2228,8 @@ Reads 3D city models from CityGML files.
       }
     },
     "flatten": {
-      "title": "Flatten Attributes",
-      "description": "When enabled, flattens nested CityGML attributes into top-level attributes. Defaults to false.",
+      "title": "Flatten Feature Tree",
+      "description": "When enabled, extracts nested child city objects as separate features, each tagged with `parentId` and `parentType` attributes. Defaults to false.",
       "type": [
         "boolean",
         "null"

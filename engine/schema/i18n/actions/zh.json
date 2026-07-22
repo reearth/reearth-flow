@@ -762,8 +762,8 @@
           "description": "Expression that returns the path to the input file, either a literal path or a variable reference."
         },
         "flatten": {
-          "title": "Flatten Attributes",
-          "description": "When enabled, flattens nested CityGML attributes into top-level attributes. Defaults to false."
+          "title": "Flatten Feature Tree",
+          "description": "When enabled, extracts nested child city objects as separate features, each tagged with `parentId` and `parentType` attributes. Defaults to false."
         },
         "inline": {
           "title": "Inline Content",
