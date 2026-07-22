@@ -1338,7 +1338,7 @@ Evaluates a Constructive Solid Geometry (CSG) tree to produce a solid geometry. 
 ### Type
 * source
 ### Description
-Read Features from CSV or TSV File
+Reads features from CSV and TSV files.
 ### Parameters
 ```json
 {
@@ -1352,7 +1352,7 @@ Read Features from CSV or TSV File
   "properties": {
     "format": {
       "title": "File Format",
-      "description": "Choose the delimiter format for the input file",
+      "description": "Delimiter format of the input file.",
       "allOf": [
         {
           "$ref": "#/definitions/CsvFormat"
@@ -1361,7 +1361,7 @@ Read Features from CSV or TSV File
     },
     "encoding": {
       "title": "Character Encoding",
-      "description": "Character encoding for the CSV/TSV file. If not specified, defaults to UTF-8.\n\nSupported encodings include: - **UTF-8** - Unicode UTF-8 (default) - **Shift-JIS** - Japanese encoding - **EUC-JP** - Japanese encoding - **Windows Code Pages** - Windows-1250 through Windows-1258 - **ISO-8859 family** - ISO-8859-1 through ISO-8859-16\n\nAll encoding labels are case-insensitive.",
+      "description": "Character encoding of the input file, such as \"UTF-8\" or \"Shift-JIS\". Defaults to UTF-8 when omitted; labels are case-insensitive.",
       "type": [
         "string",
         "null"
@@ -1369,7 +1369,7 @@ Read Features from CSV or TSV File
     },
     "dataset": {
       "title": "File Path",
-      "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+      "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
       "type": [
         "object",
         "null"
@@ -1429,7 +1429,7 @@ Read Features from CSV or TSV File
     },
     "headerRows": {
       "title": "Header Row Count",
-      "description": "Number of consecutive rows that make up the header (default: 1). When 0, no header rows are read and column names are auto-generated as \"column1\", \"column2\", etc. When greater than 1, column names are formed by joining non-empty values from each header row with \"_\".",
+      "description": "Number of consecutive rows that make up the header (default: 1). When 0, column names are auto-generated as \"column1\", \"column2\", and so on; when greater than 1, names are formed by joining values from each header row with \"_\".",
       "type": [
         "integer",
         "null"
@@ -1720,7 +1720,7 @@ Reads geographic features from CZML (Cesium Language) files for 3D visualization
     },
     "dataset": {
       "title": "File Path",
-      "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+      "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
       "type": [
         "object",
         "null"
@@ -2179,7 +2179,7 @@ Reads 3D city models from CityGML files.
   "properties": {
     "dataset": {
       "title": "File Path",
-      "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+      "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
       "type": [
         "object",
         "null"
@@ -2228,6 +2228,8 @@ Reads 3D city models from CityGML files.
       }
     },
     "flatten": {
+      "title": "Flatten Attributes",
+      "description": "When enabled, flattens nested CityGML attributes into top-level attributes. Defaults to false.",
       "type": [
         "boolean",
         "null"
@@ -3172,7 +3174,7 @@ Reads CityGML 3.0 files: resolves gml:id references and xlink:href links across 
 ### Type
 * processor
 ### Description
-Reads and processes features from CityGML files with optional flattening
+Reads CityGML features from a file path stored in the incoming feature, optionally flattening nested attributes.
 ### Parameters
 ```json
 {
@@ -3308,7 +3310,7 @@ Assigns a sequential number to each feature, stored in an attribute and optional
 ### Type
 * source
 ### Description
-Generate Custom Features Using Scripts
+Creates features from a script expression that returns one or more attribute maps.
 ### Parameters
 ```json
 {
@@ -3322,7 +3324,7 @@ Generate Custom Features Using Scripts
   "properties": {
     "creator": {
       "title": "Script Expression",
-      "description": "Write a script expression that returns a map (single feature) or array of maps (multiple features). Each map represents feature attributes as key-value pairs.",
+      "description": "Script expression that returns a map (single feature) or an array of maps (multiple features). Each map holds feature attributes as key-value pairs.",
       "type": "object",
       "format": "code",
       "required": [
@@ -4452,7 +4454,7 @@ Writes features from various formats
 ### Type
 * source
 ### Description
-Extracts file paths from directories or archives, creating features for each discovered file
+Extracts file paths from directories or archives, creating features for each discovered file.
 ### Parameters
 ```json
 {
@@ -4551,7 +4553,7 @@ Projects 3D geometry to XY plane and computes the union footprint (supports soli
 ### Type
 * source
 ### Description
-Reads geographic features from GeoJSON files, supporting both single features and feature collections
+Reads geographic features from GeoJSON files, supporting both single features and feature collections.
 ### Parameters
 ```json
 {
@@ -4562,7 +4564,7 @@ Reads geographic features from GeoJSON files, supporting both single features an
   "properties": {
     "dataset": {
       "title": "File Path",
-      "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+      "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
       "type": [
         "object",
         "null"
@@ -4684,15 +4686,18 @@ Writes geographic features to GeoJSON files with optional grouping
 ### Type
 * source
 ### Description
-Reads geographic features from GeoPackage (.gpkg) files with support for vector features, tiles, and metadata
+Reads geographic features from GeoPackage (.gpkg) files, supporting vector features, tiles, and metadata.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "GeoPackageReaderParam",
+  "title": "GeoPackage Reader Parameters",
+  "description": "Configures which content to read from the GeoPackage file and how geometries are produced.",
   "type": "object",
   "properties": {
     "readMode": {
+      "title": "Read Mode",
+      "description": "Which content to read from the GeoPackage file. Defaults to reading vector features.",
       "default": "features",
       "allOf": [
         {
@@ -4701,6 +4706,8 @@ Reads geographic features from GeoPackage (.gpkg) files with support for vector 
       ]
     },
     "layerName": {
+      "title": "Layer Name",
+      "description": "Name of the layer to read. When omitted, the first available layer is used.",
       "type": [
         "string",
         "null"
@@ -4711,6 +4718,8 @@ Reads geographic features from GeoPackage (.gpkg) files with support for vector 
       "type": "boolean"
     },
     "tileFormat": {
+      "title": "Tile Format",
+      "description": "Image format to decode when reading raster tiles. Defaults to PNG.",
       "default": "png",
       "allOf": [
         {
@@ -4735,6 +4744,8 @@ Reads geographic features from GeoPackage (.gpkg) files with support for vector 
       "minimum": 0.0
     },
     "force2D": {
+      "title": "Force 2D",
+      "description": "If true, forces all geometries to be 2D (ignoring Z values).",
       "default": false,
       "type": "boolean"
     },
@@ -4747,7 +4758,7 @@ Reads geographic features from GeoPackage (.gpkg) files with support for vector 
     },
     "dataset": {
       "title": "File Path",
-      "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+      "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
       "type": [
         "object",
         "null"
@@ -4798,20 +4809,67 @@ Reads geographic features from GeoPackage (.gpkg) files with support for vector 
   },
   "definitions": {
     "GeoPackageReadMode": {
-      "type": "string",
-      "enum": [
-        "features",
-        "tiles",
-        "all",
-        "metadataOnly"
+      "oneOf": [
+        {
+          "title": "Features",
+          "description": "Reads vector features (geometry and attributes).",
+          "type": "string",
+          "enum": [
+            "features"
+          ]
+        },
+        {
+          "title": "Tiles",
+          "description": "Reads raster tiles.",
+          "type": "string",
+          "enum": [
+            "tiles"
+          ]
+        },
+        {
+          "title": "All",
+          "description": "Reads both vector features and raster tiles.",
+          "type": "string",
+          "enum": [
+            "all"
+          ]
+        },
+        {
+          "title": "Metadata Only",
+          "description": "Reads only the file's metadata, without features or tiles.",
+          "type": "string",
+          "enum": [
+            "metadataOnly"
+          ]
+        }
       ]
     },
     "TileFormat": {
-      "type": "string",
-      "enum": [
-        "png",
-        "jpeg",
-        "webp"
+      "oneOf": [
+        {
+          "title": "PNG",
+          "description": "Decodes tiles as PNG images.",
+          "type": "string",
+          "enum": [
+            "png"
+          ]
+        },
+        {
+          "title": "JPEG",
+          "description": "Decodes tiles as JPEG images.",
+          "type": "string",
+          "enum": [
+            "jpeg"
+          ]
+        },
+        {
+          "title": "WebP",
+          "description": "Decodes tiles as WebP images.",
+          "type": "string",
+          "enum": [
+            "webp"
+          ]
+        }
       ]
     }
   }
@@ -7213,7 +7271,7 @@ Reads features from JSON files, supporting both single objects and arrays of obj
   "properties": {
     "dataset": {
       "title": "File Path",
-      "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+      "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
       "type": [
         "object",
         "null"
@@ -8099,7 +8157,7 @@ Reads 3D models from Wavefront OBJ files, supporting vertices, faces, normals, t
     },
     "dataset": {
       "title": "File Path",
-      "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+      "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
       "type": [
         "object",
         "null"
@@ -11050,7 +11108,7 @@ Rotate a 3D polygon using from/to vectors or axis-angle specification
 ### Type
 * source
 ### Description
-Read Features from SQL Database
+Reads features from a SQL database.
 ### Parameters
 ```json
 {
@@ -11120,7 +11178,7 @@ Read Features from SQL Database
 ### Type
 * source
 ### Description
-Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .shx files)
+Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .shx files).
 ### Parameters
 ```json
 {
@@ -11131,27 +11189,27 @@ Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .
   "properties": {
     "encoding": {
       "title": "Character Encoding",
-      "description": "Character encoding for attribute data in the DBF file. If not specified, encoding is determined from the .cpg file (if present), otherwise defaults to UTF-8.\n\nSupported encodings include: - **UTF-8** - Unicode UTF-8 (default, recommended for all new shapefiles) - **Windows Code Pages** - Windows-1250 through Windows-1258, Windows-874 - **ISO-8859 family** - ISO-8859-1 (Latin-1) through ISO-8859-16 - **Asian encodings** - Shift-JIS, EUC-JP, EUC-KR, Big5, GBK, GB18030 - **Other legacy encodings** - KOI8-R, KOI8-U, IBM866, Macintosh\n\nAll encoding labels are case-insensitive and support common variations (e.g., \"UTF-8\", \"UTF8\", \"utf8\" all work).\n\nUTF-16 is not supported due to byte-level handling requirements. If a UTF-16 shapefile is encountered, an error with conversion instructions is returned.\n\nExamples: - `\"UTF-8\"` - Modern standard - `\"Windows-1252\"` - Common for Western European legacy data - `\"ISO-8859-1\"` - Latin-1, common in older shapefiles - `\"Shift-JIS\"` - Japanese data\n\nPriority order: encoding parameter > .cpg file > UTF-8 default",
+      "description": "Character encoding for attribute data in the DBF file, such as \"UTF-8\", \"Shift-JIS\", or \"Windows-1252\"; labels are case-insensitive. When omitted, the encoding is taken from the .cpg file if present, otherwise UTF-8 (UTF-16 is not supported).",
       "type": [
         "string",
         "null"
       ]
     },
-    "force2d": {
+    "force2D": {
       "title": "Force 2D",
-      "description": "If true, forces all geometries to be 2D (ignoring Z values)",
+      "description": "If true, forces all geometries to be 2D (ignoring Z values).",
       "default": false,
       "type": "boolean"
     },
     "allowEmptyPath": {
       "title": "Allow Null Path",
-      "description": "If true, a dataset expression that evaluates to null produces zero features instead of an error. This is useful for optional shapefile inputs where the path may not be configured.",
+      "description": "If true, a null dataset path produces zero features instead of an error, allowing optional shapefile inputs.",
       "default": false,
       "type": "boolean"
     },
     "dataset": {
       "title": "File Path",
-      "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+      "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
       "type": [
         "object",
         "null"
@@ -12276,7 +12334,7 @@ Reads 3D models from glTF 2.0 files, supporting meshes, nodes, scenes, and geome
     },
     "dataset": {
       "title": "File Path",
-      "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+      "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
       "type": [
         "object",
         "null"

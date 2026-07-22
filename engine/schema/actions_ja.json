@@ -1376,7 +1376,7 @@
     {
       "name": "CSV Reader",
       "type": "source",
-      "description": "CSVファイルから地物を読み取る",
+      "description": "CSV および TSV ファイルから地物を読み取る",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CsvReader パラメータ",
@@ -1388,7 +1388,7 @@
         "properties": {
           "format": {
             "title": "ファイル形式",
-            "description": "入力ファイルの区切り形式を選択する",
+            "description": "入力ファイルの区切り形式",
             "allOf": [
               {
                 "$ref": "#/definitions/CsvFormat"
@@ -1397,7 +1397,7 @@
           },
           "encoding": {
             "title": "文字エンコーディング",
-            "description": "CSV/TSV ファイルの文字エンコーディング。未指定の場合は UTF-8。\n\nサポートされるエンコーディング: - **UTF-8** - Unicode UTF-8（デフォルト）- **Shift-JIS** - 日本語エンコーディング - **EUC-JP** - 日本語エンコーディング - **Windows コードページ** - Windows-1250〜Windows-1258 - **ISO-8859 ファミリー** - ISO-8859-1〜ISO-8859-16\n\nエンコーディングラベルは大文字・小文字を区別しない。",
+            "description": "入力ファイルの文字エンコーディング（例: \"UTF-8\" や \"Shift-JIS\"）。未指定時は UTF-8 で、ラベルは大文字小文字を区別しない",
             "type": [
               "string",
               "null"
@@ -1405,7 +1405,7 @@
           },
           "dataset": {
             "title": "ファイルパス",
-            "description": "入力ファイルのパスを返す式（例: \"data.csv\" や変数参照）",
+            "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）",
             "type": [
               "object",
               "null"
@@ -1465,7 +1465,7 @@
           },
           "headerRows": {
             "title": "ヘッダー行数",
-            "description": "ヘッダーを構成する連続した行数（デフォルト: 1）。0 の場合はヘッダー行を読まず、列名は \"column1\"、\"column2\" などと自動生成される。2 以上の場合、各ヘッダー行の空でない値を \"_\" で結合して列名とする。",
+            "description": "ヘッダーを構成する連続した行数（デフォルト: 1）。0 の場合は列名を \"column1\"、\"column2\" のように自動生成し、1 より大きい場合は各ヘッダー行の値を \"_\" で連結して列名とする",
             "type": [
               "integer",
               "null"
@@ -1760,7 +1760,7 @@
           },
           "dataset": {
             "title": "ファイルパス",
-            "description": "入力ファイルのパスを返す式（例: \"data.czml\" や変数参照）",
+            "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）",
             "type": [
               "object",
               "null"
@@ -2223,7 +2223,7 @@
         "properties": {
           "dataset": {
             "title": "ファイルパス",
-            "description": "入力ファイルのパスを返す式（例: \"data.csv\" や変数参照）",
+            "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）",
             "type": [
               "object",
               "null"
@@ -2272,6 +2272,8 @@
             }
           },
           "flatten": {
+            "title": "属性をフラット化",
+            "description": "有効にすると、ネストされた CityGML 属性をトップレベル属性にフラット化する（デフォルト: false）",
             "type": [
               "boolean",
               "null"
@@ -3263,7 +3265,7 @@
     {
       "name": "Feature CityGML Reader",
       "type": "processor",
-      "description": "CityGMLファイルから地物を読み取る",
+      "description": "受け取った地物に格納されたファイルパスから CityGML 地物を読み取り、任意でネストされた属性をフラット化する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FeatureCityGmlReader パラメータ",
@@ -3407,7 +3409,7 @@
     {
       "name": "Feature Creator",
       "type": "source",
-      "description": "式に基づいて地物を作成する",
+      "description": "1 つ以上の属性マップを返すスクリプト式から地物を作成する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FeatureCreator パラメータ",
@@ -3419,7 +3421,7 @@
         "properties": {
           "creator": {
             "title": "スクリプト式",
-            "description": "マップ（単一フィーチャー）またはマップの配列（複数フィーチャー）を返すスクリプト式を記述する。各マップはフィーチャー属性をキーと値のペアで表す。",
+            "description": "マップ（単一地物）またはマップの配列（複数地物）を返すスクリプト式。各マップは地物の属性をキーと値のペアで保持する",
             "type": "object",
             "format": "code",
             "required": [
@@ -3448,7 +3450,9 @@
       "categories": [
         "Input"
       ],
-      "tags": []
+      "tags": [
+        "scripting"
+      ]
     },
     {
       "name": "Feature Duplicate Filter",
@@ -4574,7 +4578,7 @@
     {
       "name": "File Path Extractor",
       "type": "source",
-      "description": "ディレクトリまたはアーカイブからファイルを抽出する",
+      "description": "ディレクトリまたはアーカイブからファイルパスを抽出し、見つかった各ファイルに対して地物を作成する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "FilePathExtractor パラメータ",
@@ -4623,7 +4627,7 @@
         "Input"
       ],
       "tags": [
-        "file-system"
+        "file"
       ]
     },
     {
@@ -4684,7 +4688,7 @@
     {
       "name": "GeoJSON Reader",
       "type": "source",
-      "description": "GeoJSONファイルから地物を読み取る",
+      "description": "GeoJSON ファイルから地理地物を読み取る。単一地物とフィーチャーコレクションの両方に対応",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "GeoJsonReader パラメータ",
@@ -4693,7 +4697,7 @@
         "properties": {
           "dataset": {
             "title": "ファイルパス",
-            "description": "入力ファイルのパスを返す式（例: \"data.geojson\" や変数参照）",
+            "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）",
             "type": [
               "object",
               "null"
@@ -4752,7 +4756,8 @@
         "Input"
       ],
       "tags": [
-        "geojson"
+        "geojson",
+        "vector"
       ]
     },
     {
@@ -4821,13 +4826,16 @@
     {
       "name": "GeoPackage Reader",
       "type": "source",
-      "description": "GeoPackage（.gpkg）ファイルからベクター地物、タイル、メタデータを読み取る",
+      "description": "GeoPackage（.gpkg）ファイルから地理地物を読み取る。ベクター地物、タイル、メタデータに対応",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "GeoPackageReader パラメータ",
+        "title": "GeoPackage Reader パラメータ",
+        "description": "GeoPackage ファイルから読み取る内容と、ジオメトリの生成方法を設定する",
         "type": "object",
         "properties": {
           "readMode": {
+            "title": "読み取りモード",
+            "description": "GeoPackage ファイルから読み取る内容。デフォルトはベクター地物の読み取り",
             "default": "features",
             "allOf": [
               {
@@ -4836,6 +4844,8 @@
             ]
           },
           "layerName": {
+            "title": "レイヤー名",
+            "description": "読み取るレイヤーの名前。省略時は最初に利用可能なレイヤーを使用する",
             "type": [
               "string",
               "null"
@@ -4846,6 +4856,8 @@
             "type": "boolean"
           },
           "tileFormat": {
+            "title": "タイル形式",
+            "description": "ラスタータイルを読み取る際にデコードする画像形式。デフォルトは PNG",
             "default": "png",
             "allOf": [
               {
@@ -4870,6 +4882,8 @@
             "minimum": 0.0
           },
           "force2D": {
+            "title": "2D に強制",
+            "description": "true の場合、すべてのジオメトリを 2D に強制する（Z 値を無視）",
             "default": false,
             "type": "boolean"
           },
@@ -4882,7 +4896,7 @@
           },
           "dataset": {
             "title": "ファイルパス",
-            "description": "入力ファイルのパスを返す式（例: \"data.gpkg\" や変数参照）",
+            "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）",
             "type": [
               "object",
               "null"
@@ -4933,20 +4947,67 @@
         },
         "definitions": {
           "GeoPackageReadMode": {
-            "type": "string",
-            "enum": [
-              "features",
-              "tiles",
-              "all",
-              "metadataOnly"
+            "oneOf": [
+              {
+                "title": "地物",
+                "description": "ベクター地物（ジオメトリと属性）を読み取る",
+                "type": "string",
+                "enum": [
+                  "features"
+                ]
+              },
+              {
+                "title": "タイル",
+                "description": "ラスタータイルを読み取る",
+                "type": "string",
+                "enum": [
+                  "tiles"
+                ]
+              },
+              {
+                "title": "すべて",
+                "description": "ベクター地物とラスタータイルの両方を読み取る",
+                "type": "string",
+                "enum": [
+                  "all"
+                ]
+              },
+              {
+                "title": "メタデータのみ",
+                "description": "地物やタイルを読み取らず、ファイルのメタデータのみを読み取る",
+                "type": "string",
+                "enum": [
+                  "metadataOnly"
+                ]
+              }
             ]
           },
           "TileFormat": {
-            "type": "string",
-            "enum": [
-              "png",
-              "jpeg",
-              "webp"
+            "oneOf": [
+              {
+                "title": "PNG",
+                "description": "タイルを PNG 画像としてデコードする",
+                "type": "string",
+                "enum": [
+                  "png"
+                ]
+              },
+              {
+                "title": "JPEG",
+                "description": "タイルを JPEG 画像としてデコードする",
+                "type": "string",
+                "enum": [
+                  "jpeg"
+                ]
+              },
+              {
+                "title": "WebP",
+                "description": "タイルを WebP 画像としてデコードする",
+                "type": "string",
+                "enum": [
+                  "webp"
+                ]
+              }
             ]
           }
         }
@@ -4960,7 +5021,8 @@
         "Input"
       ],
       "tags": [
-        "geopackage"
+        "geopackage",
+        "vector"
       ]
     },
     {
@@ -7396,7 +7458,7 @@
         "properties": {
           "dataset": {
             "title": "ファイルパス",
-            "description": "入力ファイルのパスを返す式（例: \"data.json\" や変数参照）",
+            "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）",
             "type": [
               "object",
               "null"
@@ -8303,7 +8365,7 @@
           },
           "dataset": {
             "title": "ファイルパス",
-            "description": "入力ファイルのパスを返す式（例: \"model.obj\" や変数参照）",
+            "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）",
             "type": [
               "object",
               "null"
@@ -11344,7 +11406,7 @@
     {
       "name": "SQL Reader",
       "type": "source",
-      "description": "SQLデータベースから地物を読み取る",
+      "description": "SQL データベースから地物を読み取る",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "SQL Reader パラメータ",
@@ -11416,7 +11478,7 @@
     {
       "name": "Shapefile Reader",
       "type": "source",
-      "description": "Shapefileアーカイブ（.shp、.dbf、.shxを含む.zip）から地理的地物を読み込む",
+      "description": "Shapefile アーカイブ（.shp、.dbf、.shx を含む .zip）から地理地物を読み取る",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ShapefileReader パラメータ",
@@ -11425,13 +11487,13 @@
         "properties": {
           "encoding": {
             "title": "文字エンコーディング",
-            "description": "DBF ファイルの属性データの文字エンコーディング。指定しない場合は .cpg ファイル（存在する場合）から判定し、なければ UTF-8 をデフォルトとする。\n\n対応するエンコーディング: - **UTF-8** - Unicode UTF-8（デフォルト、新しい Shapefile に推奨） - **Windows コードページ** - Windows-1250〜1258、Windows-874 - **ISO-8859 ファミリ** - ISO-8859-1（Latin-1）〜ISO-8859-16 - **アジア系** - Shift-JIS、EUC-JP、EUC-KR、Big5、GBK、GB18030 - **その他レガシー** - KOI8-R、KOI8-U、IBM866、Macintosh\n\nエンコーディングラベルは大文字小文字を区別せず、一般的な表記のバリエーションに対応（例: \"UTF-8\"、\"UTF8\"、\"utf8\" すべて有効）。\n\nUTF-16 はバイトレベルの処理要件により非対応。UTF-16 の Shapefile を読み込むとエラーと変換手順が返される。\n\n優先順位: encoding パラメータ > .cpg ファイル > UTF-8 デフォルト",
+            "description": "DBF ファイルの属性データの文字エンコーディング（例: \"UTF-8\"、\"Shift-JIS\"、\"Windows-1252\"）。ラベルは大文字小文字を区別しない。未指定時は .cpg ファイルがあればそれに従い、なければ UTF-8（UTF-16 は非対応）",
             "type": [
               "string",
               "null"
             ]
           },
-          "force2d": {
+          "force2D": {
             "title": "2D に強制",
             "description": "true の場合、すべてのジオメトリを 2D に強制する（Z 値を無視）",
             "default": false,
@@ -11439,13 +11501,13 @@
           },
           "allowEmptyPath": {
             "title": "null パスを許可",
-            "description": "true の場合、null に評価されるデータセット式はエラーの代わりにフィーチャーを 0 件生成する。パスが設定されない可能性がある省略可能な Shapefile 入力に便利。",
+            "description": "true の場合、null のデータセットパスはエラーの代わりに地物を 0 件生成し、省略可能な Shapefile 入力を許可する",
             "default": false,
             "type": "boolean"
           },
           "dataset": {
             "title": "ファイルパス",
-            "description": "入力ファイルのパスを返す式（例: \"data.csv\" や変数参照）",
+            "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）",
             "type": [
               "object",
               "null"
@@ -11504,7 +11566,8 @@
         "Input"
       ],
       "tags": [
-        "shapefile"
+        "shapefile",
+        "vector"
       ]
     },
     {
@@ -12615,7 +12678,7 @@
           },
           "dataset": {
             "title": "ファイルパス",
-            "description": "入力ファイルのパスを返す式（例: \"model.glb\" や変数参照）",
+            "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）",
             "type": [
               "object",
               "null"

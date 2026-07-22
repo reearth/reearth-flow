@@ -1385,7 +1385,7 @@
         "properties": {
           "format": {
             "title": "File Format",
-            "description": "Choose the delimiter format for the input file",
+            "description": "Delimiter format of the input file.",
             "allOf": [
               {
                 "$ref": "#/definitions/CsvFormat"
@@ -1394,7 +1394,7 @@
           },
           "encoding": {
             "title": "Character Encoding",
-            "description": "Character encoding for the CSV/TSV file. If not specified, defaults to UTF-8.\n\nSupported encodings include: - **UTF-8** - Unicode UTF-8 (default) - **Shift-JIS** - Japanese encoding - **EUC-JP** - Japanese encoding - **Windows Code Pages** - Windows-1250 through Windows-1258 - **ISO-8859 family** - ISO-8859-1 through ISO-8859-16\n\nAll encoding labels are case-insensitive.",
+            "description": "Character encoding of the input file, such as \"UTF-8\" or \"Shift-JIS\". Defaults to UTF-8 when omitted; labels are case-insensitive.",
             "type": [
               "string",
               "null"
@@ -1402,7 +1402,7 @@
           },
           "dataset": {
             "title": "File Path",
-            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+            "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
             "type": [
               "object",
               "null"
@@ -1462,7 +1462,7 @@
           },
           "headerRows": {
             "title": "Header Row Count",
-            "description": "Number of consecutive rows that make up the header (default: 1). When 0, no header rows are read and column names are auto-generated as \"column1\", \"column2\", etc. When greater than 1, column names are formed by joining non-empty values from each header row with \"_\".",
+            "description": "Number of consecutive rows that make up the header (default: 1). When 0, column names are auto-generated as \"column1\", \"column2\", and so on; when greater than 1, names are formed by joining values from each header row with \"_\".",
             "type": [
               "integer",
               "null"
@@ -1757,7 +1757,7 @@
           },
           "dataset": {
             "title": "File Path",
-            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+            "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
             "type": [
               "object",
               "null"
@@ -2220,7 +2220,7 @@
         "properties": {
           "dataset": {
             "title": "File Path",
-            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+            "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
             "type": [
               "object",
               "null"
@@ -2269,6 +2269,8 @@
             }
           },
           "flatten": {
+            "title": "Flatten Attributes",
+            "description": "When enabled, flattens nested CityGML attributes into top-level attributes. Defaults to false.",
             "type": [
               "boolean",
               "null"
@@ -3416,7 +3418,7 @@
         "properties": {
           "creator": {
             "title": "Script Expression",
-            "description": "Write a script expression that returns a map (single feature) or array of maps (multiple features). Each map represents feature attributes as key-value pairs.",
+            "description": "Script expression that returns a map (single feature) or an array of maps (multiple features). Each map holds feature attributes as key-value pairs.",
             "type": "object",
             "format": "code",
             "required": [
@@ -3445,7 +3447,9 @@
       "categories": [
         "Input"
       ],
-      "tags": []
+      "tags": [
+        "scripting"
+      ]
     },
     {
       "name": "Feature Duplicate Filter",
@@ -4620,7 +4624,7 @@
         "Input"
       ],
       "tags": [
-        "file-system"
+        "file"
       ]
     },
     {
@@ -4690,7 +4694,7 @@
         "properties": {
           "dataset": {
             "title": "File Path",
-            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+            "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
             "type": [
               "object",
               "null"
@@ -4749,7 +4753,8 @@
         "Input"
       ],
       "tags": [
-        "geojson"
+        "geojson",
+        "vector"
       ]
     },
     {
@@ -4821,10 +4826,13 @@
       "description": "从GeoPackage（.gpkg）文件读取矢量要素、瓦片和元数据",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "GeoPackageReaderParam",
+        "title": "GeoPackage Reader Parameters",
+        "description": "Configures which content to read from the GeoPackage file and how geometries are produced.",
         "type": "object",
         "properties": {
           "readMode": {
+            "title": "Read Mode",
+            "description": "Which content to read from the GeoPackage file. Defaults to reading vector features.",
             "default": "features",
             "allOf": [
               {
@@ -4833,6 +4841,8 @@
             ]
           },
           "layerName": {
+            "title": "Layer Name",
+            "description": "Name of the layer to read. When omitted, the first available layer is used.",
             "type": [
               "string",
               "null"
@@ -4843,6 +4853,8 @@
             "type": "boolean"
           },
           "tileFormat": {
+            "title": "Tile Format",
+            "description": "Image format to decode when reading raster tiles. Defaults to PNG.",
             "default": "png",
             "allOf": [
               {
@@ -4867,6 +4879,8 @@
             "minimum": 0.0
           },
           "force2D": {
+            "title": "Force 2D",
+            "description": "If true, forces all geometries to be 2D (ignoring Z values).",
             "default": false,
             "type": "boolean"
           },
@@ -4879,7 +4893,7 @@
           },
           "dataset": {
             "title": "File Path",
-            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+            "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
             "type": [
               "object",
               "null"
@@ -4930,20 +4944,67 @@
         },
         "definitions": {
           "GeoPackageReadMode": {
-            "type": "string",
-            "enum": [
-              "features",
-              "tiles",
-              "all",
-              "metadataOnly"
+            "oneOf": [
+              {
+                "title": "Features",
+                "description": "Reads vector features (geometry and attributes).",
+                "type": "string",
+                "enum": [
+                  "features"
+                ]
+              },
+              {
+                "title": "Tiles",
+                "description": "Reads raster tiles.",
+                "type": "string",
+                "enum": [
+                  "tiles"
+                ]
+              },
+              {
+                "title": "All",
+                "description": "Reads both vector features and raster tiles.",
+                "type": "string",
+                "enum": [
+                  "all"
+                ]
+              },
+              {
+                "title": "Metadata Only",
+                "description": "Reads only the file's metadata, without features or tiles.",
+                "type": "string",
+                "enum": [
+                  "metadataOnly"
+                ]
+              }
             ]
           },
           "TileFormat": {
-            "type": "string",
-            "enum": [
-              "png",
-              "jpeg",
-              "webp"
+            "oneOf": [
+              {
+                "title": "PNG",
+                "description": "Decodes tiles as PNG images.",
+                "type": "string",
+                "enum": [
+                  "png"
+                ]
+              },
+              {
+                "title": "JPEG",
+                "description": "Decodes tiles as JPEG images.",
+                "type": "string",
+                "enum": [
+                  "jpeg"
+                ]
+              },
+              {
+                "title": "WebP",
+                "description": "Decodes tiles as WebP images.",
+                "type": "string",
+                "enum": [
+                  "webp"
+                ]
+              }
             ]
           }
         }
@@ -4957,7 +5018,8 @@
         "Input"
       ],
       "tags": [
-        "geopackage"
+        "geopackage",
+        "vector"
       ]
     },
     {
@@ -7393,7 +7455,7 @@
         "properties": {
           "dataset": {
             "title": "File Path",
-            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+            "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
             "type": [
               "object",
               "null"
@@ -8300,7 +8362,7 @@
           },
           "dataset": {
             "title": "File Path",
-            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+            "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
             "type": [
               "object",
               "null"
@@ -11422,27 +11484,27 @@
         "properties": {
           "encoding": {
             "title": "Character Encoding",
-            "description": "Character encoding for attribute data in the DBF file. If not specified, encoding is determined from the .cpg file (if present), otherwise defaults to UTF-8.\n\nSupported encodings include: - **UTF-8** - Unicode UTF-8 (default, recommended for all new shapefiles) - **Windows Code Pages** - Windows-1250 through Windows-1258, Windows-874 - **ISO-8859 family** - ISO-8859-1 (Latin-1) through ISO-8859-16 - **Asian encodings** - Shift-JIS, EUC-JP, EUC-KR, Big5, GBK, GB18030 - **Other legacy encodings** - KOI8-R, KOI8-U, IBM866, Macintosh\n\nAll encoding labels are case-insensitive and support common variations (e.g., \"UTF-8\", \"UTF8\", \"utf8\" all work).\n\nUTF-16 is not supported due to byte-level handling requirements. If a UTF-16 shapefile is encountered, an error with conversion instructions is returned.\n\nExamples: - `\"UTF-8\"` - Modern standard - `\"Windows-1252\"` - Common for Western European legacy data - `\"ISO-8859-1\"` - Latin-1, common in older shapefiles - `\"Shift-JIS\"` - Japanese data\n\nPriority order: encoding parameter > .cpg file > UTF-8 default",
+            "description": "Character encoding for attribute data in the DBF file, such as \"UTF-8\", \"Shift-JIS\", or \"Windows-1252\"; labels are case-insensitive. When omitted, the encoding is taken from the .cpg file if present, otherwise UTF-8 (UTF-16 is not supported).",
             "type": [
               "string",
               "null"
             ]
           },
-          "force2d": {
+          "force2D": {
             "title": "Force 2D",
-            "description": "If true, forces all geometries to be 2D (ignoring Z values)",
+            "description": "If true, forces all geometries to be 2D (ignoring Z values).",
             "default": false,
             "type": "boolean"
           },
           "allowEmptyPath": {
             "title": "Allow Null Path",
-            "description": "If true, a dataset expression that evaluates to null produces zero features instead of an error. This is useful for optional shapefile inputs where the path may not be configured.",
+            "description": "If true, a null dataset path produces zero features instead of an error, allowing optional shapefile inputs.",
             "default": false,
             "type": "boolean"
           },
           "dataset": {
             "title": "File Path",
-            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+            "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
             "type": [
               "object",
               "null"
@@ -11501,7 +11563,8 @@
         "Input"
       ],
       "tags": [
-        "shapefile"
+        "shapefile",
+        "vector"
       ]
     },
     {
@@ -12612,7 +12675,7 @@
           },
           "dataset": {
             "title": "File Path",
-            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+            "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
             "type": [
               "object",
               "null"
