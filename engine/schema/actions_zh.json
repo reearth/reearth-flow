@@ -2176,6 +2176,35 @@
               "null"
             ]
           },
+          "texelSize": {
+            "title": "纹素大小",
+            "description": "目标纹素大小（米/像素）。比此值更精细的纹理会被降采样至该值。默认值为 0，即保持完整的纹理细节。",
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "atlasSize": {
+            "title": "图集大小",
+            "description": "纹理图集的最大尺寸（像素）。超过此值的纹理会分布到额外的图集页；单个大于此值的纹理会被降采样以适配。默认值为 2048。",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "minimum": 1.0
+          },
+          "atlasExtrusion": {
+            "title": "图集外扩",
+            "description": "在图集中每个纹理区域周围绘制的像素环，用于防止相邻区域之间的双线性渗色。默认值为 0（禁用）。",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "minimum": 0.0
+          },
           "skipUnexposedAttributes": {
             "title": "跳过未公开属性",
             "description": "跳过带有双下划线前缀的属性",

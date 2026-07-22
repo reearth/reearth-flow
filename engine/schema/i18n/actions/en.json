@@ -705,6 +705,14 @@
         "": {
           "title": "Cesium3DTilesWriter Parameters"
         },
+        "atlasExtrusion": {
+          "title": "Atlas Extrusion",
+          "description": "Ring of pixels blitted around each texture region in the atlas to stop bilinear bleed between neighbouring regions. Defaults to 0 (disabled)."
+        },
+        "atlasSize": {
+          "title": "Atlas Size",
+          "description": "Maximum texture atlas dimension in pixels. Textures exceeding this spill onto additional atlas pages; a single texture larger than it is downsampled to fit. Defaults to 2048."
+        },
         "attachTexture": {
           "title": "Attach Textures",
           "description": "Whether to include texture information in the generated tiles"
@@ -740,6 +748,10 @@
         "skipUnexposedAttributes": {
           "title": "Skip unexposed Attributes",
           "description": "Skip attributes with double underscore prefix"
+        },
+        "texelSize": {
+          "title": "Texel Size",
+          "description": "Target texel size in metres per pixel. Textures finer than this are downsampled to it. Defaults to 0, which keeps full texture detail."
         }
       }
     },
