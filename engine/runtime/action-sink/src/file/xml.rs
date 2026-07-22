@@ -147,7 +147,7 @@ pub(super) fn write_xml(
         .collect::<Vec<serde_json::Value>>();
 
     let mut writer = Writer::new(Vec::new());
-    writer.write_event(Event::Decl(BytesDecl::new("1.2", None, None)))?;
+    writer.write_event(Event::Decl(BytesDecl::new("1.0", None, None)))?;
     let start = BytesStart::new("features");
     let end = start.to_end();
     writer.write_event(Event::Start(start.clone()))?;

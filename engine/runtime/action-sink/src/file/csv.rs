@@ -100,7 +100,7 @@ pub(super) struct CsvWriterParam {
     /// File format to write: CSV (comma-separated) or TSV (tab-separated).
     format: CsvFormat,
     /// # Geometry Configuration
-    /// Optional configuration for exporting geometry to CSV columns
+    /// Optional configuration for exporting geometry to CSV columns.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(super) geometry: Option<super::writer_geometry::GeometryExportConfig>,
 }

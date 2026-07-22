@@ -102,8 +102,8 @@ pub(crate) struct ShapefileWriter {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ShapefileWriterParam {
-    /// # Output Path
-    /// Output path or expression for the Shapefile to create.
+    /// # Output Directory
+    /// Output directory path or expression where the generated Shapefile files are written.
     pub(super) output: Code,
     /// # Group By
     /// Attributes to group features by, writing a separate file for each distinct group.

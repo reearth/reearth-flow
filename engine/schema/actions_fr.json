@@ -5022,8 +5022,12 @@
           "geometryType": {
             "title": "Geometry Type",
             "description": "Geometry type for table (Point, LineString, Polygon, MultiPoint, MultiLineString, MultiPolygon, or GEOMETRY for mixed)",
-            "default": "GEOMETRY",
-            "type": "string"
+            "default": "geometry",
+            "allOf": [
+              {
+                "$ref": "#/definitions/GeometryType"
+              }
+            ]
           },
           "overwrite": {
             "title": "Overwrite Existing File",
@@ -5042,6 +5046,70 @@
             "description": "Create RTree spatial index (default: true)",
             "default": true,
             "type": "boolean"
+          }
+        },
+        "definitions": {
+          "GeometryType": {
+            "title": "Geometry Type",
+            "description": "Geometry type declared for a GeoPackage feature table.",
+            "oneOf": [
+              {
+                "title": "Point",
+                "description": "A single point per feature.",
+                "type": "string",
+                "enum": [
+                  "point"
+                ]
+              },
+              {
+                "title": "Line String",
+                "description": "A single connected sequence of points per feature.",
+                "type": "string",
+                "enum": [
+                  "lineString"
+                ]
+              },
+              {
+                "title": "Polygon",
+                "description": "A single polygon, with optional holes, per feature.",
+                "type": "string",
+                "enum": [
+                  "polygon"
+                ]
+              },
+              {
+                "title": "Multi Point",
+                "description": "A collection of points per feature.",
+                "type": "string",
+                "enum": [
+                  "multiPoint"
+                ]
+              },
+              {
+                "title": "Multi Line String",
+                "description": "A collection of line strings per feature.",
+                "type": "string",
+                "enum": [
+                  "multiLineString"
+                ]
+              },
+              {
+                "title": "Multi Polygon",
+                "description": "A collection of polygons per feature.",
+                "type": "string",
+                "enum": [
+                  "multiPolygon"
+                ]
+              },
+              {
+                "title": "Geometry (Mixed)",
+                "description": "Any geometry type; use when the table holds mixed or unknown geometry types.",
+                "type": "string",
+                "enum": [
+                  "geometry"
+                ]
+              }
+            ]
           }
         }
       },
@@ -7844,8 +7912,8 @@
             "minimum": 0.0
           },
           "compressOutput": {
-            "title": "Compress Output",
-            "description": "Optional expression to determine whether to compress the output tiles",
+            "title": "Compressed Output Path",
+            "description": "Optional path where a compressed archive of the tiles is also written.",
             "type": [
               "object",
               "null"
@@ -11540,8 +11608,8 @@
         ],
         "properties": {
           "output": {
-            "title": "Output Path",
-            "description": "Output path or expression for the Shapefile to create",
+            "title": "Output Directory",
+            "description": "Output directory path or expression where the generated Shapefile files are written.",
             "type": "object",
             "format": "code",
             "required": [

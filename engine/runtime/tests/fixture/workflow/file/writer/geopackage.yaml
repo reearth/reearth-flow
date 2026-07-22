@@ -29,7 +29,7 @@ graphs:
           tableName: test_features
           geometryColumn: geom
           srsId: 4326
-          geometryType: GEOMETRY
+          geometryType: geometry
           createSpatialIndex: true
           overwrite: true
 

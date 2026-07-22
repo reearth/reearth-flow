@@ -1593,7 +1593,7 @@ Writes features to CSV or TSV files.
     },
     "geometry": {
       "title": "Geometry Configuration",
-      "description": "Optional configuration for exporting geometry to CSV columns",
+      "description": "Optional configuration for exporting geometry to CSV columns.",
       "anyOf": [
         {
           "$ref": "#/definitions/GeometryExportConfig"
@@ -4886,9 +4886,13 @@ Writes features to a GeoPackage (.gpkg) file.
     },
     "geometryType": {
       "title": "Geometry Type",
-      "description": "Geometry type declared for the table: Point, LineString, Polygon, MultiPoint, MultiLineString, MultiPolygon, or GEOMETRY for mixed types. Defaults to GEOMETRY.",
-      "default": "GEOMETRY",
-      "type": "string"
+      "description": "Geometry type declared for the table. Use Geometry for tables that hold mixed or unknown types. Defaults to Geometry.",
+      "default": "geometry",
+      "allOf": [
+        {
+          "$ref": "#/definitions/GeometryType"
+        }
+      ]
     },
     "overwrite": {
       "title": "Overwrite Existing File",
@@ -4907,6 +4911,70 @@ Writes features to a GeoPackage (.gpkg) file.
       "description": "Whether to build an R-tree spatial index on the geometry column for faster queries. Defaults to true.",
       "default": true,
       "type": "boolean"
+    }
+  },
+  "definitions": {
+    "GeometryType": {
+      "title": "Geometry Type",
+      "description": "Geometry type declared for a GeoPackage feature table.",
+      "oneOf": [
+        {
+          "title": "Point",
+          "description": "A single point per feature.",
+          "type": "string",
+          "enum": [
+            "point"
+          ]
+        },
+        {
+          "title": "Line String",
+          "description": "A single connected sequence of points per feature.",
+          "type": "string",
+          "enum": [
+            "lineString"
+          ]
+        },
+        {
+          "title": "Polygon",
+          "description": "A single polygon, with optional holes, per feature.",
+          "type": "string",
+          "enum": [
+            "polygon"
+          ]
+        },
+        {
+          "title": "Multi Point",
+          "description": "A collection of points per feature.",
+          "type": "string",
+          "enum": [
+            "multiPoint"
+          ]
+        },
+        {
+          "title": "Multi Line String",
+          "description": "A collection of line strings per feature.",
+          "type": "string",
+          "enum": [
+            "multiLineString"
+          ]
+        },
+        {
+          "title": "Multi Polygon",
+          "description": "A collection of polygons per feature.",
+          "type": "string",
+          "enum": [
+            "multiPolygon"
+          ]
+        },
+        {
+          "title": "Geometry (Mixed)",
+          "description": "Any geometry type; use when the table holds mixed or unknown geometry types.",
+          "type": "string",
+          "enum": [
+            "geometry"
+          ]
+        }
+      ]
     }
   }
 }
@@ -7652,8 +7720,8 @@ Writes features to Mapbox Vector Tiles (MVT) format.
       "minimum": 0.0
     },
     "compressOutput": {
-      "title": "Compress Output",
-      "description": "Optional expression that determines whether the output tiles are compressed.",
+      "title": "Compressed Output Path",
+      "description": "Optional path where a compressed archive of the tiles is also written.",
       "type": [
         "object",
         "null"
@@ -11244,8 +11312,8 @@ Writes features to ESRI Shapefile format, optionally grouping them into separate
   ],
   "properties": {
     "output": {
-      "title": "Output Path",
-      "description": "Output path or expression for the Shapefile to create.",
+      "title": "Output Directory",
+      "description": "Output directory path or expression where the generated Shapefile files are written.",
       "type": "object",
       "format": "code",
       "required": [

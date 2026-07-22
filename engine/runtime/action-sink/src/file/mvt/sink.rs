@@ -146,8 +146,8 @@ pub struct MVTWriterParam {
     /// # Maximum Zoom
     /// Highest zoom level to generate tiles for.
     pub(super) max_zoom: u8,
-    /// # Compress Output
-    /// Optional expression that determines whether the output tiles are compressed.
+    /// # Compressed Output Path
+    /// Optional path where a compressed archive of the tiles is also written.
     pub(super) compress_output: Option<Code>,
     /// # Schema Key
     /// Attribute key used to match data and schema features for attribute filtering and casting.

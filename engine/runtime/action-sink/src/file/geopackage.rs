@@ -87,7 +87,7 @@ impl SinkFactory for GeoPackageWriterFactory {
                 table_name: params.table_name,
                 geometry_column: params.geometry_column,
                 srs_id: params.srs_id,
-                geometry_type: params.geometry_type,
+                geometry_type: params.geometry_type.as_gpkg_name().to_string(),
                 create_spatial_index: params.create_spatial_index,
                 overwrite: params.overwrite,
             },
@@ -134,9 +134,9 @@ pub(super) struct GeoPackageWriterParam {
     #[serde(default = "default_srs_id")]
     pub(super) srs_id: i32,
     /// # Geometry Type
-    /// Geometry type declared for the table: Point, LineString, Polygon, MultiPoint, MultiLineString, MultiPolygon, or GEOMETRY for mixed types. Defaults to GEOMETRY.
-    #[serde(default = "default_geometry_type")]
-    pub(super) geometry_type: String,
+    /// Geometry type declared for the table. Use Geometry for tables that hold mixed or unknown types. Defaults to Geometry.
+    #[serde(default)]
+    pub(super) geometry_type: GeometryType,
     /// # Overwrite Existing File
     /// Whether to overwrite the output file if it already exists. Defaults to false.
     #[serde(default)]
@@ -163,8 +163,48 @@ fn default_srs_id() -> i32 {
     4326
 }
 
-fn default_geometry_type() -> String {
-    "GEOMETRY".to_string()
+/// # Geometry Type
+/// Geometry type declared for a GeoPackage feature table.
+#[derive(Serialize, Deserialize, Debug, Clone, Default, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub(super) enum GeometryType {
+    /// # Point
+    /// A single point per feature.
+    Point,
+    /// # Line String
+    /// A single connected sequence of points per feature.
+    LineString,
+    /// # Polygon
+    /// A single polygon, with optional holes, per feature.
+    Polygon,
+    /// # Multi Point
+    /// A collection of points per feature.
+    MultiPoint,
+    /// # Multi Line String
+    /// A collection of line strings per feature.
+    MultiLineString,
+    /// # Multi Polygon
+    /// A collection of polygons per feature.
+    MultiPolygon,
+    /// # Geometry (Mixed)
+    /// Any geometry type; use when the table holds mixed or unknown geometry types.
+    #[default]
+    Geometry,
+}
+
+impl GeometryType {
+    /// Canonical GeoPackage `geometry_type_name` value for this type.
+    fn as_gpkg_name(&self) -> &'static str {
+        match self {
+            GeometryType::Point => "POINT",
+            GeometryType::LineString => "LINESTRING",
+            GeometryType::Polygon => "POLYGON",
+            GeometryType::MultiPoint => "MULTIPOINT",
+            GeometryType::MultiLineString => "MULTILINESTRING",
+            GeometryType::MultiPolygon => "MULTIPOLYGON",
+            GeometryType::Geometry => "GEOMETRY",
+        }
+    }
 }
 
 fn default_create_spatial_index() -> bool {
