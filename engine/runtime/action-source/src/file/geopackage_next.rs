@@ -17,7 +17,7 @@ use reearth_flow_geometry::{
 };
 use reearth_flow_sql::SqlAdapter;
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
-use sqlx::{any::AnyRow, Column, Row};
+use sqlx::{sqlite::SqliteRow, Column, Row};
 
 use super::{GeoPackageReadMode, GeoPackageReaderCompiledParam};
 use crate::errors::SourceError;
@@ -75,8 +75,11 @@ async fn read_layer_features(
 
     super::validate_table_name(layer_name)?;
     let query = format!("SELECT * FROM \"{}\"", super::escape_identifier(layer_name));
+    // Read via the native SQLite driver: GeoPackage is a SQLite database and its
+    // user columns can be types the generic `Any` driver rejects (e.g. BOOLEAN),
+    // which would otherwise fail the whole layer read.
     let rows = adapter
-        .fetch_many(&query)
+        .fetch_many_sqlite(&query)
         .await
         .map_err(|e| err(format!("Failed to query layer {layer_name}: {e}")))?;
 
@@ -97,7 +100,7 @@ async fn read_layer_features(
 }
 
 fn row_to_feature(
-    row: &AnyRow,
+    row: &SqliteRow,
     geom_col: &str,
     srs_id: i32,
     force_2d: bool,

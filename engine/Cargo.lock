@@ -5189,7 +5189,9 @@ dependencies = [
  "rand 0.10.0",
  "regex",
  "sqlx",
+ "tempfile",
  "thiserror 2.0.18",
+ "tokio",
 ]
 
 [[package]]
