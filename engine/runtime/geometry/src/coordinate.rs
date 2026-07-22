@@ -135,7 +135,15 @@ impl CoordinateFrame {
     /// it (e.g. an unknown code or missing PROJ data).
     pub fn unit_kind(&self) -> UnitKind {
         match self {
-            CoordinateFrame::Euclidean | CoordinateFrame::Tangent(_) => UnitKind::Linear,
+            CoordinateFrame::Euclidean => UnitKind::Linear,
+            CoordinateFrame::Tangent(t) => match t.base {
+                BaseFrame::Crs(epsg) => match crate::ops::crs_is_linear(epsg) {
+                    Ok(true) => UnitKind::Linear,
+                    Ok(false) => UnitKind::Angular,
+                    Err(e) => UnitKind::Undeterminable(e.to_string()),
+                },
+                BaseFrame::Euclidean => UnitKind::Linear,
+            },
             CoordinateFrame::Crs(epsg) => match crate::ops::crs_is_linear(*epsg) {
                 Ok(true) => UnitKind::Linear,
                 Ok(false) => UnitKind::Angular,
