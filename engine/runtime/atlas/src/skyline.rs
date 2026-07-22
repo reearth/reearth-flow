@@ -42,19 +42,21 @@ impl SkylinePacker {
     }
 
     pub fn pack(&mut self, w: u32, h: u32) -> Option<Rect> {
-        let w = w + self.extrusion * 2;
-        let h = h + self.extrusion * 2;
-        let (i, rect) = self.find(w, h)?;
-        self.split(i, rect);
+        let (i, region) = self.find(w, h)?;
+        // Region sits flush; reserve a 2*extrusion gap only right and below, so
+        // neighbours' extrusion rings never overlap and page edges aren't padded.
+        let gap = self.extrusion * 2;
+        let footprint = Rect {
+            x: region.x,
+            y: region.y,
+            w: (region.w + gap).min(self.max_w - region.x),
+            h: (region.h + gap).min(self.max_h - region.y),
+        };
+        self.split(i, footprint);
         self.merge();
-        self.used_w = self.used_w.max(rect.x + rect.w);
-        self.used_h = self.used_h.max(rect.y + rect.h);
-        Some(Rect {
-            x: rect.x + self.extrusion,
-            y: rect.y + self.extrusion,
-            w: rect.w - self.extrusion * 2,
-            h: rect.h - self.extrusion * 2,
-        })
+        self.used_w = self.used_w.max(region.x + region.w);
+        self.used_h = self.used_h.max(region.y + region.h);
+        Some(region)
     }
 
     fn find(&self, w: u32, h: u32) -> Option<(usize, Rect)> {
