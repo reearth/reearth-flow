@@ -1591,7 +1591,7 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CsvWriter パラメータ",
-        "description": "フィーチャーを CSV/TSV ファイルに書き出す設定",
+        "description": "地物をCSV/TSVファイルに書き出す設定",
         "type": "object",
         "required": [
           "format",
@@ -1599,7 +1599,8 @@
         ],
         "properties": {
           "output": {
-            "description": "作成する CSV/TSV ファイルの出力パスまたは式",
+            "title": "出力ファイル",
+            "description": "作成するCSV/TSVファイルの出力パスまたは式",
             "type": "object",
             "format": "code",
             "required": [
@@ -1620,7 +1621,8 @@
             }
           },
           "format": {
-            "description": "ファイル形式: csv（カンマ区切り）または tsv（タブ区切り）",
+            "title": "ファイル形式",
+            "description": "書き出すファイル形式: CSV（カンマ区切り）またはTSV（タブ区切り）",
             "allOf": [
               {
                 "$ref": "#/definitions/CsvFormat"
@@ -1629,7 +1631,7 @@
           },
           "geometry": {
             "title": "ジオメトリ設定",
-            "description": "CSV 列にジオメトリをエクスポートするための設定（任意）",
+            "description": "CSV列にジオメトリをエクスポートするための設定（任意）",
             "anyOf": [
               {
                 "$ref": "#/definitions/GeometryExportConfig"
@@ -2083,10 +2085,11 @@
     {
       "name": "Cesium 3D Tiles Writer",
       "type": "sink",
-      "description": "地物をファイルに書き出す",
+      "description": "地物を3D Web可視化向けのCesium 3D Tiles形式に書き出す",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Cesium3DTilesWriter パラメータ",
+        "description": "地物をCesium 3D Tilesに書き出す設定",
         "type": "object",
         "required": [
           "maxZoom",
@@ -2096,7 +2099,7 @@
         "properties": {
           "output": {
             "title": "出力パス",
-            "description": "3D タイルを書き出すディレクトリパス",
+            "description": "3D Tilesを書き出すディレクトリパス",
             "type": "object",
             "format": "code",
             "required": [
@@ -2118,14 +2121,14 @@
           },
           "minZoom": {
             "title": "最小ズームレベル",
-            "description": "タイル生成の最小ズームレベル（0〜24）",
+            "description": "タイルを生成する最小ズームレベル（0〜24）",
             "type": "integer",
             "format": "uint8",
             "minimum": 0.0
           },
           "maxZoom": {
             "title": "最大ズームレベル",
-            "description": "タイル生成の最大ズームレベル（0〜24）",
+            "description": "タイルを生成する最大ズームレベル（0〜24）",
             "type": "integer",
             "format": "uint8",
             "minimum": 0.0
@@ -2138,9 +2141,41 @@
               "null"
             ]
           },
+          "dracoCompression": {
+            "title": "Draco 圧縮",
+            "description": "メッシュジオメトリをDracoで圧縮するか（デフォルト: true）",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "computeFlatNormal": {
+            "title": "フラット法線を計算",
+            "description": "ライティング用にポリゴンごとのフラット法線を計算するか。デフォルトは true。無効にすると法線は出力されずメッシュは小さくなるが、タイルにライティング情報が含まれないためビューアー側でフラット法線を導出する必要がある",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "schemaKey": {
+            "title": "スキーマキー",
+            "description": "スキーマタイプを識別し出力ファイル名を決定する属性キー。同じ値を持つすべての地物は同一ファイルに書き出される。この属性は出力から除外される",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "skipUnexposedAttributes": {
+            "title": "非公開属性をスキップ",
+            "description": "ダブルアンダースコアで始まる属性をスキップするか",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
           "compressOutput": {
             "title": "圧縮出力パス",
-            "description": "圧縮アーカイブ出力の出力先パス（任意）",
+            "description": "タイルの圧縮アーカイブを書き出す出力先パス（任意）",
             "type": [
               "object",
               "null"
@@ -2162,38 +2197,6 @@
                 "type": "string"
               }
             }
-          },
-          "dracoCompression": {
-            "title": "Draco 圧縮",
-            "description": "Draco 圧縮を使用する。デフォルトは true。",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "computeFlatNormal": {
-            "title": "フラット法線を計算",
-            "description": "ライティング用にポリゴンごとのフラット法線を計算する。デフォルトは true。無効にすると法線は出力されずメッシュは小さくなるが、タイルにライティング情報が含まれないため、ビューアー側でフラット法線を導出する必要がある。",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "skipUnexposedAttributes": {
-            "title": "非公開属性をスキップ",
-            "description": "ダブルアンダースコアで始まる属性をスキップする",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "schemaKey": {
-            "title": "スキーマキー",
-            "description": "スキーマタイプを識別し出力ファイル名を決定する属性キー。同じ値を持つすべてのフィーチャーは同一ファイルに書き出される。この属性は出力から除外される。",
-            "type": [
-              "string",
-              "null"
-            ]
           }
         }
       },
@@ -2207,8 +2210,8 @@
         "Output"
       ],
       "tags": [
-        "3d-tiles",
-        "3d"
+        "3d",
+        "tiling"
       ]
     },
     {
@@ -2299,13 +2302,15 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlWriter パラメータ",
+        "description": "地物をCityGML 2.0ファイルに書き出す設定",
         "type": "object",
         "required": [
           "output"
         ],
         "properties": {
           "output": {
-            "description": "出力ファイルパスの式",
+            "title": "出力ファイル",
+            "description": "作成するCityGMLファイルの出力パスまたは式",
             "type": "object",
             "format": "code",
             "required": [
@@ -2325,8 +2330,18 @@
               }
             }
           },
+          "prettyPrint": {
+            "title": "整形出力",
+            "description": "読みやすさのため出力をインデントするか（デフォルト: true）",
+            "default": true,
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
           "lodFilter": {
-            "description": "含める LOD レベル（例: [0, 1, 2]）。空の場合はすべての LOD を含む。",
+            "title": "LODフィルター",
+            "description": "含めるLODレベル（例: [0, 1, 2]）。空の場合はすべてのレベルを含む",
             "default": null,
             "type": [
               "array",
@@ -2339,7 +2354,8 @@
             }
           },
           "epsgCode": {
-            "description": "座標参照系の EPSG コード",
+            "title": "EPSGコード",
+            "description": "出力に記録する座標参照系のEPSGコード",
             "default": null,
             "type": [
               "integer",
@@ -2347,14 +2363,6 @@
             ],
             "format": "uint32",
             "minimum": 0.0
-          },
-          "prettyPrint": {
-            "description": "インデント付きでフォーマット出力するか（デフォルト: true）",
-            "default": true,
-            "type": [
-              "boolean",
-              "null"
-            ]
           }
         }
       },
@@ -4758,18 +4766,19 @@
     {
       "name": "GeoJSON Writer",
       "type": "sink",
-      "description": "地物をGeoJSONファイルに書き出す",
+      "description": "地物をGeoJSONファイルに書き出し、任意でグループごとに別ファイルに分割する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "GeoJsonWriter パラメータ",
-        "description": "フィーチャーを GeoJSON ファイルに書き出す設定",
+        "description": "地物をGeoJSONファイルに書き出す設定",
         "type": "object",
         "required": [
           "output"
         ],
         "properties": {
           "output": {
-            "description": "作成する GeoJSON ファイルの出力パスまたは式",
+            "title": "出力ファイル",
+            "description": "作成するGeoJSONファイルの出力パスまたは式",
             "type": "object",
             "format": "code",
             "required": [
@@ -4790,7 +4799,8 @@
             }
           },
           "groupBy": {
-            "description": "フィーチャーをグループ化してグループごとに別ファイルを作成する属性（任意）",
+            "title": "グループ化属性",
+            "description": "地物をグループ化し、グループごとに別ファイルを作成する属性",
             "type": [
               "array",
               "null"
@@ -4815,7 +4825,8 @@
         "Output"
       ],
       "tags": [
-        "geojson"
+        "geojson",
+        "vector"
       ]
     },
     {
@@ -4966,18 +4977,19 @@
     {
       "name": "GeoPackage Writer",
       "type": "sink",
-      "description": "地物をGeoPackage（.gpkg）ファイルに書き出す。SQLite構造、空間インデックス、メタデータテーブルを適切に作成",
+      "description": "地物をGeoPackage（.gpkg）ファイルに書き出す",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "GeoPackageWriter パラメータ",
-        "description": "フィーチャーを GeoPackage ファイルに書き出す設定",
+        "description": "地物をGeoPackageファイルに書き出す設定",
         "type": "object",
         "required": [
           "output"
         ],
         "properties": {
           "output": {
-            "description": "作成する GeoPackage ファイルの出力パス",
+            "title": "出力ファイル",
+            "description": "作成するGeoPackageファイルの出力パスまたは式",
             "type": "object",
             "format": "code",
             "required": [
@@ -4998,34 +5010,40 @@
             }
           },
           "tableName": {
-            "description": "作成するテーブル名（デフォルト: \"features\"）",
+            "title": "テーブル名",
+            "description": "作成する地物テーブルの名前。GISクライアントではレイヤー名として表示される（デフォルト: \"features\"）",
             "default": "features",
             "type": "string"
           },
-          "geometryColumn": {
-            "description": "ジオメトリ列名（デフォルト: \"geom\"）",
-            "default": "geom",
-            "type": "string"
-          },
           "srsId": {
-            "description": "空間参照系 ID（デフォルト: WGS84 の 4326）",
+            "title": "SRS ID",
+            "description": "ジオメトリに記録する空間参照系ID（EPSGコード）。再投影は行わずこのコードを付与するだけのため、入力データの座標系と一致させる必要がある（デフォルト: 4326、WGS 84）",
             "default": 4326,
             "type": "integer",
             "format": "int32"
           },
           "geometryType": {
-            "description": "テーブルのジオメトリタイプ（Point、LineString、Polygon、MultiPoint、MultiLineString、MultiPolygon、または混在の場合は GEOMETRY）",
+            "title": "ジオメトリタイプ",
+            "description": "テーブルに宣言するジオメトリタイプ: Point、LineString、Polygon、MultiPoint、MultiLineString、MultiPolygon、または混在の場合はGEOMETRY（デフォルト: GEOMETRY）",
             "default": "GEOMETRY",
             "type": "string"
           },
-          "createSpatialIndex": {
-            "description": "RTree 空間インデックスを作成する（デフォルト: true）",
-            "default": true,
+          "overwrite": {
+            "title": "既存ファイルを上書き",
+            "description": "出力ファイルが既に存在する場合に上書きするか（デフォルト: false）",
+            "default": false,
             "type": "boolean"
           },
-          "overwrite": {
-            "description": "既存ファイルを上書きする（デフォルト: false）",
-            "default": false,
+          "geometryColumn": {
+            "title": "ジオメトリ列",
+            "description": "ジオメトリを格納する列の名前（デフォルト: \"geom\"）",
+            "default": "geom",
+            "type": "string"
+          },
+          "createSpatialIndex": {
+            "title": "空間インデックスを作成",
+            "description": "クエリを高速化するためジオメトリ列にR-tree空間インデックスを作成するか（デフォルト: true）",
+            "default": true,
             "type": "boolean"
           }
         }
@@ -5039,7 +5057,8 @@
         "Output"
       ],
       "tags": [
-        "geopackage"
+        "geopackage",
+        "vector"
       ]
     },
     {
@@ -7465,14 +7484,15 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "JsonWriter パラメータ",
-        "description": "フィーチャーを JSON ファイルに書き出す設定",
+        "description": "地物をJSONファイルに書き出す設定",
         "type": "object",
         "required": [
           "output"
         ],
         "properties": {
           "output": {
-            "description": "作成する JSON ファイルの出力パスまたは式",
+            "title": "出力ファイル",
+            "description": "作成するJSONファイルの出力パスまたは式",
             "type": "object",
             "format": "code",
             "required": [
@@ -7493,7 +7513,8 @@
             }
           },
           "converter": {
-            "description": "書き出し前にフィーチャーを変換するコンバーター式（任意）",
+            "title": "コンバーター式",
+            "description": "書き出すJSON値に地物を変換する式。省略した場合、地物は属性の配列として書き出される",
             "type": [
               "object",
               "null"
@@ -7754,11 +7775,11 @@
     {
       "name": "MVT Writer",
       "type": "sink",
-      "description": "地物をファイルに書き出す",
+      "description": "地物をMapbox Vector Tiles（MVT）形式に書き出す",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "MVTWriter パラメータ",
-        "description": "フィーチャーを Mapbox Vector Tiles（MVT）形式に書き出す設定。/{z}/{x}/{y}.mvt および tilejson.json を生成する。親ディレクトリが HTTP ルートとして扱われる（tileJSON は絶対 URL が必要）。",
+        "description": "地物をMapbox Vector Tiles（MVT）形式に書き出す設定",
         "type": "object",
         "required": [
           "layerName",
@@ -7768,8 +7789,8 @@
         ],
         "properties": {
           "output": {
-            "title": "出力先",
-            "description": "生成する MVT タイルの出力ディレクトリパスまたは式",
+            "title": "出力ディレクトリ",
+            "description": "生成したMVTタイルを書き出す出力ディレクトリパスまたは式",
             "type": "object",
             "format": "code",
             "required": [
@@ -7791,7 +7812,7 @@
           },
           "layerName": {
             "title": "レイヤー名",
-            "description": "MVT タイル内のレイヤー名",
+            "description": "生成するタイル内のレイヤー名または式",
             "type": "object",
             "format": "code",
             "required": [
@@ -7850,9 +7871,17 @@
               }
             }
           },
+          "schemaKey": {
+            "title": "スキーマキー",
+            "description": "属性のフィルタリングとキャストのためにデータとスキーマの地物を照合する属性キー。この属性は出力から除外される",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "skipUnexposedAttributes": {
             "title": "非公開属性をスキップ",
-            "description": "ダブルアンダースコアで始まる属性をスキップする",
+            "description": "ダブルアンダースコアで始まる属性をスキップするか",
             "type": [
               "boolean",
               "null"
@@ -7860,29 +7889,21 @@
           },
           "colonToUnderscore": {
             "title": "コロンをアンダースコアに変換",
-            "description": "属性キーのコロン（XML 名前空間など）をアンダースコアに置換する",
+            "description": "属性キーのコロン（XML名前空間など）をアンダースコアに置換するか",
             "type": [
               "boolean",
               "null"
             ]
           },
           "extent": {
-            "title": "エクステント",
-            "description": "MVT タイルの解像度。デフォルトは 4096。",
+            "title": "タイルエクステント",
+            "description": "各タイル内の座標グリッド解像度。値を大きくすると高精細データの位置精度が保たれるが、タイルサイズは大きくなる（デフォルト: 4096、MVT標準）",
             "type": [
               "integer",
               "null"
             ],
             "format": "uint32",
             "minimum": 0.0
-          },
-          "schemaKey": {
-            "title": "スキーマキー",
-            "description": "属性フィルタリングとキャストのためにデータとスキーマのフィーチャーを照合する属性キー。この属性は出力から除外される。",
-            "type": [
-              "string",
-              "null"
-            ]
           }
         }
       },
@@ -7896,7 +7917,8 @@
         "Output"
       ],
       "tags": [
-        "mvt"
+        "vector",
+        "tiling"
       ]
     },
     {
@@ -11510,18 +11532,19 @@
     {
       "name": "Shapefile Writer",
       "type": "sink",
-      "description": "シェープファイルに地物を書き込む",
+      "description": "地物をESRI Shapefile形式に書き出し、任意でグループごとに別ファイルに分割する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ShapefileWriter パラメータ",
-        "description": "フィーチャーを ESRI Shapefile 形式に書き出す設定。",
+        "description": "地物をESRI Shapefile形式に書き出す設定",
         "type": "object",
         "required": [
           "output"
         ],
         "properties": {
           "output": {
-            "description": "作成する Shapefile の出力パスまたは式",
+            "title": "出力パス",
+            "description": "作成するShapefileの出力パスまたは式",
             "type": "object",
             "format": "code",
             "required": [
@@ -11542,7 +11565,8 @@
             }
           },
           "groupBy": {
-            "description": "フィーチャーをグループ化する属性（任意）。グループごとに別ファイルを作成する",
+            "title": "グループ化属性",
+            "description": "地物をグループ化し、グループごとに別ファイルを作成する属性",
             "type": [
               "array",
               "null"
@@ -11567,7 +11591,8 @@
         "Output"
       ],
       "tags": [
-        "shapefile"
+        "shapefile",
+        "vector"
       ]
     },
     {
@@ -12496,14 +12521,15 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "XmlWriter パラメータ",
-        "description": "フィーチャーを XML ファイルに書き出す設定。",
+        "description": "地物をXMLファイルに書き出す設定",
         "type": "object",
         "required": [
           "output"
         ],
         "properties": {
           "output": {
-            "description": "作成する XML ファイルの出力パスまたは式",
+            "title": "出力ファイル",
+            "description": "作成するXMLファイルの出力パスまたは式",
             "type": "object",
             "format": "code",
             "required": [
@@ -12540,18 +12566,19 @@
     {
       "name": "Zip File Writer",
       "type": "sink",
-      "description": "zipファイルに地物を書き込む",
+      "description": "入力地物が参照するファイルを1つのZIPアーカイブに圧縮する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "ZipFileWriter パラメータ",
-        "description": "フィーチャーから ZIP アーカイブファイルを作成する設定。",
+        "description": "地物からZIPアーカイブを作成する設定",
         "type": "object",
         "required": [
           "output"
         ],
         "properties": {
           "output": {
-            "description": "出力パス",
+            "title": "出力ファイル",
+            "description": "作成するZIPアーカイブの出力パスまたは式",
             "type": "object",
             "format": "code",
             "required": [
@@ -12582,7 +12609,7 @@
         "Output"
       ],
       "tags": [
-        "file-system",
+        "file",
         "compression"
       ]
     },

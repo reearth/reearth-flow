@@ -543,15 +543,17 @@
           "title": "CsvWriter Parameters",
           "description": "Configuration for writing features to CSV/TSV files."
         },
+        "output": {
+          "title": "Output File",
+          "description": "Output path or expression for the CSV/TSV file to create."
+        },
         "format": {
-          "description": "File format: csv (comma) or tsv (tab)"
+          "title": "File Format",
+          "description": "File format to write: CSV (comma-separated) or TSV (tab-separated)."
         },
         "geometry": {
           "title": "Geometry Configuration",
           "description": "Optional configuration for exporting geometry to CSV columns"
-        },
-        "output": {
-          "description": "Output path or expression for the CSV/TSV file to create"
         }
       },
       "enumI18n": {
@@ -565,7 +567,8 @@
             "description": "File with tab-separated values"
           }
         }
-      }
+      },
+      "description": "Writes features to CSV or TSV files."
     },
     {
       "name": "CZML Reader",
@@ -700,46 +703,47 @@
     },
     {
       "name": "Cesium 3D Tiles Writer",
-      "description": "Writes features to a file",
+      "description": "Writes features to Cesium 3D Tiles format for 3D web visualization.",
       "parameterI18n": {
         "": {
-          "title": "Cesium3DTilesWriter Parameters"
+          "title": "Cesium3DTilesWriter Parameters",
+          "description": "Configuration for writing features to Cesium 3D Tiles."
+        },
+        "output": {
+          "title": "Output Path",
+          "description": "Directory path where the 3D Tiles will be written."
+        },
+        "minZoom": {
+          "title": "Minimum Zoom Level",
+          "description": "Lowest zoom level to generate tiles for, from 0 to 24."
+        },
+        "maxZoom": {
+          "title": "Maximum Zoom Level",
+          "description": "Highest zoom level to generate tiles for, from 0 to 24."
         },
         "attachTexture": {
           "title": "Attach Textures",
-          "description": "Whether to include texture information in the generated tiles"
+          "description": "Whether to include texture information in the generated tiles."
         },
-        "compressOutput": {
-          "title": "Compressed Output Path",
-          "description": "Optional path for compressed archive output"
+        "dracoCompression": {
+          "title": "Draco Compression",
+          "description": "Whether to compress mesh geometry with Draco. Defaults to true."
         },
         "computeFlatNormal": {
           "title": "Compute Flat Normals",
           "description": "Compute per-polygon flat normals for lighting. Defaults to true. When disabled, no normals are written and the mesh is smaller, but the tile carries no lighting data (a viewer must derive flat normals itself)."
-        },
-        "dracoCompression": {
-          "title": "Draco Compression",
-          "description": "Use draco compression. Defaults to true."
-        },
-        "maxZoom": {
-          "title": "Maximum Zoom Level",
-          "description": "Maximum zoom level for tile generation (0-24)"
-        },
-        "minZoom": {
-          "title": "Minimum Zoom Level",
-          "description": "Minimum zoom level for tile generation (0-24)"
-        },
-        "output": {
-          "title": "Output Path",
-          "description": "Directory path where the 3D tiles will be written"
         },
         "schemaKey": {
           "title": "Schema Key",
           "description": "Attribute key whose value identifies the schema type and determines the output filename: all features sharing the same value are written to the same file. This attribute is excluded from output."
         },
         "skipUnexposedAttributes": {
-          "title": "Skip unexposed Attributes",
-          "description": "Skip attributes with double underscore prefix"
+          "title": "Skip Unexposed Attributes",
+          "description": "Whether to skip attributes whose keys begin with a double underscore."
+        },
+        "compressOutput": {
+          "title": "Compressed Output Path",
+          "description": "Optional path where a compressed archive of the tiles is also written."
         }
       }
     },
@@ -765,21 +769,27 @@
       "name": "CityGML Writer",
       "parameterI18n": {
         "": {
-          "title": "CityGmlWriterParam"
-        },
-        "epsgCode": {
-          "description": "EPSG code for coordinate reference system"
-        },
-        "lodFilter": {
-          "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs."
+          "title": "CityGmlWriter Parameters",
+          "description": "Configuration for writing features to CityGML 2.0 files."
         },
         "output": {
-          "description": "Output file path expression"
+          "title": "Output File",
+          "description": "Output path or expression for the CityGML file to create."
         },
         "prettyPrint": {
-          "description": "Whether to format output with indentation (default: true)"
+          "title": "Pretty Print",
+          "description": "Whether to indent the output for readability. Defaults to true."
+        },
+        "lodFilter": {
+          "title": "LOD Filter",
+          "description": "Levels of detail to include, such as [0, 1, 2]. If empty, all levels are included."
+        },
+        "epsgCode": {
+          "title": "EPSG Code",
+          "description": "EPSG code of the coordinate reference system to declare in the output."
         }
-      }
+      },
+      "description": "Writes features to CityGML 2.0 files."
     },
     {
       "name": "Clipper",
@@ -1396,17 +1406,19 @@
     },
     {
       "name": "GeoJSON Writer",
-      "description": "Writes features to a geojson file",
+      "description": "Writes features to GeoJSON files, optionally grouping them into separate files.",
       "parameterI18n": {
         "": {
           "title": "GeoJsonWriter Parameters",
           "description": "Configuration for writing features to GeoJSON files."
         },
-        "groupBy": {
-          "description": "Optional attributes to group features by, creating separate files for each group"
-        },
         "output": {
-          "description": "Output path or expression for the GeoJSON file to create"
+          "title": "Output File",
+          "description": "Output path or expression for the GeoJSON file to create."
+        },
+        "groupBy": {
+          "title": "Group By",
+          "description": "Attributes to group features by, writing a separate file for each distinct group."
         }
       }
     },
@@ -1437,32 +1449,39 @@
     },
     {
       "name": "GeoPackage Writer",
-      "description": "Writes geographic features to GeoPackage (.gpkg) files with proper SQLite structure, spatial indexing, and metadata tables",
+      "description": "Writes features to a GeoPackage (.gpkg) file.",
       "parameterI18n": {
         "": {
           "title": "GeoPackageWriter Parameters",
           "description": "Configuration for writing features to GeoPackage files."
         },
-        "createSpatialIndex": {
-          "description": "Create RTree spatial index (default: true)"
-        },
-        "geometryColumn": {
-          "description": "Geometry column name (default: \"geom\")"
-        },
-        "geometryType": {
-          "description": "Geometry type for table (Point, LineString, Polygon, MultiPoint, MultiLineString, MultiPolygon, or GEOMETRY for mixed)"
-        },
         "output": {
-          "description": "Output path for the GeoPackage file to create"
-        },
-        "overwrite": {
-          "description": "Overwrite existing file (default: false)"
-        },
-        "srsId": {
-          "description": "Spatial Reference System ID (default: 4326 for WGS84)"
+          "title": "Output File",
+          "description": "Output path or expression for the GeoPackage file to create."
         },
         "tableName": {
-          "description": "Table name to create (default: \"features\")"
+          "title": "Table Name",
+          "description": "Name of the feature table to create, shown as the layer name in GIS clients. Defaults to \"features\"."
+        },
+        "srsId": {
+          "title": "SRS ID",
+          "description": "Spatial reference system identifier (EPSG code) recorded for the geometry. The writer tags this code without reprojecting, so it must match the coordinate system of the input data. Defaults to 4326 (WGS 84)."
+        },
+        "geometryType": {
+          "title": "Geometry Type",
+          "description": "Geometry type declared for the table: Point, LineString, Polygon, MultiPoint, MultiLineString, MultiPolygon, or GEOMETRY for mixed types. Defaults to GEOMETRY."
+        },
+        "overwrite": {
+          "title": "Overwrite Existing File",
+          "description": "Whether to overwrite the output file if it already exists. Defaults to false."
+        },
+        "geometryColumn": {
+          "title": "Geometry Column",
+          "description": "Name of the column that stores geometry. Defaults to \"geom\"."
+        },
+        "createSpatialIndex": {
+          "title": "Create Spatial Index",
+          "description": "Whether to build an R-tree spatial index on the geometry column for faster queries. Defaults to true."
         }
       }
     },
@@ -2045,13 +2064,16 @@
           "title": "JsonWriter Parameters",
           "description": "Configuration for writing features to JSON files."
         },
-        "converter": {
-          "description": "Optional converter expression to transform features before writing"
-        },
         "output": {
-          "description": "Output path or expression for the JSON file to create"
+          "title": "Output File",
+          "description": "Output path or expression for the JSON file to create."
+        },
+        "converter": {
+          "title": "Converter Expression",
+          "description": "Expression that transforms features into the JSON value to write. When omitted, features are written as an array of their attributes."
         }
-      }
+      },
+      "description": "Writes features to JSON files."
     },
     {
       "name": "Line On Line Overlayer",
@@ -2125,47 +2147,47 @@
     },
     {
       "name": "MVT Writer",
-      "description": "Writes features to a file",
+      "description": "Writes features to Mapbox Vector Tiles (MVT) format.",
       "parameterI18n": {
         "": {
           "title": "MVTWriter Parameters",
-          "description": "Configuration for writing features to Mapbox Vector Tiles (MVT) format. Generates tiles at /{z}/{x}/{y}.mvt and tilejson.json where the parent directory is treated as HTTP root (tileJSON requires absolute URLs)."
+          "description": "Configuration for writing features to Mapbox Vector Tiles (MVT) format."
         },
-        "colonToUnderscore": {
-          "title": "Colon to Underscore",
-          "description": "Replace colons in attribute keys (e.g., from XML Namespaces) with underscores"
-        },
-        "compressOutput": {
-          "title": "Compress Output",
-          "description": "Optional expression to determine whether to compress the output tiles"
-        },
-        "extent": {
-          "title": "Extent",
-          "description": "MVT tile resolution. Default is 4096."
+        "output": {
+          "title": "Output Directory",
+          "description": "Output directory path or expression where the generated MVT tiles are written."
         },
         "layerName": {
           "title": "Layer Name",
-          "description": "Name of the layer within the MVT tiles"
-        },
-        "maxZoom": {
-          "title": "Maximum Zoom",
-          "description": "Maximum zoom level to generate tiles for"
+          "description": "Name or expression for the layer within the generated tiles."
         },
         "minZoom": {
           "title": "Minimum Zoom",
-          "description": "Minimum zoom level to generate tiles for"
+          "description": "Lowest zoom level to generate tiles for."
         },
-        "output": {
-          "title": "Output",
-          "description": "Output directory path or expression for the generated MVT tiles"
+        "maxZoom": {
+          "title": "Maximum Zoom",
+          "description": "Highest zoom level to generate tiles for."
+        },
+        "compressOutput": {
+          "title": "Compress Output",
+          "description": "Optional expression that determines whether the output tiles are compressed."
         },
         "schemaKey": {
           "title": "Schema Key",
-          "description": "Attribute key to match data and schema features for attribute filtering and casting. This attribute is excluded from output."
+          "description": "Attribute key used to match data and schema features for attribute filtering and casting. This attribute is excluded from output."
         },
         "skipUnexposedAttributes": {
           "title": "Skip Unexposed Attributes",
-          "description": "Skip attributes with double underscore prefix"
+          "description": "Whether to skip attributes whose keys begin with a double underscore."
+        },
+        "colonToUnderscore": {
+          "title": "Colon to Underscore",
+          "description": "Whether to replace colons in attribute keys (such as those from XML namespaces) with underscores."
+        },
+        "extent": {
+          "title": "Tile Extent",
+          "description": "Coordinate grid resolution within each tile. Higher values preserve more positional precision for high-detail data at the cost of larger tiles. Defaults to 4096, the MVT standard."
         }
       }
     },
@@ -3094,17 +3116,19 @@
     },
     {
       "name": "Shapefile Writer",
-      "description": "Writes features to a Shapefile",
+      "description": "Writes features to ESRI Shapefile format, optionally grouping them into separate files.",
       "parameterI18n": {
         "": {
           "title": "ShapefileWriter Parameters",
           "description": "Configuration for writing features to ESRI Shapefile format."
         },
-        "groupBy": {
-          "description": "Optional attributes to group features by, creating separate files for each group"
-        },
         "output": {
-          "description": "Output path or expression for the Shapefile to create"
+          "title": "Output Path",
+          "description": "Output path or expression for the Shapefile to create."
+        },
+        "groupBy": {
+          "title": "Group By",
+          "description": "Attributes to group features by, writing a separate file for each distinct group."
         }
       }
     },
@@ -3373,20 +3397,23 @@
           "description": "Configuration for writing features to XML files."
         },
         "output": {
-          "description": "Output path or expression for the XML file to create"
+          "title": "Output File",
+          "description": "Output path or expression for the XML file to create."
         }
-      }
+      },
+      "description": "Writes features to XML files."
     },
     {
       "name": "Zip File Writer",
-      "description": "Writes features to a zip file",
+      "description": "Compresses files referenced by incoming features into a single ZIP archive.",
       "parameterI18n": {
         "": {
           "title": "ZipFileWriter Parameters",
           "description": "Configuration for creating ZIP archive files from features."
         },
         "output": {
-          "description": "Output path"
+          "title": "Output File",
+          "description": "Output path or expression for the ZIP archive to create."
         }
       }
     },

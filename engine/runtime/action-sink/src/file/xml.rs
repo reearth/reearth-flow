@@ -90,7 +90,8 @@ pub(super) struct XmlWriter {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct XmlWriterParam {
-    /// Output path or expression for the XML file to create
+    /// # Output File
+    /// Output path or expression for the XML file to create.
     pub(super) output: Code,
 }
 

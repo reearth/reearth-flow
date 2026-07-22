@@ -1596,6 +1596,7 @@
         ],
         "properties": {
           "output": {
+            "title": "Output File",
             "description": "Output path or expression for the CSV/TSV file to create",
             "type": "object",
             "format": "code",
@@ -1617,6 +1618,7 @@
             }
           },
           "format": {
+            "title": "File Format",
             "description": "File format: csv (comma) or tsv (tab)",
             "allOf": [
               {
@@ -2084,6 +2086,7 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Cesium3DTilesWriter 参数",
+        "description": "Configuration for writing features to Cesium 3D Tiles.",
         "type": "object",
         "required": [
           "maxZoom",
@@ -2135,6 +2138,38 @@
               "null"
             ]
           },
+          "dracoCompression": {
+            "title": "Draco 压缩",
+            "description": "使用 Draco 压缩。默认为 true。",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "computeFlatNormal": {
+            "title": "计算平面法线",
+            "description": "为光照计算逐多边形的平面法线。默认为 true。禁用时不写入法线，网格更小，但瓦片不包含光照数据（查看器需自行推导平面法线）。",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "schemaKey": {
+            "title": "模式键",
+            "description": "其值用于标识模式类型并决定输出文件名的属性键：所有具有相同值的实体都写入同一文件。该属性会从输出中排除。",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "skipUnexposedAttributes": {
+            "title": "跳过未公开属性",
+            "description": "跳过带有双下划线前缀的属性",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
           "compressOutput": {
             "title": "压缩输出路径",
             "description": "压缩归档输出的可选路径",
@@ -2159,38 +2194,6 @@
                 "type": "string"
               }
             }
-          },
-          "dracoCompression": {
-            "title": "Draco 压缩",
-            "description": "使用 Draco 压缩。默认为 true。",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "computeFlatNormal": {
-            "title": "计算平面法线",
-            "description": "为光照计算逐多边形的平面法线。默认为 true。禁用时不写入法线，网格更小，但瓦片不包含光照数据（查看器需自行推导平面法线）。",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "skipUnexposedAttributes": {
-            "title": "跳过未公开属性",
-            "description": "跳过带有双下划线前缀的属性",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "schemaKey": {
-            "title": "模式键",
-            "description": "其值用于标识模式类型并决定输出文件名的属性键：所有具有相同值的实体都写入同一文件。该属性会从输出中排除。",
-            "type": [
-              "string",
-              "null"
-            ]
           }
         }
       },
@@ -2204,8 +2207,8 @@
         "Output"
       ],
       "tags": [
-        "3d-tiles",
-        "3d"
+        "3d",
+        "tiling"
       ]
     },
     {
@@ -2296,12 +2299,14 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlWriterParam",
+        "description": "Configuration for writing features to CityGML 2.0 files.",
         "type": "object",
         "required": [
           "output"
         ],
         "properties": {
           "output": {
+            "title": "Output File",
             "description": "Output file path expression",
             "type": "object",
             "format": "code",
@@ -2322,7 +2327,17 @@
               }
             }
           },
+          "prettyPrint": {
+            "title": "Pretty Print",
+            "description": "Whether to format output with indentation (default: true)",
+            "default": true,
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
           "lodFilter": {
+            "title": "LOD Filter",
             "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs.",
             "default": null,
             "type": [
@@ -2336,6 +2351,7 @@
             }
           },
           "epsgCode": {
+            "title": "EPSG Code",
             "description": "EPSG code for coordinate reference system",
             "default": null,
             "type": [
@@ -2344,14 +2360,6 @@
             ],
             "format": "uint32",
             "minimum": 0.0
-          },
-          "prettyPrint": {
-            "description": "Whether to format output with indentation (default: true)",
-            "default": true,
-            "type": [
-              "boolean",
-              "null"
-            ]
           }
         }
       },
@@ -4766,6 +4774,7 @@
         ],
         "properties": {
           "output": {
+            "title": "Output File",
             "description": "Output path or expression for the GeoJSON file to create",
             "type": "object",
             "format": "code",
@@ -4787,6 +4796,7 @@
             }
           },
           "groupBy": {
+            "title": "Group By",
             "description": "Optional attributes to group features by, creating separate files for each group",
             "type": [
               "array",
@@ -4812,7 +4822,8 @@
         "Output"
       ],
       "tags": [
-        "geojson"
+        "geojson",
+        "vector"
       ]
     },
     {
@@ -4974,6 +4985,7 @@
         ],
         "properties": {
           "output": {
+            "title": "Output File",
             "description": "Output path for the GeoPackage file to create",
             "type": "object",
             "format": "code",
@@ -4995,34 +5007,40 @@
             }
           },
           "tableName": {
+            "title": "Table Name",
             "description": "Table name to create (default: \"features\")",
             "default": "features",
             "type": "string"
           },
-          "geometryColumn": {
-            "description": "Geometry column name (default: \"geom\")",
-            "default": "geom",
-            "type": "string"
-          },
           "srsId": {
+            "title": "SRS ID",
             "description": "Spatial Reference System ID (default: 4326 for WGS84)",
             "default": 4326,
             "type": "integer",
             "format": "int32"
           },
           "geometryType": {
+            "title": "Geometry Type",
             "description": "Geometry type for table (Point, LineString, Polygon, MultiPoint, MultiLineString, MultiPolygon, or GEOMETRY for mixed)",
             "default": "GEOMETRY",
             "type": "string"
           },
-          "createSpatialIndex": {
-            "description": "Create RTree spatial index (default: true)",
-            "default": true,
-            "type": "boolean"
-          },
           "overwrite": {
+            "title": "Overwrite Existing File",
             "description": "Overwrite existing file (default: false)",
             "default": false,
+            "type": "boolean"
+          },
+          "geometryColumn": {
+            "title": "Geometry Column",
+            "description": "Geometry column name (default: \"geom\")",
+            "default": "geom",
+            "type": "string"
+          },
+          "createSpatialIndex": {
+            "title": "Create Spatial Index",
+            "description": "Create RTree spatial index (default: true)",
+            "default": true,
             "type": "boolean"
           }
         }
@@ -5036,7 +5054,8 @@
         "Output"
       ],
       "tags": [
-        "geopackage"
+        "geopackage",
+        "vector"
       ]
     },
     {
@@ -7469,6 +7488,7 @@
         ],
         "properties": {
           "output": {
+            "title": "Output File",
             "description": "Output path or expression for the JSON file to create",
             "type": "object",
             "format": "code",
@@ -7490,6 +7510,7 @@
             }
           },
           "converter": {
+            "title": "Converter Expression",
             "description": "Optional converter expression to transform features before writing",
             "type": [
               "object",
@@ -7847,6 +7868,14 @@
               }
             }
           },
+          "schemaKey": {
+            "title": "Schema Key",
+            "description": "Attribute key to match data and schema features for attribute filtering and casting. This attribute is excluded from output.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "skipUnexposedAttributes": {
             "title": "Skip Unexposed Attributes",
             "description": "Skip attributes with double underscore prefix",
@@ -7872,14 +7901,6 @@
             ],
             "format": "uint32",
             "minimum": 0.0
-          },
-          "schemaKey": {
-            "title": "Schema Key",
-            "description": "Attribute key to match data and schema features for attribute filtering and casting. This attribute is excluded from output.",
-            "type": [
-              "string",
-              "null"
-            ]
           }
         }
       },
@@ -7893,7 +7914,8 @@
         "Output"
       ],
       "tags": [
-        "mvt"
+        "vector",
+        "tiling"
       ]
     },
     {
@@ -11518,6 +11540,7 @@
         ],
         "properties": {
           "output": {
+            "title": "Output Path",
             "description": "Output path or expression for the Shapefile to create",
             "type": "object",
             "format": "code",
@@ -11539,6 +11562,7 @@
             }
           },
           "groupBy": {
+            "title": "Group By",
             "description": "Optional attributes to group features by, creating separate files for each group",
             "type": [
               "array",
@@ -11564,7 +11588,8 @@
         "Output"
       ],
       "tags": [
-        "shapefile"
+        "shapefile",
+        "vector"
       ]
     },
     {
@@ -12500,6 +12525,7 @@
         ],
         "properties": {
           "output": {
+            "title": "Output File",
             "description": "Output path or expression for the XML file to create",
             "type": "object",
             "format": "code",
@@ -12548,6 +12574,7 @@
         ],
         "properties": {
           "output": {
+            "title": "Output File",
             "description": "Output path",
             "type": "object",
             "format": "code",
@@ -12579,7 +12606,7 @@
         "Output"
       ],
       "tags": [
-        "file-system",
+        "file",
         "compression"
       ]
     },
