@@ -136,14 +136,7 @@ impl CoordinateFrame {
     pub fn unit_kind(&self) -> UnitKind {
         match self {
             CoordinateFrame::Euclidean => UnitKind::Linear,
-            CoordinateFrame::Tangent(t) => match t.base {
-                BaseFrame::Crs(epsg) => match crate::ops::crs_is_linear(epsg) {
-                    Ok(true) => UnitKind::Linear,
-                    Ok(false) => UnitKind::Angular,
-                    Err(e) => UnitKind::Undeterminable(e.to_string()),
-                },
-                BaseFrame::Euclidean => UnitKind::Linear,
-            },
+            CoordinateFrame::Tangent(_) => UnitKind::Linear,
             CoordinateFrame::Crs(epsg) => match crate::ops::crs_is_linear(*epsg) {
                 Ok(true) => UnitKind::Linear,
                 Ok(false) => UnitKind::Angular,
@@ -218,6 +211,15 @@ mod tests {
             CoordinateFrame::Crs(EpsgCode::new(1)).unit_kind(),
             UnitKind::Undeterminable(_)
         ));
+        // A tangent plane's in-plane coordinates are metres regardless of its
+        // base, including when anchored in a geographic CRS.
+        let tangent_over_geographic = CoordinateFrame::Tangent(Box::new(TangentPlane {
+            base: BaseFrame::Crs(EpsgCode::new(4326)),
+            origin: [0.0, 0.0, 0.0],
+            u: [1.0, 0.0, 0.0],
+            v: [0.0, 1.0, 0.0],
+        }));
+        assert_eq!(tangent_over_geographic.unit_kind(), UnitKind::Linear);
     }
 
     #[test]

@@ -1,10 +1,19 @@
+use std::collections::BTreeSet;
+
 use super::{TriangularMesh2D, TriangularMesh3D, TriangularMesh3DData};
+use crate::line_string::{LineString2D, LineString3D};
+use crate::point::Point2D;
+use crate::predicates::surface_intersection::{
+    face_overlap_conflicts_2d, intersecting_faces_3d, FaceConflict2D,
+};
+use crate::predicates::view::AreaView;
+use crate::predicates::view3d::TriangleSet;
 use crate::validation_next::{
     check_degenerate_ring_2d, check_degenerate_ring_3d, check_duplicate_points,
     check_edge_orientation_3d, check_finite_2d, check_finite_3d, check_ring_orientation_2d,
     tetra_volume_6x, FaceTopology, Validate, ValidationParams, ValidationReport, ValidationType,
 };
-use crate::{Euclidean3DGeometry, Geometry};
+use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
 impl TriangularMesh3DData {
     /// The face-adjacency topology of this triangle mesh, one face per triangle.
@@ -40,20 +49,22 @@ impl TriangularMesh3DData {
 
 /// The checks that apply to a 2D triangle mesh. A triangle always has three
 /// corners, so `TooFewPoints` / `UnclosedRing` cannot apply.
-const TRIANGULAR_MESH_2D_CHECKS: [ValidationType; 4] = [
+const TRIANGULAR_MESH_2D_CHECKS: [ValidationType; 5] = [
     ValidationType::Finite,
     ValidationType::Degenerate,
     ValidationType::DuplicatePoints,
     ValidationType::Orientation,
+    ValidationType::SelfIntersection,
 ];
 
 /// The checks that apply to a 3D triangle mesh: the 2D set plus `Orientable`.
-const TRIANGULAR_MESH_3D_CHECKS: [ValidationType; 5] = [
+const TRIANGULAR_MESH_3D_CHECKS: [ValidationType; 6] = [
     ValidationType::Finite,
     ValidationType::Degenerate,
     ValidationType::DuplicatePoints,
     ValidationType::Orientation,
     ValidationType::Orientable,
+    ValidationType::SelfIntersection,
 ];
 
 impl Validate for TriangularMesh2D {
@@ -111,11 +122,36 @@ impl Validate for TriangularMesh2D {
             }
         })
     }
+
+    fn check_self_intersection(&self, _params: &ValidationParams) -> ValidationReport {
+        // A triangle face is trivially simple, so only the global face-vs-face
+        // overlap scan applies. The offending triangle's ring is the position.
+        ValidationReport::ran(|r| {
+            let view = AreaView::from_triangular_mesh(self);
+            face_overlap_conflicts_2d(&view, |conflict| match conflict {
+                FaceConflict2D::Crossing(p) => {
+                    r.push(Geometry::Euclidean2D(Euclidean2DGeometry::Point(
+                        Point2D::new(self.frame.clone(), p),
+                    )));
+                }
+                FaceConflict2D::Contained { face } => {
+                    let coords: Vec<[f64; 2]> = view.face(face).exterior().coords().collect();
+                    r.push(Geometry::Euclidean2D(Euclidean2DGeometry::LineString(
+                        LineString2D::from_coords(self.frame.clone(), coords),
+                    )));
+                }
+            });
+        })
+    }
 }
 
 impl Validate for TriangularMesh3D {
     fn applicable_checks(&self) -> &'static [ValidationType] {
         &TRIANGULAR_MESH_3D_CHECKS
+    }
+
+    fn unit_kind(&self) -> crate::coordinate::UnitKind {
+        self.frame.unit_kind()
     }
 
     fn check_finite(&self, _params: &ValidationParams) -> ValidationReport {
@@ -164,6 +200,36 @@ impl Validate for TriangularMesh3D {
                     vertices[c as usize],
                 ];
                 check_degenerate_ring_3d(&self.frame, &ring, params.degenerate.min_area, r);
+            }
+        })
+    }
+
+    fn check_self_intersection(&self, _params: &ValidationParams) -> ValidationReport {
+        // A triangle face is trivially simple, so only the global face-vs-face
+        // scan applies. It compares triangles as Euclidean geometry, so it is
+        // skipped on angular-unit frames; the offending triangle is the position.
+        ValidationReport::ran(|r| {
+            if !self.frame.has_linear_units() {
+                return;
+            }
+            let set = TriangleSet::from_triangular_data(&self.data);
+            let faces: BTreeSet<usize> = intersecting_faces_3d(&[&set])
+                .into_iter()
+                .map(|(_, face)| face)
+                .collect();
+            if faces.is_empty() {
+                return;
+            }
+            let vertices = self.data.vertices();
+            for (t, tri) in self.data.triangles().enumerate() {
+                if faces.contains(&t) {
+                    r.push(Geometry::Euclidean3D(Euclidean3DGeometry::LineString(
+                        LineString3D::from_coords(
+                            self.frame.clone(),
+                            tri.map(|i| vertices[i as usize]),
+                        ),
+                    )));
+                }
             }
         })
     }
@@ -347,5 +413,89 @@ mod tests {
             ValidationResult::Failed(positions) => assert_eq!(positions.len(), 2),
             other => panic!("expected both triangles to flag, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn disjoint_triangles_2d_do_not_self_intersect() {
+        let m = TriangularMesh2D::from_parts(
+            CoordinateFrame::Euclidean,
+            vec![
+                [0.0, 0.0],
+                [1.0, 0.0],
+                [0.0, 1.0],
+                [5.0, 5.0],
+                [6.0, 5.0],
+                [5.0, 6.0],
+            ],
+            [0u32, 1, 2, 3, 4, 5],
+        )
+        .unwrap();
+        assert!(is_success(&m, ValidationType::SelfIntersection));
+    }
+
+    #[test]
+    fn overlapping_triangles_2d_self_intersect() {
+        // The second triangle is the first shifted by (1, 1), so their edges
+        // cross and their interiors overlap.
+        let m = TriangularMesh2D::from_parts(
+            CoordinateFrame::Euclidean,
+            vec![
+                [0.0, 0.0],
+                [4.0, 0.0],
+                [0.0, 4.0],
+                [1.0, 1.0],
+                [5.0, 1.0],
+                [1.0, 5.0],
+            ],
+            [0u32, 1, 2, 3, 4, 5],
+        )
+        .unwrap();
+        assert!(!failures(&m, ValidationType::SelfIntersection).is_empty());
+    }
+
+    #[test]
+    fn adjacent_triangles_3d_do_not_self_intersect() {
+        // Two coplanar triangles sharing edge 0-2: a manifold patch, no overlap.
+        let m =
+            TriangularMesh3D::from_parts(CoordinateFrame::Euclidean, quad(), [0u32, 1, 2, 0, 2, 3])
+                .unwrap();
+        assert!(is_success(&m, ValidationType::SelfIntersection));
+    }
+
+    /// A horizontal triangle in the `z = 0` plane and a vertical triangle whose
+    /// edge passes through the horizontal triangle's interior.
+    fn piercing_pair() -> Vec<[f64; 3]> {
+        vec![
+            [0.0, 0.0, 0.0],
+            [2.0, 0.0, 0.0],
+            [0.0, 2.0, 0.0],
+            [0.5, 0.5, -1.0],
+            [0.5, 0.5, 1.0],
+            [1.5, 0.5, 0.0],
+        ]
+    }
+
+    #[test]
+    fn piercing_triangles_3d_self_intersect() {
+        let m = TriangularMesh3D::from_parts(
+            CoordinateFrame::Euclidean,
+            piercing_pair(),
+            [0u32, 1, 2, 3, 4, 5],
+        )
+        .unwrap();
+        assert_eq!(failures(&m, ValidationType::SelfIntersection).len(), 2);
+    }
+
+    #[test]
+    fn self_intersection_3d_skipped_on_angular_frame() {
+        // The scan compares triangles as Euclidean geometry, so an angular-unit
+        // frame skips it and the piercing pair is not flagged.
+        let m = TriangularMesh3D::from_parts(
+            CoordinateFrame::Crs(EpsgCode::new(4326)),
+            piercing_pair(),
+            [0u32, 1, 2, 3, 4, 5],
+        )
+        .unwrap();
+        assert!(is_success(&m, ValidationType::SelfIntersection));
     }
 }
