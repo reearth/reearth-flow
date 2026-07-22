@@ -23,7 +23,7 @@ import random
 import sys
 from pathlib import Path
 
-from PIL import Image
+from PIL import Image, ImageDraw
 
 # --- knobs -----------------------------------------------------------------
 N_FACES = 48        # distinct textured quads on the single feature
@@ -94,9 +94,11 @@ def main():
         w = rng.randint(MIN_PX, MAX_PX)
         h = rng.randint(MIN_PX, MAX_PX)
         packed += w * h
-        Image.new("RGB", (w, h), color(i, n_faces)).save(
-            out / "textures" / f"tile_{i}.png"
-        )
+        img = Image.new("RGB", (w, h), color(i, n_faces))
+        # 1px black border: extrusion replicates edge pixels outward, so the
+        # ring shows up as a black frame around each region in the atlas.
+        ImageDraw.Draw(img).rectangle([0, 0, w - 1, h - 1], outline=(0, 0, 0))
+        img.save(out / "textures" / f"tile_{i}.png")
         col, row = i % COLS, i // COLS
         x0, y0 = col * step, row * step
         corners = quad_corners(x0, y0)

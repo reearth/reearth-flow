@@ -83,22 +83,16 @@ struct RegionJob {
 /// `extrusion` is the ring (pixels) blitted around each region to stop bilinear
 /// bleed; pass `0` to disable it.
 ///
-/// Returns `Ok(None)` when there is nothing to pack (no UV polygons), and
-/// `Err` when `max_atlas_size < 2 * extrusion + 1` (a page cannot hold even one
-/// 1×1 region plus its extrusion ring) or `2 * extrusion + 1` overflows.
+/// Returns `Ok(None)` when there is nothing to pack (no UV polygons), and `Err`
+/// when `max_atlas_size` is 0.
 pub fn build_atlas_multipage(
     materials: &[TextureInput],
     max_atlas_size: u32,
     extrusion: u32,
     cache: &mut TextureCache,
 ) -> Result<Option<MultiPageAtlas>> {
-    // A page must hold one 1×1 region plus its extrusion ring on all sides.
-    let min_atlas_size = extrusion.saturating_mul(2).saturating_add(1);
-    if max_atlas_size < min_atlas_size {
-        return Err(AtlasError::builder(format!(
-            "atlas size {max_atlas_size} too small for extrusion {extrusion}; \
-             must be at least 2*extrusion+1 = {min_atlas_size}"
-        )));
+    if max_atlas_size == 0 {
+        return Err(AtlasError::builder("atlas size must be at least 1"));
     }
 
     let damage_list = collect_damage(materials)?;
@@ -119,7 +113,6 @@ pub fn build_atlas_multipage(
 
     // Flatten every damage region into a placement job, recording where each
     // (damage, region) lands so UV remapping can find it afterwards.
-    let usable = max_atlas_size.saturating_sub(2 * extrusion).max(1);
     let mut jobs: Vec<RegionJob> = Vec::new();
     let mut region_job: Vec<Vec<usize>> = Vec::with_capacity(damage_list.len());
     for (di, (path, td)) in damage_list.iter().enumerate() {
@@ -128,13 +121,13 @@ pub fn build_atlas_multipage(
         for &src in &td.rects {
             let mut w = ((src.w as f64) * scale).round().max(1.0) as u32;
             let mut h = ((src.h as f64) * scale).round().max(1.0) as u32;
-            if w > usable || h > usable {
+            if w > max_atlas_size || h > max_atlas_size {
                 // Bigger than a whole page even before packing: shrink to fit,
                 // preserving aspect. Geometric error is intentionally left
                 // untouched — this is a packing constraint, not user intent.
-                let shrink = usable as f64 / w.max(h) as f64;
-                let sw = ((w as f64) * shrink).round().clamp(1.0, usable as f64) as u32;
-                let sh = ((h as f64) * shrink).round().clamp(1.0, usable as f64) as u32;
+                let shrink = max_atlas_size as f64 / w.max(h) as f64;
+                let sw = ((w as f64) * shrink).round().clamp(1.0, max_atlas_size as f64) as u32;
+                let sh = ((h as f64) * shrink).round().clamp(1.0, max_atlas_size as f64) as u32;
                 tracing::warn!(
                     "reearth-flow-atlas: region {w}x{h} of '{}' exceeds atlas size \
                      {max_atlas_size}; force-shrinking to {sw}x{sh}",
