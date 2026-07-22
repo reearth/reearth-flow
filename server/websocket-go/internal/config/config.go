@@ -47,10 +47,8 @@ type Config struct {
 	// when ON the AuthFunc fails closed. Sourced from REEARTH_FLOW_WS_PROTECTED.
 	WSAuthEnabled bool
 
-	// SlowPeerResync selects graceful slow-peer handling: on broadcast-queue
-	// overflow the peer is kept open and re-synced in place (like yrs lag-and-skip)
-	// instead of being disconnected. Default ON. Set REEARTH_FLOW_SLOW_PEER_RESYNC=false
-	// to revert to the disconnect-on-overflow behavior.
+	// SlowPeerResync keeps slow peers connected and re-syncs them in place on
+	// queue overflow instead of disconnecting. Default ON; env REEARTH_FLOW_SLOW_PEER_RESYNC.
 	SlowPeerResync bool
 
 	// OTLP tracing config.
