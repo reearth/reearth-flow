@@ -47,6 +47,10 @@ type Config struct {
 	// when ON the AuthFunc fails closed. Sourced from REEARTH_FLOW_WS_PROTECTED.
 	WSAuthEnabled bool
 
+	// SlowPeerResync keeps slow peers connected and re-syncs them in place on
+	// queue overflow instead of disconnecting. Default ON; env REEARTH_FLOW_SLOW_PEER_RESYNC.
+	SlowPeerResync bool
+
 	// OTLP tracing config.
 	OTLPEnabled            bool
 	OTLPEndpoint           string
@@ -113,6 +117,8 @@ func Load() *Config {
 		MaxRooms:        envPositive("REEARTH_FLOW_MAX_ROOMS", defaultMaxRooms),
 
 		WSAuthEnabled: envBool("REEARTH_FLOW_WS_PROTECTED", false),
+
+		SlowPeerResync: envBool("REEARTH_FLOW_SLOW_PEER_RESYNC", true),
 
 		OTLPEnabled:            envBool("REEARTH_FLOW_ENABLE_OTLP", false),
 		OTLPEndpoint:           os.Getenv("REEARTH_FLOW_OTLP_ENDPOINT"),

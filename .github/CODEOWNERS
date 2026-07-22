@@ -1,7 +1,8 @@
-*                   @reearth/flow-admin
-/engine/            @n4to4 @asrcpq @shunski
-/ui/                @billcookie
-/server/            @pyshx
-/server/api/        @pyshx
-/server/subscriber/ @pyshx
-/go.work*           @pyshx
+*                     @reearth/flow-admin
+/engine/              @n4to4 @asrcpq @shunski
+/ui/                  @billcookie
+/server/              @pyshx
+/server/api/          @pyshx
+/server/subscriber/   @pyshx
+/server/websocket-go/ @bnimit
+/go.work*             @pyshx
