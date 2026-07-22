@@ -154,9 +154,8 @@ pub fn build_atlas_multipage(
         region_job.push(per_region);
     }
 
-    // First-fit across pages, tallest-first (the skyline packer's preferred
-    // order). `pack` leaves a packer untouched when it returns `None`, so
-    // probing pages in turn is safe.
+    // Next-fit, tallest-first: fill the current page until a region no longer
+    // fits, then open the next; earlier pages are never revisited.
     let mut order: Vec<usize> = (0..jobs.len()).collect();
     order.sort_by(|&a, &b| {
         jobs[b]
@@ -168,22 +167,18 @@ pub fn build_atlas_multipage(
     let mut placement: Vec<Option<(usize, Rect)>> = vec![None; jobs.len()];
     for &j in &order {
         let (w, h) = (jobs[j].target_w, jobs[j].target_h);
-        let mut placed = None;
-        for (page, packer) in packers.iter_mut().enumerate() {
-            if let Some(frame) = packer.pack(w, h) {
-                placed = Some((page, frame));
-                break;
+        let frame = match packers.last_mut().and_then(|p| p.pack(w, h)) {
+            Some(frame) => frame,
+            None => {
+                let mut packer = SkylinePacker::new(max_atlas_size, max_atlas_size, extrusion);
+                let frame = packer
+                    .pack(w, h)
+                    .expect("a region clamped to `usable` always fits an empty page");
+                packers.push(packer);
+                frame
             }
-        }
-        placement[j] = Some(placed.unwrap_or_else(|| {
-            let mut packer = SkylinePacker::new(max_atlas_size, max_atlas_size, extrusion);
-            let frame = packer
-                .pack(w, h)
-                .expect("a region clamped to `usable` always fits an empty page");
-            let page = packers.len();
-            packers.push(packer);
-            (page, frame)
-        }));
+        };
+        placement[j] = Some((packers.len() - 1, frame));
     }
 
     // Blit: crop each source region, resize to its placement, copy in, extrude.
