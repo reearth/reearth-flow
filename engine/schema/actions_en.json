@@ -5521,7 +5521,7 @@
                 "additionalProperties": false
               },
               {
-                "description": "Absolute maximum out-of-plane height, in the coordinate unit (metres). Applied only in a metric frame, where the planarity check runs.",
+                "description": "Absolute maximum out-of-plane height, in the coordinate unit (metres). Applied only in a linear-unit frame, where the planarity check runs.",
                 "type": "object",
                 "required": [
                   "maxHeight"
@@ -5537,7 +5537,7 @@
             ]
           },
           "DegenerateThresholds": {
-            "description": "The smallest measure a geometry may have before the degeneracy check flags it, per dimension. Each threshold applies to geometries of its dimension. Values are in the coordinate unit (metres in a metric frame). Each defaults to zero, flagging only an exactly-zero measure.",
+            "description": "The smallest measure a geometry may have before the degeneracy check flags it, per dimension. Each threshold applies to geometries of its dimension. Values are in the coordinate unit (the frame's linear unit, e.g. metres). Each defaults to zero, flagging only an exactly-zero measure.",
             "type": "object",
             "properties": {
               "minLength": {

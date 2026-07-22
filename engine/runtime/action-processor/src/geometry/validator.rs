@@ -131,13 +131,13 @@ pub enum PlanarityThreshold {
     /// diameter; scale-invariant.
     Ratio(f64),
     /// Absolute maximum out-of-plane height, in the coordinate unit (metres).
-    /// Applied only in a metric frame, where the planarity check runs.
+    /// Applied only in a linear-unit frame, where the planarity check runs.
     MaxHeight(f64),
 }
 
 /// The smallest measure a geometry may have before the degeneracy check flags
 /// it, per dimension. Each threshold applies to geometries of its dimension.
-/// Values are in the coordinate unit (metres in a metric frame). Each defaults
+/// Values are in the coordinate unit (the frame's linear unit, e.g. metres). Each defaults
 /// to zero, flagging only an exactly-zero measure.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Default, JsonSchema)]
 #[serde(rename_all = "camelCase")]
@@ -265,8 +265,8 @@ pub struct GeometryValidator {
 
     /// # Planarity Threshold
     /// Optional override for how the planarity check bounds a face's out-of-plane deviation:
-    /// a scale-invariant `ratio` (the default), or an absolute `maxHeight` in metres (metric
-    /// frames only).
+    /// a scale-invariant `ratio` (the default), or an absolute `maxHeight` in the frame's linear
+    /// unit (linear-unit frames only).
     #[serde(default)]
     #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
     planarity_threshold: Option<PlanarityThreshold>,
@@ -281,7 +281,7 @@ pub struct GeometryValidator {
     /// # Degeneracy Thresholds
     /// Minimum length / area / volume below which the degeneracy check flags a geometry, per
     /// dimension. Each defaults to zero, flagging only an exactly-zero measure. Values are in the
-    /// coordinate unit (metres in a metric frame).
+    /// coordinate unit (the frame's linear unit, e.g. metres).
     #[serde(default)]
     #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
     degenerate_thresholds: DegenerateThresholds,
@@ -352,17 +352,17 @@ impl Processor for GeometryValidator {
             return Ok(());
         }
 
-        // Metric-sensitive checks (planarity, 3D surface self-intersection) are
-        // skipped on a non-metric or unclassifiable CRS; tell the user why and
+        // Unit-sensitive checks (planarity, 3D surface self-intersection) are
+        // skipped on a angular or unclassifiable CRS; tell the user why and
         // how to enable them.
         let skips = frame_skips(feature.geometry.as_ref());
-        if skips.non_metric {
+        if skips.angular {
             ctx.event_hub.warn_log(
                 Some(ctx.info_span()),
                 format!(
-                    "Feature {}: geometry is in a non-metric (geographic) CRS; \
+                    "Feature {}: geometry is in a angular-unit (geographic) CRS; \
                      planarity and 3D surface self-intersection were skipped. \
-                     Reproject to a metric CRS to enable them.",
+                     reproject to a linear-unit CRS to enable them.",
                     feature.id
                 ),
             );

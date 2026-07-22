@@ -12,8 +12,10 @@ use crate::coordinate::EpsgCode;
 use proj_sys::{
     proj_context_create, proj_context_destroy, proj_context_errno, proj_context_errno_string,
     proj_create, proj_create_crs_to_crs, proj_crs_get_coordinate_system, proj_crs_get_sub_crs,
-    proj_cs_get_axis_count, proj_cs_get_axis_info, proj_destroy, proj_errno, proj_errno_reset,
-    proj_trans, PJ, PJ_CONTEXT, PJ_COORD, PJ_DIRECTION_PJ_FWD, PJ_XYZT,
+    proj_cs_get_axis_count, proj_cs_get_axis_info, proj_cs_get_type, proj_destroy, proj_errno,
+    proj_errno_reset, proj_trans, PJ, PJ_CONTEXT, PJ_COORD, PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_CARTESIAN,
+    PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_ELLIPSOIDAL, PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_SPHERICAL,
+    PJ_DIRECTION_PJ_FWD, PJ_XYZT,
 };
 
 use crate::error::{Error, Result};
@@ -297,28 +299,28 @@ unsafe fn axis_sign_from_cs(ctx: *mut PJ_CONTEXT, cs: *const PJ, epsg: EpsgCode)
 
 /// Process-wide memoization of CRS linear-unit-ness, keyed by EPSG code. Like
 /// the orientation sign, a CRS's axis units are fixed for the process.
-fn metric_cache() -> &'static RwLock<HashMap<EpsgCode, bool>> {
+fn linear_cache() -> &'static RwLock<HashMap<EpsgCode, bool>> {
     static CACHE: OnceLock<RwLock<HashMap<EpsgCode, bool>>> = OnceLock::new();
     CACHE.get_or_init(|| RwLock::new(HashMap::new()))
 }
 
 /// Whether `epsg`'s horizontal axes use a linear (length) unit rather than an
 /// angular one: geographic CRSs (degrees) are not linear; projected and
-/// geocentric CRSs (metres) are. Errors when the CRS is unknown.
+/// geocentric CRSs (metres, feet, ...) are. Errors when the CRS is unknown.
 ///
 /// Memoized per EPSG code.
-pub(crate) fn crs_is_metric(epsg: EpsgCode) -> Result<bool> {
-    if let Some(&metric) = metric_cache().read().get(&epsg) {
-        return Ok(metric);
+pub(crate) fn crs_is_linear(epsg: EpsgCode) -> Result<bool> {
+    if let Some(&linear) = linear_cache().read().get(&epsg) {
+        return Ok(linear);
     }
-    let metric = crs_is_metric_uncached(epsg)?;
-    metric_cache().write().insert(epsg, metric);
-    Ok(metric)
+    let linear = crs_is_linear_uncached(epsg)?;
+    linear_cache().write().insert(epsg, linear);
+    Ok(linear)
 }
 
 /// Determine `epsg`'s horizontal-axis unit kind directly from PROJ, without the
 /// cache.
-fn crs_is_metric_uncached(epsg: EpsgCode) -> Result<bool> {
+fn crs_is_linear_uncached(epsg: EpsgCode) -> Result<bool> {
     // SAFETY: every PROJ object is null-checked and freed on all paths.
     unsafe {
         let ctx = proj_context_create();
@@ -351,7 +353,7 @@ unsafe fn axis_unit_linear_for_crs(
 ) -> Result<bool> {
     let cs = proj_crs_get_coordinate_system(ctx, crs);
     if !cs.is_null() {
-        let result = axis_unit_linear_from_cs(ctx, cs, epsg);
+        let result = cs_type_is_linear(ctx, cs, epsg);
         proj_destroy(cs);
         return result;
     }
@@ -369,7 +371,7 @@ unsafe fn axis_unit_linear_for_crs(
             ctx_errno_string(ctx)
         )))
     } else {
-        let linear = axis_unit_linear_from_cs(ctx, cs, epsg);
+        let linear = cs_type_is_linear(ctx, cs, epsg);
         proj_destroy(cs);
         linear
     };
@@ -377,42 +379,25 @@ unsafe fn axis_unit_linear_for_crs(
     result
 }
 
-/// Whether a coordinate system's first axis uses a linear (length) unit, read
-/// from its PROJ unit name.
+/// Whether a coordinate system uses linear (length) axes, from its PROJ
+/// coordinate-system type: a Cartesian CS (projected / geocentric) is linear, an
+/// ellipsoidal or spherical CS (geographic) is angular. This asks PROJ for the
+/// axis kind directly rather than matching unit names, so every length unit
+/// (metre, foot, and the long tail) classifies correctly, and a mixed CS such as
+/// a geographic-3D one (angular lat/lon plus a metre height axis) is still read
+/// as angular. Any other or unknown type errors, so the caller surfaces it
+/// rather than trusting an unsuitable frame.
 // SAFETY: `ctx` and `cs` must be valid, non-null PROJ objects.
-unsafe fn axis_unit_linear_from_cs(
-    ctx: *mut PJ_CONTEXT,
-    cs: *const PJ,
-    epsg: EpsgCode,
-) -> Result<bool> {
-    let mut unit_name: *const c_char = ptr::null();
-    let ok = proj_cs_get_axis_info(
-        ctx,
-        cs,
-        0,
-        ptr::null_mut(),
-        ptr::null_mut(),
-        ptr::null_mut(),
-        ptr::null_mut(),
-        &mut unit_name,
-        ptr::null_mut(),
-        ptr::null_mut(),
-    );
-    if ok == 0 || unit_name.is_null() {
-        return Err(Error::projection(format!("EPSG:{epsg} axis 0 has no unit")));
+unsafe fn cs_type_is_linear(ctx: *mut PJ_CONTEXT, cs: *const PJ, epsg: EpsgCode) -> Result<bool> {
+    #[allow(non_upper_case_globals)]
+    match proj_cs_get_type(ctx, cs) {
+        PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_CARTESIAN => Ok(true),
+        PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_ELLIPSOIDAL
+        | PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_SPHERICAL => Ok(false),
+        other => Err(Error::projection(format!(
+            "EPSG:{epsg} has an unclassifiable coordinate-system type ({other})"
+        ))),
     }
-    let unit = CStr::from_ptr(unit_name)
-        .to_string_lossy()
-        .to_ascii_lowercase();
-    // Match linear units positively: a length unit (metre / foot and their
-    // spellings and multiples, e.g. kilometre, US survey foot) is fine for the
-    // ratio / triangulation checks, and any unit we do not recognise as linear
-    // (angular degrees, or an exotic unit) is treated as non-metric so those
-    // checks are skipped rather than run on unsuitable coordinates.
-    Ok(unit.contains("metre")
-        || unit.contains("meter")
-        || unit.contains("foot")
-        || unit.contains("feet"))
 }
 
 /// Map a PROJ axis direction to its `(row, sign)` in the canonical
@@ -472,13 +457,15 @@ mod tests {
     }
 
     #[test]
-    fn geographic_is_not_metric_projected_is() {
-        let m = |code: u16| crs_is_metric(EpsgCode::new(code)).unwrap();
-        assert!(!m(4326)); // WGS84 geographic (degrees)
-        assert!(!m(6697)); // JGD2011 + height (degrees)
-        assert!(m(6677)); // JGD2011 plane rectangular IX (metres)
-        assert!(m(3857)); // Web Mercator (metres)
-        assert!(crs_is_metric(EpsgCode::new(1)).is_err());
+    fn geographic_is_angular_projected_is_linear() {
+        let linear = |code: u16| crs_is_linear(EpsgCode::new(code)).unwrap();
+        assert!(!linear(4326)); // WGS84 geographic 2D (degrees)
+        assert!(!linear(4327)); // WGS84 geographic 3D: ellipsoidal CS, angular horizontal
+        assert!(!linear(6697)); // JGD2011 + height (degrees)
+        assert!(linear(6677)); // JGD2011 plane rectangular IX (metres)
+        assert!(linear(3857)); // Web Mercator (metres)
+        assert!(linear(4978)); // WGS84 geocentric (Cartesian, metres)
+        assert!(crs_is_linear(EpsgCode::new(1)).is_err());
     }
 
     #[test]

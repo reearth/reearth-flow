@@ -134,8 +134,8 @@ impl Validate for Polygon3D {
         &POLYGON_3D_CHECKS
     }
 
-    fn metric_kind(&self) -> crate::coordinate::MetricKind {
-        self.frame.metric_kind()
+    fn unit_kind(&self) -> crate::coordinate::UnitKind {
+        self.frame.unit_kind()
     }
 
     fn check_finite(&self, _params: &ValidationParams) -> ValidationReport {

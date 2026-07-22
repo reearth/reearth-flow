@@ -98,8 +98,8 @@ impl Validate for Solid {
         &SOLID_CHECKS
     }
 
-    fn metric_kind(&self) -> crate::coordinate::MetricKind {
-        self.frame.metric_kind()
+    fn unit_kind(&self) -> crate::coordinate::UnitKind {
+        self.frame.unit_kind()
     }
 
     fn check_finite(&self, _params: &ValidationParams) -> ValidationReport {
@@ -182,7 +182,7 @@ impl Validate for Solid {
         // Per-face ring checks for polygon shells (a proper triangle face is
         // trivially simple), then one global face-vs-face scan across all
         // shells' triangulated surfaces, so cross-shell pairs are covered. The
-        // surface scan triangulates each shell, and triangulation on non-metric
+        // surface scan triangulates each shell, and triangulation on angular-unit
         // (angular-unit) coordinates is unreliable, so it is skipped there; the
         // ring checks still run.
         ValidationReport::ran(|r| {
@@ -191,7 +191,7 @@ impl Validate for Solid {
                     data.check_ring_self_intersections(&self.frame, r);
                 }
             }
-            if !self.frame.is_metric() {
+            if !self.frame.has_linear_units() {
                 return;
             }
             let mut cache = Cache::new();

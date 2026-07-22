@@ -5247,7 +5247,7 @@ Validate Feature Geometry Quality
     },
     "planarityThreshold": {
       "title": "Planarity Threshold",
-      "description": "Optional override for how the planarity check bounds a face's out-of-plane deviation: a scale-invariant `ratio` (the default), or an absolute `maxHeight` in metres (metric frames only).",
+      "description": "Optional override for how the planarity check bounds a face's out-of-plane deviation: a scale-invariant `ratio` (the default), or an absolute `maxHeight` in the frame's linear unit (linear-unit frames only).",
       "default": null,
       "anyOf": [
         {
@@ -5270,7 +5270,7 @@ Validate Feature Geometry Quality
     },
     "degenerateThresholds": {
       "title": "Degeneracy Thresholds",
-      "description": "Minimum length / area / volume below which the degeneracy check flags a geometry, per dimension. Each defaults to zero, flagging only an exactly-zero measure. Values are in the coordinate unit (metres in a metric frame).",
+      "description": "Minimum length / area / volume below which the degeneracy check flags a geometry, per dimension. Each defaults to zero, flagging only an exactly-zero measure. Values are in the coordinate unit (the frame's linear unit, e.g. metres).",
       "default": {
         "minLength": 0.0,
         "minArea": 0.0,
@@ -5369,7 +5369,7 @@ Validate Feature Geometry Quality
           "additionalProperties": false
         },
         {
-          "description": "Absolute maximum out-of-plane height, in the coordinate unit (metres). Applied only in a metric frame, where the planarity check runs.",
+          "description": "Absolute maximum out-of-plane height, in the coordinate unit (metres). Applied only in a linear-unit frame, where the planarity check runs.",
           "type": "object",
           "required": [
             "maxHeight"
@@ -5385,7 +5385,7 @@ Validate Feature Geometry Quality
       ]
     },
     "DegenerateThresholds": {
-      "description": "The smallest measure a geometry may have before the degeneracy check flags it, per dimension. Each threshold applies to geometries of its dimension. Values are in the coordinate unit (metres in a metric frame). Each defaults to zero, flagging only an exactly-zero measure.",
+      "description": "The smallest measure a geometry may have before the degeneracy check flags it, per dimension. Each threshold applies to geometries of its dimension. Values are in the coordinate unit (the frame's linear unit, e.g. metres). Each defaults to zero, flagging only an exactly-zero measure.",
       "type": "object",
       "properties": {
         "minLength": {
