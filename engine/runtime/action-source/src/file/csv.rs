@@ -25,7 +25,7 @@ impl SourceFactory for CsvReaderFactory {
     }
 
     fn description(&self) -> &str {
-        "Read Features from CSV or TSV File"
+        "Reads features from CSV and TSV files."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -99,26 +99,15 @@ pub(super) struct CsvReader {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct CsvReaderParam {
+    /// # File Format
+    /// Delimiter format of the input file.
+    format: CsvFormat,
     #[serde(flatten)]
     pub(super) common_property: FileReaderCommonParam,
     #[serde(flatten)]
     property: csv::CsvReaderParam,
-    /// # File Format
-    /// Choose the delimiter format for the input file
-    format: CsvFormat,
     /// # Character Encoding
-    ///
-    /// Character encoding for the CSV/TSV file.
-    /// If not specified, defaults to UTF-8.
-    ///
-    /// Supported encodings include:
-    /// - **UTF-8** - Unicode UTF-8 (default)
-    /// - **Shift-JIS** - Japanese encoding
-    /// - **EUC-JP** - Japanese encoding
-    /// - **Windows Code Pages** - Windows-1250 through Windows-1258
-    /// - **ISO-8859 family** - ISO-8859-1 through ISO-8859-16
-    ///
-    /// All encoding labels are case-insensitive.
+    /// Character encoding of the input file, such as "UTF-8" or "Shift-JIS". Defaults to UTF-8 when omitted; labels are case-insensitive.
     encoding: Option<String>,
 }
 
