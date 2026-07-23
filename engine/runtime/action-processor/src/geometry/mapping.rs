@@ -60,8 +60,7 @@ use super::{
 };
 
 pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
-    #[cfg_attr(not(feature = "new-geometry"), allow(unused_mut))]
-    let mut factories: Vec<Box<dyn ProcessorFactory>> = vec![
+    let factories: Vec<Box<dyn ProcessorFactory>> = vec![
         Box::<AppearanceRemoverFactory>::default(),
         Box::<ExtruderFactory>::default(),
         Box::<BoundaryExtractorFactory>::default(),
