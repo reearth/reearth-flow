@@ -449,6 +449,7 @@ impl Processor for FeatureMerger {
                                     kv_store: ctx.kv_store.clone(),
                                     event_hub: ctx.event_hub.clone(),
                                     sandbox_root: ctx.sandbox_root.clone(),
+                                    diagnostics: ctx.diagnostics.clone(),
                                 },
                                 fw,
                             )?;
@@ -491,6 +492,7 @@ impl Processor for FeatureMerger {
                                     kv_store: ctx.kv_store.clone(),
                                     event_hub: ctx.event_hub.clone(),
                                     sandbox_root: ctx.sandbox_root.clone(),
+                                    diagnostics: ctx.diagnostics.clone(),
                                 },
                                 fw,
                             )?;

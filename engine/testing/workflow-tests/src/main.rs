@@ -342,7 +342,7 @@ impl TestContext {
             .context("failed to build sandbox_root URI")?;
 
         // Run workflow
-        Runner::run_with_sandbox_root(
+        let result = Runner::run_with_sandbox_root(
             job_id,
             workflow,
             action_factories,
@@ -352,9 +352,33 @@ impl TestContext {
             feature_state,
             None,
             sandbox_root,
-        )?;
+        );
 
-        Ok(())
+        match result {
+            Ok(()) if self.profile.expect_failed_nodes => Err(anyhow::anyhow!(
+                "test profile declares expectFailedNodes: true, but the workflow run \
+                 succeeded (Ok(())) with no failed node reported; this looks like a \
+                 regression in node-failure reporting (e.g. a per-feature process() \
+                 error no longer converging into RunSummary.failed_nodes) rather than \
+                 a genuine fix, since verify_output/verify_summary_output still expect \
+                 the original malformed-input behavior. If the workflow legitimately no \
+                 longer fails, remove expectFailedNodes from this test's workflow_test.json."
+            )),
+            Ok(()) => Ok(()),
+            // Only these two error variants are tolerated here -- never widen to a broader `Err(e) => Ok(())`, or real failures get silently swallowed.
+            Err(
+                e @ (reearth_flow_runner::errors::Error::ExecutionError(_)
+                | reearth_flow_runner::errors::Error::FailedNodes(_)),
+            ) if self.profile.expect_failed_nodes => {
+                tracing::info!(
+                    test_name = %self.test_name,
+                    error = %e,
+                    "workflow completed with expected failed node(s); proceeding to output verification"
+                );
+                Ok(())
+            }
+            Err(e) => Err(e.into()),
+        }
     }
 
     pub fn verify_output(&mut self) -> Result<()> {
@@ -1527,6 +1551,7 @@ mod tests {
             summary_output: None,
             expect_result_ok_file: None,
             unexpected_output_validation: None,
+            expect_failed_nodes: false,
         }
     }
 

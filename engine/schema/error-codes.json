@@ -1,0 +1,104 @@
+[
+  {
+    "code": "cesium3dtiles.empty_geometry",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature with empty geometry",
+    "help": "Filter empty-geometry features upstream or fix the source data."
+  },
+  {
+    "code": "cesium3dtiles.missing_schema_key",
+    "category": "schema",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped schema feature missing the configured schemaKey attribute",
+    "help": "Ensure upstream features carry the attribute named by schemaKey, or unset schemaKey."
+  },
+  {
+    "code": "cesium3dtiles.non_citygml_geometry",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature with non-CityGML geometry",
+    "help": "Cesium 3D Tiles Writer only accepts CityGML geometry; route other geometry types to a different writer."
+  },
+  {
+    "code": "citygml.empty_geometry",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature with no geometry for the configured LOD mask",
+    "help": "Check the feature's LODs against the writer's LOD configuration."
+  },
+  {
+    "code": "citygml.non_citygml_geometry",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature with non-CityGML geometry",
+    "help": "City GML Writer only writes CityGML geometry; route other geometry types to a different writer."
+  },
+  {
+    "code": "czml.empty_geometry",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature whose geometry contains no polygons",
+    "help": "Check the feature's LOD geometries; only LOD > 0 geometries with polygons are converted."
+  },
+  {
+    "code": "czml.missing_feature_id",
+    "category": "schema",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature without a feature_id",
+    "help": "Ensure upstream features carry a CityGML gml:id before reaching the CZML Writer."
+  },
+  {
+    "code": "czml.non_citygml_geometry",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped feature with non-CityGML geometry",
+    "help": "CZML Writer only converts CityGML geometry to polygons; route other geometry types to a different writer."
+  },
+  {
+    "code": "expr.attribute_operation_failed",
+    "category": "expression",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped attribute operation that failed to evaluate",
+    "help": "Check the operation's expression for the attribute it reads or produces."
+  },
+  {
+    "code": "gltf.zero_face_solid",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped solid with zero faces",
+    "help": "The solid has no renderable faces; check upstream geometry processing."
+  },
+  {
+    "code": "internal.diagnostics_overflow",
+    "category": "internal",
+    "defaultDisposition": "warn_drop",
+    "message": "additional diagnostics collapsed into this overflow marker"
+  },
+  {
+    "code": "internal.invariant_violation",
+    "category": "internal",
+    "defaultDisposition": "fatal",
+    "message": "internal invariant violated"
+  },
+  {
+    "code": "internal.unclassified",
+    "category": "internal",
+    "defaultDisposition": "fatal",
+    "message": "node failed with an unclassified error"
+  },
+  {
+    "code": "raster.image_save_failed",
+    "category": "io",
+    "defaultDisposition": "warn_drop",
+    "message": "failed to save the rasterized image",
+    "help": "Check that the configured save path is writable."
+  },
+  {
+    "code": "raster.texture_assignment_failed",
+    "category": "geometry",
+    "defaultDisposition": "warn_drop",
+    "message": "skipped assigning texture coordinates to a feature",
+    "help": "Image Rasterizer only assigns texture coordinates to CityGML geometry with a non-degenerate boundary."
+  }
+]

@@ -20,12 +20,11 @@ pub fn run_workflow(
     codelists_path: Option<&Path>,
     schemas_path: Option<&Path>,
     target_package: Option<&str>,
-) {
+) -> Result<(), String> {
     let yaml_transformer =
         yaml_include::Transformer::new(workflow_path.to_path_buf(), false).unwrap();
     let yaml_str = yaml_transformer.to_string();
 
-    // Save workflow as JSON for reference
     let workflow_json_path = output_dir.join("workflow.json");
     if let Ok(yaml_value) = serde_yaml::from_str::<serde_yaml::Value>(&yaml_str) {
         if let Ok(json_str) = serde_json::to_string_pretty(&yaml_value) {
@@ -94,13 +93,12 @@ pub fn run_workflow(
     let feature_state = Arc::new(State::new(&feature_state_uri, &storage_resolver).unwrap());
     let ingress_state = Arc::clone(&feature_state);
 
-    // sandbox_root must resolve relative sink paths against the per-job
-    // artifact directory; using Runner::run (legacy file:/// sentinel) would
-    // make the engine try to write to the filesystem root.
+    // sandbox_root must resolve relative sink paths against the per-job dir; Runner::run's legacy file:/// sentinel would write to the filesystem root instead.
     let sandbox_root =
         reearth_flow_common::uri::Uri::from_str(&format!("file://{}", flow_dir.display())).unwrap();
 
     tracing::info!("Starting workflow run...");
+    // Propagate as Err, not .unwrap() -- an unwrap() panic here would crash the whole test harness instead of failing just this testcase.
     Runner::run_with_sandbox_root(
         job_id,
         workflow,
@@ -112,5 +110,5 @@ pub fn run_workflow(
         None,
         sandbox_root,
     )
-    .unwrap();
+    .map_err(|e| format!("workflow run failed: {e}"))
 }

@@ -1,6 +1,7 @@
 use std::{collections::HashMap, io, str::FromStr, sync::Arc};
 
 use clap::{Arg, ArgAction, ArgMatches, Command};
+use reearth_flow_diagnostics::RunSummary;
 use reearth_flow_runner::runner::Runner;
 use reearth_flow_runtime::incremental::IncrementalRunConfig;
 use reearth_flow_state::State;
@@ -317,7 +318,7 @@ impl RunCliCommand {
             create_root_logger(action_log_uri.path()),
             action_log_uri.path(),
         ));
-        Runner::run_with_sandbox_root(
+        let result = Runner::run_with_sandbox_root_returning_summary(
             job_id,
             workflow,
             ALL_ACTION_FACTORIES.clone(),
@@ -327,7 +328,44 @@ impl RunCliCommand {
             feature_state,
             incremental_run_config,
             artifact_uri,
-        )
-        .map_err(|e| crate::errors::Error::Run(format!("Failed to run workflow: {e}")))
+        );
+
+        if let Ok(summary) = &result {
+            Self::print_run_summary(summary);
+        }
+
+        result
+            .and_then(Self::summary_into_unit_result)
+            .map_err(|e| crate::errors::Error::Run(format!("Failed to run workflow: {e}")))
+    }
+
+    /// Turns a non-empty `failed_nodes` (reachable under `onFatal: continue`) back into `Err`.
+    fn summary_into_unit_result(
+        summary: RunSummary,
+    ) -> Result<(), reearth_flow_runner::errors::Error> {
+        match summary.failed_nodes.first() {
+            None => Ok(()),
+            Some(first) => Err(reearth_flow_runner::errors::Error::FailedNodes(format!(
+                "{} node(s) failed; first: {}",
+                summary.failed_nodes.len(),
+                first.message
+            ))),
+        }
+    }
+
+    /// The failed-node list only ever prints under `onFatal: continue`.
+    fn print_run_summary(summary: &RunSummary) {
+        for diagnostic in &summary.aggregated_diagnostics {
+            println!("warning: {}", diagnostic.message);
+        }
+        if !summary.failed_nodes.is_empty() {
+            println!("failed nodes:");
+            for diagnostic in &summary.failed_nodes {
+                println!("  {}", diagnostic.message);
+            }
+        }
+        if summary.dropped_event_count > 0 {
+            println!("dropped events: {}", summary.dropped_event_count);
+        }
     }
 }

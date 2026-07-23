@@ -9,6 +9,7 @@ mod probe_schema;
 mod run;
 mod scaffold_i18n;
 mod schema_action;
+mod schema_error_codes;
 mod schema_workflow;
 mod utils;
 
@@ -38,16 +39,18 @@ fn main() -> Result<()> {
             .to_string()
             .as_str(),
     );
-    let tracer_provider = opentelemetry_sdk::trace::SdkTracerProvider::builder().build();
-    opentelemetry::global::set_tracer_provider(tracer_provider.clone());
-    logger::setup_logging_and_tracing()?;
+    let otel_guard = logger::setup_logging_and_tracing()?;
     let return_code: i32 = if let Err(err) = command.execute() {
         eprintln!("{} Command failed: {:?}\n", "✘".color(RED_COLOR), err);
         1
     } else {
         0
     };
-    let _ = tracer_provider.shutdown();
+    // std::process::exit below skips Drop, so any OTel provider guard
+    // must be flushed explicitly here before it would otherwise be lost.
+    if let Some(guard) = otel_guard {
+        guard.shutdown();
+    }
     std::process::exit(return_code)
 }
 

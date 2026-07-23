@@ -44,5 +44,6 @@
       "expectedFile": "01_共通.csv"
     }
   },
-  "expectResultOkFile": false
+  "expectResultOkFile": false,
+  "expectFailedNodes": true
 }

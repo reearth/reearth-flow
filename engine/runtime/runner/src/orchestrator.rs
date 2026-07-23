@@ -6,6 +6,7 @@ use futures::stream::FuturesUnordered;
 use futures::{FutureExt, StreamExt};
 use once_cell::sync::Lazy;
 use reearth_flow_common::uri::Uri;
+use reearth_flow_diagnostics::{DispositionPolicy, RunSummary};
 use reearth_flow_runtime::event::EventHandler;
 use reearth_flow_runtime::executor_operation::ExecutorOptions;
 use reearth_flow_runtime::incremental::IncrementalRunConfig;
@@ -14,12 +15,17 @@ use reearth_flow_runtime::node::NodeKind;
 use reearth_flow_runtime::shutdown::ShutdownReceiver;
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
-use reearth_flow_types::workflow::Workflow;
+use reearth_flow_types::workflow::{ErrorPolicy, Workflow};
 use tokio::runtime::Handle;
 use tokio::task::JoinHandle;
 
 use crate::errors::Error;
 use crate::executor::{run_dag_executor, Executor};
+use crate::policy::{map_error_policy, validate_node_selectors, validate_reject_routing};
+
+fn policy_validation_error(errors: Vec<String>) -> Error {
+    Error::PolicyValidationError(errors.join("\n"))
+}
 
 static CHANNEL_BUFFER_SIZE: Lazy<usize> = Lazy::new(|| {
     env::var("FLOW_RUNTIME_CHANNEL_BUFFER_SIZE")
@@ -71,7 +77,14 @@ impl Orchestrator {
         incremental_run_config: Option<IncrementalRunConfig>,
         event_handlers: Vec<Arc<dyn EventHandler>>,
         sandbox_root: Uri,
-    ) -> Result<(), Error> {
+    ) -> Result<RunSummary, Error> {
+        let error_policy: ErrorPolicy = workflow.error_policy.clone().unwrap_or_default();
+        error_policy.validate().map_err(policy_validation_error)?;
+        let disposition_policy = Arc::new(
+            DispositionPolicy::compile(map_error_policy(&error_policy))
+                .map_err(policy_validation_error)?,
+        );
+
         let executor = Executor {};
         let options = ExecutorOptions {
             channel_buffer_sz: *CHANNEL_BUFFER_SIZE,
@@ -79,6 +92,7 @@ impl Orchestrator {
             thread_pool_size: *THREAD_POOL_SIZE,
             feature_flush_threshold: *FEATURE_FLUSH_THRESHOLD,
             sandbox_root,
+            disposition_policy: disposition_policy.clone(),
         };
         let env_vars = Arc::new(workflow.with.clone().unwrap_or_default());
         let kv_store = Arc::new(create_kv_store());
@@ -93,6 +107,13 @@ impl Orchestrator {
                 options,
             )
             .await?;
+
+        // Needs the built DAG's composed ids — must run after `create_dag_executor`.
+        validate_node_selectors(&error_policy, &dag_executor.node_identities())
+            .map_err(policy_validation_error)?;
+
+        validate_reject_routing(&disposition_policy, &dag_executor.reject_routing_info())
+            .map_err(policy_validation_error)?;
 
         // Generate unique executor ID for cache isolation between concurrent executions
         let executor_id = uuid::Uuid::new_v4();
@@ -116,11 +137,14 @@ impl Orchestrator {
 
         let mut futures = FuturesUnordered::new();
         futures.push(flatten_join_handle(pipeline_future).boxed());
+        let mut summary: Option<RunSummary> = None;
         while let Some(result) = futures.next().await {
-            result?;
+            summary = Some(result?);
         }
 
-        Ok(())
+        Ok(summary.expect(
+            "run_apps pushes exactly one pipeline future, so the loop above yields exactly one result",
+        ))
     }
 
     #[allow(clippy::too_many_arguments)]
@@ -135,7 +159,7 @@ impl Orchestrator {
         incremental_run_config: Option<IncrementalRunConfig>,
         event_handlers: Vec<Arc<dyn EventHandler>>,
         sandbox_root: Uri,
-    ) -> Result<(), Error> {
+    ) -> Result<RunSummary, Error> {
         let pipeline_shutdown = shutdown.clone();
         self.run_apps(
             workflow,

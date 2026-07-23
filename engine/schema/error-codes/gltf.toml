@@ -1,0 +1,6 @@
+[[codes]]
+code = "gltf.zero_face_solid"
+category = "geometry"
+default_disposition = "warn_drop"
+message = "skipped solid with zero faces"
+help = "The solid has no renderable faces; check upstream geometry processing."

@@ -1,0 +1,17 @@
+[[codes]]
+code = "internal.invariant_violation"
+category = "internal"
+default_disposition = "fatal"
+message = "internal invariant violated"
+
+[[codes]]
+code = "internal.unclassified"
+category = "internal"
+default_disposition = "fatal"
+message = "node failed with an unclassified error"
+
+[[codes]]
+code = "internal.diagnostics_overflow"
+category = "internal"
+default_disposition = "warn_drop"
+message = "additional diagnostics collapsed into this overflow marker"

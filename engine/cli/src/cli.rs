@@ -8,6 +8,7 @@ use crate::probe_schema::{build_probe_schema_command, ProbeSchemaCliCommand};
 use crate::run::{build_run_command, RunCliCommand};
 use crate::scaffold_i18n::{build_scaffold_i18n_command, ScaffoldI18nCliCommand};
 use crate::schema_action::{build_schema_action_command, SchemaActionCliCommand};
+use crate::schema_error_codes::{build_schema_error_codes_command, SchemaErrorCodesCliCommand};
 use crate::schema_workflow::{build_schema_workflow_command, SchemaWorkflowCliCommand};
 
 pub fn build_cli() -> Command {
@@ -20,6 +21,7 @@ pub fn build_cli() -> Command {
         .subcommand(build_doc_action_command().display_order(5))
         .subcommand(build_scaffold_i18n_command().display_order(6))
         .subcommand(build_probe_schema_command().display_order(7))
+        .subcommand(build_schema_error_codes_command().display_order(8))
         .arg_required_else_help(true)
         .disable_help_subcommand(true)
         .subcommand_required(true)
@@ -34,6 +36,7 @@ pub enum CliCommand {
     DocAction(DocActionCliCommand),
     ScaffoldI18n(ScaffoldI18nCliCommand),
     ProbeSchema(ProbeSchemaCliCommand),
+    SchemaErrorCodes(SchemaErrorCodesCliCommand),
 }
 
 impl CliCommand {
@@ -55,6 +58,7 @@ impl CliCommand {
             "probe-schema" => {
                 ProbeSchemaCliCommand::parse_cli_args(submatches).map(CliCommand::ProbeSchema)
             }
+            "schema-error-codes" => Ok(CliCommand::SchemaErrorCodes(SchemaErrorCodesCliCommand)),
             _ => Err(crate::errors::Error::unknown_command(subcommand)),
         }
     }
@@ -68,6 +72,7 @@ impl CliCommand {
             CliCommand::DocAction(subcommand) => subcommand.execute(),
             CliCommand::ScaffoldI18n(subcommand) => subcommand.execute(),
             CliCommand::ProbeSchema(subcommand) => subcommand.execute(),
+            CliCommand::SchemaErrorCodes(subcommand) => subcommand.execute(),
         }
     }
 }

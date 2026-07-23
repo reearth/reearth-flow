@@ -93,6 +93,10 @@ pub struct WorkflowTestProfile {
     /// Validation settings for unexpected output files
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub unexpected_output_validation: Option<UnexpectedOutputValidation>,
+
+    /// Tolerates only ExecutionError/FailedNodes-shaped Err; default false fails loudly on any Err.
+    #[serde(default, skip_serializing_if = "is_false")]
+    pub expect_failed_nodes: bool,
 }
 
 fn is_false(b: &bool) -> bool {

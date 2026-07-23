@@ -103,3 +103,4 @@ graphs:
 | FLOW_WORKER_NODE_STATUS_TOPIC             | Topic name of the event that will occur when each when Feature passes the node | flow-node-status-topic        |
 | FLOW_WORKER_USER_FACING_LOG_TOPIC         | Topic name for the user-facing log event                                       | flow-worker-user-facing-log-topic |
 | FLOW_WORKER_ENABLE_JSON_LOG               | Enable log format to JSON format                                               | false                        |
+| OTEL_COLLECTOR_ENDPOINT                   | OTLP/gRPC collector endpoint. When set, enables OTel trace + metric export (also read by the CLI). When unset, OTel export is fully disabled — no exporter is built, zero overhead. | (unset — OTel export disabled) |

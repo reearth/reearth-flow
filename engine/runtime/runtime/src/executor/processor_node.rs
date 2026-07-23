@@ -11,19 +11,20 @@ use futures::Future;
 use once_cell::sync::Lazy;
 use petgraph::graph::NodeIndex;
 use reearth_flow_common::uri::Uri;
+use reearth_flow_diagnostics::{Diagnostic, DiagnosticDraft, Disposition, ErrorCode};
 use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use tokio::runtime::Handle;
 use tracing::{info_span, Span};
 
-use crate::event::{Event, EventHub};
+use crate::event::{Event, EventHub, NodeMetrics};
 use crate::executor_operation::{ExecutorContext, ExecutorOperation, NodeContext};
 use crate::forwarder::ProcessorChannelForwarder;
 use crate::kvs::KvStore;
 use crate::node::NodeStatus;
 use crate::{
     builder_dag::NodeKind,
-    errors::ExecutionError,
+    errors::{to_node_error, ExecutionError, NodeErrorKind},
     forwarder::ChannelManager,
     node::{NodeHandle, Processor},
 };
@@ -40,36 +41,25 @@ static SLOW_ACTION_THRESHOLD: Lazy<Duration> = Lazy::new(|| {
         .unwrap_or(Duration::from_millis(1000))
 });
 
-/// A processor in the execution DAG.
 #[derive(Debug)]
 pub struct ProcessorNode<F> {
-    /// Node handle in description DAG.
     node_handle: NodeHandle,
-    /// Node name from workflow definition.
     node_name: String,
-    /// Input node handles.
     node_handles: Vec<NodeHandle>,
-    /// Input data channels.
     receivers: Vec<Receiver<ExecutorOperation>>,
-    /// The processor.
     processor: Arc<parking_lot::RwLock<Box<dyn Processor>>>,
-    /// This node's output channel manager, for forwarding data, writing metadata and writing port state.
     channel_manager: Arc<parking_lot::RwLock<ProcessorChannelForwarder>>,
-    /// The shutdown future.
     #[allow(dead_code)]
     shutdown: F,
-    /// The runtime to run the source in.
     #[allow(dead_code)]
     runtime: Arc<Handle>,
     span: tracing::Span,
     thread_pool: rayon::ThreadPool,
-    /// Number of threads in the thread pool (used for backpressure).
     num_threads: usize,
     thread_counter: Arc<AtomicU32>,
     features_processed: Arc<AtomicU64>,
-    /// Cumulative process() duration in microseconds.
+    finish_feature_count: Arc<AtomicU64>,
     process_duration_us: Arc<AtomicU64>,
-    /// Sum of squared process() durations in microseconds (for std dev).
     process_duration_sq_us: Arc<AtomicU64>,
     env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     storage_resolver: Arc<StorageResolver>,
@@ -77,12 +67,14 @@ pub struct ProcessorNode<F> {
     event_hub: EventHub,
     sandbox_root: Uri,
     source_intermediate_recorder: SourceIntermediateRecorder,
-    /// State for writing source intermediate data
     feature_state: Arc<State>,
     incremental_mode: bool,
+    diagnostics: crate::diagnostics::SharedNodeDiagnostics,
+    summaries_sink: Arc<parking_lot::Mutex<Vec<Diagnostic>>>,
 }
 
 impl<F: Future + Unpin + Debug> ProcessorNode<F> {
+    #[allow(clippy::too_many_arguments)]
     pub async fn new(
         ctx: NodeContext,
         dag: &mut ExecutionDag,
@@ -90,16 +82,21 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
         shutdown: F,
         runtime: Arc<Handle>,
         incremental_mode: bool,
+        warn_once: reearth_flow_diagnostics::WarnOnceSet,
+        disposition_policy: Arc<reearth_flow_diagnostics::DispositionPolicy>,
     ) -> Self {
         let node = dag.node_weight_mut(node_index);
+        let node_handle = node.handle.clone();
+        let node_name = node.name.clone();
+        let composed_id = node.composed_id();
+        let action = node.action.clone();
         let Some(kind) = node.kind.take() else {
             panic!("Must pass in a node")
         };
-        let node_handle = node.handle.clone();
-        let node_name = node.name.clone();
         let NodeKind::Processor(processor) = kind else {
             panic!("Must pass in a processor node");
         };
+        // NOTE: `action` may legitimately diverge from `processor.name()` (e.g. factory vs. built-instance naming) — don't assert equality.
         let (node_handles, receivers) = dag.collect_receivers(node_index);
 
         let senders = dag.collect_senders(node_index);
@@ -120,7 +117,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             "otel.name" = processor.name(),
             "otel.kind" = "Processor Node",
             "workflow.id" = dag.id.to_string().as_str(),
-            "node.id" = node_handle.id.to_string().as_str(),
+            "node.id" = composed_id.as_str(),
             "node.name" = node_name.as_str(),
         );
 
@@ -133,6 +130,16 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
         let source_intermediate_recorder =
             SourceIntermediateRecorder::collect(dag, node_index, &node_handles);
         let feature_state = dag.feature_state();
+
+        let diagnostics = Arc::new(crate::diagnostics::NodeDiagnosticsHandle::new(
+            composed_id,
+            node_handle.clone(),
+            node_name.clone(),
+            action,
+            warn_once,
+            disposition_policy,
+            false,
+        ));
 
         Self {
             node_handle,
@@ -151,6 +158,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             num_threads,
             thread_counter: Arc::new(AtomicU32::new(0)),
             features_processed: Arc::new(AtomicU64::new(0)),
+            finish_feature_count: Arc::new(AtomicU64::new(0)),
             process_duration_us: Arc::new(AtomicU64::new(0)),
             process_duration_sq_us: Arc::new(AtomicU64::new(0)),
             env_vars,
@@ -161,6 +169,8 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             source_intermediate_recorder,
             feature_state,
             incremental_mode,
+            diagnostics,
+            summaries_sink: Arc::new(parking_lot::Mutex::new(Vec::new())),
         }
     }
 
@@ -168,9 +178,18 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
         &self.node_handle
     }
 
-    /// Wait until the thread pool has capacity to accept a new task.
-    /// This ensures no tasks are waiting in the rayon queue, providing
-    /// backpressure based on actual processing capacity.
+    // Must be called before run() consumes self, or summaries become unreachable.
+    pub fn summaries_sink(&self) -> Arc<parking_lot::Mutex<Vec<Diagnostic>>> {
+        self.summaries_sink.clone()
+    }
+
+    pub fn node_meta(&self) -> super::dag_executor::NodeMeta {
+        super::dag_executor::NodeMeta {
+            composed_id: self.diagnostics.inner.node_id().to_string(),
+            action: self.diagnostics.inner.action_type().to_string(),
+        }
+    }
+
     fn wait_until_pool_has_capacity(&self) {
         while self
             .thread_counter
@@ -205,9 +224,10 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
             node_handle: self.node_handle.clone(),
             status: NodeStatus::Starting,
             feature_id: None,
+            metrics: None,
         });
 
-        processor
+        let init_result = processor
             .write()
             .initialize(NodeContext::new(
                 self.env_vars.clone(),
@@ -216,12 +236,32 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                 self.event_hub.clone(),
                 self.sandbox_root.clone(),
             ))
-            .map_err(ExecutionError::Processor)?;
+            .map_err(ExecutionError::Processor);
+
+        // Without this, an initialize() error leaves the node stuck at Starting forever.
+        if let Err(ref e) = init_result {
+            self.event_hub.error_log_with_node_info(
+                Some(span.clone()),
+                self.node_handle.clone(),
+                self.node_name.clone(),
+                format!("{} process error: {}", self.processor.read().name(), e),
+            );
+
+            self.event_hub.send(Event::NodeStatusChanged {
+                node_handle: self.node_handle.clone(),
+                status: NodeStatus::Failed,
+                feature_id: None,
+                metrics: None,
+            });
+
+            return init_result;
+        }
 
         self.event_hub.send(Event::NodeStatusChanged {
             node_handle: self.node_handle.clone(),
             status: NodeStatus::Processing,
             feature_id: None,
+            metrics: None,
         });
 
         self.event_hub.info_log_with_node_info(
@@ -289,45 +329,66 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                         message,
                     );
 
-                    let final_status = if has_failed.load(std::sync::atomic::Ordering::SeqCst) {
-                        NodeStatus::Failed
-                    } else {
-                        NodeStatus::Completed
-                    };
-
-                    self.event_hub.send(Event::NodeStatusChanged {
-                        node_handle: self.node_handle.clone(),
-                        status: final_status,
-                        feature_id: None,
-                    });
-
-                    let terminate_result = self.on_terminate(NodeContext::new(
+                    let mut finish_ctx = NodeContext::new(
                         self.env_vars.clone(),
                         self.storage_resolver.clone(),
                         self.kv_store.clone(),
                         self.event_hub.clone(),
                         self.sandbox_root.clone(),
-                    ));
+                    );
+                    finish_ctx.diagnostics = Some(self.diagnostics.clone());
+                    let terminate_result = self.on_terminate(finish_ctx);
+                    let finish_feature_count = self
+                        .finish_feature_count
+                        .load(std::sync::atomic::Ordering::Relaxed);
 
-                    if terminate_result.is_err()
-                        && !has_failed.load(std::sync::atomic::Ordering::SeqCst)
-                    {
-                        self.event_hub.send(Event::NodeStatusChanged {
-                            node_handle: self.node_handle.clone(),
-                            status: NodeStatus::Failed,
-                            feature_id: None,
+                    // Failure precedence: a real on_terminate error always wins over the fatal slot backstop.
+                    let fatal = self.diagnostics.inner.take_fatal();
+                    let (final_result, node_failed, superseded_fatal) = reconcile_terminate_result(
+                        terminate_result,
+                        fatal,
+                        has_failed.load(std::sync::atomic::Ordering::SeqCst),
+                    );
+
+                    if let Some(superseded) = superseded_fatal {
+                        self.event_hub.warn_log_with_node_info(
+                            Some(span.clone()),
+                            self.node_handle.clone(),
+                            self.node_name.clone(),
+                            format!(
+                                "{} process: swallowed fatal diagnostic ({}) superseded by a \
+                                 real error and dropped from the final result",
+                                self.processor.read().name(),
+                                superseded.code
+                            ),
+                        );
+                    }
+
+                    self.event_hub.send(Event::NodeStatusChanged {
+                        node_handle: self.node_handle.clone(),
+                        status: if node_failed {
+                            NodeStatus::Failed
+                        } else {
+                            NodeStatus::Completed
+                        },
+                        feature_id: None,
+                        metrics: Some(NodeMetrics {
+                            features_processed: features_count,
+                            features_written: 0,
+                            finish_feature_count,
+                        }),
+                    });
+
+                    if !node_failed {
+                        self.event_hub.send(Event::ProcessorFinished {
+                            node: self.node_handle.clone(),
+                            name: self.node_name.clone(),
                         });
                     }
 
-                    return terminate_result;
+                    return final_result;
                 }
-                // Polling-backoff for the busy-wait that drains `thread_counter`
-                // after all inputs have terminated. A 100µs sleep keeps CPU usage
-                // negligible (~10,000 polls/sec at most) while still being fast
-                // enough that detection latency for the counter reaching 0 is
-                // imperceptible. `yield_now()` would spin at ~100% CPU on cores
-                // with no other runnable threads, which can stretch into seconds
-                // for large processors.
+                // sleep, not yield_now() — yield_now() would spin at ~100% CPU with nothing else runnable.
                 std::thread::sleep(Duration::from_micros(100));
                 continue;
             }
@@ -399,9 +460,11 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
 
     fn on_op_with_failure_tracking(
         &mut self,
-        ctx: ExecutorContext,
+        mut ctx: ExecutorContext,
         has_failed: Arc<std::sync::atomic::AtomicBool>,
     ) -> Result<(), ExecutionError> {
+        // This node's diagnostics handle overwrites whatever the upstream sender's context carried.
+        ctx.diagnostics = Some(self.diagnostics.clone());
         let channel_manager = Arc::clone(&self.channel_manager);
         let processor = Arc::clone(&self.processor);
 
@@ -451,20 +514,20 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
             None
         };
 
-        // Enable spill mode: if finish() emits more features than the bounded
-        // channel can hold, excess features are written to disk as JSONL files
-        // instead of blocking on send(). This prevents shutdown deadlocks where
-        // finish() blocks on a full channel that the downstream can't drain.
+        // Spill excess finish()-emitted features to disk instead of blocking send() — avoids shutdown deadlock on a full channel.
         channel_manager.enable_spill_mode();
         channel_manager.reset_send_count();
         let result = processor
             .write()
             .finish(ctx.clone(), channel_manager)
-            .map_err(|e| ExecutionError::CannotSendToChannel(format!("{e:?}")));
-        // Flush any features that were spilled to disk during finish().
-        // These are sent as FileBackedOps which the downstream already handles.
+            .map_err(|e| to_node_error(e, NodeErrorKind::Processor));
+        // Summaries are emitted regardless of finish() outcome — must not be dropped just because finish() failed.
+        let summaries = crate::diagnostics::emit_summaries(&self.event_hub, &self.diagnostics);
+        *self.summaries_sink.lock() = summaries;
         channel_manager.flush_spill_files(&ctx.as_context());
         let finish_feature_count = channel_manager.get_send_count();
+        self.finish_feature_count
+            .store(finish_feature_count, std::sync::atomic::Ordering::Relaxed);
 
         drop(_accumulating_guard);
 
@@ -506,6 +569,7 @@ fn process(
     process_duration_sq_us: Arc<AtomicU64>,
 ) {
     let feature_id = ctx.feature.id;
+    let diagnostics_handle = ctx.diagnostics.clone();
     let channel_manager_guard = channel_manager.read();
     let mut processor_guard = processor.write();
     let channel_manager: &ProcessorChannelForwarder = &channel_manager_guard;
@@ -554,7 +618,151 @@ fn process(
             node: node_handle.clone(),
             name: node_name.clone(),
         });
+
+        // First-wins fatal slot: without recording this, a per-feature error would never reach RunSummary.failed_nodes.
+        if let Some(handle) = &diagnostics_handle {
+            handle.inner.record_fatal(synthesize_process_error_fatal(
+                e.to_string(),
+                handle.inner.node_id().to_string(),
+                handle.inner.action_type().to_string(),
+                feature_id,
+            ));
+        }
     } else {
         features_processed.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    }
+}
+
+fn synthesize_process_error_fatal(
+    message: String,
+    node_id: String,
+    action_type: String,
+    feature_id: uuid::Uuid,
+) -> Diagnostic {
+    let mut diagnostic = Diagnostic::from_draft(
+        DiagnosticDraft::new(ErrorCode::InternalUnclassified).with_message(message),
+        Some(node_id),
+        Some(action_type),
+        Some(feature_id),
+    );
+    diagnostic.effective_disposition = Some(Disposition::Fatal);
+    diagnostic
+}
+
+// Failure precedence: a real returned error wins; the fatal slot is only a backstop for swallowed report() fatals.
+fn reconcile_terminate_result(
+    terminate_result: Result<(), ExecutionError>,
+    fatal: Option<Diagnostic>,
+    has_failed: bool,
+) -> (Result<(), ExecutionError>, bool, Option<Diagnostic>) {
+    match (terminate_result, fatal) {
+        (Err(e), fatal) => (Err(e), true, fatal),
+        (Ok(()), Some(diag)) => (Err(ExecutionError::Processor(Box::new(diag))), true, None),
+        (Ok(()), None) => (Ok(()), has_failed, None),
+    }
+}
+
+#[cfg(test)]
+mod reconcile_tests {
+    use super::*;
+    use reearth_flow_diagnostics::{Diagnostic, DiagnosticDraft, ErrorCode};
+
+    fn dummy_diagnostic(message: &str) -> Diagnostic {
+        Diagnostic::from_draft(
+            DiagnosticDraft::new(ErrorCode::InternalInvariantViolation).with_message(message),
+            None,
+            None,
+            None,
+        )
+    }
+
+    fn terminate_err(message: &str) -> ExecutionError {
+        ExecutionError::CannotSendToChannel(message.to_string())
+    }
+
+    #[test]
+    fn ok_no_fatal_result_is_ok_and_node_failed_tracks_has_failed() {
+        for has_failed in [false, true] {
+            let (result, node_failed, superseded) =
+                reconcile_terminate_result(Ok(()), None, has_failed);
+            assert!(result.is_ok());
+            assert_eq!(node_failed, has_failed);
+            assert!(superseded.is_none());
+        }
+    }
+
+    #[test]
+    fn ok_with_fatal_backstop_fires_regardless_of_has_failed() {
+        for has_failed in [false, true] {
+            let (result, node_failed, superseded) =
+                reconcile_terminate_result(Ok(()), Some(dummy_diagnostic("fatal")), has_failed);
+            assert!(node_failed);
+            match result {
+                Err(ExecutionError::Processor(e)) => assert!(e.to_string().contains("fatal")),
+                other => panic!("expected the fatal backstop to fire, got {other:?}"),
+            }
+            assert!(superseded.is_none());
+        }
+    }
+
+    #[test]
+    fn err_no_fatal_the_real_error_wins_regardless_of_has_failed() {
+        for has_failed in [false, true] {
+            let (result, node_failed, superseded) =
+                reconcile_terminate_result(Err(terminate_err("boom")), None, has_failed);
+            assert!(node_failed);
+            match result {
+                Err(ExecutionError::CannotSendToChannel(msg)) => assert_eq!(msg, "boom"),
+                other => panic!("expected the real terminate error, got {other:?}"),
+            }
+            assert!(superseded.is_none());
+        }
+    }
+
+    #[test]
+    fn err_with_fatal_the_real_error_still_wins_over_the_fatal_backstop() {
+        for has_failed in [false, true] {
+            let (result, node_failed, superseded) = reconcile_terminate_result(
+                Err(terminate_err("boom")),
+                Some(dummy_diagnostic("fatal")),
+                has_failed,
+            );
+            assert!(node_failed);
+            match result {
+                Err(ExecutionError::CannotSendToChannel(msg)) => assert_eq!(msg, "boom"),
+                other => panic!(
+                    "expected the real terminate error to win over the fatal backstop, got {other:?}"
+                ),
+            }
+            let superseded = superseded.expect("fatal was present and lost to the terminate error");
+            assert_eq!(superseded.message, "fatal");
+        }
+    }
+}
+
+#[cfg(test)]
+mod synthesize_process_error_fatal_tests {
+    use super::*;
+    use reearth_flow_diagnostics::{Disposition, ErrorCode};
+
+    #[test]
+    fn carries_error_text_and_node_identity_as_fatal() {
+        let feature_id = uuid::Uuid::new_v4();
+        let diagnostic = synthesize_process_error_fatal(
+            "boom".to_string(),
+            "sub.node-1".to_string(),
+            "AttributeAggregator".to_string(),
+            feature_id,
+        );
+
+        assert_eq!(diagnostic.code, ErrorCode::InternalUnclassified);
+        assert_eq!(diagnostic.message, "boom");
+        assert_eq!(diagnostic.node_id.as_deref(), Some("sub.node-1"));
+        assert_eq!(
+            diagnostic.action_type.as_deref(),
+            Some("AttributeAggregator")
+        );
+        assert_eq!(diagnostic.feature_id, Some(feature_id));
+        assert_eq!(diagnostic.effective_disposition, Some(Disposition::Fatal));
     }
 }

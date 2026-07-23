@@ -3,13 +3,17 @@ use std::env;
 use bytes::Bytes;
 use chrono::Utc;
 use once_cell::sync::Lazy;
+use reearth_flow_diagnostics::RunSummary;
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use uuid::Uuid;
 
-use crate::pubsub::{
-    message::{EncodableMessage, ValidatedMessage},
-    topic::Topic,
+use crate::{
+    pubsub::{
+        message::{EncodableMessage, ValidatedMessage},
+        topic::Topic,
+    },
+    types::diagnostic_event::WireDiagnostic,
 };
 
 static JOB_COMPLETE_TOPIC: Lazy<String> = Lazy::new(|| {
@@ -17,6 +21,8 @@ static JOB_COMPLETE_TOPIC: Lazy<String> = Lazy::new(|| {
         .ok()
         .unwrap_or("flow-job-complete-topic".to_string())
 });
+
+pub const JOB_COMPLETE_TOP_K: usize = 50;
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
@@ -32,6 +38,14 @@ pub struct JobCompleteEvent {
     pub job_id: Uuid,
     pub result: JobResult,
     pub timestamp: chrono::DateTime<Utc>,
+    /// Absent = no RunSummary was produced; empty = one was, with none recorded — never infer job failure from either. Fatality reads from `effectiveDisposition`, not `severity`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub failed_nodes: Option<Vec<WireDiagnostic>>,
+    /// Never a `Fatal` entry (those surface via `failedNodes`). Same absent-vs-empty contract as `failedNodes`.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub aggregated_diagnostics: Option<Vec<WireDiagnostic>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub dropped_event_count: Option<u64>,
 }
 
 impl JobCompleteEvent {
@@ -41,6 +55,37 @@ impl JobCompleteEvent {
             job_id,
             result,
             timestamp: chrono::Utc::now(),
+            failed_nodes: None,
+            aggregated_diagnostics: None,
+            dropped_event_count: None,
+        }
+    }
+
+    /// Pass the *uncapped* `summary` — caps internally via `JOB_COMPLETE_TOP_K`; capping twice would understate the overflow count.
+    pub fn with_summary(
+        workflow_id: Uuid,
+        job_id: Uuid,
+        result: JobResult,
+        summary: &RunSummary,
+    ) -> Self {
+        let capped = summary.capped(JOB_COMPLETE_TOP_K);
+        Self {
+            failed_nodes: Some(
+                capped
+                    .failed_nodes
+                    .iter()
+                    .map(WireDiagnostic::from)
+                    .collect(),
+            ),
+            aggregated_diagnostics: Some(
+                capped
+                    .aggregated_diagnostics
+                    .iter()
+                    .map(WireDiagnostic::from)
+                    .collect(),
+            ),
+            dropped_event_count: Some(capped.dropped_event_count),
+            ..Self::new(workflow_id, job_id, result)
         }
     }
 }
@@ -52,12 +97,232 @@ impl EncodableMessage for JobCompleteEvent {
         Topic::new(JOB_COMPLETE_TOPIC.clone())
     }
 
-    /// Encode the message payload.
     fn encode(&self) -> crate::errors::Result<ValidatedMessage<Bytes>> {
         serde_json::to_string(self)
             .map_err(crate::errors::Error::FailedToEncode)
             .map(|payload| {
                 ValidatedMessage::new(uuid::Uuid::new_v4(), self.timestamp, Bytes::from(payload))
             })
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use reearth_flow_diagnostics::{AggregateInfo, Diagnostic, DiagnosticDraft, ErrorCode};
+
+    use super::*;
+
+    fn fixed_uuid(byte: u8) -> Uuid {
+        Uuid::from_bytes([byte; 16])
+    }
+
+    fn fixed_timestamp() -> chrono::DateTime<Utc> {
+        chrono::DateTime::parse_from_rfc3339("2026-01-01T00:00:00Z")
+            .unwrap()
+            .with_timezone(&Utc)
+    }
+
+    fn bare_event() -> JobCompleteEvent {
+        let mut event =
+            JobCompleteEvent::new(fixed_uuid(0x11), fixed_uuid(0x22), JobResult::Success);
+        event.timestamp = fixed_timestamp();
+        event
+    }
+
+    /// Wire shape without a `RunSummary` must stay byte-identical (no new keys) — the Go subscriber depends on it.
+    #[test]
+    fn event_without_summary_has_pre_task_wire_shape_exactly() {
+        let event = bare_event();
+        let json = serde_json::to_string_pretty(&event).unwrap();
+        let expected = r#"{
+  "workflowId": "11111111-1111-1111-1111-111111111111",
+  "jobId": "22222222-2222-2222-2222-222222222222",
+  "result": "success",
+  "timestamp": "2026-01-01T00:00:00Z"
+}"#;
+        assert_eq!(json, expected);
+    }
+
+    fn sample_summary() -> RunSummary {
+        let mut failed = Diagnostic::from_draft(
+            DiagnosticDraft::new(ErrorCode::InternalInvariantViolation),
+            Some("node-1".to_string()),
+            Some("Some Action".to_string()),
+            None,
+        );
+        failed.effective_disposition = Some(reearth_flow_diagnostics::Disposition::Fatal);
+
+        let mut aggregated = Diagnostic::from_draft(
+            DiagnosticDraft::new(ErrorCode::GltfZeroFaceSolid),
+            Some("node-2".to_string()),
+            Some("Gltf Writer".to_string()),
+            None,
+        );
+        aggregated.aggregated = Some(AggregateInfo {
+            count: 5,
+            sample_feature_ids: vec![fixed_uuid(0x33)],
+        });
+
+        RunSummary {
+            failed_nodes: vec![failed],
+            aggregated_diagnostics: vec![aggregated],
+            dropped_event_count: 2,
+        }
+    }
+
+    fn event_with_summary() -> JobCompleteEvent {
+        let mut event = JobCompleteEvent::with_summary(
+            fixed_uuid(0x11),
+            fixed_uuid(0x22),
+            JobResult::Failed,
+            &sample_summary(),
+        );
+        event.timestamp = fixed_timestamp();
+        event
+    }
+
+    #[test]
+    fn event_with_summary_serializes_camel_case_diagnostics_fields_with_correct_counts() {
+        let event = event_with_summary();
+        let value: serde_json::Value = serde_json::to_value(&event).unwrap();
+        let obj = value.as_object().unwrap();
+        assert!(obj.contains_key("failedNodes"));
+        assert!(obj.contains_key("aggregatedDiagnostics"));
+        assert!(obj.contains_key("droppedEventCount"));
+        assert_eq!(obj["droppedEventCount"], 2);
+        assert_eq!(obj["failedNodes"].as_array().unwrap().len(), 1);
+        assert_eq!(obj["aggregatedDiagnostics"].as_array().unwrap().len(), 1);
+        assert_eq!(obj["aggregatedDiagnostics"][0]["aggregated"]["count"], 5);
+        assert_eq!(
+            obj["failedNodes"][0]["code"],
+            "internal.invariant_violation"
+        );
+        assert_eq!(
+            obj["aggregatedDiagnostics"][0]["code"],
+            "gltf.zero_face_solid"
+        );
+    }
+
+    #[test]
+    fn event_with_summary_round_trips() {
+        let event = event_with_summary();
+        let json = serde_json::to_string(&event).unwrap();
+        let back: JobCompleteEvent = serde_json::from_str(&json).unwrap();
+        assert_eq!(back.workflow_id, event.workflow_id);
+        assert_eq!(back.job_id, event.job_id);
+        assert_eq!(back.timestamp, event.timestamp);
+        assert_eq!(back.dropped_event_count, event.dropped_event_count);
+        assert_eq!(
+            back.failed_nodes.as_ref().unwrap().len(),
+            event.failed_nodes.as_ref().unwrap().len()
+        );
+        assert_eq!(
+            back.failed_nodes.as_ref().unwrap()[0].code,
+            event.failed_nodes.as_ref().unwrap()[0].code
+        );
+        assert_eq!(
+            back.aggregated_diagnostics.as_ref().unwrap()[0].code,
+            event.aggregated_diagnostics.as_ref().unwrap()[0].code
+        );
+        assert_eq!(
+            back.aggregated_diagnostics.as_ref().unwrap()[0]
+                .aggregated
+                .as_ref()
+                .unwrap()
+                .count,
+            5
+        );
+    }
+
+    #[test]
+    fn event_without_summary_round_trips_with_none_fields() {
+        let event = bare_event();
+        let json = serde_json::to_string(&event).unwrap();
+        let back: JobCompleteEvent = serde_json::from_str(&json).unwrap();
+        assert!(back.failed_nodes.is_none());
+        assert!(back.aggregated_diagnostics.is_none());
+        assert!(back.dropped_event_count.is_none());
+    }
+
+    /// An empty `RunSummary` still renders present-but-empty keys (`[]`/`0`, never omitted) — distinguishes "ran, nothing to report" from "no summary was ever built".
+    #[test]
+    fn with_summary_on_empty_run_summary_serializes_present_empty_fields() {
+        let empty = RunSummary {
+            failed_nodes: vec![],
+            aggregated_diagnostics: vec![],
+            dropped_event_count: 0,
+        };
+        let mut event = JobCompleteEvent::with_summary(
+            fixed_uuid(0x11),
+            fixed_uuid(0x22),
+            JobResult::Success,
+            &empty,
+        );
+        event.timestamp = fixed_timestamp();
+
+        let json = serde_json::to_string_pretty(&event).unwrap();
+        let expected = r#"{
+  "workflowId": "11111111-1111-1111-1111-111111111111",
+  "jobId": "22222222-2222-2222-2222-222222222222",
+  "result": "success",
+  "timestamp": "2026-01-01T00:00:00Z",
+  "failedNodes": [],
+  "aggregatedDiagnostics": [],
+  "droppedEventCount": 0
+}"#;
+        assert_eq!(json, expected);
+
+        let value: serde_json::Value = serde_json::to_value(&event).unwrap();
+        let obj = value.as_object().unwrap();
+        assert!(obj.contains_key("failedNodes"));
+        assert!(obj.contains_key("aggregatedDiagnostics"));
+        assert!(obj.contains_key("droppedEventCount"));
+    }
+
+    /// `JOB_COMPLETE_TOP_K + 1` failed nodes in yields `JOB_COMPLETE_TOP_K` real entries plus one overflow marker out.
+    #[test]
+    fn with_summary_caps_an_oversized_run_summary_internally() {
+        let failed_nodes: Vec<Diagnostic> = (0..JOB_COMPLETE_TOP_K + 1)
+            .map(|i| {
+                Diagnostic::from_draft(
+                    DiagnosticDraft::new(ErrorCode::InternalInvariantViolation),
+                    Some(format!("node-{i}")),
+                    Some("Some Action".to_string()),
+                    None,
+                )
+            })
+            .collect();
+        let oversized = RunSummary {
+            failed_nodes,
+            aggregated_diagnostics: vec![],
+            dropped_event_count: 0,
+        };
+
+        let event = JobCompleteEvent::with_summary(
+            fixed_uuid(0x11),
+            fixed_uuid(0x22),
+            JobResult::Failed,
+            &oversized,
+        );
+
+        let wire_failed_nodes = event
+            .failed_nodes
+            .expect("with_summary always populates failed_nodes");
+        assert_eq!(wire_failed_nodes.len(), JOB_COMPLETE_TOP_K + 1);
+        let overflow_count = wire_failed_nodes
+            .iter()
+            .filter(|d| d.code == "internal.diagnostics_overflow")
+            .count();
+        assert_eq!(
+            overflow_count, 1,
+            "exactly one overflow marker must be present, got: {wire_failed_nodes:?}"
+        );
+    }
+
+    #[test]
+    fn job_complete_topic_defaults_when_env_unset() {
+        // Setting/unsetting the env var here would race other tests reading the same process-global `Lazy`.
+        let event = bare_event();
+        assert_eq!(event.topic().to_string(), "flow-job-complete-topic");
     }
 }

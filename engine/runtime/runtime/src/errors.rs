@@ -133,3 +133,90 @@ impl<T> From<crossbeam::channel::SendError<T>> for ExecutionError {
 pub struct CannotConvertF64ToJson(pub f64);
 
 pub type BoxedError = Box<dyn std::error::Error + Send + Sync + 'static>;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum NodeErrorKind {
+    Processor,
+    Sink,
+    Source,
+}
+
+// Must preserve the box exactly as received — a Diagnostic carrier must not be collapsed via format!(), since the join fold later downcasts it back out.
+pub(crate) fn to_node_error(e: BoxedError, kind: NodeErrorKind) -> ExecutionError {
+    match kind {
+        NodeErrorKind::Processor => ExecutionError::Processor(e),
+        NodeErrorKind::Sink => ExecutionError::Sink(e),
+        NodeErrorKind::Source => ExecutionError::Source(e),
+    }
+}
+
+#[cfg(test)]
+mod to_node_error_tests {
+    use super::*;
+    use reearth_flow_diagnostics::{Diagnostic, DiagnosticDraft, ErrorCode};
+
+    fn dummy_diagnostic(message: &str) -> Diagnostic {
+        Diagnostic::from_draft(
+            DiagnosticDraft::new(ErrorCode::InternalInvariantViolation).with_message(message),
+            None,
+            None,
+            None,
+        )
+    }
+
+    #[test]
+    fn boxed_diagnostic_round_trips_through_each_kind() {
+        for kind in [
+            NodeErrorKind::Processor,
+            NodeErrorKind::Sink,
+            NodeErrorKind::Source,
+        ] {
+            let original = dummy_diagnostic("boom");
+            let boxed: BoxedError = Box::new(original);
+
+            let wrapped = to_node_error(boxed, kind);
+
+            let inner = match wrapped {
+                ExecutionError::Processor(b)
+                | ExecutionError::Sink(b)
+                | ExecutionError::Source(b) => b,
+                other => panic!("unexpected variant: {other:?}"),
+            };
+            let recovered = inner
+                .downcast::<Diagnostic>()
+                .expect("boxed Diagnostic must survive to_node_error intact");
+            assert_eq!(recovered.code, ErrorCode::InternalInvariantViolation);
+            assert_eq!(recovered.message, "boom");
+        }
+    }
+
+    #[test]
+    fn non_diagnostic_boxed_error_wraps_opaque() {
+        let boxed: BoxedError = Box::new(std::io::Error::other("plain io boom"));
+
+        let wrapped = to_node_error(boxed, NodeErrorKind::Sink);
+
+        assert!(wrapped.to_string().contains("plain io boom"));
+        match wrapped {
+            ExecutionError::Sink(b) => {
+                assert!(b.downcast::<Diagnostic>().is_err());
+            }
+            other => panic!("unexpected variant: {other:?}"),
+        }
+    }
+
+    #[test]
+    fn wraps_into_the_variant_matching_kind() {
+        let err = |kind| to_node_error(Box::new(std::io::Error::other("x")), kind);
+
+        assert!(matches!(
+            err(NodeErrorKind::Processor),
+            ExecutionError::Processor(_)
+        ));
+        assert!(matches!(err(NodeErrorKind::Sink), ExecutionError::Sink(_)));
+        assert!(matches!(
+            err(NodeErrorKind::Source),
+            ExecutionError::Source(_)
+        ));
+    }
+}
