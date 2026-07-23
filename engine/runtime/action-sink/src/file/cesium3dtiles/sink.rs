@@ -129,6 +129,7 @@ pub struct Cesium3DTilesWriter {
     pub(super) params: Cesium3DTilesWriterCompiledParam,
 }
 
+/// # Texture Codec
 /// Texture image codec for the new-geometry writer's atlas pages.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Default, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "camelCase")]

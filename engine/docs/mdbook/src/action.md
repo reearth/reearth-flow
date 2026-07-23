@@ -2133,6 +2133,7 @@ Writes features to Cesium 3D Tiles format for 3D web visualization.
         "null"
       ],
       "format": "uint32",
+      "maximum": 100000.0,
       "minimum": 1.0
     },
     "atlasExtrusion": {
@@ -2143,6 +2144,7 @@ Writes features to Cesium 3D Tiles format for 3D web visualization.
         "null"
       ],
       "format": "uint32",
+      "maximum": 100000.0,
       "minimum": 0.0
     },
     "textureCodec": {
@@ -2201,6 +2203,7 @@ Writes features to Cesium 3D Tiles format for 3D web visualization.
   },
   "definitions": {
     "TextureCodec": {
+      "title": "Texture Codec",
       "description": "Texture image codec for the new-geometry writer's atlas pages.",
       "oneOf": [
         {

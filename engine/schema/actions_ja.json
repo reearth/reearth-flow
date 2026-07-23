@@ -2174,6 +2174,7 @@
               "null"
             ],
             "format": "uint32",
+            "maximum": 100000.0,
             "minimum": 1.0
           },
           "atlasExtrusion": {
@@ -2184,6 +2185,7 @@
               "null"
             ],
             "format": "uint32",
+            "maximum": 100000.0,
             "minimum": 0.0
           },
           "textureCodec": {
@@ -2242,6 +2244,7 @@
         },
         "definitions": {
           "TextureCodec": {
+            "title": "Texture Codec",
             "description": "Texture image codec for the new-geometry writer's atlas pages.",
             "oneOf": [
               {
