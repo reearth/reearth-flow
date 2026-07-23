@@ -311,4 +311,89 @@ mod tests {
             other => panic!("expected Euclidean3D Collection, got {other:?}"),
         }
     }
+
+    /// Pull the first new-model 3D polygon out of either a bare `Polygon` or a
+    /// `Collection` of them, so assertions don't depend on how the glTF extraction
+    /// happened to wrap a single mesh.
+    fn first_polygon(g: &Geometry) -> Option<&Polygon3D> {
+        match g {
+            Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(p)) => Some(p),
+            Geometry::Euclidean3D(Euclidean3DGeometry::Collection(c)) => {
+                c.members().iter().find_map(|m| match m {
+                    Euclidean3DGeometry::Polygon(p) => Some(&**p),
+                    _ => None,
+                })
+            }
+            _ => None,
+        }
+    }
+
+    // Minimal self-contained glTF 2.0: one triangle with distinct per-vertex Z
+    // (1, 2, 3), POSITION (VEC3 f32) + indices (u16) in an embedded data-URI buffer.
+    // Buffer layout: 36 bytes positions at offset 0, 6 bytes indices at offset 36.
+    const TRIANGLE_GLTF: &str = r#"{
+      "asset": {"version": "2.0"},
+      "scenes": [{"nodes": [0]}],
+      "nodes": [{"mesh": 0}],
+      "meshes": [{"name": "tri", "primitives": [{"attributes": {"POSITION": 0}, "indices": 1, "mode": 4}]}],
+      "accessors": [
+        {"bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3", "min": [0.0, 0.0, 1.0], "max": [1.0, 1.0, 3.0]},
+        {"bufferView": 1, "componentType": 5123, "count": 3, "type": "SCALAR"}
+      ],
+      "bufferViews": [
+        {"buffer": 0, "byteOffset": 0, "byteLength": 36, "target": 34962},
+        {"buffer": 0, "byteOffset": 36, "byteLength": 6, "target": 34963}
+      ],
+      "buffers": [{"byteLength": 42, "uri": "data:application/octet-stream;base64,AAAAAAAAAAAAAIA/AACAPwAAAAAAAABAAAAAAAAAgD8AAEBAAAABAAIA"}]
+    }"#;
+
+    /// End-to-end reader-side check on a REAL glTF: parse -> primitives -> the
+    /// crate's triangle extraction -> old->new conversion. Unlike the converter
+    /// unit tests above (synthetic old geometry), this exercises the actual glTF
+    /// parsing/extraction path, closing the gap between the pure converter and the
+    /// live reader. No NodeContext needed: the buffer is an embedded data URI.
+    #[test]
+    fn real_gltf_triangle_reads_as_euclidean3d_preserving_z() {
+        let gltf = gltf::Gltf::from_slice(TRIANGLE_GLTF.as_bytes()).expect("parse glTF");
+
+        // The single buffer is the embedded data URI; build its exact bytes here
+        // (positions VEC3 f32 at offset 0, indices u16 at offset 36) so the test is
+        // self-contained and independent of the reader's private buffer-loading path.
+        let mut buf = Vec::new();
+        for xyz in [[0.0f32, 0.0, 1.0], [1.0, 0.0, 2.0], [0.0, 1.0, 3.0]] {
+            for c in xyz {
+                buf.extend_from_slice(&c.to_le_bytes());
+            }
+        }
+        for i in [0u16, 1, 2] {
+            buf.extend_from_slice(&i.to_le_bytes());
+        }
+        let buffer_data = vec![buf];
+
+        let primitives: Vec<_> = gltf
+            .meshes()
+            .next()
+            .expect("one mesh")
+            .primitives()
+            .collect();
+
+        let old = reearth_flow_gltf::create_geometry_from_primitives_with_transform(
+            &primitives,
+            &buffer_data,
+            None,
+        )
+        .expect("extract geometry from real glTF triangle");
+
+        let geom = to_new_geometry(&old);
+        let poly = first_polygon(&geom).expect("triangle should yield a 3D polygon");
+
+        assert_eq!(*poly.frame(), CoordinateFrame::Euclidean);
+
+        // All three distinct input Z values must survive the full parse->convert
+        // chain (guards against Z being zeroed or dropped somewhere in the pipeline).
+        let zs: Vec<f64> = poly.exterior().iter().map(|c| c[2]).collect();
+        for z in [1.0_f64, 2.0, 3.0] {
+            assert!(zs.contains(&z), "z={z} missing from exterior {zs:?}");
+        }
+    }
 }
