@@ -31,6 +31,9 @@ new-geometry = [
   "reearth-flow-types/new-geometry",
 ]
 
+# Debug-only intermediate-data form; see reearth-flow-geometry.
+debug-geom-feature-write = ["reearth-flow-types/debug-geom-feature-write"]
+
 [dependencies]
 reearth-flow-action-log.workspace = true
 reearth-flow-action-plateau-processor.workspace = true

@@ -21,6 +21,8 @@ use smallvec::SmallVec;
 use crate::coordinate::CoordinateFrame;
 
 mod constructor;
+#[cfg(not(feature = "debug-geom-feature-write"))]
+mod feature_write;
 mod ops;
 #[cfg(feature = "new-geometry")]
 mod validation;
@@ -108,7 +110,7 @@ struct Segment {
 
 /// A 3D point cloud: one or more acquisition [`Segment`]s sharing a frame, plus
 /// a lazily-built global KD-tree.
-#[derive(Serialize, Deserialize)]
+#[cfg_attr(feature = "debug-geom-feature-write", derive(Serialize, Deserialize))]
 pub struct PointCloud {
     /// Coordinate frame all segments are expressed in.
     frame: CoordinateFrame,
@@ -118,7 +120,7 @@ pub struct PointCloud {
     /// the serialized form, and reset on any mutation. The kiddo alias
     /// `ImmutableKdTree<f64, 3>` expands to `<f64, u64, 3, 32>`: `f64` coords,
     /// `u64` content, 3 dimensions, bucket size 32.
-    #[serde(skip)]
+    #[cfg_attr(feature = "debug-geom-feature-write", serde(skip))]
     kdtree: OnceLock<ImmutableKdTree<f64, 3>>,
 }
 

@@ -15,6 +15,13 @@ version.workspace = true
 # TODO: Remove after migration.
 new-geometry = []
 
+# When enabled, geometry leaves keep their derived `serde` impls, which write the
+# raw internal representation (index-buffer widths, CSR offset buffers, the packed
+# point-cloud byte stream). This is a debug-only intermediate-data form. When
+# disabled (the default), the leaves use the hand-written, lossless intermediate
+# form in each leaf's `feature_write.rs`, which decodes those internal structures.
+debug-geom-feature-write = []
+
 [dependencies]
 reearth-flow-common.workspace = true
 

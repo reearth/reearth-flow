@@ -18,6 +18,8 @@ use crate::index::IndexBuffer;
 
 mod constructor;
 mod faces;
+#[cfg(not(feature = "debug-geom-feature-write"))]
+mod feature_write;
 mod ops;
 #[cfg(feature = "new-geometry")]
 mod validation;
@@ -26,7 +28,8 @@ pub(crate) use ops::build_open_rings;
 
 /// A connected, vertex-sharing polygon mesh in 2D space, lying at a single
 /// optional elevation.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "debug-geom-feature-write", derive(Serialize, Deserialize))]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PolygonMesh2D {
     /// Coordinate frame these vertices are expressed in.
     frame: CoordinateFrame,
@@ -62,7 +65,8 @@ pub struct PolygonMesh2D {
 /// frame from the enclosing `Solid` — so a solid and its boundaries cannot
 /// disagree on a frame. Mirrors the [`Raster`](crate::appearance::Raster) /
 /// [`RasterData`](crate::appearance::RasterData) split.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "debug-geom-feature-write", derive(Serialize, Deserialize))]
+#[derive(Clone, Debug, PartialEq)]
 pub struct PolygonMesh3DData {
     vertices: Vec<[f64; 3]>,
     /// All rings of all faces concatenated; each face is its exterior ring then
