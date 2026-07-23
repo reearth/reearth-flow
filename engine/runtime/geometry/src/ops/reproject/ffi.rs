@@ -1,6 +1,5 @@
 //! PROJ-backed coordinate transformation for the reprojection ops.
 
-use std::cell::Cell;
 use std::collections::HashMap;
 use std::ffi::{CStr, CString};
 use std::os::raw::{c_char, c_int};
@@ -12,10 +11,9 @@ use parking_lot::RwLock;
 use crate::coordinate::EpsgCode;
 use proj_sys::{
     proj_context_create, proj_context_destroy, proj_context_errno, proj_context_errno_string,
-    proj_coordoperation_has_ballpark_transformation, proj_create, proj_create_crs_to_crs,
-    proj_crs_get_coordinate_system, proj_crs_get_sub_crs, proj_cs_get_axis_count,
-    proj_cs_get_axis_info, proj_cs_get_type, proj_destroy, proj_errno, proj_errno_reset,
-    proj_trans, proj_trans_get_last_used_operation, PJ, PJ_CONTEXT, PJ_COORD,
+    proj_create, proj_create_crs_to_crs_from_pj, proj_crs_get_coordinate_system,
+    proj_crs_get_sub_crs, proj_cs_get_axis_count, proj_cs_get_axis_info, proj_cs_get_type,
+    proj_destroy, proj_errno, proj_errno_reset, proj_trans, PJ, PJ_CONTEXT, PJ_COORD,
     PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_CARTESIAN,
     PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_ELLIPSOIDAL,
     PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_SPHERICAL, PJ_DIRECTION_PJ_FWD, PJ_XYZT,
@@ -40,10 +38,6 @@ struct Entry {
     ctx: *mut PJ_CONTEXT,
     /// The PROJ transformation.
     pj: *mut PJ,
-    /// Whether the ballpark guard has already run for this transform. The guard
-    /// can only inspect the actually-used operation after a first `proj_trans`,
-    /// so it runs lazily on the first transform and is memoized here.
-    ballpark_checked: Cell<bool>,
 }
 
 impl Drop for Entry {
@@ -106,54 +100,27 @@ impl ReprojectionCache {
                     "proj_trans EPSG:{from}->EPSG:{to} produced non-finite output"
                 )));
             }
-            entry.guard_against_ballpark()?;
             Ok([o.x, o.y, o.z])
         }
     }
 }
 
 impl Entry {
-    /// Fail if the operation PROJ actually used for the last transform is a
-    /// ballpark one. A ballpark transformation silently omits the datum and
-    /// geoid shift (leaving, for example, an orthometric height untouched
-    /// instead of converting it to an ellipsoidal one), so accepting it would
-    /// place geometry tens of metres off. PROJ selects it only when no accurate
-    /// operation is instantiable, which in practice means a required grid is
-    /// absent or the PROJ build cannot read it. Memoized: the check runs once,
-    /// on the first transform.
-    ///
-    /// Must be called immediately after a successful `proj_trans` on `self.pj`.
-    // SAFETY: `self.pj` must have just completed a `proj_trans`; `self.ctx` and
-    // `self.pj` must be valid, non-null PROJ objects.
-    unsafe fn guard_against_ballpark(&self) -> Result<()> {
-        if self.ballpark_checked.get() {
-            return Ok(());
-        }
-        self.ballpark_checked.set(true);
-
-        let used = proj_trans_get_last_used_operation(self.pj);
-        if used.is_null() {
-            return Ok(());
-        }
-        let is_ballpark = proj_coordoperation_has_ballpark_transformation(self.ctx, used);
-        proj_destroy(used);
-
-        if is_ballpark == 1 {
-            let (from, to) = (self.from, self.to);
-            return Err(Error::projection(format!(
-                "EPSG:{from}->EPSG:{to}: PROJ has no accurate transform and fell back to a \
-                 ballpark that omits the datum/geoid shift; a required transformation grid is \
-                 missing or the PROJ build lacks TIFF grid support"
-            )));
-        }
-        Ok(())
-    }
-
     /// Build the PROJ transformation for the `(from, to)` EPSG pair.
+    ///
+    /// The transformation forbids ballpark fallback (`ALLOW_BALLPARK=NO`): a
+    /// ballpark silently omits the datum and geoid shift (leaving, for example,
+    /// an orthometric height untouched instead of converting it to an
+    /// ellipsoidal one), placing geometry tens of metres off. With ballpark
+    /// disallowed, any coordinate that has no accurate operation errors at
+    /// transform time instead. PROJ can only ballpark when a required grid is
+    /// absent or the build cannot read it.
     fn build(from: EpsgCode, to: EpsgCode) -> Result<Self> {
         // SAFETY: each PROJ object is null-checked before use; errno is read
         // while the context is still alive; on any failure all objects created
-        // so far are freed before returning.
+        // so far are freed before returning. The source and target CRS objects
+        // are only needed to build the transformation and are freed once it is
+        // created.
         unsafe {
             let ctx = proj_context_create();
             if ctx.is_null() {
@@ -163,7 +130,30 @@ impl Entry {
             let c_from = CString::new(format!("EPSG:{from}")).map_err(Error::projection)?;
             let c_to = CString::new(format!("EPSG:{to}")).map_err(Error::projection)?;
 
-            let pj = proj_create_crs_to_crs(ctx, c_from.as_ptr(), c_to.as_ptr(), ptr::null_mut());
+            let src = proj_create(ctx, c_from.as_ptr());
+            if src.is_null() {
+                let msg = ctx_errno_string(ctx);
+                proj_context_destroy(ctx);
+                return Err(Error::projection(format!(
+                    "failed to create CRS EPSG:{from}: {msg}"
+                )));
+            }
+            let dst = proj_create(ctx, c_to.as_ptr());
+            if dst.is_null() {
+                let msg = ctx_errno_string(ctx);
+                proj_destroy(src);
+                proj_context_destroy(ctx);
+                return Err(Error::projection(format!(
+                    "failed to create CRS EPSG:{to}: {msg}"
+                )));
+            }
+
+            let allow_ballpark = CString::new("ALLOW_BALLPARK=NO").map_err(Error::projection)?;
+            let options = [allow_ballpark.as_ptr(), ptr::null()];
+            let pj =
+                proj_create_crs_to_crs_from_pj(ctx, src, dst, ptr::null_mut(), options.as_ptr());
+            proj_destroy(src);
+            proj_destroy(dst);
             if pj.is_null() {
                 let msg = ctx_errno_string(ctx);
                 proj_context_destroy(ctx);
@@ -172,13 +162,7 @@ impl Entry {
                 )));
             }
 
-            Ok(Self {
-                from,
-                to,
-                ctx,
-                pj,
-                ballpark_checked: Cell::new(false),
-            })
+            Ok(Self { from, to, ctx, pj })
         }
     }
 }
@@ -523,8 +507,9 @@ mod tests {
         // EPSG:7415 (Amersfoort / RD New + NAP height) carries an orthometric
         // height; converting to WGS84 3D must add the ~46 m NL geoid separation.
         // With the grid present the height is corrected; without it PROJ can only
-        // ballpark, which the guard rejects. The one outcome that must never
-        // happen is silently returning the input height as if it were ellipsoidal.
+        // ballpark, which is disallowed so the transform errors. The one outcome
+        // that must never happen is silently returning the input height as if it
+        // were ellipsoidal.
         let mut cache = ReprojectionCache::new();
         match cache.transform(
             EpsgCode::new(7415),
@@ -535,7 +520,7 @@ mod tests {
                 z > 130.0,
                 "expected a geoid-corrected ellipsoidal height (~140 m), got {z}"
             ),
-            Err(e) => assert!(e.to_string().contains("ballpark"), "unexpected error: {e}"),
+            Err(e) => assert!(e.to_string().contains("7415"), "unexpected error: {e}"),
         }
     }
 
