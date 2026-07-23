@@ -2183,6 +2183,18 @@
             "format": "uint32",
             "minimum": 0.0
           },
+          "textureCodec": {
+            "title": "Codec de Texture",
+            "description": "Codec d'image pour les pages de l'atlas : `ktx2` (compressé sur GPU, par défaut), `png` ou `jpeg`.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/TextureCodec"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "schemaKey": {
             "title": "Clé de Schéma",
             "description": "Clé d'attribut dont la valeur identifie le type de schéma et détermine le nom du fichier de sortie : toutes les entités partageant la même valeur sont écrites dans le même fichier. Cet attribut est exclu de la sortie.",
@@ -2223,6 +2235,34 @@
                 "type": "string"
               }
             }
+          }
+        },
+        "definitions": {
+          "TextureCodec": {
+            "description": "Texture image codec for the new-geometry writer's atlas pages.",
+            "oneOf": [
+              {
+                "description": "KTX2 avec supercompression Basis Universal (`KHR_texture_basisu`).",
+                "type": "string",
+                "enum": [
+                  "ktx2"
+                ]
+              },
+              {
+                "description": "PNG, sans perte et avec canal alpha.",
+                "type": "string",
+                "enum": [
+                  "png"
+                ]
+              },
+              {
+                "description": "JPEG, avec perte et opaque (le canal alpha est supprimé).",
+                "type": "string",
+                "enum": [
+                  "jpeg"
+                ]
+              }
+            ]
           }
         }
       },

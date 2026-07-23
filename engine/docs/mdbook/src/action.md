@@ -2145,6 +2145,18 @@ Writes features to Cesium 3D Tiles format for 3D web visualization.
       "format": "uint32",
       "minimum": 0.0
     },
+    "textureCodec": {
+      "title": "Texture Codec",
+      "description": "Image codec for atlas pages: `ktx2` (GPU-compressed, default), `png`, or `jpeg`.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/TextureCodec"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
     "schemaKey": {
       "title": "Schema Key",
       "description": "Attribute key whose value identifies the schema type and determines the output filename: all features sharing the same value are written to the same file. This attribute is excluded from output.",
@@ -2185,6 +2197,34 @@ Writes features to Cesium 3D Tiles format for 3D web visualization.
           "type": "string"
         }
       }
+    }
+  },
+  "definitions": {
+    "TextureCodec": {
+      "description": "Texture image codec for the new-geometry writer's atlas pages.",
+      "oneOf": [
+        {
+          "description": "KTX2 with Basis Universal supercompression (`KHR_texture_basisu`).",
+          "type": "string",
+          "enum": [
+            "ktx2"
+          ]
+        },
+        {
+          "description": "PNG, lossless with alpha.",
+          "type": "string",
+          "enum": [
+            "png"
+          ]
+        },
+        {
+          "description": "JPEG, lossy and opaque (alpha is dropped).",
+          "type": "string",
+          "enum": [
+            "jpeg"
+          ]
+        }
+      ]
     }
   }
 }

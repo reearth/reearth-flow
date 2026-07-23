@@ -761,6 +761,23 @@
         "texelSize": {
           "title": "纹素大小",
           "description": "目标纹素大小（米/像素）。比此值更精细的纹理会被降采样至该值。默认值为 0，即保持完整的纹理细节。"
+        },
+        "textureCodec": {
+          "title": "纹理编解码器",
+          "description": "图集页面的图像编解码器：`ktx2`（GPU 压缩，默认）、`png` 或 `jpeg`。"
+        }
+      },
+      "enumI18n": {
+        "TextureCodec": {
+          "jpeg": {
+            "description": "JPEG，有损且不透明（丢弃 alpha 通道）。"
+          },
+          "ktx2": {
+            "description": "采用 Basis Universal 超级压缩的 KTX2（`KHR_texture_basisu`）。"
+          },
+          "png": {
+            "description": "PNG，无损且带 alpha 通道。"
+          }
         }
       }
     },

@@ -2183,6 +2183,18 @@
             "format": "uint32",
             "minimum": 0.0
           },
+          "textureCodec": {
+            "title": "纹理编解码器",
+            "description": "图集页面的图像编解码器：`ktx2`（GPU 压缩，默认）、`png` 或 `jpeg`。",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/TextureCodec"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "schemaKey": {
             "title": "模式键",
             "description": "其值用于标识模式类型并决定输出文件名的属性键：所有具有相同值的实体都写入同一文件。该属性会从输出中排除。",
@@ -2223,6 +2235,34 @@
                 "type": "string"
               }
             }
+          }
+        },
+        "definitions": {
+          "TextureCodec": {
+            "description": "Texture image codec for the new-geometry writer's atlas pages.",
+            "oneOf": [
+              {
+                "description": "采用 Basis Universal 超级压缩的 KTX2（`KHR_texture_basisu`）。",
+                "type": "string",
+                "enum": [
+                  "ktx2"
+                ]
+              },
+              {
+                "description": "PNG，无损且带 alpha 通道。",
+                "type": "string",
+                "enum": [
+                  "png"
+                ]
+              },
+              {
+                "description": "JPEG，有损且不透明（丢弃 alpha 通道）。",
+                "type": "string",
+                "enum": [
+                  "jpeg"
+                ]
+              }
+            ]
           }
         }
       },

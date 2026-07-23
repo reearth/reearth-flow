@@ -2186,6 +2186,18 @@
             "format": "uint32",
             "minimum": 0.0
           },
+          "textureCodec": {
+            "title": "テクスチャコーデック",
+            "description": "アトラスページの画像コーデック。`ktx2`（GPU 圧縮、デフォルト）、`png`、または `jpeg`。",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/TextureCodec"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "schemaKey": {
             "title": "スキーマキー",
             "description": "スキーマタイプを識別し出力ファイル名を決定する属性キー。同じ値を持つすべての地物は同一ファイルに書き出される。この属性は出力から除外される",
@@ -2226,6 +2238,34 @@
                 "type": "string"
               }
             }
+          }
+        },
+        "definitions": {
+          "TextureCodec": {
+            "description": "Texture image codec for the new-geometry writer's atlas pages.",
+            "oneOf": [
+              {
+                "description": "Basis Universal スーパーコンプレッション（`KHR_texture_basisu`）を用いた KTX2。",
+                "type": "string",
+                "enum": [
+                  "ktx2"
+                ]
+              },
+              {
+                "description": "PNG。可逆かつアルファ付き。",
+                "type": "string",
+                "enum": [
+                  "png"
+                ]
+              },
+              {
+                "description": "JPEG。非可逆かつ不透明（アルファは破棄される）。",
+                "type": "string",
+                "enum": [
+                  "jpeg"
+                ]
+              }
+            ]
           }
         }
       },

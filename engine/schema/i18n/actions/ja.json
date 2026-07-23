@@ -764,6 +764,23 @@
         "texelSize": {
           "title": "テクセルサイズ",
           "description": "目標とするテクセルサイズ（メートル毎ピクセル）。これより細かいテクスチャはこの値までダウンサンプリングされる。デフォルトは 0 で、テクスチャの詳細を最大限維持する。"
+        },
+        "textureCodec": {
+          "title": "テクスチャコーデック",
+          "description": "アトラスページの画像コーデック。`ktx2`（GPU 圧縮、デフォルト）、`png`、または `jpeg`。"
+        }
+      },
+      "enumI18n": {
+        "TextureCodec": {
+          "jpeg": {
+            "description": "JPEG。非可逆かつ不透明（アルファは破棄される）。"
+          },
+          "ktx2": {
+            "description": "Basis Universal スーパーコンプレッション（`KHR_texture_basisu`）を用いた KTX2。"
+          },
+          "png": {
+            "description": "PNG。可逆かつアルファ付き。"
+          }
         }
       }
     },
