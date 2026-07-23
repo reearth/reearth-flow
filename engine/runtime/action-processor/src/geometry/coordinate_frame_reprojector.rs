@@ -44,22 +44,32 @@ enum DestinationFrame {
     Euclidean,
 }
 
-/// How coordinates bridge the Euclidean/CRS boundary. Ignored for a pure
-/// CRS-to-CRS reprojection.
+/// How coordinates bridge the Euclidean/CRS boundary, carrying the input each
+/// mode needs. Ignored for a pure CRS-to-CRS reprojection.
 #[derive(Serialize, Deserialize, Debug, Clone, Default, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-enum BasePointMode {
+#[serde(tag = "basePointMode", rename_all = "camelCase")]
+enum BasePoint {
     /// # As Is
     /// Reinterpret coordinate values unchanged across the boundary.
     #[default]
     AsIs,
     /// # Value
     /// Offset by a base point given as an expression evaluating to `[x, y, z]`.
-    Value,
+    Value {
+        /// # Base Point
+        /// Expression evaluating to an `[x, y, z]` origin in CRS space, in the
+        /// CRS's declared axis order.
+        base_point: Code<{ CodeType::FlowExpr as u32 }>,
+    },
     /// # From Port
     /// Offset by a base point taken from the base-point input port, matched to
     /// each feature by a key.
-    FromPort,
+    FromPort {
+        /// # Match Key
+        /// Expression identifying which base-point feature applies to a given
+        /// feature. Evaluated against both streams.
+        match_key: Code<{ CodeType::FlowExpr as u32 }>,
+    },
 }
 
 /// # Coordinate Frame Reprojector Parameters
@@ -78,21 +88,10 @@ pub struct CoordinateFrameReprojectorParam {
     /// a CRS.
     #[serde(default)]
     epsg_code: Option<u16>,
-    /// # Base Point Mode
-    /// How coordinates bridge the Euclidean/CRS boundary.
-    #[serde(default)]
-    base_point_mode: BasePointMode,
     /// # Base Point
-    /// Expression evaluating to an `[x, y, z]` origin in CRS space, in the CRS's
-    /// declared axis order. Used when the base point mode is `value`.
-    #[serde(default)]
-    base_point: Option<Code<{ CodeType::FlowExpr as u32 }>>,
-    /// # Match Key
-    /// Expression identifying which base-point feature applies to a given
-    /// feature. Evaluated against both streams. Used when the base point mode is
-    /// `fromPort`.
-    #[serde(default)]
-    match_key: Option<Code<{ CodeType::FlowExpr as u32 }>>,
+    /// How coordinates bridge the Euclidean/CRS boundary.
+    #[serde(flatten, default)]
+    base_point: BasePoint,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -164,28 +163,18 @@ impl ProcessorFactory for CoordinateFrameReprojectorFactory {
             DestinationFrame::Euclidean => CoordinateFrame::Euclidean,
         };
 
-        let base_point = match params.base_point_mode {
-            BasePointMode::AsIs => BasePointSource::AsIs,
-            BasePointMode::Value => {
-                let code = params.base_point.ok_or_else(|| {
-                    GeometryProcessorError::CoordinateFrameReprojectorFactory(
-                        "`basePoint` is required when the base point mode is `value`".to_string(),
-                    )
-                })?;
-                let compiled = code.compile().map_err(|e| {
+        let base_point = match params.base_point {
+            BasePoint::AsIs => BasePointSource::AsIs,
+            BasePoint::Value { base_point } => {
+                let compiled = base_point.compile().map_err(|e| {
                     GeometryProcessorError::CoordinateFrameReprojectorFactory(format!(
                         "Failed to compile `basePoint` expression: {e:?}"
                     ))
                 })?;
                 BasePointSource::Value(compiled)
             }
-            BasePointMode::FromPort => {
-                let key = params.match_key.ok_or_else(|| {
-                    GeometryProcessorError::CoordinateFrameReprojectorFactory(
-                        "`matchKey` is required when the base point mode is `fromPort`".to_string(),
-                    )
-                })?;
-                let compiled = key.compile().map_err(|e| {
+            BasePoint::FromPort { match_key } => {
+                let compiled = match_key.compile().map_err(|e| {
                     GeometryProcessorError::CoordinateFrameReprojectorFactory(format!(
                         "Failed to compile `matchKey` expression: {e:?}"
                     ))
@@ -428,4 +417,60 @@ fn attribute_value_to_xyz(
         }
     }
     Some(out)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    fn parse(value: Value) -> CoordinateFrameReprojectorParam {
+        serde_json::from_value(value).unwrap()
+    }
+
+    #[test]
+    fn value_mode_carries_its_base_point() {
+        let params = parse(json!({
+            "destinationFrame": "crs",
+            "epsgCode": 6677,
+            "basePointMode": "value",
+            "basePoint": { "type": "flowExpr", "value": "[1, 2, 3]" },
+        }));
+        assert!(matches!(params.base_point, BasePoint::Value { .. }));
+    }
+
+    #[test]
+    fn from_port_mode_carries_its_match_key() {
+        let params = parse(json!({
+            "destinationFrame": "euclidean",
+            "basePointMode": "fromPort",
+            "matchKey": { "type": "flowExpr", "value": "id" },
+        }));
+        assert!(matches!(params.base_point, BasePoint::FromPort { .. }));
+    }
+
+    #[test]
+    fn explicit_as_is_mode() {
+        let params = parse(json!({
+            "destinationFrame": "euclidean",
+            "basePointMode": "asIs",
+        }));
+        assert!(matches!(params.base_point, BasePoint::AsIs));
+    }
+
+    #[test]
+    fn absent_base_point_mode_defaults_to_as_is() {
+        let params = parse(json!({ "destinationFrame": "euclidean" }));
+        assert!(matches!(params.base_point, BasePoint::AsIs));
+    }
+
+    #[test]
+    fn value_mode_without_its_base_point_is_rejected() {
+        let result: Result<CoordinateFrameReprojectorParam, _> = serde_json::from_value(json!({
+            "destinationFrame": "crs",
+            "epsgCode": 6677,
+            "basePointMode": "value",
+        }));
+        assert!(result.is_err());
+    }
 }
