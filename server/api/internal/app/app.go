@@ -138,7 +138,12 @@ func initEcho(ctx context.Context, cfg *ServerConfig) *echo.Echo {
 
 func initActionsData(_ context.Context, repo actionsReader) error {
 	actionsRepo = repo
-	for lang := range supportedLangs {
+	// Warm the base schema (empty lang) and each translated variant.
+	langs := []string{""}
+	for lang := range translatedLangs {
+		langs = append(langs, lang)
+	}
+	for _, lang := range langs {
 		if _, err := loadActionsData(lang); err != nil {
 			log.Errorf("Failed to load actions data for language %s: %v", lang, err)
 		}
