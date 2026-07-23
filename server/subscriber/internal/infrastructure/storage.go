@@ -6,6 +6,7 @@ import (
 	"github.com/reearth/reearth-flow/subscriber/internal/infrastructure/mongo"
 	"github.com/reearth/reearth-flow/subscriber/internal/infrastructure/redis"
 	"github.com/reearth/reearth-flow/subscriber/internal/usecase/gateway"
+	"github.com/reearth/reearth-flow/subscriber/pkg/diagnostic"
 	domainLog "github.com/reearth/reearth-flow/subscriber/pkg/log"
 	"github.com/reearth/reearth-flow/subscriber/pkg/node"
 	"github.com/reearth/reearth-flow/subscriber/pkg/userfacinglog"
@@ -57,4 +58,24 @@ func NewUserFacingLogStorageImpl(r *redis.RedisStorage) gateway.UserFacingLogSto
 
 func (s *userFacingLogStorageImpl) SaveToRedis(ctx context.Context, event *userfacinglog.UserFacingLogEvent) error {
 	return s.redis.SaveUserFacingLogToRedis(ctx, event)
+}
+
+type diagnosticStorageImpl struct {
+	redis *redis.RedisStorage
+	mongo *mongo.MongoStorage
+}
+
+func NewDiagnosticStorageImpl(r *redis.RedisStorage, m *mongo.MongoStorage) gateway.DiagnosticStorage {
+	return &diagnosticStorageImpl{
+		redis: r,
+		mongo: m,
+	}
+}
+
+func (s *diagnosticStorageImpl) SaveToRedis(ctx context.Context, event *diagnostic.DiagnosticEvent) error {
+	return s.redis.SaveDiagnosticToRedis(ctx, event)
+}
+
+func (s *diagnosticStorageImpl) SaveToMongo(ctx context.Context, event *diagnostic.DiagnosticEvent) error {
+	return s.mongo.SaveDiagnosticToMongo(ctx, event)
 }

@@ -8,13 +8,30 @@ func ToNodeExecution(e *graph.NodeExecution) *NodeExecution {
 	}
 
 	return &NodeExecution{
-		ID:          ID(e.ID()),
-		JobID:       ID(e.JobID().String()),
-		NodeID:      ID(e.NodeID().String()),
-		Status:      ToNodeStatus(e.Status()),
-		StartedAt:   e.StartedAt(),
-		CompletedAt: e.CompletedAt(),
+		ID:                 ID(e.ID()),
+		JobID:              ID(e.JobID().String()),
+		NodeID:             ID(e.NodeID().String()),
+		Status:             ToNodeStatus(e.Status()),
+		StartedAt:          e.StartedAt(),
+		CompletedAt:        e.CompletedAt(),
+		FeaturesProcessed:  e.FeaturesProcessed(),
+		FeaturesWritten:    e.FeaturesWritten(),
+		FinishFeatureCount: e.FinishFeatureCount(),
 	}
+}
+
+func ToNodeExecutions(nodes []*graph.NodeExecution) []*NodeExecution {
+	if nodes == nil {
+		return nil
+	}
+
+	result := make([]*NodeExecution, 0, len(nodes))
+	for _, n := range nodes {
+		if ne := ToNodeExecution(n); ne != nil {
+			result = append(result, ne)
+		}
+	}
+	return result
 }
 
 func ToNodeStatus(status graph.Status) NodeStatus {

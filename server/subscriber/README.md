@@ -123,6 +123,7 @@ The log_subscriber uses the following environment variables
 | `FLOW_LOG_SUBSCRIBER_SUBSCRIPTION_ID` | The Pub/Sub subscription ID to use for the subscription | `flow-log-stream-topic-sub` |
 | `FLOW_LOG_SUBSCRIBER_REDIS_ADDR`      | The Redis address to connect to (in host:port format)   | `localhost:6379`            |
 | `FLOW_LOG_SUBSCRIBER_REDIS_PASSWORD`  | Redis password                                          | `""`                        |
+| `REEARTH_FLOW_SUBSCRIBER_DIAGNOSTIC_SUBSCRIPTION_ID` | The Pub/Sub subscription ID for per-node/job `DiagnosticEvent` ingestion (writes Redis `diagnostics:*` lists and the Mongo `nodeDiagnostics` collection) | `""` (unset — deliberately, unlike the sibling subscription IDs above; see "Diagnostics ingestion (deploy order)" below) |
 
 
 ```
@@ -130,6 +131,69 @@ cd server/subscriber
 cp .env.example .env
 make run
 ```
+
+### Diagnostics ingestion (deploy order)
+
+The engine publishes structured per-node/job `DiagnosticEvent`s to a Pub/Sub
+topic, gated behind two env vars read in
+`engine/worker/src/types/diagnostic_event.rs`:
+
+- `FLOW_WORKER_ENABLE_DIAGNOSTICS` — publish gate, defaults to `false` (unset
+  or anything other than `"true"` keeps publishing off).
+- `FLOW_WORKER_DIAGNOSTIC_TOPIC` — the topic name, defaults to
+  `flow-diagnostic-topic` when unset.
+
+On the subscriber side, `REEARTH_FLOW_SUBSCRIBER_DIAGNOSTIC_SUBSCRIPTION_ID`
+has **no default** (unlike every sibling `*_SUBSCRIPTION_ID` var), and this
+is deliberate: those sibling subscriptions already exist in every deployed
+environment, but the diagnostics one does not yet. If it defaulted to a
+name, the subscriber would try to open a listener against a subscription
+that was never provisioned; since a listener error cancels the subscriber's
+root context (`cmd/reearth-flow-subscriber/main.go`), that would crash-loop
+the *entire* subscriber process — taking log/node/job ingestion down with
+it, not just diagnostics. Leaving it unset keeps `conf.DiagnosticSubscriptionID
+!= ""` false until step 2 below explicitly opts an environment in.
+
+Turning this on safely requires bringing the pieces up in a specific order,
+because the two failure modes are asymmetric:
+
+- Publishing before the subscription exists **drops messages** — Pub/Sub
+  cannot buffer for a subscription that isn't there yet.
+- Deploying the subscriber before the engine publishes is **safe**: with
+  `REEARTH_FLOW_SUBSCRIBER_DIAGNOSTIC_SUBSCRIPTION_ID` unset (or the
+  subscription itself absent), the subscriber simply skips starting the
+  diagnostic listener (see `conf.DiagnosticSubscriptionID != ""` in
+  `cmd/reearth-flow-subscriber/main.go`) and the rest of the subscriber runs
+  unaffected.
+
+Deploy order:
+
+1. **Provision the topic and its pull subscription.**
+   - Local (docker compose): already handled by `engine/compose.yml`'s
+     pubsub emulator `TOPIC_IDS`, which auto-creates a pull subscription
+     named `{topic}-sub` for every listed topic. `TOPIC_IDS` lists
+     `flow-diagnostic-topic`, matching the engine's own default topic name
+     (above) exactly, like every other topic in that list — no
+     `FLOW_WORKER_DIAGNOSTIC_TOPIC` override is needed to run the worker
+     manually against the local emulator (as in "Run the workflow" below).
+     The emulator's auto-created subscription is named
+     `flow-diagnostic-topic-sub`, matching `.env.example`'s
+     `REEARTH_FLOW_SUBSCRIBER_DIAGNOSTIC_SUBSCRIPTION_ID`.
+   - Production/GCP: provision a topic named `flow-diagnostic-topic`
+     (matching the engine default) — or any name, with
+     `FLOW_WORKER_DIAGNOSTIC_TOPIC` set to match — plus a pull-type
+     subscription for it.
+2. **Deploy the subscriber with the new env var set** —
+   `REEARTH_FLOW_SUBSCRIBER_DIAGNOSTIC_SUBSCRIPTION_ID` pointed at the
+   subscription from step 1. This is safe ahead of step 3: with the
+   topic/subscription provisioned but the engine flag still off, the
+   subscriber's listener just sits idle waiting for messages that aren't
+   sent yet.
+3. **Only then flip the engine's `FLOW_WORKER_ENABLE_DIAGNOSTICS=true`.**
+   With a live subscription in place and a deployed subscriber pulling from
+   it, enabling publishing is safe: no messages are dropped, and every
+   `DiagnosticEvent` lands in the subscriber's Redis `diagnostics:*` lists
+   and the Mongo `nodeDiagnostics` collection (see the env table above).
 
 ### Prepare Example Workflow
 

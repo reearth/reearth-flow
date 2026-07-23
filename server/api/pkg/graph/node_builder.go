@@ -58,3 +58,18 @@ func (b *NodeExecutionBuilder) CompletedAt(completedAt *time.Time) *NodeExecutio
 	b.e.completedAt = completedAt
 	return b
 }
+
+func (b *NodeExecutionBuilder) FeaturesProcessed(featuresProcessed *int) *NodeExecutionBuilder {
+	b.e.featuresProcessed = featuresProcessed
+	return b
+}
+
+func (b *NodeExecutionBuilder) FeaturesWritten(featuresWritten *int) *NodeExecutionBuilder {
+	b.e.featuresWritten = featuresWritten
+	return b
+}
+
+func (b *NodeExecutionBuilder) FinishFeatureCount(finishFeatureCount *int) *NodeExecutionBuilder {
+	b.e.finishFeatureCount = finishFeatureCount
+	return b
+}

@@ -13,20 +13,22 @@ import (
 )
 
 type MongoStorage struct {
-	client      *mongox.ClientCollection
-	transaction usecasex.Transaction
-	baseURL     string
-	gcsBucket   string
+	client            *mongox.ClientCollection
+	diagnosticsClient *mongox.ClientCollection
+	transaction       usecasex.Transaction
+	baseURL           string
+	gcsBucket         string
 }
 
 func NewMongoStorage(client *mongox.Client, gcsBucket, baseURL string) *MongoStorage {
 	transaction := &usecasex.NopTransaction{}
 
 	return &MongoStorage{
-		client:      client.WithCollection("nodeExecutions"),
-		transaction: transaction,
-		baseURL:     baseURL,
-		gcsBucket:   gcsBucket,
+		client:            client.WithCollection("nodeExecutions"),
+		diagnosticsClient: client.WithCollection("nodeDiagnostics"),
+		transaction:       transaction,
+		baseURL:           baseURL,
+		gcsBucket:         gcsBucket,
 	}
 }
 
@@ -94,6 +96,12 @@ func (m *MongoStorage) SaveNodeExecutionToMongo(ctx context.Context, jobID strin
 
 		if nodeExec.CompletedAt != nil {
 			update["completedAt"] = nodeExec.CompletedAt
+		}
+
+		if nodeExec.Metrics != nil {
+			update["featuresProcessed"] = nodeExec.Metrics.FeaturesProcessed
+			update["featuresWritten"] = nodeExec.Metrics.FeaturesWritten
+			update["finishFeatureCount"] = nodeExec.Metrics.FinishFeatureCount
 		}
 
 		if err := m.client.UpdateMany(ctx, filter, update); err != nil {

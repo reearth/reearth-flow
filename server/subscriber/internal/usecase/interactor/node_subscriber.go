@@ -47,10 +47,11 @@ func (u *nodeSubscriberUseCase) ProcessNodeEvent(ctx context.Context, event *nod
 		nodeExecID := fmt.Sprintf("%s:%s", event.JobID, event.NodeID)
 
 		nodeExec := &node.NodeExecution{
-			ID:     nodeExecID,
-			JobID:  event.JobID,
-			NodeID: event.NodeID,
-			Status: event.Status,
+			ID:      nodeExecID,
+			JobID:   event.JobID,
+			NodeID:  event.NodeID,
+			Status:  event.Status,
+			Metrics: event.Metrics,
 		}
 
 		now := time.Now()

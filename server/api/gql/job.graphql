@@ -14,12 +14,17 @@ type Job implements Node {
   workspaceId: ID!
   logs(since: DateTime!): [Log]
   variables: [Variable!]!
+  failedNodes: [Diagnostic!]
+  droppedEventCount: Int
 }
 
 enum JobStatus {
   CANCELLED
   COMPLETED
   FAILED
+  """
+  Never emitted by the runtime; retained for API compatibility.
+  """
   PENDING
   RUNNING
 }
