@@ -10,6 +10,9 @@ use reearth_flow_runtime::{
     executor_operation::NodeContext,
     node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
 };
+// Old-world feature/geometry construction lives only in the not(new-geometry)
+// `send_feature`; the new-world path builds features in `gltf_next`.
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
 
 use schemars::JsonSchema;
@@ -23,6 +26,13 @@ use crate::{
         get_content, get_input_path, FileReaderCommonParam, FileReaderCompiledParam,
     },
 };
+
+// New-geometry conversion lives in a sibling file, declared here as a child
+// module so it can reuse this module's scene traversal, buffer loading, and
+// triangle extraction via `super::`.
+#[cfg(feature = "new-geometry")]
+#[path = "gltf_next.rs"]
+mod gltf_next;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct GltfReaderFactory;
@@ -150,6 +160,30 @@ impl Source for GltfReader {
         read_gltf(&ctx, storage_resolver, &content, &self.params, sender)
             .await
             .map_err(Into::<BoxedError>::into)
+    }
+
+    #[cfg(feature = "new-geometry")]
+    async fn start(
+        &mut self,
+        ctx: NodeContext,
+        sender: Sender<(Port, IngestionMessage)>,
+    ) -> Result<(), BoxedError> {
+        let storage_resolver = Arc::clone(&ctx.storage_resolver);
+        let content = get_content(&self.params.common, storage_resolver.clone()).await?;
+
+        let features = gltf_next::read(&ctx, storage_resolver, &content, &self.params).await?;
+
+        for feature in features {
+            sender
+                .send((
+                    FEATURES_PORT.clone(),
+                    IngestionMessage::OperationEvent { feature },
+                ))
+                .await
+                .map_err(|e| SourceError::GltfReader(format!("Failed to send feature: {e}")))?;
+        }
+
+        Ok(())
     }
 }
 
