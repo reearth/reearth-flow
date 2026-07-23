@@ -5,7 +5,7 @@
 use image::RgbaImage;
 use ktx2_rw::{BasisCompressionParams, Ktx2Texture, VkFormat};
 
-use super::glb::{Codec, CodecError};
+use super::glb::{Builder, Codec, CodecError, ImageRef, SamplerDesc, TextureRef};
 
 /// KTX2/Basis codec, carrying a full mip chain built in linear light.
 #[derive(Default)]
@@ -19,8 +19,23 @@ impl Codec for Ktx2Codec {
     fn mime(&self) -> &'static str {
         "image/ktx2"
     }
-    fn image_extension(&self) -> Option<&'static str> {
-        Some("KHR_texture_basisu")
+    fn bind_texture(
+        &self,
+        builder: &mut Builder,
+        image: ImageRef,
+        sampler: SamplerDesc,
+    ) -> TextureRef {
+        // KTX2 has no core-glTF representation, so the extension is required and
+        // carries the image through its own `source`.
+        builder.require_extension("KHR_texture_basisu");
+        builder.push_texture(
+            None,
+            sampler,
+            vec![(
+                "KHR_texture_basisu",
+                serde_json::json!({ "source": image.index() }),
+            )],
+        )
     }
     fn encode(&self, page: &RgbaImage) -> Result<Vec<u8>, CodecError> {
         let (width, height) = page.dimensions();

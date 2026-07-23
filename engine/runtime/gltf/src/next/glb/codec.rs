@@ -7,7 +7,7 @@ use std::io::Cursor;
 
 use image::RgbaImage;
 
-use super::{Builder, SamplerDesc, TextureRef};
+use super::{Builder, ImageRef, SamplerDesc, TextureRef};
 
 #[derive(Debug, thiserror::Error)]
 pub enum CodecError {
@@ -26,16 +26,25 @@ pub trait Codec {
     fn block_align(&self) -> u32;
     /// glTF mime type of the encoded bytes.
     fn mime(&self) -> &'static str;
-    /// Texture extension carrying the image when it has no core-glTF
-    /// representation; `None` binds through the core `source`.
-    fn image_extension(&self) -> Option<&'static str>;
     /// Encode one atlas page.
     fn encode(&self, page: &RgbaImage) -> Result<Vec<u8>, CodecError>;
+    /// Bind the embedded `image` into a glTF texture with `sampler`, using the
+    /// builder's generic texture and extension primitives. Defaults to a core
+    /// `source` reference; an extension-backed codec overrides this to declare
+    /// its extension and build its own payload.
+    fn bind_texture(
+        &self,
+        builder: &mut Builder,
+        image: ImageRef,
+        sampler: SamplerDesc,
+    ) -> TextureRef {
+        builder.push_texture(Some(image), sampler, Vec::new())
+    }
 }
 
 impl Builder {
-    /// Encode `page` with `codec` and bind it as a glTF texture using `sampler`,
-    /// declaring the codec's extension when it has no core image representation.
+    /// Encode `page` with `codec`, embed it, and let the codec bind it as a
+    /// glTF texture using `sampler`.
     pub fn push_atlas_texture(
         &mut self,
         page: &RgbaImage,
@@ -44,18 +53,7 @@ impl Builder {
     ) -> Result<TextureRef, CodecError> {
         let bytes = codec.encode(page)?;
         let image = self.push_image(&bytes, codec.mime());
-        let texture = match codec.image_extension() {
-            Some(ext) => {
-                self.require_extension(ext);
-                self.push_texture(
-                    None,
-                    sampler,
-                    vec![(ext, serde_json::json!({ "source": image.index() }))],
-                )
-            }
-            None => self.push_texture(Some(image), sampler, Vec::new()),
-        };
-        Ok(texture)
+        Ok(codec.bind_texture(self, image, sampler))
     }
 }
 
@@ -68,9 +66,6 @@ impl Codec for PngCodec {
     }
     fn mime(&self) -> &'static str {
         "image/png"
-    }
-    fn image_extension(&self) -> Option<&'static str> {
-        None
     }
     fn encode(&self, page: &RgbaImage) -> Result<Vec<u8>, CodecError> {
         let mut bytes = Vec::new();
@@ -89,9 +84,6 @@ impl Codec for JpegCodec {
     }
     fn mime(&self) -> &'static str {
         "image/jpeg"
-    }
-    fn image_extension(&self) -> Option<&'static str> {
-        None
     }
     fn encode(&self, page: &RgbaImage) -> Result<Vec<u8>, CodecError> {
         let mut bytes = Vec::new();
