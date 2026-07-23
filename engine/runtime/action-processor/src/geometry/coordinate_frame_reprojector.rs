@@ -58,8 +58,7 @@ enum BasePointMode {
     Value,
     /// # From Port
     /// Offset by a base point taken from the base-point input port, matched to
-    /// each feature by a key. The base-point geometry is reprojected into the
-    /// destination frame before it is applied.
+    /// each feature by a key.
     FromPort,
 }
 
@@ -254,9 +253,7 @@ impl CoordinateFrameReprojector {
 
     /// Reproject a base-point feature's geometry into the destination frame and
     /// return its representative `[x, y, z]`, or `None` when it is not a single
-    /// point or cannot be converted. Reprojecting first removes the ambiguity of
-    /// which frame the base point was authored in, so the offset is always
-    /// applied in the destination frame's coordinate space.
+    /// point or cannot be converted.
     fn base_point_in_target(&self, geometry: &Geometry) -> Option<[f64; 3]> {
         let mut geometry = geometry.clone();
         REPROJECTION_CACHE
