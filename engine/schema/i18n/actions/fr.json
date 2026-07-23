@@ -550,6 +550,7 @@
           "description": "Configuration for writing features to CSV/TSV files."
         },
         "format": {
+          "title": "File Format",
           "description": "File format: csv (comma) or tsv (tab)"
         },
         "geometry": {
@@ -557,6 +558,7 @@
           "description": "Optional configuration for exporting geometry to CSV columns"
         },
         "output": {
+          "title": "Output File",
           "description": "Output path or expression for the CSV/TSV file to create"
         }
       },
@@ -709,7 +711,8 @@
       "description": "Écrit les entités dans un fichier",
       "parameterI18n": {
         "": {
-          "title": "Paramètres de Cesium3DTilesWriter"
+          "title": "Paramètres de Cesium3DTilesWriter",
+          "description": "Configuration for writing features to Cesium 3D Tiles."
         },
         "atlasExtrusion": {
           "title": "Extrusion de l'Atlas",
@@ -788,18 +791,23 @@
       "description": "Écrit des entités dans des fichiers CityGML 2.0",
       "parameterI18n": {
         "": {
-          "title": "CityGmlWriterParam"
+          "title": "CityGmlWriterParam",
+          "description": "Configuration for writing features to CityGML 2.0 files."
         },
         "epsgCode": {
+          "title": "EPSG Code",
           "description": "EPSG code for coordinate reference system"
         },
         "lodFilter": {
+          "title": "LOD Filter",
           "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs."
         },
         "output": {
+          "title": "Output File",
           "description": "Output file path expression"
         },
         "prettyPrint": {
+          "title": "Pretty Print",
           "description": "Whether to format output with indentation (default: true)"
         }
       }
@@ -1435,9 +1443,11 @@
           "description": "Configuration for writing features to GeoJSON files."
         },
         "groupBy": {
+          "title": "Group By",
           "description": "Optional attributes to group features by, creating separate files for each group"
         },
         "output": {
+          "title": "Output File",
           "description": "Output path or expression for the GeoJSON file to create"
         }
       }
@@ -1523,25 +1533,64 @@
           "description": "Configuration for writing features to GeoPackage files."
         },
         "createSpatialIndex": {
+          "title": "Create Spatial Index",
           "description": "Create RTree spatial index (default: true)"
         },
         "geometryColumn": {
+          "title": "Geometry Column",
           "description": "Geometry column name (default: \"geom\")"
         },
         "geometryType": {
+          "title": "Geometry Type",
           "description": "Geometry type for table (Point, LineString, Polygon, MultiPoint, MultiLineString, MultiPolygon, or GEOMETRY for mixed)"
         },
         "output": {
+          "title": "Output File",
           "description": "Output path for the GeoPackage file to create"
         },
         "overwrite": {
+          "title": "Overwrite Existing File",
           "description": "Overwrite existing file (default: false)"
         },
         "srsId": {
+          "title": "SRS ID",
           "description": "Spatial Reference System ID (default: 4326 for WGS84)"
         },
         "tableName": {
+          "title": "Table Name",
           "description": "Table name to create (default: \"features\")"
+        }
+      },
+      "enumI18n": {
+        "GeometryType": {
+          "geometry": {
+            "title": "Geometry (Mixed)",
+            "description": "Any geometry type; use when the table holds mixed or unknown geometry types."
+          },
+          "lineString": {
+            "title": "Line String",
+            "description": "A single connected sequence of points per feature."
+          },
+          "multiLineString": {
+            "title": "Multi Line String",
+            "description": "A collection of line strings per feature."
+          },
+          "multiPoint": {
+            "title": "Multi Point",
+            "description": "A collection of points per feature."
+          },
+          "multiPolygon": {
+            "title": "Multi Polygon",
+            "description": "A collection of polygons per feature."
+          },
+          "point": {
+            "title": "Point",
+            "description": "A single point per feature."
+          },
+          "polygon": {
+            "title": "Polygon",
+            "description": "A single polygon, with optional holes, per feature."
+          }
         }
       }
     },
@@ -2161,9 +2210,11 @@
           "description": "Configuration for writing features to JSON files."
         },
         "converter": {
+          "title": "Converter Expression",
           "description": "Optional converter expression to transform features before writing"
         },
         "output": {
+          "title": "Output File",
           "description": "Output path or expression for the JSON file to create"
         }
       }
@@ -2253,8 +2304,8 @@
           "description": "Replace colons in attribute keys (e.g., from XML Namespaces) with underscores"
         },
         "compressOutput": {
-          "title": "Compress Output",
-          "description": "Optional expression to determine whether to compress the output tiles"
+          "title": "Compressed Output Path",
+          "description": "Optional path where a compressed archive of the tiles is also written."
         },
         "extent": {
           "title": "Extent",
@@ -3242,10 +3293,12 @@
           "description": "Configuration for writing features to ESRI Shapefile format."
         },
         "groupBy": {
+          "title": "Group By",
           "description": "Optional attributes to group features by, creating separate files for each group"
         },
         "output": {
-          "description": "Output path or expression for the Shapefile to create"
+          "title": "Output Directory",
+          "description": "Output directory path or expression where the generated Shapefile files are written."
         }
       }
     },
@@ -3517,6 +3570,7 @@
           "description": "Configuration for writing features to XML files."
         },
         "output": {
+          "title": "Output File",
           "description": "Output path or expression for the XML file to create"
         }
       }
@@ -3530,6 +3584,7 @@
           "description": "Configuration for creating ZIP archive files from features."
         },
         "output": {
+          "title": "Output File",
           "description": "Output path"
         }
       }

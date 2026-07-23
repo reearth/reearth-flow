@@ -236,7 +236,7 @@ impl SinkFactory for CityGmlWriterFactory {
     }
 
     fn description(&self) -> &str {
-        "Writes features to CityGML 2.0 files"
+        "Writes features to CityGML 2.0 files."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -321,20 +321,27 @@ fn build_lod_mask(lod_filter: &Option<Vec<u8>>) -> LodMask {
     }
 }
 
+/// # CityGmlWriter Parameters
+///
+/// Configuration for writing features to CityGML 2.0 files.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CityGmlWriterParam {
-    /// Output file path expression
+    /// # Output File
+    /// Output path or expression for the CityGML file to create.
     pub output: Code,
-    /// LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs.
-    #[serde(default)]
-    pub lod_filter: Option<Vec<u8>>,
-    /// EPSG code for coordinate reference system
-    #[serde(default)]
-    pub epsg_code: Option<u32>,
-    /// Whether to format output with indentation (default: true)
+    /// # Pretty Print
+    /// Whether to indent the output for readability. Defaults to true.
     #[serde(default = "default_pretty_print")]
     pub pretty_print: Option<bool>,
+    /// # LOD Filter
+    /// Levels of detail to include, such as [0, 1, 2]. If empty, all levels are included.
+    #[serde(default)]
+    pub lod_filter: Option<Vec<u8>>,
+    /// # EPSG Code
+    /// EPSG code of the coordinate reference system to declare in the output.
+    #[serde(default)]
+    pub epsg_code: Option<u32>,
 }
 
 fn default_pretty_print() -> Option<bool> {

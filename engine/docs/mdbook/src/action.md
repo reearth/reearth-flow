@@ -1561,7 +1561,8 @@ Writes features to CSV or TSV files.
   ],
   "properties": {
     "output": {
-      "description": "Output path or expression for the CSV/TSV file to create",
+      "title": "Output File",
+      "description": "Output path or expression for the CSV/TSV file to create.",
       "type": "object",
       "format": "code",
       "required": [
@@ -1582,7 +1583,8 @@ Writes features to CSV or TSV files.
       }
     },
     "format": {
-      "description": "File format: csv (comma) or tsv (tab)",
+      "title": "File Format",
+      "description": "File format to write: CSV (comma-separated) or TSV (tab-separated).",
       "allOf": [
         {
           "$ref": "#/definitions/CsvFormat"
@@ -1591,7 +1593,7 @@ Writes features to CSV or TSV files.
     },
     "geometry": {
       "title": "Geometry Configuration",
-      "description": "Optional configuration for exporting geometry to CSV columns",
+      "description": "Optional configuration for exporting geometry to CSV columns.",
       "anyOf": [
         {
           "$ref": "#/definitions/GeometryExportConfig"
@@ -2040,12 +2042,13 @@ Replace Feature Geometry with Center Point
 ### Type
 * sink
 ### Description
-Export Features as Cesium 3D Tiles for Web Visualization
+Writes features to Cesium 3D Tiles format for 3D web visualization.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Cesium3DTilesWriter Parameters",
+  "description": "Configuration for writing features to Cesium 3D Tiles.",
   "type": "object",
   "required": [
     "maxZoom",
@@ -2055,7 +2058,7 @@ Export Features as Cesium 3D Tiles for Web Visualization
   "properties": {
     "output": {
       "title": "Output Path",
-      "description": "Directory path where the 3D tiles will be written",
+      "description": "Directory path where the 3D Tiles will be written.",
       "type": "object",
       "format": "code",
       "required": [
@@ -2077,54 +2080,29 @@ Export Features as Cesium 3D Tiles for Web Visualization
     },
     "minZoom": {
       "title": "Minimum Zoom Level",
-      "description": "Minimum zoom level for tile generation (0-24)",
+      "description": "Lowest zoom level to generate tiles for, from 0 to 24.",
       "type": "integer",
       "format": "uint8",
       "minimum": 0.0
     },
     "maxZoom": {
       "title": "Maximum Zoom Level",
-      "description": "Maximum zoom level for tile generation (0-24)",
+      "description": "Highest zoom level to generate tiles for, from 0 to 24.",
       "type": "integer",
       "format": "uint8",
       "minimum": 0.0
     },
     "attachTexture": {
       "title": "Attach Textures",
-      "description": "Whether to include texture information in the generated tiles",
+      "description": "Whether to include texture information in the generated tiles.",
       "type": [
         "boolean",
         "null"
       ]
     },
-    "compressOutput": {
-      "title": "Compressed Output Path",
-      "description": "Optional path for compressed archive output",
-      "type": [
-        "object",
-        "null"
-      ],
-      "format": "code",
-      "required": [
-        "type",
-        "value"
-      ],
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "flowExpr",
-            "string"
-          ]
-        },
-        "value": {
-          "type": "string"
-        }
-      }
-    },
     "dracoCompression": {
       "title": "Draco Compression",
-      "description": "Use draco compression. Defaults to true.",
+      "description": "Whether to compress mesh geometry with Draco. Defaults to true.",
       "type": [
         "boolean",
         "null"
@@ -2167,14 +2145,6 @@ Export Features as Cesium 3D Tiles for Web Visualization
       "format": "uint32",
       "minimum": 0.0
     },
-    "skipUnexposedAttributes": {
-      "title": "Skip unexposed Attributes",
-      "description": "Skip attributes with double underscore prefix",
-      "type": [
-        "boolean",
-        "null"
-      ]
-    },
     "schemaKey": {
       "title": "Schema Key",
       "description": "Attribute key whose value identifies the schema type and determines the output filename: all features sharing the same value are written to the same file. This attribute is excluded from output.",
@@ -2182,6 +2152,39 @@ Export Features as Cesium 3D Tiles for Web Visualization
         "string",
         "null"
       ]
+    },
+    "skipUnexposedAttributes": {
+      "title": "Skip Unexposed Attributes",
+      "description": "Whether to skip attributes whose keys begin with a double underscore.",
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
+    "compressOutput": {
+      "title": "Compressed Output Path",
+      "description": "Optional path where a compressed archive of the tiles is also written.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
     }
   }
 }
@@ -2277,19 +2280,21 @@ Reads 3D city models from CityGML files.
 ### Type
 * sink
 ### Description
-Writes features to CityGML 2.0 files
+Writes features to CityGML 2.0 files.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "CityGmlWriterParam",
+  "title": "CityGmlWriter Parameters",
+  "description": "Configuration for writing features to CityGML 2.0 files.",
   "type": "object",
   "required": [
     "output"
   ],
   "properties": {
     "output": {
-      "description": "Output file path expression",
+      "title": "Output File",
+      "description": "Output path or expression for the CityGML file to create.",
       "type": "object",
       "format": "code",
       "required": [
@@ -2309,8 +2314,18 @@ Writes features to CityGML 2.0 files
         }
       }
     },
+    "prettyPrint": {
+      "title": "Pretty Print",
+      "description": "Whether to indent the output for readability. Defaults to true.",
+      "default": true,
+      "type": [
+        "boolean",
+        "null"
+      ]
+    },
     "lodFilter": {
-      "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs.",
+      "title": "LOD Filter",
+      "description": "Levels of detail to include, such as [0, 1, 2]. If empty, all levels are included.",
       "default": null,
       "type": [
         "array",
@@ -2323,7 +2338,8 @@ Writes features to CityGML 2.0 files
       }
     },
     "epsgCode": {
-      "description": "EPSG code for coordinate reference system",
+      "title": "EPSG Code",
+      "description": "EPSG code of the coordinate reference system to declare in the output.",
       "default": null,
       "type": [
         "integer",
@@ -2331,14 +2347,6 @@ Writes features to CityGML 2.0 files
       ],
       "format": "uint32",
       "minimum": 0.0
-    },
-    "prettyPrint": {
-      "description": "Whether to format output with indentation (default: true)",
-      "default": true,
-      "type": [
-        "boolean",
-        "null"
-      ]
     }
   }
 }
@@ -4654,7 +4662,7 @@ Reads geographic features from a GeoJSON FeatureCollection file.
 ### Type
 * sink
 ### Description
-Writes geographic features to GeoJSON files with optional grouping
+Writes features to GeoJSON files, optionally grouping them into separate files.
 ### Parameters
 ```json
 {
@@ -4667,7 +4675,8 @@ Writes geographic features to GeoJSON files with optional grouping
   ],
   "properties": {
     "output": {
-      "description": "Output path or expression for the GeoJSON file to create",
+      "title": "Output File",
+      "description": "Output path or expression for the GeoJSON file to create.",
       "type": "object",
       "format": "code",
       "required": [
@@ -4688,7 +4697,8 @@ Writes geographic features to GeoJSON files with optional grouping
       }
     },
     "groupBy": {
-      "description": "Optional attributes to group features by, creating separate files for each group",
+      "title": "Group By",
+      "description": "Attributes to group features by, writing a separate file for each distinct group.",
       "type": [
         "array",
         "null"
@@ -4914,7 +4924,7 @@ Reads geographic features from GeoPackage (.gpkg) files, supporting vector featu
 ### Type
 * sink
 ### Description
-Writes geographic features to GeoPackage (.gpkg) files with proper SQLite structure, spatial indexing, and metadata tables
+Writes features to a GeoPackage (.gpkg) file.
 ### Parameters
 ```json
 {
@@ -4927,7 +4937,8 @@ Writes geographic features to GeoPackage (.gpkg) files with proper SQLite struct
   ],
   "properties": {
     "output": {
-      "description": "Output path for the GeoPackage file to create",
+      "title": "Output File",
+      "description": "Output path or expression for the GeoPackage file to create.",
       "type": "object",
       "format": "code",
       "required": [
@@ -4948,35 +4959,109 @@ Writes geographic features to GeoPackage (.gpkg) files with proper SQLite struct
       }
     },
     "tableName": {
-      "description": "Table name to create (default: \"features\")",
+      "title": "Table Name",
+      "description": "Name of the feature table to create, shown as the layer name in GIS clients. Defaults to \"features\".",
       "default": "features",
       "type": "string"
     },
-    "geometryColumn": {
-      "description": "Geometry column name (default: \"geom\")",
-      "default": "geom",
-      "type": "string"
-    },
     "srsId": {
-      "description": "Spatial Reference System ID (default: 4326 for WGS84)",
+      "title": "SRS ID",
+      "description": "Spatial reference system identifier (EPSG code) recorded for the geometry. The writer tags this code without reprojecting, so it must match the coordinate system of the input data. Defaults to 4326 (WGS 84).",
       "default": 4326,
       "type": "integer",
       "format": "int32"
     },
     "geometryType": {
-      "description": "Geometry type for table (Point, LineString, Polygon, MultiPoint, MultiLineString, MultiPolygon, or GEOMETRY for mixed)",
-      "default": "GEOMETRY",
+      "title": "Geometry Type",
+      "description": "Geometry type declared for the table. Use Geometry for tables that hold mixed or unknown types. Defaults to Geometry.",
+      "default": "geometry",
+      "allOf": [
+        {
+          "$ref": "#/definitions/GeometryType"
+        }
+      ]
+    },
+    "overwrite": {
+      "title": "Overwrite Existing File",
+      "description": "Whether to overwrite the output file if it already exists. Defaults to false.",
+      "default": false,
+      "type": "boolean"
+    },
+    "geometryColumn": {
+      "title": "Geometry Column",
+      "description": "Name of the column that stores geometry. Defaults to \"geom\".",
+      "default": "geom",
       "type": "string"
     },
     "createSpatialIndex": {
-      "description": "Create RTree spatial index (default: true)",
+      "title": "Create Spatial Index",
+      "description": "Whether to build an R-tree spatial index on the geometry column for faster queries. Defaults to true.",
       "default": true,
       "type": "boolean"
-    },
-    "overwrite": {
-      "description": "Overwrite existing file (default: false)",
-      "default": false,
-      "type": "boolean"
+    }
+  },
+  "definitions": {
+    "GeometryType": {
+      "title": "Geometry Type",
+      "description": "Geometry type declared for a GeoPackage feature table.",
+      "oneOf": [
+        {
+          "title": "Point",
+          "description": "A single point per feature.",
+          "type": "string",
+          "enum": [
+            "point"
+          ]
+        },
+        {
+          "title": "Line String",
+          "description": "A single connected sequence of points per feature.",
+          "type": "string",
+          "enum": [
+            "lineString"
+          ]
+        },
+        {
+          "title": "Polygon",
+          "description": "A single polygon, with optional holes, per feature.",
+          "type": "string",
+          "enum": [
+            "polygon"
+          ]
+        },
+        {
+          "title": "Multi Point",
+          "description": "A collection of points per feature.",
+          "type": "string",
+          "enum": [
+            "multiPoint"
+          ]
+        },
+        {
+          "title": "Multi Line String",
+          "description": "A collection of line strings per feature.",
+          "type": "string",
+          "enum": [
+            "multiLineString"
+          ]
+        },
+        {
+          "title": "Multi Polygon",
+          "description": "A collection of polygons per feature.",
+          "type": "string",
+          "enum": [
+            "multiPolygon"
+          ]
+        },
+        {
+          "title": "Geometry (Mixed)",
+          "description": "Any geometry type; use when the table holds mixed or unknown geometry types.",
+          "type": "string",
+          "enum": [
+            "geometry"
+          ]
+        }
+      ]
     }
   }
 }
@@ -7484,7 +7569,8 @@ Writes features to JSON files.
   ],
   "properties": {
     "output": {
-      "description": "Output path or expression for the JSON file to create",
+      "title": "Output File",
+      "description": "Output path or expression for the JSON file to create.",
       "type": "object",
       "format": "code",
       "required": [
@@ -7505,7 +7591,8 @@ Writes features to JSON files.
       }
     },
     "converter": {
-      "description": "Optional converter expression to transform features before writing",
+      "title": "Converter Expression",
+      "description": "Expression that transforms features into the JSON value to write. When omitted, features are written as an array of their attributes.",
       "type": [
         "object",
         "null"
@@ -7756,13 +7843,13 @@ Copies attributes from a specific list element to become the main attributes of 
 ### Type
 * sink
 ### Description
-Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 metadata.
+Writes features to Mapbox Vector Tiles (MVT) format.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "MVTWriter Parameters",
-  "description": "Configuration for writing features to Mapbox Vector Tiles (MVT) format. Generates tiles at /{z}/{x}/{y}.mvt and tilejson.json where the parent directory is treated as HTTP root (tileJSON requires absolute URLs).",
+  "description": "Configuration for writing features to Mapbox Vector Tiles (MVT) format.",
   "type": "object",
   "required": [
     "layerName",
@@ -7772,8 +7859,8 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
   ],
   "properties": {
     "output": {
-      "title": "Output",
-      "description": "Output directory path or expression for the generated MVT tiles",
+      "title": "Output Directory",
+      "description": "Output directory path or expression where the generated MVT tiles are written.",
       "type": "object",
       "format": "code",
       "required": [
@@ -7795,7 +7882,7 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
     },
     "layerName": {
       "title": "Layer Name",
-      "description": "Name of the layer within the MVT tiles",
+      "description": "Name or expression for the layer within the generated tiles.",
       "type": "object",
       "format": "code",
       "required": [
@@ -7817,21 +7904,21 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
     },
     "minZoom": {
       "title": "Minimum Zoom",
-      "description": "Minimum zoom level to generate tiles for",
+      "description": "Lowest zoom level to generate tiles for.",
       "type": "integer",
       "format": "uint8",
       "minimum": 0.0
     },
     "maxZoom": {
       "title": "Maximum Zoom",
-      "description": "Maximum zoom level to generate tiles for",
+      "description": "Highest zoom level to generate tiles for.",
       "type": "integer",
       "format": "uint8",
       "minimum": 0.0
     },
     "compressOutput": {
-      "title": "Compress Output",
-      "description": "Optional expression to determine whether to compress the output tiles",
+      "title": "Compressed Output Path",
+      "description": "Optional path where a compressed archive of the tiles is also written.",
       "type": [
         "object",
         "null"
@@ -7854,9 +7941,17 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
         }
       }
     },
+    "schemaKey": {
+      "title": "Schema Key",
+      "description": "Attribute key used to match data and schema features for attribute filtering and casting. This attribute is excluded from output.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "skipUnexposedAttributes": {
       "title": "Skip Unexposed Attributes",
-      "description": "Skip attributes with double underscore prefix",
+      "description": "Whether to skip attributes whose keys begin with a double underscore.",
       "type": [
         "boolean",
         "null"
@@ -7864,29 +7959,21 @@ Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 m
     },
     "colonToUnderscore": {
       "title": "Colon to Underscore",
-      "description": "Replace colons in attribute keys (e.g., from XML Namespaces) with underscores",
+      "description": "Whether to replace colons in attribute keys (such as those from XML namespaces) with underscores.",
       "type": [
         "boolean",
         "null"
       ]
     },
     "extent": {
-      "title": "Extent",
-      "description": "MVT tile resolution. Default is 4096.",
+      "title": "Tile Extent",
+      "description": "Coordinate grid resolution within each tile. Higher values preserve more positional precision for high-detail data at the cost of larger tiles. Defaults to 4096, the MVT standard.",
       "type": [
         "integer",
         "null"
       ],
       "format": "uint32",
       "minimum": 0.0
-    },
-    "schemaKey": {
-      "title": "Schema Key",
-      "description": "Attribute key to match data and schema features for attribute filtering and casting. This attribute is excluded from output.",
-      "type": [
-        "string",
-        "null"
-      ]
     }
   }
 }
@@ -11409,7 +11496,7 @@ Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .
 ### Type
 * sink
 ### Description
-Writes geographic features to ESRI Shapefile format with optional grouping
+Writes features to ESRI Shapefile format, optionally grouping them into separate files.
 ### Parameters
 ```json
 {
@@ -11422,7 +11509,8 @@ Writes geographic features to ESRI Shapefile format with optional grouping
   ],
   "properties": {
     "output": {
-      "description": "Output path or expression for the Shapefile to create",
+      "title": "Output Directory",
+      "description": "Output directory path or expression where the generated Shapefile files are written.",
       "type": "object",
       "format": "code",
       "required": [
@@ -11443,7 +11531,8 @@ Writes geographic features to ESRI Shapefile format with optional grouping
       }
     },
     "groupBy": {
-      "description": "Optional attributes to group features by, creating separate files for each group",
+      "title": "Group By",
+      "description": "Attributes to group features by, writing a separate file for each distinct group.",
       "type": [
         "array",
         "null"
@@ -12366,7 +12455,8 @@ Writes features to XML files.
   ],
   "properties": {
     "output": {
-      "description": "Output path or expression for the XML file to create",
+      "title": "Output File",
+      "description": "Output path or expression for the XML file to create.",
       "type": "object",
       "format": "code",
       "required": [
@@ -12399,7 +12489,7 @@ Writes features to XML files.
 ### Type
 * sink
 ### Description
-Writes features to a zip file
+Compresses files referenced by incoming features into a single ZIP archive.
 ### Parameters
 ```json
 {
@@ -12412,7 +12502,8 @@ Writes features to a zip file
   ],
   "properties": {
     "output": {
-      "description": "Output path",
+      "title": "Output File",
+      "description": "Output path or expression for the ZIP archive to create.",
       "type": "object",
       "format": "code",
       "required": [
