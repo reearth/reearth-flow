@@ -70,7 +70,6 @@ hex.workspace = true
 image.workspace = true
 indexmap.workspace = true
 itertools.workspace = true
-ktx2-rw.workspace = true
 once_cell.workspace = true
 parking_lot.workspace = true
 petgraph.workspace = true

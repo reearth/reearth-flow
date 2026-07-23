@@ -110,6 +110,8 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
                 atlas_size: params.atlas_size,
                 #[cfg(feature = "new-geometry")]
                 atlas_extrusion: params.atlas_extrusion,
+                #[cfg(feature = "new-geometry")]
+                texture_codec: params.texture_codec,
                 skip_unexposed_attributes: params.skip_unexposed_attributes.unwrap_or(false),
                 schema_key: params.schema_key,
             },
@@ -125,6 +127,19 @@ pub struct Cesium3DTilesWriter {
     pub(super) buffer: HashMap<BufferKey, Vec<Feature>>,
     pub(super) schema: Schema,
     pub(super) params: Cesium3DTilesWriterCompiledParam,
+}
+
+/// Texture image codec for the new-geometry writer's atlas pages.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Default, PartialEq, Eq, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub enum TextureCodec {
+    /// KTX2 with Basis Universal supercompression (`KHR_texture_basisu`).
+    #[default]
+    Ktx2,
+    /// PNG, lossless with alpha.
+    Png,
+    /// JPEG, lossy and opaque (alpha is dropped).
+    Jpeg,
 }
 
 /// # Cesium3DTilesWriter Parameters
@@ -167,6 +182,10 @@ pub struct Cesium3DTilesWriterParam {
     /// Ring of pixels blitted around each texture region in the atlas to stop
     /// bilinear bleed between neighbouring regions. Defaults to 0 (disabled).
     pub(super) atlas_extrusion: Option<u32>,
+    /// # Texture Codec
+    /// Image codec for atlas pages: `ktx2` (GPU-compressed, default), `png`, or
+    /// `jpeg`.
+    pub(super) texture_codec: Option<TextureCodec>,
     /// # Schema Key
     /// Attribute key whose value identifies the schema type and determines the output
     /// filename: all features sharing the same value are written to the same file.
@@ -196,6 +215,8 @@ pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) atlas_size: Option<u32>,
     #[cfg(feature = "new-geometry")]
     pub(super) atlas_extrusion: Option<u32>,
+    #[cfg(feature = "new-geometry")]
+    pub(super) texture_codec: Option<TextureCodec>,
     pub(super) skip_unexposed_attributes: bool,
     pub(super) schema_key: Option<String>,
 }
