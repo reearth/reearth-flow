@@ -12,12 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// nodeStatusTerminalFixturePath is the SHARED fixture (duplicated, by
-// design, on the subscriber side at
-// subscriber/internal/infrastructure/redis/node_test.go) proving the exact
-// flat JSON blob `SaveNodeEventToRedis` writes to the individual
-// `node:{jobId}:{nodeId}` Redis key is the same shape `NodeEntry` reads back
-// here — i.e. that `NodeMetrics` fields survive subscriber -> Redis -> api.
+// Fixture intentionally duplicated on the subscriber side (subscriber/internal/infrastructure/redis/node_test.go): proves NodeMetrics fields survive subscriber -> Redis -> api.
 const nodeStatusTerminalFixturePath = "../../../../testdata/node/node_status_terminal.json"
 
 func TestGetNodeExecution_MetricsSurviveSharedFixtureRoundTrip(t *testing.T) {

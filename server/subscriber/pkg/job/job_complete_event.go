@@ -6,11 +6,6 @@ import (
 	"github.com/reearth/reearth-flow/subscriber/pkg/diagnostic"
 )
 
-// JobCompleteEvent is the pub/sub wire shape published by the engine on job
-// completion. FailedNodes/AggregatedDiagnostics/DroppedEventCount are nil
-// when the publishing engine predates diagnostics. FailedNodes absent vs.
-// empty is meaningful (don't infer job failure from either), and fatality
-// must be read from EffectiveDisposition, never Severity.
 type JobCompleteEvent struct {
 	Timestamp             time.Time                   `json:"timestamp"`
 	DroppedEventCount     *uint64                     `json:"droppedEventCount,omitempty"`

@@ -7,8 +7,6 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 )
 
-// ErrInvalidDiagnostic is returned by Builder.Build when a required field
-// (Code) was not set.
 var ErrInvalidDiagnostic = errors.New("diagnostic: code is required")
 
 type Builder struct {
@@ -99,9 +97,7 @@ func (b *Builder) SourceSpan(sourceSpan *SourceSpan) *Builder {
 	return b
 }
 
-// Terminal marks this row as persisted at job-completion merge time (see
-// Diagnostic.terminal). Defaults to false; only mongodoc's Model() sets it
-// true, for rows whose stored schema is the job-complete.v1 tag.
+// Defaults false; only mongodoc's Model() sets it true.
 func (b *Builder) Terminal(terminal bool) *Builder {
 	b.d.terminal = terminal
 	return b

@@ -31,8 +31,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// jobCompleteDiagnosticsFixturePath is the shared wire-shape fixture also
-// used by gateway/job_complete_event_test.go and the subscriber module.
+// Shared fixture, also used by gateway/job_complete_event_test.go and the subscriber module.
 const jobCompleteDiagnosticsFixturePath = "../../../../testdata/diagnostics/job_complete_with_diagnostics.json"
 
 func loadJobCompleteEventFixture(t *testing.T) gateway.JobCompleteEvent {
@@ -44,9 +43,6 @@ func loadJobCompleteEventFixture(t *testing.T) gateway.JobCompleteEvent {
 	return event
 }
 
-// mockCheckStatusRedis is a dedicated gateway.Redis fake: returns a
-// configurable JobCompleteEvent and tracks DeleteJobCompleteEvent calls so
-// tests can assert whether the event survives a persist failure.
 type mockCheckStatusRedis struct {
 	event       *gateway.JobCompleteEvent
 	deleteErr   error
@@ -86,9 +82,7 @@ func (m *mockCheckStatusRedis) GetJobDiagnostics(ctx context.Context, jobID id.J
 	return nil, nil
 }
 
-// mockCheckStatusJobRepo is a dedicated repo.Job fake with a working Save
-// (the shared mockJobRepo panics on Save) so checkJobStatus's save calls
-// can be counted and inspected.
+// Needs a working Save — the shared mockJobRepo panics on Save.
 type mockCheckStatusJobRepo struct {
 	job       *job.Job
 	saveCalls int
@@ -128,9 +122,6 @@ func (m *mockCheckStatusJobRepo) RemoveByProject(ctx context.Context, projectID 
 	return nil
 }
 
-// mockCheckStatusFile is a no-op gateway.File fake: checkJobStatus's terminal
-// path calls a handful of its methods, and zero values keep every call
-// harmless since no test asserts on the resulting job fields.
 type mockCheckStatusFile struct{}
 
 func (m *mockCheckStatusFile) ReadAsset(context.Context, string) (io.ReadCloser, error) {
@@ -196,9 +187,7 @@ func (m *mockCheckStatusFile) UploadedAsset(context.Context, *asset.Upload) (*fi
 func (m *mockCheckStatusFile) WriteCancelFlag(ctx context.Context, jobID string) error { return nil }
 func (m *mockCheckStatusFile) CancelFlagURI(jobID string) string                       { return "" }
 
-// newCheckStatusJob builds a Job interactor with just enough collaborators to
-// drive checkJobStatus for a Cloud-Run-style job (empty GCPJobID, so Batch
-// polling is skipped and Batch/CloudRunWorker stay nil).
+// Empty GCPJobID: Batch polling is skipped and Batch/CloudRunWorker stay nil.
 func newCheckStatusJob(jobRepo *mockCheckStatusJobRepo, diagRepo repo.NodeDiagnostics, redisMock *mockCheckStatusRedis) *Job {
 	return &Job{
 		jobRepo:             jobRepo,
@@ -228,7 +217,6 @@ func TestJob_checkJobStatus_TerminalDiagnosticsMerge(t *testing.T) {
 
 	require.NoError(t, i.checkJobStatus(context.Background(), testJob))
 
-	// Rows persisted before the event was deleted.
 	assert.Equal(t, 1, diagRepo.saveCalls)
 	assert.Equal(t, jobID, diagRepo.lastJobID)
 	assert.Equal(t, event.WorkflowID, diagRepo.lastWorkflowID)
@@ -240,10 +228,8 @@ func TestJob_checkJobStatus_TerminalDiagnosticsMerge(t *testing.T) {
 	require.NotNil(t, diagRepo.lastDropped)
 	assert.Equal(t, uint64(2), *diagRepo.lastDropped)
 
-	// Event deleted only after the persist succeeded.
 	assert.Equal(t, 1, redisMock.deleteCalls)
 
-	// Job merged to the terminal status the event carried.
 	assert.Equal(t, job.StatusFailed, jobRepo.job.Status())
 	assert.GreaterOrEqual(t, jobRepo.saveCalls, 1)
 }
@@ -261,28 +247,20 @@ func TestJob_checkJobStatus_PersistFailure_RetainsEvent(t *testing.T) {
 
 	require.NoError(t, i.checkJobStatus(context.Background(), testJob))
 
-	// Persist was attempted and failed.
 	assert.Equal(t, 1, diagRepo.saveCalls)
-	// Failure must SKIP the delete, so a later poll safely retries against
-	// the same event (deterministic-ID upsert).
+	// Delete must be skipped on failure so a later poll retries against the same event (deterministic-ID upsert).
 	assert.Equal(t, 0, redisMock.deleteCalls)
 
-	// Terminal status merge is NOT aborted by the persist failure.
 	assert.Equal(t, job.StatusFailed, jobRepo.job.Status())
 	assert.GreaterOrEqual(t, jobRepo.saveCalls, 1)
 }
 
 func TestJob_checkJobStatus_OldWireEvent_Unchanged(t *testing.T) {
-	// No failedNodes/aggregatedDiagnostics/droppedEventCount (an engine build
-	// predating diagnostics): behavior must be identical to before — no rows
-	// persisted, event still deleted.
+	// Simulates an engine build predating diagnostics (all three fields absent).
 	jobID := id.NewJobID()
 	testJob := job.NewJob(jobID, nil, accountsid.NewWorkspaceID(), "")
 
-	// Result "failed", not "success": with GCPJobID=="" batchStatus stays
-	// Pending (never polled), and workerStatus=Failed alone is enough to make
-	// the job terminal — keeping this test's only variable the absent
-	// diagnostics fields.
+	// Result "failed": with GCPJobID=="" batchStatus stays Pending, so workerStatus=Failed alone drives terminal — isolating diagnostics fields as the only variable.
 	event := &gateway.JobCompleteEvent{
 		Timestamp: time.Now(),
 		JobID:     jobID.String(),

@@ -15,15 +15,13 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-// diagnosticIndexKeys mirrors the subscriber's index declarations so both
-// sides converge on the same indexes. No unique index: SaveTerminalDiagnostics
-// relies on SaveOne's upsert (ReplaceOne) semantics against deterministic
-// IDs instead.
+// Mirrors the subscriber's index declarations — keep in sync. No unique
+// index: SaveOne's upsert (ReplaceOne) against deterministic IDs handles
+// that instead.
 var diagnosticIndexKeys = []string{"jobId,nodeId", "jobId"}
 
-// diagnosticHasCodeFilter scopes reads to rows with a top-level "code"
-// field, excluding the per-job JobDiagnosticsSummaryDocument row (which has
-// none and would otherwise decode into a mostly-empty Diagnostic).
+// Excludes JobDiagnosticsSummaryDocument rows (no code field) from decoding
+// into a mostly-empty Diagnostic.
 var diagnosticHasCodeFilter = bson.M{"$exists": true}
 
 type NodeDiagnostics struct {
@@ -38,9 +36,8 @@ func (r *NodeDiagnostics) Init(ctx context.Context) error {
 	return createIndexes(ctx, r.client, diagnosticIndexKeys, nil)
 }
 
-// FindByJobNodeID scopes to one node's rows. An empty nodeID (mirroring
-// gateway.Redis.GetNodeDiagnostics' "" → "_job" fallback) reads the
-// job-level bucket via the normalized sentinel nodeId field.
+// Empty nodeID reads the job-level bucket (mirrors
+// gateway.Redis.GetNodeDiagnostics' "" → "_job" fallback).
 func (r *NodeDiagnostics) FindByJobNodeID(ctx context.Context, jobID id.JobID, nodeID string) ([]*diagnostic.Diagnostic, error) {
 	if nodeID == "" {
 		nodeID = mongodoc.JobDiagnosticNodeSegment
@@ -61,9 +58,7 @@ func (r *NodeDiagnostics) FindByJobID(ctx context.Context, jobID id.JobID) ([]*d
 	return r.find(ctx, filter)
 }
 
-// FindJobSummary reads the single per-job summary row by its deterministic
-// ID (mongodoc.JobDiagnosticsSummaryID), returning (nil, nil) when no such
-// row exists (no droppedEventCount was ever persisted for this job).
+// Returns (nil, nil) when no summary row exists yet.
 func (r *NodeDiagnostics) FindJobSummary(ctx context.Context, jobID id.JobID) (*uint64, error) {
 	filter := bson.M{"id": mongodoc.JobDiagnosticsSummaryID(jobID)}
 	c := mongodoc.NewJobDiagnosticsSummaryConsumer()
@@ -104,8 +99,8 @@ func (r *NodeDiagnostics) SaveTerminalDiagnostics(
 		}
 	}
 
-	// Each aggregated diagnostic gets its own row (like failedNodes above)
-	// so it stays visible to FindByJobNodeID.
+	// One row per aggregated diagnostic (not nested) so each stays visible
+	// to FindByJobNodeID.
 	for _, agg := range aggregated {
 		doc := mongodoc.NewAggregatedDiagnosticDocument(jobID, workflowID, agg)
 		if err := r.client.SaveOne(ctx, doc.ID, doc); err != nil {

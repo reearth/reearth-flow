@@ -31,13 +31,6 @@ type WireDiagnostic struct {
 	Message              string             `json:"message"`
 }
 
-// ToDomain converts a wire diagnostic into the domain representation, given
-// the jobID and timestamp context it doesn't itself carry (WireDiagnostic is
-// nested inside an envelope — DiagnosticEvent or JobCompleteEvent — that
-// owns those fields). Used both by the Redis read path (internal/
-// infrastructure/redis/diagnostic.go, where the envelope is a decoded
-// DiagnosticEntry) and by the job-completion merge persistence path
-// (interactor/job.go, where the envelope is the JobCompleteEvent itself).
 func (w WireDiagnostic) ToDomain(jobID id.JobID, timestamp time.Time) (*diagnostic.Diagnostic, error) {
 	b := diagnostic.NewBuilder().
 		JobID(jobID).

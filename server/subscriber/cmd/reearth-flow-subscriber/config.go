@@ -19,10 +19,7 @@ type Config struct {
 	AssetBaseURL string `envconfig:"ASSET_BASE_URL" default:"http://localhost:8080/assets"`
 	DB           string `default:"mongodb://localhost"`
 	Dev          bool   `pp:",omitempty"`
-	// DiagnosticSubscriptionID has NO default: an empty/defaulted value
-	// makes the subscriber try to open a listener for an unprovisioned
-	// subscription, which crash-loops the ENTIRE subscriber (a listener
-	// error cancels the root context), taking down all ingestion with it.
+	// No default: an empty/defaulted value crash-loops the ENTIRE subscriber, taking down all ingestion.
 	DiagnosticSubscriptionID    string `envconfig:"DIAGNOSTIC_SUBSCRIPTION_ID" default:""`
 	GCPProject                  string `envconfig:"GOOGLE_CLOUD_PROJECT" pp:",omitempty"`
 	GCSBucket                   string `envconfig:"GCS_BUCKET" pp:",omitempty"`

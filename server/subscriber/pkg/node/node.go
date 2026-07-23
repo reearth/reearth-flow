@@ -14,11 +14,6 @@ const (
 	StatusFailed     Status = "FAILED"
 )
 
-// NodeMetrics is the wire mirror of the engine's
-// `reearth_flow_worker::types::node_status_event::NodeMetrics` (in turn a
-// mirror of `reearth_flow_runtime::event::NodeMetrics`). Only present on the
-// terminal status event of a node's lifecycle (Completed/Failed) — see
-// `NodeStatusEvent.Metrics`.
 type NodeMetrics struct {
 	FeaturesProcessed  uint64 `json:"featuresProcessed" bson:"featuresProcessed"`
 	FeaturesWritten    uint64 `json:"featuresWritten" bson:"featuresWritten"`

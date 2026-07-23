@@ -9,13 +9,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestNewDiagnosticDocument_NodeIDField_MatchesIDSegment pins the T5
-// normalization fix: the nodeId bson field must carry the same
-// nodeId-or-_job value as the document ID's segment, for both a real nodeId
-// and an absent/empty one. Before the fix, only the ID got the "_job"
-// fallback; the field stayed nil (absent nodeId) or the raw empty string
-// (explicit empty nodeId), so a field-equality "_job" lookup could never
-// match these rows.
 func TestNewDiagnosticDocument_NodeIDField_MatchesIDSegment(t *testing.T) {
 	t.Run("real nodeId", func(t *testing.T) {
 		nodeID := "subgraph-a.node-4"

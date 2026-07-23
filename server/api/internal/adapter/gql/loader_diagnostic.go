@@ -10,19 +10,12 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 )
 
-// DiagnosticLoader wraps interfaces.NodeDiagnostics for the GraphQL layer.
-// GetFailedNodes/GetDroppedEventCount are thin non-batching wrappers, like
-// LogLoader/NodeExLoader. GetNodeDiagnostics is not: it batches via
-// jobDiagnosticsFetch below to avoid an N+1 across a job's node list.
 type DiagnosticLoader struct {
 	usecase  interfaces.NodeDiagnostics
 	jobFetch map[id.JobID]*jobDiagnosticsFetch
 	mu       sync.Mutex
 }
 
-// jobDiagnosticsFetch memoizes one in-flight/completed GetJobDiagnostics
-// call per jobID, so concurrent GetNodeDiagnostics calls for the same job
-// share a single fetch instead of issuing one each.
 type jobDiagnosticsFetch struct {
 	err  error
 	done chan struct{}
@@ -33,10 +26,8 @@ func NewDiagnosticLoader(usecase interfaces.NodeDiagnostics) *DiagnosticLoader {
 	return &DiagnosticLoader{usecase: usecase}
 }
 
-// GetNodeDiagnostics backs NodeExecution.diagnostics. Avoids an N+1 by
-// fetching the whole job's diagnostics once (via loadJobDiagnostics) and
-// partitioning by nodeID in memory — safe because GetJobDiagnostics is a
-// strict superset of any single node's rows, with the same permission scope.
+// Safe because GetJobDiagnostics is a strict superset of any single node's
+// rows, with the same permission scope.
 func (l *DiagnosticLoader) GetNodeDiagnostics(ctx context.Context, jobID gqlmodel.ID, nodeID string) ([]*gqlmodel.Diagnostic, error) {
 	jId, err := id.JobIDFrom(string(jobID))
 	if err != nil {
@@ -61,9 +52,6 @@ func (l *DiagnosticLoader) GetNodeDiagnostics(ctx context.Context, jobID gqlmode
 	return gqlmodel.ToDiagnostics(filtered), nil
 }
 
-// loadJobDiagnostics fetches and memoizes GetJobDiagnostics(jobID) once per
-// (loader instance, jobID) pair; concurrent callers for the same jobID
-// block on the in-flight fetch.
 func (l *DiagnosticLoader) loadJobDiagnostics(ctx context.Context, jobID id.JobID) ([]*diagnostic.Diagnostic, error) {
 	l.mu.Lock()
 	fetch, ok := l.jobFetch[jobID]
@@ -86,7 +74,6 @@ func (l *DiagnosticLoader) loadJobDiagnostics(ctx context.Context, jobID id.JobI
 	return fetch.rows, fetch.err
 }
 
-// GetFailedNodes backs Job.failedNodes.
 func (l *DiagnosticLoader) GetFailedNodes(ctx context.Context, jobID gqlmodel.ID) ([]*gqlmodel.Diagnostic, error) {
 	jId, err := id.JobIDFrom(string(jobID))
 	if err != nil {
@@ -100,7 +87,6 @@ func (l *DiagnosticLoader) GetFailedNodes(ctx context.Context, jobID gqlmodel.ID
 	return gqlmodel.ToDiagnostics(rows), nil
 }
 
-// GetDroppedEventCount backs Job.droppedEventCount.
 func (l *DiagnosticLoader) GetDroppedEventCount(ctx context.Context, jobID gqlmodel.ID) (*int, error) {
 	jId, err := id.JobIDFrom(string(jobID))
 	if err != nil {

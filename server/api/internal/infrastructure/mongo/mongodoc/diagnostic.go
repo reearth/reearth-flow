@@ -7,10 +7,8 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/id"
 )
 
-// diagnosticSourceSpanDocument / diagnosticAggregateInfoDocument /
-// DiagnosticDocument mirror (bson field-for-field) the subscriber's
-// mongodoc.DiagnosticDocument, which writes the nodeDiagnostics collection
-// this file reads. Keep the bson tags in lockstep with that file.
+// Mirrors (bson field-for-field) the subscriber's mongodoc.DiagnosticDocument
+// — keep tags in lockstep with that file.
 type diagnosticSourceSpanDocument struct {
 	Length *uint `bson:"length,omitempty"`
 	Offset uint  `bson:"offset"`
@@ -21,11 +19,9 @@ type diagnosticAggregateInfoDocument struct {
 	Count            uint64   `bson:"count"`
 }
 
-// DiagnosticDocument is a single per-node (or per-job, when NodeID is the
-// JobDiagnosticNodeSegment sentinel) row in the nodeDiagnostics collection —
-// used both for the subscriber's live rows and this module's terminal rows
-// (see NewFailedNodeDocument / NewAggregatedDiagnosticDocument), which use a
-// deterministic ID instead of a random suffix so redeliveries upsert.
+// Terminal rows (see NewFailedNodeDocument / NewAggregatedDiagnosticDocument)
+// use a deterministic ID, not a random suffix, so redeliveries upsert
+// instead of duplicating.
 type DiagnosticDocument struct {
 	Timestamp            time.Time                        `bson:"timestamp"`
 	Aggregated           *diagnosticAggregateInfoDocument `bson:"aggregated,omitempty"`
@@ -45,13 +41,10 @@ type DiagnosticDocument struct {
 	Message              string                           `bson:"message"`
 }
 
-// JobDiagnosticNodeSegment is the sentinel node segment for a job-level
-// diagnostic (mirrors the subscriber's constant; keep in lockstep). Model()
-// strips it back to nil before it reaches GraphQL.
+// Mirrors the subscriber's constant — keep in lockstep. Model() strips it
+// back to nil before it reaches GraphQL.
 const JobDiagnosticNodeSegment = "_job"
 
-// normalizedNodeSegment returns nodeID, or the sentinel when nodeID is
-// nil/empty.
 func normalizedNodeSegment(nodeID *string) string {
 	if nodeID != nil && *nodeID != "" {
 		return *nodeID
@@ -77,8 +70,6 @@ func (d *DiagnosticDocument) Model() (*diagnostic.Diagnostic, error) {
 		return nil, err
 	}
 
-	// nodeId carries the JobDiagnosticNodeSegment sentinel for job-level rows;
-	// translate back to nil to preserve the domain layer's existing semantics.
 	nodeID := d.NodeID
 	if nodeID != nil && *nodeID == JobDiagnosticNodeSegment {
 		nodeID = nil
@@ -108,22 +99,12 @@ func (d *DiagnosticDocument) Model() (*diagnostic.Diagnostic, error) {
 	return b.Build()
 }
 
-// jobCompleteDiagnosticSchemaTag marks terminal rows (job-completion merge)
-// as distinct from the subscriber's live "diagnostic.v1" rows.
 const jobCompleteDiagnosticSchemaTag = "job-complete.v1"
 
-// NewFailedNodeDocument builds a terminal-diagnostic row for one
-// JobCompleteEvent failed node. ID is deterministic
-// ({jobId}:{nodeId-or-_job}:failed:{code}) so redeliveries upsert instead of
-// duplicating.
 func NewFailedNodeDocument(jobID id.JobID, workflowID string, d *diagnostic.Diagnostic) DiagnosticDocument {
 	return newTerminalDiagnosticDocument(jobID, workflowID, d, "failed")
 }
 
-// NewAggregatedDiagnosticDocument builds a terminal-diagnostic row for one
-// JobCompleteEvent aggregatedDiagnostics entry. Each gets its own row
-// (not nested in the summary row) so it stays discoverable via
-// FindByJobNodeID. ID is deterministic, idempotent across redeliveries.
 func NewAggregatedDiagnosticDocument(jobID id.JobID, workflowID string, d *diagnostic.Diagnostic) DiagnosticDocument {
 	return newTerminalDiagnosticDocument(jobID, workflowID, d, "aggregated")
 }
@@ -158,11 +139,9 @@ func newTerminalDiagnosticDocument(jobID id.JobID, workflowID string, d *diagnos
 	return doc
 }
 
-// JobDiagnosticsSummaryDocument is the single per-job row persisted at
-// job-completion merge time for the JobCompleteEvent's droppedEventCount.
 // Deliberately doesn't reuse DiagnosticDocument's shape: the
 // {"code": {"$exists": true}} filter in FindByJobNodeID/FindByJobID relies
-// on that to exclude this row from the per-diagnostic decode path.
+// on this row having no code field.
 type JobDiagnosticsSummaryDocument struct {
 	Timestamp         time.Time `bson:"timestamp"`
 	DroppedEventCount *uint64   `bson:"droppedEventCount,omitempty"`
@@ -170,14 +149,10 @@ type JobDiagnosticsSummaryDocument struct {
 	JobID             string    `bson:"jobId"`
 }
 
-// JobDiagnosticsSummaryID is the deterministic ID of the single per-job
-// summary row, exported so callers can look it up directly.
 func JobDiagnosticsSummaryID(jobID id.JobID) string {
 	return jobID.String() + ":" + JobDiagnosticNodeSegment + ":summary"
 }
 
-// NewJobDiagnosticsSummaryDocument builds the single per-job summary row
-// from a JobCompleteEvent's droppedEventCount.
 func NewJobDiagnosticsSummaryDocument(
 	jobID id.JobID,
 	timestamp time.Time,
@@ -191,10 +166,8 @@ func NewJobDiagnosticsSummaryDocument(
 	}
 }
 
-// Model implements mongodoc.Model, plugging JobDiagnosticsSummaryDocument
-// into the same Consumer machinery as DiagnosticDocument. The count is
-// never nil since SaveTerminalDiagnostics only writes this row when it's
-// non-nil.
+// DroppedEventCount is never nil here: SaveTerminalDiagnostics only writes
+// this row when it's non-nil.
 func (d *JobDiagnosticsSummaryDocument) Model() (*uint64, error) {
 	if d == nil {
 		return nil, nil

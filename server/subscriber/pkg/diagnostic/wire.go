@@ -1,26 +1,19 @@
-// Package diagnostic holds the wire form of a structured engine Diagnostic,
-// duplicated in lockstep (not imported — separate Go modules) with the
-// api-side equivalent in internal/usecase/gateway/diagnostic.go.
+// Package diagnostic is duplicated in lockstep (not imported — separate Go
+// modules) with the api-side equivalent in internal/usecase/gateway/diagnostic.go.
 package diagnostic
 
-// WireSourceSpan is the wire mirror of reearth_flow_diagnostics::SourceSpan.
 type WireSourceSpan struct {
 	Length *uint `json:"length,omitempty"`
 	Offset uint  `json:"offset"`
 }
 
-// WireAggregateInfo is the wire mirror of reearth_flow_diagnostics::AggregateInfo.
 type WireAggregateInfo struct {
 	SampleFeatureIds []string `json:"sampleFeatureIds"`
 	Count            uint64   `json:"count"`
 }
 
-// WireDiagnostic is the wire form of a structured Diagnostic published by
-// the engine (engine/schema/diagnostic_event.json), used standalone and
-// nested inside JobCompleteEvent's failedNodes/aggregatedDiagnostics.
-// Category, Severity and EffectiveDisposition are plain strings, not a
-// closed enum, so unknown/newer values round-trip verbatim — do not
-// validate them against a known set.
+// Category/Severity/EffectiveDisposition are unvalidated strings — unknown values round-trip verbatim.
+// Fatality is EffectiveDisposition only, never Severity.
 type WireDiagnostic struct {
 	Aggregated           *WireAggregateInfo `json:"aggregated,omitempty"`
 	SourceSpan           *WireSourceSpan    `json:"sourceSpan,omitempty"`

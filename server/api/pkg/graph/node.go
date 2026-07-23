@@ -66,26 +66,20 @@ func (e *NodeExecution) CompletedAt() *time.Time {
 	return e.completedAt
 }
 
-// FeaturesProcessed is the successfully processed feature count from a
-// processor node's terminal status event; always 0 for sink nodes (does not
-// apply). Nil means not-yet-terminal, a source node, or predates this
-// field — do not infer node kind from a 0 value.
+// 0 for sink nodes (not applicable); nil means not-yet-terminal — don't
+// infer node kind from a 0 value.
 func (e *NodeExecution) FeaturesProcessed() *int {
 	return e.featuresProcessed
 }
 
-// FeaturesWritten is the successfully written feature count from a sink
-// node's terminal status event; always 0 for processor nodes (does not
-// apply). Nil means not-yet-terminal, a source node, or predates this
-// field — do not infer node kind from a 0 value.
+// 0 for processor nodes (not applicable); nil means not-yet-terminal —
+// don't infer node kind from a 0 value.
 func (e *NodeExecution) FeaturesWritten() *int {
 	return e.featuresWritten
 }
 
-// FinishFeatureCount is the feature count a processor node emitted
-// downstream during finish() (mainly for accumulating/aggregating actions);
-// always 0 for sink nodes. Nil means not-yet-terminal, a source node, or
-// predates this field — do not infer node kind from a 0 value.
+// 0 for sink nodes (not applicable); nil means not-yet-terminal — don't
+// infer node kind from a 0 value.
 func (e *NodeExecution) FinishFeatureCount() *int {
 	return e.finishFeatureCount
 }

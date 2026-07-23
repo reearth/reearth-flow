@@ -14,12 +14,9 @@ import (
 	"github.com/reearth/reearthx/log"
 )
 
-// NodeDiagnostics reads structured diagnostics for a job/node.
-//
-// Merges live Redis rows with durable Mongo rows (deduped via
-// dedupeDiagnostics); always consults both, since Mongo alone holds
-// job-completion terminal rows that never reach Redis — short-circuiting on
-// a non-empty Redis result would hide those until the Redis TTL expired.
+// Always queries both Redis and Mongo — short-circuiting on a non-empty
+// Redis result would hide Mongo-only terminal rows until the Redis TTL
+// expires.
 type NodeDiagnostics struct {
 	diagnosticsRepo   repo.NodeDiagnostics
 	jobRepo           repo.Job
@@ -106,17 +103,13 @@ func (i *NodeDiagnostics) GetJobDiagnostics(ctx context.Context, jobID id.JobID)
 	return dedupeDiagnostics(rows), nil
 }
 
-// fatalEffectiveDisposition is the wire value of the engine's
-// Disposition::Fatal. failedNodes entries are always stamped Fatal;
-// aggregatedDiagnostics entries never are — this recovers which wire array a
-// persisted row came from (see GetFailedNodes).
+// failedNodes rows are always stamped Fatal; aggregatedDiagnostics rows
+// never are — this is how GetFailedNodes recovers which wire array a
+// persisted row came from.
 const fatalEffectiveDisposition = "fatal"
 
-// GetFailedNodes reads the job's terminal per-node fatal-failure rows
-// (GraphQL Job.failedNodes). Deliberately Mongo-only, never Redis:
-// failedNodes rows are persisted exclusively at job-completion merge time
-// and never written to Redis. Filtered via fatalEffectiveDisposition, since
-// only failedNodes rows carry that disposition.
+// Deliberately Mongo-only, never Redis: failedNodes rows are persisted only
+// at job-completion merge time.
 func (i *NodeDiagnostics) GetFailedNodes(ctx context.Context, jobID id.JobID) ([]*diagnostic.Diagnostic, error) {
 	if err := i.checkJobPermission(ctx, jobID); err != nil {
 		return nil, err
@@ -140,13 +133,8 @@ func (i *NodeDiagnostics) GetFailedNodes(ctx context.Context, jobID id.JobID) ([
 	return dedupeDiagnostics(failed), nil
 }
 
-// dedupeDiagnostics collapses rows sharing a (nodeId, code,
-// effectiveDisposition) key to one representative (preferOver decides the
-// winner), keeping first-occurrence order. Needed because an aggregated
-// summary is legitimately persisted twice — once as a live mirror, once as
-// a terminal row at job completion. effectiveDisposition is part of the key
-// because a failed-node row and an aggregated row can otherwise share
-// (nodeId, code) and would wrongly collapse into each other.
+// effectiveDisposition is part of the dedup key: a failed-node row and an
+// aggregated row can otherwise share (nodeId, code) and wrongly collapse.
 func dedupeDiagnostics(rows []*diagnostic.Diagnostic) []*diagnostic.Diagnostic {
 	type dedupeKey struct {
 		nodeID      string
@@ -191,9 +179,6 @@ func dedupeDiagnostics(rows []*diagnostic.Diagnostic) []*diagnostic.Diagnostic {
 	return out
 }
 
-// preferOver reports whether candidate should replace current as
-// dedupeDiagnostics' representative row: Terminal() wins ties, else the
-// more recent Timestamp wins.
 func preferOver(candidate, current *diagnostic.Diagnostic) bool {
 	if candidate.Terminal() != current.Terminal() {
 		return candidate.Terminal()
@@ -201,9 +186,6 @@ func preferOver(candidate, current *diagnostic.Diagnostic) bool {
 	return candidate.Timestamp().After(current.Timestamp())
 }
 
-// GetDroppedEventCount reads the job's persisted droppedEventCount (GraphQL
-// Job.droppedEventCount) from the per-job summary row written alongside
-// failedNodes/aggregatedDiagnostics at job-completion merge time.
 func (i *NodeDiagnostics) GetDroppedEventCount(ctx context.Context, jobID id.JobID) (*uint64, error) {
 	if err := i.checkJobPermission(ctx, jobID); err != nil {
 		return nil, err

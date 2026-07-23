@@ -12,9 +12,8 @@ import (
 	reearth_log "github.com/reearth/reearthx/log"
 )
 
-// DiagnosticEntry is the wire shape pushed onto the diagnostics:{jobId}
-// [:{nodeId}] Redis lists; WireDiagnostic is embedded, not nested, to match
-// the subscriber's flattened JSON shape on Unmarshal.
+// WireDiagnostic is embedded, not nested — needed to match the subscriber's
+// flattened JSON shape on Unmarshal.
 type DiagnosticEntry struct {
 	Timestamp  time.Time `json:"timestamp"`
 	WorkflowID string    `json:"workflowId"`
@@ -31,8 +30,6 @@ func (e *DiagnosticEntry) ToDomain() (*diagnostic.Diagnostic, error) {
 	return e.WireDiagnostic.ToDomain(jid, e.Timestamp.UTC())
 }
 
-// GetNodeDiagnostics reads diagnostics:{jobId}:{nodeId} (nodeID "" reads
-// the "_job" bucket, mirroring the subscriber's fallback).
 func (r *redisLog) GetNodeDiagnostics(
 	ctx context.Context,
 	jobID id.JobID,
@@ -46,8 +43,6 @@ func (r *redisLog) GetNodeDiagnostics(
 	return r.getDiagnosticsList(ctx, key)
 }
 
-// GetJobDiagnostics reads diagnostics:{jobId}, the whole-job index list the
-// subscriber double-writes every diagnostic event onto.
 func (r *redisLog) GetJobDiagnostics(
 	ctx context.Context,
 	jobID id.JobID,
@@ -57,8 +52,8 @@ func (r *redisLog) GetJobDiagnostics(
 }
 
 func (r *redisLog) getDiagnosticsList(ctx context.Context, key string) ([]*diagnostic.Diagnostic, error) {
-	// LRANGE on a missing key returns an empty slice with no error (unlike
-	// GET, which returns redis.Nil) — no special not-found handling needed.
+	// LRANGE on a missing key returns an empty slice, not an error (unlike
+	// GET's redis.Nil).
 	vals, err := r.client.LRange(ctx, key, 0, -1).Result()
 	if err != nil {
 		return nil, fmt.Errorf("failed to lrange redis key=%s: %w", key, err)

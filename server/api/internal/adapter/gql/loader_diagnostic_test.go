@@ -110,9 +110,6 @@ func TestDiagnosticLoader_GetNodeDiagnostics(t *testing.T) {
 		require.Len(t, got2, 1)
 		assert.Equal(t, "gltf.zero_face_solid", got2[0].Code)
 
-		// The .Once() expectation above fails the test (via AssertExpectations)
-		// if GetJobDiagnostics was called more than once across both
-		// GetNodeDiagnostics calls for this same job.
 		mockUsecase.AssertExpectations(t)
 		mockUsecase.AssertNumberOfCalls(t, "GetJobDiagnostics", 1)
 	})
@@ -124,8 +121,7 @@ func TestDiagnosticLoader_GetNodeDiagnostics(t *testing.T) {
 			newTestLoaderNodeDiagnostic(t, jID, "node-1", "internal.unclassified"),
 			newTestLoaderNodeDiagnostic(t, jID, "node-2", "gltf.zero_face_solid"),
 		}
-		// A small delay so concurrent callers actually overlap on the
-		// in-flight fetch instead of serializing through the mock trivially.
+		// Delay so concurrent callers overlap on the in-flight fetch instead of serializing trivially.
 		mockUsecase.On("GetJobDiagnostics", ctx, jID).
 			After(20*time.Millisecond).
 			Return(rows, nil).

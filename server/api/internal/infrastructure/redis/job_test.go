@@ -95,14 +95,7 @@ func TestGetJobCompleteEvent(t *testing.T) {
 	})
 }
 
-// fixturePath is the shared wire-shape fixture also used by the subscriber
-// module's own round-trip test (pkg/job/job_complete_event_test.go) and by
-// gateway.TestJobCompleteEvent_RoundTripsDiagnosticsFixture. The subscriber
-// and api Go modules are independent (no shared package, no cross-module
-// import), so this test simulates the subscriber -> Redis -> api hop by
-// treating the fixture bytes as "what the subscriber wrote to Redis" —
-// the subscriber's own tests separately lock that its Marshal output
-// matches this fixture's shape.
+// Shared fixture (also used by the subscriber module and gateway.TestJobCompleteEvent_RoundTripsDiagnosticsFixture); the subscriber and api modules don't share code, so this simulates the subscriber -> Redis -> api hop by treating the fixture bytes as what the subscriber wrote.
 const fixturePath = "../../../../testdata/diagnostics/job_complete_with_diagnostics.json"
 
 func TestGetJobCompleteEvent_DiagnosticsSurviveSubscriberRedisHop(t *testing.T) {

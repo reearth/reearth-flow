@@ -40,10 +40,7 @@ func (u *diagnosticSubscriberUseCase) ProcessDiagnosticEvent(ctx context.Context
 		return fmt.Errorf("failed to write diagnostic event to Redis: %w", err)
 	}
 
-	// Mongo persistence is best-effort: Redis is the source of truth for
-	// live consumption, Mongo is the durable per-node record. A Mongo
-	// failure is logged and swallowed so the message is still Acked
-	// (mirrors node_subscriber.go's terminal-state Mongo write).
+	// Mongo failure logs a warning and is swallowed — message is still Acked.
 	if err := u.storage.SaveToMongo(ctx, event); err != nil {
 		log.Printf("WARNING: Failed to save diagnostic event to MongoDB for JobID=%s, NodeID=%v: %v",
 			event.JobID, event.NodeID, err)

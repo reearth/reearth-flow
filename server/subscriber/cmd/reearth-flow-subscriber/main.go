@@ -136,9 +136,7 @@ func main() {
 	logStorage := infrastructure.NewLogStorageImpl(redisStorage)
 	userFacingLogStorage := infrastructure.NewUserFacingLogStorageImpl(redisStorage)
 
-	// Initialize MongoDB client and node/diagnostic storage if needed.
-	// Diagnostics also persist to Mongo (nodeDiagnostics collection), so the
-	// client must be created when either subscription is configured.
+	// Initialize MongoDB client and node/diagnostic storage if needed
 	var mongoClient *mongo.Client
 	var nodeStorage gateway.NodeStorage
 	var diagnosticStorage gateway.DiagnosticStorage
@@ -217,7 +215,6 @@ func main() {
 		log.Println("Node subscription ID not provided, node subscriber will not be started")
 	}
 
-	// Set up diagnostic subscriber if configured
 	if conf.DiagnosticSubscriptionID != "" && diagnosticStorage != nil {
 		diagnosticSub := pubsubClient.Subscriber(conf.DiagnosticSubscriptionID)
 		diagnosticSubAdapter := flow_pubsub.NewRealSubscription(diagnosticSub)

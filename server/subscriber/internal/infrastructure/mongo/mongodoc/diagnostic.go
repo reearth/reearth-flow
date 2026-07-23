@@ -7,9 +7,6 @@ import (
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 
-// diagnosticSourceSpanDocument / diagnosticAggregateInfoDocument mirror
-// diagnostic.WireSourceSpan / WireAggregateInfo in bson (those pkg types
-// only carry json tags).
 type diagnosticSourceSpanDocument struct {
 	Length *uint `bson:"length,omitempty"`
 	Offset uint  `bson:"offset"`
@@ -20,9 +17,6 @@ type diagnosticAggregateInfoDocument struct {
 	Count            uint64   `bson:"count"`
 }
 
-// DiagnosticDocument is a single per-node (or per-job, when NodeID is nil)
-// row in the nodeDiagnostics collection. Unlike NodeExecutionDocument, rows
-// are appended rather than upserted: ID is unique per event.
 type DiagnosticDocument struct {
 	Timestamp            time.Time                        `bson:"timestamp"`
 	Aggregated           *diagnosticAggregateInfoDocument `bson:"aggregated,omitempty"`
@@ -42,14 +36,8 @@ type DiagnosticDocument struct {
 	Message              string                           `bson:"message"`
 }
 
-// JobDiagnosticNodeSegment is the sentinel node segment for a diagnostic
-// with no node context, used both in the {jobId}:{nodeId}:{ObjectID}
-// document ID and the nodeId bson field itself, so the api's
-// FindByJobNodeID field-equality lookups stay symmetric with the ID.
 const JobDiagnosticNodeSegment = "_job"
 
-// normalizedNodeSegment returns nodeID's value, or JobDiagnosticNodeSegment
-// when nodeID is nil or the empty string.
 func normalizedNodeSegment(nodeID *string) string {
 	if nodeID != nil && *nodeID != "" {
 		return *nodeID
@@ -57,9 +45,6 @@ func normalizedNodeSegment(nodeID *string) string {
 	return JobDiagnosticNodeSegment
 }
 
-// NewDiagnosticDocument builds the persisted row for a DiagnosticEvent; the
-// id is {jobId}:{nodeId-or-_job}:{ObjectID} so rows append rather than
-// collide.
 func NewDiagnosticDocument(event *diagnostic.DiagnosticEvent) DiagnosticDocument {
 	nodeSegment := normalizedNodeSegment(event.NodeID)
 
