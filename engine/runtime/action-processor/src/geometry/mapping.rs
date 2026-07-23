@@ -115,9 +115,9 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<Rotator3DFactory>::default(),
         Box::<CoordinateExtractorFactory>::default(),
         Box::<NeighborFinderFactory>::default(),
+        #[cfg(feature = "new-geometry")]
+        Box::<CoordinateFrameReprojectorFactory>::default(),
     ];
-    #[cfg(feature = "new-geometry")]
-    factories.push(Box::<CoordinateFrameReprojectorFactory>::default());
     factories
         .into_iter()
         .map(|f| (f.name().to_string(), NodeKind::Processor(f)))
