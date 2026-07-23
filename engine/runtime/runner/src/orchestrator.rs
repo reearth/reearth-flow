@@ -23,8 +23,6 @@ use crate::errors::Error;
 use crate::executor::{run_dag_executor, Executor};
 use crate::policy::{map_error_policy, validate_node_selectors, validate_reject_routing};
 
-/// Joins validation messages into a single `Error::PolicyValidationError`,
-/// one message per line.
 fn policy_validation_error(errors: Vec<String>) -> Error {
     Error::PolicyValidationError(errors.join("\n"))
 }
@@ -80,8 +78,6 @@ impl Orchestrator {
         event_handlers: Vec<Arc<dyn EventHandler>>,
         sandbox_root: Uri,
     ) -> Result<RunSummary, Error> {
-        // Validate then compile the errorPolicy before DAG construction,
-        // aborting the run on any violation before doing real work.
         let error_policy: ErrorPolicy = workflow.error_policy.clone().unwrap_or_default();
         error_policy.validate().map_err(policy_validation_error)?;
         let disposition_policy = Arc::new(
@@ -112,12 +108,10 @@ impl Orchestrator {
             )
             .await?;
 
-        // Needs the built DAG's composed ids, so this runs after
-        // `create_dag_executor`, unlike the structural/compile checks above.
+        // Needs the built DAG's composed ids — must run after `create_dag_executor`.
         validate_node_selectors(&error_policy, &dag_executor.node_identities())
             .map_err(policy_validation_error)?;
 
-        // Colocated with the node-selector check above — same window, same abort shape.
         validate_reject_routing(&disposition_policy, &dag_executor.reject_routing_info())
             .map_err(policy_validation_error)?;
 

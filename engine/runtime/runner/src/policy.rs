@@ -1,7 +1,3 @@
-//! Maps the workflow-level `errorPolicy` into the diagnostics crate's
-//! compile-time input seam, and validates policy-override node selectors
-//! and Reject-routing against the built DAG.
-
 use std::collections::{HashMap, HashSet};
 
 use reearth_flow_diagnostics::{
@@ -11,8 +7,6 @@ use reearth_flow_runtime::executor::dag_executor::{NodeKindTag, RejectRoutingInf
 use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_types::{ErrorPolicy, OnFatal, PolicyDisposition, PolicyOverride};
 
-/// Field-by-field mapping from `ErrorPolicy` to the diagnostics crate's
-/// input seam; validation happens in `DispositionPolicy::compile`, not here.
 pub fn map_error_policy(policy: &ErrorPolicy) -> PolicyInput {
     PolicyInput {
         on_fatal: map_on_fatal(&policy.on_fatal),
@@ -47,8 +41,6 @@ fn map_override(o: &PolicyOverride) -> OverrideInput {
     }
 }
 
-/// Checks every override's `node` matches a composed DAG id; a raw id shared
-/// by multiple subgraph instances is flagged "ambiguous" rather than "not found".
 pub fn validate_node_selectors(
     policy: &ErrorPolicy,
     node_identities: &[(String, String)],
@@ -91,9 +83,7 @@ pub fn validate_node_selectors(
     }
 }
 
-/// Load-time check: any non-source node where the policy could resolve an
-/// error code to `Reject` must have somewhere to route rejected features —
-/// a processor needs a wired `rejected` port, a sink needs `sideFile`.
+/// Reject-resolvable nodes need a route: processor needs a wired `rejected` port, sink needs `sideFile`.
 pub fn validate_reject_routing(
     policy: &DispositionPolicy,
     nodes: &[RejectRoutingInfo],
@@ -149,8 +139,6 @@ pub fn validate_reject_routing(
     }
 }
 
-/// Registry error codes that could resolve to `Reject` at `composed_id`;
-/// combines the node-agnostic fast check with the node-aware `resolve` ladder.
 fn rejecting_codes(policy: &DispositionPolicy, composed_id: &str) -> Vec<ErrorCode> {
     ErrorCode::ALL
         .iter()
@@ -162,8 +150,7 @@ fn rejecting_codes(policy: &DispositionPolicy, composed_id: &str) -> Vec<ErrorCo
         .collect()
 }
 
-/// Levenshtein distance for "nearest match" suggestions in unmatched-node-id
-/// errors; duplicated from a private helper in the diagnostics crate.
+/// Duplicated from a private helper in the diagnostics crate — keep in sync manually.
 fn levenshtein_distance(a: &str, b: &str) -> usize {
     let a: Vec<char> = a.chars().collect();
     let b: Vec<char> = b.chars().collect();
@@ -334,7 +321,6 @@ mod tests {
 
     #[test]
     fn validate_node_selectors_flags_ambiguous_raw_id_across_subgraph_instances() {
-        // The same subgraph instantiated twice: same raw id, two composed ids.
         let policy = ErrorPolicy {
             overrides: vec![PolicyOverride {
                 node: Some("writer".to_string()),
@@ -540,8 +526,6 @@ mod tests {
         assert!(validate_reject_routing(&policy, &nodes).is_ok());
     }
 
-    /// A Reject-promoting override on one sink must not require side-file
-    /// routing on an unrelated sink — proves the validation layer's node scoping.
     #[test]
     fn validate_reject_routing_only_flags_the_overridden_node() {
         let policy = compile_policy(

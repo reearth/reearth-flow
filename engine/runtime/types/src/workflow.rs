@@ -136,8 +136,7 @@ impl Workflow {
     }
 }
 
-/// Workflow-level configuration for how `Fatal` diagnostics are handled and
-/// per-selector overrides of the default disposition. Absent (`None`) is byte-identical to no error-handling config — additive. Registry-aware rules are enforced later by the resolver; `validate` here only checks structural rules.
+/// `None` is byte-identical to no error-handling config (additive); `validate` here checks structural rules only — registry rules are enforced by the resolver.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema, Default)]
 #[serde(rename_all = "camelCase")]
 pub struct ErrorPolicy {
@@ -147,7 +146,6 @@ pub struct ErrorPolicy {
     pub treat_all_as_fatal: bool,
     #[serde(default)]
     pub allow_relax_internal: bool,
-    /// D7: switch that enables writing rejected features to a side file instead of only counting/logging them.
     #[serde(default)]
     pub side_file: bool,
     #[serde(default)]
@@ -155,8 +153,7 @@ pub struct ErrorPolicy {
 }
 
 impl ErrorPolicy {
-    /// Structural validation only (no registry/graph access needed). Collects
-    /// every violation (index + selectors) rather than short-circuiting on the first.
+    /// Collects every violation instead of short-circuiting on the first.
     pub fn validate(&self) -> Result<(), Vec<String>> {
         let mut errors = Vec::new();
         for (index, override_) in self.overrides.iter().enumerate() {
@@ -196,20 +193,15 @@ impl ErrorPolicy {
     }
 }
 
-/// What to do when a `Fatal`-severity diagnostic is raised (after override
-/// resolution) and is not otherwise handled.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema, Default)]
 #[serde(rename_all = "snake_case")]
 pub enum OnFatal {
-    /// Stop the run. This is the safe default.
     #[default]
     Terminate,
-    /// Keep running, treating the diagnostic as non-terminating.
     Continue,
 }
 
-/// Overrides the disposition of diagnostics matching the given selectors. At least
-/// one of `node`/`code`/`category` must be set; `code` and `category` are mutually exclusive (see `ErrorPolicy::validate`).
+/// At least one of `node`/`code`/`category` must be set; `code` and `category` are mutually exclusive (see `ErrorPolicy::validate`).
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct PolicyOverride {
@@ -219,15 +211,12 @@ pub struct PolicyOverride {
     pub disposition: PolicyDisposition,
 }
 
-/// How a matched diagnostic should be handled.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, JsonSchema)]
 #[serde(rename_all = "snake_case")]
 pub enum PolicyDisposition {
-    /// Warn and drop the affected feature; the run continues.
     WarnDrop,
-    /// Reject the affected feature (optionally to the D7 side file); the run continues.
     Reject,
-    /// Treat as fatal, subject to `on_fatal`.
+    /// Still runs through `on_fatal` — it doesn't always terminate the run.
     Fatal,
 }
 

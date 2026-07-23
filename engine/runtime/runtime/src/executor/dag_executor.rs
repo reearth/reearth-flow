@@ -42,9 +42,6 @@ pub struct DagExecutor {
     options: ExecutorOptions,
 }
 
-/// Per-node-thread outcome carried alongside its terminal `Result`, so
-/// `DagExecutorJoinHandle::join` can fold diagnostics from every node —
-/// including failed ones — into a `RunSummary`.
 #[derive(Debug, Default)]
 pub struct NodeOutcome {
     pub summaries: Vec<Diagnostic>,
@@ -52,17 +49,12 @@ pub struct NodeOutcome {
 
 type NodeThreadResult = (NodeOutcome, Result<(), ExecutionError>);
 
-/// A node thread's identity, carried alongside its `JoinHandle` so
-/// `fold_outcomes` can attribute a synthesized failure diagnostic to the
-/// right node even when the `ExecutionError` carries no structured `Diagnostic`.
 #[derive(Debug, Clone)]
 pub struct NodeMeta {
     pub composed_id: String,
     pub action: String,
 }
 
-/// Node kind tag for load-time Reject-routing validation (spec 4.4) —
-/// coarser than `builder_dag::NodeKind` since no trait object is needed.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum NodeKindTag {
     Source,
@@ -70,8 +62,6 @@ pub enum NodeKindTag {
     Sink,
 }
 
-/// Per-node info for the runner's load-time Reject-routing validation
-/// (spec 4.4). See `DagExecutor::reject_routing_info`.
 #[derive(Debug, Clone)]
 pub struct RejectRoutingInfo {
     pub composed_id: String,
@@ -84,15 +74,8 @@ pub struct DagExecutorJoinHandle {
     join_handles: Vec<(NodeMeta, JoinHandle<NodeThreadResult>)>,
     notify: Arc<Notify>,
     executor_id: uuid::Uuid,
-    /// The event-subscriber's tokio task, retained so callers can await its
-    /// drain-then-shutdown before finalizing a run.
     subscriber: Option<tokio::task::JoinHandle<()>>,
-    /// Events the broadcast ring dropped (`RecvError::Lagged`) before the
-    /// subscriber could dispatch them, tallied live by `subscribe_event`.
     dropped_events: Arc<AtomicU64>,
-    /// The compiled `errorPolicy`; `join()` uses `on_fatal()` to decide
-    /// whether a node's `Err` short-circuits the run (`Terminate`) or folds
-    /// into `RunSummary::failed_nodes` (`Continue`, spec D8).
     disposition_policy: Arc<DispositionPolicy>,
 }
 
@@ -125,9 +108,6 @@ impl DagExecutor {
         })
     }
 
-    /// `(composed_id, raw_id)` for every node, before `start()` consumes
-    /// `self`. Used by the runner's load-time policy-override check (spec
-    /// 4.2) to validate override `node` values and detect ambiguous raw ids.
     pub fn node_identities(&self) -> Vec<(String, String)> {
         self.builder_dag
             .graph()
@@ -136,9 +116,6 @@ impl DagExecutor {
             .collect()
     }
 
-    /// Per-node info for the runner's load-time Reject-routing validation
-    /// (spec 4.4); same call-site window as `node_identities` (after
-    /// `create_dag_executor`, before `start`).
     pub fn reject_routing_info(&self) -> Vec<RejectRoutingInfo> {
         let graph = self.builder_dag.graph();
         graph
@@ -177,7 +154,6 @@ impl DagExecutor {
         event_handlers: Vec<Arc<dyn EventHandler>>,
         executor_id: uuid::Uuid,
     ) -> Result<DagExecutorJoinHandle, ExecutionError> {
-        // Extract fields from options before partial moves.
         let sandbox_root = self.options.sandbox_root.clone();
         let disposition_policy = self.options.disposition_policy.clone();
 
@@ -208,8 +184,7 @@ impl DagExecutor {
             sandbox_root.clone(),
         );
 
-        // Run-scoped warn-once dedup set, shared across nodes so
-        // `ctx.warn_once(...)` fires at most once per code per run.
+        // Shared across nodes: dedups ctx.warn_once() to once per code per run.
         let warn_once: reearth_flow_diagnostics::WarnOnceSet = Arc::default();
 
         let should_run_sources = execution_dag.graph().node_indices().any(|i| {
@@ -375,12 +350,8 @@ async fn subscribe_event(
 }
 
 impl DagExecutorJoinHandle {
-    /// Collects every node thread's outcome — never short-circuits on the
-    /// first failure — then folds into a `RunSummary`. Under
-    /// `OnFatalInput::Terminate` (default) the first `Err` is returned and
-    /// `Ok(_)` implies `failed_nodes.is_empty()`; under `Continue` (spec D8)
-    /// every outcome folds in and `Ok(..)` is always returned, so
-    /// `failed_nodes` may be non-empty.
+    /// Under `OnFatalInput::Continue`, this always returns `Ok(_)` even with
+    /// failures — check `failed_nodes`, don't rely on `is_ok()`.
     pub fn join(&mut self) -> Result<RunSummary, ExecutionError> {
         let mut results: Vec<(NodeMeta, NodeThreadResult)> =
             Vec::with_capacity(self.join_handles.len());
@@ -397,14 +368,11 @@ impl DagExecutorJoinHandle {
                 continue;
             };
             let (meta, handle) = self.join_handles.swap_remove(finished);
-            // A panicked node thread is a bug, not a per-node failure — keep
-            // re-raising it here rather than folding it into `RunSummary`.
+            // Panics are re-raised (not folded into RunSummary) — a panic is
+            // a bug, not a per-node failure.
             results.push((meta, handle.join().unwrap()));
         }
 
-        // No flush call here: the old 5s `enhanced_flush` never early-broke
-        // in practice (subscribers stay attached) — the runner's shutdown
-        // sleep provides enough drain window without that tax.
         cleanup_executor_cache(self.executor_id);
 
         if self.disposition_policy.on_fatal() == OnFatalInput::Terminate {
@@ -418,31 +386,22 @@ impl DagExecutorJoinHandle {
     }
 
     pub fn notify(&self) {
-        // `notify_one`, not `notify_waiters`: `notify_waiters` only wakes an
-        // already-parked waiter and stores no permit, losing the wakeup if
-        // the subscriber isn't parked yet; `notify_one` stores a permit so
-        // the next `notified().await` always sees it.
+        // notify_one (not notify_waiters): stores a permit, so a wakeup fired
+        // before the subscriber parks isn't lost.
         self.notify.notify_one();
     }
 
-    /// Takes the event-subscriber's tokio task (once), so the caller can
-    /// await its drain-then-shutdown after `notify()`.
     pub fn take_subscriber(&mut self) -> Option<tokio::task::JoinHandle<()>> {
         self.subscriber.take()
     }
 
-    /// Events the broadcast ring dropped (`RecvError::Lagged`) before the
-    /// subscriber could dispatch them.
     pub fn dropped_events(&self) -> u64 {
         self.dropped_events.load(Ordering::Relaxed)
     }
 }
 
-/// Pure fold: turns every node thread's outcome into one `RunSummary`. Each
-/// `Err` becomes a `failed_nodes` entry (recovered from the fatal-backstop
-/// diagnostic when it downcasts, else synthesized as `InternalUnclassified`),
-/// always stamped `Fatal`. `dropped_event_count` stays 0 — filled in later by
-/// `run_dag_executor` from the subscriber's own tally.
+/// Every `failed_nodes` entry is stamped `effective_disposition = Fatal`
+/// here, regardless of the diagnostic's original severity.
 fn fold_outcomes(results: Vec<(NodeMeta, NodeThreadResult)>) -> RunSummary {
     let mut aggregated_diagnostics = Vec::new();
     let mut failed_nodes = Vec::new();
@@ -459,14 +418,12 @@ fn fold_outcomes(results: Vec<(NodeMeta, NodeThreadResult)>) -> RunSummary {
     RunSummary {
         failed_nodes,
         aggregated_diagnostics,
-        dropped_event_count: 0, // Filled in by run_dag_executor after the subscriber drains.
+        dropped_event_count: 0,
     }
 }
 
-/// Recovers the structured `Diagnostic` when `e` is the fatal backstop,
-/// else synthesizes one under `InternalUnclassified`. The recovered case
-/// keeps its own `node_id`/`action_type`; `meta` is only stamped onto the
-/// synthesized fallback.
+/// `meta` is stamped only on synthesized fallbacks — a recovered diagnostic
+/// keeps its own `node_id`/`action_type`.
 fn diagnostic_from_execution_error(e: ExecutionError, meta: &NodeMeta) -> Diagnostic {
     let rendered = e.to_string();
     let boxed = match e {
@@ -495,8 +452,8 @@ fn start_source<F: Send + 'static + Future + Unpin + Debug>(
         .spawn(move || {
             let result = match source.run() {
                 Ok(()) => Ok(()),
-                // Channel disconnection means the source listener has quit.
-                // Maybe it quit gracefully so we don't need to propagate the error.
+                // CannotSendToChannel here means the listener quit gracefully
+                // — swallowed, not a real failure.
                 Err(e) => {
                     if let ExecutionError::Source(e) = &e {
                         if let Some(ExecutionError::CannotSendToChannel(_)) = e.downcast_ref() {
@@ -547,8 +504,6 @@ fn start_sink<F: Send + 'static + Future + Unpin + Debug>(
     Ok((meta, handle))
 }
 
-/// Collects nodes to execute in an incremental run: downstream of the start
-/// node, OR having an incoming edge not in `available_edges`.
 fn collect_executable_node_ids(
     dag: &ExecutionDag,
     cfg: &IncrementalRunConfig,
@@ -618,8 +573,6 @@ struct ReplayGroup {
     edges: Vec<ReplayEdge>,
 }
 
-/// Builds replay groups only for edges that are in available_edges.
-/// This ensures we only replay data that was actually copied from the previous run.
 fn build_replay_groups(
     dag: &ExecutionDag,
     execute: &HashSet<NodeId>,
@@ -634,8 +587,6 @@ fn build_replay_groups(
         let src = g[e.source()].handle.id.clone();
         let dst = g[e.target()].handle.id.clone();
 
-        // Only replay edges into an executable node from a non-executable
-        // (upstream) source, when the edge is in available_edges.
         if execute.contains(&dst) && !execute.contains(&src) {
             let edge_id_parsed = e.weight().edge_id.to_string().parse::<uuid::Uuid>().ok();
             let is_available = edge_id_parsed.is_some_and(|id| available_edge_ids.contains(&id));
@@ -751,8 +702,6 @@ mod fold_outcomes_tests {
         }
     }
 
-    /// Tests below share this meta unless specifically testing distinct-node
-    /// attribution — the fold pairs entries 1:1 regardless.
     fn some_meta() -> NodeMeta {
         meta("writer-1", "Cesium 3D Tiles Writer")
     }
@@ -840,8 +789,6 @@ mod fold_outcomes_tests {
 
     #[test]
     fn recovered_diagnostic_keeps_its_own_identity_not_the_thread_meta() {
-        // A recovered diagnostic keeps its own node_id/action_type — the
-        // fold must not clobber it with the thread's NodeMeta.
         let mut original = diagnostic(ErrorCode::InternalInvariantViolation, "boom");
         original.node_id = Some("original-composed-id".to_string());
         original.action_type = Some("Original Action".to_string());
@@ -868,8 +815,6 @@ mod fold_outcomes_tests {
 
     #[test]
     fn synthesizes_unclassified_for_non_diagnostic_boxed_error() {
-        // A `Processor` variant whose boxed error is NOT a `Diagnostic` —
-        // downcast fails, so the fold must synthesize instead of panicking.
         let boxed: crate::errors::BoxedError = Box::new(std::io::Error::other("io boom"));
         let results = vec![(
             some_meta(),
@@ -888,8 +833,6 @@ mod fold_outcomes_tests {
 
     #[test]
     fn synthesized_diagnostic_is_stamped_with_the_thread_meta_identity() {
-        // A synthesized (not recovered) diagnostic must carry the failed
-        // thread's composed id and action, not None/None.
         let boxed: crate::errors::BoxedError = Box::new(std::io::Error::other("io boom"));
         let results = vec![(
             meta("prefix-a.node-7", "Some Writer"),
@@ -911,8 +854,6 @@ mod fold_outcomes_tests {
 
     #[test]
     fn synthesizes_unclassified_for_non_structured_execution_error_variant() {
-        // A variant that never carries a `Diagnostic` at all (e.g. a channel
-        // failure) must also be synthesized, not dropped or panicked on.
         let results = vec![(
             some_meta(),
             (
@@ -960,12 +901,10 @@ mod fold_outcomes_tests {
 
         let summary = fold_outcomes(results);
 
-        // aggregated_diagnostics: only from the two Ok entries, in order.
         assert_eq!(summary.aggregated_diagnostics.len(), 2);
         assert_eq!(summary.aggregated_diagnostics[0].message, "ok-1");
         assert_eq!(summary.aggregated_diagnostics[1].message, "ok-2");
 
-        // failed_nodes: one recovered, one synthesized, in collection order.
         assert_eq!(summary.failed_nodes.len(), 2);
         assert_eq!(summary.failed_nodes[0].message, "fatal-1");
         assert_eq!(
@@ -988,8 +927,6 @@ mod fold_outcomes_tests {
 
     #[test]
     fn fold_outcomes_never_sets_dropped_event_count() {
-        // fold_outcomes only sees node thread outcomes; the subscriber's
-        // lagged-event tally is folded in separately by run_dag_executor.
         let summary = fold_outcomes(vec![(some_meta(), (outcome(vec![]), Ok(())))]);
         assert_eq!(summary.dropped_event_count, 0);
     }

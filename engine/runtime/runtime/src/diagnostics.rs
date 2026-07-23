@@ -10,13 +10,10 @@ use uuid::Uuid;
 use crate::event::EventHub;
 use crate::node::NodeHandle;
 
-/// Hard cap on buffered reject rows per node; rows beyond the cap are
-/// counted, not buffered, and surface as one overflow marker row at flush
-/// (see `render_reject_jsonl`).
+/// Rows beyond the cap are counted, not buffered, and surface as one overflow marker row at flush.
 pub const REJECT_ROW_CAP: usize = 10_000;
 
-/// One row of the D7 reject side-file. PII-minimal (no feature attributes).
-/// `has_geometry` is tri-state: `None` means unknown, not `false`.
+/// PII-minimal (no feature attributes). `has_geometry` is tri-state: `None` means unknown, not `false`.
 #[derive(Debug, Clone)]
 pub struct RejectRow {
     pub feature_id: Option<Uuid>,
@@ -24,8 +21,6 @@ pub struct RejectRow {
     pub code: ErrorCode,
 }
 
-/// Sink-only buffer for D7 reject rows; `None` unless side_file() policy
-/// applies to a sink node (see `NodeDiagnosticsHandle::new`).
 #[derive(Debug, Default)]
 struct RejectCapture {
     rows: Mutex<Vec<RejectRow>>,
@@ -46,8 +41,6 @@ impl RejectCapture {
         }
     }
 
-    /// Drains buffered rows plus the residual overflow count. `None` when
-    /// there is nothing to flush (no `Reject` was ever captured).
     fn drain(&self) -> Option<(Vec<RejectRow>, u64)> {
         let rows = std::mem::take(&mut *self.rows.lock().unwrap());
         let overflow = self.overflow.swap(0, Ordering::Relaxed);
@@ -59,8 +52,6 @@ impl RejectCapture {
     }
 }
 
-/// Renders buffered D7 reject rows as newline-delimited JSON, plus one
-/// trailing overflow-marker row when `overflow > 0`.
 pub fn render_reject_jsonl(rows: &[RejectRow], overflow: u64) -> Vec<u8> {
     let mut buf = Vec::new();
     for row in rows {
@@ -83,17 +74,14 @@ pub fn render_reject_jsonl(rows: &[RejectRow], overflow: u64) -> Vec<u8> {
     buf
 }
 
-/// Pairs the aggregator with runtime identities for `Event::Diagnostic`s.
-/// `node_handle`/`node_name` are unused here but must stay — `Event::Log`
-/// keys off them for log attribution.
+/// `node_handle`/`node_name` are unused here but must stay — `Event::Log` keys off them for log attribution.
 #[derive(Debug)]
 pub struct NodeDiagnosticsHandle {
     pub node_handle: NodeHandle,
     pub node_name: String,
     pub inner: Arc<NodeDiagnostics>,
     disposition_policy: Arc<DispositionPolicy>,
-    /// `Some` only for a sink node under a `side_file()` policy (see `new`);
-    /// otherwise `record_reject_row`/`drain_reject_rows` are no-ops.
+    /// `Some` only for a sink node under a `side_file()` policy; otherwise the record/drain methods are no-ops.
     reject_capture: Option<RejectCapture>,
 }
 
@@ -121,8 +109,6 @@ impl NodeDiagnosticsHandle {
         }
     }
 
-    /// Buffers one rejected-feature row for the sink side-file flush. No-op
-    /// unless constructed for a sink under `side_file()` policy (see `new`).
     pub fn record_reject_row(
         &self,
         feature_id: Option<Uuid>,
@@ -134,21 +120,16 @@ impl NodeDiagnosticsHandle {
         }
     }
 
-    /// Drains buffered reject rows for flush. `None` when capture isn't
-    /// enabled, or nothing was ever captured.
+    /// `None` when capture isn't enabled, or nothing was ever captured.
     pub fn drain_reject_rows(&self) -> Option<(Vec<RejectRow>, u64)> {
         self.reject_capture.as_ref().and_then(RejectCapture::drain)
     }
 
-    /// Resolves the effective disposition for `code` at this node via the
-    /// compiled policy (same ladder as `ExecutorContext::report()`).
     pub fn resolve(&self, code: ErrorCode) -> Disposition {
         self.disposition_policy.resolve(self.inner.node_id(), code)
     }
 
-    /// finish()-time drop reporting: runs the same resolve() ladder as
-    /// `report()`, but a resolved `Fatal` lands in the fatal slot, not `Err`
-    /// (finish()-time sites are fire-and-forget, unlike `report()`).
+    /// Unlike `report()`, a resolved `Fatal` lands in the fatal slot, not `Err` — finish()-time sites are fire-and-forget.
     pub fn report_drop(
         &self,
         code: ErrorCode,
@@ -174,8 +155,6 @@ impl NodeDiagnosticsHandle {
                     DiagnosticKind::Reject
                 };
                 self.inner.record(kind, code, feature_id);
-                // Reject also captures a side-file row (no-op unless sink +
-                // side_file() policy).
                 if effective == Disposition::Reject {
                     self.record_reject_row(feature_id, has_geometry, code);
                 }
@@ -184,9 +163,7 @@ impl NodeDiagnosticsHandle {
     }
 }
 
-/// Drains the node's buckets once, emitting a structured `Event::Diagnostic`
-/// per summary (no twin `Event::Log` — `LogEventHandler` renders via the
-/// action log). Called once per node after `finish()`.
+/// No twin `Event::Log` is emitted — `LogEventHandler` renders diagnostics via the action log instead.
 pub fn emit_summaries(
     event_hub: &EventHub,
     handle: &NodeDiagnosticsHandle,
@@ -290,7 +267,6 @@ mod tests {
         assert_eq!(diagnostic_count, 2);
         assert!(receiver.try_recv().is_err());
 
-        // second call: buckets already drained, no events, empty Vec
         let mut receiver2 = event_hub.sender.subscribe();
         let summaries2 = emit_summaries(&event_hub, &handle);
         assert!(summaries2.is_empty());
@@ -357,7 +333,6 @@ mod tests {
             Some(Disposition::Reject)
         );
         assert!(handle.inner.take_fatal().is_none());
-        // no side-file capture: `handle_with_policy` builds a non-sink handle.
         assert!(handle.drain_reject_rows().is_none());
     }
 
@@ -379,7 +354,6 @@ mod tests {
             None,
         );
 
-        // the drain-end backstop's slot is populated, not the aggregation bucket
         assert!(handle.inner.drain_summaries().is_empty());
         let fatal = handle.inner.take_fatal().expect("fatal slot should be set");
         assert_eq!(fatal.effective_disposition, Some(Disposition::Fatal));
@@ -390,7 +364,6 @@ mod tests {
 
     #[test]
     fn record_reject_row_is_a_no_op_without_side_file_policy() {
-        // is_sink: true, but the default policy has side_file() == false.
         let handle = handle_with_policy_and_sink(Arc::default(), true);
         handle.record_reject_row(
             Some(uuid::Uuid::nil()),
@@ -428,7 +401,6 @@ mod tests {
         assert_eq!(rows[1].code, ErrorCode::GltfZeroFaceSolid);
     }
 
-    /// `None` buffers like `Some` — only `render_reject_jsonl` interprets it.
     #[test]
     fn record_reject_row_buffers_a_none_has_geometry_row_as_unknown() {
         let handle = handle_with_policy_and_sink(side_file_policy(), true);
@@ -447,7 +419,6 @@ mod tests {
         assert!(handle.drain_reject_rows().is_none());
     }
 
-    /// 10_001 records -> 10_000 buffered rows + overflow count 1, cap never exceeded.
     #[test]
     fn record_reject_row_caps_at_reject_row_cap_and_counts_the_residual() {
         let handle = handle_with_policy_and_sink(side_file_policy(), true);
@@ -459,8 +430,6 @@ mod tests {
         assert_eq!(overflow, 1);
     }
 
-    /// Regression proof: a Reject-resolving `report_drop` must produce a
-    /// side-file row matching the bucket count (previously produced zero).
     #[test]
     fn report_drop_resolving_reject_captures_a_row_matching_the_bucket_count() {
         let policy = DispositionPolicy::compile(PolicyInput {
@@ -500,8 +469,6 @@ mod tests {
         assert_eq!(rows[0].code, ErrorCode::CitygmlEmptyGeometry);
     }
 
-    /// No live `Feature` to derive `has_geometry` from — `None` is captured
-    /// verbatim, not guessed as `false`.
     #[test]
     fn report_drop_resolving_reject_with_unknown_geometry_captures_a_null_row() {
         let policy = DispositionPolicy::compile(PolicyInput {
@@ -526,8 +493,6 @@ mod tests {
         assert_eq!(rows[0].has_geometry, None);
     }
 
-    /// Without `side_file()`, the bucket still increments but no row is
-    /// captured.
     #[test]
     fn report_drop_resolving_reject_without_side_file_captures_no_row() {
         let policy = DispositionPolicy::compile(PolicyInput {
@@ -539,16 +504,12 @@ mod tests {
             ..Default::default()
         })
         .expect("policy should compile");
-        // is_sink: true, but the policy itself has no side_file() -- capture
-        // stays disabled per `NodeDiagnosticsHandle::new`.
         let handle = handle_with_policy_and_sink(Arc::new(policy), true);
         handle.report_drop(ErrorCode::CitygmlEmptyGeometry, None, Some(true));
         assert_eq!(handle.inner.drain_summaries().len(), 1);
         assert!(handle.drain_reject_rows().is_none());
     }
 
-    /// A `WarnDrop`-resolving `report_drop` never captures a side-file row,
-    /// even under a sink + `side_file()` handle — only `Reject` does.
     #[test]
     fn report_drop_resolving_warn_drop_never_captures_a_row_even_with_side_file_policy() {
         let handle = handle_with_policy_and_sink(side_file_policy(), true);
@@ -588,8 +549,6 @@ mod tests {
         assert_eq!(second["hasGeometry"], serde_json::json!(false));
     }
 
-    /// `None` renders as JSON `null`, not `false` — honest about "unknown"
-    /// vs. "known false".
     #[test]
     fn render_reject_jsonl_emits_null_has_geometry_for_unknown_rows() {
         let rows = vec![RejectRow {

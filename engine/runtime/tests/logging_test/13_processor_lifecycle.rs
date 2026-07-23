@@ -1,8 +1,5 @@
-//! Processor lifecycle coverage: a processor whose `initialize()` fails
-//! emits exactly one `NodeStatusChanged{Failed}` (previously the node
-//! appeared permanently stuck at `Starting`); a processor that completes
-//! successfully emits `Event::ProcessorFinished` exactly once, alongside a
-//! `Completed` status carrying real `NodeMetrics` counts.
+//! Regression guard: initialize() failure used to leave the node stuck at
+//! Starting instead of emitting NodeStatusChanged{Failed}.
 
 #[allow(dead_code)]
 mod logging_helper;
@@ -35,9 +32,6 @@ fn init_test_env() {
         std::env::set_var("FLOW_RUNTIME_ACTION_LOG_DISABLE", "true");
     });
 }
-
-// Test-only Processor whose initialize() always fails — no shipped action
-// does this, so it's the only way to exercise the initialize-failure path.
 
 #[derive(Debug, Clone)]
 struct FailInitProcessor;
@@ -162,9 +156,6 @@ impl EventHandler for NodeStatusRecorder {
     }
 }
 
-// Mirrors `11_run_summary_threading.rs`'s `prepare_run_from_yaml` +
-// `run_with_event_handler`, parameterized on a factory map so
-// `FailInitProcessor` can be registered.
 fn run_workflow_yaml(
     workflow_yaml: &str,
     factories: HashMap<String, NodeKind>,
@@ -218,19 +209,12 @@ fn run_workflow_yaml(
     )
 }
 
-/// source (Feature Creator, `feature_count` features) -> `middle_action` ->
-/// sink (JSON Writer), the same shape `logging/06_processor_error`'s fixture
-/// uses, generated with fresh UUIDs per call so parallel `#[test]` runs in
-/// this binary never collide on node ids. `middle_action` gets no `with`
-/// params (fine for `FailInitProcessor`, which ignores them) — use
-/// [`source_middle_sink_workflow_with_params`] for an action needing config.
+// Fresh UUIDs per call -- parallel #[test] runs must not collide on node ids.
 fn source_middle_sink_workflow(middle_action: &str, feature_count: usize) -> String {
     source_middle_sink_workflow_with_params(middle_action, "", feature_count)
 }
 
-/// Like [`source_middle_sink_workflow`], but `middle_with_yaml` is spliced in
-/// verbatim as the middle node's `with:` block body (already indented to
-/// match the surrounding YAML, e.g. `"          renameType: All\n..."`).
+// middle_with_yaml is spliced in verbatim -- caller must pre-indent it to match the surrounding YAML.
 fn source_middle_sink_workflow_with_params(
     middle_action: &str,
     middle_with_yaml: &str,
@@ -302,17 +286,13 @@ fn processor_initialize_failure_emits_exactly_one_failed_status() {
     let recorder = Arc::new(NodeStatusRecorder::default());
     let handlers: Vec<Arc<dyn EventHandler>> = vec![recorder.clone()];
 
-    // The middle node's initialize() always fails, so the run as a whole is
-    // expected to fail — only the per-node status sequence is under test.
+    // run's overall Result is discarded -- only the per-node status sequence is under test.
     let _ = run_workflow_yaml(
         &workflow_yaml,
         factories_with_fail_init_processor(),
         handlers,
     );
 
-    // Find the FailInitProcessor node's id from the captured statuses: it's
-    // whichever node reached `Starting` but never `Processing` (the source
-    // and sink both reach further states in this fixture).
     let all_statuses = recorder.statuses.lock().unwrap().clone();
     let mut by_node: HashMap<String, Vec<NodeStatus>> = HashMap::new();
     for (id, status, _) in &all_statuses {
@@ -347,8 +327,6 @@ fn processor_initialize_failure_emits_exactly_one_failed_status() {
         "expected exactly one NodeStatusChanged{{Failed}} for the failing node, got {failed_count}"
     );
 
-    // The terminal Failed event's metrics field carries no counters — this
-    // node never reached process()/finish().
     let terminal_metrics = recorder.statuses_for(failing_node).last().unwrap().1;
     assert!(
         terminal_metrics.is_none() || terminal_metrics == Some(NodeMetrics::default()),
@@ -359,9 +337,6 @@ fn processor_initialize_failure_emits_exactly_one_failed_status() {
 #[test]
 fn processor_success_emits_processor_finished_once_with_metrics() {
     const FEATURE_COUNT: usize = 3;
-    // "Bulk Attribute Renamer" is a plain per-feature processor (no
-    // accumulation), so its finish() never sends anything downstream itself
-    // — `finish_feature_count` should read back 0.
     let middle_with_yaml = "          renameType: All\n          renameAction: AddPrefix\n          renameValue: \"test_\"";
     let workflow_yaml = source_middle_sink_workflow_with_params(
         "Bulk Attribute Renamer",
@@ -375,8 +350,6 @@ fn processor_success_emits_processor_finished_once_with_metrics() {
         .expect("a plain rename-and-write workflow is expected to succeed");
     assert!(summary.failed_nodes.is_empty());
 
-    // Identify the processor node by its terminal metrics: features_processed
-    // == FEATURE_COUNT distinguishes it from the source and sink.
     let all_statuses = recorder.statuses.lock().unwrap().clone();
     let mut by_node: HashMap<String, Vec<(NodeStatus, Option<NodeMetrics>)>> = HashMap::new();
     for (id, status, metrics) in &all_statuses {
@@ -421,9 +394,6 @@ fn processor_success_emits_processor_finished_once_with_metrics() {
          ProcessorFailed"
     );
 
-    // The sink's own terminal metrics carry features_written, not
-    // features_processed — confirms the two node kinds populate disjoint
-    // NodeMetrics fields.
     let sink_terminal = by_node
         .values()
         .find_map(|events| {

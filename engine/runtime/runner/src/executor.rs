@@ -75,13 +75,10 @@ pub fn run_dag_executor(
         event_handlers,
         executor_id,
     ))?;
-    // Under `Terminate`, still returns `Err` exactly as the old fail-fast loop
-    // did (golden logs stay byte-identical). Under `Continue`, every thread's
-    // outcome — including failures — folds into `Ok(summary)` instead.
+    // `Terminate` still returns `Err` (golden logs byte-identical); `Continue` folds every outcome into `Ok(summary)`.
     let mut join_result = join_handle.join().map_err(Error::ExecutionError);
     join_handle.notify();
-    // Replaces the old fixed-sleep "settle" hack: awaits the subscriber task
-    // directly, which blocks exactly as long as the real event drain takes.
+    // Awaits the subscriber directly instead of a fixed-sleep hack.
     if let Some(subscriber) = join_handle.take_subscriber() {
         let _ = runtime.block_on(subscriber);
     }

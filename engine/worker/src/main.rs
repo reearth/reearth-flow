@@ -37,8 +37,7 @@ fn main() {
     // subcommands (schema probe / schema codegen respectively). Everything
     // else falls through to the existing run behavior unchanged.
     //
-    // Every exit below this point runs after `otel_guard` has been created, so it MUST go
-    // through `shutdown_and_exit` rather than `std::process::exit` directly (see its doc).
+    // Every exit below this point MUST go through `shutdown_and_exit`, not `std::process::exit` directly (see its doc).
     let return_code: i32 = match matches.remove_subcommand() {
         Some((name, sub)) if name == "probe-schema" => {
             let command = match ProbeSchemaCommand::parse_cli_args(sub) {
@@ -89,10 +88,7 @@ fn main() {
     shutdown_and_exit(&otel_guard, return_code);
 }
 
-/// Flushes any buffered OTel spans/metrics (via `OtelGuard::shutdown`) and exits with `code`.
-/// `std::process::exit` skips `Drop`, so every exit after `otel_guard` is created must route
-/// through here. Not covered: `panic = "abort"` aborts without unwinding, so buffered spans are
-/// lost in that case.
+/// Every exit after `otel_guard` is created must route through here (`std::process::exit` skips `Drop`). Not covered: `panic = "abort"` loses buffered spans.
 fn shutdown_and_exit(otel_guard: &Option<logger::OtelGuard>, code: i32) -> ! {
     if let Some(guard) = otel_guard {
         guard.shutdown();

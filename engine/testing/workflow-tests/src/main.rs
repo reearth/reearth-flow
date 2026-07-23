@@ -355,9 +355,6 @@ impl TestContext {
         );
 
         match result {
-            // `expectFailedNodes: true` asserts the workflow's malformed
-            // input surfaces as a node failure; an unexpected `Ok(())` here
-            // would silently mask a node-failure-reporting regression.
             Ok(()) if self.profile.expect_failed_nodes => Err(anyhow::anyhow!(
                 "test profile declares expectFailedNodes: true, but the workflow run \
                  succeeded (Ok(())) with no failed node reported; this looks like a \
@@ -368,13 +365,7 @@ impl TestContext {
                  longer fails, remove expectFailedNodes from this test's workflow_test.json."
             )),
             Ok(()) => Ok(()),
-            // Only these two node-failure-shaped errors are tolerated for
-            // `expect_failed_nodes` fixtures (never a broader `Err(e) =>
-            // Ok(())`): `ExecutionError` is a failing node's own thread
-            // result under the default terminate policy; `FailedNodes` is
-            // `summary_into_unit_result`'s mapping of a non-empty
-            // `RunSummary.failed_nodes` under `onFatal: continue`. Any other
-            // error still fails the test loudly.
+            // Only these two error variants are tolerated here -- never widen to a broader `Err(e) => Ok(())`, or real failures get silently swallowed.
             Err(
                 e @ (reearth_flow_runner::errors::Error::ExecutionError(_)
                 | reearth_flow_runner::errors::Error::FailedNodes(_)),

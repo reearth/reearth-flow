@@ -61,13 +61,10 @@ fn lookup(table: &[(&str, &str)], key: &str, what: &str, code: &str) -> proc_mac
 }
 
 fn main() {
-    // Anchor the registry path off CARGO_MANIFEST_DIR rather than a bare
-    // relative path so codegen resolves the same directory regardless of the
-    // working directory cargo happens to invoke this build script from.
+    // CARGO_MANIFEST_DIR anchors this so codegen doesn't depend on cargo's invocation directory.
     let registry_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../schema/error-codes");
     println!("cargo:rerun-if-changed=build.rs");
-    // Watch the directory so that adding or removing a registry file
-    // retriggers codegen. Individual files are watched in the loop below.
+    // Watches the directory so adding/removing a registry file retriggers codegen (edits are watched per-file below).
     println!("cargo:rerun-if-changed={}", registry_dir.display());
 
     let mut entries: Vec<RegistryEntry> = Vec::new();
@@ -79,9 +76,7 @@ fn main() {
         .collect();
     paths.sort();
     for path in paths {
-        // Watch each registry file so that editing an existing entry
-        // retriggers codegen even on filesystems whose directory mtime does
-        // not change when a contained file is modified.
+        // Also watched per-file: some filesystems don't update directory mtime when a contained file is edited.
         println!("cargo:rerun-if-changed={}", path.display());
         let raw = fs::read_to_string(&path)
             .unwrap_or_else(|e| panic!("failed to read registry file {}: {e}", path.display()));
@@ -139,8 +134,7 @@ fn main() {
         .collect();
 
     let generated = quote! {
-        /// Stable, greppable identity, `<domain>.<reason>`. Generated from
-        /// `engine/schema/error-codes/*.toml` — edit the registry, not this enum.
+        /// Generated from `engine/schema/error-codes/*.toml` — edit the registry, not this enum.
         #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, serde::Serialize, serde::Deserialize)]
         pub enum ErrorCode {
             #(

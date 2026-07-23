@@ -73,15 +73,7 @@ impl<P: Publisher> EventHandler<P> {
         }
     }
 
-    /// Publishes a `DiagnosticEvent` when `enabled`, otherwise no-ops.
-    ///
-    /// Takes the gate as an explicit `bool` instead of reading the
-    /// `ENABLE_DIAGNOSTICS` static directly: `Lazy` caches its first read
-    /// and the underlying env var is process-global, so flipping it inside
-    /// a test would race with every other test in this binary. `on_event`
-    /// (the only production caller) always passes `*ENABLE_DIAGNOSTICS`;
-    /// tests call this method directly with `true`/`false` to exercise both
-    /// branches deterministically.
+    /// Takes the gate as an explicit `bool` rather than reading process-global `ENABLE_DIAGNOSTICS` directly, so tests can exercise both branches without racing each other.
     async fn handle_diagnostic(
         &self,
         enabled: bool,
@@ -203,8 +195,6 @@ mod tests {
 
     use super::*;
 
-    /// `Publisher` test double that just counts calls, so gating tests can
-    /// assert "published N times" without a real pubsub backend.
     #[derive(Debug, Default, Clone)]
     struct CountingPublisher {
         count: Arc<AtomicUsize>,
@@ -261,9 +251,7 @@ mod tests {
         assert_eq!(publisher.count(), 1);
     }
 
-    /// Exercises the real `on_event` dispatch path (not just the private
-    /// helper) against the production default: `FLOW_WORKER_ENABLE_DIAGNOSTICS`
-    /// is unset in this process, so `ENABLE_DIAGNOSTICS` reads `false`.
+    /// `FLOW_WORKER_ENABLE_DIAGNOSTICS` is unset in this process, so `ENABLE_DIAGNOSTICS` reads `false`.
     #[tokio::test]
     async fn on_event_diagnostic_publishes_nothing_with_flag_unset_by_default() {
         let publisher = CountingPublisher::default();

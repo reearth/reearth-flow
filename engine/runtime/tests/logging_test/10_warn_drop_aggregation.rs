@@ -11,14 +11,10 @@ const WORKFLOW_NAME: &str = "Warn Drop Aggregation Test";
 fn test_logging_warn_drop_aggregation() {
     let result = execute_logging_test(FIXTURE_DIR, WORKFLOW_NAME);
 
-    // Read the raw action log before the golden compare below, so a
-    // regex/normalizer bug in the golden path can't mask a real regression
-    // in the aggregation behavior itself.
     let actual_log_path = result.action_log_dir.join("all.log");
     let raw_action_log = fs::read_to_string(&actual_log_path)
         .unwrap_or_else(|e| panic!("Failed to read {}: {e}", actual_log_path.display()));
 
-    // exactly one aggregated summary, no per-feature warn spam
     let warn_lines: Vec<&str> = raw_action_log
         .lines()
         .filter(|l| l.contains("\"level\":\"WARNING\""))

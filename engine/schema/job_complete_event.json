@@ -25,7 +25,7 @@
       "format": "date-time"
     },
     "failedNodes": {
-      "description": "Structured per-node fatal failures (`RunSummary::failed_nodes`). Absent = no `RunSummary` was produced; empty = one was, with none recorded — never infer job failure from either. Fatality must be read from `effectiveDisposition`, not `severity` (the latter isn't rewritten when a policy promotes an entry to fatal at resolution time).",
+      "description": "Absent = no RunSummary was produced; empty = one was, with none recorded — never infer job failure from either. Fatality reads from `effectiveDisposition`, not `severity`.",
       "type": [
         "array",
         "null"
@@ -35,7 +35,7 @@
       }
     },
     "aggregatedDiagnostics": {
-      "description": "finish()-time diagnostics aggregated per node (`RunSummary::aggregated_diagnostics`); never a `Fatal` entry (those surface via `failedNodes`). Same absent-vs-empty contract.",
+      "description": "Never a `Fatal` entry (those surface via `failedNodes`). Same absent-vs-empty contract as `failedNodes`.",
       "type": [
         "array",
         "null"
@@ -62,7 +62,7 @@
       ]
     },
     "WireDiagnostic": {
-      "description": "Wire form of `Diagnostic`. Enums are carried as `snake_case` strings rather than tagged JSON so unknown/newer values survive a Go round-trip instead of failing to deserialize.",
+      "description": "Enums are carried as `snake_case` strings rather than tagged JSON, so unknown/newer values survive a Go round-trip instead of failing to deserialize.",
       "type": "object",
       "required": [
         "category",
@@ -137,7 +137,6 @@
       }
     },
     "WireSourceSpan": {
-      "description": "Wire mirror of `reearth_flow_diagnostics::SourceSpan`.",
       "type": "object",
       "required": [
         "offset"
@@ -159,7 +158,6 @@
       }
     },
     "WireAggregateInfo": {
-      "description": "Wire mirror of `reearth_flow_diagnostics::AggregateInfo`.",
       "type": "object",
       "required": [
         "count",

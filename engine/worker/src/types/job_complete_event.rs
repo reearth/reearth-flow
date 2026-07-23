@@ -22,8 +22,6 @@ static JOB_COMPLETE_TOPIC: Lazy<String> = Lazy::new(|| {
         .unwrap_or("flow-job-complete-topic".to_string())
 });
 
-/// Top-K bound (spec 4.7) applied via `RunSummary::capped` so the wire payload can't grow
-/// unbounded on pathological runs.
 pub const JOB_COMPLETE_TOP_K: usize = 50;
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -40,14 +38,10 @@ pub struct JobCompleteEvent {
     pub job_id: Uuid,
     pub result: JobResult,
     pub timestamp: chrono::DateTime<Utc>,
-    /// Structured per-node fatal failures (`RunSummary::failed_nodes`). Absent = no `RunSummary`
-    /// was produced; empty = one was, with none recorded — never infer job failure from either.
-    /// Fatality must be read from `effectiveDisposition`, not `severity` (the latter isn't
-    /// rewritten when a policy promotes an entry to fatal at resolution time).
+    /// Absent = no RunSummary was produced; empty = one was, with none recorded — never infer job failure from either. Fatality reads from `effectiveDisposition`, not `severity`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub failed_nodes: Option<Vec<WireDiagnostic>>,
-    /// finish()-time diagnostics aggregated per node (`RunSummary::aggregated_diagnostics`);
-    /// never a `Fatal` entry (those surface via `failedNodes`). Same absent-vs-empty contract.
+    /// Never a `Fatal` entry (those surface via `failedNodes`). Same absent-vs-empty contract as `failedNodes`.
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub aggregated_diagnostics: Option<Vec<WireDiagnostic>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
@@ -67,8 +61,7 @@ impl JobCompleteEvent {
         }
     }
 
-    /// Builds the event with diagnostics capped internally via `JOB_COMPLETE_TOP_K` (spec 4.7).
-    /// Pass the *uncapped* `summary` — capping twice would understate the overflow count.
+    /// Pass the *uncapped* `summary` — caps internally via `JOB_COMPLETE_TOP_K`; capping twice would understate the overflow count.
     pub fn with_summary(
         workflow_id: Uuid,
         job_id: Uuid,
@@ -136,8 +129,7 @@ mod tests {
         event
     }
 
-    /// Locks the wire shape when there's no `RunSummary`: must stay byte-identical (no new
-    /// keys) so the existing Go subscriber stays safe.
+    /// Wire shape without a `RunSummary` must stay byte-identical (no new keys) — the Go subscriber depends on it.
     #[test]
     fn event_without_summary_has_pre_task_wire_shape_exactly() {
         let event = bare_event();
@@ -252,8 +244,7 @@ mod tests {
         assert!(back.dropped_event_count.is_none());
     }
 
-    /// An empty `RunSummary` still renders present-but-empty keys (`[]`/`0`, never omitted) —
-    /// lets a consumer distinguish "ran, nothing to report" from "no summary was ever built".
+    /// An empty `RunSummary` still renders present-but-empty keys (`[]`/`0`, never omitted) — distinguishes "ran, nothing to report" from "no summary was ever built".
     #[test]
     fn with_summary_on_empty_run_summary_serializes_present_empty_fields() {
         let empty = RunSummary {
@@ -288,8 +279,7 @@ mod tests {
         assert!(obj.contains_key("droppedEventCount"));
     }
 
-    /// `with_summary` caps internally: `JOB_COMPLETE_TOP_K + 1` failed nodes in yields exactly
-    /// `JOB_COMPLETE_TOP_K` real entries plus one `internal.diagnostics_overflow` marker out.
+    /// `JOB_COMPLETE_TOP_K + 1` failed nodes in yields `JOB_COMPLETE_TOP_K` real entries plus one overflow marker out.
     #[test]
     fn with_summary_caps_an_oversized_run_summary_internally() {
         let failed_nodes: Vec<Diagnostic> = (0..JOB_COMPLETE_TOP_K + 1)
@@ -331,8 +321,7 @@ mod tests {
 
     #[test]
     fn job_complete_topic_defaults_when_env_unset() {
-        // Only asserts the default; setting/unsetting the env var here would race other tests
-        // reading the same process-global `Lazy`.
+        // Setting/unsetting the env var here would race other tests reading the same process-global `Lazy`.
         let event = bare_event();
         assert_eq!(event.topic().to_string(), "flow-job-complete-topic");
     }

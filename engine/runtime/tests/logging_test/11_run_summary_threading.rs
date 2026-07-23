@@ -1,11 +1,3 @@
-//! Proves the by-value `RunSummary` makes it end to end through
-//! `Runner::run_with_event_handler` / `run_with_sandbox_root`, reusing the
-//! numbered `logging/NN_*` fixtures for their workflow shape only (this
-//! binary asserts on the returned `RunSummary`, not the golden log files).
-
-// Asserts directly on `Result<RunSummary, Error>` rather than driving
-// `logging_helper`'s log-file verification, so half of that shared module
-// goes unused here — hence `dead_code` is allowed.
 #[allow(dead_code)]
 mod logging_helper;
 
@@ -20,10 +12,7 @@ use reearth_flow_state::State;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::Workflow;
 
-/// These tests use a `Discard` root logger and never inspect action-log
-/// output, so disable per-action log files up front — otherwise each node's
-/// `FileLoggerBuilder` tries to create one under the `ram:///log/` sentinel
-/// path used below, which isn't a real directory.
+// Without this, FileLoggerBuilder tries to create per-action log files under the fake ram:///log/ path.
 static INIT: Once = Once::new();
 fn init_test_env() {
     INIT.call_once(|| {
@@ -31,9 +20,6 @@ fn init_test_env() {
     });
 }
 
-/// Everything a `Runner::run_*` call needs, built fresh per test so each
-/// test gets its own tempdir / job id and tests can't interfere with each
-/// other.
 struct PreparedRun {
     job_id: uuid::Uuid,
     workflow: Workflow,
@@ -44,9 +30,6 @@ struct PreparedRun {
     sandbox_root: Uri,
 }
 
-/// Loads `logging/{fixture_dir}/workflow.yml` and wires up the minimal
-/// context `Runner::run_with_event_handler` / `run_with_sandbox_root` need,
-/// skipping `logging_helper::execute_workflow`'s log-file plumbing.
 fn prepare_run(fixture_dir: &str) -> PreparedRun {
     let workflow_bytes = Fixtures::get(&format!("logging/{fixture_dir}/workflow.yml"))
         .unwrap_or_else(|| panic!("missing fixture logging/{fixture_dir}/workflow.yml"));
@@ -54,9 +37,6 @@ fn prepare_run(fixture_dir: &str) -> PreparedRun {
     prepare_run_from_yaml(workflow_str)
 }
 
-/// Like [`prepare_run`], but parses `workflow_yaml` directly — for tests
-/// that need a workflow shape no existing fixture has (e.g. the two-branch
-/// completion test below).
 fn prepare_run_from_yaml(workflow_yaml: &str) -> PreparedRun {
     init_test_env();
 
@@ -134,8 +114,6 @@ fn run_with_sandbox_root(fixture_dir: &str) -> Result<(), Error> {
     )
 }
 
-/// A clean run yields `Ok(summary)` with empty `failed_nodes` and
-/// `aggregated_diagnostics`.
 #[test]
 fn passing_workflow_yields_ok_summary_with_no_diagnostics() {
     let summary = run_with_event_handler("01_basic_sequential_processing")
@@ -145,9 +123,6 @@ fn passing_workflow_yields_ok_summary_with_no_diagnostics() {
     assert_eq!(summary.dropped_event_count, 0);
 }
 
-/// `Ok(_)` implies `failed_nodes.is_empty()`: a node-thread failure
-/// (scenario-05's source error) still surfaces as `Err`, not as `Ok(summary)`
-/// with a populated `failed_nodes`, under the default terminate policy.
 #[test]
 fn failing_source_workflow_yields_err() {
     let err = run_with_event_handler("05_source_error")
@@ -159,8 +134,6 @@ fn failing_source_workflow_yields_err() {
     );
 }
 
-/// `run_with_sandbox_root`'s legacy `Result<(), Error>` semantics survived
-/// the by-value `RunSummary` threading.
 #[test]
 fn run_with_sandbox_root_wrapper_still_returns_err_for_failing_source() {
     let err = run_with_sandbox_root("05_source_error")
@@ -172,25 +145,10 @@ fn run_with_sandbox_root_wrapper_still_returns_err_for_failing_source() {
     );
 }
 
-// `errorPolicy: { onFatal: continue }` counterparts to the scenario-05
-// tripwires above, proving `DagExecutorJoinHandle::join` forks on
-// `disposition_policy.on_fatal()` rather than always early-`Err`ing.
-
-/// Scenario-05's failing "Feature Creator" node id — no subgraphs in that
-/// fixture, so composed id == raw id. Read straight out of
-/// `logging/05_source_error/workflow.yml`.
 const SCENARIO_05_SOURCE_NODE_ID: &str = "a1f90a3e-61d3-48e2-a328-e7226c2ad1ae";
-
-/// Scenario-05's failing "JSON Writer" sink node id — the source's only
-/// downstream, orphaned by the same failure (see the test doc below).
 const SCENARIO_05_SINK_NODE_ID: &str = "c1f90a3e-61d3-48e2-a328-e7226c2ad1ae";
 
-/// Under `onFatal: continue`, the run yields `Ok(summary)` with every node
-/// thread's outcome folded into `failed_nodes` instead of short-circuiting.
-/// Two entries, not one: the source's own failure, plus its orphaned sink
-/// (never gets a `Terminate` op once the source dies, so its `recv()` sees a
-/// disconnected channel) — a pre-existing `SourceNode` cascade that
-/// `Terminate`'s early-`Err` used to hide.
+// Two failed_nodes, not one: the orphaned sink also fails when its upstream source dies (disconnected channel on recv()), not just the source itself.
 #[test]
 fn failing_source_workflow_under_continue_policy_yields_ok_with_failed_nodes() {
     use reearth_flow_diagnostics::Disposition;
@@ -243,9 +201,6 @@ fn failing_source_workflow_under_continue_policy_yields_ok_with_failed_nodes() {
     );
 }
 
-/// Same `onFatal: continue` input via the unit-returning wrapper: it must
-/// still yield `Err`, proving `summary_into_unit_result`'s defensive mapping
-/// is load-bearing.
 #[test]
 fn run_with_sandbox_root_wrapper_still_returns_err_under_continue_policy() {
     use reearth_flow_types::{ErrorPolicy, OnFatal};
@@ -273,23 +228,13 @@ fn run_with_sandbox_root_wrapper_still_returns_err_under_continue_policy() {
     );
     let rendered = err.to_string();
     assert!(
-        // 2 failed_nodes (source + cascaded orphaned sink), so
-        // `summary_into_unit_result` reports "2 node(s) failed".
         rendered.contains("2 node(s) failed"),
         "unexpected error text (expected the failed-node count): {rendered}"
     );
 }
 
-/// Scenario-06's failing "ErrorProcessor" node id ("Attribute Aggregator"
-/// action) — no subgraphs in that fixture, so composed id == raw id. Read
-/// straight out of `logging/06_processor_error/workflow.yml`.
 const SCENARIO_06_PROCESSOR_NODE_ID: &str = "b1fa0a3e-61d3-48e2-a328-e7226c2ad1ae";
 
-/// scenario-06's "Attribute Aggregator" `process()` error now also records a
-/// synthesized `internal.unclassified` fatal into the node's fatal slot, so
-/// the node *thread* itself fails with a real `ExecutionError` — converging
-/// with the event-driven `NodeFailureHandler` signal instead of leaving
-/// `RunSummary` clean while only the event side caught the failure.
 #[test]
 fn processor_failure_event_converges_with_thread_result() {
     use reearth_flow_diagnostics::{Diagnostic, Disposition, ErrorCode};
@@ -329,9 +274,6 @@ fn processor_failure_event_converges_with_thread_result() {
     }
 }
 
-/// Under `onFatal: continue`, the same per-feature processor error reaches
-/// `RunSummary.failed_nodes` with the same shape `fold_outcomes` gives every
-/// other node-thread failure.
 #[test]
 fn processor_failure_under_continue_policy_lands_in_failed_nodes() {
     use reearth_flow_diagnostics::{Disposition, ErrorCode};
@@ -371,9 +313,6 @@ fn processor_failure_under_continue_policy_lands_in_failed_nodes() {
     assert_eq!(diagnostic.effective_disposition, Some(Disposition::Fatal));
 }
 
-/// The finish()-time aggregated diagnostic (3 dropped features folded into
-/// one `Diagnostic` with `AggregateInfo { count: 3, .. }`) is delivered by
-/// value all the way back through `run_with_event_handler`.
 #[test]
 fn warn_drop_aggregation_diagnostic_is_delivered_by_value() {
     let summary = run_with_event_handler("10_warn_drop_aggregation")
@@ -388,18 +327,9 @@ fn warn_drop_aggregation_diagnostic_is_delivered_by_value() {
     assert_eq!(aggregated.count, 3);
 }
 
-// Composed node ids + policy threading, end to end: reuses scenario-10's
-// workflow shape but injects an `errorPolicy` in Rust rather than editing
-// the golden fixture, which must stay policy-free.
-
 const SCENARIO_10_WRITER_NODE_ID: &str = "42a900a6-0f2a-4364-a4d2-dd8fa63d3dd0";
 
-/// Overriding `cesium3dtiles.empty_geometry` to `reject` on the writer node
-/// resolves through `NodeDiagnosticsHandle::resolve` at `report()` time
-/// instead of the registry default (`warn_drop`): the run still succeeds
-/// with `effective_disposition == Reject`, and (since a Reject-promoting
-/// override on a sink requires `sideFile: true`) the `rejected/{node}.jsonl`
-/// side-file shard has one row per rejected feature.
+// A Reject-promoting override on a sink requires sideFile: true; the shard gets one row per rejected feature.
 #[test]
 fn reject_override_promotes_disposition_through_resolve_end_to_end() {
     use reearth_flow_diagnostics::Disposition;
@@ -442,8 +372,6 @@ fn reject_override_promotes_disposition_through_resolve_end_to_end() {
         .expect("finish()-time summary diagnostic should carry AggregateInfo");
     assert_eq!(aggregated.count, 3);
 
-    // The side-file shard exists with one JSONL row per rejected feature,
-    // matching the aggregator's bucket count above.
     let shard_path = sandbox_path.join(format!("rejected/{SCENARIO_10_WRITER_NODE_ID}.jsonl"));
     let shard_content = std::fs::read_to_string(&shard_path)
         .unwrap_or_else(|e| panic!("failed to read {}: {e}", shard_path.display()));
@@ -460,9 +388,6 @@ fn reject_override_promotes_disposition_through_resolve_end_to_end() {
     }
 }
 
-/// The same Reject-promoting override on the same sink, but WITHOUT
-/// `sideFile: true`, must abort the run before DAG construction — a sink
-/// with a possible `Reject` needs somewhere configured to route it.
 #[test]
 fn reject_promoting_override_on_a_sink_without_side_file_aborts_the_run() {
     use reearth_flow_types::{ErrorPolicy, PolicyDisposition, PolicyOverride};
@@ -502,19 +427,12 @@ fn reject_promoting_override_on_a_sink_without_side_file_aborts_the_run() {
     );
 }
 
-// Load-time Reject-routing validation for processor nodes: a processor must
-// declare the `rejected` output port AND have it wired, or a
-// Reject-promoting override on it aborts the run. "Geometry Validator"
-// already declares `rejected`, so this is structural validation, not
-// behavioral — the override's code need not be one the action would emit.
-
+// Structural validation only — the override's code need not be one Geometry Validator would actually emit.
 const PROCESSOR_REJECT_SOURCE_ID: &str = "5e96c308-75c7-4d43-81f7-7d7f5be4ae9b";
 const PROCESSOR_REJECT_VALIDATOR_ID: &str = "5336c448-2933-4581-977e-5970d5d8e6d4";
 const PROCESSOR_REJECT_SUCCESS_WRITER_ID: &str = "905c1f85-93f6-4737-b5b6-9c620f71d0f9";
 const PROCESSOR_REJECT_REJECTED_WRITER_ID: &str = "9171d021-305a-4bd7-be13-9bf2cbfbbb02";
 
-/// `wire_rejected`: whether an edge from the Geometry Validator's `rejected`
-/// port to a second JSON Writer is included.
 fn processor_reject_workflow_yaml(wire_rejected: bool) -> String {
     let rejected_writer_node = if wire_rejected {
         format!(
@@ -604,8 +522,6 @@ fn processor_reject_error_policy() -> reearth_flow_types::ErrorPolicy {
     }
 }
 
-/// A processor with `rejected` declared but NOT wired: the reject-promoting
-/// override must abort the run at load time.
 #[test]
 fn reject_promoting_override_on_a_processor_with_unwired_rejected_port_aborts_the_run() {
     let mut p = prepare_run_from_yaml(&processor_reject_workflow_yaml(false));
@@ -637,8 +553,6 @@ fn reject_promoting_override_on_a_processor_with_unwired_rejected_port_aborts_th
     );
 }
 
-/// Same override, but with `rejected` wired to a second sink: the run must
-/// load and complete successfully.
 #[test]
 fn reject_promoting_override_on_a_processor_with_wired_rejected_port_succeeds() {
     let mut p = prepare_run_from_yaml(&processor_reject_workflow_yaml(true));
@@ -659,10 +573,6 @@ fn reject_promoting_override_on_a_processor_with_wired_rejected_port_succeeds() 
     .expect("wiring the rejected port must let the run load and complete");
     assert!(summary.failed_nodes.is_empty());
 }
-
-// Reject-shard no-clobber: two independent branches, each with its own
-// reject-promoting sink, prove the two sinks' `rejected/{composed_id}.jsonl`
-// shards land at distinct paths and neither clobbers the other's rows.
 
 const REJECT_NO_CLOBBER_SINK_A_ID: &str = "a84c1737-48bf-431b-9723-8146bc8975b5";
 const REJECT_NO_CLOBBER_SINK_B_ID: &str = "67e1e7a4-4c50-445d-8a63-7b5438bb2ce7";
@@ -742,8 +652,7 @@ fn reject_shards_for_two_sinks_do_not_clobber_each_other() {
     let mut p = prepare_run_from_yaml(REJECT_NO_CLOBBER_WORKFLOW_YAML);
     p.workflow.error_policy = Some(ErrorPolicy {
         side_file: true,
-        // Codeless-by-node selector: applies uniformly to both sinks
-        // without needing two separate overrides.
+        // node: None applies the override to both sinks uniformly.
         overrides: vec![PolicyOverride {
             node: None,
             code: Some("cesium3dtiles.empty_geometry".to_string()),
@@ -801,14 +710,10 @@ fn reject_shards_for_two_sinks_do_not_clobber_each_other() {
     );
     assert_eq!(shard_a.len(), 3, "Writer A: 3 features created");
     assert_eq!(shard_b.len(), 5, "Writer B: 5 features created");
-    // Neither shard's rows leaked into the other's file.
     assert_ne!(shard_a, shard_b);
 }
 
-/// An `errorPolicy` that fails `DispositionPolicy::compile` (here: an
-/// unknown error code) must abort the run before DAG construction, as a
-/// `PolicyValidationError` naming the bad code — never silently fall back
-/// to the registry default.
+// Must abort with PolicyValidationError, never silently fall back to the registry default.
 #[test]
 fn unknown_error_code_in_policy_aborts_before_dag_construction() {
     use reearth_flow_types::{ErrorPolicy, PolicyDisposition, PolicyOverride};
@@ -844,10 +749,7 @@ fn unknown_error_code_in_policy_aborts_before_dag_construction() {
     );
 }
 
-/// An override naming a node id absent from the workflow graph must abort
-/// the run once the DAG has been built (load-time node matching, spec 4.2) —
-/// this exercises the path that needs the flattened DAG, distinct from the
-/// compile-time check above.
+// Load-time check after DAG construction, distinct from the compile-time check above.
 #[test]
 fn unmatched_node_selector_aborts_after_dag_construction() {
     use reearth_flow_types::{ErrorPolicy, PolicyDisposition, PolicyOverride};
@@ -883,13 +785,7 @@ fn unmatched_node_selector_aborts_after_dag_construction() {
     );
 }
 
-// Best-effort branch completion under `onFatal: continue`: two independent
-// branches, one failing, prove the succeeding branch's sink actually
-// finishes rather than merely not being counted as failed. The failure is
-// deliberately placed in a sink (which still acks its own `Terminate` before
-// erroring) rather than a source, since the two branches share one sources
-// thread — a source-level failure would abort it before the other branch's
-// sink ever terminates, deadlocking the succeeding branch.
+// Failure is deliberately placed in a sink, not a source: the two branches share one sources thread, so a source-level failure would deadlock the succeeding branch before its sink ever terminates.
 const BRANCH_COMPLETION_WORKFLOW_YAML: &str = r#"
 id: 5714128a-66a0-4a38-b0fb-2c77f590767d
 name: "Branch Completion Continue Test"
@@ -946,9 +842,6 @@ graphs:
 
 const BRANCH_COMPLETION_FAILING_WRITER_NODE_ID: &str = "448e4d1f-73a4-4d75-a565-832d43619b8d";
 
-/// Under `onFatal: continue`, the failing branch is recorded as exactly one
-/// failed node while the independent succeeding branch's sink actually
-/// completes — verified by its output file existing on disk.
 #[test]
 fn branch_completion_continue_completes_independent_branch_and_records_one_failed_node() {
     use reearth_flow_diagnostics::Disposition;
@@ -991,9 +884,6 @@ fn branch_completion_continue_completes_independent_branch_and_records_one_faile
     );
 }
 
-/// Same two-branch workflow, default `Terminate` policy: the run must still
-/// fail overall — the continue-policy relief above is opt-in, not the
-/// default.
 #[test]
 fn branch_completion_terminate_default_still_errors_for_same_workflow() {
     let p = prepare_run_from_yaml(BRANCH_COMPLETION_WORKFLOW_YAML);
@@ -1018,23 +908,9 @@ fn branch_completion_terminate_default_still_errors_for_same_workflow() {
     );
 }
 
-// Fatal-override end-to-end: runner-level companions to the
-// `test-logging-fatal-override` golden (`logging/12_fatal_override`).
-
-/// scenario-12's writer node id (`errorPolicy` promotes
-/// `cesium3dtiles.empty_geometry` to `fatal` on this node), read straight out
-/// of `logging/12_fatal_override/workflow.yml`. No subgraphs in that
-/// fixture, so composed id == raw id.
 const SCENARIO_12_WRITER_NODE_ID: &str = "cbd5f624-b7cd-4a11-b6dd-181063c314d4";
 
-/// `onFatal: continue` counterpart to the golden `test-logging-fatal-override`
-/// scenario: the writer's fatal `Err` surfaces as a `failed_nodes` entry
-/// instead of aborting the run. Its code is `internal.unclassified`, not
-/// `cesium3dtiles.empty_geometry` — the node thread's `Result` carries a
-/// stringified `SinkError` rather than a boxed `Diagnostic`, so
-/// `fold_outcomes`' downcast falls through to the catch-all — but the
-/// original code and message are still preserved inside the synthesized
-/// entry's `message` field.
+// Code lands as internal.unclassified, not the original: SinkError isn't a boxed Diagnostic, so fold_outcomes' downcast falls through to the catch-all (original code stays in the message).
 #[test]
 fn fatal_override_under_continue_policy_surfaces_the_writer_in_failed_nodes() {
     use reearth_flow_diagnostics::{Disposition, ErrorCode};
@@ -1074,10 +950,6 @@ fn fatal_override_under_continue_policy_surfaces_the_writer_in_failed_nodes() {
     );
 }
 
-/// `treatAllAsFatal: true` with no per-code override: `DispositionPolicy::
-/// resolve` unconditionally promotes the registry default (`warn_drop`) to
-/// `Fatal`; under `onFatal: continue` the run still completes, with the
-/// writer recorded as the sole failed node.
 #[test]
 fn treat_all_as_fatal_promotes_warn_drop_to_fatal_end_to_end() {
     use reearth_flow_diagnostics::Disposition;
