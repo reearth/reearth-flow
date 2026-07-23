@@ -23,21 +23,27 @@ use reearth_flow_geometry::{
     },
     Euclidean3DGeometry, Geometry,
 };
-use reearth_flow_runtime::executor_operation::NodeContext;
+use reearth_flow_runtime::{
+    executor_operation::NodeContext,
+    node::{IngestionMessage, Port, FEATURES_PORT},
+};
 use reearth_flow_types::{Attribute, AttributeValue, Feature};
+use tokio::sync::mpsc::Sender;
 
 use crate::{errors::SourceError, file::reader::runner::get_input_path};
 
 use super::{load_buffers, merge_geometries, GltfReaderCompiledParam, MeshInfo};
 
-/// New-geometry glTF read: mirrors the old-world `read_gltf` traversal but converts
-/// each extracted geometry into the new model and returns the features to send.
+/// New-geometry glTF read: mirrors the old-world `read_gltf` traversal, converting
+/// each extracted geometry into the new model and streaming features to `sender` as
+/// they are produced (no buffering of the full feature list), matching `read_gltf`.
 pub(super) async fn read(
     ctx: &NodeContext,
     storage_resolver: Arc<reearth_flow_storage::resolve::StorageResolver>,
     content: &Bytes,
     params: &GltfReaderCompiledParam,
-) -> Result<Vec<Feature>, SourceError> {
+    sender: &Sender<(Port, IngestionMessage)>,
+) -> Result<(), SourceError> {
     let gltf_uri = get_input_path(&params.common)
         .map_err(SourceError::GltfReader)?
         .unwrap_or_else(|| Uri::from_str("file://./unknown.gltf").unwrap());
@@ -74,9 +80,8 @@ pub(super) async fn read(
         )?;
     }
 
-    let mut features = Vec::new();
-
     if !params.merge_meshes {
+        // Stream each mesh's feature as it is produced (no full-list buffering).
         for mesh_info in mesh_infos {
             let old = reearth_flow_gltf::create_geometry_from_primitives_with_transform(
                 &mesh_info.primitives,
@@ -88,13 +93,14 @@ pub(super) async fn read(
             let mesh_names = mesh_info.mesh_name.map(|n| vec![n]).unwrap_or_default();
             let node_names = mesh_info.node_name.map(|n| vec![n]).unwrap_or_default();
 
-            features.push(build_feature(
+            let feature = build_feature(
                 to_new_geometry(&old),
                 &mesh_names,
                 &node_names,
                 mesh_info.primitives.len(),
                 params,
-            ));
+            );
+            send_feature(sender, feature).await?;
         }
     } else if !mesh_infos.is_empty() {
         let mut geometries = Vec::new();
@@ -124,16 +130,30 @@ pub(super) async fn read(
         let merged_mesh_names: Vec<String> = all_mesh_names.into_iter().collect();
         let merged_node_names: Vec<String> = all_node_names.into_iter().collect();
 
-        features.push(build_feature(
+        let feature = build_feature(
             to_new_geometry(&merged),
             &merged_mesh_names,
             &merged_node_names,
             total_primitives,
             params,
-        ));
+        );
+        send_feature(sender, feature).await?;
     }
 
-    Ok(features)
+    Ok(())
+}
+
+async fn send_feature(
+    sender: &Sender<(Port, IngestionMessage)>,
+    feature: Feature,
+) -> Result<(), SourceError> {
+    sender
+        .send((
+            FEATURES_PORT.clone(),
+            IngestionMessage::OperationEvent { feature },
+        ))
+        .await
+        .map_err(|e| SourceError::GltfReader(format!("Failed to send feature: {e}")))
 }
 
 /// Convert the old-world `Geometry3D` produced by the glTF triangle extraction into

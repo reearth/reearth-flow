@@ -171,19 +171,9 @@ impl Source for GltfReader {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
         let content = get_content(&self.params.common, storage_resolver.clone()).await?;
 
-        let features = gltf_next::read(&ctx, storage_resolver, &content, &self.params).await?;
-
-        for feature in features {
-            sender
-                .send((
-                    FEATURES_PORT.clone(),
-                    IngestionMessage::OperationEvent { feature },
-                ))
-                .await
-                .map_err(|e| SourceError::GltfReader(format!("Failed to send feature: {e}")))?;
-        }
-
-        Ok(())
+        gltf_next::read(&ctx, storage_resolver, &content, &self.params, &sender)
+            .await
+            .map_err(Into::<BoxedError>::into)
     }
 }
 
