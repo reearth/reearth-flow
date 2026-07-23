@@ -35,6 +35,10 @@ pub(super) enum GeometryProcessorError {
     VerticalReprojectorFactory(String),
     #[error("VerticalReprojector error: {0}")]
     VerticalReprojector(String),
+    #[error("CoordinateFrameReprojector Factory error: {0}")]
+    CoordinateFrameReprojectorFactory(String),
+    #[error("CoordinateFrameReprojector error: {0}")]
+    CoordinateFrameReprojector(String),
     #[error("TwoDimensionForcer Factory error: {0}")]
     TwoDimensionForcerFactory(String),
     #[error("TwoDimensionForcer error: {0}")]

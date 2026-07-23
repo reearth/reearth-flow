@@ -31,7 +31,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
     }
 
     fn description(&self) -> &str {
-        "Export Features as Cesium 3D Tiles for Web Visualization"
+        "Writes features to Cesium 3D Tiles format for 3D web visualization."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -43,7 +43,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["3d-tiles", "3d"]
+        &["3d", "tiling"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -128,26 +128,25 @@ pub struct Cesium3DTilesWriter {
 }
 
 /// # Cesium3DTilesWriter Parameters
+///
+/// Configuration for writing features to Cesium 3D Tiles.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct Cesium3DTilesWriterParam {
     /// # Output Path
-    /// Directory path where the 3D tiles will be written
+    /// Directory path where the 3D Tiles will be written.
     pub(super) output: Code,
     /// # Minimum Zoom Level
-    /// Minimum zoom level for tile generation (0-24)
+    /// Lowest zoom level to generate tiles for, from 0 to 24.
     pub(super) min_zoom: u8,
     /// # Maximum Zoom Level
-    /// Maximum zoom level for tile generation (0-24)
+    /// Highest zoom level to generate tiles for, from 0 to 24.
     pub(super) max_zoom: u8,
     /// # Attach Textures
-    /// Whether to include texture information in the generated tiles
+    /// Whether to include texture information in the generated tiles.
     pub(super) attach_texture: Option<bool>,
-    /// # Compressed Output Path
-    /// Optional path for compressed archive output
-    pub(super) compress_output: Option<Code>,
     /// # Draco Compression
-    /// Use draco compression. Defaults to true.
+    /// Whether to compress mesh geometry with Draco. Defaults to true.
     pub(super) draco_compression: Option<bool>,
     /// # Compute Flat Normals
     /// Compute per-polygon flat normals for lighting. Defaults to true.
@@ -168,14 +167,17 @@ pub struct Cesium3DTilesWriterParam {
     /// Ring of pixels blitted around each texture region in the atlas to stop
     /// bilinear bleed between neighbouring regions. Defaults to 0 (disabled).
     pub(super) atlas_extrusion: Option<u32>,
-    /// # Skip unexposed Attributes
-    /// Skip attributes with double underscore prefix
-    pub(super) skip_unexposed_attributes: Option<bool>,
     /// # Schema Key
     /// Attribute key whose value identifies the schema type and determines the output
     /// filename: all features sharing the same value are written to the same file.
     /// This attribute is excluded from output.
     pub(super) schema_key: Option<String>,
+    /// # Skip Unexposed Attributes
+    /// Whether to skip attributes whose keys begin with a double underscore.
+    pub(super) skip_unexposed_attributes: Option<bool>,
+    /// # Compressed Output Path
+    /// Optional path where a compressed archive of the tiles is also written.
+    pub(super) compress_output: Option<Code>,
 }
 
 #[derive(Debug, Clone)]

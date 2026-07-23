@@ -46,6 +46,63 @@ impl Reproject for Point3D {
     }
 }
 
+use crate::ops::{plan_frame_step, ConvertFrame, FrameStep, Translate};
+
+impl Translate for Point2D {
+    fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
+        self.position[0] += delta[0];
+        self.position[1] += delta[1];
+        Ok(())
+    }
+}
+
+impl Translate for Point3D {
+    fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
+        self.position[0] += delta[0];
+        self.position[1] += delta[1];
+        self.position[2] += delta[2];
+        Ok(())
+    }
+}
+
+impl ConvertFrame for Point2D {
+    fn convert_frame(
+        &mut self,
+        target: &CoordinateFrame,
+        base_point: Option<[f64; 3]>,
+        cache: &mut ReprojectionCache,
+    ) -> crate::error::Result<()> {
+        match plan_frame_step(&self.frame, target, base_point)? {
+            FrameStep::Noop => Ok(()),
+            FrameStep::Reproject(to) => self.reproject(to, cache),
+            FrameStep::Translate(offset, frame) => {
+                self.translate(offset)?;
+                self.frame = frame;
+                Ok(())
+            }
+        }
+    }
+}
+
+impl ConvertFrame for Point3D {
+    fn convert_frame(
+        &mut self,
+        target: &CoordinateFrame,
+        base_point: Option<[f64; 3]>,
+        cache: &mut ReprojectionCache,
+    ) -> crate::error::Result<()> {
+        match plan_frame_step(&self.frame, target, base_point)? {
+            FrameStep::Noop => Ok(()),
+            FrameStep::Reproject(to) => self.reproject(to, cache),
+            FrameStep::Translate(offset, frame) => {
+                self.translate(offset)?;
+                self.frame = frame;
+                Ok(())
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

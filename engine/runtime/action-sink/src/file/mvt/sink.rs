@@ -35,7 +35,7 @@ impl SinkFactory for MVTSinkFactory {
     }
 
     fn description(&self) -> &str {
-        "Writes vector features to Mapbox Vector Tiles (MVT) format with TileJSON 3.0.0 metadata."
+        "Writes features to Mapbox Vector Tiles (MVT) format."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -47,7 +47,7 @@ impl SinkFactory for MVTSinkFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["mvt"]
+        &["vector", "tiling"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -131,38 +131,38 @@ pub struct MVTWriter {
 /// # MVTWriter Parameters
 ///
 /// Configuration for writing features to Mapbox Vector Tiles (MVT) format.
-/// Generates tiles at /{z}/{x}/{y}.mvt and tilejson.json where the parent directory is treated as HTTP root (tileJSON requires absolute URLs).
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct MVTWriterParam {
-    /// # Output
-    /// Output directory path or expression for the generated MVT tiles
+    /// # Output Directory
+    /// Output directory path or expression where the generated MVT tiles are written.
     pub(super) output: Code,
     /// # Layer Name
-    /// Name of the layer within the MVT tiles
+    /// Name or expression for the layer within the generated tiles.
     pub(super) layer_name: Code,
     /// # Minimum Zoom
-    /// Minimum zoom level to generate tiles for
+    /// Lowest zoom level to generate tiles for.
     pub(super) min_zoom: u8,
     /// # Maximum Zoom
-    /// Maximum zoom level to generate tiles for
+    /// Highest zoom level to generate tiles for.
     pub(super) max_zoom: u8,
-    /// # Compress Output
-    /// Optional expression to determine whether to compress the output tiles
+    /// # Compressed Output Path
+    /// Optional path where a compressed archive of the tiles is also written.
     pub(super) compress_output: Option<Code>,
-    /// # Skip Unexposed Attributes
-    /// Skip attributes with double underscore prefix
-    pub(super) skip_unexposed_attributes: Option<bool>,
-    /// # Colon to Underscore
-    /// Replace colons in attribute keys (e.g., from XML Namespaces) with underscores
-    pub(super) colon_to_underscore: Option<bool>,
-    /// # Extent
-    /// MVT tile resolution. Default is 4096.
-    pub(super) extent: Option<u32>,
     /// # Schema Key
-    /// Attribute key to match data and schema features for attribute filtering and casting.
+    /// Attribute key used to match data and schema features for attribute filtering and casting.
     /// This attribute is excluded from output.
     pub(super) schema_key: Option<String>,
+    /// # Skip Unexposed Attributes
+    /// Whether to skip attributes whose keys begin with a double underscore.
+    pub(super) skip_unexposed_attributes: Option<bool>,
+    /// # Colon to Underscore
+    /// Whether to replace colons in attribute keys (such as those from XML namespaces) with underscores.
+    pub(super) colon_to_underscore: Option<bool>,
+    /// # Tile Extent
+    /// Coordinate grid resolution within each tile. Higher values preserve more positional
+    /// precision for high-detail data at the cost of larger tiles. Defaults to 4096, the MVT standard.
+    pub(super) extent: Option<u32>,
 }
 
 #[derive(Debug, Clone)]

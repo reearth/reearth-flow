@@ -24,7 +24,7 @@ impl SinkFactory for GeoPackageWriterFactory {
     }
 
     fn description(&self) -> &str {
-        "Writes geographic features to GeoPackage (.gpkg) files with proper SQLite structure, spatial indexing, and metadata tables"
+        "Writes features to a GeoPackage (.gpkg) file."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -36,7 +36,7 @@ impl SinkFactory for GeoPackageWriterFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["geopackage"]
+        &["geopackage", "vector"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -87,7 +87,7 @@ impl SinkFactory for GeoPackageWriterFactory {
                 table_name: params.table_name,
                 geometry_column: params.geometry_column,
                 srs_id: params.srs_id,
-                geometry_type: params.geometry_type,
+                geometry_type: params.geometry_type.as_gpkg_name().to_string(),
                 create_spatial_index: params.create_spatial_index,
                 overwrite: params.overwrite,
             },
@@ -122,26 +122,33 @@ pub(super) struct GeoPackageWriter {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct GeoPackageWriterParam {
-    /// Output path for the GeoPackage file to create
+    /// # Output File
+    /// Output path or expression for the GeoPackage file to create.
     pub(super) output: Code,
-    /// Table name to create (default: "features")
+    /// # Table Name
+    /// Name of the feature table to create, shown as the layer name in GIS clients. Defaults to "features".
     #[serde(default = "default_table_name")]
     pub(super) table_name: String,
-    /// Geometry column name (default: "geom")
-    #[serde(default = "default_geometry_column")]
-    pub(super) geometry_column: String,
-    /// Spatial Reference System ID (default: 4326 for WGS84)
+    /// # SRS ID
+    /// Spatial reference system identifier (EPSG code) recorded for the geometry. The writer tags this code without reprojecting, so it must match the coordinate system of the input data. Defaults to 4326 (WGS 84).
     #[serde(default = "default_srs_id")]
     pub(super) srs_id: i32,
-    /// Geometry type for table (Point, LineString, Polygon, MultiPoint, MultiLineString, MultiPolygon, or GEOMETRY for mixed)
-    #[serde(default = "default_geometry_type")]
-    pub(super) geometry_type: String,
-    /// Create RTree spatial index (default: true)
-    #[serde(default = "default_create_spatial_index")]
-    pub(super) create_spatial_index: bool,
-    /// Overwrite existing file (default: false)
+    /// # Geometry Type
+    /// Geometry type declared for the table. Use Geometry for tables that hold mixed or unknown types. Defaults to Geometry.
+    #[serde(default)]
+    pub(super) geometry_type: GeometryType,
+    /// # Overwrite Existing File
+    /// Whether to overwrite the output file if it already exists. Defaults to false.
     #[serde(default)]
     pub(super) overwrite: bool,
+    /// # Geometry Column
+    /// Name of the column that stores geometry. Defaults to "geom".
+    #[serde(default = "default_geometry_column")]
+    pub(super) geometry_column: String,
+    /// # Create Spatial Index
+    /// Whether to build an R-tree spatial index on the geometry column for faster queries. Defaults to true.
+    #[serde(default = "default_create_spatial_index")]
+    pub(super) create_spatial_index: bool,
 }
 
 fn default_table_name() -> String {
@@ -156,8 +163,48 @@ fn default_srs_id() -> i32 {
     4326
 }
 
-fn default_geometry_type() -> String {
-    "GEOMETRY".to_string()
+/// # Geometry Type
+/// Geometry type declared for a GeoPackage feature table.
+#[derive(Serialize, Deserialize, Debug, Clone, Default, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub(super) enum GeometryType {
+    /// # Point
+    /// A single point per feature.
+    Point,
+    /// # Line String
+    /// A single connected sequence of points per feature.
+    LineString,
+    /// # Polygon
+    /// A single polygon, with optional holes, per feature.
+    Polygon,
+    /// # Multi Point
+    /// A collection of points per feature.
+    MultiPoint,
+    /// # Multi Line String
+    /// A collection of line strings per feature.
+    MultiLineString,
+    /// # Multi Polygon
+    /// A collection of polygons per feature.
+    MultiPolygon,
+    /// # Geometry (Mixed)
+    /// Any geometry type; use when the table holds mixed or unknown geometry types.
+    #[default]
+    Geometry,
+}
+
+impl GeometryType {
+    /// Canonical GeoPackage `geometry_type_name` value for this type.
+    fn as_gpkg_name(&self) -> &'static str {
+        match self {
+            GeometryType::Point => "POINT",
+            GeometryType::LineString => "LINESTRING",
+            GeometryType::Polygon => "POLYGON",
+            GeometryType::MultiPoint => "MULTIPOINT",
+            GeometryType::MultiLineString => "MULTILINESTRING",
+            GeometryType::MultiPolygon => "MULTIPOLYGON",
+            GeometryType::Geometry => "GEOMETRY",
+        }
+    }
 }
 
 fn default_create_spatial_index() -> bool {

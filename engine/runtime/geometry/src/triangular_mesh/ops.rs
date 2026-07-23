@@ -57,6 +57,60 @@ impl Reproject for TriangularMesh3D {
     }
 }
 
+use crate::ops::{plan_frame_step, translate_2d, translate_3d, ConvertFrame, FrameStep, Translate};
+
+impl Translate for TriangularMesh2D {
+    fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
+        translate_2d(&mut self.vertices, self.z.as_deref_mut(), delta);
+        Ok(())
+    }
+}
+
+impl Translate for TriangularMesh3D {
+    fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
+        translate_3d(self.data.vertices_mut(), delta);
+        Ok(())
+    }
+}
+
+impl ConvertFrame for TriangularMesh2D {
+    fn convert_frame(
+        &mut self,
+        target: &CoordinateFrame,
+        base_point: Option<[f64; 3]>,
+        cache: &mut ReprojectionCache,
+    ) -> crate::error::Result<()> {
+        match plan_frame_step(&self.frame, target, base_point)? {
+            FrameStep::Noop => Ok(()),
+            FrameStep::Reproject(to) => self.reproject(to, cache),
+            FrameStep::Translate(offset, frame) => {
+                self.translate(offset)?;
+                self.frame = frame;
+                Ok(())
+            }
+        }
+    }
+}
+
+impl ConvertFrame for TriangularMesh3D {
+    fn convert_frame(
+        &mut self,
+        target: &CoordinateFrame,
+        base_point: Option<[f64; 3]>,
+        cache: &mut ReprojectionCache,
+    ) -> crate::error::Result<()> {
+        match plan_frame_step(&self.frame, target, base_point)? {
+            FrameStep::Noop => Ok(()),
+            FrameStep::Reproject(to) => self.reproject(to, cache),
+            FrameStep::Translate(offset, frame) => {
+                self.translate(offset)?;
+                self.frame = frame;
+                Ok(())
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
