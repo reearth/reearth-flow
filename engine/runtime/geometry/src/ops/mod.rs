@@ -302,8 +302,9 @@ pub(crate) fn translate_3d(coords: &mut [[f64; 3]], delta: [f64; 3]) {
 
 /// Convert a geometry's coordinate frame to `target`.
 ///
-/// A CRS-to-CRS conversion reprojects (delegating to [`Reproject`]) and ignores
-/// `base_point`. A conversion that crosses the Euclidean/CRS boundary translates
+/// A CRS-to-CRS conversion reprojects (delegating to [`Reproject`]); supplying a
+/// `base_point` for it is an error, since the offset cannot apply. A conversion
+/// that crosses the Euclidean/CRS boundary translates
 /// by `base_point` (an offset in the CRS-side frame, defaulting to the origin)
 /// and retags: a Euclidean coordinate maps to `base_point + coordinate` in the
 /// CRS, a CRS coordinate to `coordinate - base_point` in Euclidean space. The
@@ -350,7 +351,8 @@ pub(crate) enum FrameStep {
 }
 
 /// Decide how a leaf currently in `src` reaches `target`, given the base point.
-/// Errors when either frame is a `Tangent` plane.
+/// Errors when either frame is a `Tangent` plane, or when a base point is
+/// supplied for a CRS-to-CRS step.
 pub(crate) fn plan_frame_step(
     src: &CoordinateFrame,
     target: &CoordinateFrame,
@@ -358,11 +360,18 @@ pub(crate) fn plan_frame_step(
 ) -> crate::error::Result<FrameStep> {
     let base = base_point.unwrap_or([0.0; 3]);
     match (src, target) {
-        (CoordinateFrame::Crs(from), CoordinateFrame::Crs(to)) => Ok(if from == to {
-            FrameStep::Noop
-        } else {
-            FrameStep::Reproject(*to)
-        }),
+        (CoordinateFrame::Crs(from), CoordinateFrame::Crs(to)) => {
+            if base_point.is_some() {
+                return Err(Error::projection(
+                    "a base point does not apply to a CRS-to-CRS reprojection",
+                ));
+            }
+            Ok(if from == to {
+                FrameStep::Noop
+            } else {
+                FrameStep::Reproject(*to)
+            })
+        }
         (CoordinateFrame::Euclidean, CoordinateFrame::Crs(_)) => {
             Ok(FrameStep::Translate(base, target.clone()))
         }
@@ -465,27 +474,39 @@ mod convert_frame_tests {
     }
 
     #[test]
-    fn crs_to_crs_reprojects_ignoring_base_point() {
+    fn crs_to_crs_reprojects_without_a_base_point() {
         let mut cache = ReprojectionCache::new();
         // 4979 (geographic 3D) -> 4978 (ECEF) is a grid-free datum-identity transform.
         let mut p = Point3D::new(
             CoordinateFrame::Crs(EpsgCode::new(4979)),
             [35.0, 139.0, 0.0],
         );
-        p.convert_frame(
-            &CoordinateFrame::Crs(EpsgCode::new(4978)),
-            Some([999.0, 999.0, 999.0]),
-            &mut cache,
-        )
-        .unwrap();
+        p.convert_frame(&CoordinateFrame::Crs(EpsgCode::new(4978)), None, &mut cache)
+            .unwrap();
         assert_eq!(p.frame(), &CoordinateFrame::Crs(EpsgCode::new(4978)));
-        // ECEF magnitude is ~ Earth radius, so the base point was not added.
+        // ECEF magnitude is ~ Earth radius.
         let [x, y, z] = p.position();
         let r = (x * x + y * y + z * z).sqrt();
         assert!(
             r > 6_000_000.0 && r < 6_500_000.0,
             "unexpected ECEF radius {r}"
         );
+    }
+
+    #[test]
+    fn crs_to_crs_with_a_base_point_is_rejected() {
+        let mut cache = ReprojectionCache::new();
+        let mut p = Point3D::new(
+            CoordinateFrame::Crs(EpsgCode::new(4979)),
+            [35.0, 139.0, 0.0],
+        );
+        assert!(p
+            .convert_frame(
+                &CoordinateFrame::Crs(EpsgCode::new(4978)),
+                Some([999.0, 999.0, 999.0]),
+                &mut cache,
+            )
+            .is_err());
     }
 
     #[test]
