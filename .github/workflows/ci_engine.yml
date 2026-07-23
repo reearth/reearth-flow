@@ -76,6 +76,38 @@ jobs:
             echo "       - 'cargo set-version --bump patch'  # For bug fixes"
             exit 1
           fi
+      # `cargo make clippy` builds `new-geometry`, whose `ktx2-rw` dep compiles
+      # KTX-Software from source. Only this job builds `new-geometry`.
+      - name: Install KTX build toolchain (cmake + libclang for ktx2-rw)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends cmake clang libclang-dev
+        working-directory: /
+      - name: Cache KTX-Software source tarball
+        uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+        with:
+          # Path and version are what ktx2-rw@0.2.4's build.rs hard-codes as its
+          # fallback; bump the key when ktx2-rw bumps KTX-Software.
+          path: /tmp/ktx-software-v4.4.0.tar.gz
+          key: ktx-software-v4.4.0
+      - name: Fetch KTX-Software tarball (fallback for ktx2-rw build.rs)
+        run: |
+          if [ -f /tmp/ktx-software-v4.4.0.tar.gz ]; then
+            echo "KTX-Software tarball restored from cache; skipping download"
+            exit 0
+          fi
+          for attempt in 1 2 3; do
+            if curl -fsSL --retry 3 -o /tmp/ktx-software-v4.4.0.tar.gz \
+              https://github.com/KhronosGroup/KTX-Software/archive/refs/tags/v4.4.0.tar.gz; then
+              echo "KTX-Software tarball downloaded on attempt $attempt"
+              exit 0
+            fi
+            echo "Attempt $attempt failed; sleeping 15s before retry..."
+            sleep 15
+          done
+          echo "KTX-Software tarball download failed after 3 attempts" >&2
+          exit 1
+        working-directory: /
       # NOTE: `cargo make check` was previously a separate step. It is a
       # strict subset of `cargo make clippy` (clippy implies check), so it is
       # not run here.
