@@ -67,6 +67,11 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(0),
+            texture_codec: match std::env::var("CODEC").as_deref() {
+                Ok("png") => next::TextureCodec::Png,
+                Ok("jpeg") | Ok("jpg") => next::TextureCodec::Jpeg,
+                _ => next::TextureCodec::Ktx2,
+            },
         },
     )?;
 

@@ -10,6 +10,7 @@
 //! [`Builder::build`]. See `crate::next::metadata` for the feature-processing
 //! layer that builds Cesium's metadata extensions on top of this.
 
+mod codec;
 mod primitive;
 mod texture;
 
@@ -19,6 +20,7 @@ use std::collections::{BTreeMap, HashSet};
 use gltf::json;
 use gltf::json::validation::{Checked, USize64};
 
+pub use codec::{Codec, CodecError, JpegCodec, PngCodec};
 pub use primitive::{normal, texcoord, DedupAttribute, Granularity};
 pub use texture::{ImageRef, MagFilter, MinFilter, SamplerDesc, TextureRef, Wrap};
 
