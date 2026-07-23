@@ -59,6 +59,60 @@ impl Reproject for Polygon3D {
     }
 }
 
+use crate::ops::{plan_frame_step, translate_2d, translate_3d, ConvertFrame, FrameStep, Translate};
+
+impl Translate for Polygon2D {
+    fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
+        translate_2d(&mut self.coords, self.z.as_deref_mut(), delta);
+        Ok(())
+    }
+}
+
+impl Translate for Polygon3D {
+    fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
+        translate_3d(&mut self.coords, delta);
+        Ok(())
+    }
+}
+
+impl ConvertFrame for Polygon2D {
+    fn convert_frame(
+        &mut self,
+        target: &CoordinateFrame,
+        base_point: Option<[f64; 3]>,
+        cache: &mut ReprojectionCache,
+    ) -> crate::error::Result<()> {
+        match plan_frame_step(&self.frame, target, base_point)? {
+            FrameStep::Noop => Ok(()),
+            FrameStep::Reproject(to) => self.reproject(to, cache),
+            FrameStep::Translate(offset, frame) => {
+                self.translate(offset)?;
+                self.frame = frame;
+                Ok(())
+            }
+        }
+    }
+}
+
+impl ConvertFrame for Polygon3D {
+    fn convert_frame(
+        &mut self,
+        target: &CoordinateFrame,
+        base_point: Option<[f64; 3]>,
+        cache: &mut ReprojectionCache,
+    ) -> crate::error::Result<()> {
+        match plan_frame_step(&self.frame, target, base_point)? {
+            FrameStep::Noop => Ok(()),
+            FrameStep::Reproject(to) => self.reproject(to, cache),
+            FrameStep::Translate(offset, frame) => {
+                self.translate(offset)?;
+                self.frame = frame;
+                Ok(())
+            }
+        }
+    }
+}
+
 impl Triangulate for Polygon2D {
     fn triangulate(&mut self, cache: &mut Cache) -> Result<Geometry, UnsupportedOperation> {
         let Cache { earcut, buffers } = cache;

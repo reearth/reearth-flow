@@ -52,7 +52,10 @@ use reearth_flow_common::attribute::Attributes;
 use serde::{Deserialize, Serialize};
 
 use ops::triangulation::Cache;
-use ops::{Aabb, BoundingBox, Reproject, ReprojectionCache, Triangulate, UnsupportedOperation};
+use ops::{
+    Aabb, BoundingBox, ConvertFrame, Reproject, ReprojectionCache, Translate, Triangulate,
+    UnsupportedOperation,
+};
 // `ValidationParams` / `ValidationType` / `ValidationReport` are named by the
 // `enum_dispatch`-generated `Validate` impls on the geometry enums, so they must
 // be in scope here.
@@ -155,11 +158,11 @@ impl GeometryCollection {
 /// `Collection`) stays inline.
 #[cfg_attr(
     not(feature = "new-geometry"),
-    enum_dispatch(BoundingBox, Triangulate, Reproject)
+    enum_dispatch(BoundingBox, Triangulate, Reproject, ConvertFrame, Translate)
 )]
 #[cfg_attr(
     feature = "new-geometry",
-    enum_dispatch(BoundingBox, Triangulate, Reproject, Validate)
+    enum_dispatch(BoundingBox, Triangulate, Reproject, Validate, ConvertFrame, Translate)
 )]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Euclidean2DGeometry {
@@ -184,11 +187,11 @@ pub enum Euclidean2DGeometry {
 /// operands.
 #[cfg_attr(
     not(feature = "new-geometry"),
-    enum_dispatch(BoundingBox, Triangulate, Reproject)
+    enum_dispatch(BoundingBox, Triangulate, Reproject, ConvertFrame, Translate)
 )]
 #[cfg_attr(
     feature = "new-geometry",
-    enum_dispatch(BoundingBox, Triangulate, Reproject, Validate)
+    enum_dispatch(BoundingBox, Triangulate, Reproject, Validate, ConvertFrame, Translate)
 )]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Euclidean3DGeometry {
@@ -281,6 +284,56 @@ impl Reproject for GeometryCollection {
     ) -> crate::error::Result<()> {
         for member in self.members_mut() {
             member.reproject(target, cache)?;
+        }
+        Ok(())
+    }
+}
+
+impl ConvertFrame for Geometry {
+    fn convert_frame(
+        &mut self,
+        target: &coordinate::CoordinateFrame,
+        base_point: Option<[f64; 3]>,
+        cache: &mut ReprojectionCache,
+    ) -> crate::error::Result<()> {
+        match self {
+            Geometry::None => Ok(()),
+            Geometry::Euclidean2D(g) => g.convert_frame(target, base_point, cache),
+            Geometry::Euclidean3D(g) => g.convert_frame(target, base_point, cache),
+            Geometry::GeometryCollection(c) => c.convert_frame(target, base_point, cache),
+        }
+    }
+}
+
+impl ConvertFrame for GeometryCollection {
+    fn convert_frame(
+        &mut self,
+        target: &coordinate::CoordinateFrame,
+        base_point: Option<[f64; 3]>,
+        cache: &mut ReprojectionCache,
+    ) -> crate::error::Result<()> {
+        for member in self.members_mut() {
+            member.convert_frame(target, base_point, cache)?;
+        }
+        Ok(())
+    }
+}
+
+impl Translate for Geometry {
+    fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
+        match self {
+            Geometry::None => Ok(()),
+            Geometry::Euclidean2D(g) => g.translate(delta),
+            Geometry::Euclidean3D(g) => g.translate(delta),
+            Geometry::GeometryCollection(c) => c.translate(delta),
+        }
+    }
+}
+
+impl Translate for GeometryCollection {
+    fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
+        for member in self.members_mut() {
+            member.translate(delta)?;
         }
         Ok(())
     }
