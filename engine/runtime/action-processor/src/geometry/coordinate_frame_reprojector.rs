@@ -57,13 +57,16 @@ enum BasePointMode {
     Value,
     /// # From Port
     /// Offset by a base point taken from the base-point input port, matched to
-    /// each feature by a key.
+    /// each feature by a key. The base-point geometry is reprojected into the
+    /// destination frame before it is applied.
     FromPort,
 }
 
 /// # Coordinate Frame Reprojector Parameters
 /// Reproject geometry across coordinate reference systems and convert between a
-/// CRS and a Euclidean frame.
+/// CRS and a Euclidean frame. Converting across the Euclidean/CRS boundary
+/// reinterprets coordinates as-is: values and ring winding are left unchanged,
+/// so orientation follows the destination frame's axis order.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CoordinateFrameReprojectorParam {
@@ -80,8 +83,8 @@ pub struct CoordinateFrameReprojectorParam {
     #[serde(default)]
     base_point_mode: BasePointMode,
     /// # Base Point
-    /// Expression evaluating to an `[x, y, z]` origin in CRS space. Used when
-    /// the base point mode is `value`.
+    /// Expression evaluating to an `[x, y, z]` origin in CRS space, in the CRS's
+    /// declared axis order. Used when the base point mode is `value`.
     #[serde(default)]
     base_point: Option<Code<{ CodeType::FlowExpr as u32 }>>,
     /// # Match Key
@@ -248,6 +251,19 @@ impl CoordinateFrameReprojector {
         Ok(feature)
     }
 
+    /// Reproject a base-point feature's geometry into the destination frame and
+    /// return its representative `[x, y, z]`, or `None` when it is not a single
+    /// point or cannot be converted. Reprojecting first removes the ambiguity of
+    /// which frame the base point was authored in, so the offset is always
+    /// applied in the destination frame's coordinate space.
+    fn base_point_in_target(&self, geometry: &Geometry) -> Option<[f64; 3]> {
+        let mut geometry = geometry.clone();
+        REPROJECTION_CACHE
+            .with(|cache| geometry.convert_frame(&self.target, None, &mut cache.borrow_mut()))
+            .ok()?;
+        representative_point(&geometry)
+    }
+
     /// Convert `feature` and forward it to the features port, or forward the
     /// original to the rejected port on failure.
     fn convert_and_forward(
@@ -320,7 +336,7 @@ impl Processor for CoordinateFrameReprojector {
                     .map(|v| v.to_string());
                 if ctx.port == *BASE_POINT_PORT {
                     if let (Some(matched_key), Some(point)) =
-                        (matched_key, representative_point(&feature.geometry))
+                        (matched_key, self.base_point_in_target(&feature.geometry))
                     {
                         self.base_points.insert(matched_key, point);
                     } else {

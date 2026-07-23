@@ -304,10 +304,12 @@ pub(crate) fn translate_3d(coords: &mut [[f64; 3]], delta: [f64; 3]) {
 ///
 /// A CRS-to-CRS conversion reprojects (delegating to [`Reproject`]) and ignores
 /// `base_point`. A conversion that crosses the Euclidean/CRS boundary translates
-/// by `base_point` (an offset in CRS space, defaulting to the origin) and
-/// retags: a Euclidean coordinate maps to `base_point + coordinate` in the CRS,
-/// a CRS coordinate to `coordinate - base_point` in Euclidean space. A `Tangent`
-/// frame on either side is rejected.
+/// by `base_point` (an offset in the CRS-side frame, defaulting to the origin)
+/// and retags: a Euclidean coordinate maps to `base_point + coordinate` in the
+/// CRS, a CRS coordinate to `coordinate - base_point` in Euclidean space. The
+/// bridge is a positional reinterpretation: coordinate values and ring winding
+/// are left unchanged, so a ring's orientation follows the axis order of the
+/// frame it is retagged into. A `Tangent` frame on either side is rejected.
 #[enum_dispatch::enum_dispatch]
 pub trait ConvertFrame {
     /// Convert every coordinate to `target`. The default body reports the type
