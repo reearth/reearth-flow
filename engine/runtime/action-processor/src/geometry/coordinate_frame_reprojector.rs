@@ -21,7 +21,8 @@ use super::errors::GeometryProcessorError;
 
 /// Input port carrying base-point features in the `fromPort` base-point mode.
 static BASE_POINT_PORT: Lazy<Port> = Lazy::new(|| Port::new("base-point"));
-/// Output port for features that could not be reprojected.
+/// Output port for features that could not be converted, or that arrived on an
+/// input port unused in the active base-point mode.
 static REJECTED_PORT: Lazy<Port> = Lazy::new(|| Port::new("rejected"));
 
 thread_local! {
@@ -303,19 +304,21 @@ impl Processor for CoordinateFrameReprojector {
     ) -> Result<(), BoxedError> {
         match &self.base_point {
             BasePointSource::AsIs => {
+                let feature = ctx.feature.clone();
                 if ctx.port != *BASE_POINT_PORT {
-                    let feature = ctx.feature.clone();
                     self.convert_and_forward(&ctx, fw, &feature, None);
+                } else {
+                    fw.send(ctx.new_with_feature_and_port(feature, REJECTED_PORT.clone()));
                 }
             }
             BasePointSource::Value(code) => {
+                let feature = ctx.feature.clone();
                 if ctx.port != *BASE_POINT_PORT {
                     let base_point = code
                         .eval(&ctx.feature, ctx.env_vars.clone())
                         .ok()
                         .as_ref()
                         .and_then(attribute_value_to_xyz);
-                    let feature = ctx.feature.clone();
                     match base_point {
                         Some(bp) => self.convert_and_forward(&ctx, fw, &feature, Some(bp)),
                         None => {
@@ -326,6 +329,8 @@ impl Processor for CoordinateFrameReprojector {
                             fw.send(ctx.new_with_feature_and_port(feature, REJECTED_PORT.clone()));
                         }
                     }
+                } else {
+                    fw.send(ctx.new_with_feature_and_port(feature, REJECTED_PORT.clone()));
                 }
             }
             BasePointSource::FromPort { key } => {
