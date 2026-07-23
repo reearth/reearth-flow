@@ -113,3 +113,39 @@ fn linear_to_srgb(c: f32) -> u8 {
     };
     (c * 255.0).round().clamp(0.0, 255.0) as u8
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// The mip chain must run from the base resolution down to 1x1, halving each
+    /// axis (floor, floored at 1). `encode` derives the KTX2 level count from
+    /// the same formula independently, so an off-by-one here desyncs the two and
+    /// corrupts the container.
+    #[test]
+    fn mip_chain_runs_from_base_to_1x1() {
+        // Non-square, non-power-of-two on one axis, so a dimension-math slip shows.
+        let dims: Vec<(u32, u32)> = srgb_mip_chain(&RgbaImage::new(8, 5))
+            .iter()
+            .map(|m| m.dimensions())
+            .collect();
+        // max(8,5)=8 -> floor(log2 8)+1 = 4 levels.
+        assert_eq!(dims, vec![(8, 5), (4, 2), (2, 1), (1, 1)]);
+    }
+
+    /// `srgb_to_linear`/`linear_to_srgb` are this file's colour math. The round
+    /// trip must recover every 8-bit value (within rounding) and hold the
+    /// endpoints exactly, or textures shift in brightness.
+    #[test]
+    fn srgb_linear_roundtrip_recovers_all_bytes() {
+        assert_eq!(linear_to_srgb(srgb_to_linear(0)), 0);
+        assert_eq!(linear_to_srgb(srgb_to_linear(255)), 255);
+        for v in 0u8..=255 {
+            let back = linear_to_srgb(srgb_to_linear(v));
+            assert!(
+                back.abs_diff(v) <= 1,
+                "sRGB round trip drifted: {v} -> {back}"
+            );
+        }
+    }
+}
