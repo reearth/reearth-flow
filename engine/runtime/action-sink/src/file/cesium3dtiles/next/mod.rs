@@ -15,10 +15,10 @@ mod subtree;
 mod tileset;
 
 use std::collections::{BTreeSet, HashMap};
-use std::io::Cursor;
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use ktx2_rw::{BasisCompressionParams, Ktx2Texture, VkFormat};
 use reearth_flow_atlas::{build_atlas_multipage, TextureCache, TextureInput};
 use reearth_flow_gltf::next::glb::{self, Granularity};
 use reearth_flow_gltf::next::metadata;
@@ -133,6 +133,11 @@ const DEFAULT_ATLAS_SIZE: u32 = 2048;
 /// Default atlas extrusion ring when the parameter is unset; disabled by
 /// default. Raise it to blit a bleed-guard ring around each packed region.
 const DEFAULT_ATLAS_EXTRUSION: u32 = 0;
+
+/// Atlas region alignment for the KTX2 path: ETC1S/UASTC compress in 4x4
+/// blocks, so region boundaries snap to 4 texels to keep a block from
+/// straddling two regions.
+const KTX2_BLOCK_ALIGN: u32 = 4;
 
 /// Extract and reproject every feature's mesh, place each into the deepest
 /// quadtree cell (bounded by `max_zoom`) that fully contains it, and render
@@ -400,30 +405,30 @@ fn build_textured_pages(
         input.scale = scale;
     }
 
-    let built =
-        match build_atlas_multipage(&inputs, render.atlas_size, render.atlas_extrusion, textures)
-            .map_err(SinkError::cesium3dtiles_writer)?
-        {
-            Some(built) => built,
-            None => return Ok(None),
-        };
+    let built = match build_atlas_multipage(
+        &inputs,
+        render.atlas_size,
+        render.atlas_extrusion,
+        KTX2_BLOCK_ALIGN,
+        textures,
+    )
+    .map_err(SinkError::cesium3dtiles_writer)?
+    {
+        Some(built) => built,
+        None => return Ok(None),
+    };
 
-    // WebP has no core-glTF fallback image, so the extension is required.
-    builder.require_extension("EXT_texture_webp");
+    // KTX2/Basis has no core-glTF fallback image, so the extension is required.
+    builder.require_extension("KHR_texture_basisu");
     let mut page_textures = Vec::with_capacity(built.pages.len());
-    for image in built.pages {
-        let mut webp = Vec::new();
-        image::DynamicImage::ImageRgba8(image)
-            .write_to(&mut Cursor::new(&mut webp), image::ImageFormat::WebP)
-            .map_err(|e| {
-                SinkError::Cesium3DTilesWriter(format!("atlas WebP encode failed: {e}"))
-            })?;
-        let image = builder.push_image(&webp, "image/webp");
+    for page in built.pages {
+        let ktx2 = encode_atlas_ktx2(&page)?;
+        let image = builder.push_image(&ktx2, "image/ktx2");
         page_textures.push(builder.push_texture(
             None,
             ATLAS_SAMPLER,
             vec![(
-                "EXT_texture_webp",
+                "KHR_texture_basisu",
                 serde_json::json!({ "source": image.index() }),
             )],
         ));
@@ -435,6 +440,100 @@ fn build_textured_pages(
         &slots,
         page_textures,
     )))
+}
+
+/// Encode one atlas page as a Basis-compressed KTX2 with a full mip chain. The
+/// page dimensions are already multiples of the block size (the atlas is packed
+/// with [`KTX2_BLOCK_ALIGN`]).
+fn encode_atlas_ktx2(page: &image::RgbaImage) -> crate::errors::Result<Vec<u8>> {
+    let (width, height) = page.dimensions();
+    let levels = 32 - width.max(height).leading_zeros(); // floor(log2(max)) + 1
+    let mut texture =
+        Ktx2Texture::create(width, height, 1, 1, 1, levels, VkFormat::R8G8B8A8Srgb)
+            .map_err(|e| SinkError::Cesium3DTilesWriter(format!("KTX2 create failed: {e}")))?;
+    for (level, mip) in srgb_mip_chain(page).into_iter().enumerate() {
+        texture
+            .set_image_data(level as u32, 0, 0, mip.as_raw())
+            .map_err(|e| {
+                SinkError::Cesium3DTilesWriter(format!("KTX2 set level {level} failed: {e}"))
+            })?;
+    }
+    let params = BasisCompressionParams::builder()
+        .uastc(false)
+        .quality_level(128)
+        .thread_count(4)
+        .build();
+    texture
+        .compress_basis(&params)
+        .map_err(|e| SinkError::Cesium3DTilesWriter(format!("KTX2 Basis compress failed: {e}")))?;
+    texture
+        .write_to_memory()
+        .map_err(|e| SinkError::Cesium3DTilesWriter(format!("KTX2 write failed: {e}")))
+}
+
+/// Full mip chain (base down to 1x1) for an sRGB RGBA atlas page. Each level is
+/// resized from a linear-light copy of the base and re-encoded to sRGB, so
+/// minified texels average correctly. Alpha stays linear at every step.
+fn srgb_mip_chain(base: &image::RgbaImage) -> Vec<image::RgbaImage> {
+    let (width, height) = base.dimensions();
+    let levels = 32 - width.max(height).leading_zeros();
+    let linear = to_linear(base);
+    (0..levels)
+        .map(|level| {
+            if level == 0 {
+                return base.clone();
+            }
+            let w = (width >> level).max(1);
+            let h = (height >> level).max(1);
+            let resized =
+                image::imageops::resize(&linear, w, h, image::imageops::FilterType::Triangle);
+            from_linear(&resized)
+        })
+        .collect()
+}
+
+/// sRGB RGBA8 to linear-light RGBA (f32); RGB is gamma-expanded, alpha is scaled.
+fn to_linear(img: &image::RgbaImage) -> image::Rgba32FImage {
+    image::ImageBuffer::from_fn(img.width(), img.height(), |x, y| {
+        let p = img.get_pixel(x, y).0;
+        image::Rgba([
+            srgb_to_linear(p[0]),
+            srgb_to_linear(p[1]),
+            srgb_to_linear(p[2]),
+            p[3] as f32 / 255.0,
+        ])
+    })
+}
+
+/// Inverse of [`to_linear`]: linear-light RGBA (f32) back to sRGB RGBA8.
+fn from_linear(img: &image::Rgba32FImage) -> image::RgbaImage {
+    image::ImageBuffer::from_fn(img.width(), img.height(), |x, y| {
+        let p = img.get_pixel(x, y).0;
+        image::Rgba([
+            linear_to_srgb(p[0]),
+            linear_to_srgb(p[1]),
+            linear_to_srgb(p[2]),
+            (p[3] * 255.0).round().clamp(0.0, 255.0) as u8,
+        ])
+    })
+}
+
+fn srgb_to_linear(c: u8) -> f32 {
+    let c = c as f32 / 255.0;
+    if c <= 0.04045 {
+        c / 12.92
+    } else {
+        ((c + 0.055) / 1.055).powf(2.4)
+    }
+}
+
+fn linear_to_srgb(c: f32) -> u8 {
+    let c = if c <= 0.003_130_8 {
+        c * 12.92
+    } else {
+        1.055 * c.powf(1.0 / 2.4) - 0.055
+    };
+    (c * 255.0).round().clamp(0.0, 255.0) as u8
 }
 
 /// Per input texture, the fraction of native resolution to keep so its

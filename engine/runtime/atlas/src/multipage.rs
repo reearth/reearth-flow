@@ -89,11 +89,16 @@ pub fn build_atlas_multipage(
     materials: &[TextureInput],
     max_atlas_size: u32,
     extrusion: u32,
+    block_align: u32,
     cache: &mut TextureCache,
 ) -> Result<Option<MultiPageAtlas>> {
     if max_atlas_size == 0 {
         return Err(AtlasError::builder("atlas size must be at least 1"));
     }
+    let block_align = block_align.max(1);
+    // Snap the gap to the block grid too, so every reserved footprint keeps
+    // placements on a multiple of `block_align`.
+    let extrusion = extrusion.div_ceil(block_align) * block_align;
 
     let damage_list = collect_damage(materials)?;
     if damage_list.is_empty() {
@@ -126,8 +131,12 @@ pub fn build_atlas_multipage(
                 // preserving aspect. Geometric error is intentionally left
                 // untouched — this is a packing constraint, not user intent.
                 let shrink = max_atlas_size as f64 / w.max(h) as f64;
-                let sw = ((w as f64) * shrink).round().clamp(1.0, max_atlas_size as f64) as u32;
-                let sh = ((h as f64) * shrink).round().clamp(1.0, max_atlas_size as f64) as u32;
+                let sw = ((w as f64) * shrink)
+                    .round()
+                    .clamp(1.0, max_atlas_size as f64) as u32;
+                let sh = ((h as f64) * shrink)
+                    .round()
+                    .clamp(1.0, max_atlas_size as f64) as u32;
                 tracing::warn!(
                     "reearth-flow-atlas: region {w}x{h} of '{}' exceeds atlas size \
                      {max_atlas_size}; force-shrinking to {sw}x{sh}",
@@ -136,6 +145,11 @@ pub fn build_atlas_multipage(
                 w = sw;
                 h = sh;
             }
+            // Round up to the block grid so no compression block straddles a
+            // region boundary; clamp back down if that would overflow a page.
+            let align_up = |v: u32| (v.div_ceil(block_align) * block_align).min(max_atlas_size);
+            w = align_up(w);
+            h = align_up(h);
             per_region.push(jobs.len());
             jobs.push(RegionJob {
                 damage: di,
@@ -260,7 +274,7 @@ mod tests {
             vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
             1.0,
         );
-        let built = build_atlas_multipage(&[a], 4096, 1, &mut TextureCache::default())
+        let built = build_atlas_multipage(&[a], 4096, 1, 1, &mut TextureCache::default())
             .unwrap()
             .expect("atlas built");
         assert_eq!(built.pages.len(), 1);
@@ -286,11 +300,12 @@ mod tests {
             std::slice::from_ref(&full),
             4096,
             1,
+            1,
             &mut TextureCache::default(),
         )
         .unwrap()
         .unwrap();
-        let half_atlas = build_atlas_multipage(&[half], 4096, 1, &mut TextureCache::default())
+        let half_atlas = build_atlas_multipage(&[half], 4096, 1, 1, &mut TextureCache::default())
             .unwrap()
             .unwrap();
         // Downscaling to 0.5 must yield a smaller page than full resolution.
@@ -311,7 +326,7 @@ mod tests {
                 )
             })
             .collect();
-        let built = build_atlas_multipage(&mats, 256, 1, &mut TextureCache::default())
+        let built = build_atlas_multipage(&mats, 256, 1, 1, &mut TextureCache::default())
             .unwrap()
             .expect("atlas built");
         assert_eq!(built.pages.len(), 2);
