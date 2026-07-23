@@ -2138,6 +2138,35 @@ Export Features as Cesium 3D Tiles for Web Visualization
         "null"
       ]
     },
+    "texelSize": {
+      "title": "Texel Size",
+      "description": "Target texel size in metres per pixel. Textures finer than this are downsampled to it. Defaults to 0, which keeps full texture detail.",
+      "type": [
+        "number",
+        "null"
+      ],
+      "format": "double"
+    },
+    "atlasSize": {
+      "title": "Atlas Size",
+      "description": "Maximum texture atlas dimension in pixels. Textures exceeding this spill onto additional atlas pages; a single texture larger than it is downsampled to fit. Defaults to 2048.",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint32",
+      "minimum": 1.0
+    },
+    "atlasExtrusion": {
+      "title": "Atlas Extrusion",
+      "description": "Ring of pixels blitted around each texture region in the atlas to stop bilinear bleed between neighbouring regions. Defaults to 0 (disabled).",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint32",
+      "minimum": 0.0
+    },
     "skipUnexposedAttributes": {
       "title": "Skip unexposed Attributes",
       "description": "Skip attributes with double underscore prefix",

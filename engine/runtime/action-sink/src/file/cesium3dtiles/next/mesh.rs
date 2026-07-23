@@ -126,7 +126,9 @@ fn collect_geometry(geometry: &Geometry, out: &mut Vec<PolygonMesh3D>) {
 /// Recurse through `Collection` members and unpack a `Solid`'s boundary
 /// shells, collecting every `PolygonMesh` found. A `Solid` shell is a
 /// coordinate-free mesh; its frame lives on the enclosing `Solid`, so each
-/// unpacked shell is re-paired with the solid's frame for reprojection.
+/// unpacked shell is re-paired with the solid's frame for reprojection. Bare
+/// `Polygon` faces (what a MultiPolygon-Z source decodes to) become
+/// single-face meshes in their own frame.
 fn collect_euclidean3d(geometry: &Euclidean3DGeometry, out: &mut Vec<PolygonMesh3D>) {
     match geometry {
         Euclidean3DGeometry::Collection(c) => {
@@ -135,6 +137,17 @@ fn collect_euclidean3d(geometry: &Euclidean3DGeometry, out: &mut Vec<PolygonMesh
             }
         }
         Euclidean3DGeometry::PolygonMesh(mesh) => out.push((**mesh).clone()),
+        // A bare face (e.g. a MultiPolygon-Z GeoPackage layer decodes to a
+        // `Collection` of these) is a single-face mesh in the polygon's own frame.
+        Euclidean3DGeometry::Polygon(polygon) => {
+            match PolygonMesh3D::from_polygons(polygon.frame().clone(), std::iter::once(&**polygon))
+            {
+                Ok(mesh) => out.push(mesh),
+                Err(e) => {
+                    tracing::warn!("Cesium3DTilesWriter: skipping un-meshable Polygon: {e:?}")
+                }
+            }
+        }
         Euclidean3DGeometry::Solid(solid) => {
             for shell in std::iter::once(solid.exterior()).chain(solid.interiors()) {
                 match shell {
@@ -228,12 +241,61 @@ fn extract_one(mut mesh: PolygonMesh3D, caches: &mut ExtractCaches) -> Option<Ex
 
 #[cfg(test)]
 mod tests {
+    use reearth_flow_geometry::collection::Collection3D;
+    use reearth_flow_geometry::polygon::Polygon3D;
     use reearth_flow_geometry::polygon_mesh::{PolygonMesh3D, PolygonMesh3DData};
 
     use super::*;
 
     fn dot(a: [f64; 3], b: [f64; 3]) -> f64 {
         a[0] * b[0] + a[1] * b[1] + a[2] * b[2]
+    }
+
+    // A triangular face near Tokyo, stored lat-first (EPSG:4979). Its exact
+    // orientation is irrelevant here; these tests only assert the face is
+    // collected, triangulated, and reprojected rather than silently dropped.
+    fn tokyo_triangle(frame: CoordinateFrame) -> Polygon3D {
+        let ring = vec![
+            [35.0, 139.0, 10.0],
+            [35.0, 139.001, 10.0],
+            [35.001, 139.0, 10.0],
+        ];
+        Polygon3D::from_rings(frame, ring, std::iter::empty::<Vec<[f64; 3]>>())
+    }
+
+    // A bare 3D polygon is what a MultiPolygon-Z GeoPackage layer (e.g. 3DBAG)
+    // decodes to. The Cesium writer historically accepted only Solid/PolygonMesh
+    // and dropped these, producing an empty tileset. It must now mesh them.
+    #[test]
+    fn bare_polygon_is_meshed() {
+        let frame = CoordinateFrame::Crs(EpsgCode::new(4979));
+        let geometry = Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(
+            tokyo_triangle(frame),
+        )));
+
+        let mut caches = ExtractCaches::default();
+        let extracted = extract(&geometry, &mut caches).expect("bare polygon should mesh");
+
+        assert_eq!(extracted.indices.len(), 1, "one triangle expected");
+        assert!(!extracted.ecef_vertices.is_empty(), "vertices reprojected");
+    }
+
+    // A collection of 3D polygons (the reader's representation of a MultiPolygon)
+    // must have every member meshed, not just the first.
+    #[test]
+    fn collection_of_polygons_meshes_every_member() {
+        let frame = CoordinateFrame::Crs(EpsgCode::new(4979));
+        let members = vec![
+            Euclidean3DGeometry::Polygon(Box::new(tokyo_triangle(frame.clone()))),
+            Euclidean3DGeometry::Polygon(Box::new(tokyo_triangle(frame))),
+        ];
+        let geometry =
+            Geometry::Euclidean3D(Euclidean3DGeometry::Collection(Collection3D::new(members)));
+
+        let mut caches = ExtractCaches::default();
+        let extracted = extract(&geometry, &mut caches).expect("collection should mesh");
+
+        assert_eq!(extracted.indices.len(), 2, "both members meshed");
     }
 
     // A face whose canonical orientation is outward, stored in a lat-first frame

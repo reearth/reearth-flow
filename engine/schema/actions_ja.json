@@ -2179,6 +2179,35 @@
               "null"
             ]
           },
+          "texelSize": {
+            "title": "テクセルサイズ",
+            "description": "目標とするテクセルサイズ（メートル毎ピクセル）。これより細かいテクスチャはこの値までダウンサンプリングされる。デフォルトは 0 で、テクスチャの詳細を最大限維持する。",
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "atlasSize": {
+            "title": "アトラスサイズ",
+            "description": "テクスチャアトラスの最大寸法（ピクセル）。これを超えるテクスチャは追加のアトラスページに分割され、単一のテクスチャがこれより大きい場合は収まるようにダウンサンプリングされる。デフォルトは 2048。",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "minimum": 1.0
+          },
+          "atlasExtrusion": {
+            "title": "アトラスの縁取り",
+            "description": "隣接する領域間のバイリニアにじみを防ぐため、アトラス内の各テクスチャ領域の周囲に描画する縁取りのピクセル数。デフォルトは 0（無効）。",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "minimum": 0.0
+          },
           "skipUnexposedAttributes": {
             "title": "非公開属性をスキップ",
             "description": "ダブルアンダースコアで始まる属性をスキップする",

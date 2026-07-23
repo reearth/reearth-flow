@@ -23,13 +23,19 @@ use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryV
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sqlx::{any::AnyRow, Column, Row, TypeInfo, ValueRef};
+use sqlx::{sqlite::SqliteRow, Column, Row, TypeInfo, ValueRef};
 use tokio::sync::mpsc::Sender;
 
 use crate::{
     errors::SourceError,
     file::reader::runner::{get_content, FileReaderCommonParam, FileReaderCompiledParam},
 };
+
+// New-geometry WKB parsing lives in a sibling file, declared here as a child module
+// so it can reuse this module's private SQL/decoding helpers via `super::`.
+#[cfg(feature = "new-geometry")]
+#[path = "geopackage_next.rs"]
+mod geopackage_next;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct GeoPackageReaderFactory;
@@ -221,6 +227,32 @@ impl Source for GeoPackageReader {
 
         Ok(())
     }
+
+    #[cfg(feature = "new-geometry")]
+    async fn start(
+        &mut self,
+        ctx: NodeContext,
+        sender: Sender<(Port, IngestionMessage)>,
+    ) -> Result<(), BoxedError> {
+        let storage_resolver = Arc::clone(&ctx.storage_resolver);
+        let content = get_content(&self.params.common, storage_resolver).await?;
+
+        let features = geopackage_next::read(content, &self.params).await?;
+
+        for feature in features {
+            sender
+                .send((
+                    FEATURES_PORT.clone(),
+                    IngestionMessage::OperationEvent { feature },
+                ))
+                .await
+                .map_err(|e| {
+                    SourceError::GeoPackageReader(format!("Failed to send feature: {e}"))
+                })?;
+        }
+
+        Ok(())
+    }
 }
 
 #[cfg(not(feature = "new-geometry"))]
@@ -343,7 +375,10 @@ async fn read_layer_features(
 
     validate_table_name(layer_name)?;
     let query = format!("SELECT * FROM \"{}\"", escape_identifier(layer_name));
-    let rows = adapter.fetch_many(&query).await.map_err(|e| {
+    // Read via the native SQLite driver: GeoPackage is a SQLite database and its
+    // user columns can be types the generic `Any` driver rejects (e.g. BOOLEAN),
+    // which would otherwise fail the whole layer read.
+    let rows = adapter.fetch_many_sqlite(&query).await.map_err(|e| {
         SourceError::GeoPackageReader(format!("Failed to query layer {layer_name}: {e}"))
     })?;
 
@@ -407,7 +442,7 @@ async fn get_layer_srs_id(adapter: &SqlAdapter, table_name: &str) -> Result<i32,
 
 #[cfg(not(feature = "new-geometry"))]
 fn row_to_feature(
-    row: &AnyRow,
+    row: &SqliteRow,
     geom_col: &str,
     srs_id: i32,
     force_2d: bool,
@@ -436,7 +471,7 @@ fn row_to_feature(
     Ok(feature)
 }
 
-fn get_attribute_value(row: &AnyRow, idx: usize) -> Result<AttributeValue, SourceError> {
+fn get_attribute_value(row: &SqliteRow, idx: usize) -> Result<AttributeValue, SourceError> {
     let raw = row.try_get_raw(idx).map_err(|e| {
         SourceError::GeoPackageReader(format!("Failed to get value at index {idx}: {e}"))
     })?;
