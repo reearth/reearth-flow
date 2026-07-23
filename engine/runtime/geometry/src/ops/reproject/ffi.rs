@@ -12,14 +12,13 @@ use parking_lot::RwLock;
 use crate::coordinate::EpsgCode;
 use proj_sys::{
     proj_context_create, proj_context_destroy, proj_context_errno, proj_context_errno_string,
-    proj_create, proj_create_crs_to_crs, proj_crs_get_coordinate_system, proj_crs_get_sub_crs,
-    proj_cs_get_axis_count, proj_cs_get_axis_info, proj_cs_get_type, proj_destroy, proj_errno,
-    proj_errno_reset, proj_trans, PJ, PJ_CONTEXT, PJ_COORD,
+    proj_coordoperation_has_ballpark_transformation, proj_create, proj_create_crs_to_crs,
+    proj_crs_get_coordinate_system, proj_crs_get_sub_crs, proj_cs_get_axis_count,
+    proj_cs_get_axis_info, proj_cs_get_type, proj_destroy, proj_errno, proj_errno_reset,
+    proj_trans, proj_trans_get_last_used_operation, PJ, PJ_CONTEXT, PJ_COORD,
     PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_CARTESIAN,
     PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_ELLIPSOIDAL,
     PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_SPHERICAL, PJ_DIRECTION_PJ_FWD, PJ_XYZT,
-    proj_coordoperation_has_ballpark_transformation,
-    proj_trans_get_last_used_operation
 };
 
 use crate::error::{Error, Result};
@@ -519,6 +518,7 @@ mod tests {
         assert!(crs_is_linear(EpsgCode::new(1)).is_err());
     }
 
+    #[test]
     fn dutch_vertical_is_corrected_or_rejected_never_silently_wrong() {
         // EPSG:7415 (Amersfoort / RD New + NAP height) carries an orthometric
         // height; converting to WGS84 3D must add the ~46 m NL geoid separation.
