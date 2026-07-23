@@ -117,6 +117,47 @@ impl CoordinateFrame {
             },
         }
     }
+
+    /// Whether coordinates in this frame are in linear (length) units, so that
+    /// unit-sensitive checks (planarity, surface triangulation) are meaningful.
+    /// True only for a definitely-linear frame; an angular or undeterminable
+    /// `Crs` both yield false, so the affected checks are skipped rather than
+    /// trusted. Use [`unit_kind`](Self::unit_kind) to tell those two apart.
+    pub fn has_linear_units(&self) -> bool {
+        matches!(self.unit_kind(), UnitKind::Linear)
+    }
+
+    /// Classify this frame's horizontal coordinate units. `Euclidean` and
+    /// `Tangent` (in-plane metres) are linear; a `Crs` frame is linear iff its
+    /// horizontal axes use a length unit (projected / geocentric) rather than an
+    /// angular one (geographic degrees), and
+    /// [`Undeterminable`](UnitKind::Undeterminable) when PROJ cannot classify
+    /// it (e.g. an unknown code or missing PROJ data).
+    pub fn unit_kind(&self) -> UnitKind {
+        match self {
+            CoordinateFrame::Euclidean => UnitKind::Linear,
+            CoordinateFrame::Tangent(_) => UnitKind::Linear,
+            CoordinateFrame::Crs(epsg) => match crate::ops::crs_is_linear(*epsg) {
+                Ok(true) => UnitKind::Linear,
+                Ok(false) => UnitKind::Angular,
+                Err(e) => UnitKind::Undeterminable(e.to_string()),
+            },
+        }
+    }
+}
+
+/// How a coordinate frame's horizontal units classify: linear (length), angular
+/// (degrees), or unclassifiable. "Linear" rather than "metric" because a length
+/// unit need not be metres (e.g. feet).
+#[derive(Clone, Debug, PartialEq)]
+pub enum UnitKind {
+    /// Linear (length) units: unit-sensitive checks are meaningful.
+    Linear,
+    /// Angular units (geographic degrees): unit-sensitive checks are skipped.
+    Angular,
+    /// PROJ could not classify the CRS; carries the failure reason so a caller
+    /// can surface it rather than silently treating the frame as angular.
+    Undeterminable(String),
 }
 
 /// The absolute frame a [`TangentPlane`] is anchored in: exactly the non-tangent
@@ -151,6 +192,35 @@ pub struct TangentPlane {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn unit_kind_classifies_frames() {
+        assert_eq!(CoordinateFrame::Euclidean.unit_kind(), UnitKind::Linear);
+        // EPSG:6677 is a projected CRS in metres; EPSG:4326 is geographic.
+        assert_eq!(
+            CoordinateFrame::Crs(EpsgCode::new(6677)).unit_kind(),
+            UnitKind::Linear
+        );
+        assert_eq!(
+            CoordinateFrame::Crs(EpsgCode::new(4326)).unit_kind(),
+            UnitKind::Angular
+        );
+        // EPSG:1 is not a real CRS, so PROJ cannot classify it: undeterminable
+        // rather than silently angular.
+        assert!(matches!(
+            CoordinateFrame::Crs(EpsgCode::new(1)).unit_kind(),
+            UnitKind::Undeterminable(_)
+        ));
+        // A tangent plane's in-plane coordinates are metres regardless of its
+        // base, including when anchored in a geographic CRS.
+        let tangent_over_geographic = CoordinateFrame::Tangent(Box::new(TangentPlane {
+            base: BaseFrame::Crs(EpsgCode::new(4326)),
+            origin: [0.0, 0.0, 0.0],
+            u: [1.0, 0.0, 0.0],
+            v: [0.0, 1.0, 0.0],
+        }));
+        assert_eq!(tangent_over_geographic.unit_kind(), UnitKind::Linear);
+    }
 
     #[test]
     fn crs_sign_follows_axis_order() {

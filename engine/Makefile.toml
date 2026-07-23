@@ -159,7 +159,6 @@ cargo run --package reearth-flow-worker --bin reearth-flow-worker -- schema-even
 script = ['''
 #!/usr/bin/env bash -eux
 FILES=(
-  "./schema/actions_en.json"
   "./schema/actions_es.json"
   "./schema/actions_fr.json"
   "./schema/actions_ja.json"
@@ -171,7 +170,9 @@ for f in "${FILES[@]}"; do
   rm -rf "$f"
 done
 
-LANGS=(en es fr ja zh)
+# English (and unknown langs) are served from the base actions.json, so no
+# actions_en.json overlay is generated here.
+LANGS=(es fr ja zh)
 
 for lang in "${LANGS[@]}"; do
   cargo run --package reearth-flow-cli \

@@ -175,6 +175,18 @@ func TestInvalidCapsFallBackToDefault(t *testing.T) {
 	}
 }
 
+func TestSlowPeerResyncDefaultAndOverride(t *testing.T) {
+	clearEnv(t)
+	if c := Load(); !c.SlowPeerResync {
+		t.Errorf("SlowPeerResync default = %v, want true", c.SlowPeerResync)
+	}
+
+	t.Setenv("REEARTH_FLOW_SLOW_PEER_RESYNC", "false")
+	if c := Load(); c.SlowPeerResync {
+		t.Errorf("SlowPeerResync with env=false = %v, want false", c.SlowPeerResync)
+	}
+}
+
 func TestOTLPAndAuthDefaults(t *testing.T) {
 	clearEnv(t)
 	c := Load()
@@ -349,6 +361,7 @@ func clearEnv(t *testing.T) {
 		"REEARTH_FLOW_OTEL_MAX_EXPORT_BATCH_SIZE",
 		"REEARTH_FLOW_OTEL_MAX_QUEUE_SIZE",
 		"REEARTH_FLOW_WS_PROTECTED",
+		"REEARTH_FLOW_SLOW_PEER_RESYNC",
 	} {
 		t.Setenv(k, "")
 	}

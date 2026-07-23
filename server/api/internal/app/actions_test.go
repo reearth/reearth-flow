@@ -55,31 +55,46 @@ func TestLoadActionsData_FallbackToHTTP(t *testing.T) {
 
 func TestLoadActionsData(t *testing.T) {
 	tests := []struct {
-		name    string
-		lang    string
-		wantErr bool
+		name     string
+		lang     string
+		cacheKey string
 	}{
-		{"Default language", "", false},
-		{"En1ish", "en", false},
-		{"Japanese", "ja", false},
-		{"Invalid language", "invalid", true},
+		{"Default language", "", ""},
+		{"English resolves to base", "en", ""},
+		{"Unknown language falls back to base", "invalid", ""},
+		{"Region variant falls back to base", "en-US", ""},
+		{"Japanese", "ja", "ja"},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resetTestData()
 			data, err := loadActionsData(tt.lang)
-			if tt.wantErr {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-				assert.NotEmpty(t, data.Actions)
+			assert.NoError(t, err)
+			assert.NotEmpty(t, data.Actions)
 
-				// Verify cache
-				assert.NotNil(t, actionsDataMap[tt.lang])
-				assert.Equal(t, data, actionsDataMap[tt.lang])
-			}
+			// Verify cache under the normalized key.
+			cached, ok := actionsDataMap[tt.cacheKey]
+			assert.True(t, ok)
+			assert.Equal(t, data, cached)
 		})
+	}
+}
+
+// TestLoadActionsData_EnAndUnknownUseBase asserts that "en" and any unknown
+// language resolve to the exact same content as the base schema and share a
+// single cache entry rather than caching duplicate copies.
+func TestLoadActionsData_EnAndUnknownUseBase(t *testing.T) {
+	resetTestData()
+	base, err := loadActionsData("")
+	assert.NoError(t, err)
+
+	for _, lang := range []string{"en", "en-US", "xx"} {
+		got, err := loadActionsData(lang)
+		assert.NoError(t, err)
+		assert.Equal(t, base, got, "lang %q should resolve to the base schema", lang)
+		_, cached := actionsDataMap[lang]
+		assert.False(t, cached, "lang %q must not get its own cache entry", lang)
 	}
 }
 
@@ -92,9 +107,9 @@ func TestListActions(t *testing.T) {
 		wantCode int
 	}{
 		{"Default language", "", "", http.StatusOK},
-		{"With language", "", "en", http.StatusOK},
+		{"English", "", "en", http.StatusOK},
 		{"Japanese language", "", "ja", http.StatusOK},
-		{"Invalid language", "", "invalid", http.StatusBadRequest},
+		{"Unknown language falls back to base", "", "invalid", http.StatusOK},
 	}
 
 	for _, tt := range tests {
@@ -169,18 +184,19 @@ func TestGetSegregatedActions(t *testing.T) {
 	tests := []struct {
 		name     string
 		lang     string
+		cacheKey string
 		wantCode int
 	}{
-		{"Default language", "", http.StatusOK},
-		{"English", "en", http.StatusOK},
-		{"Japanese", "ja", http.StatusOK},
-		{"Invalid language", "invalid", http.StatusBadRequest},
+		{"Default language", "", "", http.StatusOK},
+		{"English resolves to base", "en", "", http.StatusOK},
+		{"Japanese", "ja", "ja", http.StatusOK},
+		{"Unknown language falls back to base", "invalid", "", http.StatusOK},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resetTestData()
-			actionsDataMap[tt.lang] = ActionsData{Actions: testActions}
+			actionsDataMap[tt.cacheKey] = ActionsData{Actions: testActions}
 
 			e := echo.New()
 			req := httptest.NewRequest(http.MethodGet, "/actions/segregated?lang="+tt.lang, nil)
@@ -220,21 +236,22 @@ func TestGetActionDetails(t *testing.T) {
 	tests := []struct {
 		name     string
 		lang     string
+		cacheKey string
 		id       string
 		wantCode int
 	}{
-		{"Default language", "", testAction.Name, http.StatusOK},
-		{"English", "en", testAction.Name, http.StatusOK},
-		{"Japanese", "ja", testAction.Name, http.StatusOK},
-		{"Invalid language", "invalid", testAction.Name, http.StatusBadRequest},
-		{"Not found", "en", "NonExistent", http.StatusNotFound},
-		{"Hidden action returns 404", "", hiddenAction.Name, http.StatusNotFound},
+		{"Default language", "", "", testAction.Name, http.StatusOK},
+		{"English resolves to base", "en", "", testAction.Name, http.StatusOK},
+		{"Japanese", "ja", "ja", testAction.Name, http.StatusOK},
+		{"Unknown language falls back to base", "invalid", "", testAction.Name, http.StatusOK},
+		{"Not found", "en", "", "NonExistent", http.StatusNotFound},
+		{"Hidden action returns 404", "", "", hiddenAction.Name, http.StatusNotFound},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			resetTestData()
-			actionsDataMap[tt.lang] = ActionsData{Actions: []Action{testAction, hiddenAction}}
+			actionsDataMap[tt.cacheKey] = ActionsData{Actions: []Action{testAction, hiddenAction}}
 
 			e := echo.New()
 			req := httptest.NewRequest(http.MethodGet, "/?lang="+tt.lang, nil)
