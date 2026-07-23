@@ -134,8 +134,6 @@ pub struct CannotConvertF64ToJson(pub f64);
 
 pub type BoxedError = Box<dyn std::error::Error + Send + Sync + 'static>;
 
-/// Which node kind produced a `BoxedError` at a node-error site, selecting
-/// the destination `ExecutionError` variant.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum NodeErrorKind {
     Processor,
@@ -143,9 +141,7 @@ pub(crate) enum NodeErrorKind {
     Source,
 }
 
-/// Wraps `e` in the `ExecutionError` variant matching `kind`, preserving the
-/// box exactly as received — a `Diagnostic` carrier must not be collapsed
-/// via `format!`, since the join fold later downcasts it back out.
+// Must preserve the box exactly as received — a Diagnostic carrier must not be collapsed via format!(), since the join fold later downcasts it back out.
 pub(crate) fn to_node_error(e: BoxedError, kind: NodeErrorKind) -> ExecutionError {
     match kind {
         NodeErrorKind::Processor => ExecutionError::Processor(e),
@@ -168,8 +164,6 @@ mod to_node_error_tests {
         )
     }
 
-    /// A boxed `Diagnostic` must remain recoverable via
-    /// `downcast::<Diagnostic>()`, proving the wrap preserves it structurally.
     #[test]
     fn boxed_diagnostic_round_trips_through_each_kind() {
         for kind in [
@@ -196,8 +190,6 @@ mod to_node_error_tests {
         }
     }
 
-    /// A non-`Diagnostic` boxed error wraps opaque: downcast fails, but the
-    /// original message still reaches the `ExecutionError`'s Display.
     #[test]
     fn non_diagnostic_boxed_error_wraps_opaque() {
         let boxed: BoxedError = Box::new(std::io::Error::other("plain io boom"));

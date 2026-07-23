@@ -289,9 +289,6 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
 }
 
 impl<F> SourceNode<F> {
-    /// This thread's node identity for synthesized diagnostics. A thread can
-    /// run more than one source, so with zero or several sources this
-    /// reports a best-effort summary rather than a single composed id.
     pub fn node_meta(&self) -> super::dag_executor::NodeMeta {
         match self.sources.as_slice() {
             [only] => super::dag_executor::NodeMeta {
@@ -317,8 +314,6 @@ struct RunningSource {
     #[allow(dead_code)]
     node_name: String,
     features_produced: Arc<AtomicU64>,
-    /// This source's composed id and action, captured before `kind.take()`
-    /// moves the `Box<dyn Source>` out of the execution DAG.
     composed_id: String,
     action: String,
 }
@@ -378,9 +373,7 @@ pub async fn create_source_node<F>(
         let NodeKind::Source(source) = node.kind.take().unwrap() else {
             continue;
         };
-        // NOTE: `action` is not asserted equal to `source.name()` — the built
-        // instance's `Source::name()` can legitimately diverge from the
-        // factory-validated `action` (see `processor_node.rs`).
+        // NOTE: `action` may legitimately diverge from `source.name()` — don't assert equality.
         let senders = dag.collect_senders(node_index);
         let port_writers = dag.collect_port_writers(node_index);
         let channel_manager = ChannelManager::new(

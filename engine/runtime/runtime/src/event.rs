@@ -41,26 +41,15 @@ pub enum Event {
         node_handle: NodeHandle,
         status: NodeStatus,
         feature_id: Option<uuid::Uuid>,
-        /// Per-node completion counters, populated only on the terminal
-        /// status emit (`Completed`/`Failed`); `None` otherwise.
         metrics: Option<NodeMetrics>,
     },
-    /// Structured diagnostic signal, rendered into action logs by
-    /// `LogEventHandler`. `Arc`'d since `Diagnostic` is large and every
-    /// broadcast subscriber gets its own clone of `Event`.
     Diagnostic(Arc<reearth_flow_diagnostics::Diagnostic>),
 }
 
-/// Per-node completion counters carried on the terminal `NodeStatusChanged`;
-/// previously only reachable by regexing the log line
-/// (`worker/src/action_log_parser.rs`), now carried structurally.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct NodeMetrics {
-    /// Successfully processed feature count (`Processor` only).
     pub features_processed: u64,
-    /// Successfully written feature count (`Sink` only).
     pub features_written: u64,
-    /// Feature count emitted downstream during `finish()` (`Processor` only).
     pub finish_feature_count: u64,
 }
 
@@ -80,8 +69,6 @@ impl EventHub {
         let _ = self.sender.send(event);
     }
 
-    /// Send a structured diagnostic as an `Event::Diagnostic`, wrapping it in
-    /// the `Arc` the broadcast channel needs to clone cheaply per receiver.
     pub fn diagnostic(&self, diagnostic: reearth_flow_diagnostics::Diagnostic) {
         self.send(Event::Diagnostic(Arc::new(diagnostic)));
     }
@@ -250,8 +237,6 @@ pub trait EventHandler: Send + Sync {
     async fn on_shutdown(&self) {}
 }
 
-/// Runs every handler's `on_shutdown`, bounded by a 5s timeout so a wedged
-/// handler can't hang the subscriber forever.
 async fn run_shutdown(event_handlers: &[Arc<dyn EventHandler>]) {
     let shutdown_futures = event_handlers.iter().map(|handler| handler.on_shutdown());
     match tokio::time::timeout(
@@ -265,8 +250,6 @@ async fn run_shutdown(event_handlers: &[Arc<dyn EventHandler>]) {
     }
 }
 
-/// Drains every event still queued in the broadcast ring via non-blocking
-/// `try_recv`, so in-flight events reach handlers before shutdown runs.
 async fn drain_queued(
     receiver: &mut Receiver<Event>,
     event_handlers: &[Arc<dyn EventHandler>],
@@ -296,8 +279,7 @@ pub async fn subscribe_event(
     loop {
         tokio::select! {
             _ = notify.notified() => {
-                // Flush whatever is still queued before running on_shutdown,
-                // so completeness no longer depends on a fixed-delay sleep.
+                // Must drain queued events before run_shutdown, or they're lost.
                 drain_queued(receiver, event_handlers, &dropped).await;
                 run_shutdown(event_handlers).await;
                 return;
@@ -313,9 +295,7 @@ pub async fn subscribe_event(
                         dropped.fetch_add(n, Ordering::Relaxed);
                     }
                     Err(RecvError::Closed) => {
-                        // The hub sender is gone; run the same clean shutdown
-                        // as an explicit notify, so a stray sender clone
-                        // outliving the notify permit still terminates.
+                        // A stray sender clone may outlive the notify permit — run the same shutdown path so the subscriber still terminates.
                         run_shutdown(event_handlers).await;
                         return;
                     }
@@ -332,8 +312,6 @@ mod subscribe_event_tests {
 
     use super::*;
 
-    /// Records every `on_event`/`on_shutdown` call, in order, so tests can
-    /// assert both counts and ordering.
     #[derive(Default)]
     struct RecordingHandler {
         log: Mutex<Vec<String>>,
@@ -353,7 +331,6 @@ mod subscribe_event_tests {
             self.log.lock().unwrap().iter().any(|e| e == "shutdown")
         }
 
-        /// True iff every recorded event precedes the (single) shutdown entry.
         fn events_precede_shutdown(&self) -> bool {
             let log = self.log.lock().unwrap();
             let Some(shutdown_pos) = log.iter().position(|e| e == "shutdown") else {
@@ -385,8 +362,6 @@ mod subscribe_event_tests {
         }
     }
 
-    /// A capacity-2 channel flooded with 5 sends before the subscriber runs:
-    /// the drain must report 3 dropped while dispatching the 2 survivors.
     #[tokio::test]
     async fn lagged_events_are_counted_and_survivors_dispatched() {
         let (sender, mut receiver) = tokio::sync::broadcast::channel::<Event>(2);
@@ -397,7 +372,6 @@ mod subscribe_event_tests {
         let handler = Arc::new(RecordingHandler::default());
         let handlers: Vec<Arc<dyn EventHandler>> = vec![handler.clone()];
         let notify = Arc::new(Notify::new());
-        // A stored permit is observed by `notified()` regardless of timing.
         notify.notify_one();
         let dropped = Arc::new(AtomicU64::new(0));
 
@@ -417,8 +391,6 @@ mod subscribe_event_tests {
         assert!(handler.events_precede_shutdown());
     }
 
-    /// (b) Normal flow: sends that fit comfortably within capacity are
-    /// dispatched with no lag at all, so the counter must stay at 0.
     #[tokio::test]
     async fn normal_dispatch_keeps_dropped_counter_at_zero() {
         let (sender, mut receiver) = tokio::sync::broadcast::channel::<Event>(8);
@@ -439,8 +411,6 @@ mod subscribe_event_tests {
         assert!(handler.shutdown_called());
     }
 
-    /// (c) After notify fires, any events still queued must reach handlers
-    /// via the drain loop strictly before `on_shutdown` runs.
     #[tokio::test]
     async fn queued_events_reach_handlers_before_shutdown() {
         let (sender, mut receiver) = tokio::sync::broadcast::channel::<Event>(4);
@@ -459,8 +429,6 @@ mod subscribe_event_tests {
         assert!(handler.events_precede_shutdown());
     }
 
-    /// The hub sender being dropped (`RecvError::Closed`) must run the same
-    /// shutdown path as an explicit notify, not silently vanish.
     #[tokio::test]
     async fn closed_sender_triggers_shutdown_path() {
         let (sender, mut receiver) = tokio::sync::broadcast::channel::<Event>(4);
@@ -477,10 +445,6 @@ mod subscribe_event_tests {
         assert_eq!(handler.event_count(), 0);
     }
 
-    /// Regression test: `notify_waiters()` stores no permit, so a
-    /// notification fired before the subscriber parks is lost. Reproduces
-    /// that race and asserts prompt termination, timeout-bounded so a real
-    /// regression fails fast instead of hanging CI.
     #[tokio::test]
     async fn notify_fired_before_any_waiter_is_not_lost() {
         let (sender, mut receiver) = tokio::sync::broadcast::channel::<Event>(4);
@@ -489,8 +453,6 @@ mod subscribe_event_tests {
         let handler = Arc::new(RecordingHandler::default());
         let handlers: Vec<Arc<dyn EventHandler>> = vec![handler.clone()];
         let notify = Arc::new(Notify::new());
-        // Stores a permit before `subscribe_event` is even running — the
-        // exact scenario `notify_waiters()` would silently drop.
         notify.notify_one();
         let dropped = Arc::new(AtomicU64::new(0));
 

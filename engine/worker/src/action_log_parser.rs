@@ -1,7 +1,4 @@
-//! Regex-based recovery of `UserFacingLogEvent`s from engine log prose (see
-//! `user_facing_log_handler.rs`). Do not delete until `UserFacingLogEvent` can be derived from
-//! the structured event stream instead and both UI consumers work off that path — the log
-//! strings matched below are LOG-PROSE FROZEN and must match engine output verbatim.
+//! LOG-PROSE FROZEN: the strings/regexes below must match engine log output verbatim.
 
 use regex::Regex;
 use std::time::Duration;
@@ -52,9 +49,7 @@ impl LogParser {
             source_error: Regex::new(r#"([\w][\w ]*) source error: (.+)"#).unwrap(),
             sink_error: Regex::new(r#"([\w][\w ]*) sink error: (.+)"#).unwrap(),
             workflow_failed: Regex::new(r"Failed nodes:").unwrap(),
-            // Must keep matching both the old `(success|failed)` forms and the newer
-            // `completed with N failed node(s)` form; either yields `WorkflowCompleted` here —
-            // success/failure is read from the `workflow_error_occurred` flag, not this regex.
+            // Must match both old `(success|failed)` and newer `completed with N failed node(s)` forms; success/failure comes from `workflow_error_occurred`, not this regex.
             workflow_completed: Regex::new(
                 r"Finish workflow = .* \((success|failed|completed with \d+ failed node\(s\))\)",
             )
@@ -64,7 +59,6 @@ impl LogParser {
     }
 
     pub fn parse(&self, log_line: &str) -> Option<LogPattern> {
-        // Workflow patterns
         if self.workflow_start.is_match(log_line) {
             return Some(LogPattern::WorkflowStart);
         }
@@ -73,7 +67,6 @@ impl LogParser {
             return Some(LogPattern::WorkflowCompleted);
         }
 
-        // Check specific error patterns before generic workflow error
         if let Some(caps) = self.factory_error.captures(log_line) {
             let node_id = caps.get(1).unwrap().as_str();
             let node_name = caps.get(2).unwrap().as_str();
@@ -83,7 +76,6 @@ impl LogParser {
             } else {
                 factory_name
             };
-            // Extract the actual error message from the log
             let error_detail =
                 if let Some(error_match) = log_line.split(&format!("{factory_name}(\"")).nth(1) {
                     if let Some(msg_end) = error_match.find("\")") {
@@ -95,7 +87,6 @@ impl LogParser {
                 } else {
                     format!("Invalid configuration for {action_name}")
                 };
-            // For now, still return as WorkflowFailed but include node info in the message
             return Some(LogPattern::NodeError {
                 node_name: node_name.to_string(),
                 node_id: Some(node_id.to_string()),
@@ -146,15 +137,12 @@ impl LogParser {
             let node_id = Some(caps.get(3).unwrap().as_str().to_string());
             let mut error = caps.get(4).unwrap().as_str().to_string();
 
-            // Handle error format like: BulkRenamer(\"error message\")
             if let Some(start_idx) = error.find("(\\\"") {
                 if let Some(end_idx) = error.rfind("\\\")") {
                     let prefix_len = "(\\\"".len();
                     error = error[start_idx + prefix_len..end_idx].to_string();
                 }
-            }
-            // Handle error format like: "error message"
-            else if error.starts_with('"') && error.ends_with('"') {
+            } else if error.starts_with('"') && error.ends_with('"') {
                 error = error[1..error.len() - 1].to_string();
             }
 
@@ -172,7 +160,6 @@ impl LogParser {
             let node_name = caps.get(1).unwrap().as_str().to_string();
             let mut error = caps.get(2).unwrap().as_str().to_string();
 
-            // Handle CannotReceiveFromChannel wrapper
             const CHANNEL_ERROR_PREFIX: &str = "CannotReceiveFromChannel(\"";
             const CHANNEL_ERROR_SUFFIX: &str = "\")";
 
@@ -180,7 +167,6 @@ impl LogParser {
                 error = error[CHANNEL_ERROR_PREFIX.len()..error.len() - CHANNEL_ERROR_SUFFIX.len()]
                     .to_string();
 
-                // Handle nested error patterns like SinkType("error message")
                 if let Some(paren_start) = error.find('(') {
                     if let Some(quote_start) = error[paren_start..].find('"') {
                         let quote_start = paren_start + quote_start + 1;
@@ -217,9 +203,6 @@ impl LogParser {
 
 #[cfg(test)]
 mod workflow_completed_shape_tests {
-    //! `onFatal: continue` made the "completed with N failed node(s))" completion line
-    //! reachable; `workflow_completed` must keep matching it alongside the pre-existing
-    //! `(success)`/`(failed)` forms.
     use super::*;
 
     #[test]
@@ -267,9 +250,6 @@ mod workflow_completed_shape_tests {
 
 #[cfg(test)]
 mod sink_and_processor_error_shape_tests {
-    //! `sink_error` must keep parsing both the legacy `CannotReceiveFromChannel(...)`
-    //! Debug-wrapper shape and the newer structured `Sink error: {0}`/`Processor error: {0}`
-    //! shape during rollout; `processor_error` (an unrelated per-feature log line) is unaffected.
     use super::*;
 
     fn node_error(pattern: LogPattern) -> (String, Option<String>, String) {
@@ -283,8 +263,6 @@ mod sink_and_processor_error_shape_tests {
         }
     }
 
-    /// Legacy Debug-wrapper shape (`CannotReceiveFromChannel("...")`), kept parseable for
-    /// compatibility with old-shape builds during a rolling deploy.
     #[test]
     fn sink_error_strips_legacy_debug_wrapper_when_present() {
         let parser = LogParser::new();
@@ -298,8 +276,6 @@ mod sink_and_processor_error_shape_tests {
         assert_eq!(error, "boom");
     }
 
-    /// New structured shape (`Sink error: {0}`): the legacy-wrapper unwrap is a no-op, so the
-    /// full text passes through untouched.
     #[test]
     fn sink_error_passes_through_new_structured_shape_untouched() {
         let parser = LogParser::new();
@@ -313,8 +289,6 @@ mod sink_and_processor_error_shape_tests {
         assert_eq!(error, "Sink error: boom");
     }
 
-    /// `processor_error` matches an unrelated per-feature `process()` log line, independent of
-    /// the `ExecutionError` enum — confirms this pattern is unaffected.
     #[test]
     fn processor_error_shape_is_unaffected_by_the_executionerror_display_change() {
         let parser = LogParser::new();
@@ -331,8 +305,6 @@ mod sink_and_processor_error_shape_tests {
         assert_eq!(error, "Attribute not found: nonexistentAttribute");
     }
 
-    /// Real production Display output for `ExecutionError::CannotReceiveFromChannel` wrapped
-    /// with `format!("{e:?}")`.
     #[test]
     fn sink_error_parses_real_legacy_channel_display_text() {
         let parser = LogParser::new();

@@ -9,8 +9,7 @@ use opentelemetry_sdk::{
     trace::{SdkTracerProvider, Tracer},
 };
 
-// Empty/whitespace treated as unset — deployment templating commonly
-// materializes optional env vars as empty strings, which would otherwise fail OTLP exporter init.
+// Empty/whitespace treated as unset — deployment templating commonly leaves this env var as an empty string.
 static OTEL_COLLECTOR_ENDPOINT: Lazy<Mutex<Option<String>>> = Lazy::new(|| {
     Mutex::new(
         env::var("OTEL_COLLECTOR_ENDPOINT")
@@ -30,8 +29,7 @@ pub enum Error {
 
 pub type Result<T, E = Error> = std::result::Result<T, E>;
 
-/// Builds an OTel `SdkMeterProvider`, exporting to `OTEL_COLLECTOR_ENDPOINT` if set
-/// (else a stdout exporter — not a no-op). Caller MUST call `shutdown()` on the returned provider before exit; dropping it (or `std::process::exit`) discards unflushed metrics.
+/// Caller MUST call `shutdown()` on the returned provider before exit; dropping it (or `std::process::exit`) discards unflushed metrics.
 pub fn init_metrics(service_name: String) -> Result<SdkMeterProvider> {
     let metrics = match OTEL_COLLECTOR_ENDPOINT.lock().unwrap().clone() {
         Some(endpoint) => {
@@ -74,8 +72,7 @@ pub fn init_metrics(service_name: String) -> Result<SdkMeterProvider> {
     Ok(metrics)
 }
 
-/// Builds an OTel `Tracer` + `SdkTracerProvider` for `service_name` (same
-/// OTLP/stdout fallback as `init_metrics`). The `Tracer` alone can't shut down the exporter — caller MUST keep the provider alive and call `shutdown()` on it before exit, or buffered spans are lost.
+/// The `Tracer` alone can't shut down the exporter — caller MUST keep the provider alive and call `shutdown()` on it before exit, or buffered spans are lost.
 pub fn init_tracing(service_name: String) -> Result<(Tracer, SdkTracerProvider)> {
     let tracer_provider = match OTEL_COLLECTOR_ENDPOINT.lock().unwrap().clone() {
         Some(endpoint) => opentelemetry_sdk::trace::SdkTracerProvider::builder()

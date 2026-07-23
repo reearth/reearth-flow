@@ -37,11 +37,8 @@ pub struct Context {
     pub storage_resolver: Arc<StorageResolver>,
     pub kv_store: Arc<dyn KvStore>,
     pub event_hub: EventHub,
-    /// Per-job sandbox root for sink writes. Production callers MUST set
-    /// this; `file:///` (test/legacy default) disables sandbox enforcement.
+    // file:/// disables sandbox enforcement (test/legacy default) — production callers MUST override it.
     pub sandbox_root: Uri,
-    /// Per-node diagnostics handle for `report`/`warn`/`warn_once`. `None`
-    /// for fresh/legacy contexts; derived contexts propagate it.
     pub diagnostics: Option<crate::diagnostics::SharedNodeDiagnostics>,
 }
 
@@ -111,11 +108,8 @@ pub struct ExecutorContext {
     pub storage_resolver: Arc<StorageResolver>,
     pub kv_store: Arc<dyn KvStore>,
     pub event_hub: EventHub,
-    /// Per-job sandbox root for sink writes. Production callers MUST set
-    /// this; `file:///` (test/legacy default) disables sandbox enforcement.
+    // file:/// disables sandbox enforcement (test/legacy default) — production callers MUST override it.
     pub sandbox_root: Uri,
-    /// Per-node diagnostics handle for `report`/`warn`/`warn_once`. `None`
-    /// for fresh/legacy contexts; derived contexts propagate it.
     pub diagnostics: Option<crate::diagnostics::SharedNodeDiagnostics>,
 }
 
@@ -239,18 +233,13 @@ impl ExecutorContext {
         self.event_hub.diagnostic(diagnostic.clone());
     }
 
-    /// Reports a feature-disposition decision (drop/reject/fail). The fatal
-    /// is recorded in the per-node slot BEFORE `Err` is returned, so the
-    /// executor fails the node at drain end even if the caller swallows it.
-    // `Diagnostic` is deliberately unboxed here — actions match on
-    // `effective_disposition` and `?`-propagate it as a `BoxedError`.
+    // Fatal is recorded in the per-node slot BEFORE Err is returned, so the node still fails at drain end even if the caller swallows this Err.
+    // Deliberately unboxed — actions match on effective_disposition and ?-propagate this as a BoxedError.
     #[allow(clippy::result_large_err)]
     pub fn report(&self, draft: DiagnosticDraft) -> Result<Disposition, Diagnostic> {
         let (node_id, action_type) = self.diagnostic_identity();
         let mut diagnostic =
             Diagnostic::from_draft(draft, node_id, action_type, Some(self.feature.id));
-        // With a diagnostics handle, resolve() applies the compiled policy;
-        // a handle-less context (tests/legacy) falls back to the registry default.
         let effective = match &self.diagnostics {
             Some(handle) => handle.resolve(diagnostic.code),
             None => diagnostic.default_disposition,
@@ -274,9 +263,6 @@ impl ExecutorContext {
                         handle
                             .inner
                             .record(kind, diagnostic.code, Some(self.feature.id));
-                        // Reject also captures a side-file row (no-op unless
-                        // sink + side_file()). `has_geometry` is always
-                        // `Some` here since `self.feature` is live.
                         if effective == Disposition::Reject {
                             handle.record_reject_row(
                                 Some(self.feature.id),
@@ -285,7 +271,6 @@ impl ExecutorContext {
                             );
                         }
                     }
-                    // never silent, even on a context without a handle (tests/legacy paths)
                     None => self.emit_immediate_warn(&diagnostic),
                 }
                 Ok(effective)
@@ -293,8 +278,6 @@ impl ExecutorContext {
         }
     }
 
-    /// Warn-and-continue: the feature keeps flowing untouched. Aggregated per
-    /// node keyed on code; one finish() summary per code. Never fails.
     pub fn warn(&self, draft: DiagnosticDraft) {
         let (node_id, action_type) = self.diagnostic_identity();
         let diagnostic = Diagnostic::from_draft(draft, node_id, action_type, Some(self.feature.id));
@@ -308,9 +291,6 @@ impl ExecutorContext {
         }
     }
 
-    /// Run-level notice: one immediate line per run per code, bypasses the
-    /// aggregator. Without a diagnostics handle, dedup can't apply and this
-    /// degrades to warn-every-time (test-only/legacy; production always has a handle).
     pub fn warn_once(&self, draft: DiagnosticDraft) {
         let first = match &self.diagnostics {
             Some(handle) => handle.inner.try_mark_warn_once(draft.code),
@@ -331,11 +311,8 @@ pub struct NodeContext {
     pub storage_resolver: Arc<StorageResolver>,
     pub kv_store: Arc<dyn KvStore>,
     pub event_hub: EventHub,
-    /// Per-job sandbox root for sink writes. Production callers MUST set
-    /// this; `file:///` (test/legacy default) disables sandbox enforcement.
+    // file:/// disables sandbox enforcement (test/legacy default) — production callers MUST override it.
     pub sandbox_root: Uri,
-    /// Per-node diagnostics handle for `report`/`warn`/`warn_once`. `None`
-    /// for fresh/legacy contexts; derived contexts propagate it.
     pub diagnostics: Option<crate::diagnostics::SharedNodeDiagnostics>,
 }
 
@@ -372,8 +349,6 @@ impl Default for NodeContext {
             storage_resolver: Arc::new(StorageResolver::new()),
             kv_store: Arc::new(crate::kvs::create_kv_store()),
             event_hub: EventHub::new(30),
-            // Permissive sentinel: `file:///` disables sandbox enforcement
-            // (test/legacy only; production entrypoints reject it).
             sandbox_root: std::str::FromStr::from_str("file:///")
                 .expect("'file:///' is always a valid URI"),
             diagnostics: None,
@@ -420,9 +395,6 @@ impl NodeContext {
 }
 
 impl NodeContext {
-    /// finish()-time drop reporting (sinks run finish with only a
-    /// `NodeContext`); `has_geometry` threads through verbatim to
-    /// `NodeDiagnosticsHandle::report_drop`.
     pub fn report_drop(
         &self,
         code: ErrorCode,
@@ -432,8 +404,6 @@ impl NodeContext {
         match &self.diagnostics {
             Some(handle) => handle.report_drop(code, feature_id, has_geometry),
             None => {
-                // Never silent even on a context without a handle
-                // (tests/legacy paths), same guarantee as `report()`.
                 let diagnostic =
                     Diagnostic::from_draft(DiagnosticDraft::new(code), None, None, feature_id);
                 self.event_hub.diagnostic(diagnostic);
@@ -448,12 +418,8 @@ pub struct ExecutorOptions {
     pub event_hub_capacity: usize,
     pub thread_pool_size: usize,
     pub feature_flush_threshold: usize,
-    /// Per-job sandbox root for sink writes, wired from the worker's resolved
-    /// `workerArtifactPath`. Unset builders default to the permissive `file:///` sentinel.
+    // Unset builders default to the permissive file:/// sentinel (disables sandbox enforcement).
     pub sandbox_root: Uri,
-    /// The workflow's compiled `errorPolicy`, cloned into every node's
-    /// `NodeDiagnosticsHandle` to resolve `report()`/`report_drop()` calls.
-    /// Defaults to the empty policy (registry defaults for every code).
     pub disposition_policy: std::sync::Arc<DispositionPolicy>,
 }
 
@@ -464,8 +430,6 @@ impl Default for ExecutorOptions {
             event_hub_capacity: 8192,
             thread_pool_size: 30,
             feature_flush_threshold: 512,
-            // Permissive sentinel — same as NodeContext::default().
-            // Production callers must override this with the real artifact URI.
             sandbox_root: std::str::FromStr::from_str("file:///")
                 .expect("'file:///' is always a valid URI"),
             disposition_policy: std::sync::Arc::new(DispositionPolicy::default()),
@@ -541,7 +505,6 @@ mod diagnostics_tests {
         let summaries = handle.inner.drain_summaries();
         assert_eq!(summaries.len(), 1);
         assert_eq!(summaries[0].aggregated.as_ref().unwrap().count, 1);
-        // node identity was auto-injected
         assert_eq!(summaries[0].node_id.as_deref(), Some("node-1"));
         assert_eq!(
             summaries[0].action_type.as_deref(),
@@ -552,7 +515,6 @@ mod diagnostics_tests {
     #[test]
     fn report_fatal_records_slot_before_returning_err_even_if_swallowed() {
         let (ctx, handle) = ctx_with_handle();
-        // deliberately swallow the Err — the no-silent-fatal guarantee is executor-side
         let _ = ctx.report(DiagnosticDraft::new(ErrorCode::InternalInvariantViolation));
         let fatal = handle.inner.take_fatal().expect("fatal slot must be set");
         assert_eq!(fatal.effective_disposition, Some(Disposition::Fatal));
@@ -582,8 +544,6 @@ mod diagnostics_tests {
         );
     }
 
-    /// A resolved `Reject` under `side_file()` captures a row (feature id +
-    /// has_geometry + code), not just the aggregation bucket.
     #[test]
     fn report_resolves_a_promoting_override_to_reject_and_captures_a_side_file_row() {
         let policy = DispositionPolicy::compile(PolicyInput {
@@ -606,13 +566,10 @@ mod diagnostics_tests {
         assert_eq!(overflow, 0);
         assert_eq!(rows.len(), 1);
         assert_eq!(rows[0].feature_id, Some(ctx.feature.id));
-        // ctx_with_policy's feature has no geometry set.
         assert_eq!(rows[0].has_geometry, Some(false));
         assert_eq!(rows[0].code, ErrorCode::Cesium3dtilesEmptyGeometry);
     }
 
-    /// Without `side_file()`, the bucket still records `Reject` but no row
-    /// is captured.
     #[test]
     fn report_resolves_a_promoting_override_to_reject_without_side_file_captures_no_row() {
         let policy = DispositionPolicy::compile(PolicyInput {
@@ -631,8 +588,6 @@ mod diagnostics_tests {
         assert!(handle.drain_reject_rows().is_none());
     }
 
-    /// A `WarnDrop` resolution never captures a side-file row, even under a
-    /// sink + `side_file()` handle — only `Reject` does.
     #[test]
     fn report_warn_drop_never_captures_a_side_file_row_even_with_side_file_policy() {
         let (ctx, handle) = ctx_with_policy_and_sink(side_file_only_policy(), true);
@@ -689,7 +644,6 @@ mod diagnostics_tests {
         let mut receiver = ctx.event_hub.sender.subscribe();
         ctx.warn_once(DiagnosticDraft::new(ErrorCode::GltfZeroFaceSolid));
         ctx.warn_once(DiagnosticDraft::new(ErrorCode::GltfZeroFaceSolid));
-        // exactly one immediate Event::Diagnostic, no twin Event::Log, nothing aggregated
         let first = receiver.try_recv().expect("one immediate diagnostic event");
         assert!(matches!(first, crate::event::Event::Diagnostic(_)));
         assert!(receiver.try_recv().is_err());
@@ -731,8 +685,6 @@ mod diagnostics_tests {
         assert!(handle.inner.take_fatal().is_none());
     }
 
-    /// Proves `NodeContext::report_drop` threads `has_geometry` through to a
-    /// captured side-file row — the exact call shape production sink actions use.
     #[test]
     fn report_drop_resolves_a_promoting_override_to_reject_and_captures_a_side_file_row_via_node_context(
     ) {
@@ -783,7 +735,6 @@ mod diagnostics_tests {
         let (ctx, handle) = ctx_with_policy(Arc::new(policy));
         let node_ctx: NodeContext = ctx.into();
         node_ctx.report_drop(ErrorCode::CitygmlEmptyGeometry, None, None);
-        // the drain-end backstop's slot is populated, not the aggregation bucket
         assert!(handle.inner.drain_summaries().is_empty());
         let fatal = handle.inner.take_fatal().expect("fatal slot must be set");
         assert_eq!(fatal.effective_disposition, Some(Disposition::Fatal));
@@ -798,13 +749,11 @@ mod diagnostics_tests {
             Feature::from(IndexMap::<String, AttributeValue>::new()),
             FEATURES_PORT.clone(),
         );
-        // ctx.diagnostics is None (never wired to a handle)
         let mut receiver = ctx.event_hub.sender.subscribe();
         let disp = ctx
             .report(DiagnosticDraft::new(ErrorCode::Cesium3dtilesEmptyGeometry))
             .unwrap();
         assert_eq!(disp, Disposition::WarnDrop);
-        // never-silent: exactly one Event::Diagnostic, no twin Event::Log
         let first = receiver.try_recv().expect("one immediate diagnostic event");
         assert!(matches!(first, crate::event::Event::Diagnostic(_)));
         assert!(receiver.try_recv().is_err());

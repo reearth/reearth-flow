@@ -244,8 +244,7 @@ impl RunWorkerCommand {
         };
 
         let workflow_id = workflow.id;
-        // Kept registered as a cross-check against `RunSummary.failed_nodes`, not the sole
-        // source of truth for job success — remove once the two signals are proven to agree.
+        // Cross-check against RunSummary.failed_nodes, not the sole success signal — remove once the two are proven to agree.
         let node_failure_handler = Arc::new(NodeFailureHandler::new());
         let result = AsyncRunner::run_with_event_handler(
             meta.job_id,
@@ -266,8 +265,7 @@ impl RunWorkerCommand {
                 let handler_success = node_failure_handler.all_success();
                 let summary_success = summary.failed_nodes.is_empty();
                 if handler_success != summary_success {
-                    // NodeFailureHandler (event-driven) and RunSummary (fold-based) are expected
-                    // to agree; a divergence means one signal is missing/duplicating a failure.
+                    // Divergence means one signal is missing/duplicating a failure.
                     tracing::warn!(
                         "NodeFailureHandler/RunSummary disagree on run success: handler_success={}, summary_success={}, handler_failed_nodes={:?}, summary_failed_nodes={:?}",
                         handler_success,
@@ -286,19 +284,14 @@ impl RunWorkerCommand {
         };
         self.cleanup(&meta, &storage_resolver).await?;
         let complete_event = match &run_summary {
-            // `with_summary` caps internally now — pass the uncapped summary; capping twice
-            // would double-cap an already-capped overflow marker (see its doc).
+            // Pass the uncapped summary — with_summary caps internally; capping twice would double-cap the overflow marker.
             Some(summary) => JobCompleteEvent::with_summary(
                 workflow_id,
                 meta.job_id,
                 job_result.clone(),
                 summary,
             ),
-            // No summary means the runner returned `Err`: publishes the pre-diagnostics shape.
-            // Known gap: per-feature errors under `onFatal: Terminate` also take this `Err`
-            // path, so aggregatedDiagnostics/droppedEventCount go missing here even though the
-            // run produced them (job is still correctly labeled Failed either way, and live
-            // `Event::Diagnostic` rows still reach the server unaffected).
+            // Known gap: Err path (incl. onFatal:Terminate per-feature errors) omits aggregatedDiagnostics/droppedEventCount even though the run produced them.
             None => JobCompleteEvent::new(workflow_id, meta.job_id, job_result.clone()),
         };
         match &pubsub {
@@ -567,8 +560,7 @@ impl RunWorkerCommand {
     }
 }
 
-/// Derives `JobResult` from two independent success signals — `NodeFailureHandler`
-/// (event-driven) and `RunSummary` (thread-Result fold) — `Success` only when both agree.
+/// Success only when both NodeFailureHandler and RunSummary agree.
 fn derive_job_result(summary_success: Option<bool>, handler_all_success: bool) -> JobResult {
     match summary_success {
         None => JobResult::Failed,
@@ -594,7 +586,6 @@ mod tests {
 
     #[test]
     fn derive_job_result_failed_when_handler_catches_what_summary_missed() {
-        // NodeFailureHandler saw a failure that RunSummary's fold did not.
         let result = derive_job_result(Some(true), false);
         assert!(matches!(result, JobResult::Failed));
     }

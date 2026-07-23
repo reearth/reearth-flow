@@ -7,25 +7,12 @@ use logging_helper::{execute_logging_error_test, verify_action_log, verify_user_
 const FIXTURE_DIR: &str = "logging/12_fatal_override";
 const WORKFLOW_NAME: &str = "Fatal Override Test";
 
-/// The writer node id a fatal-promoting `errorPolicy` override targets
-/// (`cesium3dtiles.empty_geometry` -> `fatal`), read straight out of
-/// `logging/12_fatal_override/workflow.yml`. No subgraphs in this fixture,
-/// so composed id == raw id.
 const WRITER_NODE_ID: &str = "cbd5f624-b7cd-4a11-b6dd-181063c314d4";
 
-/// A fatal-promoting `errorPolicy` override on `cesium3dtiles.empty_geometry`
-/// fails the run: each dropped feature's error is logged via the sink's
-/// per-op ERROR lane (3 lines), but the fatal slot itself is never
-/// re-emitted as an `Event::Diagnostic`, so there's no CRITICAL line even
-/// though `effective_disposition` is `Fatal` — instead the swallowed fatal
-/// is reported superseded via one WARN backstop line.
 #[test]
 fn test_logging_fatal_override() {
     let result = execute_logging_error_test(FIXTURE_DIR, WORKFLOW_NAME);
 
-    // Read the raw action log before the golden compare below, so a
-    // regex/normalizer bug in the golden path can't mask a real regression
-    // in the fatal-override behavior itself.
     let actual_log_path = result.action_log_dir.join("all.log");
     let raw_action_log = fs::read_to_string(&actual_log_path)
         .unwrap_or_else(|e| panic!("Failed to read {}: {e}", actual_log_path.display()));

@@ -3,8 +3,7 @@ use uuid::Uuid;
 
 use crate::ErrorCode;
 
-/// Log level. Orthogonal to control flow (see `Disposition`).
-/// `Fatal` is a rendering level only — never read `severity` for run-fatality.
+/// `Fatal` severity is a display level only; disposition (not severity) determines run-fatality.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Severity {
@@ -29,7 +28,6 @@ impl Severity {
     }
 }
 
-/// Machine-routable bucket for UI grouping/colorizing. Closed set, stable.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum ErrorCategory {
@@ -45,7 +43,6 @@ pub enum ErrorCategory {
     Internal,
 }
 
-/// What the engine should do about this at runtime. There is no `Silent`.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum Disposition {
@@ -54,31 +51,26 @@ pub enum Disposition {
     Fatal,
 }
 
-/// Best-effort source location for expression errors (miette interop lands later).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, Deserialize)]
 pub struct SourceSpan {
     pub offset: usize,
     pub length: Option<usize>,
 }
 
-/// Counts + samples for aggregated summaries. Carried inside `Diagnostic` so
-/// consumers rank/read counts structurally, never by parsing the message.
+/// Consumers must read `aggregated.count` structurally — never parse the message for counts.
 #[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
 pub struct AggregateInfo {
     pub count: u64,
     pub sample_feature_ids: Vec<Uuid>,
 }
 
-/// The single object that flows through logs, events, the wire, and the UI.
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Diagnostic {
     pub code: ErrorCode,
     pub category: ErrorCategory,
     pub severity: Severity,
-    /// Registry default, stamped by `from_draft`.
     pub default_disposition: Disposition,
-    /// Post-resolve; the source of truth for fatality. `None` until resolved
-    /// (and permanently `None` for warn-and-continue diagnostics).
+    /// Source of truth for fatality; `None` until resolved (permanently `None` for warn-and-continue).
     pub effective_disposition: Option<Disposition>,
     pub node_id: Option<String>,
     pub action_type: Option<String>,
@@ -138,8 +130,7 @@ impl std::fmt::Display for Diagnostic {
 
 impl std::error::Error for Diagnostic {}
 
-/// What a call site authors; everything else is stamped from the registry
-/// via `Diagnostic::from_draft`, the only construction path reporting surfaces use — so emitted diagnostics can't disagree with the registry.
+/// `from_draft` is the only construction path reporting surfaces use, so emitted diagnostics can't disagree with the registry.
 #[derive(Debug, Clone)]
 pub struct DiagnosticDraft {
     pub code: ErrorCode,
@@ -181,8 +172,6 @@ impl DiagnosticDraft {
     }
 }
 
-/// Terminal fold of a DAG run (produced by `DagExecutorJoinHandle::join`).
-/// `failed_nodes` holds one `Diagnostic` per node whose thread returned `Err`; `aggregated_diagnostics` holds every finish()-time summary, in collection order.
 #[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct RunSummary {
     pub failed_nodes: Vec<Diagnostic>,
@@ -190,8 +179,7 @@ pub struct RunSummary {
     pub dropped_event_count: u64,
 }
 
-/// Ranks `items` by `aggregated.count` descending (no-count entries sort
-/// last, stable). If `items.len() <= k`, clones through unchanged; otherwise keeps the top `k` and collapses the rest into one `internal.diagnostics_overflow` marker whose count sums the collapsed entries (no-count = 1).
+/// No-count entries sort last; when collapsed into the overflow marker they each contribute a count of 1.
 fn cap_diagnostics(
     items: &[Diagnostic],
     k: usize,
@@ -232,8 +220,6 @@ fn cap_diagnostics(
 }
 
 impl RunSummary {
-    /// Top-K bound for wire payloads (spec 4.7): caps `failed_nodes` and
-    /// `aggregated_diagnostics` independently at `k`, collapsing any remainder into one overflow-marker `Diagnostic` each. `dropped_event_count` passes through.
     pub fn capped(&self, k: usize) -> RunSummary {
         RunSummary {
             failed_nodes: cap_diagnostics(&self.failed_nodes, k, Disposition::Fatal),
@@ -280,7 +266,6 @@ mod run_summary_capped_tests {
         assert_eq!(capped.failed_nodes.len(), 1);
         assert_eq!(capped.aggregated_diagnostics.len(), 2);
         assert_eq!(capped.dropped_event_count, 7);
-        // passthrough: original order preserved, not re-sorted
         assert_eq!(
             capped.aggregated_diagnostics[0].code,
             ErrorCode::GltfZeroFaceSolid
@@ -321,10 +306,9 @@ mod run_summary_capped_tests {
             dropped_event_count: 0,
         };
         let capped = summary.capped(2);
-        assert_eq!(capped.aggregated_diagnostics.len(), 3); // 2 kept + 1 overflow marker
+        assert_eq!(capped.aggregated_diagnostics.len(), 3);
         let overflow = capped.aggregated_diagnostics.last().unwrap();
         assert_eq!(overflow.code, ErrorCode::InternalDiagnosticsOverflow);
-        // residual = the single collapsed entry (count 2, the smallest of the three)
         assert_eq!(overflow.aggregated.as_ref().unwrap().count, 2);
         assert!(overflow
             .aggregated
@@ -384,14 +368,12 @@ mod run_summary_capped_tests {
             ],
             dropped_event_count: 0,
         };
-        // k=3 == len, so passthrough — order unchanged, no sort applied
         let passthrough = summary.capped(3);
         assert_eq!(
             passthrough.aggregated_diagnostics[0].code,
             ErrorCode::GltfZeroFaceSolid
         );
 
-        // k=2 forces a sort: Some(4) comes first; the two None entries keep their relative order and the later one collapses into the overflow marker.
         let capped = summary.capped(2);
         assert_eq!(
             capped.aggregated_diagnostics[0].code,
@@ -403,7 +385,6 @@ mod run_summary_capped_tests {
         );
         let overflow = capped.aggregated_diagnostics.last().unwrap();
         assert_eq!(overflow.code, ErrorCode::InternalDiagnosticsOverflow);
-        // one collapsed None-count entry contributes 1 to the residual total
         assert_eq!(overflow.aggregated.as_ref().unwrap().count, 1);
     }
 
@@ -419,7 +400,7 @@ mod run_summary_capped_tests {
             dropped_event_count: 0,
         };
         let capped = summary.capped(1);
-        assert_eq!(capped.failed_nodes.len(), 2); // 1 kept + 1 overflow marker
+        assert_eq!(capped.failed_nodes.len(), 2);
         let overflow = capped.failed_nodes.last().unwrap();
         assert_eq!(overflow.code, ErrorCode::InternalDiagnosticsOverflow);
         assert_eq!(overflow.aggregated.as_ref().unwrap().count, 2);

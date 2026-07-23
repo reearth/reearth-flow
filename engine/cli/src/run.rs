@@ -339,7 +339,6 @@ impl RunCliCommand {
             .map_err(|e| crate::errors::Error::Run(format!("Failed to run workflow: {e}")))
     }
 
-    /// Mirrors `runner::summary_into_unit_result` (not reusable here, it's `pub(crate)`).
     /// Turns a non-empty `failed_nodes` (reachable under `onFatal: continue`) back into `Err`.
     fn summary_into_unit_result(
         summary: RunSummary,
@@ -354,10 +353,8 @@ impl RunCliCommand {
         }
     }
 
-    /// Render a run-end summary to stdout (diagnostics/failed nodes/dropped count, each only
-    /// when non-empty); the failed-node list only ever prints under `onFatal: continue`.
+    /// The failed-node list only ever prints under `onFatal: continue`.
     fn print_run_summary(summary: &RunSummary) {
-        // Intentionally terse: only `diagnostic.message`, not the fuller `Display`.
         for diagnostic in &summary.aggregated_diagnostics {
             println!("warning: {}", diagnostic.message);
         }

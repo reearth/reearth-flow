@@ -39,8 +39,7 @@ fn reject_unsandboxed_sentinel(sandbox_root: &Uri) -> Result<(), crate::errors::
     Ok(())
 }
 
-/// Legacy-compat: turns a non-empty `failed_nodes` in `Ok(summary)` back
-/// into `Err`, preserving the unit-returning wrappers' "any failure is `Err`" contract.
+/// Legacy-compat: converts a non-empty `failed_nodes` in `Ok` back into `Err`.
 pub(crate) fn summary_into_unit_result(summary: RunSummary) -> Result<(), crate::errors::Error> {
     match summary.failed_nodes.first() {
         None => Ok(()),
@@ -76,8 +75,7 @@ impl Runner {
         let sandbox_root = Uri::from_str("file:///").expect("'file:///' is always a valid URI");
         // Bypass `run_with_sandbox_root`'s sentinel guard — this entrypoint
         // intentionally requests the unsandboxed mode.
-        // `Ok(_)` here can still carry failed nodes under `Continue` policy;
-        // see `summary_into_unit_result`.
+        // `Ok(_)` can still carry failed nodes under `Continue` policy; see `summary_into_unit_result`.
         Self::run_with_event_handler(
             job_id,
             workflow,
@@ -112,8 +110,7 @@ impl Runner {
         sandbox_root: Uri,
     ) -> Result<(), crate::errors::Error> {
         reject_unsandboxed_sentinel(&sandbox_root)?;
-        // `Ok(_)` here can still carry failed nodes under `Continue` policy;
-        // see `summary_into_unit_result`.
+        // `Ok(_)` can still carry failed nodes under `Continue` policy; see `summary_into_unit_result`.
         Self::run_with_event_handler(
             job_id,
             workflow,
@@ -129,8 +126,6 @@ impl Runner {
         .and_then(summary_into_unit_result)
     }
 
-    /// Like [`Runner::run_with_sandbox_root`], but returns the by-value
-    /// `RunSummary` instead of discarding it, for callers that want diagnostics.
     #[allow(clippy::too_many_arguments)]
     pub fn run_with_sandbox_root_returning_summary(
         job_id: uuid::Uuid,
@@ -257,8 +252,7 @@ impl AsyncRunner {
         incremental_run_config: Option<IncrementalRunConfig>,
     ) -> Result<(), crate::errors::Error> {
         let sandbox_root = Uri::from_str("file:///").expect("'file:///' is always a valid URI");
-        // `Ok(_)` here can still carry failed nodes under `Continue` policy;
-        // see `summary_into_unit_result`.
+        // `Ok(_)` can still carry failed nodes under `Continue` policy; see `summary_into_unit_result`.
         Self::run_with_event_handler(
             job_id,
             workflow,
@@ -294,8 +288,7 @@ impl AsyncRunner {
         sandbox_root: Uri,
     ) -> Result<(), crate::errors::Error> {
         reject_unsandboxed_sentinel(&sandbox_root)?;
-        // `Ok(_)` here can still carry failed nodes under `Continue` policy;
-        // see `summary_into_unit_result`.
+        // `Ok(_)` can still carry failed nodes under `Continue` policy; see `summary_into_unit_result`.
         Self::run_with_event_handler(
             job_id,
             workflow,

@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "DiagnosticEvent",
-  "description": "Pubsub wire event for a single `Diagnostic`. Construction is unconditional; publishing is gated by `ENABLE_DIAGNOSTICS`.",
+  "description": "Construction is unconditional; publishing is gated by `ENABLE_DIAGNOSTICS`.",
   "type": "object",
   "required": [
     "category",
@@ -15,7 +15,6 @@
   ],
   "properties": {
     "schema": {
-      "description": "Wire schema tag for this event shape. Always `\"diagnostic.v1\"`.",
       "type": "string"
     },
     "workflowId": {
@@ -96,7 +95,6 @@
   },
   "definitions": {
     "WireSourceSpan": {
-      "description": "Wire mirror of `reearth_flow_diagnostics::SourceSpan`.",
       "type": "object",
       "required": [
         "offset"
@@ -118,7 +116,6 @@
       }
     },
     "WireAggregateInfo": {
-      "description": "Wire mirror of `reearth_flow_diagnostics::AggregateInfo`.",
       "type": "object",
       "required": [
         "count",

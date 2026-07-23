@@ -13,8 +13,7 @@ use crate::pubsub::{
     topic::Topic,
 };
 
-/// Gate for `DiagnosticEvent` publishing; defaults to `false` until the Go subscriber for
-/// `flow-diagnostic-topic` exists — publish only after a consumer ships.
+/// `FLOW_WORKER_ENABLE_DIAGNOSTICS` gates `DiagnosticEvent` publishing; off by default.
 pub static ENABLE_DIAGNOSTICS: Lazy<bool> = Lazy::new(|| {
     env::var("FLOW_WORKER_ENABLE_DIAGNOSTICS")
         .ok()
@@ -28,7 +27,6 @@ static DIAGNOSTIC_TOPIC: Lazy<String> = Lazy::new(|| {
         .unwrap_or("flow-diagnostic-topic".to_string())
 });
 
-/// Wire mirror of `reearth_flow_diagnostics::SourceSpan`.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct WireSourceSpan {
@@ -45,7 +43,6 @@ impl From<&SourceSpan> for WireSourceSpan {
     }
 }
 
-/// Wire mirror of `reearth_flow_diagnostics::AggregateInfo`.
 #[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Eq, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct WireAggregateInfo {
@@ -62,8 +59,7 @@ impl From<&AggregateInfo> for WireAggregateInfo {
     }
 }
 
-/// Extracts the bare JSON string a unit-variant enum serializes to; panics via `unreachable!`
-/// if given a non-unit-variant enum instead.
+/// Panics via `unreachable!` if `value` is not a unit-variant enum (serializes to something other than a bare JSON string).
 fn enum_to_string<T: Serialize>(value: &T) -> String {
     match serde_json::to_value(value) {
         Ok(serde_json::Value::String(s)) => s,
@@ -71,8 +67,7 @@ fn enum_to_string<T: Serialize>(value: &T) -> String {
     }
 }
 
-/// Wire form of `Diagnostic`. Enums are carried as `snake_case` strings rather than
-/// tagged JSON so unknown/newer values survive a Go round-trip instead of failing to deserialize.
+/// Enums are carried as `snake_case` strings rather than tagged JSON, so unknown/newer values survive a Go round-trip instead of failing to deserialize.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct WireDiagnostic {
@@ -107,12 +102,10 @@ impl From<&Diagnostic> for WireDiagnostic {
     }
 }
 
-/// Pubsub wire event for a single `Diagnostic`. Construction is unconditional; publishing is
-/// gated by `ENABLE_DIAGNOSTICS`.
+/// Construction is unconditional; publishing is gated by `ENABLE_DIAGNOSTICS`.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct DiagnosticEvent {
-    /// Wire schema tag for this event shape. Always `"diagnostic.v1"`.
     pub schema: String,
     pub workflow_id: Uuid,
     pub job_id: Uuid,
@@ -159,8 +152,7 @@ mod tests {
         Uuid::from_bytes([byte; 16])
     }
 
-    /// Fully-populated `Diagnostic` except `feature_id` (None): aggregated node-level
-    /// diagnostics and per-feature ones are mutually exclusive in practice.
+    /// `feature_id` is None: aggregated node-level diagnostics and per-feature ones are mutually exclusive in practice.
     fn full_diagnostic() -> Diagnostic {
         Diagnostic {
             code: ErrorCode::Cesium3dtilesEmptyGeometry,
@@ -198,8 +190,7 @@ mod tests {
         }
     }
 
-    /// Explicit nulls, not omission — matches `NodeStatusEvent`/`LogStreamEvent`'s convention
-    /// of serializing `Option` fields as literal `null` rather than `skip_serializing_if`.
+    /// Explicit nulls, not omission — matches `NodeStatusEvent`/`LogStreamEvent`'s convention.
     #[test]
     fn diagnostic_event_serializes_camel_case_with_explicit_nulls_for_absent_fields() {
         let event = fixed_event();
@@ -286,8 +277,7 @@ mod tests {
 
     #[test]
     fn diagnostic_topic_defaults_when_env_unset() {
-        // Only asserts the default; setting/unsetting the env var here would race other tests
-        // reading the same process-global `Lazy`.
+        // Setting/unsetting the env var here would race other tests reading the same process-global `Lazy`.
         let event = fixed_event();
         assert_eq!(event.topic().to_string(), "flow-diagnostic-topic");
     }

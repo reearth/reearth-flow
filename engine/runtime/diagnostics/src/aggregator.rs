@@ -5,11 +5,9 @@ use uuid::Uuid;
 
 use crate::{AggregateInfo, Diagnostic, DiagnosticDraft, Disposition, ErrorCode, Severity};
 
-/// Sample-id cap per bucket (spec 4.4: "capped ≈10").
 pub const SAMPLE_FEATURE_ID_CAP: usize = 10;
 
-/// Which aggregation lane a report lands in. Fatal is never aggregated —
-/// it goes to the per-node fatal slot and fails the node.
+/// Fatal is never aggregated here — it goes to the per-node fatal slot and fails the node.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
 pub enum DiagnosticKind {
     WarnContinue,
@@ -17,7 +15,6 @@ pub enum DiagnosticKind {
     Reject,
 }
 
-/// Run-scoped dedup set for `warn_once` (shared by every node of a run).
 pub type WarnOnceSet = Arc<Mutex<HashSet<ErrorCode>>>;
 
 #[derive(Debug, Default)]
@@ -26,8 +23,6 @@ struct Bucket {
     sample_feature_ids: Vec<Uuid>,
 }
 
-/// Per-node aggregator: counts per (code, kind) with sampled feature ids,
-/// plus the first-wins fatal slot that backstops swallowed `report()` errors.
 #[derive(Debug)]
 pub struct NodeDiagnostics {
     node_id: String,
@@ -56,7 +51,6 @@ impl NodeDiagnostics {
         &self.action_type
     }
 
-    /// O(1): increment + bounded sample push.
     pub fn record(&self, kind: DiagnosticKind, code: ErrorCode, feature_id: Option<Uuid>) {
         let mut buckets = self.buckets.lock().unwrap();
         let bucket = buckets.entry((code, kind)).or_default();
@@ -68,8 +62,7 @@ impl NodeDiagnostics {
         }
     }
 
-    /// First-wins: the executor fails the node with the first recorded fatal
-    /// even if the action swallowed `report()`'s Err.
+    /// First-wins: the node fails with the first recorded fatal, even if the action swallowed `report()`'s Err.
     pub fn record_fatal(&self, diagnostic: Diagnostic) {
         let mut slot = self.fatal.lock().unwrap();
         if slot.is_none() {
@@ -81,13 +74,12 @@ impl NodeDiagnostics {
         self.fatal.lock().unwrap().take()
     }
 
-    /// Returns true exactly once per run per code (run-scoped set).
+    /// Returns true exactly once per run per code — the set is shared across all nodes in a run.
     pub fn try_mark_warn_once(&self, code: ErrorCode) -> bool {
         self.warn_once.lock().unwrap().insert(code)
     }
 
-    /// One summary Diagnostic per (code, kind), deterministic order, buckets drained.
-    /// Consumers read `aggregated.count` — the message is only the human rendering.
+    /// Draining — buckets are emptied, so a second call returns nothing new.
     pub fn drain_summaries(&self) -> Vec<Diagnostic> {
         let mut drained: Vec<((ErrorCode, DiagnosticKind), Bucket)> =
             self.buckets.lock().unwrap().drain().collect();
@@ -185,7 +177,6 @@ mod tests {
         assert!(s.message.contains("dropped 25 feature(s)"));
         assert!(s.message.contains("cesium3dtiles.empty_geometry"));
         assert!(s.message.contains("(+15 more)"));
-        // draining empties the buckets
         assert!(agg.drain_summaries().is_empty());
     }
 
@@ -209,7 +200,6 @@ mod tests {
         );
         let summaries = agg.drain_summaries();
         assert_eq!(summaries.len(), 3);
-        // warn-and-continue summaries never carry an effective disposition (they skip resolve())
         let warn_continue = summaries
             .iter()
             .find(|s| s.aggregated.is_some() && s.effective_disposition.is_none())
@@ -247,7 +237,7 @@ mod tests {
         let b = NodeDiagnostics::new("b".into(), "Y".into(), shared);
         assert!(a.try_mark_warn_once(ErrorCode::GltfZeroFaceSolid));
         assert!(!a.try_mark_warn_once(ErrorCode::GltfZeroFaceSolid));
-        assert!(!b.try_mark_warn_once(ErrorCode::GltfZeroFaceSolid)); // run-scoped, not node-scoped
+        assert!(!b.try_mark_warn_once(ErrorCode::GltfZeroFaceSolid));
     }
 
     #[test]

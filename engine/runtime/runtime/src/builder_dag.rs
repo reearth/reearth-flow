@@ -21,8 +21,6 @@ use crate::{
 pub struct NodeType {
     pub handle: NodeHandle,
     pub name: String,
-    /// The action string this node was built from; validated against the
-    /// factory's `name()`, NOT the built instance's (a different trait).
     pub action: String,
     pub kind: NodeKind,
     /// Output ports for this node: factory-declared ports merged with
@@ -57,8 +55,6 @@ impl NodeType {
         }
     }
 
-    /// The node's identity for diagnostics/logging/policy resolution (spec
-    /// 4.2/4.3): `"{subgraph_prefix}.{handle.id}"`, or just `handle.id`.
     pub fn composed_id(&self) -> String {
         match &self.subgraph_prefix {
             Some(prefix) => format!("{prefix}.{}", self.handle.id),

@@ -94,20 +94,7 @@ pub struct WorkflowTestProfile {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub unexpected_output_validation: Option<UnexpectedOutputValidation>,
 
-    /// Whether this test's workflow run is expected to fail with a
-    /// node-failure-shaped error — `reearth_flow_runner::errors::Error::
-    /// ExecutionError` (a failing node thread's own error, under the
-    /// default `onFatal: Terminate` policy) or `Error::FailedNodes` (the
-    /// unit-returning wrapper's `summary_into_unit_result` mapping of a
-    /// non-empty `RunSummary.failed_nodes`, under an explicit `onFatal:
-    /// continue`). Quality-check fixtures intentionally feed malformed
-    /// input to prove per-file/per-feature errors are still reported (via
-    /// the expected CSV/JSON output below) rather than crashing the
-    /// process; as of the engine's C12/Task 6 convergence, an unrecoverable
-    /// per-feature error also (correctly) fails its node, so those fixtures
-    /// must opt in here to keep asserting on their output instead of
-    /// treating that `Err` as an unexpected test failure. Default `false`:
-    /// an unset/false test still fails loudly on any `Err`.
+    /// Tolerates only ExecutionError/FailedNodes-shaped Err; default false fails loudly on any Err.
     #[serde(default, skip_serializing_if = "is_false")]
     pub expect_failed_nodes: bool,
 }

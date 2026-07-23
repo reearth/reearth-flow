@@ -156,8 +156,7 @@ mod tests {
 
     use super::*;
 
-    /// Synchronous slog drain that captures records in-process — the
-    /// production logger is doubly-async over a temp file, which was racy on CI.
+    /// Captures slog records in-process (prod logger is async-over-file, racy on CI).
     struct CaptureDrain {
         records: Arc<Mutex<Vec<(Level, String)>>>,
     }
@@ -175,8 +174,6 @@ mod tests {
         }
     }
 
-    /// Sends a single `Event::Diagnostic` through `LogEventHandler::on_event`
-    /// and returns the one slog record it emitted (level + rendered message).
     fn render_diagnostic(diagnostic: Diagnostic) -> (Level, String) {
         let records = Arc::new(Mutex::new(Vec::new()));
         let drain = CaptureDrain {
@@ -204,8 +201,7 @@ mod tests {
         records[0].clone()
     }
 
-    /// Fatal-severity diagnostics render through `action_critical_log!` at
-    /// slog's `Critical` level (serialized as `"level":"CRITICAL"` in prod).
+    /// Fatal severity renders via `action_critical_log!` at slog's `Critical` level.
     #[test]
     fn fatal_diagnostic_renders_as_a_single_critical_line() {
         let d = Diagnostic::from_draft(
@@ -226,8 +222,7 @@ mod tests {
         );
     }
 
-    /// Warn-severity diagnostics render at slog's `Warning` level — proves
-    /// `Severity`, not call site, drives the emitted log level.
+    /// `Severity`, not call site, drives the emitted slog level.
     #[test]
     fn warn_diagnostic_renders_as_a_single_warning_line() {
         let d = Diagnostic::from_draft(
