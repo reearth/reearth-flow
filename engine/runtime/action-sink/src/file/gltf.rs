@@ -21,6 +21,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use tempfile::tempdir;
 
+#[cfg(not(feature = "new-geometry"))]
 use crate::atlas::{build_atlas_geometry, GltfFeature as ClassFeature};
 use crate::errors::SinkError;
 use crate::zip_eq_logged::ZipEqLoggedExt;
@@ -85,6 +86,7 @@ impl SinkFactory for GltfWriterSinkFactory {
         let sink = GltfWriter {
             output,
             attach_texture: params.attach_texture.unwrap_or(true),
+            #[cfg(not(feature = "new-geometry"))]
             classified_features: Default::default(),
             draco_compression: params.draco_compression.unwrap_or(false),
             schema_key: params.schema_key,
@@ -93,8 +95,10 @@ impl SinkFactory for GltfWriterSinkFactory {
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 type ClassifiedFeatures = HashMap<Option<String>, ClassFeatures>;
 
+#[cfg(not(feature = "new-geometry"))]
 #[derive(Debug, Clone)]
 struct ClassFeatures {
     feature_type: String,
@@ -102,12 +106,14 @@ struct ClassFeatures {
     bounding_volume: BoundingVolume,
 }
 
+#[cfg(not(feature = "new-geometry"))]
 impl AsRef<ClassFeatures> for ClassFeatures {
     fn as_ref(&self) -> &ClassFeatures {
         self
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 impl TryFrom<&ClassFeatures> for Schema {
     type Error = crate::errors::SinkError;
 
@@ -143,6 +149,7 @@ impl TryFrom<&ClassFeatures> for Schema {
 pub struct GltfWriter {
     /// Relative output path (strict-relative, validated at runtime by SinkOutput::new).
     output: String,
+    #[cfg(not(feature = "new-geometry"))]
     classified_features: ClassifiedFeatures,
     attach_texture: bool,
     draco_compression: bool,
@@ -322,6 +329,7 @@ fn compute_transform_matrix(
         * DMat4::from_rotation_y((-center_lng - 90.).to_radians())
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn transform_features_to_local_enu(
     features: Vec<ClassFeature>,
     transform_matrix: &DMat4,
@@ -346,6 +354,7 @@ fn transform_features_to_local_enu(
 }
 
 // Helper methods for GltfWriter
+#[cfg(not(feature = "new-geometry"))]
 impl GltfWriter {
     /// Resolve the schema_key value for the feature, which doubles as the output filename.
     fn resolve_schema_type(&self, feature: &reearth_flow_types::Feature) -> Option<String> {

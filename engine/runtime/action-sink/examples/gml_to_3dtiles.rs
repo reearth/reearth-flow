@@ -1,16 +1,3 @@
-//! Ad-hoc smoke test for the new-geometry Cesium 3D Tiles writer: parses a
-//! CityGML file and writes the resulting tileset, for visually inspecting the
-//! output in a viewer.
-//!
-//! ```sh
-//! cargo run -p reearth-flow-action-sink --features new-geometry \
-//!     --example gml_to_3dtiles -- <input.gml> <output_dir> [draco] [compute_flat_normal] [lod]
-//! ```
-//!
-//! `draco` and `compute_flat_normal` are optional `1`/`0` flags, both default `1`.
-//! `lod` (optional) keeps only geometry from that LOD; without it every LOD is
-//! written (LODs then overlap in the viewer).
-
 use std::collections::{HashMap, HashSet};
 use std::path::PathBuf;
 
@@ -24,15 +11,13 @@ use url::Url;
 fn main() -> Result<(), Box<dyn std::error::Error>> {
     let mut args = std::env::args_os().skip(1);
     let (Some(input), Some(output)) = (args.next(), args.next()) else {
-        eprintln!("usage: gml_to_3dtiles <input.gml> <output_dir> [draco] [compute_flat_normal]");
+        eprintln!("usage: gml_to_3dtiles <input.gml> <output_dir>");
         std::process::exit(1);
     };
-    let flag = |arg: Option<std::ffi::OsString>| arg.is_none_or(|a| a != "0");
-    let draco = flag(args.next());
-    let compute_flat_normal = flag(args.next());
-    let lod: Option<u8> = args
-        .next()
-        .and_then(|a| a.to_str().and_then(|s| s.parse().ok()));
+    let env_flag = |key: &str| std::env::var(key).map(|v| v != "0").unwrap_or(true);
+    let draco = env_flag("DRACO");
+    let compute_flat_normal = env_flag("COMPUTE_FLAT_NORMAL");
+    let lod: Option<u8> = std::env::var("LOD").ok().and_then(|s| s.parse().ok());
 
     let input_path = PathBuf::from(input);
     let output_dir = PathBuf::from(output);
@@ -67,8 +52,22 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         &features,
         next::MetadataOptions::default(),
         24,
-        draco,
-        compute_flat_normal,
+        next::RenderOptions {
+            draco,
+            compute_flat_normal,
+            texel_size: std::env::var("TEXEL_SIZE")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(0.0),
+            atlas_size: std::env::var("ATLAS_SIZE")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(2048),
+            atlas_extrusion: std::env::var("ATLAS_EXTRUSION")
+                .ok()
+                .and_then(|s| s.parse().ok())
+                .unwrap_or(0),
+        },
     )?;
 
     std::fs::write(output_dir.join("tileset.json"), &built.tileset_json)?;

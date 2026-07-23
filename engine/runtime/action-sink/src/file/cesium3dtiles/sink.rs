@@ -106,6 +106,12 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
                 draco_compression: params.draco_compression,
                 #[cfg(feature = "new-geometry")]
                 compute_flat_normal: params.compute_flat_normal,
+                #[cfg(feature = "new-geometry")]
+                texel_size: params.texel_size,
+                #[cfg(feature = "new-geometry")]
+                atlas_size: params.atlas_size,
+                #[cfg(feature = "new-geometry")]
+                atlas_extrusion: params.atlas_extrusion,
                 skip_unexposed_attributes: params.skip_unexposed_attributes.unwrap_or(false),
                 schema_key: params.schema_key,
             },
@@ -150,6 +156,20 @@ pub struct Cesium3DTilesWriterParam {
     /// When disabled, no normals are written and the mesh is smaller, but the
     /// tile carries no lighting data (a viewer must derive flat normals itself).
     pub(super) compute_flat_normal: Option<bool>,
+    /// # Texel Size
+    /// Target texel size in metres per pixel. Textures finer than this are
+    /// downsampled to it. Defaults to 0, which keeps full texture detail.
+    pub(super) texel_size: Option<f64>,
+    /// # Atlas Size
+    /// Maximum texture atlas dimension in pixels. Textures exceeding this spill
+    /// onto additional atlas pages; a single texture larger than it is
+    /// downsampled to fit. Defaults to 2048.
+    #[schemars(range(min = 1))]
+    pub(super) atlas_size: Option<u32>,
+    /// # Atlas Extrusion
+    /// Ring of pixels blitted around each texture region in the atlas to stop
+    /// bilinear bleed between neighbouring regions. Defaults to 0 (disabled).
+    pub(super) atlas_extrusion: Option<u32>,
     /// # Skip unexposed Attributes
     /// Skip attributes with double underscore prefix
     pub(super) skip_unexposed_attributes: Option<bool>,
@@ -170,6 +190,12 @@ pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) draco_compression: Option<bool>,
     #[cfg(feature = "new-geometry")]
     pub(super) compute_flat_normal: Option<bool>,
+    #[cfg(feature = "new-geometry")]
+    pub(super) texel_size: Option<f64>,
+    #[cfg(feature = "new-geometry")]
+    pub(super) atlas_size: Option<u32>,
+    #[cfg(feature = "new-geometry")]
+    pub(super) atlas_extrusion: Option<u32>,
     pub(super) skip_unexposed_attributes: bool,
     pub(super) schema_key: Option<String>,
 }

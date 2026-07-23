@@ -2138,6 +2138,35 @@ Export Features as Cesium 3D Tiles for Web Visualization
         "null"
       ]
     },
+    "texelSize": {
+      "title": "Texel Size",
+      "description": "Target texel size in metres per pixel. Textures finer than this are downsampled to it. Defaults to 0, which keeps full texture detail.",
+      "type": [
+        "number",
+        "null"
+      ],
+      "format": "double"
+    },
+    "atlasSize": {
+      "title": "Atlas Size",
+      "description": "Maximum texture atlas dimension in pixels. Textures exceeding this spill onto additional atlas pages; a single texture larger than it is downsampled to fit. Defaults to 2048.",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint32",
+      "minimum": 1.0
+    },
+    "atlasExtrusion": {
+      "title": "Atlas Extrusion",
+      "description": "Ring of pixels blitted around each texture region in the atlas to stop bilinear bleed between neighbouring regions. Defaults to 0 (disabled).",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint32",
+      "minimum": 0.0
+    },
     "skipUnexposedAttributes": {
       "title": "Skip unexposed Attributes",
       "description": "Skip attributes with double underscore prefix",
@@ -5227,17 +5256,60 @@ Validate Feature Geometry Quality
   "title": "Geometry Validator Parameters",
   "description": "Configure which validation checks to perform on feature geometries",
   "type": "object",
-  "required": [
-    "validationTypes"
-  ],
   "properties": {
     "validationTypes": {
       "title": "Validation Types",
-      "description": "List of validation checks to perform on the geometry (duplicate points, corrupt geometry, self-intersection)",
+      "default": [],
       "type": "array",
       "items": {
         "$ref": "#/definitions/ValidationType"
       }
+    },
+    "disabledOptionalChecks": {
+      "title": "Disabled Optional Checks",
+      "description": "Advisory checks to disable. Disabled checks do not run and are treated as passing; core validity checks always run. Empty by default, so every optional check runs.",
+      "default": [],
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/OptionalCheck"
+      }
+    },
+    "planarityThreshold": {
+      "title": "Planarity Threshold",
+      "description": "Optional override for how the planarity check bounds a face's out-of-plane deviation: a scale-invariant `ratio` (the default), or an absolute `maxHeight` in the frame's linear unit (linear-unit frames only).",
+      "default": null,
+      "anyOf": [
+        {
+          "$ref": "#/definitions/PlanarityThreshold"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "duplicateTolerance": {
+      "title": "Duplicate Point Tolerance",
+      "description": "Optional distance within which two coordinates count as duplicates for the duplicate-points check. Omitted (the default) means exact-equality detection.",
+      "default": null,
+      "type": [
+        "number",
+        "null"
+      ],
+      "format": "double"
+    },
+    "degenerateThresholds": {
+      "title": "Degeneracy Thresholds",
+      "description": "Minimum length / area / volume below which the degeneracy check flags a geometry, per dimension. Each defaults to zero, flagging only an exactly-zero measure. Values are in the coordinate unit (the frame's linear unit, e.g. metres).",
+      "default": {
+        "minLength": 0.0,
+        "minArea": 0.0,
+        "minVolume": 0.0
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/DegenerateThresholds"
+        }
+      ]
     }
   },
   "definitions": {
@@ -5297,6 +5369,73 @@ Validate Feature Geometry Quality
           "additionalProperties": false
         }
       ]
+    },
+    "OptionalCheck": {
+      "description": "An advisory (optional) validation check that can be individually disabled. A disabled check does not run and is treated as passing. Only checks that the geometry crate classifies as optional are listed here; core validity checks always run and cannot be disabled.",
+      "type": "string",
+      "enum": [
+        "duplicatePoints",
+        "orientable",
+        "orientation",
+        "shellOrientation"
+      ]
+    },
+    "PlanarityThreshold": {
+      "description": "How the planarity check bounds a face's out-of-plane deviation.",
+      "oneOf": [
+        {
+          "description": "Dimensionless ratio of the face's convex-hull minimum height to its diameter; scale-invariant.",
+          "type": "object",
+          "required": [
+            "ratio"
+          ],
+          "properties": {
+            "ratio": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "additionalProperties": false
+        },
+        {
+          "description": "Absolute maximum out-of-plane height, in the coordinate unit (metres). Applied only in a linear-unit frame, where the planarity check runs.",
+          "type": "object",
+          "required": [
+            "maxHeight"
+          ],
+          "properties": {
+            "maxHeight": {
+              "type": "number",
+              "format": "double"
+            }
+          },
+          "additionalProperties": false
+        }
+      ]
+    },
+    "DegenerateThresholds": {
+      "description": "The smallest measure a geometry may have before the degeneracy check flags it, per dimension. Each threshold applies to geometries of its dimension. Values are in the coordinate unit (the frame's linear unit, e.g. metres). Each defaults to zero, flagging only an exactly-zero measure.",
+      "type": "object",
+      "properties": {
+        "minLength": {
+          "description": "Minimum length of a 1D geometry (line / ring edge).",
+          "default": 0.0,
+          "type": "number",
+          "format": "double"
+        },
+        "minArea": {
+          "description": "Minimum area of a 2D geometry (face / ring).",
+          "default": 0.0,
+          "type": "number",
+          "format": "double"
+        },
+        "minVolume": {
+          "description": "Minimum volume of a 3D geometry (solid).",
+          "default": 0.0,
+          "type": "number",
+          "format": "double"
+        }
+      }
     }
   }
 }

@@ -95,8 +95,11 @@ var (
 	actionsDataMap = make(map[string]ActionsData)
 	mutex          sync.RWMutex
 	httpClient     = &http.Client{Timeout: 10 * time.Second}
-	supportedLangs = map[string]bool{
-		"en": true,
+	// translatedLangs are the languages that have a translation overlay and thus
+	// a dedicated actions_{lang}.json. Everything else — empty lang, "en", and
+	// any unknown/region variant — resolves to the base actions.json, which is
+	// the English source of truth generated directly from the Rust factories.
+	translatedLangs = map[string]bool{
 		"es": true,
 		"fr": true,
 		"ja": true,
@@ -104,7 +107,7 @@ var (
 	}
 )
 
-// actionsReader reads a schema file (e.g. "actions_en.json") from the env bucket's
+// actionsReader reads a schema file (e.g. "actions_ja.json") from the env bucket's
 // "actions/" prefix. gateway.File satisfies it via ReadActions.
 type actionsReader interface {
 	ReadActions(context.Context, string) (io.ReadCloser, error)
@@ -119,11 +122,15 @@ var (
 )
 
 func loadActionsData(lang string) (ActionsData, error) {
-	if lang != "" && !supportedLangs[lang] {
-		return ActionsData{}, &loadError{err: fmt.Errorf("unsupported language: %s", lang), status: http.StatusBadRequest}
+	// Only translated languages have their own schema file; every other value
+	// (including "en" and unknown langs) shares the base actions.json under the
+	// empty cache key so we don't cache duplicate copies of the same content.
+	filename := "actions.json"
+	cacheKey := ""
+	if translatedLangs[lang] {
+		filename = fmt.Sprintf("actions_%s.json", lang)
+		cacheKey = lang
 	}
-
-	cacheKey := lang
 
 	// Try to get from cache first using read lock
 	mutex.RLock()
@@ -132,11 +139,6 @@ func loadActionsData(lang string) (ActionsData, error) {
 		return data, nil
 	}
 	mutex.RUnlock()
-
-	filename := "actions.json"
-	if lang != "" {
-		filename = fmt.Sprintf("actions_%s.json", lang)
-	}
 
 	body, err := fetchActionsFile(filename)
 	if err != nil {
@@ -218,9 +220,8 @@ func fetchActionsFile(filename string) ([]byte, error) {
 // @Param        q         query     string  false  "Search query"
 // @Param        category  query     string  false  "Filter by category"
 // @Param        type      query     string  false  "Filter by action type (processor, source, sink)"
-// @Param        lang      query     string  false  "Language code (en, es, fr, ja, zh)"
+// @Param        lang      query     string  false  "Language code (es, fr, ja, zh); any other value returns the base English schema"
 // @Success      200       {array}   ActionSummary  "List of actions"
-// @Failure      400       {object}  object         "Invalid language"
 // @Failure      500       {object}  object         "Internal server error"
 // @Failure      502       {object}  object         "Upstream fetch error"
 // @Router       /actions [get]
@@ -266,9 +267,8 @@ func listActions(c echo.Context) error {
 // @Tags         actions
 // @Produce      json
 // @Param        q     query     string  false  "Search query"
-// @Param        lang  query     string  false  "Language code (en, es, fr, ja, zh)"
+// @Param        lang  query     string  false  "Language code (es, fr, ja, zh); any other value returns the base English schema"
 // @Success      200   {object}  SegregatedActions  "Actions segregated by category and type"
-// @Failure      400   {object}  object             "Invalid language"
 // @Failure      500   {object}  object             "Internal server error"
 // @Failure      502   {object}  object             "Upstream fetch error"
 // @Router       /actions/segregated [get]
@@ -386,9 +386,8 @@ func containsCaseInsensitive(slice []string, s string) bool {
 // @Tags         actions
 // @Produce      json
 // @Param        id    path      string  true   "Action ID/Name"
-// @Param        lang  query     string  false  "Language code (en, es, fr, ja, zh)"
+// @Param        lang  query     string  false  "Language code (es, fr, ja, zh); any other value returns the base English schema"
 // @Success      200   {object}  Action  "Action details"
-// @Failure      400   {object}  object  "Invalid language"
 // @Failure      404   {object}  object  "Action not found"
 // @Failure      500   {object}  object  "Internal server error"
 // @Failure      502   {object}  object  "Upstream fetch error"
