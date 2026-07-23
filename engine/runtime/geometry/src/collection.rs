@@ -166,6 +166,52 @@ impl Reproject for Collection3D {
 crate::unsupported!(Collection2D: Triangulate);
 crate::unsupported!(Collection3D: Triangulate);
 
+impl crate::ops::ConvertFrame for Collection2D {
+    fn convert_frame(
+        &mut self,
+        target: &crate::coordinate::CoordinateFrame,
+        base_point: Option<[f64; 3]>,
+        cache: &mut crate::ops::ReprojectionCache,
+    ) -> crate::error::Result<()> {
+        for member in self.members_mut() {
+            member.convert_frame(target, base_point, cache)?;
+        }
+        Ok(())
+    }
+}
+
+impl crate::ops::ConvertFrame for Collection3D {
+    fn convert_frame(
+        &mut self,
+        target: &crate::coordinate::CoordinateFrame,
+        base_point: Option<[f64; 3]>,
+        cache: &mut crate::ops::ReprojectionCache,
+    ) -> crate::error::Result<()> {
+        for member in self.members_mut() {
+            member.convert_frame(target, base_point, cache)?;
+        }
+        Ok(())
+    }
+}
+
+impl crate::ops::Translate for Collection2D {
+    fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
+        for member in self.members_mut() {
+            member.translate(delta)?;
+        }
+        Ok(())
+    }
+}
+
+impl crate::ops::Translate for Collection3D {
+    fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
+        for member in self.members_mut() {
+            member.translate(delta)?;
+        }
+        Ok(())
+    }
+}
+
 // A collection validates by recursing into its members (see
 // `validation_next::validate`), so it declares no direct checks and inherits
 // every `Validate` default.

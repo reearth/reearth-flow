@@ -3,6 +3,8 @@ use std::collections::HashMap;
 use once_cell::sync::Lazy;
 use reearth_flow_runtime::node::{NodeKind, ProcessorFactory};
 
+#[cfg(feature = "new-geometry")]
+use super::coordinate_frame_reprojector::CoordinateFrameReprojectorFactory;
 use super::{
     appearance_remover::AppearanceRemoverFactory,
     area_calculator::AreaCalculatorFactory,
@@ -58,7 +60,8 @@ use super::{
 };
 
 pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
-    let factories: Vec<Box<dyn ProcessorFactory>> = vec![
+    #[cfg_attr(not(feature = "new-geometry"), allow(unused_mut))]
+    let mut factories: Vec<Box<dyn ProcessorFactory>> = vec![
         Box::<AppearanceRemoverFactory>::default(),
         Box::<ExtruderFactory>::default(),
         Box::<BoundaryExtractorFactory>::default(),
@@ -113,6 +116,8 @@ pub static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(
         Box::<CoordinateExtractorFactory>::default(),
         Box::<NeighborFinderFactory>::default(),
     ];
+    #[cfg(feature = "new-geometry")]
+    factories.push(Box::<CoordinateFrameReprojectorFactory>::default());
     factories
         .into_iter()
         .map(|f| (f.name().to_string(), NodeKind::Processor(f)))
