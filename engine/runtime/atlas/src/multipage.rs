@@ -343,7 +343,7 @@ mod tests {
             vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
             1.0,
         );
-        let built = build_atlas_multipage(&[mat], 128, 1, &mut TextureCache::default())
+        let built = build_atlas_multipage(&[mat], 128, 1, 1, &mut TextureCache::default())
             .unwrap()
             .expect("atlas built");
         assert_eq!(built.pages.len(), 1);
@@ -365,7 +365,7 @@ mod tests {
             vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
             0.5,
         );
-        let built = build_atlas_multipage(&[mat], 64, 0, &mut TextureCache::default())
+        let built = build_atlas_multipage(&[mat], 64, 0, 1, &mut TextureCache::default())
             .unwrap()
             .expect("atlas built");
         let page_w = built.pages[0].width() as f64;
