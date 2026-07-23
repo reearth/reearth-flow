@@ -47,7 +47,7 @@ enum DestinationFrame {
 /// How coordinates bridge the Euclidean/CRS boundary, carrying the input each
 /// mode needs. Ignored for a pure CRS-to-CRS reprojection.
 #[derive(Serialize, Deserialize, Debug, Clone, Default, JsonSchema)]
-#[serde(tag = "basePointMode", rename_all = "camelCase")]
+#[serde(tag = "type", rename_all = "camelCase")]
 enum BasePoint {
     /// # As Is
     /// Reinterpret coordinate values unchanged across the boundary.
@@ -55,6 +55,7 @@ enum BasePoint {
     AsIs,
     /// # Value
     /// Offset by a base point given as an expression evaluating to `[x, y, z]`.
+    #[serde(rename_all = "camelCase")]
     Value {
         /// # Base Point
         /// Expression evaluating to an `[x, y, z]` origin in CRS space, in the
@@ -64,6 +65,7 @@ enum BasePoint {
     /// # From Port
     /// Offset by a base point taken from the base-point input port, matched to
     /// each feature by a key.
+    #[serde(rename_all = "camelCase")]
     FromPort {
         /// # Match Key
         /// Expression identifying which base-point feature applies to a given
@@ -90,8 +92,8 @@ pub struct CoordinateFrameReprojectorParam {
     epsg_code: Option<u16>,
     /// # Base Point
     /// How coordinates bridge the Euclidean/CRS boundary.
-    #[serde(flatten, default)]
-    base_point: BasePoint,
+    #[serde(default)]
+    base_point_source: BasePoint,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -163,7 +165,7 @@ impl ProcessorFactory for CoordinateFrameReprojectorFactory {
             DestinationFrame::Euclidean => CoordinateFrame::Euclidean,
         };
 
-        let base_point = match params.base_point {
+        let base_point = match params.base_point_source {
             BasePoint::AsIs => BasePointSource::AsIs,
             BasePoint::Value { base_point } => {
                 let compiled = base_point.compile().map_err(|e| {
@@ -433,35 +435,42 @@ mod tests {
         let params = parse(json!({
             "destinationFrame": "crs",
             "epsgCode": 6677,
-            "basePointMode": "value",
-            "basePoint": { "type": "flowExpr", "value": "[1, 2, 3]" },
+            "basePointSource": {
+                "type": "value",
+                "basePoint": { "type": "flowExpr", "value": "[1, 2, 3]" },
+            },
         }));
-        assert!(matches!(params.base_point, BasePoint::Value { .. }));
+        assert!(matches!(params.base_point_source, BasePoint::Value { .. }));
     }
 
     #[test]
     fn from_port_mode_carries_its_match_key() {
         let params = parse(json!({
             "destinationFrame": "euclidean",
-            "basePointMode": "fromPort",
-            "matchKey": { "type": "flowExpr", "value": "id" },
+            "basePointSource": {
+                "type": "fromPort",
+                "matchKey": { "type": "flowExpr", "value": "id" },
+            },
         }));
-        assert!(matches!(params.base_point, BasePoint::FromPort { .. }));
+        assert!(matches!(
+            params.base_point_source,
+            BasePoint::FromPort { .. }
+        ));
     }
 
     #[test]
     fn explicit_as_is_mode() {
         let params = parse(json!({
             "destinationFrame": "euclidean",
-            "basePointMode": "asIs",
+            "basePointSource": { "type": "asIs" },
         }));
-        assert!(matches!(params.base_point, BasePoint::AsIs));
+        assert!(matches!(params.base_point_source, BasePoint::AsIs));
     }
 
     #[test]
-    fn absent_base_point_mode_defaults_to_as_is() {
+    fn absent_base_point_source_defaults_to_as_is() {
         let params = parse(json!({ "destinationFrame": "euclidean" }));
-        assert!(matches!(params.base_point, BasePoint::AsIs));
+        assert!(matches!(params.base_point_source, BasePoint::AsIs));
     }
 
     #[test]
@@ -469,7 +478,7 @@ mod tests {
         let result: Result<CoordinateFrameReprojectorParam, _> = serde_json::from_value(json!({
             "destinationFrame": "crs",
             "epsgCode": 6677,
-            "basePointMode": "value",
+            "basePointSource": { "type": "value" },
         }));
         assert!(result.is_err());
     }
