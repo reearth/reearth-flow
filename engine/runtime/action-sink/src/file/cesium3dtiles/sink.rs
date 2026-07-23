@@ -176,11 +176,14 @@ pub struct Cesium3DTilesWriterParam {
     /// Maximum texture atlas dimension in pixels. Textures exceeding this spill
     /// onto additional atlas pages; a single texture larger than it is
     /// downsampled to fit. Defaults to 2048.
-    #[schemars(range(min = 1))]
+    // Upper bound mirrors `reearth_flow_atlas::MAX_ATLAS_DIMENSION`; the packer
+    // rejects larger values, so the schema advertises the same ceiling.
+    #[schemars(range(min = 1, max = 100000))]
     pub(super) atlas_size: Option<u32>,
     /// # Atlas Extrusion
     /// Ring of pixels blitted around each texture region in the atlas to stop
     /// bilinear bleed between neighbouring regions. Defaults to 0 (disabled).
+    #[schemars(range(max = 100000))]
     pub(super) atlas_extrusion: Option<u32>,
     /// # Texture Codec
     /// Image codec for atlas pages: `ktx2` (GPU-compressed, default), `png`, or

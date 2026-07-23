@@ -75,6 +75,11 @@ struct RegionJob {
     target_h: u32,
 }
 
+/// Upper bound (pixels) accepted for `max_atlas_size` and `extrusion`. Any real
+/// atlas or extrusion ring is orders of magnitude smaller; the cap exists only
+/// to keep packing arithmetic clear of `u32` overflow.
+pub const MAX_ATLAS_DIMENSION: u32 = 100_000;
+
 /// Pack `materials` into one or more atlas pages. Each material carries the
 /// fraction of native resolution to keep (`TextureInput::scale`, `(0, 1]`; `1.0`
 /// = full resolution, never upsampled); materials sharing a path take the
@@ -84,7 +89,8 @@ struct RegionJob {
 /// bleed; pass `0` to disable it.
 ///
 /// Returns `Ok(None)` when there is nothing to pack (no UV polygons), and `Err`
-/// when `max_atlas_size` is 0.
+/// when `max_atlas_size` is 0 or either `max_atlas_size`/`extrusion` exceeds
+/// [`MAX_ATLAS_DIMENSION`].
 pub fn build_atlas_multipage(
     materials: &[TextureInput],
     max_atlas_size: u32,
@@ -94,6 +100,16 @@ pub fn build_atlas_multipage(
 ) -> Result<Option<MultiPageAtlas>> {
     if max_atlas_size == 0 {
         return Err(AtlasError::builder("atlas size must be at least 1"));
+    }
+    // Both are pixel dimensions. Capping them well below `u32::MAX` keeps every
+    // downstream size computation (block-grid snapping, extrusion gaps, page
+    // footprints) far from overflow, so the packing arithmetic needs no
+    // per-operation checked math.
+    if max_atlas_size > MAX_ATLAS_DIMENSION || extrusion > MAX_ATLAS_DIMENSION {
+        return Err(AtlasError::builder(format!(
+            "atlas size ({max_atlas_size}) and extrusion ({extrusion}) must each be \
+             at most {MAX_ATLAS_DIMENSION}"
+        )));
     }
     let block_align = block_align.max(1);
     // Snap the gap to the block grid too, so every reserved footprint keeps
