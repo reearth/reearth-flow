@@ -224,6 +224,32 @@ impl crate::ops::Translate for Collection3D {
     }
 }
 
+impl crate::ops::Split for Collection2D {
+    fn split(
+        &mut self,
+        emit: &mut dyn FnMut(crate::Geometry, Attributes),
+    ) -> Result<(), crate::ops::UnsupportedOperation> {
+        let members = std::mem::take(&mut self.members)
+            .into_iter()
+            .map(crate::Geometry::Euclidean2D);
+        crate::ops::split::emit_members(members, std::mem::take(&mut self.attrs), emit);
+        Ok(())
+    }
+}
+
+impl crate::ops::Split for Collection3D {
+    fn split(
+        &mut self,
+        emit: &mut dyn FnMut(crate::Geometry, Attributes),
+    ) -> Result<(), crate::ops::UnsupportedOperation> {
+        let members = std::mem::take(&mut self.members)
+            .into_iter()
+            .map(crate::Geometry::Euclidean3D);
+        crate::ops::split::emit_members(members, std::mem::take(&mut self.attrs), emit);
+        Ok(())
+    }
+}
+
 // A collection validates by recursing into its members (see
 // `validation_next::validate`), so it declares no direct checks and inherits
 // every `Validate` default.

@@ -1,39 +1,37 @@
-use super::{PointCloud, PositionEncoding, Segment};
-use crate::ops::{Aabb, BoundingBox, UnsupportedOperation};
-
-#[cfg(feature = "new-geometry")]
+use super::{AttributeColumn, PointCloud, PositionEncoding, Segment};
+use crate::ops::{Aabb, BoundingBox, Split, UnsupportedOperation};
+use crate::point::Point3D;
+use crate::{Euclidean3DGeometry, Geometry};
 use reearth_flow_common::attribute::{Attribute, AttributeValue, Attributes};
-#[cfg(feature = "new-geometry")]
 use serde_json::Number;
 
-#[cfg(feature = "new-geometry")]
-use super::AttributeColumn;
-#[cfg(feature = "new-geometry")]
-use crate::point::Point3D;
-
-#[cfg(feature = "new-geometry")]
-impl PointCloud {
+impl Split for PointCloud {
     /// Decode every point as a [`Point3D`] in the cloud's frame, each paired with
     /// its per-point attributes gathered from the typed attribute columns (empty
     /// when the point carries none).
-    pub(crate) fn to_points(&self) -> Vec<(Point3D, Attributes)> {
-        let mut out = Vec::new();
+    fn split(
+        &mut self,
+        emit: &mut dyn FnMut(Geometry, Attributes),
+    ) -> Result<(), UnsupportedOperation> {
         for seg in &self.segments {
             for (i, position) in segment_positions(seg).enumerate() {
-                let mut attributes = Attributes::new();
+                let mut attributes = Attributes::with_capacity(seg.attributes.len());
                 for (name, column) in &seg.attributes {
                     attributes.insert(Attribute::new(name.clone()), column_value(column, i));
                 }
-                out.push((Point3D::new(self.frame.clone(), position), attributes));
+                let point = Point3D::new(self.frame.clone(), position);
+                emit(
+                    Geometry::Euclidean3D(Euclidean3DGeometry::Point(point)),
+                    attributes,
+                );
             }
         }
-        out
+        Ok(())
     }
 }
 
 /// Decode one typed column entry into an [`AttributeValue`]. A non-finite float
 /// or an unassigned string becomes [`AttributeValue::Null`].
-#[cfg(feature = "new-geometry")]
 fn column_value(column: &AttributeColumn, i: usize) -> AttributeValue {
     match column {
         AttributeColumn::UInt8(v) => AttributeValue::Number(Number::from(v[i])),
@@ -53,7 +51,6 @@ fn column_value(column: &AttributeColumn, i: usize) -> AttributeValue {
 }
 
 /// A finite `f64` as a number attribute; `NaN`/infinite becomes null.
-#[cfg(feature = "new-geometry")]
 fn number_or_null(x: f64) -> AttributeValue {
     Number::from_f64(x).map_or(AttributeValue::Null, AttributeValue::Number)
 }

@@ -96,43 +96,37 @@ pub(crate) fn for_each_face_coords<const N: usize>(
 }
 
 impl PolygonMesh2D {
-    /// Rebuild every face as a standalone bare [`Polygon2D`] in the mesh's frame.
-    /// Per-vertex elevation and appearance are not carried onto the faces.
-    pub(crate) fn faces_as_polygons(&self) -> Vec<Polygon2D> {
+    /// Invoke `f` once per face with that face rebuilt as a standalone bare
+    /// [`Polygon2D`] in the mesh's frame. Faces are streamed rather than
+    /// collected. Per-vertex elevation and appearance are not carried onto them.
+    pub(crate) fn for_each_face_polygon(&self, mut f: impl FnMut(Polygon2D)) {
         let (face_indices, face_offsets, interior_offsets) = self.csr_buffers();
         let frame = self.frame();
-        let mut out = Vec::new();
         for_each_face_coords(
             self.vertices(),
             face_indices,
             face_offsets,
             interior_offsets,
-            |rings| {
-                out.push(polygon_2d_from_rings(frame, rings));
-            },
+            |rings| f(polygon_2d_from_rings(frame, rings)),
         );
-        out
     }
 }
 
 impl PolygonMesh3D {
-    /// Rebuild every face as a standalone bare [`Polygon3D`] in the mesh's frame.
-    /// Appearance is not carried onto the faces.
-    pub(crate) fn faces_as_polygons(&self) -> Vec<Polygon3D> {
+    /// Invoke `f` once per face with that face rebuilt as a standalone bare
+    /// [`Polygon3D`] in the mesh's frame. Faces are streamed rather than
+    /// collected. Appearance is not carried onto them.
+    pub(crate) fn for_each_face_polygon(&self, mut f: impl FnMut(Polygon3D)) {
         let data = self.data();
         let (face_indices, face_offsets, interior_offsets) = data.csr_buffers();
         let frame = self.frame();
-        let mut out = Vec::new();
         for_each_face_coords(
             data.vertices(),
             face_indices,
             face_offsets,
             interior_offsets,
-            |rings| {
-                out.push(polygon_3d_from_rings(frame, rings));
-            },
+            |rings| f(polygon_3d_from_rings(frame, rings)),
         );
-        out
     }
 }
 
@@ -163,7 +157,20 @@ fn polygon_3d_from_rings(frame: &CoordinateFrame, rings: &[Vec<[f64; 3]>]) -> Po
 #[cfg(test)]
 mod tests {
     use crate::coordinate::CoordinateFrame;
+    use crate::polygon::{Polygon2D, Polygon3D};
     use crate::polygon_mesh::{PolygonMesh2D, PolygonMesh3D};
+
+    fn faces_2d(mesh: &PolygonMesh2D) -> Vec<Polygon2D> {
+        let mut out = Vec::new();
+        mesh.for_each_face_polygon(|p| out.push(p));
+        out
+    }
+
+    fn faces_3d(mesh: &PolygonMesh3D) -> Vec<Polygon3D> {
+        let mut out = Vec::new();
+        mesh.for_each_face_polygon(|p| out.push(p));
+        out
+    }
 
     #[test]
     fn faces_as_polygons_3d_recovers_each_face() {
@@ -179,7 +186,7 @@ mod tests {
             vec![vec![0u32, 1, 2], vec![1, 3, 2]],
         )
         .unwrap();
-        let polygons = mesh.faces_as_polygons();
+        let polygons = faces_3d(&mesh);
         assert_eq!(polygons.len(), 2);
         assert_eq!(polygons[0].exterior().len(), 3);
         assert_eq!(polygons[0].exterior()[0], [0.0, 0.0, 0.0]);
@@ -206,7 +213,7 @@ mod tests {
             vec![4],
         )
         .unwrap();
-        let polygons = mesh.faces_as_polygons();
+        let polygons = faces_3d(&mesh);
         assert_eq!(polygons.len(), 1);
         assert_eq!(polygons[0].exterior().len(), 4);
         assert_eq!(polygons[0].interiors().count(), 1);
@@ -220,7 +227,7 @@ mod tests {
             vec![vec![0u32, 1, 2, 3]],
         )
         .unwrap();
-        let polygons = mesh.faces_as_polygons();
+        let polygons = faces_2d(&mesh);
         assert_eq!(polygons.len(), 1);
         assert_eq!(polygons[0].exterior().len(), 4);
     }
@@ -230,6 +237,6 @@ mod tests {
         let mesh =
             PolygonMesh3D::from_parts(CoordinateFrame::Euclidean, vec![], Vec::<Vec<u32>>::new())
                 .unwrap();
-        assert!(mesh.faces_as_polygons().is_empty());
+        assert!(faces_3d(&mesh).is_empty());
     }
 }

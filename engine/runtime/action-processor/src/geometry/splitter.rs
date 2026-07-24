@@ -38,7 +38,7 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "new-geometry")]
-use reearth_flow_geometry::ops::Flatten;
+use reearth_flow_geometry::ops::Split;
 #[cfg(feature = "new-geometry")]
 use reearth_flow_types::AttributeValue;
 
@@ -219,24 +219,36 @@ impl Processor for GeometrySplitter {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let feature = &ctx.feature;
-        match feature.geometry.flatten() {
-            // Not a multi-part container: pass the feature through unchanged.
-            None => {
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
-            }
-            Some(members) => {
-                for (index, (geometry, attributes)) in members.into_iter().enumerate() {
-                    let mut new_feature = feature.clone();
-                    *new_feature.geometry_mut() = geometry;
-                    new_feature.extend(attributes);
-                    new_feature.insert(
-                        "_split_index",
-                        AttributeValue::Number(serde_json::Number::from(index + 1)),
-                    );
-                    fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
-                }
-            }
+        let context = ctx.as_context();
+        let mut feature = ctx.feature;
+        // Take the geometry out (cloning the buffer only if it is shared) so each
+        // split member is forwarded as it is produced, without ever holding the
+        // whole decomposition in memory.
+        let mut geometry = std::mem::take(feature.geometry_mut());
+        let mut index = 0usize;
+        let result = geometry.split(&mut |member, attributes| {
+            index += 1;
+            let mut new_feature = feature.clone();
+            new_feature.set_geometry(member);
+            new_feature.extend(attributes);
+            new_feature.insert(
+                "_split_index",
+                AttributeValue::Number(serde_json::Number::from(index)),
+            );
+            fw.send(ExecutorContext::new_with_context_feature_and_port(
+                &context,
+                new_feature,
+                FEATURES_PORT.clone(),
+            ));
+        });
+        // Not a multi-part container: restore the geometry and pass through.
+        if result.is_err() {
+            feature.set_geometry(geometry);
+            fw.send(ExecutorContext::new_with_context_feature_and_port(
+                &context,
+                feature,
+                FEATURES_PORT.clone(),
+            ));
         }
         Ok(())
     }
