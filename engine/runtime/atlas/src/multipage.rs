@@ -76,9 +76,11 @@ struct RegionJob {
 }
 
 /// Upper bound (pixels) accepted for `max_atlas_size` and `extrusion`. Any real
-/// atlas or extrusion ring is orders of magnitude smaller; the cap exists only
-/// to keep packing arithmetic clear of `u32` overflow.
-pub const MAX_ATLAS_DIMENSION: u32 = 100_000;
+/// atlas or extrusion ring is orders of magnitude smaller. The cap keeps packing
+/// arithmetic clear of `u32` overflow and bounds a single page's pixel buffer: a
+/// full 65536x65536 RGBA page is already ~17 GB, so anything larger is a
+/// misconfiguration rather than a workable atlas.
+pub const MAX_ATLAS_DIMENSION: u32 = 65_536;
 
 /// Pack `materials` into one or more atlas pages. Each material carries the
 /// fraction of native resolution to keep (`TextureInput::scale`, `(0, 1]`; `1.0`

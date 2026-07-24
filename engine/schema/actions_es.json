@@ -2171,7 +2171,7 @@
               "null"
             ],
             "format": "uint32",
-            "maximum": 100000.0,
+            "maximum": 65536.0,
             "minimum": 1.0
           },
           "atlasExtrusion": {
@@ -2182,7 +2182,7 @@
               "null"
             ],
             "format": "uint32",
-            "maximum": 100000.0,
+            "maximum": 65536.0,
             "minimum": 0.0
           },
           "textureCodec": {
