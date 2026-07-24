@@ -99,6 +99,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
                 output,
                 min_zoom: params.min_zoom,
                 max_zoom: params.max_zoom,
+                #[cfg(not(feature = "new-geometry"))]
                 attach_texture: params.attach_texture,
                 compress_output,
                 draco_compression: params.draco_compression,
@@ -129,17 +130,30 @@ pub struct Cesium3DTilesWriter {
     pub(super) params: Cesium3DTilesWriterCompiledParam,
 }
 
+/// Serde default for flags that are on unless explicitly disabled. Also makes
+/// the generated JSON schema advertise `default: true`.
+fn default_true() -> bool {
+    true
+}
+
 /// # Texture Codec
 /// Texture image codec for the new-geometry writer's atlas pages.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Default, PartialEq, Eq, JsonSchema)]
-#[serde(rename_all = "camelCase")]
 pub enum TextureCodec {
-    /// KTX2 with Basis Universal supercompression (`KHR_texture_basisu`).
+    /// KTX2 with Basis Universal UASTC supercompression (`KHR_texture_basisu`):
+    /// higher quality, larger files.
     #[default]
-    Ktx2,
+    #[serde(rename = "KTX2/UASTC")]
+    Ktx2Uastc,
+    /// KTX2 with Basis Universal ETC1S supercompression (`KHR_texture_basisu`):
+    /// smaller files, lower quality.
+    #[serde(rename = "KTX2/ETC1S")]
+    Ktx2Etc1s,
     /// PNG, lossless with alpha.
+    #[serde(rename = "PNG")]
     Png,
     /// JPEG, lossy and opaque (alpha is dropped).
+    #[serde(rename = "JPEG")]
     Jpeg,
 }
 
@@ -160,15 +174,18 @@ pub struct Cesium3DTilesWriterParam {
     pub(super) max_zoom: u8,
     /// # Attach Textures
     /// Whether to include texture information in the generated tiles.
+    #[cfg(not(feature = "new-geometry"))]
     pub(super) attach_texture: Option<bool>,
     /// # Draco Compression
     /// Whether to compress mesh geometry with Draco. Defaults to true.
-    pub(super) draco_compression: Option<bool>,
+    #[serde(default = "default_true")]
+    pub(super) draco_compression: bool,
     /// # Compute Flat Normals
     /// Compute per-polygon flat normals for lighting. Defaults to true.
     /// When disabled, no normals are written and the mesh is smaller, but the
     /// tile carries no lighting data (a viewer must derive flat normals itself).
-    pub(super) compute_flat_normal: Option<bool>,
+    #[serde(default = "default_true")]
+    pub(super) compute_flat_normal: bool,
     /// # Texel Size
     /// Target texel size in metres per pixel. Textures finer than this are
     /// downsampled to it. Defaults to 0, which keeps full texture detail.
@@ -187,8 +204,10 @@ pub struct Cesium3DTilesWriterParam {
     #[schemars(range(max = 65536))]
     pub(super) atlas_extrusion: Option<u32>,
     /// # Texture Codec
-    /// Image codec for atlas pages: `ktx2` (GPU-compressed, default), `png`, or
-    /// `jpeg`.
+    /// Image codec for atlas pages: `KTX2/UASTC` (GPU-compressed, higher
+    /// quality), `KTX2/ETC1S` (GPU-compressed, smaller), `PNG`, or `JPEG`.
+    /// Unset attaches no textures; when a codec is chosen it defaults to
+    /// `KTX2/UASTC`.
     pub(super) texture_codec: Option<TextureCodec>,
     /// # Schema Key
     /// Attribute key whose value identifies the schema type and determines the output
@@ -208,11 +227,12 @@ pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) output: CompiledCode,
     pub(super) min_zoom: u8,
     pub(super) max_zoom: u8,
+    #[cfg(not(feature = "new-geometry"))]
     pub(super) attach_texture: Option<bool>,
     pub(super) compress_output: Option<CompiledCode>,
-    pub(super) draco_compression: Option<bool>,
+    pub(super) draco_compression: bool,
     #[cfg(feature = "new-geometry")]
-    pub(super) compute_flat_normal: Option<bool>,
+    pub(super) compute_flat_normal: bool,
     #[cfg(feature = "new-geometry")]
     pub(super) texel_size: Option<f64>,
     #[cfg(feature = "new-geometry")]
@@ -492,7 +512,7 @@ impl Cesium3DTilesWriter {
                             receiver_sorted,
                             tile_id_conv,
                             &schema,
-                            self.params.draco_compression.unwrap_or(true),
+                            self.params.draco_compression,
                         );
                         if let Err(e) = &result {
                             let ctx = ctx.clone();
