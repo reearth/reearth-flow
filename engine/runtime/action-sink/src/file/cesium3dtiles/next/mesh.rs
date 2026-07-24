@@ -137,6 +137,23 @@ fn collect_euclidean3d(geometry: &Euclidean3DGeometry, out: &mut Vec<PolygonMesh
             }
         }
         Euclidean3DGeometry::PolygonMesh(mesh) => out.push((**mesh).clone()),
+        // A triangle mesh (what the glTF reader emits) is a polygon mesh whose every
+        // face is a triangle: reuse its shared vertex pool as-is and turn each triangle
+        // index triple into a 3-corner face, so no re-deduplication is needed.
+        Euclidean3DGeometry::TriangularMesh(mesh) => {
+            match PolygonMesh3D::from_parts(
+                mesh.frame().clone(),
+                mesh.vertices().to_vec(),
+                mesh.triangles(),
+            ) {
+                Ok(m) => out.push(m),
+                Err(e) => {
+                    tracing::warn!(
+                        "Cesium3DTilesWriter: skipping un-meshable TriangularMesh: {e:?}"
+                    )
+                }
+            }
+        }
         // A bare face (e.g. a MultiPolygon-Z GeoPackage layer decodes to a
         // `Collection` of these) is a single-face mesh in the polygon's own frame.
         Euclidean3DGeometry::Polygon(polygon) => {
@@ -296,6 +313,32 @@ mod tests {
         let extracted = extract(&geometry, &mut caches).expect("collection should mesh");
 
         assert_eq!(extracted.indices.len(), 2, "both members meshed");
+    }
+
+    // A TriangularMesh (what the glTF reader produces) must be meshed like any
+    // other surface, not dropped. Each triangle becomes one face.
+    #[test]
+    fn triangular_mesh_is_meshed() {
+        use reearth_flow_geometry::triangular_mesh::TriangularMesh3D;
+
+        let frame = CoordinateFrame::Crs(EpsgCode::new(4979));
+        // A two-triangle soup sharing an edge; near Tokyo (lat, lon, height).
+        let soup = [
+            [35.0, 139.0, 10.0],
+            [35.0, 139.001, 10.0],
+            [35.001, 139.0, 10.0],
+            [35.0, 139.001, 10.0],
+            [35.001, 139.001, 10.0],
+            [35.001, 139.0, 10.0],
+        ];
+        let mesh = TriangularMesh3D::from_soup(frame, soup);
+        let geometry = Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(mesh)));
+
+        let mut caches = ExtractCaches::default();
+        let extracted = extract(&geometry, &mut caches).expect("triangular mesh should mesh");
+
+        assert_eq!(extracted.indices.len(), 2, "both triangles expected");
+        assert!(!extracted.ecef_vertices.is_empty(), "vertices reprojected");
     }
 
     // A face whose canonical orientation is outward, stored in a lat-first frame

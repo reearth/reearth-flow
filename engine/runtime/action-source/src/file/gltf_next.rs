@@ -14,13 +14,9 @@ use bytes::Bytes;
 use indexmap::IndexMap;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_geometry::{
-    collection::Collection3D,
     coordinate::CoordinateFrame,
-    polygon::Polygon3D,
-    types::{
-        geometry::Geometry3D as OldGeometry3D, line_string::LineString3D as OldLineString3D,
-        polygon::Polygon3D as OldPolygon3D,
-    },
+    triangular_mesh::TriangularMesh3D,
+    types::{geometry::Geometry3D as OldGeometry3D, polygon::Polygon3D as OldPolygon3D},
     Euclidean3DGeometry, Geometry,
 };
 use reearth_flow_runtime::{
@@ -157,39 +153,58 @@ async fn send_feature(
 }
 
 /// Convert the old-world `Geometry3D` produced by the glTF triangle extraction into
-/// the new `reearth_flow_geometry::Geometry`. Faithful port of the old output shape:
-/// a single `Polygon` becomes `Euclidean3D::Polygon`, a `MultiPolygon` becomes a
-/// `Euclidean3D::Collection` of polygons (the new model has no `MultiPolygon`). Every
-/// leaf carries `CoordinateFrame::Euclidean` since glTF is model-space (no CRS).
+/// the new `reearth_flow_geometry::Geometry`. glTF is a triangle mesh, so the
+/// idiomatic target is a single `Euclidean3D::TriangularMesh`: the extraction's
+/// per-triangle `Polygon`/`MultiPolygon` faces are flattened back into a triangle
+/// soup and fed to `TriangularMesh3D::from_soup`, which deduplicates shared vertices
+/// into one pool while preserving each triangle's winding (glTF front faces are CCW).
+/// The mesh carries `CoordinateFrame::Euclidean` since glTF is model-space (no CRS).
 fn to_new_geometry(old: &OldGeometry3D<f64>) -> Geometry {
+    let mut soup: Vec<[f64; 3]> = Vec::new();
     match old {
-        OldGeometry3D::Polygon(p) => Geometry::Euclidean3D(old_polygon_to_new(p)),
-        OldGeometry3D::MultiPolygon(mp) => Geometry::Euclidean3D(Euclidean3DGeometry::Collection(
-            Collection3D::new(mp.0.iter().map(old_polygon_to_new)),
-        )),
+        OldGeometry3D::Polygon(p) => push_polygon_soup(p, &mut soup),
+        OldGeometry3D::MultiPolygon(mp) => {
+            for p in &mp.0 {
+                push_polygon_soup(p, &mut soup);
+            }
+        }
         other => {
             // The glTF extraction only produces Polygon / MultiPolygon today
             // (see reearth_flow_gltf::create_geometry_from_primitives_with_transform).
             tracing::warn!(
                 "glTF: unsupported geometry variant for new-geometry conversion, dropping: {other:?}"
             );
-            Geometry::None
         }
     }
-}
 
-fn old_polygon_to_new(p: &OldPolygon3D<f64>) -> Euclidean3DGeometry {
-    let exterior = ring_coords(p.exterior());
-    let interiors: Vec<Vec<[f64; 3]>> = p.interiors().iter().map(ring_coords).collect();
-    Euclidean3DGeometry::Polygon(Box::new(Polygon3D::from_rings(
-        CoordinateFrame::Euclidean,
-        exterior,
-        interiors,
+    if soup.is_empty() {
+        return Geometry::None;
+    }
+
+    Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(
+        TriangularMesh3D::from_soup(CoordinateFrame::Euclidean, soup),
     )))
 }
 
-fn ring_coords(ls: &OldLineString3D<f64>) -> Vec<[f64; 3]> {
-    ls.0.iter().map(|c| [c.x, c.y, c.z]).collect()
+/// Fan-triangulate one extracted face into `soup` (three vertices per triangle).
+/// The glTF extraction only ever emits triangles, so for the common case this just
+/// forwards the three corners; the fan keeps it correct if a face ever has more.
+/// The extraction stores rings closed (last vertex repeats the first), so the
+/// trailing closing vertex is dropped before fanning.
+fn push_polygon_soup(p: &OldPolygon3D<f64>, soup: &mut Vec<[f64; 3]>) {
+    let ring: Vec<[f64; 3]> = p.exterior().0.iter().map(|c| [c.x, c.y, c.z]).collect();
+    let corners: &[[f64; 3]] = match ring.split_last() {
+        Some((last, head)) if ring.first() == Some(last) => head,
+        _ => &ring,
+    };
+    if corners.len() < 3 {
+        return;
+    }
+    for i in 1..corners.len() - 1 {
+        soup.push(corners[0]);
+        soup.push(corners[i]);
+        soup.push(corners[i + 1]);
+    }
 }
 
 fn build_feature(
@@ -272,59 +287,46 @@ mod tests {
     }
 
     #[test]
-    fn polygon_converts_to_euclidean3d_polygon_preserving_z() {
+    fn single_triangle_converts_to_triangular_mesh_preserving_z_and_winding() {
         let ext = [[0.0, 0.0, 1.0], [1.0, 0.0, 2.0], [0.0, 1.0, 3.0]];
         let old = OldGeometry3D::Polygon(old_polygon(&ext));
 
-        // The old `Polygon3D::new` auto-closes the ring (repeats the first vertex);
-        // the faithful conversion preserves that closed ring and its per-vertex z.
-        let expected_closed = [
-            [0.0, 0.0, 1.0],
-            [1.0, 0.0, 2.0],
-            [0.0, 1.0, 3.0],
-            [0.0, 0.0, 1.0],
-        ];
-
         match to_new_geometry(&old) {
-            Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(p)) => {
-                assert_eq!(*p.frame(), CoordinateFrame::Euclidean);
-                // Z must survive the conversion (glTF meshes carry real per-vertex z).
-                assert_eq!(p.exterior(), expected_closed.as_slice());
+            Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(m)) => {
+                assert_eq!(*m.frame(), CoordinateFrame::Euclidean);
+                assert_eq!(m.num_triangles(), 1);
+                // `from_soup` assigns vertex indices in first-seen order, so a single
+                // triangle keeps its original winding v0, v1, v2 (glTF front faces are
+                // CCW; this must not be reordered).
+                let tris: Vec<[u32; 3]> = m.triangles().collect();
+                assert_eq!(tris, vec![[0, 1, 2]]);
+                // The three distinct vertices survive in order, per-vertex Z included.
+                assert_eq!(m.vertices(), ext.as_slice());
             }
-            other => panic!("expected Euclidean3D Polygon, got {other:?}"),
+            other => panic!("expected Euclidean3D TriangularMesh, got {other:?}"),
         }
     }
 
     #[test]
-    fn multipolygon_converts_to_collection3d() {
+    fn multiple_triangles_share_a_single_vertex_pool() {
+        // Two triangles sharing the edge (1,0,0)-(0,1,0): 4 distinct vertices, not 6.
         let a = [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
-        let b = [[2.0, 2.0, 5.0], [3.0, 2.0, 5.0], [2.0, 3.0, 5.0]];
+        let b = [[1.0, 0.0, 0.0], [1.0, 1.0, 0.0], [0.0, 1.0, 0.0]];
         let old = OldGeometry3D::MultiPolygon(MultiPolygon3D::new(vec![
             old_polygon(&a),
             old_polygon(&b),
         ]));
 
         match to_new_geometry(&old) {
-            Geometry::Euclidean3D(Euclidean3DGeometry::Collection(c)) => {
-                assert_eq!(c.len(), 2, "both polygons should become collection members");
+            Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(m)) => {
+                assert_eq!(m.num_triangles(), 2, "both triangles kept");
+                assert_eq!(
+                    m.vertices().len(),
+                    4,
+                    "shared vertices deduplicated into one pool (not 6)"
+                );
             }
-            other => panic!("expected Euclidean3D Collection, got {other:?}"),
-        }
-    }
-
-    /// Pull the first new-model 3D polygon out of either a bare `Polygon` or a
-    /// `Collection` of them, so assertions don't depend on how the glTF extraction
-    /// happened to wrap a single mesh.
-    fn first_polygon(g: &Geometry) -> Option<&Polygon3D> {
-        match g {
-            Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(p)) => Some(p),
-            Geometry::Euclidean3D(Euclidean3DGeometry::Collection(c)) => {
-                c.members().iter().find_map(|m| match m {
-                    Euclidean3DGeometry::Polygon(p) => Some(&**p),
-                    _ => None,
-                })
-            }
-            _ => None,
+            other => panic!("expected Euclidean3D TriangularMesh, got {other:?}"),
         }
     }
 
@@ -353,7 +355,7 @@ mod tests {
     /// parsing/extraction path, closing the gap between the pure converter and the
     /// live reader. No NodeContext needed: the buffer is an embedded data URI.
     #[test]
-    fn real_gltf_triangle_reads_as_euclidean3d_preserving_z() {
+    fn real_gltf_triangle_reads_as_triangular_mesh_preserving_z() {
         let gltf = gltf::Gltf::from_slice(TRIANGLE_GLTF.as_bytes()).expect("parse glTF");
 
         // The single buffer is the embedded data URI; build its exact bytes here
@@ -385,15 +387,20 @@ mod tests {
         .expect("extract geometry from real glTF triangle");
 
         let geom = to_new_geometry(&old);
-        let poly = first_polygon(&geom).expect("triangle should yield a 3D polygon");
 
-        assert_eq!(*poly.frame(), CoordinateFrame::Euclidean);
-
-        // All three distinct input Z values must survive the full parse->convert
-        // chain (guards against Z being zeroed or dropped somewhere in the pipeline).
-        let zs: Vec<f64> = poly.exterior().iter().map(|c| c[2]).collect();
-        for z in [1.0_f64, 2.0, 3.0] {
-            assert!(zs.contains(&z), "z={z} missing from exterior {zs:?}");
+        match geom {
+            Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(m)) => {
+                assert_eq!(*m.frame(), CoordinateFrame::Euclidean);
+                assert_eq!(m.num_triangles(), 1);
+                // All three distinct input Z values must survive the full
+                // parse->convert chain (guards against Z being zeroed or dropped
+                // somewhere in the pipeline).
+                let zs: Vec<f64> = m.vertices().iter().map(|v| v[2]).collect();
+                for z in [1.0_f64, 2.0, 3.0] {
+                    assert!(zs.contains(&z), "z={z} missing from mesh vertices {zs:?}");
+                }
+            }
+            other => panic!("expected Euclidean3D TriangularMesh, got {other:?}"),
         }
     }
 }
