@@ -2145,7 +2145,7 @@ Writes features to Cesium 3D Tiles format for 3D web visualization.
     },
     "textureCodec": {
       "title": "Texture Codec",
-      "description": "Image codec for atlas pages: `KTX2/UASTC` (GPU-compressed, higher quality), `KTX2/ETC1S` (GPU-compressed, smaller), `PNG`, or `JPEG`. Unset attaches no textures; when a codec is chosen it defaults to `KTX2/UASTC`.",
+      "description": "Image codec for atlas pages. Unset attaches no textures; when a codec is chosen it defaults to `KTX2/ETC1S`.",
       "anyOf": [
         {
           "$ref": "#/definitions/TextureCodec"

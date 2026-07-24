@@ -2186,7 +2186,7 @@
           },
           "textureCodec": {
             "title": "テクスチャコーデック",
-            "description": "アトラスページの画像コーデック。`ktx2`（GPU 圧縮、デフォルト）、`png`、または `jpeg`。",
+            "description": "アトラスページの画像コーデック。未設定の場合はテクスチャを付与しない。コーデックを指定した場合のデフォルトは `KTX2/ETC1S`。",
             "anyOf": [
               {
                 "$ref": "#/definitions/TextureCodec"
@@ -2244,28 +2244,28 @@
             "description": "Texture image codec for the new-geometry writer's atlas pages.",
             "oneOf": [
               {
-                "description": "KTX2 with Basis Universal UASTC supercompression (`KHR_texture_basisu`): higher quality, larger files.",
+                "description": "Basis Universal UASTC スーパー圧縮を用いた KTX2（`KHR_texture_basisu`）。高品質だがファイルは大きい。",
                 "type": "string",
                 "enum": [
                   "KTX2/UASTC"
                 ]
               },
               {
-                "description": "KTX2 with Basis Universal ETC1S supercompression (`KHR_texture_basisu`): smaller files, lower quality.",
+                "description": "Basis Universal ETC1S スーパー圧縮を用いた KTX2（`KHR_texture_basisu`）。ファイルは小さく、品質は低め。",
                 "type": "string",
                 "enum": [
                   "KTX2/ETC1S"
                 ]
               },
               {
-                "description": "PNG, lossless with alpha.",
+                "description": "PNG。アルファ付きの可逆圧縮。",
                 "type": "string",
                 "enum": [
                   "PNG"
                 ]
               },
               {
-                "description": "JPEG, lossy and opaque (alpha is dropped).",
+                "description": "JPEG。非可逆で不透明（アルファは破棄される）。",
                 "type": "string",
                 "enum": [
                   "JPEG"

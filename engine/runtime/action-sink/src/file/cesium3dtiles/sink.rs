@@ -142,11 +142,11 @@ fn default_true() -> bool {
 pub enum TextureCodec {
     /// KTX2 with Basis Universal UASTC supercompression (`KHR_texture_basisu`):
     /// higher quality, larger files.
-    #[default]
     #[serde(rename = "KTX2/UASTC")]
     Ktx2Uastc,
     /// KTX2 with Basis Universal ETC1S supercompression (`KHR_texture_basisu`):
     /// smaller files, lower quality.
+    #[default]
     #[serde(rename = "KTX2/ETC1S")]
     Ktx2Etc1s,
     /// PNG, lossless with alpha.
@@ -204,10 +204,8 @@ pub struct Cesium3DTilesWriterParam {
     #[schemars(range(max = 65536))]
     pub(super) atlas_extrusion: Option<u32>,
     /// # Texture Codec
-    /// Image codec for atlas pages: `KTX2/UASTC` (GPU-compressed, higher
-    /// quality), `KTX2/ETC1S` (GPU-compressed, smaller), `PNG`, or `JPEG`.
-    /// Unset attaches no textures; when a codec is chosen it defaults to
-    /// `KTX2/UASTC`.
+    /// Image codec for atlas pages. Unset attaches no textures; when a codec is
+    /// chosen it defaults to `KTX2/ETC1S`.
     pub(super) texture_codec: Option<TextureCodec>,
     /// # Schema Key
     /// Attribute key whose value identifies the schema type and determines the output

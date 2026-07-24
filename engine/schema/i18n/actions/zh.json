@@ -764,22 +764,22 @@
         },
         "textureCodec": {
           "title": "纹理编解码器",
-          "description": "图集页面的图像编解码器：`ktx2`（GPU 压缩，默认）、`png` 或 `jpeg`。"
+          "description": "图集页面的图像编解码器。未设置时不附加纹理；选择编解码器时默认为 `KTX2/ETC1S`。"
         }
       },
       "enumI18n": {
         "TextureCodec": {
           "JPEG": {
-            "description": "JPEG, lossy and opaque (alpha is dropped)."
+            "description": "JPEG，有损且不透明（丢弃 alpha 通道）。"
           },
           "KTX2/ETC1S": {
-            "description": "KTX2 with Basis Universal ETC1S supercompression (`KHR_texture_basisu`): smaller files, lower quality."
+            "description": "采用 Basis Universal ETC1S 超级压缩的 KTX2（`KHR_texture_basisu`）：文件更小，质量更低。"
           },
           "KTX2/UASTC": {
-            "description": "KTX2 with Basis Universal UASTC supercompression (`KHR_texture_basisu`): higher quality, larger files."
+            "description": "采用 Basis Universal UASTC 超级压缩的 KTX2（`KHR_texture_basisu`）：质量更高，文件更大。"
           },
           "PNG": {
-            "description": "PNG, lossless with alpha."
+            "description": "PNG，带 alpha 通道的无损格式。"
           }
         }
       }

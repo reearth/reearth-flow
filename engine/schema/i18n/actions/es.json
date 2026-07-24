@@ -764,22 +764,22 @@
         },
         "textureCodec": {
           "title": "Códec de Textura",
-          "description": "Códec de imagen para las páginas del atlas: `ktx2` (comprimido en GPU, predeterminado), `png` o `jpeg`."
+          "description": "Códec de imagen para las páginas del atlas. Si no se define, no se adjuntan texturas; cuando se elige un códec, el valor predeterminado es `KTX2/ETC1S`."
         }
       },
       "enumI18n": {
         "TextureCodec": {
           "JPEG": {
-            "description": "JPEG, lossy and opaque (alpha is dropped)."
+            "description": "JPEG, con pérdida y opaco (se descarta el canal alfa)."
           },
           "KTX2/ETC1S": {
-            "description": "KTX2 with Basis Universal ETC1S supercompression (`KHR_texture_basisu`): smaller files, lower quality."
+            "description": "KTX2 con supercompresión Basis Universal ETC1S (`KHR_texture_basisu`): archivos más pequeños, menor calidad."
           },
           "KTX2/UASTC": {
-            "description": "KTX2 with Basis Universal UASTC supercompression (`KHR_texture_basisu`): higher quality, larger files."
+            "description": "KTX2 con supercompresión Basis Universal UASTC (`KHR_texture_basisu`): mayor calidad, archivos más grandes."
           },
           "PNG": {
-            "description": "PNG, lossless with alpha."
+            "description": "PNG, sin pérdida y con canal alfa."
           }
         }
       }

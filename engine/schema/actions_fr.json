@@ -2183,7 +2183,7 @@
           },
           "textureCodec": {
             "title": "Codec de Texture",
-            "description": "Codec d'image pour les pages de l'atlas : `ktx2` (compressé sur GPU, par défaut), `png` ou `jpeg`.",
+            "description": "Codec d'image pour les pages de l'atlas. Si non défini, aucune texture n'est attachée ; lorsqu'un codec est choisi, la valeur par défaut est `KTX2/ETC1S`.",
             "anyOf": [
               {
                 "$ref": "#/definitions/TextureCodec"
@@ -2241,28 +2241,28 @@
             "description": "Texture image codec for the new-geometry writer's atlas pages.",
             "oneOf": [
               {
-                "description": "KTX2 with Basis Universal UASTC supercompression (`KHR_texture_basisu`): higher quality, larger files.",
+                "description": "KTX2 avec supercompression Basis Universal UASTC (`KHR_texture_basisu`) : qualité supérieure, fichiers plus grands.",
                 "type": "string",
                 "enum": [
                   "KTX2/UASTC"
                 ]
               },
               {
-                "description": "KTX2 with Basis Universal ETC1S supercompression (`KHR_texture_basisu`): smaller files, lower quality.",
+                "description": "KTX2 avec supercompression Basis Universal ETC1S (`KHR_texture_basisu`) : fichiers plus petits, qualité inférieure.",
                 "type": "string",
                 "enum": [
                   "KTX2/ETC1S"
                 ]
               },
               {
-                "description": "PNG, lossless with alpha.",
+                "description": "PNG, sans perte avec canal alpha.",
                 "type": "string",
                 "enum": [
                   "PNG"
                 ]
               },
               {
-                "description": "JPEG, lossy and opaque (alpha is dropped).",
+                "description": "JPEG, avec perte et opaque (le canal alpha est supprimé).",
                 "type": "string",
                 "enum": [
                   "JPEG"
