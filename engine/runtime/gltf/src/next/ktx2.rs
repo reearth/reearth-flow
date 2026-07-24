@@ -62,18 +62,27 @@ impl Codec for Ktx2Codec {
                 .set_image_data(level as u32, 0, 0, mip.as_raw())
                 .map_err(|e| err("set level", e))?;
         }
-        // ETC1S quality is 1-255 (128 is a good balance); UASTC quality is 0-4
-        // (3 favours quality without the slowest RDO pass).
+        // ETC1S quality is the 1-255 `quality_level` (128 is a good balance).
+        // UASTC ignores `quality_level`; its encode effort is the pack level in
+        // the low bits of `uastc_flags` (0 = fastest .. 4 = very slow). We use 2
+        // (`PACK_UASTC_LEVEL_DEFAULT`), basisu's balanced default; raise toward 4
+        // for quality or drop toward 0 for speed.
+        const PACK_UASTC_LEVEL_DEFAULT: u32 = 2;
+        // thread_count(1) avoids a job_pool destructor deadlock in the basisu
+        // vendored by KTX-Software 4.4.0 (fixed upstream, not yet in our build).
+        // See https://github.com/BinomialLLC/basis_universal/wiki/Release-Notes.
+        // Cross-texture parallelism already comes from the rayon par_bridge that
+        // drives encode(), so single-threaded per-texture loses no throughput.
         let params = match self.supercompression {
             Supercompression::Etc1s => BasisCompressionParams::builder()
                 .uastc(false)
                 .quality_level(128)
-                .thread_count(4)
+                .thread_count(1)
                 .build(),
             Supercompression::Uastc => BasisCompressionParams::builder()
                 .uastc(true)
-                .quality_level(3)
-                .thread_count(4)
+                .uastc_flags(PACK_UASTC_LEVEL_DEFAULT)
+                .thread_count(1)
                 .build(),
         };
         texture

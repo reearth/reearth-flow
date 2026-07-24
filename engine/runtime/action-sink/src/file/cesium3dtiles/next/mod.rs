@@ -18,6 +18,8 @@ use std::collections::{BTreeSet, HashMap};
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use rayon::prelude::*;
+
 use reearth_flow_atlas::{build_atlas_multipage, TextureCache, TextureInput};
 use reearth_flow_gltf::next::glb::{self, Granularity};
 use reearth_flow_gltf::next::metadata;
@@ -74,7 +76,7 @@ impl Cesium3DTilesWriter {
             texture_codec: self.params.texture_codec,
         };
         for ((output, _, _), features) in &self.buffer {
-            let mut write_file = |relative_path: String, bytes: Vec<u8>| {
+            let write_file = |relative_path: String, bytes: Vec<u8>| {
                 crate::SinkOutput::new(
                     &ctx.sandbox_root,
                     &format!("{output}/{relative_path}"),
@@ -86,13 +88,7 @@ impl Cesium3DTilesWriter {
 
             // glbs stream to disk here as they are built; only the small
             // subtree/tileset outputs come back for writing below.
-            let built = build(
-                features,
-                options,
-                self.params.max_zoom,
-                render,
-                &mut write_file,
-            )?;
+            let built = build(features, options, self.params.max_zoom, render, &write_file)?;
 
             for (relative_path, bytes) in built.subtrees {
                 write_file(relative_path, bytes)?;
@@ -164,12 +160,16 @@ pub fn build(
     options: MetadataOptions,
     max_zoom: u8,
     render: RenderOptions,
-    mut write_tile: impl FnMut(String, Vec<u8>) -> crate::errors::Result<()>,
+    write_tile: impl Fn(String, Vec<u8>) -> crate::errors::Result<()> + Sync,
 ) -> crate::errors::Result<BuiltTileset> {
     let mut caches = mesh::ExtractCaches::default();
     let extracted: Vec<(&Feature, mesh::ExtractedMesh)> = features
         .iter()
-        .filter_map(|feature| mesh::extract(&feature.geometry, &mut caches).map(|m| (feature, m)))
+        .enumerate()
+        .inspect(|(i, _)| eprintln!("extracting feature {}/{}", i + 1, features.len()))
+        .filter_map(|(_, feature)| {
+            mesh::extract(&feature.geometry, &mut caches).map(|m| (feature, m))
+        })
         .collect();
 
     if extracted.is_empty() {
@@ -205,15 +205,21 @@ pub fn build(
     // memory stays at one glb rather than the whole tileset. The glb bytes feed
     // neither `tileset.json` nor the subtrees (those need only the cell keys,
     // already captured in `occupied`), so nothing downstream needs them retained.
-    let mut tile_count = 0usize;
-    for (cell, indices) in by_cell {
-        let cell_members: Vec<&(&Feature, mesh::ExtractedMesh)> =
-            indices.iter().map(|&i| &extracted[i]).collect();
-        let mut textures = TextureCache::default();
-        let glb = build_cell_glb(&cell_members, options, render, &mut textures)?;
-        write_tile(content_path(cell), glb)?;
-        tile_count += 1;
-    }
+    // Cells are independent (own texture cache, own glb, unique output path), so
+    // render them across the rayon pool. Each glb still streams straight to
+    // `write_tile` as it is built, so peak memory stays at one glb per worker.
+    let cells: Vec<(Cell, Vec<usize>)> = by_cell.into_iter().collect();
+    let tile_count = cells.len();
+    cells
+        .par_iter()
+        .try_for_each(|(cell, indices)| -> crate::errors::Result<()> {
+            let cell_members: Vec<&(&Feature, mesh::ExtractedMesh)> =
+                indices.iter().map(|&i| &extracted[i]).collect();
+            let mut textures = TextureCache::default();
+            let glb = build_cell_glb(&cell_members, options, render, &mut textures)?;
+            write_tile(content_path(*cell), glb)?;
+            Ok(())
+        })?;
 
     let tileset_bytes = render_tileset_json(&root, available_levels)?;
     let subtrees = subtree::build_all(&occupied)
