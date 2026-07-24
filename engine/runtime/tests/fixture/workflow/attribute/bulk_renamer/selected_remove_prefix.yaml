@@ -32,8 +32,8 @@ graphs:
         type: action
         action: Bulk Attribute Renamer
         with:
-          renameType: Selected
-          renameAction: RemovePrefix
+          renameType: selected
+          renameAction: removePrefix
           renameValue: "test"
           selectedAttributes: ["testAttribute1"]
           textToFind: null

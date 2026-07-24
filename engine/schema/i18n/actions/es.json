@@ -203,27 +203,50 @@
     },
     {
       "name": "Attribute Manager",
-      "description": "Gestiona atributos",
+      "description": "Creates, converts, renames, or removes feature attributes based on a configurable list of operations.",
       "parameterI18n": {
         "": {
-          "title": "AttributeManager Parameters"
+          "title": "Attribute Manager Parameters",
+          "description": "Defines the ordered list of operations that create, convert, rename, or remove feature attributes."
         },
         "operations": {
           "title": "Attribute Operations",
-          "description": "List of operations to perform on feature attributes (create, convert, rename, remove)"
+          "description": "Operations applied to each feature in order. Each entry names the target attribute, the method to apply, and an optional value expression."
         }
       },
       "definitionI18n": {
         "Operation": {
           "attribute": {
-            "title": "Attribute name"
+            "title": "Attribute Name",
+            "description": "Name of the attribute to create, convert, rename, or remove."
           },
           "method": {
-            "title": "Operation to perform"
+            "title": "Method",
+            "description": "Operation to apply to the attribute."
           },
           "value": {
             "title": "Value",
-            "description": "Value to use for the operation"
+            "description": "Expression evaluated against the feature. Supplies the new value for Create and Convert, or the new attribute name for Rename. Ignored for Remove."
+          }
+        }
+      },
+      "enumI18n": {
+        "Method": {
+          "convert": {
+            "title": "Convert",
+            "description": "Replaces the value of an existing attribute with the result of the value expression. Features that do not already have the attribute are left unchanged."
+          },
+          "create": {
+            "title": "Create",
+            "description": "Sets the attribute to the result of the value expression, creating it or overwriting any existing value."
+          },
+          "remove": {
+            "title": "Remove",
+            "description": "Removes the attribute from the feature."
+          },
+          "rename": {
+            "title": "Rename",
+            "description": "Renames the attribute to the name produced by the value expression. Skipped when the attribute is absent or a target with that name already exists."
           }
         }
       }
@@ -388,61 +411,61 @@
       "description": "Cambia el nombre de atributos añadiendo/eliminando prefijos o sufijos, o reemplazando texto",
       "parameterI18n": {
         "": {
-          "title": "BulkAttributeRenamer Parameters",
-          "description": "Configure how to rename feature attributes in bulk operations"
+          "title": "Bulk Attribute Renamer Parameters",
+          "description": "Selects which attributes to rename and how their names are transformed."
         },
         "renameAction": {
           "title": "Rename Operation",
-          "description": "The type of renaming operation to perform on the attribute names"
+          "description": "Transformation applied to each attribute name."
         },
         "renameType": {
-          "title": "Which Attributes to Rename",
-          "description": "Choose whether to rename all attributes or only selected ones"
+          "title": "Rename Scope",
+          "description": "Scope of the rename operation: all attributes or a selected subset."
         },
         "renameValue": {
           "title": "Text Value",
-          "description": "The text to add as prefix/suffix, remove, or use as replacement"
+          "description": "Text to add as a prefix or suffix, remove, or use as the replacement, depending on the selected operation."
         },
         "selectedAttributes": {
           "title": "Selected Attribute Names",
-          "description": "List of specific attribute names to rename (required when \"Selected Attributes\" is chosen)"
+          "description": "Attribute names to rename. Required when the rename scope is set to a selected subset."
         },
         "textToFind": {
           "title": "Text Pattern to Find",
-          "description": "Regular expression pattern to match when using \"Replace Text\" operation"
+          "description": "Regular expression matched against attribute names. Required for the replaceText operation."
         }
       },
       "enumI18n": {
         "RenameAction": {
-          "AddPrefix": {
+          "addPrefix": {
             "title": "Add Prefix",
-            "description": "Add text to the beginning of attribute names"
+            "description": "Prepends the text value to each attribute name."
           },
-          "AddSuffix": {
+          "addSuffix": {
             "title": "Add Suffix",
-            "description": "Add text to the end of attribute names"
+            "description": "Appends the text value to each attribute name."
           },
-          "RemovePrefix": {
+          "removePrefix": {
             "title": "Remove Prefix",
-            "description": "Remove text from the beginning of attribute names"
+            "description": "Removes the text value from the start of each attribute name."
           },
-          "RemoveSuffix": {
+          "removeSuffix": {
             "title": "Remove Suffix",
-            "description": "Remove text from the end of attribute names"
+            "description": "Removes the text value from the end of each attribute name."
           },
-          "StringReplace": {
+          "replaceText": {
             "title": "Replace Text",
-            "description": "Find and replace text using regular expressions"
+            "description": "Replaces text matched by the find pattern with the text value, using regular expressions."
           }
         },
         "RenameType": {
-          "All": {
+          "all": {
             "title": "All Attributes",
-            "description": "Rename all attributes in the feature"
+            "description": "Renames every attribute on the feature."
           },
-          "Selected": {
+          "selected": {
             "title": "Selected Attributes",
-            "description": "Rename only specific attributes listed below"
+            "description": "Renames only the attributes listed in selectedAttributes."
           }
         }
       }
@@ -2405,67 +2428,82 @@
     },
     {
       "name": "Null Attribute Mapper",
-      "description": "Reemplaza valores de atributos nulos con valores predeterminados configurados",
+      "description": "Replaces null-like attribute values with configured replacement values, optionally removing or routing affected features.",
       "parameterI18n": {
         "": {
-          "title": "NullAttributeMapperParams",
-          "description": "NullAttributeMapper parameters"
+          "title": "Null Attribute Mapper Parameters",
+          "description": "Detects null-like attribute values and replaces them, removes them, or routes affected features according to per-attribute rules."
         },
         "defaultReplacement": {
-          "description": "Fallback replacement for attributes not in mappings (when scope = \"all\")"
+          "title": "Default Replacement",
+          "description": "Value used to replace null-like attributes that have no entry in the mappings. Applies only when the scope inspects all attributes."
         },
         "mappings": {
-          "description": "Per-attribute replacement rules"
+          "title": "Attribute Mappings",
+          "description": "Per-attribute rules describing how each null-like attribute is replaced, removed, or created."
         },
         "nullDefinition": {
-          "description": "Which states count as \"null\""
+          "title": "Null Definition",
+          "description": "States treated as null-like: an explicit null value, a missing attribute, or an empty string. Defaults to null values and missing attributes."
         },
         "routeNullFeatures": {
-          "description": "Emit original features with nulls to hasNull port"
+          "title": "Route Null Features",
+          "description": "When enabled, a copy of each feature that had at least one null-like value is emitted unchanged to a separate output for inspection."
         },
         "scope": {
-          "description": "Which attributes to inspect"
+          "title": "Scope",
+          "description": "Which attributes to inspect: only those named in the mappings, or every attribute on the feature."
         }
       },
       "definitionI18n": {
         "AttributeMapping": {
           "attribute": {
-            "description": "Name of the attribute to inspect"
+            "title": "Attribute",
+            "description": "Name of the attribute to inspect."
           },
           "onMissing": {
-            "description": "What to do when attribute is missing but not in nullDefinition"
+            "title": "On Missing",
+            "description": "Behavior when the attribute is absent and not treated as null-like by the null definition."
           },
           "replacement": {
-            "description": "Value to write when attribute is null-like null means remove the attribute"
+            "title": "Replacement",
+            "description": "Value written when the attribute is null-like. A null value removes the attribute instead."
           }
         }
       },
       "enumI18n": {
         "NullKind": {
           "emptyString": {
-            "description": "AttributeValue::String(\"\")"
+            "title": "Empty String",
+            "description": "An attribute holding a text value with no characters."
           },
           "missing": {
-            "description": "Attribute key absent from the feature"
+            "title": "Missing Attribute",
+            "description": "An attribute that is absent from the feature."
           },
           "null": {
-            "description": "AttributeValue::Null"
+            "title": "Null Value",
+            "description": "An attribute present on the feature but holding an explicit null value."
           }
         },
         "OnMissing": {
           "create": {
-            "description": "Write replacement value, creating the attribute"
+            "title": "Create",
+            "description": "Adds the attribute using the mapping's replacement value."
           },
           "skip": {
-            "description": "Leave unchanged"
+            "title": "Skip",
+            "description": "Leaves the feature unchanged."
           }
         },
         "Scope": {
           "all": {
-            "description": "Check all attributes on the feature"
+            "title": "All Attributes",
+            "description": "Inspects every attribute on the feature."
           },
           "listed": {
-            "description": "Only check attributes named in mappings"
+            "title": "Listed Attributes",
+            "description": "Inspects only the attributes named in the mappings list."
           }
         }
       }
@@ -3382,29 +3420,31 @@
       "description": "Calcula estadísticas de las entidades",
       "parameterI18n": {
         "": {
-          "title": "StatisticsCalculator Parameters",
-          "description": "Configuration for calculating statistical aggregations on feature attributes."
+          "title": "Statistics Calculator Parameters",
+          "description": "Defines the grouping attributes and the expressions accumulated for each group."
         },
         "calculations": {
           "title": "Calculations",
-          "description": "List of statistical calculations to perform on grouped features"
+          "description": "Expressions accumulated for each group. Each entry produces one output attribute holding the sum of its expression across the group."
         },
         "groupBy": {
-          "title": "Group by",
-          "description": "Attributes to group features by for aggregation. All of the inputs will be grouped if not specified."
+          "title": "Group By",
+          "description": "Attributes to group features by before aggregating. When omitted, all input features form a single group."
         },
         "groupId": {
-          "title": "Group id",
-          "description": "Optional attribute to store the group identifier. The ID will be formed by concatenating the values of the group_by attributes separated by '|'."
+          "title": "Group ID",
+          "description": "Optional attribute in which to store the group identifier, formed by joining the Group By values with '|'."
         }
       },
       "definitionI18n": {
         "Calculation": {
           "expr": {
-            "title": "Calculation to perform"
+            "title": "Calculation Expression",
+            "description": "Expression evaluated for each feature; its numeric results are summed across the group."
           },
           "newAttribute": {
-            "title": "New attribute name"
+            "title": "New Attribute Name",
+            "description": "Name of the output attribute that stores the accumulated result."
           }
         }
       }

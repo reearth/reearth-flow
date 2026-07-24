@@ -206,27 +206,50 @@
     },
     {
       "name": "Attribute Manager",
-      "description": "フィーチャー属性の作成、変換、名前変更、削除",
+      "description": "設定した操作リストに基づいて地物属性を作成・変換・名前変更・削除する",
       "parameterI18n": {
         "": {
-          "title": "AttributeManager パラメータ"
+          "title": "Attribute Manager パラメータ",
+          "description": "地物属性を作成・変換・名前変更・削除する操作の順序付きリストを定義する"
         },
         "operations": {
           "title": "属性操作",
-          "description": "フィーチャー属性に対して実行する操作のリスト"
+          "description": "各地物に順番に適用する操作。各項目で対象の属性、適用するメソッド、任意の値式を指定する"
         }
       },
       "definitionI18n": {
         "Operation": {
           "attribute": {
-            "title": "属性名"
+            "title": "属性名",
+            "description": "作成・変換・名前変更・削除する属性の名前"
           },
           "method": {
-            "title": "実行する操作"
+            "title": "メソッド",
+            "description": "属性に適用する操作"
           },
           "value": {
             "title": "値",
-            "description": "操作に使用する値"
+            "description": "地物に対して評価される式。Create と Convert では新しい値を、Rename では新しい属性名を指定する。Remove では無視される"
+          }
+        }
+      },
+      "enumI18n": {
+        "Method": {
+          "convert": {
+            "title": "変換",
+            "description": "既存の属性の値を値式の結果で置き換える。属性を持たない地物は変更されない"
+          },
+          "create": {
+            "title": "作成",
+            "description": "属性を値式の結果に設定し、属性を作成するか既存の値を上書きする"
+          },
+          "remove": {
+            "title": "削除",
+            "description": "属性を地物から削除する"
+          },
+          "rename": {
+            "title": "名前変更",
+            "description": "値式が生成する名前に属性を変更する。属性が存在しない場合、または同名の属性が既に存在する場合はスキップされる"
           }
         }
       }
@@ -388,64 +411,64 @@
     },
     {
       "name": "Bulk Attribute Renamer",
-      "description": "属性名にプレフィックス／サフィックスを追加・削除、またはテキスト置換して一括でリネームする",
+      "description": "プレフィックスやサフィックスの追加・削除、またはテキスト置換により地物属性を一括で名前変更する",
       "parameterI18n": {
         "": {
-          "title": "BulkAttributeRenamer パラメータ",
-          "description": "フィーチャー属性を一括リネームする方法を設定する"
+          "title": "Bulk Attribute Renamer パラメータ",
+          "description": "名前変更する属性と、その名前の変換方法を選択する"
         },
         "renameAction": {
-          "title": "リネーム操作",
-          "description": "属性名に対して実行するリネーム操作の種類"
+          "title": "名前変更操作",
+          "description": "各属性名に適用する変換"
         },
         "renameType": {
-          "title": "リネーム対象",
-          "description": "すべての属性をリネームするか、選択した属性のみをリネームするかを選択する"
+          "title": "名前変更の範囲",
+          "description": "名前変更の対象範囲。すべての属性か、選択した一部の属性か"
         },
         "renameValue": {
           "title": "テキスト値",
-          "description": "プレフィックス/サフィックスとして追加・削除、または置換に使用するテキスト"
+          "description": "選択した操作に応じて、プレフィックス／サフィックスとして追加・削除、または置換に使用するテキスト"
         },
         "selectedAttributes": {
           "title": "選択した属性名",
-          "description": "リネームする属性名のリスト（「選択した属性」を選んだ場合に必須）"
+          "description": "名前変更する属性名。名前変更の範囲を選択した一部に設定した場合は必須"
         },
         "textToFind": {
           "title": "検索テキストパターン",
-          "description": "「テキストを置換」操作で使用する正規表現パターン"
+          "description": "属性名に対して照合する正規表現。replaceText 操作では必須"
         }
       },
       "enumI18n": {
         "RenameAction": {
-          "AddPrefix": {
+          "addPrefix": {
             "title": "プレフィックスを追加",
-            "description": "属性名の先頭にテキストを追加する"
+            "description": "各属性名の先頭にテキスト値を追加する"
           },
-          "AddSuffix": {
+          "addSuffix": {
             "title": "サフィックスを追加",
-            "description": "属性名の末尾にテキストを追加する"
+            "description": "各属性名の末尾にテキスト値を追加する"
           },
-          "RemovePrefix": {
+          "removePrefix": {
             "title": "プレフィックスを削除",
-            "description": "属性名の先頭からテキストを削除する"
+            "description": "各属性名の先頭からテキスト値を削除する"
           },
-          "RemoveSuffix": {
+          "removeSuffix": {
             "title": "サフィックスを削除",
-            "description": "属性名の末尾からテキストを削除する"
+            "description": "各属性名の末尾からテキスト値を削除する"
           },
-          "StringReplace": {
+          "replaceText": {
             "title": "テキストを置換",
-            "description": "正規表現を使用してテキストを検索・置換する"
+            "description": "正規表現を使用して、検索パターンに一致するテキストをテキスト値で置換する"
           }
         },
         "RenameType": {
-          "All": {
+          "all": {
             "title": "すべての属性",
-            "description": "フィーチャーのすべての属性をリネームする"
+            "description": "地物のすべての属性を名前変更する"
           },
-          "Selected": {
+          "selected": {
             "title": "選択した属性",
-            "description": "以下に列挙した特定の属性のみをリネームする"
+            "description": "selectedAttributes に列挙した属性のみを名前変更する"
           }
         }
       }
@@ -2408,67 +2431,82 @@
     },
     {
       "name": "Null Attribute Mapper",
-      "description": "null値の属性を設定されたデフォルト値に置き換える",
+      "description": "null に相当する属性値を設定した置換値に置き換え、必要に応じて対象の地物を削除または振り分ける",
       "parameterI18n": {
         "": {
-          "title": "NullAttributeMapper パラメータ",
-          "description": "NullAttributeMapper のパラメータ"
+          "title": "Null Attribute Mapper パラメータ",
+          "description": "null に相当する属性値を検出し、属性ごとのルールに従って置換・削除、または対象地物の振り分けを行う"
         },
         "defaultReplacement": {
-          "description": "マッピングにない属性のフォールバック置換値（scope = \"all\" の場合）"
+          "title": "デフォルト置換値",
+          "description": "マッピングに登録されていない null 相当の属性を置き換える値。範囲がすべての属性を検査する場合にのみ適用される"
         },
         "mappings": {
-          "description": "属性ごとの置換ルール"
+          "title": "属性マッピング",
+          "description": "null に相当する各属性をどのように置換・削除・作成するかを定める属性ごとのルール"
         },
         "nullDefinition": {
-          "description": "「null」とみなす状態"
+          "title": "null の定義",
+          "description": "null に相当するとみなす状態。明示的な null 値、欠落した属性、空文字列のいずれか。既定では null 値と欠落した属性"
         },
         "routeNullFeatures": {
-          "description": "null を持つ元のフィーチャーを hasNull ポートに出力する"
+          "title": "null 地物の振り分け",
+          "description": "有効にすると、null 相当の値を 1 つ以上持つ地物の複製を、確認用に別の出力へそのまま出力する"
         },
         "scope": {
-          "description": "検査する属性"
+          "title": "範囲",
+          "description": "検査する属性。マッピングで指定した属性のみか、地物のすべての属性か"
         }
       },
       "definitionI18n": {
         "AttributeMapping": {
           "attribute": {
-            "description": "検査する属性名"
+            "title": "属性",
+            "description": "検査する属性の名前"
           },
           "onMissing": {
-            "description": "属性が欠落しているが nullDefinition にない場合の処理"
+            "title": "欠落時の動作",
+            "description": "属性が存在せず、null の定義でも null 相当とみなされない場合の動作"
           },
           "replacement": {
-            "description": "属性が null 的な場合に書き込む値。null は属性を削除することを意味する。"
+            "title": "置換値",
+            "description": "属性が null に相当する場合に書き込む値。null 値の場合は属性を削除する"
           }
         }
       },
       "enumI18n": {
         "NullKind": {
           "emptyString": {
-            "description": "空文字列（AttributeValue::String(\"\")）"
+            "title": "空文字列",
+            "description": "文字を含まないテキスト値を保持する属性"
           },
           "missing": {
-            "description": "フィーチャーに属性キーが存在しない"
+            "title": "欠落した属性",
+            "description": "地物に存在しない属性"
           },
           "null": {
-            "description": "null 値（AttributeValue::Null）"
+            "title": "null 値",
+            "description": "地物に存在するが明示的な null 値を保持する属性"
           }
         },
         "OnMissing": {
           "create": {
-            "description": "属性を作成し、置換値を書き込む"
+            "title": "作成",
+            "description": "マッピングの置換値を使用して属性を追加する"
           },
           "skip": {
-            "description": "変更しない"
+            "title": "スキップ",
+            "description": "地物を変更しない"
           }
         },
         "Scope": {
           "all": {
-            "description": "フィーチャーのすべての属性を検査する"
+            "title": "すべての属性",
+            "description": "地物のすべての属性を検査する"
           },
           "listed": {
-            "description": "マッピングに指定された属性のみを検査する"
+            "title": "指定した属性",
+            "description": "マッピングリストで指定した属性のみを検査する"
           }
         }
       }
@@ -3387,32 +3425,34 @@
     },
     {
       "name": "Statistics Calculator",
-      "description": "地物の統計情報を計算する",
+      "description": "1 つ以上の属性で地物をグループ化し、各グループで式の値を合計して、グループごとに 1 つの地物を出力する",
       "parameterI18n": {
         "": {
-          "title": "StatisticsCalculator パラメータ",
-          "description": "フィーチャー属性の統計集計を計算する設定。"
+          "title": "Statistics Calculator パラメータ",
+          "description": "グループ化する属性と、各グループで集計する式を定義する"
         },
         "calculations": {
           "title": "計算項目",
-          "description": "グループ化されたフィーチャーに対して実行する統計計算のリスト"
+          "description": "各グループで集計する式。各項目は、グループ全体でその式を合計した値を保持する出力属性を 1 つ生成する"
         },
         "groupBy": {
           "title": "グループ化属性",
-          "description": "集計のためにフィーチャーをグループ化する属性。指定しない場合はすべての入力がグループ化される。"
+          "description": "集計前に地物をグループ化する属性。省略した場合、すべての入力地物が 1 つのグループになる"
         },
         "groupId": {
           "title": "グループ ID",
-          "description": "グループ識別子を格納する属性（任意）。ID は group_by 属性の値を「|」で連結して形成される。"
+          "description": "グループ識別子を格納する属性（任意）。グループ化属性の値を「|」で連結して生成される"
         }
       },
       "definitionI18n": {
         "Calculation": {
           "expr": {
-            "title": "実行する計算"
+            "title": "計算式",
+            "description": "各地物に対して評価される式。その数値結果がグループ全体で合計される"
           },
           "newAttribute": {
-            "title": "新しい属性名"
+            "title": "新しい属性名",
+            "description": "集計結果を格納する出力属性の名前"
           }
         }
       }
