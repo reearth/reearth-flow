@@ -2141,18 +2141,14 @@
           "dracoCompression": {
             "title": "Compresión Draco",
             "description": "Usar compresión Draco. Verdadero por defecto.",
-            "type": [
-              "boolean",
-              "null"
-            ]
+            "default": true,
+            "type": "boolean"
           },
           "computeFlatNormal": {
             "title": "Calcular Normales Planas",
             "description": "Calcula normales planas por polígono para la iluminación. Verdadero por defecto. Cuando se desactiva, no se escriben normales y la malla es más pequeña, pero el mosaico no incluye datos de iluminación (el visor debe derivar las normales planas por sí mismo).",
-            "type": [
-              "boolean",
-              "null"
-            ]
+            "default": true,
+            "type": "boolean"
           },
           "texelSize": {
             "title": "Tamaño de Téxel",
@@ -2245,24 +2241,31 @@
             "description": "Texture image codec for the new-geometry writer's atlas pages.",
             "oneOf": [
               {
-                "description": "KTX2 con supercompresión Basis Universal (`KHR_texture_basisu`).",
+                "description": "KTX2 with Basis Universal UASTC supercompression (`KHR_texture_basisu`): higher quality, larger files.",
                 "type": "string",
                 "enum": [
-                  "ktx2"
+                  "KTX2/UASTC"
                 ]
               },
               {
-                "description": "PNG, sin pérdida y con canal alfa.",
+                "description": "KTX2 with Basis Universal ETC1S supercompression (`KHR_texture_basisu`): smaller files, lower quality.",
                 "type": "string",
                 "enum": [
-                  "png"
+                  "KTX2/ETC1S"
                 ]
               },
               {
-                "description": "JPEG, con pérdida y opaco (se descarta el canal alfa).",
+                "description": "PNG, lossless with alpha.",
                 "type": "string",
                 "enum": [
-                  "jpeg"
+                  "PNG"
+                ]
+              },
+              {
+                "description": "JPEG, lossy and opaque (alpha is dropped).",
+                "type": "string",
+                "enum": [
+                  "JPEG"
                 ]
               }
             ]

@@ -1,4 +1,4 @@
-//! KTX2 with Basis Universal (ETC1S) supercompression — a glTF *extension*
+//! KTX2 with Basis Universal supercompression (ETC1S or UASTC) — a glTF *extension*
 //! codec (`KHR_texture_basisu`), so it lives outside the core `glb` module and
 //! implements [`Codec`] from here.
 
@@ -7,9 +7,22 @@ use ktx2_rw::{BasisCompressionParams, Ktx2Texture, VkFormat};
 
 use super::glb::{Builder, Codec, CodecError, ImageRef, SamplerDesc, TextureRef};
 
+/// Basis Universal supercompression scheme for [`Ktx2Codec`].
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub enum Supercompression {
+    /// ETC1S: smaller files, lower quality, slower to encode.
+    #[default]
+    Etc1s,
+    /// UASTC: higher quality, larger files.
+    Uastc,
+}
+
 /// KTX2/Basis codec, carrying a full mip chain built in linear light.
 #[derive(Default)]
-pub struct Ktx2Codec;
+pub struct Ktx2Codec {
+    /// Supercompression scheme applied by `compress_basis`.
+    pub supercompression: Supercompression,
+}
 
 impl Codec for Ktx2Codec {
     fn block_align(&self) -> u32 {
@@ -49,11 +62,20 @@ impl Codec for Ktx2Codec {
                 .set_image_data(level as u32, 0, 0, mip.as_raw())
                 .map_err(|e| err("set level", e))?;
         }
-        let params = BasisCompressionParams::builder()
-            .uastc(false)
-            .quality_level(128)
-            .thread_count(4)
-            .build();
+        // ETC1S quality is 1-255 (128 is a good balance); UASTC quality is 0-4
+        // (3 favours quality without the slowest RDO pass).
+        let params = match self.supercompression {
+            Supercompression::Etc1s => BasisCompressionParams::builder()
+                .uastc(false)
+                .quality_level(128)
+                .thread_count(4)
+                .build(),
+            Supercompression::Uastc => BasisCompressionParams::builder()
+                .uastc(true)
+                .quality_level(3)
+                .thread_count(4)
+                .build(),
+        };
         texture
             .compress_basis(&params)
             .map_err(|e| err("compress", e))?;

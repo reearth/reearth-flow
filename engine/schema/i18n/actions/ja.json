@@ -772,14 +772,17 @@
       },
       "enumI18n": {
         "TextureCodec": {
-          "jpeg": {
-            "description": "JPEG。非可逆かつ不透明（アルファは破棄される）。"
+          "JPEG": {
+            "description": "JPEG, lossy and opaque (alpha is dropped)."
           },
-          "ktx2": {
-            "description": "Basis Universal スーパーコンプレッション（`KHR_texture_basisu`）を用いた KTX2。"
+          "KTX2/ETC1S": {
+            "description": "KTX2 with Basis Universal ETC1S supercompression (`KHR_texture_basisu`): smaller files, lower quality."
           },
-          "png": {
-            "description": "PNG。可逆かつアルファ付き。"
+          "KTX2/UASTC": {
+            "description": "KTX2 with Basis Universal UASTC supercompression (`KHR_texture_basisu`): higher quality, larger files."
+          },
+          "PNG": {
+            "description": "PNG, lossless with alpha."
           }
         }
       }

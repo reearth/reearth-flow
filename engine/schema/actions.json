@@ -2141,18 +2141,14 @@
           "dracoCompression": {
             "title": "Draco Compression",
             "description": "Whether to compress mesh geometry with Draco. Defaults to true.",
-            "type": [
-              "boolean",
-              "null"
-            ]
+            "default": true,
+            "type": "boolean"
           },
           "computeFlatNormal": {
             "title": "Compute Flat Normals",
             "description": "Compute per-polygon flat normals for lighting. Defaults to true. When disabled, no normals are written and the mesh is smaller, but the tile carries no lighting data (a viewer must derive flat normals itself).",
-            "type": [
-              "boolean",
-              "null"
-            ]
+            "default": true,
+            "type": "boolean"
           },
           "texelSize": {
             "title": "Texel Size",
@@ -2187,7 +2183,7 @@
           },
           "textureCodec": {
             "title": "Texture Codec",
-            "description": "Image codec for atlas pages: `ktx2` (GPU-compressed, default), `png`, or `jpeg`.",
+            "description": "Image codec for atlas pages: `KTX2/UASTC` (GPU-compressed, higher quality), `KTX2/ETC1S` (GPU-compressed, smaller), `PNG`, or `JPEG`. Unset attaches no textures; when a codec is chosen it defaults to `KTX2/UASTC`.",
             "anyOf": [
               {
                 "$ref": "#/definitions/TextureCodec"
@@ -2245,24 +2241,31 @@
             "description": "Texture image codec for the new-geometry writer's atlas pages.",
             "oneOf": [
               {
-                "description": "KTX2 with Basis Universal supercompression (`KHR_texture_basisu`).",
+                "description": "KTX2 with Basis Universal UASTC supercompression (`KHR_texture_basisu`): higher quality, larger files.",
                 "type": "string",
                 "enum": [
-                  "ktx2"
+                  "KTX2/UASTC"
+                ]
+              },
+              {
+                "description": "KTX2 with Basis Universal ETC1S supercompression (`KHR_texture_basisu`): smaller files, lower quality.",
+                "type": "string",
+                "enum": [
+                  "KTX2/ETC1S"
                 ]
               },
               {
                 "description": "PNG, lossless with alpha.",
                 "type": "string",
                 "enum": [
-                  "png"
+                  "PNG"
                 ]
               },
               {
                 "description": "JPEG, lossy and opaque (alpha is dropped).",
                 "type": "string",
                 "enum": [
-                  "jpeg"
+                  "JPEG"
                 ]
               }
             ]

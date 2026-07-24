@@ -769,14 +769,17 @@
       },
       "enumI18n": {
         "TextureCodec": {
-          "jpeg": {
-            "description": "JPEG, con pérdida y opaco (se descarta el canal alfa)."
+          "JPEG": {
+            "description": "JPEG, lossy and opaque (alpha is dropped)."
           },
-          "ktx2": {
-            "description": "KTX2 con supercompresión Basis Universal (`KHR_texture_basisu`)."
+          "KTX2/ETC1S": {
+            "description": "KTX2 with Basis Universal ETC1S supercompression (`KHR_texture_basisu`): smaller files, lower quality."
           },
-          "png": {
-            "description": "PNG, sin pérdida y con canal alfa."
+          "KTX2/UASTC": {
+            "description": "KTX2 with Basis Universal UASTC supercompression (`KHR_texture_basisu`): higher quality, larger files."
+          },
+          "PNG": {
+            "description": "PNG, lossless with alpha."
           }
         }
       }

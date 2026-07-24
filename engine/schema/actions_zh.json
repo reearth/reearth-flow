@@ -2141,18 +2141,14 @@
           "dracoCompression": {
             "title": "Draco 压缩",
             "description": "使用 Draco 压缩。默认为 true。",
-            "type": [
-              "boolean",
-              "null"
-            ]
+            "default": true,
+            "type": "boolean"
           },
           "computeFlatNormal": {
             "title": "计算平面法线",
             "description": "为光照计算逐多边形的平面法线。默认为 true。禁用时不写入法线，网格更小，但瓦片不包含光照数据（查看器需自行推导平面法线）。",
-            "type": [
-              "boolean",
-              "null"
-            ]
+            "default": true,
+            "type": "boolean"
           },
           "texelSize": {
             "title": "纹素大小",
@@ -2245,24 +2241,31 @@
             "description": "Texture image codec for the new-geometry writer's atlas pages.",
             "oneOf": [
               {
-                "description": "采用 Basis Universal 超级压缩的 KTX2（`KHR_texture_basisu`）。",
+                "description": "KTX2 with Basis Universal UASTC supercompression (`KHR_texture_basisu`): higher quality, larger files.",
                 "type": "string",
                 "enum": [
-                  "ktx2"
+                  "KTX2/UASTC"
                 ]
               },
               {
-                "description": "PNG，无损且带 alpha 通道。",
+                "description": "KTX2 with Basis Universal ETC1S supercompression (`KHR_texture_basisu`): smaller files, lower quality.",
                 "type": "string",
                 "enum": [
-                  "png"
+                  "KTX2/ETC1S"
                 ]
               },
               {
-                "description": "JPEG，有损且不透明（丢弃 alpha 通道）。",
+                "description": "PNG, lossless with alpha.",
                 "type": "string",
                 "enum": [
-                  "jpeg"
+                  "PNG"
+                ]
+              },
+              {
+                "description": "JPEG, lossy and opaque (alpha is dropped).",
+                "type": "string",
+                "enum": [
+                  "JPEG"
                 ]
               }
             ]

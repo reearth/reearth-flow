@@ -62,17 +62,16 @@ impl Cesium3DTilesWriter {
             schema_key: self.params.schema_key.as_deref(),
             skip_unexposed_attributes: self.params.skip_unexposed_attributes,
         };
-        // draco/compute_flat_normal default to true (see `Cesium3DTilesWriterParam`).
         let render = RenderOptions {
-            draco: self.params.draco_compression.unwrap_or(true),
-            compute_flat_normal: self.params.compute_flat_normal.unwrap_or(true),
+            draco: self.params.draco_compression,
+            compute_flat_normal: self.params.compute_flat_normal,
             texel_size: self.params.texel_size.unwrap_or(0.0),
             atlas_size: self.params.atlas_size.unwrap_or(DEFAULT_ATLAS_SIZE),
             atlas_extrusion: self
                 .params
                 .atlas_extrusion
                 .unwrap_or(DEFAULT_ATLAS_EXTRUSION),
-            texture_codec: self.params.texture_codec.unwrap_or_default(),
+            texture_codec: self.params.texture_codec,
         };
         for ((output, _, _), features) in &self.buffer {
             let built = build(features, options, self.params.max_zoom, render)?;
@@ -125,8 +124,9 @@ pub struct RenderOptions {
     /// Extrusion ring (pixels) blitted around each atlas region to stop
     /// bilinear bleed between neighbours. `0` disables it.
     pub atlas_extrusion: u32,
-    /// Image codec for atlas pages.
-    pub texture_codec: TextureCodec,
+    /// Image codec for atlas pages. `None` attaches no textures; textured
+    /// geometry falls back to its neutral colour.
+    pub texture_codec: Option<TextureCodec>,
 }
 
 /// Default atlas page size when the parameter is unset; inherited from the old
@@ -276,7 +276,13 @@ fn build_cell_glb(
     let mut primitives: Vec<(glb::PrimitiveHandle, Vec<u32>)> = Vec::new();
 
     if let Some(textured) = cells.textured {
-        match build_textured_pages(&mut builder, &textured, render, textures)? {
+        // With no codec configured, skip texturing entirely and render the
+        // textured geometry in the neutral fallback colour.
+        let pages = match render.texture_codec {
+            Some(_) => build_textured_pages(&mut builder, &textured, render, textures)?,
+            None => None,
+        };
+        match pages {
             Some(pages) => {
                 for page in pages {
                     let material = glb::MaterialDesc {
@@ -403,7 +409,9 @@ fn build_textured_pages(
         input.scale = scale;
     }
 
-    let codec = codec_for(render.texture_codec);
+    // Only reached with a codec set (see `build_cell_glb`); default to the
+    // enum's `KTX2/UASTC`.
+    let codec = codec_for(render.texture_codec.unwrap_or_default());
     let built = match build_atlas_multipage(
         &inputs,
         render.atlas_size,
@@ -435,8 +443,14 @@ fn build_textured_pages(
 
 /// Resolve the user-facing codec parameter to its glTF codec implementation.
 fn codec_for(codec: TextureCodec) -> Box<dyn glb::Codec> {
+    use reearth_flow_gltf::next::ktx2::{Ktx2Codec, Supercompression};
     match codec {
-        TextureCodec::Ktx2 => Box::new(reearth_flow_gltf::next::ktx2::Ktx2Codec),
+        TextureCodec::Ktx2Etc1s => Box::new(Ktx2Codec {
+            supercompression: Supercompression::Etc1s,
+        }),
+        TextureCodec::Ktx2Uastc => Box::new(Ktx2Codec {
+            supercompression: Supercompression::Uastc,
+        }),
         TextureCodec::Png => Box::new(glb::PngCodec),
         TextureCodec::Jpeg => Box::new(glb::JpegCodec),
     }
