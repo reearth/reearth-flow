@@ -90,23 +90,21 @@ jobs:
           # fallback; bump the key when ktx2-rw bumps KTX-Software.
           path: /tmp/ktx-software-v4.4.0.tar.gz
           key: ktx-software-v4.4.0
-      - name: Fetch KTX-Software tarball (fallback for ktx2-rw build.rs)
+      - name: Fetch and verify KTX-Software tarball (fallback for ktx2-rw build.rs)
+        env:
+          KTX_TARBALL: /tmp/ktx-software-v4.4.0.tar.gz
+          KTX_URL: https://github.com/KhronosGroup/KTX-Software/archive/refs/tags/v4.4.0.tar.gz
+          # sha256 of the GitHub source archive for KTX-Software v4.4.0. Bump
+          # alongside the cache key and path when ktx2-rw bumps KTX-Software.
+          KTX_SHA256: 3585d76edcdcbe3a671479686f8c81c1c10339f419e4b02a9a6f19cc6e4e0612
         run: |
-          if [ -f /tmp/ktx-software-v4.4.0.tar.gz ]; then
-            echo "KTX-Software tarball restored from cache; skipping download"
-            exit 0
+          # Download only on a cache miss (or a poisoned cache entry that fails
+          # the pinned checksum), letting curl handle its own retries/backoff.
+          # The final sha256sum -c gates whatever ends up feeding build.rs.
+          if ! echo "${KTX_SHA256}  ${KTX_TARBALL}" | sha256sum -c - 2>/dev/null; then
+            curl -fsSL --retry 5 --retry-all-errors -o "${KTX_TARBALL}" "${KTX_URL}"
+            echo "${KTX_SHA256}  ${KTX_TARBALL}" | sha256sum -c -
           fi
-          for attempt in 1 2 3; do
-            if curl -fsSL --retry 3 -o /tmp/ktx-software-v4.4.0.tar.gz \
-              https://github.com/KhronosGroup/KTX-Software/archive/refs/tags/v4.4.0.tar.gz; then
-              echo "KTX-Software tarball downloaded on attempt $attempt"
-              exit 0
-            fi
-            echo "Attempt $attempt failed; sleeping 15s before retry..."
-            sleep 15
-          done
-          echo "KTX-Software tarball download failed after 3 attempts" >&2
-          exit 1
         working-directory: /
       # NOTE: `cargo make check` was previously a separate step. It is a
       # strict subset of `cargo make clippy` (clippy implies check), so it is
