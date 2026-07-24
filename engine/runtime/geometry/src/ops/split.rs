@@ -91,7 +91,9 @@ mod tests {
     }
 
     /// Collect a `split` into a vector for assertions.
-    fn collect(geometry: &mut Geometry) -> Result<Vec<(Geometry, Attributes)>, UnsupportedOperation> {
+    fn collect(
+        geometry: &mut Geometry,
+    ) -> Result<Vec<(Geometry, Attributes)>, UnsupportedOperation> {
         let mut out = Vec::new();
         geometry.split(&mut |g, a| out.push((g, a)))?;
         Ok(out)
