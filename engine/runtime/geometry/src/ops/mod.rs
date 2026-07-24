@@ -250,6 +250,34 @@ impl<T: Triangulate + ?Sized> Triangulate for Box<T> {
     }
 }
 
+/// Force a geometry into a pure 2D embedding by dropping the Z coordinate.
+///
+/// The coordinate frame is preserved verbatim (no reprojection), and any 2.5D
+/// per-vertex elevation is cleared, so the op is idempotent. Leaves with no 2D
+/// counterpart (`Solid`, `Csg`, `PointCloud`) opt out via
+/// [`unsupported!`](crate::unsupported).
+///
+/// Like [`Triangulate`], this consumes the leaf's buffers, leaving `self`
+/// moved-from on success (discard or overwrite it); a leaf that empties `coords`
+/// must also clear `z` to preserve the `z.len() == coords.len()` invariant.
+#[enum_dispatch::enum_dispatch]
+pub trait ForceTwoDimension {
+    /// Re-represent this geometry in a 2D embedding. The default body reports the
+    /// type as unsupported; a leaf opts in by overriding it.
+    fn force_2d(&mut self) -> Result<crate::Euclidean2DGeometry, UnsupportedOperation> {
+        Err(UnsupportedOperation {
+            geometry: core::any::type_name::<Self>(),
+            operation: "force_2d",
+        })
+    }
+}
+
+impl<T: ForceTwoDimension + ?Sized> ForceTwoDimension for Box<T> {
+    fn force_2d(&mut self) -> Result<crate::Euclidean2DGeometry, UnsupportedOperation> {
+        (**self).force_2d()
+    }
+}
+
 /// Shift every coordinate by a vector.
 ///
 /// A general primitive carrying no frame semantics: translating a CRS geometry

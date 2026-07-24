@@ -1,7 +1,11 @@
 use std::collections::HashMap;
+#[cfg(not(feature = "new-geometry"))]
 use std::sync::Arc;
 
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::types::geometry::Geometry2D;
+#[cfg(feature = "new-geometry")]
+use reearth_flow_runtime::node::REJECTED_PORT;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -9,6 +13,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_types::GeometryValue;
 use serde_json::Value;
 
@@ -40,8 +45,14 @@ impl ProcessorFactory for TwoDimensionForcerFactory {
         vec![FEATURES_PORT.clone()]
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn get_output_ports(&self) -> Vec<Port> {
         vec![FEATURES_PORT.clone()]
+    }
+
+    #[cfg(feature = "new-geometry")]
+    fn get_output_ports(&self) -> Vec<Port> {
+        vec![FEATURES_PORT.clone(), REJECTED_PORT.clone()]
     }
 
     fn build(
@@ -59,6 +70,42 @@ impl ProcessorFactory for TwoDimensionForcerFactory {
 pub struct TwoDimensionForcer;
 
 impl Processor for TwoDimensionForcer {
+    // Drops the Z coordinate, re-representing 3D geometry in a 2D embedding and
+    // clearing any 2.5D elevation. The coordinate frame (CRS tag) is preserved
+    // verbatim — no reprojection; use the Coordinate Frame Reprojector to change
+    // it. Geometry with no 2D counterpart is routed to the rejected port.
+    #[cfg(feature = "new-geometry")]
+    fn process(
+        &mut self,
+        ctx: ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        let mut feature = ctx.feature.clone();
+        match feature.geometry_mut().force_2d() {
+            Ok(forced) => {
+                *feature.geometry_mut() = forced;
+                fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
+            }
+            Err(e) => {
+                ctx.event_hub
+                    .debug_log(Some(ctx.error_span()), format!("force 2D rejected: {e}"));
+                // `feature` may be partially moved-from on a collection failure;
+                // forward a pristine copy of the input to the rejected port.
+                fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
+            }
+        }
+        Ok(())
+    }
+
+    #[cfg(feature = "new-geometry")]
+    fn finish(
+        &mut self,
+        _ctx: NodeContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        Ok(())
+    }
+
     #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,

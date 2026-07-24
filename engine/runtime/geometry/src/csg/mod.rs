@@ -33,4 +33,4 @@ pub enum Csg {
 }
 
 // Tessellation is defined only for `Polygon` / `PolygonMesh`.
-crate::unsupported!(Csg: Triangulate, Reproject, ConvertFrame, Translate);
+crate::unsupported!(Csg: Triangulate, Reproject, ConvertFrame, Translate, ForceTwoDimension);

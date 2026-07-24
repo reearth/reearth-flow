@@ -53,8 +53,8 @@ use serde::{Deserialize, Serialize};
 
 use ops::triangulation::Cache;
 use ops::{
-    Aabb, BoundingBox, ConvertFrame, Reproject, ReprojectionCache, Translate, Triangulate,
-    UnsupportedOperation,
+    Aabb, BoundingBox, ConvertFrame, ForceTwoDimension, Reproject, ReprojectionCache, Translate,
+    Triangulate, UnsupportedOperation,
 };
 // `ValidationParams` / `ValidationType` / `ValidationReport` are named by the
 // `enum_dispatch`-generated `Validate` impls on the geometry enums, so they must
@@ -158,11 +158,26 @@ impl GeometryCollection {
 /// `Collection`) stays inline.
 #[cfg_attr(
     not(feature = "new-geometry"),
-    enum_dispatch(BoundingBox, Triangulate, Reproject, ConvertFrame, Translate)
+    enum_dispatch(
+        BoundingBox,
+        Triangulate,
+        Reproject,
+        ConvertFrame,
+        Translate,
+        ForceTwoDimension
+    )
 )]
 #[cfg_attr(
     feature = "new-geometry",
-    enum_dispatch(BoundingBox, Triangulate, Reproject, Validate, ConvertFrame, Translate)
+    enum_dispatch(
+        BoundingBox,
+        Triangulate,
+        Reproject,
+        Validate,
+        ConvertFrame,
+        Translate,
+        ForceTwoDimension
+    )
 )]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Euclidean2DGeometry {
@@ -187,11 +202,26 @@ pub enum Euclidean2DGeometry {
 /// operands.
 #[cfg_attr(
     not(feature = "new-geometry"),
-    enum_dispatch(BoundingBox, Triangulate, Reproject, ConvertFrame, Translate)
+    enum_dispatch(
+        BoundingBox,
+        Triangulate,
+        Reproject,
+        ConvertFrame,
+        Translate,
+        ForceTwoDimension
+    )
 )]
 #[cfg_attr(
     feature = "new-geometry",
-    enum_dispatch(BoundingBox, Triangulate, Reproject, Validate, ConvertFrame, Translate)
+    enum_dispatch(
+        BoundingBox,
+        Triangulate,
+        Reproject,
+        Validate,
+        ConvertFrame,
+        Translate,
+        ForceTwoDimension
+    )
 )]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Euclidean3DGeometry {
@@ -336,6 +366,42 @@ impl Translate for GeometryCollection {
             member.translate(delta)?;
         }
         Ok(())
+    }
+}
+
+impl Geometry {
+    /// Force this geometry into a 2D embedding by dropping the Z coordinate.
+    ///
+    /// `None` passes through; a leaf delegates to [`ForceTwoDimension`]; a
+    /// [`GeometryCollection`] recurses over its members. Recursion is
+    /// all-or-nothing: a single member with no 2D counterpart (`Solid`, `Csg`,
+    /// `PointCloud`) fails the whole geometry rather than dropping members. See
+    /// the [`ForceTwoDimension`] trait for the frame- and elevation-handling
+    /// contract. Like the trait, this consumes coordinate buffers, so on success
+    /// `self` is left moved-from and must be overwritten with the result.
+    pub fn force_2d(&mut self) -> Result<Geometry, UnsupportedOperation> {
+        match self {
+            Geometry::None => Ok(Geometry::None),
+            Geometry::Euclidean2D(g) => Ok(Geometry::Euclidean2D(g.force_2d()?)),
+            Geometry::Euclidean3D(g) => Ok(Geometry::Euclidean2D(g.force_2d()?)),
+            Geometry::GeometryCollection(c) => Ok(Geometry::GeometryCollection(c.force_2d()?)),
+        }
+    }
+}
+
+impl GeometryCollection {
+    /// Force every member to 2D, preserving per-member attributes.
+    fn force_2d(&mut self) -> Result<GeometryCollection, UnsupportedOperation> {
+        let mut members = Vec::with_capacity(self.members.len());
+        for member in &mut self.members {
+            members.push(member.force_2d()?);
+        }
+        let attrs = std::mem::take(&mut self.attrs);
+        // `members` stays 1:1 with the input, so `attrs` remains parallel.
+        GeometryCollection::with_attributes(members, attrs).map_err(|_| UnsupportedOperation {
+            geometry: "GeometryCollection",
+            operation: "force_2d",
+        })
     }
 }
 
@@ -585,5 +651,214 @@ mod triangulate_tests {
 
         let mut collection = Geometry::GeometryCollection(GeometryCollection::new([]));
         assert!(collection.triangulate(&mut Cache::new()).is_err());
+    }
+}
+
+#[cfg(test)]
+mod force_2d_tests {
+    use super::*;
+    use appearance::{Material, PhongMaterial, ThemeId};
+    use collection::Collection3D;
+    use coordinate::{CoordinateFrame, EpsgCode};
+    use line_string::{LineString2D, LineString3D};
+    use point::Point3D;
+    use polygon::Polygon3D;
+    use polygon_mesh::PolygonMesh3DData;
+    use solid::Solid;
+    use std::sync::Arc;
+    use triangular_mesh::TriangularMesh3DData;
+
+    fn crs() -> CoordinateFrame {
+        CoordinateFrame::Crs(EpsgCode::new(6697))
+    }
+
+    /// A colour-only Phong material (no textures, so no UV is required).
+    fn plain_material() -> Material {
+        Material::Phong(PhongMaterial {
+            diffuse: [1.0, 0.0, 0.0],
+            specular: [0.0; 3],
+            emissive: [0.0; 3],
+            ambient_intensity: 0.0,
+            shininess: 0.0,
+            transparency: 0.0,
+            diffuse_map: None,
+            emissive_map: None,
+            normal_map: None,
+        })
+    }
+
+    #[test]
+    fn point3d_drops_z_and_keeps_frame() {
+        let mut g = Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+            crs(),
+            [1.0, 2.0, 3.0],
+        )));
+        match g.force_2d().unwrap() {
+            Geometry::Euclidean2D(Euclidean2DGeometry::Point(p)) => {
+                assert_eq!(p.position(), [1.0, 2.0]);
+                assert_eq!(p.frame(), &crs());
+            }
+            other => panic!("expected a 2D point, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn linestring3d_drops_z() {
+        let mut g = Geometry::Euclidean3D(Euclidean3DGeometry::LineString(
+            LineString3D::from_coords(crs(), [[0.0, 0.0, 5.0], [2.0, 1.0, 9.0]]),
+        ));
+        match g.force_2d().unwrap() {
+            Geometry::Euclidean2D(Euclidean2DGeometry::LineString(ls)) => {
+                assert_eq!(ls.coords(), &[[0.0, 0.0], [2.0, 1.0]]);
+                assert_eq!(ls.frame(), &crs());
+            }
+            other => panic!("expected a 2D line string, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn two_and_a_half_d_elevation_is_cleared_and_idempotent() {
+        // A 2.5D input must lose its elevation, yielding the same pure-2D result
+        // a fresh 2D line string would.
+        let mut g = Geometry::Euclidean2D(Euclidean2DGeometry::LineString(
+            LineString2D::from_coords_with_elevation(crs(), [[0.0, 0.0, 5.0], [2.0, 1.0, 9.0]]),
+        ));
+        let forced = g.force_2d().unwrap();
+        let expected = Geometry::Euclidean2D(Euclidean2DGeometry::LineString(
+            LineString2D::from_coords(crs(), [[0.0, 0.0], [2.0, 1.0]]),
+        ));
+        assert_eq!(forced, expected);
+        // Idempotent: forcing again is a no-op.
+        let mut forced2 = forced.clone();
+        assert_eq!(forced2.force_2d().unwrap(), expected);
+    }
+
+    #[test]
+    fn polygon3d_preserves_rings_holes_and_appearance() {
+        let exterior = [
+            [0.0, 0.0, 0.0],
+            [4.0, 0.0, 1.0],
+            [4.0, 4.0, 2.0],
+            [0.0, 4.0, 3.0],
+            [0.0, 0.0, 0.0],
+        ];
+        let hole = vec![
+            [1.0, 1.0, 0.0],
+            [3.0, 1.0, 0.0],
+            [3.0, 3.0, 0.0],
+            [1.0, 1.0, 0.0],
+        ];
+        let mut poly = Polygon3D::from_rings(crs(), exterior, vec![hole]);
+        poly.set_appearance(ThemeId(Arc::from("t")), plain_material(), None)
+            .unwrap();
+        let mut g = Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(poly)));
+        match g.force_2d().unwrap() {
+            Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(p)) => {
+                assert_eq!(p.frame(), &crs());
+                assert_eq!(p.exterior().len(), 5);
+                assert_eq!(p.interiors().count(), 1);
+                assert!(p.appearance().is_some(), "appearance must survive");
+            }
+            other => panic!("expected a 2D polygon, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn vertical_polygon_projects_to_a_degenerate_footprint() {
+        // A wall in the x = 0 plane collapses onto the y axis; the conversion
+        // still succeeds (degeneracy is allowed, matching FME).
+        let wall = [
+            [0.0, 0.0, 0.0],
+            [0.0, 4.0, 0.0],
+            [0.0, 4.0, 4.0],
+            [0.0, 0.0, 4.0],
+            [0.0, 0.0, 0.0],
+        ];
+        let mut g = Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(
+            Polygon3D::from_rings(
+                CoordinateFrame::Euclidean,
+                wall,
+                Vec::<Vec<[f64; 3]>>::new(),
+            ),
+        )));
+        match g.force_2d().unwrap() {
+            Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(p)) => {
+                // All x are 0: the footprint has zero area but is still returned.
+                assert!(p.exterior().iter().all(|&[x, _]| x == 0.0));
+            }
+            other => panic!("expected a 2D polygon, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn collection_forces_members_and_preserves_frames() {
+        let a = Euclidean3DGeometry::Point(Point3D::new(
+            CoordinateFrame::Crs(EpsgCode::new(6697)),
+            [1.0, 2.0, 3.0],
+        ));
+        let b =
+            Euclidean3DGeometry::Point(Point3D::new(CoordinateFrame::Euclidean, [4.0, 5.0, 6.0]));
+        let mut g =
+            Geometry::Euclidean3D(Euclidean3DGeometry::Collection(Collection3D::new([a, b])));
+        match g.force_2d().unwrap() {
+            Geometry::Euclidean2D(Euclidean2DGeometry::Collection(c)) => {
+                assert_eq!(c.members().len(), 2);
+                let frames: Vec<_> = c
+                    .members()
+                    .iter()
+                    .map(|m| match m {
+                        Euclidean2DGeometry::Point(p) => p.frame().clone(),
+                        other => panic!("expected a 2D point member, got {other:?}"),
+                    })
+                    .collect();
+                assert_eq!(frames[0], CoordinateFrame::Crs(EpsgCode::new(6697)));
+                assert_eq!(frames[1], CoordinateFrame::Euclidean);
+            }
+            other => panic!("expected a 2D collection, got {other:?}"),
+        }
+    }
+
+    fn sample_solid() -> Solid {
+        Solid::new(
+            CoordinateFrame::Euclidean,
+            PolygonMesh3DData::from_parts(
+                vec![
+                    [0.0, 0.0, 0.0],
+                    [2.0, 0.0, 0.0],
+                    [2.0, 2.0, 0.0],
+                    [0.0, 2.0, 0.0],
+                ],
+                vec![vec![0u32, 1, 2, 3]],
+            )
+            .unwrap(),
+            vec![TriangularMesh3DData::from_parts(
+                vec![[5.0, 5.0, 5.0], [6.0, 5.0, 5.0], [5.0, 6.0, 5.0]],
+                [0u32, 1, 2],
+            )
+            .unwrap()
+            .into()],
+        )
+    }
+
+    #[test]
+    fn solid_has_no_2d_counterpart() {
+        let mut g = Geometry::Euclidean3D(Euclidean3DGeometry::Solid(Box::new(sample_solid())));
+        assert!(g.force_2d().is_err());
+    }
+
+    #[test]
+    fn collection_is_all_or_nothing_on_an_unsupported_member() {
+        let point = Euclidean3DGeometry::Point(Point3D::new(CoordinateFrame::Euclidean, [0.0; 3]));
+        let solid = Euclidean3DGeometry::Solid(Box::new(sample_solid()));
+        let mut g = Geometry::Euclidean3D(Euclidean3DGeometry::Collection(Collection3D::new([
+            point, solid,
+        ])));
+        assert!(g.force_2d().is_err());
+    }
+
+    #[test]
+    fn none_passes_through() {
+        let mut g = Geometry::None;
+        assert_eq!(g.force_2d().unwrap(), Geometry::None);
     }
 }

@@ -13,7 +13,9 @@ use serde::{Deserialize, Serialize};
 use crate::coordinate::EpsgCode;
 use crate::error::Error;
 use crate::ops::union_results;
-use crate::ops::{Aabb, BoundingBox, Reproject, ReprojectionCache, UnsupportedOperation};
+use crate::ops::{
+    Aabb, BoundingBox, ForceTwoDimension, Reproject, ReprojectionCache, UnsupportedOperation,
+};
 #[cfg(feature = "new-geometry")]
 use crate::validation_next::Validate;
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry};
@@ -209,6 +211,42 @@ impl crate::ops::Translate for Collection3D {
             member.translate(delta)?;
         }
         Ok(())
+    }
+}
+
+impl ForceTwoDimension for Collection2D {
+    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, UnsupportedOperation> {
+        // All-or-nothing: one member with no 2D counterpart fails the whole
+        // collection; `members` stays 1:1 with the input, keeping `attrs` parallel.
+        let mut members = Vec::with_capacity(self.members.len());
+        for member in &mut self.members {
+            members.push(member.force_2d()?);
+        }
+        let attrs = std::mem::take(&mut self.attrs);
+        let collection =
+            Collection2D::with_attributes(members, attrs).map_err(|_| UnsupportedOperation {
+                geometry: "Collection2D",
+                operation: "force_2d",
+            })?;
+        Ok(Euclidean2DGeometry::Collection(collection))
+    }
+}
+
+impl ForceTwoDimension for Collection3D {
+    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, UnsupportedOperation> {
+        // All-or-nothing: one member with no 2D counterpart fails the whole
+        // collection; `members` stays 1:1 with the input, keeping `attrs` parallel.
+        let mut members = Vec::with_capacity(self.members.len());
+        for member in &mut self.members {
+            members.push(member.force_2d()?);
+        }
+        let attrs = std::mem::take(&mut self.attrs);
+        let collection =
+            Collection2D::with_attributes(members, attrs).map_err(|_| UnsupportedOperation {
+                geometry: "Collection3D",
+                operation: "force_2d",
+            })?;
+        Ok(Euclidean2DGeometry::Collection(collection))
     }
 }
 
