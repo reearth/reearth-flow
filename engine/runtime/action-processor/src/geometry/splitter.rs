@@ -44,23 +44,23 @@ use reearth_flow_geometry::ops::Flatten;
 #[cfg(not(feature = "new-geometry"))]
 const FILE_BACKED_THRESHOLD: usize = 64;
 
-/// Split level for CityGML geometry.
+/// Split level for CityGML geometry
 #[cfg(not(feature = "new-geometry"))]
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, JsonSchema, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum SplitLevel {
-    /// Split by GmlGeometry elements (e.g., RoofSurface, WallSurface).
+    /// Split by GmlGeometry elements (e.g., RoofSurface, WallSurface)
     #[default]
     Element,
-    /// Split down to individual polygons within each element.
+    /// Split down to individual polygons within each element
     Polygon,
 }
 
-/// Parameters for the Geometry Flattener.
+/// Parameters for GeometrySplitter
 #[cfg(not(feature = "new-geometry"))]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct GeometryFlattenerParam {
+pub struct GeometrySplitterParam {
     /// Split level for CityGML geometry.
     /// - "element": Split by surface elements (RoofSurface, WallSurface, etc.) - default
     /// - "polygon": Split down to individual polygons within each element
@@ -68,22 +68,22 @@ pub struct GeometryFlattenerParam {
     pub split_level: SplitLevel,
 }
 
-/// Factory for the Geometry Flattener processor.
+/// Factory for the Geometry Splitter processor.
 #[derive(Debug, Clone, Default)]
-pub struct GeometryFlattenerFactory;
+pub struct GeometrySplitterFactory;
 
-impl ProcessorFactory for GeometryFlattenerFactory {
+impl ProcessorFactory for GeometrySplitterFactory {
     fn name(&self) -> &str {
-        "Geometry Flattener"
+        "Geometry Splitter"
     }
 
     fn description(&self) -> &str {
-        "Flattens multi-part geometries, meshes, and point clouds into one feature per member."
+        "Split Multi-Geometries into Individual Features"
     }
 
     #[cfg(not(feature = "new-geometry"))]
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-        Some(schemars::schema_for!(GeometryFlattenerParam))
+        Some(schemars::schema_for!(GeometrySplitterParam))
     }
 
     #[cfg(feature = "new-geometry")]
@@ -96,7 +96,7 @@ impl ProcessorFactory for GeometryFlattenerFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["geometry"]
+        &["split", "geometry"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -115,22 +115,22 @@ impl ProcessorFactory for GeometryFlattenerFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let param: GeometryFlattenerParam = if let Some(with) = with {
+        let param: GeometrySplitterParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                GeometryProcessorError::GeometryFlattenerFactory(format!(
+                GeometryProcessorError::GeometrySplitterFactory(format!(
                     "Failed to serialize 'with' parameter: {e}"
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                GeometryProcessorError::GeometryFlattenerFactory(format!(
+                GeometryProcessorError::GeometrySplitterFactory(format!(
                     "Failed to deserialize 'with' parameter: {e}"
                 ))
             })?
         } else {
-            GeometryFlattenerParam::default()
+            GeometrySplitterParam::default()
         };
 
-        let process = GeometryFlattener {
+        let process = GeometrySplitter {
             split_level: param.split_level,
             executor_id: None,
             temp_dir: None,
@@ -146,26 +146,26 @@ impl ProcessorFactory for GeometryFlattenerFactory {
         _action: String,
         _with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        Ok(Box::new(GeometryFlattener))
+        Ok(Box::new(GeometrySplitter))
     }
 }
 
 /// Splits multi-part geometries into one feature per member.
 #[cfg(not(feature = "new-geometry"))]
 #[derive(Debug, Clone)]
-pub struct GeometryFlattener {
+pub struct GeometrySplitter {
     split_level: SplitLevel,
     executor_id: Option<uuid::Uuid>,
     temp_dir: Option<PathBuf>,
 }
 
-/// Flattens a collection, mesh, or point cloud into one feature per member.
+/// Splits a collection, mesh, or point cloud into one feature per member.
 #[cfg(feature = "new-geometry")]
 #[derive(Debug, Clone)]
-pub struct GeometryFlattener;
+pub struct GeometrySplitter;
 
 #[cfg(not(feature = "new-geometry"))]
-impl Drop for GeometryFlattener {
+impl Drop for GeometrySplitter {
     fn drop(&mut self) {
         if let Some(ref dir) = self.temp_dir {
             let _ = std::fs::remove_dir_all(dir);
@@ -178,7 +178,7 @@ fn engine_cache_dir(executor_id: uuid::Uuid) -> PathBuf {
     executor_cache_subdir(executor_id, "processors")
 }
 
-impl Processor for GeometryFlattener {
+impl Processor for GeometrySplitter {
     #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
@@ -219,7 +219,7 @@ impl Processor for GeometryFlattener {
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         match feature.geometry.flatten() {
-            // Not a flattenable container: pass the feature through unchanged.
+            // Not a multi-part container: pass the feature through unchanged.
             None => {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
             }
@@ -244,12 +244,12 @@ impl Processor for GeometryFlattener {
     }
 
     fn name(&self) -> &str {
-        "Geometry Flattener"
+        "Geometry Splitter"
     }
 }
 
 #[cfg(not(feature = "new-geometry"))]
-impl GeometryFlattener {
+impl GeometrySplitter {
     fn process_flow_geometry_2d(
         &self,
         geometry: &Geometry2D,
@@ -347,7 +347,7 @@ impl GeometryFlattener {
         if self.temp_dir.is_none() {
             let executor_id = self.executor_id.unwrap_or_else(uuid::Uuid::nil);
             let dir =
-                engine_cache_dir(executor_id).join(format!("flattener-{}", uuid::Uuid::new_v4()));
+                engine_cache_dir(executor_id).join(format!("splitter-{}", uuid::Uuid::new_v4()));
             std::fs::create_dir_all(&dir)?;
             self.temp_dir = Some(dir);
         }
@@ -521,7 +521,7 @@ impl GeometryFlattener {
             let uv_exterior_len = uv_polygon.exterior().0.len();
             if poly_exterior_len != uv_exterior_len {
                 panic!(
-                    "Flattener: Vertex count mismatch at creation!\n\
+                    "Splitter: Vertex count mismatch at creation!\n\
                     polygon exterior: {} vertices\n\
                     uv_polygon exterior: {} vertices",
                     poly_exterior_len, uv_exterior_len
@@ -556,17 +556,17 @@ impl GeometryFlattener {
             debug_assert_eq!(
                 single_citygml.gml_geometries[0].polygons.len(),
                 single_citygml.gml_geometries[0].len as usize,
-                "Flattener: polygon count mismatch with len"
+                "Splitter: polygon count mismatch with len"
             );
             debug_assert_eq!(
                 single_citygml.polygon_materials.len(),
                 1,
-                "Flattener: polygon_materials should have 1 element"
+                "Splitter: polygon_materials should have 1 element"
             );
             debug_assert_eq!(
                 single_citygml.polygon_uvs.iter().count(),
                 1,
-                "Flattener: polygon_uvs should have 1 element"
+                "Splitter: polygon_uvs should have 1 element"
             );
 
             new_geometry.value = GeometryValue::CityGmlGeometry(single_citygml);

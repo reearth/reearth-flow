@@ -175,10 +175,10 @@ pub(super) enum GeometryProcessorError {
     GridDividerFactory(String),
     #[error("GridDivider error: {0}")]
     GridDivider(String),
-    #[error("GeometryFlattener Factory error: {0}")]
-    GeometryFlattenerFactory(String),
-    #[error("GeometryFlattener error: {0}")]
-    GeometryFlattener(String),
+    #[error("GeometrySplitter Factory error: {0}")]
+    GeometrySplitterFactory(String),
+    #[error("GeometrySplitter error: {0}")]
+    GeometrySplitter(String),
     #[error("Rotator3D Factory error: {0}")]
     Rotator3DFactory(String),
     #[error("Rotator3D error: {0}")]

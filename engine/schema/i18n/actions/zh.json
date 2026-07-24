@@ -1632,29 +1632,6 @@
       }
     },
     {
-      "name": "Geometry Flattener",
-      "description": "将多部件几何、网格和点云拆分为每个成员一个要素。",
-      "parameterI18n": {
-        "": {
-          "title": "GeometryFlattener 参数",
-          "description": "GeometryFlattener 的参数"
-        },
-        "splitLevel": {
-          "description": "Split level for CityGML geometry. - \"element\": Split by surface elements (RoofSurface, WallSurface, etc.) - default - \"polygon\": Split down to individual polygons within each element"
-        }
-      },
-      "enumI18n": {
-        "SplitLevel": {
-          "element": {
-            "description": "Split by GmlGeometry elements (e.g., RoofSurface, WallSurface)"
-          },
-          "polygon": {
-            "description": "Split down to individual polygons within each element"
-          }
-        }
-      }
-    },
-    {
       "name": "Geometry Part Extractor",
       "description": "将3D几何体中的几何部件（面）提取为单独的要素",
       "parameterI18n": {
@@ -1690,6 +1667,29 @@
         "sourceAttribute": {
           "title": "Source Attribute",
           "description": "Name of the attribute containing the compressed geometry data to use as the new geometry"
+        }
+      }
+    },
+    {
+      "name": "Geometry Splitter",
+      "description": "根据类型分割几何",
+      "parameterI18n": {
+        "": {
+          "title": "GeometrySplitterParam",
+          "description": "Parameters for GeometrySplitter"
+        },
+        "splitLevel": {
+          "description": "Split level for CityGML geometry. - \"element\": Split by surface elements (RoofSurface, WallSurface, etc.) - default - \"polygon\": Split down to individual polygons within each element"
+        }
+      },
+      "enumI18n": {
+        "SplitLevel": {
+          "element": {
+            "description": "Split by GmlGeometry elements (e.g., RoofSurface, WallSurface)"
+          },
+          "polygon": {
+            "description": "Split down to individual polygons within each element"
+          }
         }
       }
     },

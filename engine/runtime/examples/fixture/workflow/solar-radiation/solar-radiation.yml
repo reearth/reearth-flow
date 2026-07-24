@@ -1760,9 +1760,9 @@ graphs:
           value: attributes["featureType"] != "bldg:Building"
         outputPort: features
   - id: 00000001-0000-0000-0000-000000000006
-    name: GeometryFlattener
+    name: GeometrySplitter
     type: action
-    action: Geometry Flattener
+    action: Geometry Splitter
     with:
       splitLevel: polygon
   - id: 00000001-0000-0000-0000-000000000008
@@ -2934,7 +2934,7 @@ graphs:
   - id: 00000002-0000-0000-0000-000000000007
     name: DEMGeometrySplitter
     type: action
-    action: Geometry Flattener
+    action: Geometry Splitter
   - id: 00000002-0000-0000-0000-000000000008
     name: DEMFeatureTypeAssigner
     type: action

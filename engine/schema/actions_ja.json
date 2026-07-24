@@ -5384,62 +5384,6 @@
       "tags": []
     },
     {
-      "name": "Geometry Flattener",
-      "type": "processor",
-      "description": "マルチパートジオメトリ、メッシュ、点群をメンバーごとに1つのフィーチャーに分解します。",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "GeometryFlattener パラメータ",
-        "description": "GeometryFlattener のパラメータ",
-        "type": "object",
-        "properties": {
-          "splitLevel": {
-            "description": "CityGML ジオメトリの分割レベル。 - \"element\": サーフェス要素（RoofSurface、WallSurface など）で分割（デフォルト） - \"polygon\": 各要素内の個々のポリゴンまで分割",
-            "default": "element",
-            "allOf": [
-              {
-                "$ref": "#/definitions/SplitLevel"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "SplitLevel": {
-            "description": "Split level for CityGML geometry.",
-            "oneOf": [
-              {
-                "description": "GmlGeometry 要素（例: RoofSurface、WallSurface）で分割する",
-                "type": "string",
-                "enum": [
-                  "element"
-                ]
-              },
-              {
-                "description": "各要素内の個々のポリゴンまで分割する",
-                "type": "string",
-                "enum": [
-                  "polygon"
-                ]
-              }
-            ]
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "features"
-      ],
-      "categories": [
-        "Geometry"
-      ],
-      "tags": [
-        "geometry"
-      ]
-    },
-    {
       "name": "Geometry Part Extractor",
       "type": "processor",
       "description": "3Dジオメトリからジオメトリパーツ（サーフェス）を個別の地物として抽出する",
@@ -5548,6 +5492,63 @@
         "Geometry"
       ],
       "tags": []
+    },
+    {
+      "name": "Geometry Splitter",
+      "type": "processor",
+      "description": "ジオメトリをタイプ別に分割する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "GeometrySplitter パラメータ",
+        "description": "GeometrySplitter のパラメータ",
+        "type": "object",
+        "properties": {
+          "splitLevel": {
+            "description": "CityGML ジオメトリの分割レベル。 - \"element\": サーフェス要素（RoofSurface、WallSurface など）で分割（デフォルト） - \"polygon\": 各要素内の個々のポリゴンまで分割",
+            "default": "element",
+            "allOf": [
+              {
+                "$ref": "#/definitions/SplitLevel"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "SplitLevel": {
+            "description": "Split level for CityGML geometry",
+            "oneOf": [
+              {
+                "description": "GmlGeometry 要素（例: RoofSurface、WallSurface）で分割する",
+                "type": "string",
+                "enum": [
+                  "element"
+                ]
+              },
+              {
+                "description": "各要素内の個々のポリゴンまで分割する",
+                "type": "string",
+                "enum": [
+                  "polygon"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": [
+        "split",
+        "geometry"
+      ]
     },
     {
       "name": "Geometry Validator",

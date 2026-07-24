@@ -1739,9 +1739,9 @@ graphs:
           value: env.get("exceptSplit", false)
         outputPort: exceptSplit
   - id: 8fe1a102-e3f3-40dd-b235-66e9c148830f
-    name: GeometryFlattener
+    name: GeometrySplitter
     type: action
-    action: Geometry Flattener
+    action: Geometry Splitter
   - id: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
     name: FeatureFilterByLod
     type: action
@@ -3332,9 +3332,9 @@ graphs:
               ft
             }
   - id: a5b6c7d8-e9f0-1a2b-3c4d-5e6f7a8b9c91
-    name: GeometryFlattenerForCount
+    name: GeometrySplitterForCount
     type: action
-    action: Geometry Flattener
+    action: Geometry Splitter
   - id: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8d91
     name: UNFValidation
     type: subGraph

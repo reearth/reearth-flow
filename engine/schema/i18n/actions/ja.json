@@ -1635,29 +1635,6 @@
       }
     },
     {
-      "name": "Geometry Flattener",
-      "description": "マルチパートジオメトリ、メッシュ、点群をメンバーごとに1つのフィーチャーに分解します。",
-      "parameterI18n": {
-        "": {
-          "title": "GeometryFlattener パラメータ",
-          "description": "GeometryFlattener のパラメータ"
-        },
-        "splitLevel": {
-          "description": "CityGML ジオメトリの分割レベル。 - \"element\": サーフェス要素（RoofSurface、WallSurface など）で分割（デフォルト） - \"polygon\": 各要素内の個々のポリゴンまで分割"
-        }
-      },
-      "enumI18n": {
-        "SplitLevel": {
-          "element": {
-            "description": "GmlGeometry 要素（例: RoofSurface、WallSurface）で分割する"
-          },
-          "polygon": {
-            "description": "各要素内の個々のポリゴンまで分割する"
-          }
-        }
-      }
-    },
-    {
       "name": "Geometry Part Extractor",
       "description": "3Dジオメトリからジオメトリパーツ（サーフェス）を個別の地物として抽出する",
       "parameterI18n": {
@@ -1693,6 +1670,29 @@
         "sourceAttribute": {
           "title": "ソース属性",
           "description": "新しいジオメトリとして使用する圧縮ジオメトリデータを含む属性名"
+        }
+      }
+    },
+    {
+      "name": "Geometry Splitter",
+      "description": "ジオメトリをタイプ別に分割する",
+      "parameterI18n": {
+        "": {
+          "title": "GeometrySplitter パラメータ",
+          "description": "GeometrySplitter のパラメータ"
+        },
+        "splitLevel": {
+          "description": "CityGML ジオメトリの分割レベル。 - \"element\": サーフェス要素（RoofSurface、WallSurface など）で分割（デフォルト） - \"polygon\": 各要素内の個々のポリゴンまで分割"
+        }
+      },
+      "enumI18n": {
+        "SplitLevel": {
+          "element": {
+            "description": "GmlGeometry 要素（例: RoofSurface、WallSurface）で分割する"
+          },
+          "polygon": {
+            "description": "各要素内の個々のポリゴンまで分割する"
+          }
         }
       }
     },

@@ -38,9 +38,9 @@ nodes:
           outputPort: exceptSplit
 
   - id: 8fe1a102-e3f3-40dd-b235-66e9c148830f
-    name: GeometryFlattener
+    name: GeometrySplitter
     type: action
-    action: Geometry Flattener
+    action: Geometry Splitter
   - id: 7c843a02-3b1f-40c1-8214-562e72bfb9a6
     name: FeatureFilterByLod
     type: action

@@ -5232,59 +5232,6 @@ Filter Features by Geometry Type
 ### Category
 * Geometry
 
-## Geometry Flattener
-### Type
-* processor
-### Description
-Flattens multi-part geometries, meshes, and point clouds into one feature per member.
-### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "GeometryFlattenerParam",
-  "description": "Parameters for the Geometry Flattener.",
-  "type": "object",
-  "properties": {
-    "splitLevel": {
-      "description": "Split level for CityGML geometry. - \"element\": Split by surface elements (RoofSurface, WallSurface, etc.) - default - \"polygon\": Split down to individual polygons within each element",
-      "default": "element",
-      "allOf": [
-        {
-          "$ref": "#/definitions/SplitLevel"
-        }
-      ]
-    }
-  },
-  "definitions": {
-    "SplitLevel": {
-      "description": "Split level for CityGML geometry.",
-      "oneOf": [
-        {
-          "description": "Split by GmlGeometry elements (e.g., RoofSurface, WallSurface).",
-          "type": "string",
-          "enum": [
-            "element"
-          ]
-        },
-        {
-          "description": "Split down to individual polygons within each element.",
-          "type": "string",
-          "enum": [
-            "polygon"
-          ]
-        }
-      ]
-    }
-  }
-}
-```
-### Input Ports
-* features
-### Output Ports
-* features
-### Category
-* Geometry
-
 ## Geometry Part Extractor
 ### Type
 * processor
@@ -5376,6 +5323,59 @@ Replace Feature Geometry from Attribute
   "definitions": {
     "Attribute": {
       "type": "string"
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* features
+### Category
+* Geometry
+
+## Geometry Splitter
+### Type
+* processor
+### Description
+Split Multi-Geometries into Individual Features
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GeometrySplitterParam",
+  "description": "Parameters for GeometrySplitter",
+  "type": "object",
+  "properties": {
+    "splitLevel": {
+      "description": "Split level for CityGML geometry. - \"element\": Split by surface elements (RoofSurface, WallSurface, etc.) - default - \"polygon\": Split down to individual polygons within each element",
+      "default": "element",
+      "allOf": [
+        {
+          "$ref": "#/definitions/SplitLevel"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "SplitLevel": {
+      "description": "Split level for CityGML geometry",
+      "oneOf": [
+        {
+          "description": "Split by GmlGeometry elements (e.g., RoofSurface, WallSurface)",
+          "type": "string",
+          "enum": [
+            "element"
+          ]
+        },
+        {
+          "description": "Split down to individual polygons within each element",
+          "type": "string",
+          "enum": [
+            "polygon"
+          ]
+        }
+      ]
     }
   }
 }

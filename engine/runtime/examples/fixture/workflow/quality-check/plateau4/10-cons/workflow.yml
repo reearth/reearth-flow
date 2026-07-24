@@ -203,9 +203,9 @@ graphs:
 
       # GeometrySplitter for LOD-based counting
       - id: a5b6c7d8-e9f0-1a2b-3c4d-5e6f7a8b9c91
-        name: GeometryFlattenerForCount
+        name: GeometrySplitterForCount
         type: action
-        action: Geometry Flattener
+        action: Geometry Splitter
       # CONS Validation Subgraph
       - id: b4c5d6e7-f8a9-0b1c-2d3e-4f5a6b7c8da0
         name: CONSValidation
