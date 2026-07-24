@@ -48,6 +48,14 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
         println!("filtered to LOD {lod}");
     }
 
+    let output_dir_ref = &output_dir;
+    let write_file = |relative_path: String, bytes: Vec<u8>| {
+        let path = output_dir_ref.join(&relative_path);
+        std::fs::create_dir_all(path.parent().unwrap())?;
+        std::fs::write(&path, &bytes)?;
+        Ok(())
+    };
+
     let built = next::build(
         &features,
         next::MetadataOptions::default(),
@@ -67,18 +75,23 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
                 .ok()
                 .and_then(|s| s.parse().ok())
                 .unwrap_or(0),
-            texture_codec: match std::env::var("CODEC").as_deref() {
-                Ok("none") => None,
-                Ok("png") => Some(next::TextureCodec::Png),
-                Ok("jpeg") | Ok("jpg") => Some(next::TextureCodec::Jpeg),
-                Ok("ktx2-etc1s") | Ok("etc1s") => Some(next::TextureCodec::Ktx2Etc1s),
-                _ => Some(next::TextureCodec::Ktx2Uastc),
+            texture_codec: match std::env::var("CODEC") {
+                Err(_) => Some(next::TextureCodec::Ktx2Uastc),
+                Ok(codec) => match codec.as_str() {
+                    "none" => None,
+                    "png" => Some(next::TextureCodec::Png),
+                    "jpeg" | "jpg" => Some(next::TextureCodec::Jpeg),
+                    "ktx2-etc1s" | "etc1s" => Some(next::TextureCodec::Ktx2Etc1s),
+                    "ktx2-uastc" | "uastc" => Some(next::TextureCodec::Ktx2Uastc),
+                    other => return Err(format!("unknown CODEC {other:?}").into()),
+                },
             },
         },
+        write_file,
     )?;
 
     std::fs::write(output_dir.join("tileset.json"), &built.tileset_json)?;
-    for (relative_path, bytes) in built.tiles.iter().chain(&built.subtrees) {
+    for (relative_path, bytes) in &built.subtrees {
         let path = output_dir.join(relative_path);
         std::fs::create_dir_all(path.parent().unwrap())?;
         std::fs::write(&path, bytes)?;
@@ -86,7 +99,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     println!(
         "wrote {}/tileset.json, {} content glb(s), {} subtree file(s)",
         output_dir.display(),
-        built.tiles.len(),
+        built.tile_count,
         built.subtrees.len()
     );
 

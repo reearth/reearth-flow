@@ -74,16 +74,28 @@ impl Cesium3DTilesWriter {
             texture_codec: self.params.texture_codec,
         };
         for ((output, _, _), features) in &self.buffer {
-            let built = build(features, options, self.params.max_zoom, render)?;
-
-            for (relative_path, bytes) in built.tiles.into_iter().chain(built.subtrees) {
+            let mut write_file = |relative_path: String, bytes: Vec<u8>| {
                 crate::SinkOutput::new(
                     &ctx.sandbox_root,
                     &format!("{output}/{relative_path}"),
                     &ctx.storage_resolver,
                 )
                 .and_then(|out| out.write(bytes::Bytes::from(bytes)))
-                .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
+                .map_err(crate::errors::SinkError::cesium3dtiles_writer)
+            };
+
+            // glbs stream to disk here as they are built; only the small
+            // subtree/tileset outputs come back for writing below.
+            let built = build(
+                features,
+                options,
+                self.params.max_zoom,
+                render,
+                &mut write_file,
+            )?;
+
+            for (relative_path, bytes) in built.subtrees {
+                write_file(relative_path, bytes)?;
             }
 
             crate::SinkOutput::new(
@@ -98,13 +110,14 @@ impl Cesium3DTilesWriter {
     }
 }
 
-/// Every file a built tileset is made of, relative to the tileset's output
-/// directory: one content glb per occupied cell, one or more `.subtree`
-/// files, and the `tileset.json` text itself.
+/// The tileset's non-glb outputs, relative to its output directory: the
+/// `tileset.json` text and one or more `.subtree` files. The content glbs are
+/// streamed out through `build`'s `write_tile` callback as they are produced,
+/// not held here; `tile_count` records how many were written.
 pub struct BuiltTileset {
     pub tileset_json: String,
-    pub tiles: Vec<(String, Vec<u8>)>,
     pub subtrees: Vec<(String, Vec<u8>)>,
+    pub tile_count: usize,
 }
 
 /// Rendering knobs shared by every cell of a tileset.
@@ -141,11 +154,17 @@ const DEFAULT_ATLAS_EXTRUSION: u32 = 0;
 /// quadtree cell (bounded by `max_zoom`) that fully contains it, and render
 /// the result to a [`BuiltTileset`]. A free function so `gml_to_3dtiles` can
 /// drive it directly from parsed CityGML, without a `Cesium3DTilesWriter`.
+///
+/// Each content glb is handed to `write_tile` (relative path, bytes) the moment
+/// it is built and is not retained, so peak memory does not grow with the tile
+/// count. The returned [`BuiltTileset`] carries only the small `tileset.json`
+/// and subtree outputs, which the caller writes after `build` returns.
 pub fn build(
     features: &[Feature],
     options: MetadataOptions,
     max_zoom: u8,
     render: RenderOptions,
+    mut write_tile: impl FnMut(String, Vec<u8>) -> crate::errors::Result<()>,
 ) -> crate::errors::Result<BuiltTileset> {
     let mut caches = mesh::ExtractCaches::default();
     let extracted: Vec<(&Feature, mesh::ExtractedMesh)> = features
@@ -182,16 +201,19 @@ pub fn build(
     // A decode cache per cell, dropped once the cell's glb is built. PLATEAU
     // textures are per-surface, so a source image is referenced by only one
     // cell; a tileset-wide cache would grow without bound for no reuse gain.
-    let tiles = by_cell
-        .into_iter()
-        .map(|(cell, indices)| {
-            let cell_members: Vec<&(&Feature, mesh::ExtractedMesh)> =
-                indices.iter().map(|&i| &extracted[i]).collect();
-            let mut textures = TextureCache::default();
-            let glb = build_cell_glb(&cell_members, options, render, &mut textures)?;
-            Ok((content_path(cell), glb))
-        })
-        .collect::<crate::errors::Result<_>>()?;
+    // Stream each cell's glb straight to the caller as it is built, so peak
+    // memory stays at one glb rather than the whole tileset. The glb bytes feed
+    // neither `tileset.json` nor the subtrees (those need only the cell keys,
+    // already captured in `occupied`), so nothing downstream needs them retained.
+    let mut tile_count = 0usize;
+    for (cell, indices) in by_cell {
+        let cell_members: Vec<&(&Feature, mesh::ExtractedMesh)> =
+            indices.iter().map(|&i| &extracted[i]).collect();
+        let mut textures = TextureCache::default();
+        let glb = build_cell_glb(&cell_members, options, render, &mut textures)?;
+        write_tile(content_path(cell), glb)?;
+        tile_count += 1;
+    }
 
     let tileset_bytes = render_tileset_json(&root, available_levels)?;
     let subtrees = subtree::build_all(&occupied)
@@ -201,8 +223,8 @@ pub fn build(
 
     Ok(BuiltTileset {
         tileset_json: tileset_bytes,
-        tiles,
         subtrees,
+        tile_count,
     })
 }
 
@@ -222,8 +244,8 @@ fn empty_tileset() -> crate::errors::Result<BuiltTileset> {
         .collect();
     Ok(BuiltTileset {
         tileset_json: tileset_bytes,
-        tiles: Vec::new(),
         subtrees,
+        tile_count: 0,
     })
 }
 
