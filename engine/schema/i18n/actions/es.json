@@ -1632,6 +1632,29 @@
       }
     },
     {
+      "name": "Geometry Flattener",
+      "description": "Aplana geometrías multiparte, mallas y nubes de puntos en una entidad por miembro.",
+      "parameterI18n": {
+        "": {
+          "title": "Parámetros de GeometryFlattener",
+          "description": "Parámetros de GeometryFlattener"
+        },
+        "splitLevel": {
+          "description": "Split level for CityGML geometry. - \"element\": Split by surface elements (RoofSurface, WallSurface, etc.) - default - \"polygon\": Split down to individual polygons within each element"
+        }
+      },
+      "enumI18n": {
+        "SplitLevel": {
+          "element": {
+            "description": "Split by GmlGeometry elements (e.g., RoofSurface, WallSurface)"
+          },
+          "polygon": {
+            "description": "Split down to individual polygons within each element"
+          }
+        }
+      }
+    },
+    {
       "name": "Geometry Part Extractor",
       "description": "Extrae partes de geometría (superficies) de geometrías 3D como entidades separadas",
       "parameterI18n": {
@@ -1667,29 +1690,6 @@
         "sourceAttribute": {
           "title": "Source Attribute",
           "description": "Name of the attribute containing the compressed geometry data to use as the new geometry"
-        }
-      }
-    },
-    {
-      "name": "Geometry Splitter",
-      "description": "Divide la geometría por tipo",
-      "parameterI18n": {
-        "": {
-          "title": "GeometrySplitterParam",
-          "description": "Parameters for GeometrySplitter"
-        },
-        "splitLevel": {
-          "description": "Split level for CityGML geometry. - \"element\": Split by surface elements (RoofSurface, WallSurface, etc.) - default - \"polygon\": Split down to individual polygons within each element"
-        }
-      },
-      "enumI18n": {
-        "SplitLevel": {
-          "element": {
-            "description": "Split by GmlGeometry elements (e.g., RoofSurface, WallSurface)"
-          },
-          "polygon": {
-            "description": "Split down to individual polygons within each element"
-          }
         }
       }
     },

@@ -17,6 +17,8 @@ use crate::coordinate::CoordinateFrame;
 use crate::index::IndexBuffer;
 
 mod constructor;
+#[cfg(feature = "new-geometry")]
+mod faces;
 mod ops;
 #[cfg(feature = "new-geometry")]
 mod validation;

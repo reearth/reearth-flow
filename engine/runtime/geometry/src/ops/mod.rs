@@ -8,9 +8,13 @@
 //! chains through to the concrete leaf. `GeometryCollection` and the per-frame
 //! `Collection`s recurse by hand over their children.
 
+#[cfg(feature = "new-geometry")]
+pub mod flatten;
 pub mod reproject;
 pub mod triangulation;
 
+#[cfg(feature = "new-geometry")]
+pub use flatten::Flatten;
 pub(crate) use reproject::{axis_order_sign, crs_is_linear};
 pub use reproject::{Reproject, ReprojectionCache};
 

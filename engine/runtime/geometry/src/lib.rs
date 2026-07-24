@@ -60,6 +60,8 @@ use ops::{
 // `enum_dispatch`-generated `Validate` impls on the geometry enums, so they must
 // be in scope here.
 #[cfg(feature = "new-geometry")]
+use ops::Flatten;
+#[cfg(feature = "new-geometry")]
 use validation_next::{Validate, ValidationParams, ValidationReport, ValidationType};
 
 use coordinate::EpsgCode;
@@ -162,7 +164,15 @@ impl GeometryCollection {
 )]
 #[cfg_attr(
     feature = "new-geometry",
-    enum_dispatch(BoundingBox, Triangulate, Reproject, Validate, ConvertFrame, Translate)
+    enum_dispatch(
+        BoundingBox,
+        Triangulate,
+        Reproject,
+        Validate,
+        ConvertFrame,
+        Translate,
+        Flatten
+    )
 )]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Euclidean2DGeometry {
@@ -191,7 +201,15 @@ pub enum Euclidean2DGeometry {
 )]
 #[cfg_attr(
     feature = "new-geometry",
-    enum_dispatch(BoundingBox, Triangulate, Reproject, Validate, ConvertFrame, Translate)
+    enum_dispatch(
+        BoundingBox,
+        Triangulate,
+        Reproject,
+        Validate,
+        ConvertFrame,
+        Translate,
+        Flatten
+    )
 )]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Euclidean3DGeometry {

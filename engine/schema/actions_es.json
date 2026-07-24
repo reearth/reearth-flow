@@ -5381,6 +5381,62 @@
       "tags": []
     },
     {
+      "name": "Geometry Flattener",
+      "type": "processor",
+      "description": "Aplana geometrías multiparte, mallas y nubes de puntos en una entidad por miembro.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Parámetros de GeometryFlattener",
+        "description": "Parámetros de GeometryFlattener",
+        "type": "object",
+        "properties": {
+          "splitLevel": {
+            "description": "Split level for CityGML geometry. - \"element\": Split by surface elements (RoofSurface, WallSurface, etc.) - default - \"polygon\": Split down to individual polygons within each element",
+            "default": "element",
+            "allOf": [
+              {
+                "$ref": "#/definitions/SplitLevel"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "SplitLevel": {
+            "description": "Split level for CityGML geometry.",
+            "oneOf": [
+              {
+                "description": "Split by GmlGeometry elements (e.g., RoofSurface, WallSurface)",
+                "type": "string",
+                "enum": [
+                  "element"
+                ]
+              },
+              {
+                "description": "Split down to individual polygons within each element",
+                "type": "string",
+                "enum": [
+                  "polygon"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": [
+        "geometry"
+      ]
+    },
+    {
       "name": "Geometry Part Extractor",
       "type": "processor",
       "description": "Extrae partes de geometría (superficies) de geometrías 3D como entidades separadas",
@@ -5489,63 +5545,6 @@
         "Geometry"
       ],
       "tags": []
-    },
-    {
-      "name": "Geometry Splitter",
-      "type": "processor",
-      "description": "Divide la geometría por tipo",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "GeometrySplitterParam",
-        "description": "Parameters for GeometrySplitter",
-        "type": "object",
-        "properties": {
-          "splitLevel": {
-            "description": "Split level for CityGML geometry. - \"element\": Split by surface elements (RoofSurface, WallSurface, etc.) - default - \"polygon\": Split down to individual polygons within each element",
-            "default": "element",
-            "allOf": [
-              {
-                "$ref": "#/definitions/SplitLevel"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "SplitLevel": {
-            "description": "Split level for CityGML geometry",
-            "oneOf": [
-              {
-                "description": "Split by GmlGeometry elements (e.g., RoofSurface, WallSurface)",
-                "type": "string",
-                "enum": [
-                  "element"
-                ]
-              },
-              {
-                "description": "Split down to individual polygons within each element",
-                "type": "string",
-                "enum": [
-                  "polygon"
-                ]
-              }
-            ]
-          }
-        }
-      },
-      "builtin": true,
-      "inputPorts": [
-        "features"
-      ],
-      "outputPorts": [
-        "features"
-      ],
-      "categories": [
-        "Geometry"
-      ],
-      "tags": [
-        "split",
-        "geometry"
-      ]
     },
     {
       "name": "Geometry Validator",

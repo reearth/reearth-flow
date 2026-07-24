@@ -1946,9 +1946,9 @@ graphs:
     type: action
     action: Boundary Extractor
   - id: 1e969309-8ff7-46d2-bb7a-7b3666ac7a4e
-    name: GeometrySplitter
+    name: GeometryFlattener
     type: action
-    action: Geometry Splitter
+    action: Geometry Flattener
   - id: 78ae3a54-822a-468d-9265-b60667b802ba
     name: VertexCounter
     type: action

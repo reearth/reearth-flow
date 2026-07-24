@@ -1,47 +1,66 @@
 use std::collections::HashMap;
-use std::io::{BufWriter, Write};
-use std::path::PathBuf;
 
-use reearth_flow_geometry::types::coordinate::Coordinate2D;
-use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
-use reearth_flow_geometry::types::line_string::{LineString2D, LineString3D};
-use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
-use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
 use reearth_flow_runtime::{
-    cache::executor_cache_subdir,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
-use reearth_flow_types::{
-    Attribute, AttributeValue, CityGmlGeometry, Feature, Geometry, GeometryValue, GmlGeometry,
-};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
-
-/// Minimum number of triangles to trigger file-backed output for TriangularMesh splits.
-const FILE_BACKED_THRESHOLD: usize = 64;
 
 use super::errors::GeometryProcessorError;
 
-/// Split level for CityGML geometry
+#[cfg(not(feature = "new-geometry"))]
+use std::io::{BufWriter, Write};
+#[cfg(not(feature = "new-geometry"))]
+use std::path::PathBuf;
+
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_geometry::types::coordinate::Coordinate2D;
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_geometry::types::line_string::{LineString2D, LineString3D};
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_runtime::cache::executor_cache_subdir;
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_types::{
+    Attribute, AttributeValue, CityGmlGeometry, Feature, Geometry, GeometryValue, GmlGeometry,
+};
+#[cfg(not(feature = "new-geometry"))]
+use schemars::JsonSchema;
+#[cfg(not(feature = "new-geometry"))]
+use serde::{Deserialize, Serialize};
+
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::ops::Flatten;
+
+/// Minimum number of triangles to trigger file-backed output for TriangularMesh splits.
+#[cfg(not(feature = "new-geometry"))]
+const FILE_BACKED_THRESHOLD: usize = 64;
+
+/// Split level for CityGML geometry.
+#[cfg(not(feature = "new-geometry"))]
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, JsonSchema, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum SplitLevel {
-    /// Split by GmlGeometry elements (e.g., RoofSurface, WallSurface)
+    /// Split by GmlGeometry elements (e.g., RoofSurface, WallSurface).
     #[default]
     Element,
-    /// Split down to individual polygons within each element
+    /// Split down to individual polygons within each element.
     Polygon,
 }
 
-/// Parameters for GeometrySplitter
+/// Parameters for the Geometry Flattener.
+#[cfg(not(feature = "new-geometry"))]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-pub struct GeometrySplitterParam {
+pub struct GeometryFlattenerParam {
     /// Split level for CityGML geometry.
     /// - "element": Split by surface elements (RoofSurface, WallSurface, etc.) - default
     /// - "polygon": Split down to individual polygons within each element
@@ -49,20 +68,27 @@ pub struct GeometrySplitterParam {
     pub split_level: SplitLevel,
 }
 
+/// Factory for the Geometry Flattener processor.
 #[derive(Debug, Clone, Default)]
-pub struct GeometrySplitterFactory;
+pub struct GeometryFlattenerFactory;
 
-impl ProcessorFactory for GeometrySplitterFactory {
+impl ProcessorFactory for GeometryFlattenerFactory {
     fn name(&self) -> &str {
-        "Geometry Splitter"
+        "Geometry Flattener"
     }
 
     fn description(&self) -> &str {
-        "Split Multi-Geometries into Individual Features"
+        "Flattens multi-part geometries, meshes, and point clouds into one feature per member."
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-        Some(schemars::schema_for!(GeometrySplitterParam))
+        Some(schemars::schema_for!(GeometryFlattenerParam))
+    }
+
+    #[cfg(feature = "new-geometry")]
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+        None
     }
 
     fn categories(&self) -> &[&'static str] {
@@ -70,7 +96,7 @@ impl ProcessorFactory for GeometrySplitterFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["split", "geometry"]
+        &["geometry"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -81,6 +107,7 @@ impl ProcessorFactory for GeometrySplitterFactory {
         vec![FEATURES_PORT.clone()]
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn build(
         &self,
         _ctx: NodeContext,
@@ -88,38 +115,57 @@ impl ProcessorFactory for GeometrySplitterFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let param: GeometrySplitterParam = if let Some(with) = with {
+        let param: GeometryFlattenerParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                GeometryProcessorError::GeometrySplitterFactory(format!(
+                GeometryProcessorError::GeometryFlattenerFactory(format!(
                     "Failed to serialize 'with' parameter: {e}"
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                GeometryProcessorError::GeometrySplitterFactory(format!(
+                GeometryProcessorError::GeometryFlattenerFactory(format!(
                     "Failed to deserialize 'with' parameter: {e}"
                 ))
             })?
         } else {
-            GeometrySplitterParam::default()
+            GeometryFlattenerParam::default()
         };
 
-        let process = GeometrySplitter {
+        let process = GeometryFlattener {
             split_level: param.split_level,
             executor_id: None,
             temp_dir: None,
         };
         Ok(Box::new(process))
     }
+
+    #[cfg(feature = "new-geometry")]
+    fn build(
+        &self,
+        _ctx: NodeContext,
+        _event_hub: EventHub,
+        _action: String,
+        _with: Option<HashMap<String, Value>>,
+    ) -> Result<Box<dyn Processor>, BoxedError> {
+        Ok(Box::new(GeometryFlattener))
+    }
 }
 
+/// Splits multi-part geometries into one feature per member.
+#[cfg(not(feature = "new-geometry"))]
 #[derive(Debug, Clone)]
-pub struct GeometrySplitter {
+pub struct GeometryFlattener {
     split_level: SplitLevel,
     executor_id: Option<uuid::Uuid>,
     temp_dir: Option<PathBuf>,
 }
 
-impl Drop for GeometrySplitter {
+/// Flattens a collection, mesh, or point cloud into one feature per member.
+#[cfg(feature = "new-geometry")]
+#[derive(Debug, Clone)]
+pub struct GeometryFlattener;
+
+#[cfg(not(feature = "new-geometry"))]
+impl Drop for GeometryFlattener {
     fn drop(&mut self) {
         if let Some(ref dir) = self.temp_dir {
             let _ = std::fs::remove_dir_all(dir);
@@ -127,11 +173,12 @@ impl Drop for GeometrySplitter {
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn engine_cache_dir(executor_id: uuid::Uuid) -> PathBuf {
     executor_cache_subdir(executor_id, "processors")
 }
 
-impl Processor for GeometrySplitter {
+impl Processor for GeometryFlattener {
     #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
@@ -164,7 +211,30 @@ impl Processor for GeometrySplitter {
         Ok(())
     }
 
-    #[cfg(not(feature = "new-geometry"))]
+    #[cfg(feature = "new-geometry")]
+    fn process(
+        &mut self,
+        ctx: ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        let feature = &ctx.feature;
+        match feature.geometry.flatten() {
+            // Not a flattenable container: pass the feature through unchanged.
+            None => {
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
+            }
+            Some(members) => {
+                for (geometry, attributes) in members {
+                    let mut new_feature = feature.clone();
+                    *new_feature.geometry_mut() = geometry;
+                    new_feature.extend(attributes);
+                    fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
+                }
+            }
+        }
+        Ok(())
+    }
+
     fn finish(
         &mut self,
         _ctx: NodeContext,
@@ -174,12 +244,12 @@ impl Processor for GeometrySplitter {
     }
 
     fn name(&self) -> &str {
-        "Geometry Splitter"
+        "Geometry Flattener"
     }
 }
 
-impl GeometrySplitter {
-    #[cfg(not(feature = "new-geometry"))]
+#[cfg(not(feature = "new-geometry"))]
+impl GeometryFlattener {
     fn process_flow_geometry_2d(
         &self,
         geometry: &Geometry2D,
@@ -225,7 +295,6 @@ impl GeometrySplitter {
         Ok(())
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     fn process_flow_geometry_3d(
         &mut self,
         geometry: &Geometry3D,
@@ -278,14 +347,13 @@ impl GeometrySplitter {
         if self.temp_dir.is_none() {
             let executor_id = self.executor_id.unwrap_or_else(uuid::Uuid::nil);
             let dir =
-                engine_cache_dir(executor_id).join(format!("splitter-{}", uuid::Uuid::new_v4()));
+                engine_cache_dir(executor_id).join(format!("flattener-{}", uuid::Uuid::new_v4()));
             std::fs::create_dir_all(&dir)?;
             self.temp_dir = Some(dir);
         }
         Ok(self.temp_dir.as_ref().unwrap())
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     fn process_triangular_mesh(
         &mut self,
         mesh: &reearth_flow_geometry::types::triangular_mesh::TriangularMesh<f64>,
@@ -339,7 +407,6 @@ impl GeometrySplitter {
         Ok(())
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     fn process_citygml_geometry(
         &self,
         city_gml_geometry: &CityGmlGeometry,
@@ -386,7 +453,6 @@ impl GeometrySplitter {
         Ok(())
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     fn emit_element_level_feature(
         &self,
         split_feature: CityGmlGeometry,
@@ -410,7 +476,6 @@ impl GeometrySplitter {
         Ok(())
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     fn emit_polygon_level_features(
         &self,
         split_feature: &CityGmlGeometry,
@@ -456,7 +521,7 @@ impl GeometrySplitter {
             let uv_exterior_len = uv_polygon.exterior().0.len();
             if poly_exterior_len != uv_exterior_len {
                 panic!(
-                    "Splitter: Vertex count mismatch at creation!\n\
+                    "Flattener: Vertex count mismatch at creation!\n\
                     polygon exterior: {} vertices\n\
                     uv_polygon exterior: {} vertices",
                     poly_exterior_len, uv_exterior_len
@@ -491,17 +556,17 @@ impl GeometrySplitter {
             debug_assert_eq!(
                 single_citygml.gml_geometries[0].polygons.len(),
                 single_citygml.gml_geometries[0].len as usize,
-                "Splitter: polygon count mismatch with len"
+                "Flattener: polygon count mismatch with len"
             );
             debug_assert_eq!(
                 single_citygml.polygon_materials.len(),
                 1,
-                "Splitter: polygon_materials should have 1 element"
+                "Flattener: polygon_materials should have 1 element"
             );
             debug_assert_eq!(
                 single_citygml.polygon_uvs.iter().count(),
                 1,
-                "Splitter: polygon_uvs should have 1 element"
+                "Flattener: polygon_uvs should have 1 element"
             );
 
             new_geometry.value = GeometryValue::CityGmlGeometry(single_citygml);

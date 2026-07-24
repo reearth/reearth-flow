@@ -76,6 +76,12 @@ impl Collection2D {
     pub fn members(&self) -> &[Euclidean2DGeometry] {
         &self.members
     }
+
+    /// Per-member attributes, parallel to [`members`](Self::members), or empty
+    /// if no member carries any.
+    pub fn member_attributes(&self) -> &[Attributes] {
+        &self.attrs
+    }
 }
 
 impl Collection3D {
@@ -115,6 +121,12 @@ impl Collection3D {
     /// The members, in order.
     pub fn members(&self) -> &[Euclidean3DGeometry] {
         &self.members
+    }
+
+    /// Per-member attributes, parallel to [`members`](Self::members), or empty
+    /// if no member carries any.
+    pub fn member_attributes(&self) -> &[Attributes] {
+        &self.attrs
     }
 }
 

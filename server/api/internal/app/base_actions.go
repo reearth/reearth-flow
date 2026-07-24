@@ -41,7 +41,7 @@ var baseActions = map[string]bool{
 	"Geometry Remover":         true,
 	"Geometry Replacer":        true,
 	"Geometry Validator":       true,
-	"Geometry Splitter":        true,
+	"Geometry Flattener":       true,
 	"Grid Divider":             true,
 	"Horizontal Reprojector":   true,
 	"Image Rasterizer":         true,
