@@ -64,3 +64,6 @@ impl LineString3D {
 
 crate::unsupported!(LineString2D: Triangulate);
 crate::unsupported!(LineString3D: Triangulate);
+
+crate::unsupported!(LineString2D: Split);
+crate::unsupported!(LineString3D: Split);

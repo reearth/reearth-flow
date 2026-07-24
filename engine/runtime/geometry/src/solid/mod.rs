@@ -79,3 +79,6 @@ impl Solid {
         &self.interiors
     }
 }
+
+// A solid is one logical volume, not a multi-part container.
+crate::unsupported!(Solid: Split);

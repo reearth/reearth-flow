@@ -400,6 +400,11 @@ impl Feature {
         Arc::make_mut(&mut self.geometry)
     }
 
+    /// Replace the geometry, dropping the previous (possibly shared) reference.
+    pub fn set_geometry(&mut self, geometry: Geometry) {
+        self.geometry = Arc::new(geometry);
+    }
+
     pub fn iter(&self) -> impl Iterator<Item = (&Attribute, &AttributeValue)> {
         self.attributes.iter()
     }

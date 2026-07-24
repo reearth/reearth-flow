@@ -3,6 +3,12 @@ use crate::coordinate::{CoordinateFrame, EpsgCode};
 use crate::ops::reproject::{transform_coords_2d, transform_coords_3d};
 use crate::ops::{Aabb, BoundingBox, Reproject, ReprojectionCache, UnsupportedOperation};
 
+use reearth_flow_common::attribute::Attributes;
+
+use crate::ops::Split;
+use crate::polygon::{Polygon2D, Polygon3D};
+use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
+
 impl BoundingBox for TriangularMesh2D {
     fn bounding_box(&self) -> Result<Aabb, UnsupportedOperation> {
         Aabb::from_points_2d(self.vertices.iter().copied()).ok_or(UnsupportedOperation {
@@ -108,6 +114,54 @@ impl ConvertFrame for TriangularMesh3D {
                 Ok(())
             }
         }
+    }
+}
+
+impl Split for TriangularMesh2D {
+    fn split(
+        &mut self,
+        emit: &mut dyn FnMut(Geometry, Attributes),
+    ) -> Result<(), UnsupportedOperation> {
+        let vertices = self.vertices();
+        let frame = self.frame();
+        for [i, j, k] in self.triangles() {
+            let ring = [
+                vertices[i as usize],
+                vertices[j as usize],
+                vertices[k as usize],
+                vertices[i as usize],
+            ];
+            let polygon = Polygon2D::from_rings(frame.clone(), ring, Vec::<Vec<[f64; 2]>>::new());
+            emit(
+                Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(polygon))),
+                Attributes::new(),
+            );
+        }
+        Ok(())
+    }
+}
+
+impl Split for TriangularMesh3D {
+    fn split(
+        &mut self,
+        emit: &mut dyn FnMut(Geometry, Attributes),
+    ) -> Result<(), UnsupportedOperation> {
+        let vertices = self.vertices();
+        let frame = self.frame();
+        for [i, j, k] in self.triangles() {
+            let ring = [
+                vertices[i as usize],
+                vertices[j as usize],
+                vertices[k as usize],
+                vertices[i as usize],
+            ];
+            let polygon = Polygon3D::from_rings(frame.clone(), ring, Vec::<Vec<[f64; 3]>>::new());
+            emit(
+                Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(polygon))),
+                Attributes::new(),
+            );
+        }
+        Ok(())
     }
 }
 

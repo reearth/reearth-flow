@@ -1,5 +1,59 @@
-use super::{PointCloud, PositionEncoding, Segment};
-use crate::ops::{Aabb, BoundingBox, UnsupportedOperation};
+use super::{AttributeColumn, PointCloud, PositionEncoding, Segment};
+use crate::ops::{Aabb, BoundingBox, Split, UnsupportedOperation};
+use crate::point::Point3D;
+use crate::{Euclidean3DGeometry, Geometry};
+use reearth_flow_common::attribute::{Attribute, AttributeValue, Attributes};
+use serde_json::Number;
+
+impl Split for PointCloud {
+    /// Decode every point as a [`Point3D`] in the cloud's frame, each paired with
+    /// its per-point attributes gathered from the typed attribute columns (empty
+    /// when the point carries none).
+    fn split(
+        &mut self,
+        emit: &mut dyn FnMut(Geometry, Attributes),
+    ) -> Result<(), UnsupportedOperation> {
+        for seg in &self.segments {
+            for (i, position) in segment_positions(seg).enumerate() {
+                let mut attributes = Attributes::with_capacity(seg.attributes.len());
+                for (name, column) in &seg.attributes {
+                    attributes.insert(Attribute::new(name.clone()), column_value(column, i));
+                }
+                let point = Point3D::new(self.frame.clone(), position);
+                emit(
+                    Geometry::Euclidean3D(Euclidean3DGeometry::Point(point)),
+                    attributes,
+                );
+            }
+        }
+        Ok(())
+    }
+}
+
+/// Decode one typed column entry into an [`AttributeValue`]. A non-finite float
+/// or an unassigned string becomes [`AttributeValue::Null`].
+fn column_value(column: &AttributeColumn, i: usize) -> AttributeValue {
+    match column {
+        AttributeColumn::UInt8(v) => AttributeValue::Number(Number::from(v[i])),
+        AttributeColumn::UInt16(v) => AttributeValue::Number(Number::from(v[i])),
+        AttributeColumn::UInt32(v) => AttributeValue::Number(Number::from(v[i])),
+        AttributeColumn::UInt64(v) => AttributeValue::Number(Number::from(v[i])),
+        AttributeColumn::Int8(v) => AttributeValue::Number(Number::from(v[i])),
+        AttributeColumn::Int16(v) => AttributeValue::Number(Number::from(v[i])),
+        AttributeColumn::Int32(v) => AttributeValue::Number(Number::from(v[i])),
+        AttributeColumn::Int64(v) => AttributeValue::Number(Number::from(v[i])),
+        AttributeColumn::Float32(v) => number_or_null(v[i] as f64),
+        AttributeColumn::Float64(v) => number_or_null(v[i]),
+        AttributeColumn::String(v) => v[i].as_ref().map_or(AttributeValue::Null, |s| {
+            AttributeValue::String(s.to_string())
+        }),
+    }
+}
+
+/// A finite `f64` as a number attribute; `NaN`/infinite becomes null.
+fn number_or_null(x: f64) -> AttributeValue {
+    Number::from_f64(x).map_or(AttributeValue::Null, AttributeValue::Number)
+}
 
 impl BoundingBox for PointCloud {
     fn bounding_box(&self) -> Result<Aabb, UnsupportedOperation> {

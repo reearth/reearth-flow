@@ -146,3 +146,7 @@ impl Polygon3D {
         &mut self.appearance
     }
 }
+
+// A polygon is a single face, not a multi-part container.
+crate::unsupported!(Polygon2D: Split);
+crate::unsupported!(Polygon3D: Split);

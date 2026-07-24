@@ -76,6 +76,12 @@ impl Collection2D {
     pub fn members(&self) -> &[Euclidean2DGeometry] {
         &self.members
     }
+
+    /// Per-member attributes, parallel to [`members`](Self::members), or empty
+    /// if no member carries any.
+    pub fn member_attributes(&self) -> &[Attributes] {
+        &self.attrs
+    }
 }
 
 impl Collection3D {
@@ -115,6 +121,12 @@ impl Collection3D {
     /// The members, in order.
     pub fn members(&self) -> &[Euclidean3DGeometry] {
         &self.members
+    }
+
+    /// Per-member attributes, parallel to [`members`](Self::members), or empty
+    /// if no member carries any.
+    pub fn member_attributes(&self) -> &[Attributes] {
+        &self.attrs
     }
 }
 
@@ -208,6 +220,32 @@ impl crate::ops::Translate for Collection3D {
         for member in self.members_mut() {
             member.translate(delta)?;
         }
+        Ok(())
+    }
+}
+
+impl crate::ops::Split for Collection2D {
+    fn split(
+        &mut self,
+        emit: &mut dyn FnMut(crate::Geometry, Attributes),
+    ) -> Result<(), crate::ops::UnsupportedOperation> {
+        let members = std::mem::take(&mut self.members)
+            .into_iter()
+            .map(crate::Geometry::Euclidean2D);
+        crate::ops::split::emit_members(members, std::mem::take(&mut self.attrs), emit);
+        Ok(())
+    }
+}
+
+impl crate::ops::Split for Collection3D {
+    fn split(
+        &mut self,
+        emit: &mut dyn FnMut(crate::Geometry, Attributes),
+    ) -> Result<(), crate::ops::UnsupportedOperation> {
+        let members = std::mem::take(&mut self.members)
+            .into_iter()
+            .map(crate::Geometry::Euclidean3D);
+        crate::ops::split::emit_members(members, std::mem::take(&mut self.attrs), emit);
         Ok(())
     }
 }

@@ -57,3 +57,6 @@ impl Point3D {
 
 crate::unsupported!(Point2D: Triangulate);
 crate::unsupported!(Point3D: Triangulate);
+
+crate::unsupported!(Point2D: Split);
+crate::unsupported!(Point3D: Split);
