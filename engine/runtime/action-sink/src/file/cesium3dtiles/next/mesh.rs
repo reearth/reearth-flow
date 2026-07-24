@@ -146,7 +146,14 @@ fn collect_euclidean3d(geometry: &Euclidean3DGeometry, out: &mut Vec<PolygonMesh
                 mesh.vertices().to_vec(),
                 mesh.triangles(),
             ) {
-                Ok(m) => out.push(m),
+                Ok(mut m) => {
+                    // `from_parts` yields a bare mesh; carry the triangle mesh's
+                    // appearance over. Corner order is 1:1 (each triangle becomes a
+                    // 3-corner face in the same order), so per-corner UV and
+                    // per-face bindings stay aligned.
+                    *m.appearance_mut() = mesh.appearance().clone();
+                    out.push(m);
+                }
                 Err(e) => {
                     tracing::warn!(
                         "Cesium3DTilesWriter: skipping un-meshable TriangularMesh: {e:?}"
@@ -339,6 +346,120 @@ mod tests {
 
         assert_eq!(extracted.indices.len(), 2, "both triangles expected");
         assert!(!extracted.ecef_vertices.is_empty(), "vertices reprojected");
+    }
+
+    // A TriangularMesh carrying a material must surface that material through
+    // extraction, not fall back to the neutral default: appearance has to survive
+    // the TriangularMesh -> PolygonMesh conversion in `collect_euclidean3d`.
+    #[test]
+    fn triangular_mesh_carries_material_color() {
+        use reearth_flow_geometry::appearance::{AlphaMode, Material, PbrMaterial, ThemeId};
+        use reearth_flow_geometry::triangular_mesh::TriangularMesh3D;
+        use std::sync::Arc;
+
+        let frame = CoordinateFrame::Crs(EpsgCode::new(4979));
+        let soup = [
+            [35.0, 139.0, 10.0],
+            [35.0, 139.001, 10.0],
+            [35.001, 139.0, 10.0],
+        ];
+        let mut mesh = TriangularMesh3D::from_soup(frame, soup);
+        let material = Material::Pbr(PbrMaterial {
+            base_color: [0.2, 0.4, 0.6, 1.0],
+            metallic: 0.0,
+            roughness: 1.0,
+            emissive: [0.0, 0.0, 0.0],
+            base_color_map: None,
+            metallic_roughness_map: None,
+            normal_map: None,
+            occlusion_map: None,
+            emissive_map: None,
+            alpha_mode: AlphaMode::Opaque,
+            double_sided: false,
+        });
+        mesh.set_appearance(ThemeId(Arc::from("default")), material, None)
+            .expect("attach colour-only material");
+        let geometry = Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(mesh)));
+
+        let mut caches = ExtractCaches::default();
+        let extracted = extract(&geometry, &mut caches).expect("mesh extracts");
+
+        assert_eq!(extracted.materials.len(), 1, "material carried through");
+        assert_eq!(
+            extracted.materials[0].base_color_factor,
+            [0.2, 0.4, 0.6, 1.0]
+        );
+        assert_eq!(
+            extracted.triangle_material,
+            vec![Some(0)],
+            "the triangle binds the carried material"
+        );
+    }
+
+    // A TriangularMesh with an embedded (in-memory) base-colour texture must
+    // surface that texture through extraction as an `Embedded` source, not fall
+    // back to colour-only — the reader-side counterpart to the atlas materialization.
+    #[test]
+    fn triangular_mesh_carries_embedded_texture() {
+        use reearth_flow_common::image::MimeType;
+        use reearth_flow_geometry::appearance::{
+            AlphaMode, ChannelId, Material, PbrMaterial, Raster, RasterData, Sampler, Texture,
+            ThemeId, UvSource,
+        };
+        use reearth_flow_geometry::triangular_mesh::TriangularMesh3D;
+        use std::sync::Arc;
+
+        use crate::file::cesium3dtiles::next::appearance::TextureSource;
+
+        let frame = CoordinateFrame::Crs(EpsgCode::new(4979));
+        let soup = [
+            [35.0, 139.0, 10.0],
+            [35.0, 139.001, 10.0],
+            [35.001, 139.0, 10.0],
+        ];
+        let mut mesh = TriangularMesh3D::from_soup(frame, soup);
+        let material = Material::Pbr(PbrMaterial {
+            base_color: [1.0, 1.0, 1.0, 1.0],
+            metallic: 1.0,
+            roughness: 1.0,
+            emissive: [0.0, 0.0, 0.0],
+            base_color_map: Some(Texture {
+                raster: Arc::new(Raster::InMemory(RasterData {
+                    mime_type: MimeType::ImagePng,
+                    bytes: bytes::Bytes::from_static(b"embedded-image-bytes"),
+                })),
+                sampler: Sampler::default(),
+                transform: None,
+                uv_channel: ChannelId(0),
+            }),
+            metallic_roughness_map: None,
+            normal_map: None,
+            occlusion_map: None,
+            emissive_map: None,
+            alpha_mode: AlphaMode::Opaque,
+            double_sided: false,
+        });
+        mesh.set_appearance(
+            ThemeId(Arc::from("default")),
+            material,
+            Some(UvSource::Explicit(
+                vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]].into_boxed_slice(),
+            )),
+        )
+        .expect("attach textured material");
+        let geometry = Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(mesh)));
+
+        let mut caches = ExtractCaches::default();
+        let extracted = extract(&geometry, &mut caches).expect("mesh extracts");
+
+        assert_eq!(extracted.materials.len(), 1);
+        assert!(
+            matches!(
+                extracted.materials[0].base_texture,
+                Some(TextureSource::Embedded(_))
+            ),
+            "embedded texture surfaced through extraction"
+        );
     }
 
     // A face whose canonical orientation is outward, stored in a lat-first frame

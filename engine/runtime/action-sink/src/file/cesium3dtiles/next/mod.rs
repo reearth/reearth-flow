@@ -2,8 +2,10 @@
 //!
 //! Appearance is painted for the default theme, front side only. Textured
 //! materials across a tile share one or more embedded atlas pages (one glTF
-//! primitive per page); wrapping textures and remote/in-memory rasters aren't
-//! handled yet and fall back to colour-only. Texture detail is bounded by the
+//! primitive per page). Local-file and embedded (in-memory) rasters are both
+//! supported: embedded bytes (e.g. glTF/GLB packed images) are materialized to a
+//! temp file so the path-based atlas packer can read them. Wrapping textures and
+//! remote rasters fall back to colour-only. Texture detail is bounded by the
 //! `texel_size` option (metres per pixel); atlas pages are capped at
 //! `atlas_size` and overflow spills onto further pages.
 
@@ -14,15 +16,20 @@ mod quadtree;
 mod subtree;
 mod tileset;
 
+use std::collections::hash_map::DefaultHasher;
 use std::collections::{BTreeSet, HashMap};
+use std::hash::{Hash, Hasher};
 use std::io::Cursor;
 use std::path::PathBuf;
 use std::sync::Arc;
 
 use reearth_flow_atlas::{build_atlas_multipage, TextureCache, TextureInput};
+use reearth_flow_common::image::MimeType;
+use reearth_flow_geometry::appearance::RasterData;
 use reearth_flow_gltf::next::glb::{self, Granularity};
 use reearth_flow_gltf::next::metadata;
 
+use appearance::TextureSource;
 use primitive::{Geom, TexturedPrimitive, DEFAULT_MATERIAL};
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::FEATURES_PORT;
@@ -185,7 +192,8 @@ pub fn build(
             let cell_members: Vec<&(&Feature, mesh::ExtractedMesh)> =
                 indices.iter().map(|&i| &extracted[i]).collect();
             let mut textures = TextureCache::default();
-            let glb = build_cell_glb(&cell_members, options, render, &mut textures)?;
+            let mut embedded = EmbeddedTextures::new()?;
+            let glb = build_cell_glb(&cell_members, options, render, &mut textures, &mut embedded)?;
             Ok((content_path(cell), glb))
         })
         .collect::<crate::errors::Result<_>>()?;
@@ -238,6 +246,47 @@ fn subtree_path(cell: Cell) -> String {
     format!("subtrees/{}.{}.{}.subtree", cell.level, cell.x, cell.y)
 }
 
+/// Materializes embedded texture bytes (e.g. glTF/GLB packed images) to temp
+/// files so the path-based atlas packer can read them. Deduplicated by content
+/// hash within a cell; the temp dir and its files drop once the cell's glb is
+/// built.
+struct EmbeddedTextures {
+    dir: tempfile::TempDir,
+    by_hash: HashMap<u64, PathBuf>,
+}
+
+impl EmbeddedTextures {
+    fn new() -> crate::errors::Result<Self> {
+        Ok(Self {
+            dir: tempfile::tempdir().map_err(|e| {
+                SinkError::Cesium3DTilesWriter(format!("failed to create texture temp dir: {e}"))
+            })?,
+            by_hash: HashMap::new(),
+        })
+    }
+
+    /// Write `data` to a temp file (once per distinct content) and return its path.
+    fn materialize(&mut self, data: &RasterData) -> crate::errors::Result<PathBuf> {
+        let mut hasher = DefaultHasher::new();
+        data.bytes.hash(&mut hasher);
+        let hash = hasher.finish();
+        if let Some(path) = self.by_hash.get(&hash) {
+            return Ok(path.clone());
+        }
+        let ext = match data.mime_type {
+            MimeType::ImagePng => "png",
+            MimeType::ImageJpeg => "jpg",
+            MimeType::ImageWebp => "webp",
+        };
+        let path = self.dir.path().join(format!("{hash:016x}.{ext}"));
+        std::fs::write(&path, &data.bytes).map_err(|e| {
+            SinkError::Cesium3DTilesWriter(format!("failed to write embedded texture: {e}"))
+        })?;
+        self.by_hash.insert(hash, path.clone());
+        Ok(path)
+    }
+}
+
 /// The atlas holds many textures side by side, so a repeating wrap would bleed
 /// across sub-images; clamp instead.
 const ATLAS_SAMPLER: glb::SamplerDesc = glb::SamplerDesc {
@@ -257,6 +306,7 @@ fn build_cell_glb(
     options: MetadataOptions,
     render: RenderOptions,
     textures: &mut TextureCache,
+    embedded: &mut EmbeddedTextures,
 ) -> crate::errors::Result<Vec<u8>> {
     let cells = primitive::collect(cell_members);
 
@@ -273,7 +323,7 @@ fn build_cell_glb(
     let mut primitives: Vec<(glb::PrimitiveHandle, Vec<u32>)> = Vec::new();
 
     if let Some(textured) = cells.textured {
-        match build_textured_pages(&mut builder, &textured, render, textures)? {
+        match build_textured_pages(&mut builder, &textured, render, textures, embedded)? {
             Some(pages) => {
                 for page in pages {
                     let material = glb::MaterialDesc {
@@ -367,7 +417,19 @@ fn build_textured_pages(
     textured: &TexturedPrimitive,
     render: RenderOptions,
     textures: &mut TextureCache,
+    embedded: &mut EmbeddedTextures,
 ) -> crate::errors::Result<Option<Vec<TexturedPage>>> {
+    // Resolve each polygon's texture to a local file path: on-disk sources pass
+    // through; embedded (in-memory) sources are materialized to a temp file (once
+    // per distinct content) so the path-based atlas packer can read them.
+    let mut polygon_paths: Vec<PathBuf> = Vec::with_capacity(textured.polygon_texture.len());
+    for source in &textured.polygon_texture {
+        polygon_paths.push(match source {
+            TextureSource::File(path) => path.clone(),
+            TextureSource::Embedded(data) => embedded.materialize(data)?,
+        });
+    }
+
     // Group polygons by source texture, one atlas polygon per source polygon;
     // `slots[p] = (input, polygon-within-input)` locates polygon `p`'s entry in
     // the atlas result.
@@ -378,7 +440,7 @@ fn build_textured_pages(
     for (polygon, &tris) in textured.geom.polygon_tris.iter().enumerate() {
         let corners = tris as usize * 3;
         let corner_off = tri_off * 3;
-        let path = &textured.polygon_texture[polygon];
+        let path = &polygon_paths[polygon];
         let pi = *path_index.entry(path.clone()).or_insert_with(|| {
             inputs.push(TextureInput {
                 path: path.clone(),
@@ -395,7 +457,7 @@ fn build_textured_pages(
         tri_off += tris as usize;
     }
 
-    let scales = texture_target_scales(textured, &inputs, render.texel_size);
+    let scales = texture_target_scales(textured, &polygon_paths, &inputs, render.texel_size);
     for (input, scale) in inputs.iter_mut().zip(scales) {
         input.scale = scale;
     }
@@ -444,6 +506,7 @@ fn build_textured_pages(
 /// a texture by face. `texel_size == 0.0` disables downsampling (scale `1.0`).
 fn texture_target_scales(
     textured: &TexturedPrimitive,
+    polygon_paths: &[PathBuf],
     inputs: &[TextureInput],
     texel_size: f64,
 ) -> Vec<f64> {
@@ -468,7 +531,7 @@ fn texture_target_scales(
         let tris = tris as usize;
         let range = tri_off..tri_off + tris;
         tri_off += tris;
-        let pi = path_input[&textured.polygon_texture[polygon]];
+        let pi = path_input[&polygon_paths[polygon]];
         let Some(size) = dims[pi] else { continue };
         if let Some(mpp) = polygon_metres_per_pixel(&textured.geom, range, size) {
             min_mpp[pi] = min_mpp[pi].min(mpp);
@@ -667,5 +730,66 @@ fn cell_origin(cells: &primitive::CellPrimitives) -> [f64; 3] {
             sum[1] / count as f64,
             sum[2] / count as f64,
         ]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    /// A minimal red 2x2 PNG, encoded in memory.
+    fn tiny_png() -> Vec<u8> {
+        let img = image::RgbaImage::from_pixel(2, 2, image::Rgba([255, 0, 0, 255]));
+        let mut png = Vec::new();
+        image::DynamicImage::ImageRgba8(img)
+            .write_to(&mut Cursor::new(&mut png), image::ImageFormat::Png)
+            .expect("encode png");
+        png
+    }
+
+    // An embedded (in-memory) texture — what a glTF/GLB packed image decodes to —
+    // must be materialized to a temp file, atlased, and embedded as a WebP page,
+    // not dropped. Exercises the whole `Raster::InMemory` writer path.
+    #[test]
+    fn embedded_texture_is_materialized_and_atlased() {
+        let textured = TexturedPrimitive {
+            geom: Geom {
+                positions: vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+                indices: vec![[0, 1, 2]],
+                polygon_normals: vec![[0.0, 0.0, 1.0]],
+                polygon_tris: vec![1],
+                corner_uv: vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]],
+                feature_ids: vec![0, 0, 0],
+            },
+            polygon_texture: vec![TextureSource::Embedded(RasterData {
+                mime_type: MimeType::ImagePng,
+                bytes: bytes::Bytes::from(tiny_png()),
+            })],
+        };
+        let render = RenderOptions {
+            draco: false,
+            compute_flat_normal: false,
+            texel_size: 0.0,
+            atlas_size: 1024,
+            atlas_extrusion: 0,
+        };
+
+        let mut builder = glb::Builder::new();
+        let mut cache = TextureCache::default();
+        let mut embedded = EmbeddedTextures::new().expect("temp dir");
+
+        let pages =
+            build_textured_pages(&mut builder, &textured, render, &mut cache, &mut embedded)
+                .expect("build textured pages")
+                .expect("an in-memory texture must produce an atlas page, not colour-only");
+
+        assert_eq!(pages.len(), 1, "one atlas page for the single texture");
+        assert_eq!(
+            pages[0].geom.indices.len(),
+            1,
+            "the textured triangle is kept"
+        );
+        // The embedded bytes were written to a temp file and cached by content hash.
+        assert_eq!(embedded.by_hash.len(), 1);
     }
 }
