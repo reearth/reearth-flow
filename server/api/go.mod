@@ -27,6 +27,7 @@ require (
 	github.com/reearth/reearth-proto v1.1.0
 	github.com/reearth/reearthx v0.0.0-20260618134917-663d9623c331
 	github.com/samber/lo v1.52.0
+	github.com/sony/gobreaker/v2 v2.4.0
 	github.com/spf13/afero v1.15.0
 	github.com/square/mongo-lock v0.0.0-20230808145049-cfcf499f6bf0
 	github.com/stretchr/testify v1.11.1

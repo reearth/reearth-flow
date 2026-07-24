@@ -4,6 +4,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/k0kubun/pp/v3"
@@ -92,10 +93,14 @@ type (
 		WebsocketAPISecret       string `envconfig:"REEARTH_FLOW_WEBSOCKET_API_SECRET" pp:",omitempty"`
 
 		// cms
-		CMS_Endpoint string          `envconfig:"REEARTH_FLOW_GRPC_ENDPOINT_CMS" pp:",omitempty"`
-		CMS_Token    string          `envconfig:"REEARTH_FLOW_GRPC_TOKEN_CMS" pp:",omitempty"`
-		DB_Users     []appx.NamedURI `pp:",omitempty"`
-		Origins      []string        `pp:",omitempty"`
+		CMS_Endpoint                          string          `envconfig:"REEARTH_FLOW_GRPC_ENDPOINT_CMS" pp:",omitempty"`
+		CMS_Token                             string          `envconfig:"REEARTH_FLOW_GRPC_TOKEN_CMS" pp:",omitempty"`
+		CMS_CircuitBreakerDisabled            bool            `envconfig:"REEARTH_FLOW_CMS_CIRCUIT_BREAKER_DISABLED" default:"false" pp:",omitempty"`
+		CMS_CircuitBreakerConsecutiveFailures uint32          `envconfig:"REEARTH_FLOW_CMS_CIRCUIT_BREAKER_TRIP" default:"0" pp:",omitempty"`
+		CMS_CircuitBreakerTimeout             time.Duration   `envconfig:"REEARTH_FLOW_CMS_CIRCUIT_BREAKER_TIMEOUT" default:"0" pp:",omitempty"`
+		CMS_CircuitBreakerInterval            time.Duration   `envconfig:"REEARTH_FLOW_CMS_CIRCUIT_BREAKER_INTERVAL" default:"0" pp:",omitempty"`
+		DB_Users                              []appx.NamedURI `pp:",omitempty"`
+		Origins                               []string        `pp:",omitempty"`
 
 		// auth
 		Auth AuthConfigs `pp:",omitempty"`
