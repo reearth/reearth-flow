@@ -388,7 +388,7 @@
         "appearance": {
           "anyOf": [
             {
-              "$ref": "#/definitions/Appearance"
+              "$ref": "#/definitions/AppearanceWire"
             },
             {
               "type": "null"
@@ -397,8 +397,8 @@
         }
       }
     },
-    "Appearance": {
-      "description": "Materials, themes, per-face bindings and per-theme UV for a surface geometry.\n\nSealed: the fields are private and every value is built through [`append_theme`] or [`Appearance::from_parts`]. A `UvSet` inside a [`ThemeBinding`] must stay length-matched to the host geometry's corner buffer — a fact `Appearance` cannot check on its own — so construction is confined to the geometry crate, where the corner count is in hand. Read through [`materials`](Self::materials) / [`themes`](Self::themes) / [`default_theme`](Self::default_theme).",
+    "AppearanceWire": {
+      "description": "Materials, themes, per-face material bindings and per-theme UV for one surface geometry.",
       "type": "object",
       "required": [
         "default_theme",
@@ -407,21 +407,21 @@
       ],
       "properties": {
         "materials": {
-          "description": "Palette; bindings index into it.",
+          "description": "Material palette; the bindings in `themes` index into it by position.",
           "type": "array",
           "items": {
             "$ref": "#/definitions/Material"
           }
         },
         "themes": {
-          "description": "One independent binding per theme; length >= 1.",
+          "description": "One independent binding per theme; never empty.",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/ThemeBinding"
+            "$ref": "#/definitions/ThemeBindingWire"
           }
         },
         "default_theme": {
-          "description": "Active theme for single-theme sinks (glTF / OBJ / CZML / 3D Tiles).",
+          "description": "Which of `themes` a single-theme consumer (glTF / OBJ / CZML / 3D Tiles) should render.",
           "allOf": [
             {
               "$ref": "#/definitions/ThemeId"
@@ -871,17 +871,21 @@
         }
       ]
     },
-    "ThemeBinding": {
-      "description": "One theme's per-side face-to-material binding together with the UV sets that theme's textured materials sample.",
+    "ThemeBindingWire": {
+      "description": "One theme's face-to-material binding plus the UV sets that theme's textured materials sample.",
       "type": "object",
       "required": [
         "front",
-        "theme",
-        "uv_sets"
+        "theme"
       ],
       "properties": {
         "theme": {
-          "$ref": "#/definitions/ThemeId"
+          "description": "This theme's name, unique within the appearance.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/ThemeId"
+            }
+          ]
         },
         "front": {
           "description": "Front-side face-to-material binding.",
@@ -892,7 +896,7 @@
           ]
         },
         "back": {
-          "description": "Back-side binding; `None` = single-sided (only the front is painted). When `Some`, the back side has its own face-to-material mapping: it may bind different materials, or leave faces unbound.",
+          "description": "Back-side binding; absent means single-sided, i.e. only the front is painted. When present the back side has its own mapping, which may bind different materials or leave faces unbound.",
           "anyOf": [
             {
               "$ref": "#/definitions/FaceBinding"
@@ -903,10 +907,10 @@
           ]
         },
         "uv_sets": {
-          "description": "This theme's UV pool; one set per (side, channel) its materials reference. Each `Explicit` array is parallel to the host geometry's corner buffer.",
+          "description": "This theme's UV pool: one entry per `(side, channel)` its materials reference.",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/UvSet"
+            "$ref": "#/definitions/UvSetWire"
           }
         }
       }
@@ -957,12 +961,13 @@
       ]
     },
     "MaterialIndex": {
+      "description": "Position of a material in the enclosing appearance's `materials` palette, counting from zero.",
       "type": "integer",
       "format": "uint32",
       "minimum": 0.0
     },
-    "UvSet": {
-      "description": "One UV set, owned by the [`ThemeBinding`](super::ThemeBinding) whose theme it belongs to. The `Explicit` array is parallel to the host geometry's corner buffer; the alignment is fixed by the geometry type, not tagged here.",
+    "UvSetWire": {
+      "description": "One UV set belonging to the theme that owns it.\n\nA textured map does not point at a UV set directly; the set is found by matching. To resolve the UV a face samples:\n\n1. Pick the [`ThemeBindingWire`] whose `theme` you are rendering. 2. Look the face up in that binding's `front` (or `back`) to get a material index, and remember which of the two sides you used. 3. Index the appearance's `materials` palette with it. 4. Read the `uv_channel` of the material map you are shading, then take the entry of the same theme's `uv_sets` whose `side` and `channel` both match.",
       "type": "object",
       "required": [
         "channel",
@@ -971,7 +976,7 @@
       ],
       "properties": {
         "side": {
-          "description": "Which surface side these coordinates parameterise. `Front` for the common single-sided case.",
+          "description": "Surface side these coordinates parameterise; `Front` in the common single-sided case.",
           "allOf": [
             {
               "$ref": "#/definitions/Side"
@@ -979,7 +984,7 @@
           ]
         },
         "channel": {
-          "description": "Material-local UV channel a textured map samples (the glTF `texCoord` index); `ChannelId(0)` in the common single-map case. A `(theme, side)` holds one UV set per distinct channel its materials reference.",
+          "description": "Material-local UV channel these coordinates serve, matched against a texture's `uv_channel`; `0` in the common single-map case. The value has no meaning outside its own theme and side.",
           "allOf": [
             {
               "$ref": "#/definitions/ChannelId"
@@ -987,7 +992,7 @@
           ]
         },
         "uv": {
-          "$ref": "#/definitions/UvSource"
+          "$ref": "#/definitions/UvSourceWire"
         }
       }
     },
@@ -999,11 +1004,11 @@
         "Back"
       ]
     },
-    "UvSource": {
-      "description": "Either explicit per-corner coordinates, or a retained world-to-texture matrix.\n\nAn affine georeferenced map is baked to `Explicit` on read; a projective world-to-texture matrix is retained, and collapsed to `Explicit` at any non-affine operation or per-vertex-only sink.\n\nThere is deliberately **no per-vertex variant**. A surface's UV is assumed *affine* in position (a photographic / orthophoto projection onto a planar face), so it reduces to one `WorldToTexture` matrix — and `Explicit` per-corner UV is an exact sampling of that matrix, recoverable from 3 `(position, UV)` pairs. So triangulating a face (earcut / spade) carries the single matrix instead of a per-vertex array: a Delaunay re-ordering is irrelevant (UV is positional) and inserted (Steiner) vertices get exact UV by evaluating it. `Explicit` ⊕ `WorldToTexture` therefore suffices; a *welded multi-face* mesh, whose faces carry different matrices, bakes them to per-corner `Explicit`.",
+    "UvSourceWire": {
+      "description": "Where a UV set's coordinates come from: sampled per corner, or evaluated from a matrix.\n\n# Coordinate convention\n\nThe UV origin is **top-left, with `v` increasing downward** — the glTF and image-storage convention, in which `(0, 0)` is the first texel. Every producer and consumer assumes it; a source using a bottom-left origin (CityGML) is converted at ingest, and a consumer whose own convention differs must convert at its own boundary.",
       "oneOf": [
         {
-          "description": "Flat UV array parallel to the host geometry's corner buffer.",
+          "description": "Per-corner coordinates, nested to mirror the host geometry's faces and rings. See [`FaceUvWire`] for how the nesting lines up with each geometry type.",
           "type": "object",
           "required": [
             "Explicit"
@@ -1012,20 +1017,14 @@
             "Explicit": {
               "type": "array",
               "items": {
-                "type": "array",
-                "items": {
-                  "type": "number",
-                  "format": "double"
-                },
-                "maxItems": 2,
-                "minItems": 2
+                "$ref": "#/definitions/FaceUvWire"
               }
             }
           },
           "additionalProperties": false
         },
         {
-          "description": "A 3x4 world-to-texture matrix; projective (perspective divide).",
+          "description": "A 3x4 world-to-texture projective matrix, evaluated per position instead of stored per corner. Applies to the whole surface, so it carries no nesting.",
           "type": "object",
           "required": [
             "WorldToTexture"
@@ -1038,6 +1037,44 @@
           "additionalProperties": false
         }
       ]
+    },
+    "FaceUvWire": {
+      "description": "UV coordinates for one host face, nested to mirror that face's rings.\n\nEach entry pairs up positionally with a corner of the host geometry: `exterior` runs parallel to the face's exterior ring, and `holes[j]` to its `j`-th hole ring. The face itself is identified by position, so the enclosing array runs parallel to the host's own face list:\n\n- `Polygon2D` / `Polygon3D` — exactly one entry, whose `exterior` matches the polygon's `exterior` and whose `holes` match its `interiors`. - `PolygonMesh2D` / `PolygonMesh3DData` — one entry per member of `faces`, matching that face's `exterior` and `holes`. - `TriangularMesh2D` / `TriangularMesh3DData` — one entry per member of `triangles`, whose `exterior` holds that triangle's three corners and whose `holes` is empty.",
+      "type": "object",
+      "required": [
+        "exterior"
+      ],
+      "properties": {
+        "exterior": {
+          "description": "UV for the face's exterior ring, one pair per corner.",
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "number",
+              "format": "double"
+            },
+            "maxItems": 2,
+            "minItems": 2
+          }
+        },
+        "holes": {
+          "description": "UV for each hole ring, in the host's hole order, one pair per corner.",
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "double"
+              },
+              "maxItems": 2,
+              "minItems": 2
+            }
+          }
+        }
+      }
     },
     "TexMatrix": {
       "description": "A 3x4 world-to-texture projective matrix. Maps a homogeneous world position `(x, y, z, 1)` to `(s', t', q')`, with the texture coordinate recovered as `(s, t) = (s'/q', t'/q')`.",
@@ -1097,7 +1134,7 @@
         "appearance": {
           "anyOf": [
             {
-              "$ref": "#/definitions/Appearance"
+              "$ref": "#/definitions/AppearanceWire"
             },
             {
               "type": "null"
@@ -1184,7 +1221,7 @@
         "appearance": {
           "anyOf": [
             {
-              "$ref": "#/definitions/Appearance"
+              "$ref": "#/definitions/AppearanceWire"
             },
             {
               "type": "null"
@@ -1761,7 +1798,7 @@
         "appearance": {
           "anyOf": [
             {
-              "$ref": "#/definitions/Appearance"
+              "$ref": "#/definitions/AppearanceWire"
             },
             {
               "type": "null"
@@ -1825,7 +1862,7 @@
         "appearance": {
           "anyOf": [
             {
-              "$ref": "#/definitions/Appearance"
+              "$ref": "#/definitions/AppearanceWire"
             },
             {
               "type": "null"
@@ -1896,7 +1933,7 @@
         "appearance": {
           "anyOf": [
             {
-              "$ref": "#/definitions/Appearance"
+              "$ref": "#/definitions/AppearanceWire"
             },
             {
               "type": "null"

@@ -3,13 +3,23 @@
 //! The wire form lists the triangles as explicit vertex-index triples, widened
 //! from the stored index buffer. Decoding packs them back through `from_parts`,
 //! whose index width is fixed by the vertex count, so the round trip is exact.
+//!
+//! Per-corner UV is nested to match, one three-corner entry per triangle, rather
+//! than one flat buffer across the whole mesh.
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::appearance::Appearance;
+use crate::appearance::feature_write::{
+    decode_appearance, encode_appearance, AppearanceWire, FaceRings,
+};
 use crate::coordinate::CoordinateFrame;
 
 use super::{TriangularMesh2D, TriangularMesh3DData};
+
+/// One face per triangle, each a single three-corner ring.
+fn triangle_layout(triangles: usize) -> Vec<FaceRings> {
+    (0..triangles).map(|_| FaceRings::simple(3)).collect()
+}
 
 /// Decoded wire form of a [`TriangularMesh2D`].
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -21,7 +31,7 @@ struct TriangularMesh2DWire {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     z: Option<Vec<f64>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    appearance: Option<Appearance>,
+    appearance: Option<AppearanceWire>,
 }
 
 /// Decoded wire form of a [`TriangularMesh3DData`].
@@ -31,18 +41,22 @@ struct TriangularMesh3DDataWire {
     vertices: Vec<[f64; 3]>,
     triangles: Vec<[u32; 3]>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    appearance: Option<Appearance>,
+    appearance: Option<AppearanceWire>,
 }
 
-impl From<&TriangularMesh2D> for TriangularMesh2DWire {
-    fn from(m: &TriangularMesh2D) -> Self {
-        TriangularMesh2DWire {
+impl TryFrom<&TriangularMesh2D> for TriangularMesh2DWire {
+    type Error = crate::error::Error;
+
+    fn try_from(m: &TriangularMesh2D) -> Result<Self, Self::Error> {
+        let triangles: Vec<[u32; 3]> = m.triangles().collect();
+        let layout = triangle_layout(triangles.len());
+        Ok(TriangularMesh2DWire {
             frame: m.frame.clone(),
             vertices: m.vertices.clone(),
-            triangles: m.triangles().collect(),
+            appearance: encode_appearance(&m.appearance, &layout)?,
+            triangles,
             z: m.z.as_ref().map(|z| z.to_vec()),
-            appearance: m.appearance.clone(),
-        }
+        })
     }
 }
 
@@ -50,21 +64,26 @@ impl TryFrom<TriangularMesh2DWire> for TriangularMesh2D {
     type Error = crate::error::Error;
 
     fn try_from(w: TriangularMesh2DWire) -> Result<Self, Self::Error> {
+        let appearance = decode_appearance(w.appearance, &triangle_layout(w.triangles.len()))?;
         let mut mesh =
             TriangularMesh2D::from_parts(w.frame, w.vertices, w.triangles.into_iter().flatten())?;
         mesh.z = w.z.map(Vec::into_boxed_slice);
-        mesh.appearance = w.appearance;
+        mesh.appearance = appearance;
         Ok(mesh)
     }
 }
 
-impl From<&TriangularMesh3DData> for TriangularMesh3DDataWire {
-    fn from(m: &TriangularMesh3DData) -> Self {
-        TriangularMesh3DDataWire {
+impl TryFrom<&TriangularMesh3DData> for TriangularMesh3DDataWire {
+    type Error = crate::error::Error;
+
+    fn try_from(m: &TriangularMesh3DData) -> Result<Self, Self::Error> {
+        let triangles: Vec<[u32; 3]> = m.triangles().collect();
+        let layout = triangle_layout(triangles.len());
+        Ok(TriangularMesh3DDataWire {
             vertices: m.vertices.clone(),
-            triangles: m.triangles().collect(),
-            appearance: m.appearance.clone(),
-        }
+            appearance: encode_appearance(&m.appearance, &layout)?,
+            triangles,
+        })
     }
 }
 
@@ -72,16 +91,19 @@ impl TryFrom<TriangularMesh3DDataWire> for TriangularMesh3DData {
     type Error = crate::error::Error;
 
     fn try_from(w: TriangularMesh3DDataWire) -> Result<Self, Self::Error> {
+        let appearance = decode_appearance(w.appearance, &triangle_layout(w.triangles.len()))?;
         let mut mesh =
             TriangularMesh3DData::from_parts(w.vertices, w.triangles.into_iter().flatten())?;
-        mesh.appearance = w.appearance;
+        mesh.appearance = appearance;
         Ok(mesh)
     }
 }
 
 impl Serialize for TriangularMesh2D {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        TriangularMesh2DWire::from(self).serialize(serializer)
+        TriangularMesh2DWire::try_from(self)
+            .map_err(serde::ser::Error::custom)?
+            .serialize(serializer)
     }
 }
 
@@ -94,7 +116,9 @@ impl<'de> Deserialize<'de> for TriangularMesh2D {
 
 impl Serialize for TriangularMesh3DData {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        TriangularMesh3DDataWire::from(self).serialize(serializer)
+        TriangularMesh3DDataWire::try_from(self)
+            .map_err(serde::ser::Error::custom)?
+            .serialize(serializer)
     }
 }
 
@@ -130,6 +154,46 @@ impl schemars::JsonSchema for TriangularMesh3DData {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn triangular_mesh_uv_nests_per_triangle() {
+        use crate::test_support::{explicit_uv, textured, theme};
+
+        let mut mesh = TriangularMesh2D::from_parts(
+            CoordinateFrame::Euclidean,
+            vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0], [1.0, 1.0]],
+            [0u32, 1, 2, 1, 3, 2],
+        )
+        .unwrap();
+        // Distinct values, so the flattening order is observable.
+        let corners: Vec<[f64; 2]> = (0..6).map(|i| [i as f64, 0.0]).collect();
+        mesh.set_appearance(theme("rgb"), textured(), Some(explicit_uv(&corners)))
+            .unwrap();
+
+        let json = serde_json::to_value(&mesh).unwrap();
+        let nested = &json["appearance"]["themes"][0]["uv_sets"][0]["uv"]["Explicit"];
+        assert_eq!(
+            nested.as_array().unwrap().len(),
+            2,
+            "one entry per triangle"
+        );
+        assert_eq!(
+            nested[0]["exterior"],
+            serde_json::json!([[0.0, 0.0], [1.0, 0.0], [2.0, 0.0]])
+        );
+        assert_eq!(
+            nested[1]["exterior"],
+            serde_json::json!([[3.0, 0.0], [4.0, 0.0], [5.0, 0.0]])
+        );
+        assert!(
+            nested[0].get("holes").is_none(),
+            "a triangle carries no hole rings"
+        );
+
+        let back: TriangularMesh2D =
+            serde_json::from_str(&serde_json::to_string(&mesh).unwrap()).unwrap();
+        assert_eq!(mesh, back);
+    }
 
     #[test]
     fn mesh2d_round_trips_with_elevation() {

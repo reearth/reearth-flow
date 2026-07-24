@@ -5,14 +5,30 @@
 //! stored `face_indices` / `face_offsets` / `interior_offsets` buffers. Decoding
 //! flattens the faces back into those buffers, whose widths are re-derived from
 //! the vertex and corner counts, so the round trip is exact.
+//!
+//! Per-corner UV is nested the same way, so it mirrors the faces and their rings
+//! rather than the flat corner buffer they concatenate into.
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
-use crate::appearance::Appearance;
+use crate::appearance::feature_write::{
+    decode_appearance, encode_appearance, AppearanceWire, FaceRings,
+};
 use crate::coordinate::CoordinateFrame;
 use crate::index::IndexBuffer;
 
 use super::{PolygonMesh2D, PolygonMesh3DData};
+
+/// The mesh's ring layout, read straight off the decoded faces.
+fn mesh_layout(faces: &[FaceWire]) -> Vec<FaceRings> {
+    faces
+        .iter()
+        .map(|face| FaceRings {
+            exterior: face.exterior.len(),
+            holes: face.holes.iter().map(Vec::len).collect(),
+        })
+        .collect()
+}
 
 /// One mesh face: an exterior ring of vertex indices and any hole rings.
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -33,7 +49,7 @@ struct PolygonMesh2DWire {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     z: Option<Vec<f64>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    appearance: Option<Appearance>,
+    appearance: Option<AppearanceWire>,
 }
 
 /// Decoded wire form of a [`PolygonMesh3DData`].
@@ -43,7 +59,7 @@ struct PolygonMesh3DDataWire {
     vertices: Vec<[f64; 3]>,
     faces: Vec<FaceWire>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    appearance: Option<Appearance>,
+    appearance: Option<AppearanceWire>,
 }
 
 /// Read a scalar CSR buffer as a flat `u32` list.
@@ -118,20 +134,24 @@ fn flatten_faces(faces: &[FaceWire]) -> (Vec<u32>, Vec<u32>, Vec<u32>) {
     (face_indices, face_offsets, interior_offsets)
 }
 
-impl From<&PolygonMesh2D> for PolygonMesh2DWire {
-    fn from(m: &PolygonMesh2D) -> Self {
+impl TryFrom<&PolygonMesh2D> for PolygonMesh2DWire {
+    type Error = crate::error::Error;
+
+    fn try_from(m: &PolygonMesh2D) -> Result<Self, Self::Error> {
         let (face_indices, face_offsets, interior_offsets) = m.csr_buffers();
-        PolygonMesh2DWire {
+        let faces = decode_faces(
+            &flat(face_indices),
+            &flat(face_offsets),
+            &flat(interior_offsets),
+        );
+        let layout = mesh_layout(&faces);
+        Ok(PolygonMesh2DWire {
             frame: m.frame.clone(),
             vertices: m.vertices.clone(),
-            faces: decode_faces(
-                &flat(face_indices),
-                &flat(face_offsets),
-                &flat(interior_offsets),
-            ),
+            appearance: encode_appearance(&m.appearance, &layout)?,
+            faces,
             z: m.z.as_ref().map(|z| z.to_vec()),
-            appearance: m.appearance.clone(),
-        }
+        })
     }
 }
 
@@ -139,6 +159,7 @@ impl TryFrom<PolygonMesh2DWire> for PolygonMesh2D {
     type Error = crate::error::Error;
 
     fn try_from(w: PolygonMesh2DWire) -> Result<Self, Self::Error> {
+        let appearance = decode_appearance(w.appearance, &mesh_layout(&w.faces))?;
         let (face_indices, face_offsets, interior_offsets) = flatten_faces(&w.faces);
         let mut mesh = PolygonMesh2D::from_raw_parts(
             w.frame,
@@ -148,23 +169,27 @@ impl TryFrom<PolygonMesh2DWire> for PolygonMesh2D {
             interior_offsets,
         )?;
         mesh.z = w.z.map(Vec::into_boxed_slice);
-        mesh.appearance = w.appearance;
+        mesh.appearance = appearance;
         Ok(mesh)
     }
 }
 
-impl From<&PolygonMesh3DData> for PolygonMesh3DDataWire {
-    fn from(m: &PolygonMesh3DData) -> Self {
+impl TryFrom<&PolygonMesh3DData> for PolygonMesh3DDataWire {
+    type Error = crate::error::Error;
+
+    fn try_from(m: &PolygonMesh3DData) -> Result<Self, Self::Error> {
         let (face_indices, face_offsets, interior_offsets) = m.csr_buffers();
-        PolygonMesh3DDataWire {
+        let faces = decode_faces(
+            &flat(face_indices),
+            &flat(face_offsets),
+            &flat(interior_offsets),
+        );
+        let layout = mesh_layout(&faces);
+        Ok(PolygonMesh3DDataWire {
             vertices: m.vertices.clone(),
-            faces: decode_faces(
-                &flat(face_indices),
-                &flat(face_offsets),
-                &flat(interior_offsets),
-            ),
-            appearance: m.appearance.clone(),
-        }
+            appearance: encode_appearance(&m.appearance, &layout)?,
+            faces,
+        })
     }
 }
 
@@ -172,6 +197,7 @@ impl TryFrom<PolygonMesh3DDataWire> for PolygonMesh3DData {
     type Error = crate::error::Error;
 
     fn try_from(w: PolygonMesh3DDataWire) -> Result<Self, Self::Error> {
+        let appearance = decode_appearance(w.appearance, &mesh_layout(&w.faces))?;
         let (face_indices, face_offsets, interior_offsets) = flatten_faces(&w.faces);
         let mut mesh = PolygonMesh3DData::from_raw_parts(
             w.vertices,
@@ -179,14 +205,16 @@ impl TryFrom<PolygonMesh3DDataWire> for PolygonMesh3DData {
             face_offsets,
             interior_offsets,
         )?;
-        mesh.appearance = w.appearance;
+        mesh.appearance = appearance;
         Ok(mesh)
     }
 }
 
 impl Serialize for PolygonMesh2D {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        PolygonMesh2DWire::from(self).serialize(serializer)
+        PolygonMesh2DWire::try_from(self)
+            .map_err(serde::ser::Error::custom)?
+            .serialize(serializer)
     }
 }
 
@@ -199,7 +227,9 @@ impl<'de> Deserialize<'de> for PolygonMesh2D {
 
 impl Serialize for PolygonMesh3DData {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        PolygonMesh3DDataWire::from(self).serialize(serializer)
+        PolygonMesh3DDataWire::try_from(self)
+            .map_err(serde::ser::Error::custom)?
+            .serialize(serializer)
     }
 }
 
@@ -253,6 +283,47 @@ mod tests {
         .unwrap();
         let json = serde_json::to_string(&mesh).unwrap();
         let back: PolygonMesh2D = serde_json::from_str(&json).unwrap();
+        assert_eq!(mesh, back);
+    }
+
+    #[test]
+    fn mesh_uv_nests_per_face_and_ring() {
+        use crate::polygon::Polygon3D;
+        use crate::test_support::{explicit_uv, textured, theme};
+
+        let outer = [
+            [0.0, 0.0, 0.0],
+            [4.0, 0.0, 0.0],
+            [4.0, 4.0, 0.0],
+            [0.0, 4.0, 0.0],
+        ];
+        let hole = vec![
+            [1.0, 1.0, 0.0],
+            [2.0, 1.0, 0.0],
+            [2.0, 2.0, 0.0],
+            [1.0, 2.0, 0.0],
+        ];
+        let mut poly = Polygon3D::from_rings(CoordinateFrame::Euclidean, outer, vec![hole]);
+        let corners: Vec<[f64; 2]> = (0..8).map(|i| [i as f64, 0.0]).collect();
+        poly.set_appearance(theme("rgb"), textured(), Some(explicit_uv(&corners)))
+            .unwrap();
+        let mesh = PolygonMesh3DData::from_polygons([&poly]);
+
+        let json = serde_json::to_value(&mesh).unwrap();
+        let nested = &json["appearance"]["themes"][0]["uv_sets"][0]["uv"]["Explicit"];
+        assert_eq!(nested.as_array().unwrap().len(), 1, "one entry per face");
+        // The nesting mirrors the face's own rings.
+        assert_eq!(
+            nested[0]["exterior"].as_array().unwrap().len(),
+            json["faces"][0]["exterior"].as_array().unwrap().len()
+        );
+        assert_eq!(
+            nested[0]["holes"][0].as_array().unwrap().len(),
+            json["faces"][0]["holes"][0].as_array().unwrap().len()
+        );
+
+        let back: PolygonMesh3DData =
+            serde_json::from_str(&serde_json::to_string(&mesh).unwrap()).unwrap();
         assert_eq!(mesh, back);
     }
 

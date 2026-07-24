@@ -16,6 +16,8 @@
 //! `Option<Appearance>`. `Solid` and `Csg` carry none of their own; their meshes
 //! carry theirs. `Point`, `LineString` and `PointCloud` carry no appearance.
 
+#[cfg(not(feature = "debug-geom-feature-write"))]
+pub(crate) mod feature_write;
 pub mod material;
 pub mod texture;
 pub mod uv;
@@ -101,6 +103,7 @@ impl<'de> Deserialize<'de> for MaterialIndex {
 }
 
 // The wire form is the logical palette index, so the schema is that of a `u32`.
+// Delegating drops the type's own docs, so the description is restated here.
 #[cfg(feature = "schema")]
 impl schemars::JsonSchema for MaterialIndex {
     fn schema_name() -> String {
@@ -108,7 +111,13 @@ impl schemars::JsonSchema for MaterialIndex {
     }
 
     fn json_schema(generator: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
-        <u32 as schemars::JsonSchema>::json_schema(generator)
+        let mut schema = <u32 as schemars::JsonSchema>::json_schema(generator).into_object();
+        schema.metadata().description = Some(
+            "Position of a material in the enclosing appearance's `materials` palette, \
+             counting from zero."
+                .to_string(),
+        );
+        schema.into()
     }
 }
 
@@ -121,7 +130,9 @@ impl schemars::JsonSchema for MaterialIndex {
 /// confined to the geometry crate, where the corner count is in hand. Read
 /// through [`materials`](Self::materials) / [`themes`](Self::themes) /
 /// [`default_theme`](Self::default_theme).
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+///
+/// The intermediate-data form is `AppearanceWire`, which nests UV to mirror the
+/// host's rings; this type is not itself a wire type.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Appearance {
     /// Palette; bindings index into it.
@@ -178,7 +189,6 @@ impl Appearance {
 
 /// One theme's per-side face-to-material binding together with the UV sets that
 /// theme's textured materials sample.
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct ThemeBinding {
     pub theme: ThemeId,

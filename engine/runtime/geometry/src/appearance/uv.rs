@@ -29,7 +29,6 @@ use super::{ChannelId, Side};
 /// One UV set, owned by the [`ThemeBinding`](super::ThemeBinding) whose theme it
 /// belongs to. The `Explicit` array is parallel to the host geometry's corner
 /// buffer; the alignment is fixed by the geometry type, not tagged here.
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct UvSet {
     /// Which surface side these coordinates parameterise. `Front` for the
@@ -58,7 +57,6 @@ pub struct UvSet {
 /// positional) and inserted (Steiner) vertices get exact UV by evaluating it.
 /// `Explicit` ⊕ `WorldToTexture` therefore suffices; a *welded multi-face* mesh,
 /// whose faces carry different matrices, bakes them to per-corner `Explicit`.
-#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum UvSource {
     /// Flat UV array parallel to the host geometry's corner buffer.
