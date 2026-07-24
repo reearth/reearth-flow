@@ -39,6 +39,8 @@ use serde::{Deserialize, Serialize};
 
 #[cfg(feature = "new-geometry")]
 use reearth_flow_geometry::ops::Flatten;
+#[cfg(feature = "new-geometry")]
+use reearth_flow_types::AttributeValue;
 
 /// Minimum number of triangles to trigger file-backed output for TriangularMesh splits.
 #[cfg(not(feature = "new-geometry"))]
@@ -224,10 +226,14 @@ impl Processor for GeometrySplitter {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
             }
             Some(members) => {
-                for (geometry, attributes) in members {
+                for (index, (geometry, attributes)) in members.into_iter().enumerate() {
                     let mut new_feature = feature.clone();
                     *new_feature.geometry_mut() = geometry;
                     new_feature.extend(attributes);
+                    new_feature.insert(
+                        "_split_index",
+                        AttributeValue::Number(serde_json::Number::from(index + 1)),
+                    );
                     fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
                 }
             }
