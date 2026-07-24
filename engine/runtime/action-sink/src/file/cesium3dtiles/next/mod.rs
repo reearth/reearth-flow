@@ -438,7 +438,7 @@ fn build_textured_pages(
     }
 
     // Only reached with a codec set (see `build_cell_glb`); default to the
-    // enum's `KTX2/UASTC`.
+    // enum's `KTX2/ETC1S`.
     let codec = codec_for(render.texture_codec.unwrap_or_default());
     let built = match build_atlas_multipage(
         &inputs,
