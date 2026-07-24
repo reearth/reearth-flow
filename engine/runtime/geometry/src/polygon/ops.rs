@@ -281,6 +281,39 @@ fn open_ring_positions<const N: usize>(
     num_outer
 }
 
+use crate::ops::ForceTwoDimension;
+
+impl ForceTwoDimension for Polygon2D {
+    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, UnsupportedOperation> {
+        self.z = None; // drop any 2.5D elevation; rings and appearance carry over
+        Ok(Euclidean2DGeometry::Polygon(Box::new(Polygon2D {
+            frame: self.frame.clone(),
+            coords: std::mem::take(&mut self.coords),
+            interior_offsets: std::mem::take(&mut self.interior_offsets),
+            z: None,
+            appearance: self.appearance.take(),
+        })))
+    }
+}
+
+impl ForceTwoDimension for Polygon3D {
+    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, UnsupportedOperation> {
+        // Only the coordinate embedding changes; ring offsets and appearance
+        // (including per-corner UV, which is not indexed by Z) carry over.
+        let coords = std::mem::take(&mut self.coords)
+            .iter()
+            .map(|&[x, y, _]| [x, y])
+            .collect();
+        Ok(Euclidean2DGeometry::Polygon(Box::new(Polygon2D {
+            frame: self.frame.clone(),
+            coords,
+            interior_offsets: std::mem::take(&mut self.interior_offsets),
+            z: None,
+            appearance: self.appearance.take(),
+        })))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
