@@ -272,7 +272,7 @@ fn triangle_corners(
         Some(idx) => match mode {
             Mode::Triangles => {
                 for chunk in idx.chunks(3) {
-                    if let [a, b, c] = *chunk {
+                    if let &[a, b, c] = chunk {
                         tris.push([a, b, c]);
                     }
                 }
@@ -300,7 +300,7 @@ fn triangle_corners(
         None => match mode {
             Mode::Triangles => {
                 for chunk in (0..vertex_count).collect::<Vec<_>>().chunks(3) {
-                    if let [a, b, c] = *chunk {
+                    if let &[a, b, c] = chunk {
                         tris.push([a, b, c]);
                     }
                 }
@@ -567,9 +567,7 @@ fn build_feature(
         AttributeValue::Number(serde_json::Number::from(primitive_count)),
     );
 
-    let mut feature = Feature::new_with_attributes(attributes);
-    feature.geometry = Arc::new(geometry);
-    feature
+    Feature::new_with_attributes_and_geometry(attributes, geometry)
 }
 
 fn string_or_array(values: &[String]) -> AttributeValue {
