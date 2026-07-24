@@ -22,20 +22,30 @@ use crate::validation_next::Validate;
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
 /// A `Multi*` collection of 2D geometries; members may differ in coordinate frame.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
 pub struct Collection2D {
     members: Vec<Euclidean2DGeometry>,
     /// Per-member attributes, parallel to `members`; empty = no member carries
     /// any. Child-scoped.
+    #[cfg_attr(
+        feature = "schema",
+        schemars(with = "Vec<std::collections::HashMap<String, serde_json::Value>>")
+    )]
     attrs: Vec<Attributes>,
 }
 
 /// A `Multi*` collection of 3D geometries; members may differ in coordinate frame.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
 pub struct Collection3D {
     members: Vec<Euclidean3DGeometry>,
     /// Per-member attributes, parallel to `members`; empty = no member carries
     /// any. Child-scoped.
+    #[cfg_attr(
+        feature = "schema",
+        schemars(with = "Vec<std::collections::HashMap<String, serde_json::Value>>")
+    )]
     attrs: Vec<Attributes>,
 }
 

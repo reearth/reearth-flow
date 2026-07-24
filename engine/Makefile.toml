@@ -148,6 +148,17 @@ cargo run --package reearth-flow-cli -- scaffold-i18n --dir "$PWD/schema/i18n/ac
 ''',
 ]
 
+# Generates the production intermediate-data (feature) JSON schema.
+# Run after changing the feature envelope or any geometry leaf's wire form; commit
+# the result.
+[tasks.schema-feature]
+script = [
+  '''
+#!/usr/bin/env bash -eux
+cargo run --package reearth-flow-cli --features schema -- schema-feature > ./schema/feature-intermediate.schema.json
+''',
+]
+
 # Generates translated schema files and docs from the current i18n source files.
 # Run after filling in translations in schema/i18n/actions/.
 [tasks.schema-translated]

@@ -16,6 +16,7 @@ mod ops;
 mod validation;
 
 /// A polyline in 2D space, lying at a single optional elevation (2.5D).
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct LineString2D {
     /// Coordinate frame these coords are expressed in.
@@ -26,6 +27,7 @@ pub struct LineString2D {
 }
 
 /// A polyline in 3D space.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct LineString3D {
     /// Coordinate frame these coords are expressed in.

@@ -11,6 +11,7 @@ mod validation;
 
 /// A single position in 2D space.
 /// Used for CityGML `gml:Point` and 2D point features.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Point2D {
     /// Coordinate frame this position is expressed in.
@@ -20,6 +21,7 @@ pub struct Point2D {
 
 /// A single position in 3D space.
 /// Used for CityGML `gml:Point`, OBJ vertices, and 3D point features.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Point3D {
     /// Coordinate frame this position is expressed in.

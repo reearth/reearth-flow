@@ -15,6 +15,7 @@ use crate::index::IndexBuffer;
 use super::{PolygonMesh2D, PolygonMesh3DData};
 
 /// One mesh face: an exterior ring of vertex indices and any hole rings.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize)]
 struct FaceWire {
     exterior: Vec<u32>,
@@ -23,6 +24,7 @@ struct FaceWire {
 }
 
 /// Decoded wire form of a [`PolygonMesh2D`].
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize)]
 struct PolygonMesh2DWire {
     frame: CoordinateFrame,
@@ -35,6 +37,7 @@ struct PolygonMesh2DWire {
 }
 
 /// Decoded wire form of a [`PolygonMesh3DData`].
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize)]
 struct PolygonMesh3DDataWire {
     vertices: Vec<[f64; 3]>,
@@ -204,6 +207,28 @@ impl<'de> Deserialize<'de> for PolygonMesh3DData {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         PolygonMesh3DData::try_from(PolygonMesh3DDataWire::deserialize(deserializer)?)
             .map_err(serde::de::Error::custom)
+    }
+}
+
+// The intermediate-data schema is the wire form, so each leaf's schema is its
+// wire struct's.
+#[cfg(feature = "schema")]
+impl schemars::JsonSchema for PolygonMesh2D {
+    fn schema_name() -> String {
+        "PolygonMesh2D".to_string()
+    }
+    fn json_schema(generator: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+        <PolygonMesh2DWire as schemars::JsonSchema>::json_schema(generator)
+    }
+}
+
+#[cfg(feature = "schema")]
+impl schemars::JsonSchema for PolygonMesh3DData {
+    fn schema_name() -> String {
+        "PolygonMesh3DData".to_string()
+    }
+    fn json_schema(generator: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+        <PolygonMesh3DDataWire as schemars::JsonSchema>::json_schema(generator)
     }
 }
 

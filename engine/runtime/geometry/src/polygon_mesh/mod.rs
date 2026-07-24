@@ -91,6 +91,7 @@ pub struct PolygonMesh3DData {
 
 /// A connected, vertex-sharing polygon mesh in 3D space: coordinate-free mesh
 /// data plus the frame it is expressed in.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct PolygonMesh3D {
     /// Coordinate frame the mesh data is expressed in.

@@ -22,6 +22,7 @@ use crate::coordinate::CoordinateFrame;
 use super::{AttributeColumn, PointCloud, PositionEncoding, Segment};
 
 /// Decoded wire form of a [`PointCloud`].
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize)]
 struct PointCloudWire {
     frame: CoordinateFrame,
@@ -29,18 +30,24 @@ struct PointCloudWire {
 }
 
 /// Decoded wire form of one acquisition [`Segment`].
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize)]
 struct SegmentWire {
     #[serde(default, skip_serializing_if = "Option::is_none")]
     source: Option<Arc<str>>,
     positions: PositionsWire,
     #[serde(default, skip_serializing_if = "IndexMap::is_empty")]
+    #[cfg_attr(
+        feature = "schema",
+        schemars(with = "std::collections::HashMap<String, AttributeColumn>")
+    )]
     attributes: IndexMap<String, AttributeColumn>,
 }
 
 /// Per-point positions in their stored encoding. Raw `i32` values (with the
 /// segment's scale / offset) are kept rather than the derived `f64`, so a scaled
 /// segment round-trips byte-for-byte.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize)]
 enum PositionsWire {
     F64(Vec<[f64; 3]>),
@@ -185,6 +192,18 @@ impl<'de> Deserialize<'de> for PointCloud {
             segments,
             kdtree: OnceLock::new(),
         })
+    }
+}
+
+// The intermediate-data schema is the wire form, so the leaf's schema is its
+// wire struct's.
+#[cfg(feature = "schema")]
+impl schemars::JsonSchema for PointCloud {
+    fn schema_name() -> String {
+        "PointCloud".to_string()
+    }
+    fn json_schema(generator: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+        <PointCloudWire as schemars::JsonSchema>::json_schema(generator)
     }
 }
 

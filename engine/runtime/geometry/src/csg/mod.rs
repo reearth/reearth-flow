@@ -16,6 +16,7 @@ mod validation;
 
 /// Volumetric, closed 3D geometries that `Csg` boolean operations are defined
 /// over.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum ThreeDimensional {
     /// Boxed: a `Solid` (with its shells' appearance) is far larger than the
@@ -25,6 +26,7 @@ pub enum ThreeDimensional {
 }
 
 /// A boolean combination of two volumetric operands.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Csg {
     Union(Box<ThreeDimensional>, Box<ThreeDimensional>),

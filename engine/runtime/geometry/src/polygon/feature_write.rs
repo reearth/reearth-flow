@@ -13,6 +13,7 @@ use crate::coordinate::CoordinateFrame;
 use super::{Polygon2D, Polygon3D};
 
 /// Decoded wire form of a [`Polygon2D`].
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize)]
 struct Polygon2DWire {
     frame: CoordinateFrame,
@@ -26,6 +27,7 @@ struct Polygon2DWire {
 }
 
 /// Decoded wire form of a [`Polygon3D`].
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize)]
 struct Polygon3DWire {
     frame: CoordinateFrame,
@@ -123,6 +125,28 @@ impl<'de> Deserialize<'de> for Polygon3D {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         Polygon3D::try_from(Polygon3DWire::deserialize(deserializer)?)
             .map_err(serde::de::Error::custom)
+    }
+}
+
+// The intermediate-data schema is the wire form, so each leaf's schema is its
+// wire struct's.
+#[cfg(feature = "schema")]
+impl schemars::JsonSchema for Polygon2D {
+    fn schema_name() -> String {
+        "Polygon2D".to_string()
+    }
+    fn json_schema(generator: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+        <Polygon2DWire as schemars::JsonSchema>::json_schema(generator)
+    }
+}
+
+#[cfg(feature = "schema")]
+impl schemars::JsonSchema for Polygon3D {
+    fn schema_name() -> String {
+        "Polygon3D".to_string()
+    }
+    fn json_schema(generator: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+        <Polygon3DWire as schemars::JsonSchema>::json_schema(generator)
     }
 }
 

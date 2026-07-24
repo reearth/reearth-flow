@@ -69,6 +69,7 @@ type FieldOffsets = [u16; 9];
 /// extra dims, etc.). Schema-based: every column has exactly `Segment::count`
 /// entries. SoA layout: one `Vec<T>` per attribute, accessed one column at a
 /// time.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 enum AttributeColumn {
     UInt8(Vec<u8>),

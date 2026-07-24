@@ -18,6 +18,7 @@ use super::ChannelId;
 
 /// A shared image. Cheap to clone (`Arc<Raster>`); an edit emits a new feature
 /// carrying a new `Arc<Raster>`.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Raster {
     /// Owned, encoded image bytes, produced by a texture-editing action or a
@@ -26,17 +27,20 @@ pub enum Raster {
     /// The image's own location (its source / identity); loaded lazily, owns no
     /// pixels. The scheme-aware `Uri` is one type across file / ram / gcs / http
     /// backends.
-    Uri(Uri),
+    Uri(#[cfg_attr(feature = "schema", schemars(with = "String"))] Uri),
 }
 
 /// Owned, encoded image payload: the original bytes plus their image format.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct RasterData {
     pub mime_type: MimeType,
+    #[cfg_attr(feature = "schema", schemars(with = "Vec<u8>"))]
     pub bytes: Bytes,
 }
 
 /// An image plus its sampling parameters, layered over a shared [`Raster`].
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Texture {
     /// Shared image; copy-on-write on edit.
@@ -50,6 +54,7 @@ pub struct Texture {
 }
 
 /// An affine transform applied to texture coordinates before sampling.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
 pub struct TextureTransform {
     pub offset: [f32; 2],
@@ -58,6 +63,7 @@ pub struct TextureTransform {
 }
 
 /// How texture coordinates are wrapped and filtered.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Sampler {
     pub wrap_s: WrapMode,
@@ -82,6 +88,7 @@ impl Default for Sampler {
 
 /// Texture-coordinate wrap behaviour. The union of CityGML `wrapMode`
 /// (none / wrap / mirror / clamp / border) and glTF sampler wrap.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum WrapMode {
     Repeat,
@@ -92,6 +99,7 @@ pub enum WrapMode {
 }
 
 /// Texture minification / magnification filter.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Filter {
     Nearest,

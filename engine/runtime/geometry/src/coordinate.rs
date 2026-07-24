@@ -33,6 +33,7 @@ use serde::{Deserialize, Serialize};
 use crate::error::{Error, Result};
 
 /// An EPSG code identifying a coordinate reference system.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Hash, PartialOrd, Ord)]
 #[serde(transparent)]
 pub struct EpsgCode(u16);
@@ -72,6 +73,7 @@ impl From<EpsgCode> for u16 {
 /// Every coordinate-bearing leaf carries its own `frame: CoordinateFrame`, so an
 /// operation reads its source frame from `self` and a collection may hold
 /// members in different frames.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 pub enum CoordinateFrame {
     /// A geographic / projected CRS identified by its EPSG code.
@@ -261,6 +263,7 @@ pub enum UnitKind {
 /// The absolute frame a [`TangentPlane`] is anchored in: exactly the non-tangent
 /// [`CoordinateFrame`] frames, so a tangent plane cannot be anchored in another
 /// tangent plane.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum BaseFrame {
     /// A geographic / projected CRS identified by its EPSG code.
@@ -274,6 +277,7 @@ pub enum BaseFrame {
 /// A [`CoordinateFrame::Tangent`] geometry stores in-plane `(x, y)` whose 3D position
 /// is `origin + x * u + y * v`. When `base` is a geographic CRS this is the
 /// local tangent (ENU) frame at `origin`, with in-plane coordinates in metres.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct TangentPlane {
     /// Frame that `origin`, `u` and `v` are expressed in.

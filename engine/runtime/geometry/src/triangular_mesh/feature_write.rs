@@ -12,6 +12,7 @@ use crate::coordinate::CoordinateFrame;
 use super::{TriangularMesh2D, TriangularMesh3DData};
 
 /// Decoded wire form of a [`TriangularMesh2D`].
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize)]
 struct TriangularMesh2DWire {
     frame: CoordinateFrame,
@@ -24,6 +25,7 @@ struct TriangularMesh2DWire {
 }
 
 /// Decoded wire form of a [`TriangularMesh3DData`].
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize)]
 struct TriangularMesh3DDataWire {
     vertices: Vec<[f64; 3]>,
@@ -100,6 +102,28 @@ impl<'de> Deserialize<'de> for TriangularMesh3DData {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
         TriangularMesh3DData::try_from(TriangularMesh3DDataWire::deserialize(deserializer)?)
             .map_err(serde::de::Error::custom)
+    }
+}
+
+// The intermediate-data schema is the wire form, so each leaf's schema is its
+// wire struct's.
+#[cfg(feature = "schema")]
+impl schemars::JsonSchema for TriangularMesh2D {
+    fn schema_name() -> String {
+        "TriangularMesh2D".to_string()
+    }
+    fn json_schema(generator: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+        <TriangularMesh2DWire as schemars::JsonSchema>::json_schema(generator)
+    }
+}
+
+#[cfg(feature = "schema")]
+impl schemars::JsonSchema for TriangularMesh3DData {
+    fn schema_name() -> String {
+        "TriangularMesh3DData".to_string()
+    }
+    fn json_schema(generator: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+        <TriangularMesh3DDataWire as schemars::JsonSchema>::json_schema(generator)
     }
 }
 

@@ -21,6 +21,7 @@ use super::ChannelId;
 
 /// One self-contained shading description: exactly one of the two shading
 /// models.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Material {
     /// CityGML X3DMaterial, OBJ illumination models 1-2.
@@ -30,6 +31,7 @@ pub enum Material {
 }
 
 /// Classic Phong / Blinn-Phong material.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct PhongMaterial {
     /// Kd / diffuseColor.
@@ -100,6 +102,7 @@ impl Material {
 }
 
 /// glTF metallic-roughness PBR material.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct PbrMaterial {
     /// baseColorFactor, including alpha.
@@ -120,6 +123,7 @@ pub struct PbrMaterial {
 }
 
 /// How a material's alpha channel is interpreted.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
 pub enum AlphaMode {
     Opaque,

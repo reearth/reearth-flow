@@ -35,11 +35,13 @@ use crate::error::Error;
 /// A dataset-global, stable theme name. Switching to a theme selects the same
 /// theme across every feature, so this is an identity (a name), not a per-mesh
 /// index (contrast [`ChannelId`]).
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq, Hash)]
-pub struct ThemeId(pub Arc<str>);
+pub struct ThemeId(#[cfg_attr(feature = "schema", schemars(with = "String"))] pub Arc<str>);
 
 /// A material-local UV channel index. Carries no cross-theme meaning: channel 0
 /// under one theme and channel 0 under another are different UV sets.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(
     Serialize, Deserialize, Clone, Copy, Debug, Default, PartialEq, Eq, PartialOrd, Ord, Hash,
 )]
@@ -98,6 +100,18 @@ impl<'de> Deserialize<'de> for MaterialIndex {
     }
 }
 
+// The wire form is the logical palette index, so the schema is that of a `u32`.
+#[cfg(feature = "schema")]
+impl schemars::JsonSchema for MaterialIndex {
+    fn schema_name() -> String {
+        "MaterialIndex".to_string()
+    }
+
+    fn json_schema(generator: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+        <u32 as schemars::JsonSchema>::json_schema(generator)
+    }
+}
+
 /// Materials, themes, per-face bindings and per-theme UV for a surface geometry.
 ///
 /// Sealed: the fields are private and every value is built through
@@ -107,6 +121,7 @@ impl<'de> Deserialize<'de> for MaterialIndex {
 /// confined to the geometry crate, where the corner count is in hand. Read
 /// through [`materials`](Self::materials) / [`themes`](Self::themes) /
 /// [`default_theme`](Self::default_theme).
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Appearance {
     /// Palette; bindings index into it.
@@ -163,6 +178,7 @@ impl Appearance {
 
 /// One theme's per-side face-to-material binding together with the UV sets that
 /// theme's textured materials sample.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct ThemeBinding {
     pub theme: ThemeId,
@@ -181,6 +197,7 @@ pub struct ThemeBinding {
 /// faces along the surface normal (from its winding). Side is a simultaneous
 /// axis (both sides exist at once), distinct from a theme (mutually-exclusive
 /// styling variants).
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum Side {
     #[default]
@@ -189,6 +206,7 @@ pub enum Side {
 }
 
 /// How a theme's faces map to the material palette.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
 pub enum FaceBinding {
     /// One material for every face; the common case, and the only form a

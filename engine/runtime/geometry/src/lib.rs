@@ -1,6 +1,14 @@
 #![recursion_limit = "2048"]
 extern crate alloc;
 
+// The `schema` feature describes the production intermediate-data form, so it
+// cannot coexist with the debug form.
+#[cfg(all(feature = "schema", feature = "debug-geom-feature-write"))]
+compile_error!(
+    "the `schema` feature describes the production intermediate-data form; \
+     disable `debug-geom-feature-write` to generate it"
+);
+
 pub mod algorithm;
 pub mod error;
 pub mod types;
@@ -78,6 +86,7 @@ use triangular_mesh::{TriangularMesh2D, TriangularMesh3D};
 
 /// The top-level geometry type: an absent `None`, a geometry in one of the two
 /// embedding dimensions, or a heterogeneous, cross-dimensional collection.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, Default, PartialEq)]
 pub enum Geometry {
     /// No geometry: a feature carrying attributes but no spatial payload. This
@@ -91,11 +100,16 @@ pub enum Geometry {
 }
 
 /// Ordered members, each optionally carrying its own attributes.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
 pub struct GeometryCollection {
     members: Vec<Geometry>,
     /// Per-member attributes parallel to `members`; empty = no member carries
     /// any. Child-scoped: not exposed as the feature's own attributes.
+    #[cfg_attr(
+        feature = "schema",
+        schemars(with = "Vec<std::collections::HashMap<String, serde_json::Value>>")
+    )]
     attrs: Vec<Attributes>,
 }
 
@@ -189,6 +203,7 @@ impl GeometryCollection {
         ExtractHoles
     )
 )]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Euclidean2DGeometry {
     Point(Point2D),
@@ -241,6 +256,7 @@ pub enum Euclidean2DGeometry {
         ExtractHoles
     )
 )]
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Euclidean3DGeometry {
     Point(Point3D),

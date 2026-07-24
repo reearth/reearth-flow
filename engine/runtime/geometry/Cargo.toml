@@ -22,6 +22,12 @@ new-geometry = []
 # form in each leaf's `feature_write.rs`, which decodes those internal structures.
 debug-geom-feature-write = []
 
+# Emits `JsonSchema` for the production intermediate-data form (the leaves' wire
+# structs), so a schema can be generated for downstream consumers (e.g. the UI).
+# Describes the production form only, so it is incompatible with
+# `debug-geom-feature-write`.
+schema = ["dep:schemars"]
+
 [dependencies]
 reearth-flow-common.workspace = true
 
@@ -48,6 +54,7 @@ proj-sys.workspace = true
 rayon.workspace = true
 robust.workspace = true
 rstar.workspace = true
+schemars = { workspace = true, optional = true }
 serde.workspace = true
 serde_json.workspace = true
 smallvec.workspace = true

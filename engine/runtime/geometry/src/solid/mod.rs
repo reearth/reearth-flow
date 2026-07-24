@@ -22,6 +22,7 @@ mod validation;
 /// One closed boundary of a [`Solid`]: a general polygon mesh or a triangle
 /// mesh, stored as coordinate-free mesh data so the boundary cannot carry a
 /// frame of its own — its frame is the `Solid`'s.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Shell {
     PolygonMesh(PolygonMesh3DData),
@@ -50,6 +51,7 @@ impl Shell {
 
 /// A volumetric solid bounded by an exterior shell and any number of interior
 /// (void) shells. Appearance lives on each shell's mesh.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Solid {
     /// Coordinate frame this solid's shells are expressed in; the shells
