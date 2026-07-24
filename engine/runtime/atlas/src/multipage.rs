@@ -75,6 +75,13 @@ struct RegionJob {
     target_h: u32,
 }
 
+/// Upper bound (pixels) accepted for `max_atlas_size` and `extrusion`. Any real
+/// atlas or extrusion ring is orders of magnitude smaller. The cap keeps packing
+/// arithmetic clear of `u32` overflow and bounds a single page's pixel buffer: a
+/// full 65536x65536 RGBA page is already ~17 GB, so anything larger is a
+/// misconfiguration rather than a workable atlas.
+pub const MAX_ATLAS_DIMENSION: u32 = 65_536;
+
 /// Pack `materials` into one or more atlas pages. Each material carries the
 /// fraction of native resolution to keep (`TextureInput::scale`, `(0, 1]`; `1.0`
 /// = full resolution, never upsampled); materials sharing a path take the
@@ -83,23 +90,33 @@ struct RegionJob {
 /// `extrusion` is the ring (pixels) blitted around each region to stop bilinear
 /// bleed; pass `0` to disable it.
 ///
-/// Returns `Ok(None)` when there is nothing to pack (no UV polygons), and
-/// `Err` when `max_atlas_size < 2 * extrusion + 1` (a page cannot hold even one
-/// 1×1 region plus its extrusion ring) or `2 * extrusion + 1` overflows.
+/// Returns `Ok(None)` when there is nothing to pack (no UV polygons), and `Err`
+/// when `max_atlas_size` is 0 or either `max_atlas_size`/`extrusion` exceeds
+/// [`MAX_ATLAS_DIMENSION`].
 pub fn build_atlas_multipage(
     materials: &[TextureInput],
     max_atlas_size: u32,
     extrusion: u32,
+    block_align: u32,
     cache: &mut TextureCache,
 ) -> Result<Option<MultiPageAtlas>> {
-    // A page must hold one 1×1 region plus its extrusion ring on all sides.
-    let min_atlas_size = extrusion.saturating_mul(2).saturating_add(1);
-    if max_atlas_size < min_atlas_size {
+    if max_atlas_size == 0 {
+        return Err(AtlasError::builder("atlas size must be at least 1"));
+    }
+    // Both are pixel dimensions. Capping them well below `u32::MAX` keeps every
+    // downstream size computation (block-grid snapping, extrusion gaps, page
+    // footprints) far from overflow, so the packing arithmetic needs no
+    // per-operation checked math.
+    if max_atlas_size > MAX_ATLAS_DIMENSION || extrusion > MAX_ATLAS_DIMENSION {
         return Err(AtlasError::builder(format!(
-            "atlas size {max_atlas_size} too small for extrusion {extrusion}; \
-             must be at least 2*extrusion+1 = {min_atlas_size}"
+            "atlas size ({max_atlas_size}) and extrusion ({extrusion}) must each be \
+             at most {MAX_ATLAS_DIMENSION}"
         )));
     }
+    let block_align = block_align.max(1);
+    // Snap the gap to the block grid too, so every reserved footprint keeps
+    // placements on a multiple of `block_align`.
+    let extrusion = extrusion.div_ceil(block_align) * block_align;
 
     let damage_list = collect_damage(materials)?;
     if damage_list.is_empty() {
@@ -119,7 +136,6 @@ pub fn build_atlas_multipage(
 
     // Flatten every damage region into a placement job, recording where each
     // (damage, region) lands so UV remapping can find it afterwards.
-    let usable = max_atlas_size.saturating_sub(2 * extrusion).max(1);
     let mut jobs: Vec<RegionJob> = Vec::new();
     let mut region_job: Vec<Vec<usize>> = Vec::with_capacity(damage_list.len());
     for (di, (path, td)) in damage_list.iter().enumerate() {
@@ -128,13 +144,17 @@ pub fn build_atlas_multipage(
         for &src in &td.rects {
             let mut w = ((src.w as f64) * scale).round().max(1.0) as u32;
             let mut h = ((src.h as f64) * scale).round().max(1.0) as u32;
-            if w > usable || h > usable {
+            if w > max_atlas_size || h > max_atlas_size {
                 // Bigger than a whole page even before packing: shrink to fit,
                 // preserving aspect. Geometric error is intentionally left
                 // untouched — this is a packing constraint, not user intent.
-                let shrink = usable as f64 / w.max(h) as f64;
-                let sw = ((w as f64) * shrink).round().clamp(1.0, usable as f64) as u32;
-                let sh = ((h as f64) * shrink).round().clamp(1.0, usable as f64) as u32;
+                let shrink = max_atlas_size as f64 / w.max(h) as f64;
+                let sw = ((w as f64) * shrink)
+                    .round()
+                    .clamp(1.0, max_atlas_size as f64) as u32;
+                let sh = ((h as f64) * shrink)
+                    .round()
+                    .clamp(1.0, max_atlas_size as f64) as u32;
                 tracing::warn!(
                     "reearth-flow-atlas: region {w}x{h} of '{}' exceeds atlas size \
                      {max_atlas_size}; force-shrinking to {sw}x{sh}",
@@ -143,6 +163,11 @@ pub fn build_atlas_multipage(
                 w = sw;
                 h = sh;
             }
+            // Round up to the block grid so no compression block straddles a
+            // region boundary; clamp back down if that would overflow a page.
+            let align_up = |v: u32| (v.div_ceil(block_align) * block_align).min(max_atlas_size);
+            w = align_up(w);
+            h = align_up(h);
             per_region.push(jobs.len());
             jobs.push(RegionJob {
                 damage: di,
@@ -267,7 +292,7 @@ mod tests {
             vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
             1.0,
         );
-        let built = build_atlas_multipage(&[a], 4096, 1, &mut TextureCache::default())
+        let built = build_atlas_multipage(&[a], 4096, 1, 1, &mut TextureCache::default())
             .unwrap()
             .expect("atlas built");
         assert_eq!(built.pages.len(), 1);
@@ -293,11 +318,12 @@ mod tests {
             std::slice::from_ref(&full),
             4096,
             1,
+            1,
             &mut TextureCache::default(),
         )
         .unwrap()
         .unwrap();
-        let half_atlas = build_atlas_multipage(&[half], 4096, 1, &mut TextureCache::default())
+        let half_atlas = build_atlas_multipage(&[half], 4096, 1, 1, &mut TextureCache::default())
             .unwrap()
             .unwrap();
         // Downscaling to 0.5 must yield a smaller page than full resolution.
@@ -318,7 +344,7 @@ mod tests {
                 )
             })
             .collect();
-        let built = build_atlas_multipage(&mats, 256, 1, &mut TextureCache::default())
+        let built = build_atlas_multipage(&mats, 256, 1, 1, &mut TextureCache::default())
             .unwrap()
             .expect("atlas built");
         assert_eq!(built.pages.len(), 2);
@@ -335,7 +361,7 @@ mod tests {
             vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
             1.0,
         );
-        let built = build_atlas_multipage(&[mat], 128, 1, &mut TextureCache::default())
+        let built = build_atlas_multipage(&[mat], 128, 1, 1, &mut TextureCache::default())
             .unwrap()
             .expect("atlas built");
         assert_eq!(built.pages.len(), 1);
@@ -357,7 +383,7 @@ mod tests {
             vec![(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)],
             0.5,
         );
-        let built = build_atlas_multipage(&[mat], 64, 0, &mut TextureCache::default())
+        let built = build_atlas_multipage(&[mat], 64, 0, 1, &mut TextureCache::default())
             .unwrap()
             .expect("atlas built");
         let page_w = built.pages[0].width() as f64;

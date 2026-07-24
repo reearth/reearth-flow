@@ -2141,18 +2141,14 @@
           "dracoCompression": {
             "title": "Compresión Draco",
             "description": "Usar compresión Draco. Verdadero por defecto.",
-            "type": [
-              "boolean",
-              "null"
-            ]
+            "default": true,
+            "type": "boolean"
           },
           "computeFlatNormal": {
             "title": "Calcular Normales Planas",
             "description": "Calcula normales planas por polígono para la iluminación. Verdadero por defecto. Cuando se desactiva, no se escriben normales y la malla es más pequeña, pero el mosaico no incluye datos de iluminación (el visor debe derivar las normales planas por sí mismo).",
-            "type": [
-              "boolean",
-              "null"
-            ]
+            "default": true,
+            "type": "boolean"
           },
           "texelSize": {
             "title": "Tamaño de Téxel",
@@ -2171,6 +2167,7 @@
               "null"
             ],
             "format": "uint32",
+            "maximum": 65536.0,
             "minimum": 1.0
           },
           "atlasExtrusion": {
@@ -2181,7 +2178,20 @@
               "null"
             ],
             "format": "uint32",
+            "maximum": 65536.0,
             "minimum": 0.0
+          },
+          "textureCodec": {
+            "title": "Códec de Textura",
+            "description": "Códec de imagen para las páginas del atlas. Si no se define, no se adjuntan texturas; cuando se elige un códec, el valor predeterminado es `KTX2/ETC1S`.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/TextureCodec"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "schemaKey": {
             "title": "Clave de Esquema",
@@ -2223,6 +2233,42 @@
                 "type": "string"
               }
             }
+          }
+        },
+        "definitions": {
+          "TextureCodec": {
+            "title": "Texture Codec",
+            "description": "Texture image codec for the new-geometry writer's atlas pages.",
+            "oneOf": [
+              {
+                "description": "KTX2 con supercompresión Basis Universal UASTC (`KHR_texture_basisu`): mayor calidad, archivos más grandes.",
+                "type": "string",
+                "enum": [
+                  "KTX2/UASTC"
+                ]
+              },
+              {
+                "description": "KTX2 con supercompresión Basis Universal ETC1S (`KHR_texture_basisu`): archivos más pequeños, menor calidad.",
+                "type": "string",
+                "enum": [
+                  "KTX2/ETC1S"
+                ]
+              },
+              {
+                "description": "PNG, sin pérdida y con canal alfa.",
+                "type": "string",
+                "enum": [
+                  "PNG"
+                ]
+              },
+              {
+                "description": "JPEG, con pérdida y opaco (se descarta el canal alfa).",
+                "type": "string",
+                "enum": [
+                  "JPEG"
+                ]
+              }
+            ]
           }
         }
       },

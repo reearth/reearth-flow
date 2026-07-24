@@ -15,9 +15,10 @@ mod subtree;
 mod tileset;
 
 use std::collections::{BTreeSet, HashMap};
-use std::io::Cursor;
 use std::path::PathBuf;
 use std::sync::Arc;
+
+use rayon::prelude::*;
 
 use reearth_flow_atlas::{build_atlas_multipage, TextureCache, TextureInput};
 use reearth_flow_gltf::next::glb::{self, Granularity};
@@ -29,6 +30,7 @@ use reearth_flow_runtime::node::FEATURES_PORT;
 use reearth_flow_types::Feature;
 
 use super::sink::Cesium3DTilesWriter;
+pub use super::sink::TextureCodec;
 use crate::errors::SinkError;
 use quadtree::{Cell, GeoBox};
 pub use reearth_flow_gltf::next::metadata::MetadataOptions;
@@ -62,28 +64,34 @@ impl Cesium3DTilesWriter {
             schema_key: self.params.schema_key.as_deref(),
             skip_unexposed_attributes: self.params.skip_unexposed_attributes,
         };
-        // draco/compute_flat_normal default to true (see `Cesium3DTilesWriterParam`).
         let render = RenderOptions {
-            draco: self.params.draco_compression.unwrap_or(true),
-            compute_flat_normal: self.params.compute_flat_normal.unwrap_or(true),
+            draco: self.params.draco_compression,
+            compute_flat_normal: self.params.compute_flat_normal,
             texel_size: self.params.texel_size.unwrap_or(0.0),
             atlas_size: self.params.atlas_size.unwrap_or(DEFAULT_ATLAS_SIZE),
             atlas_extrusion: self
                 .params
                 .atlas_extrusion
                 .unwrap_or(DEFAULT_ATLAS_EXTRUSION),
+            texture_codec: self.params.texture_codec,
         };
         for ((output, _, _), features) in &self.buffer {
-            let built = build(features, options, self.params.max_zoom, render)?;
-
-            for (relative_path, bytes) in built.tiles.into_iter().chain(built.subtrees) {
+            let write_file = |relative_path: String, bytes: Vec<u8>| {
                 crate::SinkOutput::new(
                     &ctx.sandbox_root,
                     &format!("{output}/{relative_path}"),
                     &ctx.storage_resolver,
                 )
                 .and_then(|out| out.write(bytes::Bytes::from(bytes)))
-                .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
+                .map_err(crate::errors::SinkError::cesium3dtiles_writer)
+            };
+
+            // glbs stream to disk here as they are built; only the small
+            // subtree/tileset outputs come back for writing below.
+            let built = build(features, options, self.params.max_zoom, render, &write_file)?;
+
+            for (relative_path, bytes) in built.subtrees {
+                write_file(relative_path, bytes)?;
             }
 
             crate::SinkOutput::new(
@@ -98,13 +106,14 @@ impl Cesium3DTilesWriter {
     }
 }
 
-/// Every file a built tileset is made of, relative to the tileset's output
-/// directory: one content glb per occupied cell, one or more `.subtree`
-/// files, and the `tileset.json` text itself.
+/// The tileset's non-glb outputs, relative to its output directory: the
+/// `tileset.json` text and one or more `.subtree` files. The content glbs are
+/// streamed out through `build`'s `write_tile` callback as they are produced,
+/// not held here; `tile_count` records how many were written.
 pub struct BuiltTileset {
     pub tileset_json: String,
-    pub tiles: Vec<(String, Vec<u8>)>,
     pub subtrees: Vec<(String, Vec<u8>)>,
+    pub tile_count: usize,
 }
 
 /// Rendering knobs shared by every cell of a tileset.
@@ -124,6 +133,9 @@ pub struct RenderOptions {
     /// Extrusion ring (pixels) blitted around each atlas region to stop
     /// bilinear bleed between neighbours. `0` disables it.
     pub atlas_extrusion: u32,
+    /// Image codec for atlas pages. `None` attaches no textures; textured
+    /// geometry falls back to its neutral colour.
+    pub texture_codec: Option<TextureCodec>,
 }
 
 /// Default atlas page size when the parameter is unset; inherited from the old
@@ -138,11 +150,17 @@ const DEFAULT_ATLAS_EXTRUSION: u32 = 0;
 /// quadtree cell (bounded by `max_zoom`) that fully contains it, and render
 /// the result to a [`BuiltTileset`]. A free function so `gml_to_3dtiles` can
 /// drive it directly from parsed CityGML, without a `Cesium3DTilesWriter`.
+///
+/// Each content glb is handed to `write_tile` (relative path, bytes) the moment
+/// it is built and is not retained, so peak memory does not grow with the tile
+/// count. The returned [`BuiltTileset`] carries only the small `tileset.json`
+/// and subtree outputs, which the caller writes after `build` returns.
 pub fn build(
     features: &[Feature],
     options: MetadataOptions,
     max_zoom: u8,
     render: RenderOptions,
+    write_tile: impl Fn(String, Vec<u8>) -> crate::errors::Result<()> + Sync,
 ) -> crate::errors::Result<BuiltTileset> {
     let mut caches = mesh::ExtractCaches::default();
     let extracted: Vec<(&Feature, mesh::ExtractedMesh)> = features
@@ -179,16 +197,25 @@ pub fn build(
     // A decode cache per cell, dropped once the cell's glb is built. PLATEAU
     // textures are per-surface, so a source image is referenced by only one
     // cell; a tileset-wide cache would grow without bound for no reuse gain.
-    let tiles = by_cell
-        .into_iter()
-        .map(|(cell, indices)| {
+    // Stream each cell's glb straight to the caller as it is built, so peak
+    // memory stays at one glb rather than the whole tileset. The glb bytes feed
+    // neither `tileset.json` nor the subtrees (those need only the cell keys,
+    // already captured in `occupied`), so nothing downstream needs them retained.
+    // Cells are independent (own texture cache, own glb, unique output path), so
+    // render them across the rayon pool. Each glb still streams straight to
+    // `write_tile` as it is built, so peak memory stays at one glb per worker.
+    let cells: Vec<(Cell, Vec<usize>)> = by_cell.into_iter().collect();
+    let tile_count = cells.len();
+    cells
+        .par_iter()
+        .try_for_each(|(cell, indices)| -> crate::errors::Result<()> {
             let cell_members: Vec<&(&Feature, mesh::ExtractedMesh)> =
                 indices.iter().map(|&i| &extracted[i]).collect();
             let mut textures = TextureCache::default();
             let glb = build_cell_glb(&cell_members, options, render, &mut textures)?;
-            Ok((content_path(cell), glb))
-        })
-        .collect::<crate::errors::Result<_>>()?;
+            write_tile(content_path(*cell), glb)?;
+            Ok(())
+        })?;
 
     let tileset_bytes = render_tileset_json(&root, available_levels)?;
     let subtrees = subtree::build_all(&occupied)
@@ -198,8 +225,8 @@ pub fn build(
 
     Ok(BuiltTileset {
         tileset_json: tileset_bytes,
-        tiles,
         subtrees,
+        tile_count,
     })
 }
 
@@ -219,8 +246,8 @@ fn empty_tileset() -> crate::errors::Result<BuiltTileset> {
         .collect();
     Ok(BuiltTileset {
         tileset_json: tileset_bytes,
-        tiles: Vec::new(),
         subtrees,
+        tile_count: 0,
     })
 }
 
@@ -273,7 +300,13 @@ fn build_cell_glb(
     let mut primitives: Vec<(glb::PrimitiveHandle, Vec<u32>)> = Vec::new();
 
     if let Some(textured) = cells.textured {
-        match build_textured_pages(&mut builder, &textured, render, textures)? {
+        // With no codec configured, skip texturing entirely and render the
+        // textured geometry in the neutral fallback colour.
+        let pages = match render.texture_codec {
+            Some(_) => build_textured_pages(&mut builder, &textured, render, textures)?,
+            None => None,
+        };
+        match pages {
             Some(pages) => {
                 for page in pages {
                     let material = glb::MaterialDesc {
@@ -358,10 +391,10 @@ struct TexturedPage {
 }
 
 /// Pack the cell's textured faces into one or more atlas pages, embed each page
-/// as a WebP texture, and split the textured geometry so each returned page
-/// carries only the faces whose UVs live on it (glTF binds one texture per
-/// primitive). `Ok(None)` when packing produced no image, so the caller falls
-/// back to colour-only.
+/// with the configured [`TextureCodec`], and split the textured geometry so each
+/// returned page carries only the faces whose UVs live on it (glTF binds one
+/// texture per primitive). `Ok(None)` when packing produced no image, so the
+/// caller falls back to colour-only.
 fn build_textured_pages(
     builder: &mut glb::Builder,
     textured: &TexturedPrimitive,
@@ -400,33 +433,28 @@ fn build_textured_pages(
         input.scale = scale;
     }
 
-    let built =
-        match build_atlas_multipage(&inputs, render.atlas_size, render.atlas_extrusion, textures)
-            .map_err(SinkError::cesium3dtiles_writer)?
-        {
-            Some(built) => built,
-            None => return Ok(None),
-        };
+    // Only reached with a codec set (see `build_cell_glb`); default to the
+    // enum's `KTX2/ETC1S`.
+    let codec = codec_for(render.texture_codec.unwrap_or_default());
+    let built = match build_atlas_multipage(
+        &inputs,
+        render.atlas_size,
+        render.atlas_extrusion,
+        codec.block_align(),
+        textures,
+    )
+    .map_err(SinkError::cesium3dtiles_writer)?
+    {
+        Some(built) => built,
+        None => return Ok(None),
+    };
 
-    // WebP has no core-glTF fallback image, so the extension is required.
-    builder.require_extension("EXT_texture_webp");
     let mut page_textures = Vec::with_capacity(built.pages.len());
-    for image in built.pages {
-        let mut webp = Vec::new();
-        image::DynamicImage::ImageRgba8(image)
-            .write_to(&mut Cursor::new(&mut webp), image::ImageFormat::WebP)
-            .map_err(|e| {
-                SinkError::Cesium3DTilesWriter(format!("atlas WebP encode failed: {e}"))
-            })?;
-        let image = builder.push_image(&webp, "image/webp");
-        page_textures.push(builder.push_texture(
-            None,
-            ATLAS_SAMPLER,
-            vec![(
-                "EXT_texture_webp",
-                serde_json::json!({ "source": image.index() }),
-            )],
-        ));
+    for page in built.pages {
+        let texture = builder
+            .push_atlas_texture(&page, codec.as_ref(), ATLAS_SAMPLER)
+            .map_err(SinkError::cesium3dtiles_writer)?;
+        page_textures.push(texture);
     }
 
     Ok(Some(split_textured_by_page(
@@ -435,6 +463,21 @@ fn build_textured_pages(
         &slots,
         page_textures,
     )))
+}
+
+/// Resolve the user-facing codec parameter to its glTF codec implementation.
+fn codec_for(codec: TextureCodec) -> Box<dyn glb::Codec> {
+    use reearth_flow_gltf::next::ktx2::{Ktx2Codec, Supercompression};
+    match codec {
+        TextureCodec::Ktx2Etc1s => Box::new(Ktx2Codec {
+            supercompression: Supercompression::Etc1s,
+        }),
+        TextureCodec::Ktx2Uastc => Box::new(Ktx2Codec {
+            supercompression: Supercompression::Uastc,
+        }),
+        TextureCodec::Png => Box::new(glb::PngCodec),
+        TextureCodec::Jpeg => Box::new(glb::JpegCodec),
+    }
 }
 
 /// Per input texture, the fraction of native resolution to keep so its

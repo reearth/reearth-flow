@@ -761,6 +761,26 @@
         "texelSize": {
           "title": "Taille de Texel",
           "description": "Taille de texel cible en mètres par pixel. Les textures plus fines que cette valeur y sont sous-échantillonnées. La valeur par défaut est 0, qui conserve le détail complet de la texture."
+        },
+        "textureCodec": {
+          "title": "Codec de Texture",
+          "description": "Codec d'image pour les pages de l'atlas. Si non défini, aucune texture n'est attachée ; lorsqu'un codec est choisi, la valeur par défaut est `KTX2/ETC1S`."
+        }
+      },
+      "enumI18n": {
+        "TextureCodec": {
+          "JPEG": {
+            "description": "JPEG, avec perte et opaque (le canal alpha est supprimé)."
+          },
+          "KTX2/ETC1S": {
+            "description": "KTX2 avec supercompression Basis Universal ETC1S (`KHR_texture_basisu`) : fichiers plus petits, qualité inférieure."
+          },
+          "KTX2/UASTC": {
+            "description": "KTX2 avec supercompression Basis Universal UASTC (`KHR_texture_basisu`) : qualité supérieure, fichiers plus grands."
+          },
+          "PNG": {
+            "description": "PNG, sans perte avec canal alpha."
+          }
         }
       }
     },

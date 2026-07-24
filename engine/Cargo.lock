@@ -371,7 +371,7 @@ dependencies = [
  "anyhow",
  "arrayvec",
  "log",
- "nom",
+ "nom 8.0.0",
  "num-rational",
  "v_frame",
 ]
@@ -495,6 +495,26 @@ checksum = "36eaf5d7b090263e8150820482d5d93cd964a81e4019913c972f4edcc6edb740"
 dependencies = [
  "serde",
  "unty",
+]
+
+[[package]]
+name = "bindgen"
+version = "0.72.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "993776b509cfb49c750f11b8f07a46fa23e0a1386ffc01fb1e7d343efc387895"
+dependencies = [
+ "bitflags",
+ "cexpr",
+ "clang-sys",
+ "itertools 0.13.0",
+ "log",
+ "prettyplease",
+ "proc-macro2",
+ "quote",
+ "regex",
+ "rustc-hash",
+ "shlex",
+ "syn 2.0.117",
 ]
 
 [[package]]
@@ -695,6 +715,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "cexpr"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "6fac387a98bb7c37292057cffc56d62ecb629900026402633ae9160df93a8766"
+dependencies = [
+ "nom 7.1.3",
+]
+
+[[package]]
 name = "cfg-if"
 version = "1.0.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -739,6 +768,17 @@ checksum = "773f3b9af64447d2ce9850330c473515014aa235e6a783b02db81ff39e4a3dad"
 dependencies = [
  "crypto-common",
  "inout",
+]
+
+[[package]]
+name = "clang-sys"
+version = "1.8.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "0b023947811758c97c59bf9d1c188fd619ad4718dcaa767947df1cadb14f39f4"
+dependencies = [
+ "glob",
+ "libc",
+ "libloading",
 ]
 
 [[package]]
@@ -894,6 +934,12 @@ checksum = "c2459377285ad874054d797f3ccebf984978aa39129f6eafde5cdc8315b612f8"
 
 [[package]]
 name = "constant_time_eq"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7c74b8349d32d297c9134b8c88677813a227df8f779daa29bfc29c183fe3dca6"
+
+[[package]]
+name = "constant_time_eq"
 version = "0.4.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "3d52eff69cd5e647efe296129160853a42795992097e8af39800e1060caeea9b"
@@ -905,6 +951,16 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ec182b0ca2f35d8fc196cf3404988fd8b8c739a4d270ff118a398feb0cbec1ca"
 dependencies = [
  "unicode-segmentation",
+]
+
+[[package]]
+name = "core-foundation"
+version = "0.9.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "91e195e091a93c46f7102ec7818a2aa394e1e1771c3ab4825963fa03e45afb8f"
+dependencies = [
+ "core-foundation-sys",
+ "libc",
 ]
 
 [[package]]
@@ -2482,9 +2538,11 @@ dependencies = [
  "percent-encoding",
  "pin-project-lite",
  "socket2 0.6.3",
+ "system-configuration",
  "tokio",
  "tower-service",
  "tracing",
+ "windows-registry",
 ]
 
 [[package]]
@@ -2796,6 +2854,15 @@ checksum = "a6cb138bb79a146c1bd460005623e142ef0181e3d0219cb493e02f7d08a35695"
 
 [[package]]
 name = "itertools"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "413ee7dfc52ee1a4949ceeb7dbc8a33f2d6c088194d9f922fb8318faf1f01186"
+dependencies = [
+ "either",
+]
+
+[[package]]
+name = "itertools"
 version = "0.14.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2b192c782037fadd9cfa75548310488aabdbf3d2da73885b31bd0abd03351285"
@@ -2955,6 +3022,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "ktx2-rw"
+version = "0.2.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "783daf1850aa444e1adc831add109560b41c6ee32f5e084462e29cd416b29e75"
+dependencies = [
+ "bindgen",
+ "cmake",
+ "flate2",
+ "libc",
+ "reqwest",
+ "tar",
+ "zip 5.1.1",
+]
+
+[[package]]
 name = "kv-extsort"
 version = "0.1.1"
 source = "git+https://github.com/MIERUNE/kv-extsort-rs.git#f23b1e51b0459c23252f5175f52d4d110684ecf3"
@@ -2976,7 +3058,7 @@ dependencies = [
  "ascii-canvas",
  "bit-set",
  "ena",
- "itertools",
+ "itertools 0.14.0",
  "lalrpop-util",
  "petgraph 0.7.1",
  "pico-args",
@@ -3040,6 +3122,16 @@ checksum = "f12a681b7dd8ce12bff52488013ba614b869148d54dd79836ab85aafdd53f08d"
 dependencies = [
  "arbitrary",
  "cc",
+]
+
+[[package]]
+name = "libloading"
+version = "0.8.9"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d7c4b02199fee7c5d21a5ae7d8cfa79a6ef5bb2fc834d6e9058e89c825efdc55"
+dependencies = [
+ "cfg-if",
+ "windows-link",
 ]
 
 [[package]]
@@ -3193,6 +3285,16 @@ dependencies = [
 
 [[package]]
 name = "lzma-rust2"
+version = "0.13.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c60a23ffb90d527e23192f1246b14746e2f7f071cb84476dd879071696c18a4a"
+dependencies = [
+ "crc",
+ "sha2",
+]
+
+[[package]]
+name = "lzma-rust2"
 version = "0.16.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "47bb1e988e6fb779cf720ad431242d3f03167c1b3f2b1aae7f1a94b2495b36ae"
@@ -3297,6 +3399,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "minimal-lexical"
+version = "0.2.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "68354c5c6bd36d73ff3feceb05efa59b6acb7626617f4962be322a825e61f79a"
+
+[[package]]
 name = "miniz_oxide"
 version = "0.8.9"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3399,6 +3507,16 @@ name = "new_debug_unreachable"
 version = "1.0.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "650eef8c711430f1a879fdd01d4745a7deea475becfb90269c06775983bbf086"
+
+[[package]]
+name = "nom"
+version = "7.1.3"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "d273983c5a657a70a3e8f2a01329822f3b8c8172b73826411a55751e404a0a4a"
+dependencies = [
+ "memchr",
+ "minimal-lexical",
+]
 
 [[package]]
 name = "nom"
@@ -3694,7 +3812,7 @@ dependencies = [
  "futures",
  "http",
  "humantime",
- "itertools",
+ "itertools 0.14.0",
  "parking_lot",
  "percent-encoding",
  "thiserror 2.0.18",
@@ -4287,7 +4405,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "be769465445e8c1474e9c5dac2018218498557af32d9ed057325ec9a41ae81bf"
 dependencies = [
  "heck",
- "itertools",
+ "itertools 0.14.0",
  "log",
  "multimap",
  "once_cell",
@@ -4307,7 +4425,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8a56d757972c98b346a9b766e3f02746cde6dd1cd1d1d563472929fdd74bec4d"
 dependencies = [
  "anyhow",
- "itertools",
+ "itertools 0.14.0",
  "proc-macro2",
  "quote",
  "syn 2.0.117",
@@ -4541,7 +4659,7 @@ dependencies = [
  "built",
  "cfg-if",
  "interpolate_name",
- "itertools",
+ "itertools 0.14.0",
  "libc",
  "libfuzzer-sys",
  "log",
@@ -4632,7 +4750,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-log"
-version = "0.0.450"
+version = "0.0.451"
 dependencies = [
  "futures",
  "once_cell",
@@ -4652,7 +4770,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-plateau-processor"
-version = "0.0.450"
+version = "0.0.451"
 dependencies = [
  "approx",
  "async-trait",
@@ -4661,7 +4779,7 @@ dependencies = [
  "chrono",
  "fastxml",
  "indexmap 2.13.0",
- "itertools",
+ "itertools 0.14.0",
  "num-traits",
  "nusamai-citygml",
  "nusamai-plateau",
@@ -4696,7 +4814,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-processor"
-version = "0.0.450"
+version = "0.0.451"
 dependencies = [
  "Inflector",
  "approx",
@@ -4710,7 +4828,7 @@ dependencies = [
  "flatgeom",
  "image",
  "indexmap 2.13.0",
- "itertools",
+ "itertools 0.14.0",
  "nalgebra",
  "num-traits",
  "num_cpus",
@@ -4752,7 +4870,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-python-processor"
-version = "0.0.450"
+version = "0.0.451"
 dependencies = [
  "indexmap 2.13.0",
  "once_cell",
@@ -4772,7 +4890,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-sink"
-version = "0.0.450"
+version = "0.0.451"
 dependencies = [
  "ahash",
  "async-trait",
@@ -4796,7 +4914,7 @@ dependencies = [
  "hex",
  "image",
  "indexmap 2.13.0",
- "itertools",
+ "itertools 0.14.0",
  "kv-extsort",
  "nusamai-citygml",
  "nusamai-czml",
@@ -4839,7 +4957,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-action-source"
-version = "0.0.450"
+version = "0.0.451"
 dependencies = [
  "async-trait",
  "async_zip",
@@ -4888,7 +5006,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-atlas"
-version = "0.0.450"
+version = "0.0.451"
 dependencies = [
  "image",
  "rstar 0.12.2",
@@ -4899,7 +5017,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-cli"
-version = "0.0.450"
+version = "0.0.451"
 dependencies = [
  "bytes",
  "clap",
@@ -4939,7 +5057,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-common"
-version = "0.0.450"
+version = "0.0.451"
 dependencies = [
  "approx",
  "async-recursion",
@@ -4982,7 +5100,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-examples"
-version = "0.0.450"
+version = "0.0.451"
 dependencies = [
  "async-trait",
  "bytes",
@@ -5010,7 +5128,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-expr"
-version = "0.0.450"
+version = "0.0.451"
 dependencies = [
  "indexmap 2.13.0",
  "lalrpop",
@@ -5023,7 +5141,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-geometry"
-version = "0.0.450"
+version = "0.0.451"
 dependencies = [
  "approx",
  "bvh",
@@ -5059,7 +5177,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-gltf"
-version = "0.0.450"
+version = "0.0.451"
 dependencies = [
  "ahash",
  "base64 0.22.1",
@@ -5068,8 +5186,10 @@ dependencies = [
  "chrono",
  "draco-oxide",
  "gltf 1.4.1 (git+https://github.com/gltf-rs/gltf?rev=3def30c9caf96f2dbc85238179ea5a6152c5cf22)",
+ "image",
  "indexmap 2.13.0",
- "itertools",
+ "itertools 0.14.0",
+ "ktx2-rw",
  "nalgebra",
  "nusamai-citygml",
  "nusamai-gltf",
@@ -5092,7 +5212,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-macros"
-version = "0.0.450"
+version = "0.0.451"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -5101,7 +5221,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-runner"
-version = "0.0.450"
+version = "0.0.451"
 dependencies = [
  "async-trait",
  "bytes",
@@ -5130,7 +5250,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-runtime"
-version = "0.0.450"
+version = "0.0.451"
 dependencies = [
  "async-stream",
  "async-trait",
@@ -5166,7 +5286,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-sevenz"
-version = "0.0.450"
+version = "0.0.451"
 dependencies = [
  "bit-set",
  "byteorder",
@@ -5183,7 +5303,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-sql"
-version = "0.0.450"
+version = "0.0.451"
 dependencies = [
  "futures-util",
  "once_cell",
@@ -5197,7 +5317,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-state"
-version = "0.0.450"
+version = "0.0.451"
 dependencies = [
  "bytes",
  "futures",
@@ -5214,7 +5334,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-storage"
-version = "0.0.450"
+version = "0.0.451"
 dependencies = [
  "bytes",
  "futures",
@@ -5233,7 +5353,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-telemetry"
-version = "0.0.450"
+version = "0.0.451"
 dependencies = [
  "once_cell",
  "opentelemetry",
@@ -5247,7 +5367,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-tests"
-version = "0.0.450"
+version = "0.0.451"
 dependencies = [
  "async-trait",
  "bytes",
@@ -5281,7 +5401,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-types"
-version = "0.0.450"
+version = "0.0.451"
 dependencies = [
  "ahash",
  "bytes",
@@ -5293,7 +5413,7 @@ dependencies = [
  "hashbrown 0.16.1",
  "image",
  "indexmap 2.13.0",
- "itertools",
+ "itertools 0.14.0",
  "nusamai-citygml",
  "nusamai-gltf",
  "nusamai-plateau",
@@ -5317,7 +5437,7 @@ dependencies = [
 
 [[package]]
 name = "reearth-flow-worker"
-version = "0.0.450"
+version = "0.0.451"
 dependencies = [
  "async-trait",
  "axum",
@@ -5445,6 +5565,7 @@ dependencies = [
  "futures-channel",
  "futures-core",
  "futures-util",
+ "h2",
  "http",
  "http-body",
  "http-body-util",
@@ -5848,7 +5969,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "b7f4bc775c73d9a02cde8bf7b2ec4c9d12743edf609006c7facc23998404cd1d"
 dependencies = [
  "bitflags",
- "core-foundation",
+ "core-foundation 0.10.1",
  "core-foundation-sys",
  "libc",
  "security-framework-sys",
@@ -6611,6 +6732,27 @@ dependencies = [
  "objc2-core-foundation",
  "objc2-io-kit",
  "windows",
+]
+
+[[package]]
+name = "system-configuration"
+version = "0.7.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a13f3d0daba03132c0aa9767f98351b3488edc2c100cda2d2ec2b04f3d8d3c8b"
+dependencies = [
+ "bitflags",
+ "core-foundation 0.9.4",
+ "system-configuration-sys",
+]
+
+[[package]]
+name = "system-configuration-sys"
+version = "0.6.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "8e1d1b10ced5ca923a1fcb8d03e96b8d3268065d724548c0211415ff6ac6bac4"
+dependencies = [
+ "core-foundation-sys",
+ "libc",
 ]
 
 [[package]]
@@ -7693,6 +7835,17 @@ dependencies = [
 ]
 
 [[package]]
+name = "windows-registry"
+version = "0.6.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "02752bf7fbdcce7f2a27a742f798510f3e5ad88dbe84871e5168e2120c3d5720"
+dependencies = [
+ "windows-link",
+ "windows-result",
+ "windows-strings",
+]
+
+[[package]]
 name = "windows-result"
 version = "0.4.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -8265,6 +8418,33 @@ dependencies = [
 
 [[package]]
 name = "zip"
+version = "5.1.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "2f852905151ac8d4d06fdca66520a661c09730a74c6d4e2b0f27b436b382e532"
+dependencies = [
+ "aes",
+ "arbitrary",
+ "bzip2",
+ "constant_time_eq 0.3.1",
+ "crc32fast",
+ "deflate64",
+ "flate2",
+ "getrandom 0.3.4",
+ "hmac",
+ "indexmap 2.13.0",
+ "lzma-rust2 0.13.0",
+ "memchr",
+ "pbkdf2",
+ "ppmd-rust",
+ "sha1",
+ "time",
+ "zeroize",
+ "zopfli",
+ "zstd",
+]
+
+[[package]]
+name = "zip"
 version = "7.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c42e33efc22a0650c311c2ef19115ce232583abbe80850bc8b66509ebef02de0"
@@ -8285,14 +8465,14 @@ checksum = "b680f2a0cd479b4cff6e1233c483fdead418106eae419dc60200ae9850f6d004"
 dependencies = [
  "aes",
  "bzip2",
- "constant_time_eq",
+ "constant_time_eq 0.4.2",
  "crc32fast",
  "deflate64",
  "flate2",
  "getrandom 0.4.2",
  "hmac",
  "indexmap 2.13.0",
- "lzma-rust2",
+ "lzma-rust2 0.16.2",
  "memchr",
  "pbkdf2",
  "ppmd-rust",

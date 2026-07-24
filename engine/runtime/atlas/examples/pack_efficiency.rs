@@ -74,7 +74,7 @@ fn run(
             });
         }
 
-        match build_atlas_multipage(&materials, MAX_ATLAS_SIZE, EXTRUSION, &mut cache) {
+        match build_atlas_multipage(&materials, MAX_ATLAS_SIZE, EXTRUSION, 1, &mut cache) {
             Ok(Some(built)) => {
                 let pages = built.pages.len();
                 let budget = (MAX_ATLAS_SIZE as f64).powi(2) * pages as f64;

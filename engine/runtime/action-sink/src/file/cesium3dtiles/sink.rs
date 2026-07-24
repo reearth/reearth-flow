@@ -99,6 +99,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
                 output,
                 min_zoom: params.min_zoom,
                 max_zoom: params.max_zoom,
+                #[cfg(not(feature = "new-geometry"))]
                 attach_texture: params.attach_texture,
                 compress_output,
                 draco_compression: params.draco_compression,
@@ -110,6 +111,8 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
                 atlas_size: params.atlas_size,
                 #[cfg(feature = "new-geometry")]
                 atlas_extrusion: params.atlas_extrusion,
+                #[cfg(feature = "new-geometry")]
+                texture_codec: params.texture_codec,
                 skip_unexposed_attributes: params.skip_unexposed_attributes.unwrap_or(false),
                 schema_key: params.schema_key,
             },
@@ -125,6 +128,33 @@ pub struct Cesium3DTilesWriter {
     pub(super) buffer: HashMap<BufferKey, Vec<Feature>>,
     pub(super) schema: Schema,
     pub(super) params: Cesium3DTilesWriterCompiledParam,
+}
+
+/// Serde default for flags that are on unless explicitly disabled. Also makes
+/// the generated JSON schema advertise `default: true`.
+fn default_true() -> bool {
+    true
+}
+
+/// # Texture Codec
+/// Texture image codec for the new-geometry writer's atlas pages.
+#[derive(Serialize, Deserialize, Debug, Clone, Copy, Default, PartialEq, Eq, JsonSchema)]
+pub enum TextureCodec {
+    /// KTX2 with Basis Universal UASTC supercompression (`KHR_texture_basisu`):
+    /// higher quality, larger files.
+    #[serde(rename = "KTX2/UASTC")]
+    Ktx2Uastc,
+    /// KTX2 with Basis Universal ETC1S supercompression (`KHR_texture_basisu`):
+    /// smaller files, lower quality.
+    #[default]
+    #[serde(rename = "KTX2/ETC1S")]
+    Ktx2Etc1s,
+    /// PNG, lossless with alpha.
+    #[serde(rename = "PNG")]
+    Png,
+    /// JPEG, lossy and opaque (alpha is dropped).
+    #[serde(rename = "JPEG")]
+    Jpeg,
 }
 
 /// # Cesium3DTilesWriter Parameters
@@ -144,15 +174,18 @@ pub struct Cesium3DTilesWriterParam {
     pub(super) max_zoom: u8,
     /// # Attach Textures
     /// Whether to include texture information in the generated tiles.
+    #[cfg(not(feature = "new-geometry"))]
     pub(super) attach_texture: Option<bool>,
     /// # Draco Compression
     /// Whether to compress mesh geometry with Draco. Defaults to true.
-    pub(super) draco_compression: Option<bool>,
+    #[serde(default = "default_true")]
+    pub(super) draco_compression: bool,
     /// # Compute Flat Normals
     /// Compute per-polygon flat normals for lighting. Defaults to true.
     /// When disabled, no normals are written and the mesh is smaller, but the
     /// tile carries no lighting data (a viewer must derive flat normals itself).
-    pub(super) compute_flat_normal: Option<bool>,
+    #[serde(default = "default_true")]
+    pub(super) compute_flat_normal: bool,
     /// # Texel Size
     /// Target texel size in metres per pixel. Textures finer than this are
     /// downsampled to it. Defaults to 0, which keeps full texture detail.
@@ -161,12 +194,19 @@ pub struct Cesium3DTilesWriterParam {
     /// Maximum texture atlas dimension in pixels. Textures exceeding this spill
     /// onto additional atlas pages; a single texture larger than it is
     /// downsampled to fit. Defaults to 2048.
-    #[schemars(range(min = 1))]
+    // Upper bound mirrors `reearth_flow_atlas::MAX_ATLAS_DIMENSION`; the packer
+    // rejects larger values, so the schema advertises the same ceiling.
+    #[schemars(range(min = 1, max = 65536))]
     pub(super) atlas_size: Option<u32>,
     /// # Atlas Extrusion
     /// Ring of pixels blitted around each texture region in the atlas to stop
     /// bilinear bleed between neighbouring regions. Defaults to 0 (disabled).
+    #[schemars(range(max = 65536))]
     pub(super) atlas_extrusion: Option<u32>,
+    /// # Texture Codec
+    /// Image codec for atlas pages. Unset attaches no textures; when a codec is
+    /// chosen it defaults to `KTX2/ETC1S`.
+    pub(super) texture_codec: Option<TextureCodec>,
     /// # Schema Key
     /// Attribute key whose value identifies the schema type and determines the output
     /// filename: all features sharing the same value are written to the same file.
@@ -185,17 +225,20 @@ pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) output: CompiledCode,
     pub(super) min_zoom: u8,
     pub(super) max_zoom: u8,
+    #[cfg(not(feature = "new-geometry"))]
     pub(super) attach_texture: Option<bool>,
     pub(super) compress_output: Option<CompiledCode>,
-    pub(super) draco_compression: Option<bool>,
+    pub(super) draco_compression: bool,
     #[cfg(feature = "new-geometry")]
-    pub(super) compute_flat_normal: Option<bool>,
+    pub(super) compute_flat_normal: bool,
     #[cfg(feature = "new-geometry")]
     pub(super) texel_size: Option<f64>,
     #[cfg(feature = "new-geometry")]
     pub(super) atlas_size: Option<u32>,
     #[cfg(feature = "new-geometry")]
     pub(super) atlas_extrusion: Option<u32>,
+    #[cfg(feature = "new-geometry")]
+    pub(super) texture_codec: Option<TextureCodec>,
     pub(super) skip_unexposed_attributes: bool,
     pub(super) schema_key: Option<String>,
 }
@@ -467,7 +510,7 @@ impl Cesium3DTilesWriter {
                             receiver_sorted,
                             tile_id_conv,
                             &schema,
-                            self.params.draco_compression.unwrap_or(true),
+                            self.params.draco_compression,
                         );
                         if let Err(e) = &result {
                             let ctx = ctx.clone();

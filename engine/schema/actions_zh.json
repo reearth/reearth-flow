@@ -2141,18 +2141,14 @@
           "dracoCompression": {
             "title": "Draco 压缩",
             "description": "使用 Draco 压缩。默认为 true。",
-            "type": [
-              "boolean",
-              "null"
-            ]
+            "default": true,
+            "type": "boolean"
           },
           "computeFlatNormal": {
             "title": "计算平面法线",
             "description": "为光照计算逐多边形的平面法线。默认为 true。禁用时不写入法线，网格更小，但瓦片不包含光照数据（查看器需自行推导平面法线）。",
-            "type": [
-              "boolean",
-              "null"
-            ]
+            "default": true,
+            "type": "boolean"
           },
           "texelSize": {
             "title": "纹素大小",
@@ -2171,6 +2167,7 @@
               "null"
             ],
             "format": "uint32",
+            "maximum": 65536.0,
             "minimum": 1.0
           },
           "atlasExtrusion": {
@@ -2181,7 +2178,20 @@
               "null"
             ],
             "format": "uint32",
+            "maximum": 65536.0,
             "minimum": 0.0
+          },
+          "textureCodec": {
+            "title": "纹理编解码器",
+            "description": "图集页面的图像编解码器。未设置时不附加纹理；选择编解码器时默认为 `KTX2/ETC1S`。",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/TextureCodec"
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "schemaKey": {
             "title": "模式键",
@@ -2223,6 +2233,42 @@
                 "type": "string"
               }
             }
+          }
+        },
+        "definitions": {
+          "TextureCodec": {
+            "title": "Texture Codec",
+            "description": "Texture image codec for the new-geometry writer's atlas pages.",
+            "oneOf": [
+              {
+                "description": "采用 Basis Universal UASTC 超级压缩的 KTX2（`KHR_texture_basisu`）：质量更高，文件更大。",
+                "type": "string",
+                "enum": [
+                  "KTX2/UASTC"
+                ]
+              },
+              {
+                "description": "采用 Basis Universal ETC1S 超级压缩的 KTX2（`KHR_texture_basisu`）：文件更小，质量更低。",
+                "type": "string",
+                "enum": [
+                  "KTX2/ETC1S"
+                ]
+              },
+              {
+                "description": "PNG，带 alpha 通道的无损格式。",
+                "type": "string",
+                "enum": [
+                  "PNG"
+                ]
+              },
+              {
+                "description": "JPEG，有损且不透明（丢弃 alpha 通道）。",
+                "type": "string",
+                "enum": [
+                  "JPEG"
+                ]
+              }
+            ]
           }
         }
       },

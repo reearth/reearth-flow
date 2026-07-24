@@ -1,15 +1,15 @@
-//! Schema-agnostic GLB (binary glTF) assembly: a thin wrapper over the real
-//! `gltf-rs/gltf` crate's `gltf_json` (the base document schema, already a
-//! workspace dependency via the reader half of this crate) and
-//! `gltf::binary::Glb` (the container). Knows nothing about CityGML,
-//! PLATEAU, feature IDs, or any specific glTF extension — not even `NORMAL`:
-//! a caller pushes one or more primitives (supplying any dedup-key vertex
-//! attributes up front via [`normal`], e.g. a precomputed flat normal),
-//! optionally attaches extra per-vertex attributes and already-built
-//! extension payloads to whatever it got back, then calls
-//! [`Builder::build`]. See `crate::next::metadata` for the feature-processing
-//! layer that builds Cesium's metadata extensions on top of this.
+//! GLB (binary glTF) assembly that stays agnostic to every glTF extension and
+//! every domain schema. It wraps the `gltf-rs/gltf` crate's `gltf_json`
+//! document and its `gltf::binary::Glb` container, and adds nothing
+//! schema-aware of its own.
+//!
+//! Extensions are opaque here. A caller supplies the vertex attributes, pushes
+//! primitives and buffer views, attaches extension payloads as `(name, JSON)`
+//! pairs, then calls [`Builder::build`]. This module never inspects a payload
+//! or hardcodes an extension name. See `crate::next::metadata` for the layer
+//! that builds Cesium's metadata extensions on top of this.
 
+mod codec;
 mod primitive;
 mod texture;
 
@@ -19,6 +19,7 @@ use std::collections::{BTreeMap, HashSet};
 use gltf::json;
 use gltf::json::validation::{Checked, USize64};
 
+pub use codec::{Codec, CodecError, JpegCodec, PngCodec};
 pub use primitive::{normal, texcoord, DedupAttribute, Granularity};
 pub use texture::{ImageRef, MagFilter, MinFilter, SamplerDesc, TextureRef, Wrap};
 

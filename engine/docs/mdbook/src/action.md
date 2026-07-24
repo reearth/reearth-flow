@@ -2103,18 +2103,14 @@ Writes features to Cesium 3D Tiles format for 3D web visualization.
     "dracoCompression": {
       "title": "Draco Compression",
       "description": "Whether to compress mesh geometry with Draco. Defaults to true.",
-      "type": [
-        "boolean",
-        "null"
-      ]
+      "default": true,
+      "type": "boolean"
     },
     "computeFlatNormal": {
       "title": "Compute Flat Normals",
       "description": "Compute per-polygon flat normals for lighting. Defaults to true. When disabled, no normals are written and the mesh is smaller, but the tile carries no lighting data (a viewer must derive flat normals itself).",
-      "type": [
-        "boolean",
-        "null"
-      ]
+      "default": true,
+      "type": "boolean"
     },
     "texelSize": {
       "title": "Texel Size",
@@ -2133,6 +2129,7 @@ Writes features to Cesium 3D Tiles format for 3D web visualization.
         "null"
       ],
       "format": "uint32",
+      "maximum": 65536.0,
       "minimum": 1.0
     },
     "atlasExtrusion": {
@@ -2143,7 +2140,20 @@ Writes features to Cesium 3D Tiles format for 3D web visualization.
         "null"
       ],
       "format": "uint32",
+      "maximum": 65536.0,
       "minimum": 0.0
+    },
+    "textureCodec": {
+      "title": "Texture Codec",
+      "description": "Image codec for atlas pages. Unset attaches no textures; when a codec is chosen it defaults to `KTX2/ETC1S`.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/TextureCodec"
+        },
+        {
+          "type": "null"
+        }
+      ]
     },
     "schemaKey": {
       "title": "Schema Key",
@@ -2185,6 +2195,42 @@ Writes features to Cesium 3D Tiles format for 3D web visualization.
           "type": "string"
         }
       }
+    }
+  },
+  "definitions": {
+    "TextureCodec": {
+      "title": "Texture Codec",
+      "description": "Texture image codec for the new-geometry writer's atlas pages.",
+      "oneOf": [
+        {
+          "description": "KTX2 with Basis Universal UASTC supercompression (`KHR_texture_basisu`): higher quality, larger files.",
+          "type": "string",
+          "enum": [
+            "KTX2/UASTC"
+          ]
+        },
+        {
+          "description": "KTX2 with Basis Universal ETC1S supercompression (`KHR_texture_basisu`): smaller files, lower quality.",
+          "type": "string",
+          "enum": [
+            "KTX2/ETC1S"
+          ]
+        },
+        {
+          "description": "PNG, lossless with alpha.",
+          "type": "string",
+          "enum": [
+            "PNG"
+          ]
+        },
+        {
+          "description": "JPEG, lossy and opaque (alpha is dropped).",
+          "type": "string",
+          "enum": [
+            "JPEG"
+          ]
+        }
+      ]
     }
   }
 }
