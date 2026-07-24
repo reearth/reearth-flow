@@ -173,11 +173,11 @@
     {
       "name": "Attribute Aggregator",
       "type": "processor",
-      "description": "属性に基づいて地物をグルーピングする",
+      "description": "属性値で地物をグループ化し、グループごとに計算値を集計して1グループにつき1地物を出力する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "AttributeAggregator パラメータ",
-        "description": "属性値に基づいてフィーチャーをグループ化・集計する方法を設定する",
+        "title": "Attribute Aggregator パラメータ",
+        "description": "地物をどのようにグループ化し、グループごとにどの値を集計するかを設定する",
         "type": "object",
         "required": [
           "aggregateAttributes",
@@ -185,15 +185,44 @@
           "method"
         ],
         "properties": {
+          "method": {
+            "title": "集計メソッド",
+            "description": "グループ内で地物ごとの計算値を集計する方法（最大・最小・カウント）",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Method"
+              }
+            ]
+          },
           "aggregateAttributes": {
-            "title": "集計する属性のリスト",
+            "title": "グループ化する属性",
+            "description": "各グループを定義する属性。各エントリは既存属性または式から値を読み取り、集計後の出力地物の新しい属性に書き込む",
             "type": "array",
             "items": {
               "$ref": "#/definitions/AggregateAttribute"
             }
           },
+          "calculationAttribute": {
+            "title": "結果を格納する属性",
+            "description": "計算結果を格納する集計後地物の属性",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "calculationValue": {
+            "title": "計算に使用する値",
+            "description": "地物ごとの値として使う整数の定数。設定した場合は計算式より優先される",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
           "calculation": {
-            "title": "実行する計算",
+            "title": "計算式",
+            "description": "地物ごとに整数として評価される式。計算値が設定されていない場合の地物ごとの値として使う",
             "type": [
               "object",
               "null"
@@ -214,33 +243,37 @@
                 "type": "string"
               }
             }
-          },
-          "calculationValue": {
-            "title": "計算に使用する値",
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int64"
-          },
-          "calculationAttribute": {
-            "title": "計算結果を格納する属性",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              }
-            ]
-          },
-          "method": {
-            "title": "集計メソッド",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Method"
-              }
-            ]
           }
         },
         "definitions": {
+          "Method": {
+            "oneOf": [
+              {
+                "title": "最大値",
+                "description": "グループ内の地物ごとの計算値の最大値を保持する",
+                "type": "string",
+                "enum": [
+                  "max"
+                ]
+              },
+              {
+                "title": "最小値",
+                "description": "グループ内の地物ごとの計算値の最小値を保持する",
+                "type": "string",
+                "enum": [
+                  "min"
+                ]
+              },
+              {
+                "title": "カウント",
+                "description": "グループ内で地物ごとの計算値を合計する。値が1のときは地物数になる",
+                "type": "string",
+                "enum": [
+                  "count"
+                ]
+              }
+            ]
+          },
           "AggregateAttribute": {
             "type": "object",
             "required": [
@@ -248,7 +281,8 @@
             ],
             "properties": {
               "newAttribute": {
-                "title": "作成する新規属性",
+                "title": "出力属性",
+                "description": "このグループ値を格納する集計後地物の属性名",
                 "allOf": [
                   {
                     "$ref": "#/definitions/Attribute"
@@ -256,7 +290,8 @@
                 ]
               },
               "attribute": {
-                "title": "使用する既存属性",
+                "title": "参照する既存属性",
+                "description": "グループ値を読み取る既存属性。グループ値の式が指定された場合は無視される",
                 "anyOf": [
                   {
                     "$ref": "#/definitions/Attribute"
@@ -267,7 +302,8 @@
                 ]
               },
               "attributeValue": {
-                "title": "属性に使用する値",
+                "title": "グループ値の式",
+                "description": "グループ値を計算する式。両方設定した場合は既存属性より優先される",
                 "type": [
                   "object",
                   "null"
@@ -293,34 +329,6 @@
           },
           "Attribute": {
             "type": "string"
-          },
-          "Method": {
-            "oneOf": [
-              {
-                "title": "最大値",
-                "description": "グループ内の最大値を求める",
-                "type": "string",
-                "enum": [
-                  "max"
-                ]
-              },
-              {
-                "title": "最小値",
-                "description": "グループ内の最小値を求める",
-                "type": "string",
-                "enum": [
-                  "min"
-                ]
-              },
-              {
-                "title": "アイテム数をカウント",
-                "description": "グループ内のフィーチャー数をカウントする",
-                "type": "string",
-                "enum": [
-                  "count"
-                ]
-              }
-            ]
           }
         }
       },
@@ -335,7 +343,7 @@
         "Attribute"
       ],
       "tags": [
-        "aggregate"
+        "aggregation"
       ]
     },
     {
@@ -381,19 +389,29 @@
     {
       "name": "Attribute Conversion Table",
       "type": "processor",
-      "description": "ルックアップテーブルを使用して地物属性を変換する",
+      "description": "ファイルまたはインラインで指定した変換テーブルで値を照合し、地物属性を変換する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "AttributeConversionTable パラメータ",
+        "title": "Attribute Conversion Table パラメータ",
+        "description": "ルックアップテーブルと、地物属性値を置換値にマッピングするルールを設定する",
         "type": "object",
         "required": [
           "format",
           "rules"
         ],
         "properties": {
+          "format": {
+            "title": "テーブル形式",
+            "description": "変換テーブルの解析に使う形式",
+            "allOf": [
+              {
+                "$ref": "#/definitions/ConversionTableFormat"
+              }
+            ]
+          },
           "rules": {
             "title": "変換ルール",
-            "description": "変換テーブルを使用して属性をマッピングするルールのリスト",
+            "description": "地物属性値をテーブルの列と照合し、照合結果を地物に書き戻すルール",
             "type": "array",
             "items": {
               "$ref": "#/definitions/AttributeConversionTableRule"
@@ -401,7 +419,7 @@
           },
           "dataset": {
             "title": "データセット URI",
-            "description": "外部変換テーブルファイルのパスまたは URI",
+            "description": "変換テーブルファイルのパスまたは URI。これかインラインデータのいずれかを指定する",
             "type": [
               "object",
               "null"
@@ -425,24 +443,43 @@
             }
           },
           "inline": {
-            "title": "インラインテーブルデータ",
-            "description": "文字列として直接指定する変換テーブルデータ",
+            "title": "インラインテーブル",
+            "description": "テキストとして直接指定する変換テーブルの内容。データセット URI がない場合に使う",
             "type": [
               "string",
               "null"
             ]
-          },
-          "format": {
-            "title": "テーブル形式",
-            "description": "変換テーブルの形式（CSV、TSV、または JSON）",
-            "allOf": [
-              {
-                "$ref": "#/definitions/ConversionTableFormat"
-              }
-            ]
           }
         },
         "definitions": {
+          "ConversionTableFormat": {
+            "oneOf": [
+              {
+                "title": "CSV",
+                "description": "ヘッダー行付きのカンマ区切り値",
+                "type": "string",
+                "enum": [
+                  "csv"
+                ]
+              },
+              {
+                "title": "TSV",
+                "description": "ヘッダー行付きのタブ区切り値",
+                "type": "string",
+                "enum": [
+                  "tsv"
+                ]
+              },
+              {
+                "title": "JSON",
+                "description": "各オブジェクトが1行を表す、オブジェクトの JSON 配列または単一オブジェクト",
+                "type": "string",
+                "enum": [
+                  "json"
+                ]
+              }
+            ]
+          },
           "AttributeConversionTableRule": {
             "type": "object",
             "required": [
@@ -453,7 +490,8 @@
             ],
             "properties": {
               "featureFroms": {
-                "title": "変換元属性",
+                "title": "元属性",
+                "description": "テーブルで照合するキーを構成する地物属性",
                 "type": "array",
                 "items": {
                   "$ref": "#/definitions/Attribute"
@@ -461,6 +499,7 @@
               },
               "featureTo": {
                 "title": "変換先属性",
+                "description": "照合した値を受け取る地物属性",
                 "allOf": [
                   {
                     "$ref": "#/definitions/Attribute"
@@ -468,28 +507,22 @@
                 ]
               },
               "conversionTableKeys": {
-                "title": "変換テーブルで照合するキー",
+                "title": "照合キー列",
+                "description": "元属性の値と照合するテーブルの列",
                 "type": "array",
                 "items": {
                   "type": "string"
                 }
               },
               "conversionTableTo": {
-                "title": "変換先属性",
+                "title": "結果の列",
+                "description": "変換先属性に書き込む値を持つテーブルの列",
                 "type": "string"
               }
             }
           },
           "Attribute": {
             "type": "string"
-          },
-          "ConversionTableFormat": {
-            "type": "string",
-            "enum": [
-              "csv",
-              "tsv",
-              "json"
-            ]
           }
         }
       },
@@ -590,10 +623,11 @@
     {
       "name": "Attribute Flattener",
       "type": "processor",
-      "description": "ネストされた属性のフラット化",
+      "description": "マップ値の属性を個々のトップレベル属性にフラット化し、各マップをそのキーと値のエントリで置き換える",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "AttributeFlattener パラメータ",
+        "title": "Attribute Flattener パラメータ",
+        "description": "どのマップ値属性をトップレベル属性に展開するかを設定する",
         "type": "object",
         "required": [
           "attributes"
@@ -601,7 +635,7 @@
         "properties": {
           "attributes": {
             "title": "フラット化する属性",
-            "description": "フラット化するマップ/オブジェクト属性。ネストされたプロパティがトップレベル属性になる。",
+            "description": "展開するマップ値の属性。各ネストされたキーがトップレベル属性になり、元のマップは削除される。マップ以外の属性はそのまま残る",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Attribute"
@@ -624,9 +658,7 @@
       "categories": [
         "Attribute"
       ],
-      "tags": [
-        "hierarchy"
-      ]
+      "tags": []
     },
     {
       "name": "Attribute Manager",
@@ -722,18 +754,19 @@
     {
       "name": "Attribute Mapper",
       "type": "processor",
-      "description": "属性をマッピングする",
+      "description": "地物の属性を、マッピングルールから構築した新しい属性セットで置き換える。各ルールは式・別の属性・ネストされたマップのエントリから値を導出する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "AttributeMapper パラメータ",
+        "title": "Attribute Mapper パラメータ",
+        "description": "出力地物の属性を構築するマッピングルールを設定する",
         "type": "object",
         "required": [
           "mappers"
         ],
         "properties": {
           "mappers": {
-            "title": "属性マッパー",
-            "description": "式または値コピーで属性を変換するマッピングルールのリスト",
+            "title": "マッピングルール",
+            "description": "順序付きのルールのリスト。各ルールは1つ以上の出力属性を生成する。出力地物にはここで生成した属性のみが含まれる",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Mapper"
@@ -745,14 +778,16 @@
             "type": "object",
             "properties": {
               "attribute": {
-                "title": "属性名",
+                "title": "対象属性",
+                "description": "設定する属性の名前。値は式・元属性・親子ペアから取得する。空にすると複数値の式が使われる",
                 "type": [
                   "string",
                   "null"
                 ]
               },
               "expr": {
-                "title": "評価する式",
+                "title": "値の式",
+                "description": "属性値を生成するために評価する式。評価エラーの場合は null 値になる",
                 "type": [
                   "object",
                   "null"
@@ -776,28 +811,32 @@
                 }
               },
               "valueAttribute": {
-                "title": "値を取得する属性名",
+                "title": "元属性",
+                "description": "値をコピーする既存属性。属性が存在しない場合は null になる",
                 "type": [
                   "string",
                   "null"
                 ]
               },
               "parentAttribute": {
-                "title": "親属性名",
+                "title": "親属性",
+                "description": "コピーする値を含むマップ値の属性。子属性と一緒に使う",
                 "type": [
                   "string",
                   "null"
                 ]
               },
               "childAttribute": {
-                "title": "子属性名",
+                "title": "子属性",
+                "description": "対象属性に値をコピーする、親マップ内のキー",
                 "type": [
                   "string",
                   "null"
                 ]
               },
               "multipleExpr": {
-                "title": "複数属性を評価する式",
+                "title": "複数値の式",
+                "description": "マップを返す式。そのエントリが属性として追加される。対象属性が設定されていない場合に使う",
                 "type": [
                   "object",
                   "null"

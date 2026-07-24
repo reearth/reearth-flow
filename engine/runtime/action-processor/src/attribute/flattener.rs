@@ -23,7 +23,7 @@ impl ProcessorFactory for AttributeFlattenerFactory {
     }
 
     fn description(&self) -> &str {
-        "Flatten Nested Object Attributes into Top-Level Attributes"
+        "Flattens map-valued attributes into individual top-level attributes, replacing each map with its key-value entries."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -35,7 +35,7 @@ impl ProcessorFactory for AttributeFlattenerFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["hierarchy"]
+        &[]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -81,12 +81,13 @@ struct AttributeFlattener {
     params: AttributeFlattenerParam,
 }
 
-/// # AttributeFlattener Parameters
+/// # Attribute Flattener Parameters
+/// Configures which map-valued attributes are expanded into top-level attributes.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AttributeFlattenerParam {
     /// # Attributes to Flatten
-    /// Map/object attributes that should be flattened - their nested properties will become top-level attributes
+    /// Map-valued attributes to expand; each nested key becomes a top-level attribute and the original map is removed. Non-map attributes are left unchanged.
     attributes: Vec<Attribute>,
 }
 
