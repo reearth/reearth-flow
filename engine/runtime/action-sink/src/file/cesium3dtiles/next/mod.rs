@@ -165,11 +165,7 @@ pub fn build(
     let mut caches = mesh::ExtractCaches::default();
     let extracted: Vec<(&Feature, mesh::ExtractedMesh)> = features
         .iter()
-        .enumerate()
-        .inspect(|(i, _)| eprintln!("extracting feature {}/{}", i + 1, features.len()))
-        .filter_map(|(_, feature)| {
-            mesh::extract(&feature.geometry, &mut caches).map(|m| (feature, m))
-        })
+        .filter_map(|feature| mesh::extract(&feature.geometry, &mut caches).map(|m| (feature, m)))
         .collect();
 
     if extracted.is_empty() {
