@@ -24,7 +24,7 @@ impl ProcessorFactory for AttributeMapperFactory {
     }
 
     fn description(&self) -> &str {
-        "Transform Feature Attributes Using Expressions and Mappings"
+        "Replaces a feature's attributes with a new set built from mapping rules, each deriving its value from an expression, another attribute, or a nested map entry."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -161,29 +161,36 @@ fn parse_params(with: &Option<HashMap<String, Value>>) -> Option<AttributeMapper
     serde_json::from_value::<AttributeMapperParam>(value).ok()
 }
 
-/// # AttributeMapper Parameters
+/// # Attribute Mapper Parameters
+/// Configures the mapping rules that build the output feature's attributes.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AttributeMapperParam {
-    /// # Attribute Mappers
-    /// List of mapping rules to transform attributes using expressions or value copying
+    /// # Mapping Rules
+    /// Ordered list of rules; each produces one or more output attributes. The output feature contains only the attributes produced here.
     mappers: Vec<Mapper>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct Mapper {
-    /// # Attribute name
+    /// # Target Attribute
+    /// Name of the attribute to set, taking its value from the expression, source attribute, or parent/child pair. Leave empty to use the multiple-values expression instead.
     attribute: Option<String>,
-    /// # Expression to evaluate
+    /// # Value Expression
+    /// Expression evaluated to produce the attribute value. Evaluation errors yield a null value.
     expr: Option<Code>,
-    /// # Attribute name to get value from
+    /// # Source Attribute
+    /// Existing attribute to copy the value from. Yields null when the attribute is absent.
     value_attribute: Option<String>,
-    /// # Parent attribute name
+    /// # Parent Attribute
+    /// Map-valued attribute containing the value to copy. Used together with the child attribute.
     parent_attribute: Option<String>,
-    /// # Child attribute name
+    /// # Child Attribute
+    /// Key within the parent map whose value is copied to the target attribute.
     child_attribute: Option<String>,
-    /// # Expression to evaluate multiple attributes
+    /// # Multiple-Values Expression
+    /// Expression returning a map whose entries are added as attributes. Used when no target attribute is set.
     multiple_expr: Option<Code<{ CodeType::FlowExpr as u32 }>>,
 }
 
