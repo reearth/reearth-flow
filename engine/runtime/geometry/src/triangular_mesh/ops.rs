@@ -111,6 +111,43 @@ impl ConvertFrame for TriangularMesh3D {
     }
 }
 
+use crate::index::IndexBuffer;
+use crate::ops::ForceTwoDimension;
+use crate::Euclidean2DGeometry;
+
+impl ForceTwoDimension for TriangularMesh2D {
+    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, UnsupportedOperation> {
+        self.z = None; // drop any 2.5D elevation; indices and appearance carry over
+        Ok(Euclidean2DGeometry::TriangularMesh(Box::new(
+            TriangularMesh2D {
+                frame: self.frame.clone(),
+                vertices: std::mem::take(&mut self.vertices),
+                z: None,
+                indices: std::mem::replace(&mut self.indices, IndexBuffer::U8(Vec::new())),
+                appearance: self.appearance.take(),
+            },
+        )))
+    }
+}
+
+impl ForceTwoDimension for TriangularMesh3D {
+    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, UnsupportedOperation> {
+        let vertices = std::mem::take(&mut self.data.vertices)
+            .into_iter()
+            .map(|[x, y, _]| [x, y])
+            .collect();
+        Ok(Euclidean2DGeometry::TriangularMesh(Box::new(
+            TriangularMesh2D {
+                frame: self.frame.clone(),
+                vertices,
+                z: None,
+                indices: std::mem::replace(&mut self.data.indices, IndexBuffer::U8(Vec::new())),
+                appearance: self.data.appearance.take(),
+            },
+        )))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

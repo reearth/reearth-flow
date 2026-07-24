@@ -417,6 +417,53 @@ fn push_open_ring(
     open_src.extend((ring_start..open_end).map(|p| (p - start) as u32));
 }
 
+use crate::ops::ForceTwoDimension;
+
+impl ForceTwoDimension for PolygonMesh2D {
+    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, UnsupportedOperation> {
+        self.z = None; // drop any 2.5D elevation; topology and appearance carry over
+        Ok(Euclidean2DGeometry::PolygonMesh(Box::new(PolygonMesh2D {
+            frame: self.frame.clone(),
+            vertices: std::mem::take(&mut self.vertices),
+            z: None,
+            face_indices: std::mem::replace(&mut self.face_indices, IndexBuffer::U8(Vec::new())),
+            face_offsets: std::mem::replace(&mut self.face_offsets, IndexBuffer::U8(Vec::new())),
+            interior_offsets: std::mem::replace(
+                &mut self.interior_offsets,
+                IndexBuffer::U8(Vec::new()),
+            ),
+            appearance: self.appearance.take(),
+        })))
+    }
+}
+
+impl ForceTwoDimension for PolygonMesh3D {
+    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, UnsupportedOperation> {
+        let vertices = std::mem::take(&mut self.data.vertices)
+            .into_iter()
+            .map(|[x, y, _]| [x, y])
+            .collect();
+        Ok(Euclidean2DGeometry::PolygonMesh(Box::new(PolygonMesh2D {
+            frame: self.frame.clone(),
+            vertices,
+            z: None,
+            face_indices: std::mem::replace(
+                &mut self.data.face_indices,
+                IndexBuffer::U8(Vec::new()),
+            ),
+            face_offsets: std::mem::replace(
+                &mut self.data.face_offsets,
+                IndexBuffer::U8(Vec::new()),
+            ),
+            interior_offsets: std::mem::replace(
+                &mut self.data.interior_offsets,
+                IndexBuffer::U8(Vec::new()),
+            ),
+            appearance: self.data.appearance.take(),
+        })))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

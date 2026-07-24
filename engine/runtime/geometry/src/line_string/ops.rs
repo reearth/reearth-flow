@@ -106,6 +106,34 @@ impl ConvertFrame for LineString3D {
     }
 }
 
+use crate::ops::ForceTwoDimension;
+use crate::Euclidean2DGeometry;
+
+impl ForceTwoDimension for LineString2D {
+    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, UnsupportedOperation> {
+        self.z = None; // drop any 2.5D elevation; already 2D otherwise
+        Ok(Euclidean2DGeometry::LineString(LineString2D {
+            frame: self.frame.clone(),
+            coords: std::mem::take(&mut self.coords),
+            z: None,
+        }))
+    }
+}
+
+impl ForceTwoDimension for LineString3D {
+    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, UnsupportedOperation> {
+        let coords = std::mem::take(&mut self.coords)
+            .iter()
+            .map(|&[x, y, _]| [x, y])
+            .collect();
+        Ok(Euclidean2DGeometry::LineString(LineString2D {
+            frame: self.frame.clone(),
+            coords,
+            z: None,
+        }))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
