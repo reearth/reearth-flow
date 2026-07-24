@@ -1,3 +1,4 @@
+use reearth_flow_geometry::appearance::Appearance;
 use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
 use reearth_flow_geometry::ops::reproject::transform_coords_3d;
 use reearth_flow_geometry::ops::{
@@ -5,6 +6,7 @@ use reearth_flow_geometry::ops::{
 };
 use reearth_flow_geometry::polygon_mesh::PolygonMesh3D;
 use reearth_flow_geometry::solid::Shell;
+use reearth_flow_geometry::triangular_mesh::TriangularMesh3D;
 use reearth_flow_geometry::{Euclidean3DGeometry, Geometry};
 
 use super::appearance::{self, ResolvedMaterial};
@@ -74,7 +76,11 @@ pub(super) fn extract(geometry: &Geometry, caches: &mut ExtractCaches) -> Option
     };
 
     for mesh in meshes {
-        let Some(extracted) = extract_one(mesh, caches) else {
+        let extracted = match mesh {
+            CollectedMesh::Polygon(m) => extract_one(m, caches),
+            CollectedMesh::Triangular(m) => extract_triangular(m, caches),
+        };
+        let Some(extracted) = extracted else {
             continue;
         };
         let base = combined.ecef_vertices.len() as u32;
@@ -109,9 +115,18 @@ pub(super) fn extract(geometry: &Geometry, caches: &mut ExtractCaches) -> Option
     }
 }
 
+/// A mesh collected for extraction, kept in its source leaf type. A
+/// `TriangularMesh` is stored as-is rather than converted to a `PolygonMesh`:
+/// it is already triangulated, so routing it through the polygon triangulator
+/// would only re-triangulate it back (see [`extract_triangular`]).
+enum CollectedMesh {
+    Polygon(PolygonMesh3D),
+    Triangular(TriangularMesh3D),
+}
+
 /// Recurse through `GeometryCollection` — the reader's mandatory per-LOD
 /// wrapper — into the `Euclidean3D` members it holds.
-fn collect_geometry(geometry: &Geometry, out: &mut Vec<PolygonMesh3D>) {
+fn collect_geometry(geometry: &Geometry, out: &mut Vec<CollectedMesh>) {
     match geometry {
         Geometry::GeometryCollection(gc) => {
             for member in gc.members() {
@@ -124,49 +139,32 @@ fn collect_geometry(geometry: &Geometry, out: &mut Vec<PolygonMesh3D>) {
 }
 
 /// Recurse through `Collection` members and unpack a `Solid`'s boundary
-/// shells, collecting every `PolygonMesh` found. A `Solid` shell is a
-/// coordinate-free mesh; its frame lives on the enclosing `Solid`, so each
+/// shells, collecting every mesh found in its source leaf type. A `Solid` shell
+/// is a coordinate-free mesh; its frame lives on the enclosing `Solid`, so each
 /// unpacked shell is re-paired with the solid's frame for reprojection. Bare
-/// `Polygon` faces (what a MultiPolygon-Z source decodes to) become
-/// single-face meshes in their own frame.
-fn collect_euclidean3d(geometry: &Euclidean3DGeometry, out: &mut Vec<PolygonMesh3D>) {
+/// `Polygon` faces (what a MultiPolygon-Z source decodes to) become single-face
+/// meshes in their own frame.
+fn collect_euclidean3d(geometry: &Euclidean3DGeometry, out: &mut Vec<CollectedMesh>) {
     match geometry {
         Euclidean3DGeometry::Collection(c) => {
             for member in c.members() {
                 collect_euclidean3d(member, out);
             }
         }
-        Euclidean3DGeometry::PolygonMesh(mesh) => out.push((**mesh).clone()),
-        // A triangle mesh (what the glTF reader emits) is a polygon mesh whose every
-        // face is a triangle: reuse its shared vertex pool as-is and turn each triangle
-        // index triple into a 3-corner face, so no re-deduplication is needed.
+        Euclidean3DGeometry::PolygonMesh(mesh) => {
+            out.push(CollectedMesh::Polygon((**mesh).clone()))
+        }
+        // A triangle mesh (what the glTF reader emits) is already triangulated;
+        // keep it as-is so `extract_triangular` uses its triangles directly.
         Euclidean3DGeometry::TriangularMesh(mesh) => {
-            match PolygonMesh3D::from_parts(
-                mesh.frame().clone(),
-                mesh.vertices().to_vec(),
-                mesh.triangles(),
-            ) {
-                Ok(mut m) => {
-                    // `from_parts` yields a bare mesh; carry the triangle mesh's
-                    // appearance over. Corner order is 1:1 (each triangle becomes a
-                    // 3-corner face in the same order), so per-corner UV and
-                    // per-face bindings stay aligned.
-                    *m.appearance_mut() = mesh.appearance().clone();
-                    out.push(m);
-                }
-                Err(e) => {
-                    tracing::warn!(
-                        "Cesium3DTilesWriter: skipping un-meshable TriangularMesh: {e:?}"
-                    )
-                }
-            }
+            out.push(CollectedMesh::Triangular((**mesh).clone()))
         }
         // A bare face (e.g. a MultiPolygon-Z GeoPackage layer decodes to a
         // `Collection` of these) is a single-face mesh in the polygon's own frame.
         Euclidean3DGeometry::Polygon(polygon) => {
             match PolygonMesh3D::from_polygons(polygon.frame().clone(), std::iter::once(&**polygon))
             {
-                Ok(mesh) => out.push(mesh),
+                Ok(mesh) => out.push(CollectedMesh::Polygon(mesh)),
                 Err(e) => {
                     tracing::warn!("Cesium3DTilesWriter: skipping un-meshable Polygon: {e:?}")
                 }
@@ -175,18 +173,18 @@ fn collect_euclidean3d(geometry: &Euclidean3DGeometry, out: &mut Vec<PolygonMesh
         Euclidean3DGeometry::Solid(solid) => {
             for shell in std::iter::once(solid.exterior()).chain(solid.interiors()) {
                 match shell {
-                    Shell::PolygonMesh(data) => {
-                        out.push(PolygonMesh3D::new(solid.frame().clone(), data.clone()))
-                    }
-                    Shell::TriangularMesh(_) => tracing::warn!(
-                        "Cesium3DTilesWriter: a Solid shell is a TriangularMesh; \
-                         TriangularMesh leaves aren't supported, skipping"
-                    ),
+                    Shell::PolygonMesh(data) => out.push(CollectedMesh::Polygon(
+                        PolygonMesh3D::new(solid.frame().clone(), data.clone()),
+                    )),
+                    Shell::TriangularMesh(data) => out.push(CollectedMesh::Triangular(
+                        TriangularMesh3D::new(solid.frame().clone(), data.clone()),
+                    )),
                 }
             }
         }
         other => tracing::warn!(
-            "Cesium3DTilesWriter: only PolygonMesh/Solid are supported; skipping {other:?}"
+            "Cesium3DTilesWriter: only PolygonMesh/TriangularMesh/Solid are supported; skipping \
+             {other:?}"
         ),
     }
 }
@@ -233,23 +231,8 @@ fn extract_one(mut mesh: PolygonMesh3D, caches: &mut ExtractCaches) -> Option<Ex
     };
 
     let indices: Vec<[u32; 3]> = result.mesh.triangles().collect();
-    // Resolve appearance onto the triangulated mesh, or fall back to a fully
-    // unbound / untextured mesh so the merge in `extract` stays uniform.
-    let (materials, triangle_material, corner_uv) = match result.mesh.appearance() {
-        Some(app) => {
-            let resolved = appearance::resolve(app, indices.len());
-            (
-                resolved.materials,
-                resolved.triangle_material,
-                resolved.corner_uv,
-            )
-        }
-        None => (
-            Vec::new(),
-            vec![None; indices.len()],
-            vec![[0.0, 0.0]; indices.len() * 3],
-        ),
-    };
+    let (materials, triangle_material, corner_uv) =
+        resolve_appearance_arrays(result.mesh.appearance().as_ref(), indices.len());
 
     Some(ExtractedMesh {
         ecef_vertices: result.mesh.vertices().to_vec(),
@@ -261,6 +244,121 @@ fn extract_one(mut mesh: PolygonMesh3D, caches: &mut ExtractCaches) -> Option<Ex
         triangle_material,
         corner_uv,
     })
+}
+
+/// Reproject and extract one `TriangularMesh` directly, without routing it
+/// through the polygon triangulator. The mesh is already triangulated, so its
+/// triangles are used as-is and each gets a flat Newell normal (oriented by the
+/// frame sign, matching [`PolygonMesh3D::triangulate_with_normals`]); every
+/// triangle is its own one-triangle "polygon". Appearance (already per-triangle
+/// and per-corner) resolves directly.
+fn extract_triangular(
+    mut mesh: TriangularMesh3D,
+    caches: &mut ExtractCaches,
+) -> Option<ExtractedMesh> {
+    let source_crs = source_crs(mesh.frame())?;
+
+    let mut geographic_vertices = mesh.vertices().to_vec();
+    if let Err(e) = transform_coords_3d(
+        &mut caches.geographic,
+        source_crs,
+        WGS84_GEOGRAPHIC,
+        &mut geographic_vertices,
+    ) {
+        tracing::warn!("Cesium3DTilesWriter: failed to reproject to WGS84 geographic: {e:?}");
+        return None;
+    }
+
+    if let Err(e) = mesh.reproject(WGS84_GEOCENTRIC, &mut caches.geocentric) {
+        tracing::warn!("Cesium3DTilesWriter: failed to reproject to ECEF: {e:?}");
+        return None;
+    }
+
+    // Same convention as the polygon path: the flat normal is the triangle's
+    // right-hand-rule normal in the (now ECEF) coordinates, times the frame's
+    // orientation sign.
+    let sign = match mesh.frame().orientation_sign() {
+        Ok(sign) => sign as f64,
+        Err(e) => {
+            tracing::warn!("Cesium3DTilesWriter: cannot orient TriangularMesh normals: {e:?}");
+            return None;
+        }
+    };
+
+    let ecef_vertices = mesh.vertices().to_vec();
+    let indices: Vec<[u32; 3]> = mesh.triangles().collect();
+    let polygon_normals: Vec<[f64; 3]> = indices
+        .iter()
+        .map(|&[a, b, c]| {
+            let tri = [
+                ecef_vertices[a as usize],
+                ecef_vertices[b as usize],
+                ecef_vertices[c as usize],
+            ];
+            let n = newell_normal(&tri).unwrap_or([0.0, 0.0, 1.0]);
+            [n[0] * sign, n[1] * sign, n[2] * sign]
+        })
+        .collect();
+    // Each triangle is its own polygon (one output triangle each).
+    let polygon_tris = vec![1u32; indices.len()];
+
+    let (materials, triangle_material, corner_uv) =
+        resolve_appearance_arrays(mesh.appearance().as_ref(), indices.len());
+
+    Some(ExtractedMesh {
+        ecef_vertices,
+        geographic_vertices,
+        indices,
+        polygon_normals,
+        polygon_tris,
+        materials,
+        triangle_material,
+        corner_uv,
+    })
+}
+
+/// Resolve a mesh's appearance onto its triangles, or fall back to a fully
+/// unbound / untextured mesh so the merge in [`extract`] stays uniform.
+fn resolve_appearance_arrays(
+    appearance: Option<&Appearance>,
+    triangle_count: usize,
+) -> (Vec<ResolvedMaterial>, Vec<Option<u32>>, Vec<[f64; 2]>) {
+    match appearance {
+        Some(app) => {
+            let resolved = appearance::resolve(app, triangle_count);
+            (
+                resolved.materials,
+                resolved.triangle_material,
+                resolved.corner_uv,
+            )
+        }
+        None => (
+            Vec::new(),
+            vec![None; triangle_count],
+            vec![[0.0, 0.0]; triangle_count * 3],
+        ),
+    }
+}
+
+/// Newell's-method unit normal of a triangle (right-hand rule), or `None` if
+/// degenerate. Matches the geometry crate's polygon-face normal so triangular
+/// and polygon meshes share one convention.
+fn newell_normal(tri: &[[f64; 3]; 3]) -> Option<[f64; 3]> {
+    let mut sum = [0.0f64; 3];
+    let mut prev = tri[2];
+    for &[x, y, z] in tri {
+        let a = [prev[0] - x, prev[1] - y, prev[2] - z];
+        let b = [prev[0] + x, prev[1] + y, prev[2] + z];
+        sum[0] += a[1] * b[2] - a[2] * b[1];
+        sum[1] += a[2] * b[0] - a[0] * b[2];
+        sum[2] += a[0] * b[1] - a[1] * b[0];
+        prev = [x, y, z];
+    }
+    let d = (sum[0] * sum[0] + sum[1] * sum[1] + sum[2] * sum[2]).sqrt();
+    if d < 1e-30 {
+        return None;
+    }
+    Some([sum[0] / d, sum[1] / d, sum[2] / d])
 }
 
 #[cfg(test)]
@@ -460,6 +558,36 @@ mod tests {
             ),
             "embedded texture surfaced through extraction"
         );
+    }
+
+    // The native TriangularMesh path must orient normals the same way the polygon
+    // path does: an outward face stored lat-first (EPSG:4979) yields an ECEF normal
+    // pointing away from the earth's centre (positive dot with an on-surface point).
+    #[test]
+    fn triangular_mesh_outward_normal_matches_polygon_path() {
+        use reearth_flow_geometry::triangular_mesh::TriangularMesh3D;
+
+        let frame = CoordinateFrame::Crs(EpsgCode::new(4979));
+        // Same winding as `outward_face_in_lat_first_frame_emits_outward_ecef_normal`.
+        let soup = [
+            [35.0, 139.0, 0.0],
+            [35.0, 139.001, 0.0],
+            [35.001, 139.0, 0.0],
+        ];
+        let mesh = TriangularMesh3D::from_soup(frame, soup);
+        let geometry = Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(mesh)));
+
+        let mut caches = ExtractCaches::default();
+        let extracted = extract(&geometry, &mut caches).expect("mesh extracts");
+
+        assert_eq!(extracted.polygon_normals.len(), 1);
+        let normal = extracted.polygon_normals[0];
+        for &vertex in &extracted.ecef_vertices {
+            assert!(
+                dot(normal, vertex) > 0.0,
+                "normal {normal:?} should point outward at {vertex:?}"
+            );
+        }
     }
 
     // A face whose canonical orientation is outward, stored in a lat-first frame
