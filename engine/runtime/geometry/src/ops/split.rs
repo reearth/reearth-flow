@@ -2,20 +2,10 @@
 //!
 //! A collection yields its direct members, a mesh yields one polygon per face,
 //! and a point cloud yields one point per sample. Splitting descends a single
-//! level: a collection of meshes splits into meshes, not into their polygons.
+//! level.
 //! Members that carry their own attributes (collection children, point-cloud
 //! points) pair each emitted geometry with those attributes so a caller can
 //! hoist them; every other member pairs with an empty attribute set.
-//!
-//! Members are handed to a callback one at a time rather than collected into a
-//! vector, so a caller streams each split feature downstream without ever
-//! holding the whole decomposition in memory.
-//!
-//! Following the op discipline, the trait carries a default body reporting
-//! [`UnsupportedOperation`]. A container leaf overrides `split` in its
-//! `{type}/ops.rs`; a non-container leaf opts out via
-//! [`unsupported!`](crate::unsupported), which a caller reads as "pass this
-//! geometry through unchanged".
 
 use reearth_flow_common::attribute::Attributes;
 
@@ -28,8 +18,7 @@ pub trait Split {
     /// Split one level, invoking `emit` once per member with the member geometry
     /// and the per-member attributes to hoist onto the emitting feature (empty
     /// when the member carries none). Moves members out of `self`, leaving it
-    /// emptied. Returns [`UnsupportedOperation`] for a geometry that is not a
-    /// splittable container, in which case `emit` is never called.
+    /// emptied.
     fn split(
         &mut self,
         emit: &mut dyn FnMut(Geometry, Attributes),
