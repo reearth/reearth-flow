@@ -403,4 +403,65 @@ mod tests {
             other => panic!("expected Euclidean3D TriangularMesh, got {other:?}"),
         }
     }
+
+    /// Parse a real `.glb` (embedded single buffer) through the live extraction and
+    /// old->new conversion, returning the resulting mesh. Combines every mesh's
+    /// primitives into one extraction; the count/dedup/frame assertions below don't
+    /// depend on per-node transforms, so a `None` transform is fine.
+    fn glb_to_mesh(bytes: &[u8]) -> reearth_flow_geometry::triangular_mesh::TriangularMesh3D {
+        let gltf = gltf::Gltf::from_slice(bytes).expect("parse glb");
+        let buffer_data = vec![gltf
+            .blob
+            .as_ref()
+            .expect("glb has an embedded buffer")
+            .clone()];
+        let primitives: Vec<_> = gltf.meshes().flat_map(|m| m.primitives()).collect();
+        let old = reearth_flow_gltf::create_geometry_from_primitives_with_transform(
+            &primitives,
+            &buffer_data,
+            None,
+        )
+        .expect("extract geometry from real glb");
+
+        match to_new_geometry(&old) {
+            Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(m)) => *m,
+            other => panic!("expected Euclidean3D TriangularMesh, got {other:?}"),
+        }
+    }
+
+    /// Real GLB: `minimal_rectangle.glb` is a unit rectangle authored as two
+    /// triangles that share the diagonal edge, so it exercises real binary-glTF
+    /// parsing and proves the shared-vertex pool on real data (4 corners, not 6).
+    #[test]
+    fn real_glb_rectangle_reads_as_triangular_mesh_with_shared_vertices() {
+        let mesh = glb_to_mesh(include_bytes!("../../testdata/minimal_rectangle.glb"));
+        assert_eq!(*mesh.frame(), CoordinateFrame::Euclidean);
+        assert_eq!(mesh.num_triangles(), 2, "rectangle = 2 triangles");
+        assert_eq!(
+            mesh.vertices().len(),
+            4,
+            "the two triangles share the diagonal, so 4 corners, not 6"
+        );
+    }
+
+    /// Real-world PLATEAU export (also carries `EXT_structural_metadata`, which we
+    /// parse past but do not consume): must read as a non-trivial, vertex-shared
+    /// TriangularMesh rather than failing or degenerating.
+    #[test]
+    fn real_plateau_building_glb_reads_as_shared_vertex_triangular_mesh() {
+        let mesh = glb_to_mesh(include_bytes!(
+            "../../testdata/test_data_39255_tran_AuxiliaryTrafficArea.glb"
+        ));
+        assert_eq!(*mesh.frame(), CoordinateFrame::Euclidean);
+        assert!(mesh.num_triangles() > 0, "real mesh has triangles");
+        assert!(!mesh.vertices().is_empty(), "real mesh has vertices");
+        // Real building geometry shares vertices heavily; the deduplicated pool must
+        // be smaller than the naive 3-per-triangle soup.
+        assert!(
+            mesh.vertices().len() < 3 * mesh.num_triangles(),
+            "expected shared-vertex dedup on real data: {} verts vs {} triangles",
+            mesh.vertices().len(),
+            mesh.num_triangles(),
+        );
+    }
 }
