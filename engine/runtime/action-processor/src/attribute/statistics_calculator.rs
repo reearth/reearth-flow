@@ -75,7 +75,7 @@ impl ProcessorFactory for StatisticsCalculatorFactory {
     }
 
     fn description(&self) -> &str {
-        "Calculates statistical aggregations on feature attributes with customizable expressions"
+        "Groups features by one or more attributes and sums an expression's value across each group, emitting one feature per group."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -87,7 +87,7 @@ impl ProcessorFactory for StatisticsCalculatorFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["statistics", "aggregate"]
+        &["aggregation", "statistics"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -205,29 +205,30 @@ struct CompiledCalculation {
     expr: CompiledCode,
 }
 
-/// # StatisticsCalculator Parameters
-///
-/// Configuration for calculating statistical aggregations on feature attributes.
+/// # Statistics Calculator Parameters
+/// Defines the grouping attributes and the expressions accumulated for each group.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct StatisticsCalculatorParam {
-    /// # Group id
-    /// Optional attribute to store the group identifier. The ID will be formed by concatenating the values of the group_by attributes separated by '|'.
-    group_id: Option<Attribute>,
-    /// # Group by
-    /// Attributes to group features by for aggregation. All of the inputs will be grouped if not specified.
-    group_by: Option<Vec<Attribute>>,
     /// # Calculations
-    /// List of statistical calculations to perform on grouped features
+    /// Expressions accumulated for each group. Each entry produces one output attribute holding the sum of its expression across the group.
     calculations: Vec<Calculation>,
+    /// # Group By
+    /// Attributes to group features by before aggregating. When omitted, all input features form a single group.
+    group_by: Option<Vec<Attribute>>,
+    /// # Group ID
+    /// Optional attribute in which to store the group identifier, formed by joining the Group By values with '|'.
+    group_id: Option<Attribute>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct Calculation {
-    /// # New attribute name
+    /// # New Attribute Name
+    /// Name of the output attribute that stores the accumulated result.
     new_attribute: Attribute,
-    /// # Calculation to perform
+    /// # Calculation Expression
+    /// Expression evaluated for each feature; its numeric results are summed across the group.
     expr: Code<{ CodeType::FlowExpr as u32 }>,
 }
 

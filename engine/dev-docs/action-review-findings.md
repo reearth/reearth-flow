@@ -95,60 +95,12 @@ Attribute Flattener
   tags:    ["hierarchy"] — not in vocabulary; no established alternative; remove tag
              (0 tags acceptable — name and description provide sufficient discovery)
 
-Attribute Manager
-  desc:    title-case — "Create, Convert, Rename, and Remove Feature Attributes"; suggest
-             "Creates, converts, renames, or removes feature attributes based on a
-             configurable list of operations."
-  params:  schema-level description missing (§3.3)
-           Method enum ("convert", "create", "rename", "remove") — no per-variant
-             descriptions; plain enum type cannot hold descriptions — restructure as oneOf
-             or add variant explanations to the method property description (§3.4)
-  tags:    empty — `attribute` duplicates category (§6); no other established vocabulary
-             terms apply; 0 tags acceptable
-
 Attribute Mapper
   desc:    title-case — "Transform Feature Attributes Using Expressions and Mappings";
              suggest "Maps or transforms feature attributes using expressions and value
              assignments."
   params:  schema-level description missing (§3.3)
   tags:    ["mapping"] — now in vocabulary; 1 tag acceptable
-
-Bulk Attribute Renamer
-  desc:    title-case — "Rename Feature Attributes in Bulk"; suggest "Renames feature
-             attributes in bulk by adding or removing a prefix or suffix, or replacing text."
-  params:  RenameAction enum values PascalCase — AddPrefix, AddSuffix, RemovePrefix,
-             RemoveSuffix, StringReplace must be camelCase: addPrefix, addSuffix,
-             removePrefix, removeSuffix, replaceText (§3.4)
-           RenameType enum values PascalCase — All, Selected must be camelCase: all,
-             selected (§3.4)
-           renameType — description "Choose whether to..." is instructive; suggest "Scope
-             of the rename operation: all attributes or a selected subset."
-           selectedAttributes — description references old enum value names; update when
-             enum is renamed
-  tags:    empty — `attribute` duplicates category (§6); no other established vocabulary
-             terms apply; 0 tags acceptable
-
-Null Attribute Mapper
-  desc:    "Replace" should be "Replaces" (verb-first present tense, third-person singular)
-  params:  schema-level description "NullAttributeMapper parameters" is a name restatement
-             — replace with a meaningful summary (§3.3)
-           defaultReplacement, mappings, nullDefinition, routeNullFeatures, scope — all
-             missing title (§3.3)
-           NullKind enum — "null" variant description "AttributeValue::Null" and
-             "emptyString" variant description "AttributeValue::String(\"\")" expose Rust
-             type names; replace with plain language (§3.4)
-           routeNullFeatures — description mentions port name "hasNull"; avoid port
-             references in parameter descriptions (§2 spirit)
-           ordering — alphabetical; suggest: scope → mappings → defaultReplacement →
-             nullDefinition → routeNullFeatures (§3.5)
-  tags:    ["mapping"] — now in vocabulary; 1 tag acceptable
-
-Statistics Calculator
-  params:  groupBy — title "Group by" should be "Group By"
-           groupId — title "Group id" should be "Group ID"
-  tags:    ["statistics", "aggregate"] — `aggregate` not in vocabulary; replace with
-             `aggregation`; `statistics` now in vocabulary; suggest ["aggregation",
-             "statistics"]
 ```
 
 ---

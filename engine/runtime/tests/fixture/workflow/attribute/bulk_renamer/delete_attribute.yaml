@@ -32,8 +32,8 @@ graphs:
         type: action
         action: Bulk Attribute Renamer
         with:
-          renameType: Selected
-          renameAction: StringReplace
+          renameType: selected
+          renameAction: replaceText
           renameValue: ""
           selectedAttributes: ["testAttribute1"]
           textToFind: "testAttribute1"

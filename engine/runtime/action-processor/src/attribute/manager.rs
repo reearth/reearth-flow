@@ -24,7 +24,7 @@ impl ProcessorFactory for AttributeManagerFactory {
     }
 
     fn description(&self) -> &str {
-        "Create, Convert, Rename, and Remove Feature Attributes"
+        "Creates, converts, renames, or removes feature attributes based on a configurable list of operations."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -146,33 +146,44 @@ struct AttributeManager {
     operations: Vec<Operate>,
 }
 
-/// # AttributeManager Parameters
+/// # Attribute Manager Parameters
+/// Defines the ordered list of operations that create, convert, rename, or remove feature attributes.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AttributeManagerParam {
     /// # Attribute Operations
-    /// List of operations to perform on feature attributes (create, convert, rename, remove)
+    /// Operations applied to each feature in order. Each entry names the target attribute, the method to apply, and an optional value expression.
     operations: Vec<Operation>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct Operation {
-    /// # Attribute name
+    /// # Attribute Name
+    /// Name of the attribute to create, convert, rename, or remove.
     attribute: String,
-    /// # Operation to perform
+    /// # Method
+    /// Operation to apply to the attribute.
     method: Method,
     /// # Value
-    /// Value to use for the operation
+    /// Expression evaluated against the feature. Supplies the new value for Create and Convert, or the new attribute name for Rename. Ignored for Remove.
     value: Option<Code>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 enum Method {
+    /// # Convert
+    /// Replaces the value of an existing attribute with the result of the value expression. Features that do not already have the attribute are left unchanged.
     Convert,
+    /// # Create
+    /// Sets the attribute to the result of the value expression, creating it or overwriting any existing value.
     Create,
+    /// # Rename
+    /// Renames the attribute to the name produced by the value expression. Skipped when the attribute is absent or a target with that name already exists.
     Rename,
+    /// # Remove
+    /// Removes the attribute from the feature.
     Remove,
 }
 

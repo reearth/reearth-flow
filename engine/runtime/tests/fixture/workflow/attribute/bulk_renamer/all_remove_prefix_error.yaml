@@ -32,8 +32,8 @@ graphs:
         type: action
         action: Bulk Attribute Renamer
         with:
-          renameType: All
-          renameAction: RemovePrefix
+          renameType: all
+          renameAction: removePrefix
           renameValue: "foo"
           selectedAttributes: null
           text_to_find: null
