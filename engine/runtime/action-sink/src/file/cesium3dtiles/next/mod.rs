@@ -792,4 +792,89 @@ mod tests {
         // The embedded bytes were written to a temp file and cached by content hash.
         assert_eq!(embedded.by_hash.len(), 1);
     }
+
+    // End to end through the public `build`: a CRS-framed TriangularMesh carrying an
+    // embedded (in-memory) base-colour texture must produce a content glb whose JSON
+    // embeds the texture as an `EXT_texture_webp` page — proving the whole chain
+    // (extract -> appearance resolve -> collect -> materialize -> atlas -> glb embed)
+    // works for in-memory textures. Uses a geographic CRS so the mesh isn't skipped;
+    // this is independent of the (separate) glTF georeferencing concern.
+    #[test]
+    fn embedded_texture_round_trips_through_build_to_webp() {
+        use reearth_flow_geometry::appearance::{
+            AlphaMode, ChannelId, Material, PbrMaterial, Raster, RasterData, Sampler, Texture,
+            ThemeId, UvSource,
+        };
+        use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
+        use reearth_flow_geometry::triangular_mesh::TriangularMesh3D;
+        use reearth_flow_geometry::{Euclidean3DGeometry, Geometry};
+        use reearth_flow_types::Attributes;
+
+        let frame = CoordinateFrame::Crs(EpsgCode::new(4979));
+        let mut mesh = TriangularMesh3D::from_soup(
+            frame,
+            [
+                [35.0, 139.0, 10.0],
+                [35.0, 139.001, 10.0],
+                [35.001, 139.0, 10.0],
+            ],
+        );
+        mesh.set_appearance(
+            ThemeId(Arc::from("default")),
+            Material::Pbr(PbrMaterial {
+                base_color: [1.0, 1.0, 1.0, 1.0],
+                metallic: 1.0,
+                roughness: 1.0,
+                emissive: [0.0, 0.0, 0.0],
+                base_color_map: Some(Texture {
+                    raster: Arc::new(Raster::InMemory(RasterData {
+                        mime_type: MimeType::ImagePng,
+                        bytes: bytes::Bytes::from(tiny_png()),
+                    })),
+                    sampler: Sampler::default(),
+                    transform: None,
+                    uv_channel: ChannelId(0),
+                }),
+                metallic_roughness_map: None,
+                normal_map: None,
+                occlusion_map: None,
+                emissive_map: None,
+                alpha_mode: AlphaMode::Opaque,
+                double_sided: false,
+            }),
+            Some(UvSource::Explicit(
+                vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]].into_boxed_slice(),
+            )),
+        )
+        .expect("attach embedded texture");
+
+        let feature = reearth_flow_types::Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(mesh))),
+        );
+        let render = RenderOptions {
+            draco: false,
+            compute_flat_normal: false,
+            texel_size: 0.0,
+            atlas_size: 1024,
+            atlas_extrusion: 0,
+        };
+        let options = MetadataOptions {
+            schema_key: None,
+            skip_unexposed_attributes: false,
+        };
+
+        let built = build(&[feature], options, 18, render).expect("build tileset");
+
+        assert!(
+            !built.tiles.is_empty(),
+            "textured mesh produced a content glb"
+        );
+        let glb = &built.tiles[0].1;
+        let needle = b"EXT_texture_webp";
+        assert!(
+            glb.windows(needle.len()).any(|w| w == needle),
+            "the embedded texture is emitted as an EXT_texture_webp page in the glb"
+        );
+    }
 }
