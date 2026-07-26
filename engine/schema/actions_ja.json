@@ -12112,11 +12112,11 @@
     {
       "name": "Statistics Calculator",
       "type": "processor",
-      "description": "1 つ以上の属性で地物をグループ化し、各グループで式の値を合計して、グループごとに 1 つの地物を出力する",
+      "description": "1 つ以上の属性で地物をグループ化し、各グループについて統計量（件数・合計・最小値・最大値・平均値）を計算して、グループごとに 1 つの地物を出力する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Statistics Calculator パラメータ",
-        "description": "グループ化する属性と、各グループで集計する式を定義する",
+        "description": "グループ化する属性と、各グループについて計算する統計量を定義する",
         "type": "object",
         "required": [
           "calculations"
@@ -12124,7 +12124,7 @@
         "properties": {
           "calculations": {
             "title": "計算項目",
-            "description": "各グループで集計する式。各項目は、グループ全体でその式を合計した値を保持する出力属性を 1 つ生成する",
+            "description": "各グループについて計算する統計量。各項目で出力属性名、集計方法、および（件数を除き）集計対象の値を求める式を指定する",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Calculation"
@@ -12158,23 +12158,35 @@
           "Calculation": {
             "type": "object",
             "required": [
-              "expr",
               "newAttribute"
             ],
             "properties": {
               "newAttribute": {
                 "title": "新しい属性名",
-                "description": "集計結果を格納する出力属性の名前",
+                "description": "計算した統計量を格納する出力属性の名前",
                 "allOf": [
                   {
                     "$ref": "#/definitions/Attribute"
                   }
                 ]
               },
+              "aggregation": {
+                "title": "集計方法",
+                "description": "各グループについて計算する統計量。既定は合計",
+                "default": "sum",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/AggregationMethod"
+                  }
+                ]
+              },
               "expr": {
-                "title": "計算式",
-                "description": "各地物に対して評価される式。その数値結果がグループ全体で合計される",
-                "type": "object",
+                "title": "値の式",
+                "description": "各地物について集計対象の値を求める式。件数を除くすべての方法で必須",
+                "type": [
+                  "object",
+                  "null"
+                ],
                 "format": "code",
                 "required": [
                   "type",
@@ -12196,6 +12208,50 @@
           },
           "Attribute": {
             "type": "string"
+          },
+          "AggregationMethod": {
+            "oneOf": [
+              {
+                "title": "件数",
+                "description": "各グループの地物の数を数える。値の式は不要で、指定しても無視される",
+                "type": "string",
+                "enum": [
+                  "count"
+                ]
+              },
+              {
+                "title": "合計",
+                "description": "各グループのすべての地物で値の式を合計する",
+                "type": "string",
+                "enum": [
+                  "sum"
+                ]
+              },
+              {
+                "title": "最小値",
+                "description": "各グループで式の最小値を保持する",
+                "type": "string",
+                "enum": [
+                  "min"
+                ]
+              },
+              {
+                "title": "最大値",
+                "description": "各グループで式の最大値を保持する",
+                "type": "string",
+                "enum": [
+                  "max"
+                ]
+              },
+              {
+                "title": "平均値",
+                "description": "各グループのすべての地物で式の値を平均する",
+                "type": "string",
+                "enum": [
+                  "mean"
+                ]
+              }
+            ]
           }
         }
       },

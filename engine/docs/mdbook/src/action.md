@@ -11798,13 +11798,13 @@ Filters candidate features based on their spatial relationship to filter geometr
 ### Type
 * processor
 ### Description
-Groups features by one or more attributes and sums an expression's value across each group, emitting one feature per group.
+Groups features by one or more attributes and computes an aggregate statistic (count, sum, minimum, maximum, or mean) for each group, emitting one feature per group.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Statistics Calculator Parameters",
-  "description": "Defines the grouping attributes and the expressions accumulated for each group.",
+  "description": "Defines the grouping attributes and the statistics computed for each group.",
   "type": "object",
   "required": [
     "calculations"
@@ -11812,7 +11812,7 @@ Groups features by one or more attributes and sums an expression's value across 
   "properties": {
     "calculations": {
       "title": "Calculations",
-      "description": "Expressions accumulated for each group. Each entry produces one output attribute holding the sum of its expression across the group.",
+      "description": "Statistics to compute for each group. Each entry names an output attribute, the aggregation method, and (except for count) the expression whose values are aggregated.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Calculation"
@@ -11846,23 +11846,35 @@ Groups features by one or more attributes and sums an expression's value across 
     "Calculation": {
       "type": "object",
       "required": [
-        "expr",
         "newAttribute"
       ],
       "properties": {
         "newAttribute": {
           "title": "New Attribute Name",
-          "description": "Name of the output attribute that stores the accumulated result.",
+          "description": "Name of the output attribute that stores the computed statistic.",
           "allOf": [
             {
               "$ref": "#/definitions/Attribute"
             }
           ]
         },
+        "aggregation": {
+          "title": "Aggregation Method",
+          "description": "Statistic to compute across each group. Defaults to sum.",
+          "default": "sum",
+          "allOf": [
+            {
+              "$ref": "#/definitions/AggregationMethod"
+            }
+          ]
+        },
         "expr": {
-          "title": "Calculation Expression",
-          "description": "Expression evaluated for each feature; its numeric results are summed across the group.",
-          "type": "object",
+          "title": "Value Expression",
+          "description": "Expression evaluated per feature to produce the value being aggregated. Required for every method except count, which counts features regardless of value.",
+          "type": [
+            "object",
+            "null"
+          ],
           "format": "code",
           "required": [
             "type",
@@ -11884,6 +11896,50 @@ Groups features by one or more attributes and sums an expression's value across 
     },
     "Attribute": {
       "type": "string"
+    },
+    "AggregationMethod": {
+      "oneOf": [
+        {
+          "title": "Count",
+          "description": "Counts the number of features in each group. The value expression is not required and is ignored.",
+          "type": "string",
+          "enum": [
+            "count"
+          ]
+        },
+        {
+          "title": "Sum",
+          "description": "Adds the value expression across all features in each group.",
+          "type": "string",
+          "enum": [
+            "sum"
+          ]
+        },
+        {
+          "title": "Minimum",
+          "description": "Keeps the smallest value of the expression in each group.",
+          "type": "string",
+          "enum": [
+            "min"
+          ]
+        },
+        {
+          "title": "Maximum",
+          "description": "Keeps the largest value of the expression in each group.",
+          "type": "string",
+          "enum": [
+            "max"
+          ]
+        },
+        {
+          "title": "Mean",
+          "description": "Averages the value of the expression across all features in each group.",
+          "type": "string",
+          "enum": [
+            "mean"
+          ]
+        }
+      ]
     }
   }
 }

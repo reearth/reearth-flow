@@ -3417,15 +3417,15 @@
     },
     {
       "name": "Statistics Calculator",
-      "description": "Groups features by one or more attributes and sums an expression's value across each group, emitting one feature per group.",
+      "description": "Groups features by one or more attributes and computes an aggregate statistic (count, sum, minimum, maximum, or mean) for each group, emitting one feature per group.",
       "parameterI18n": {
         "": {
           "title": "Statistics Calculator Parameters",
-          "description": "Defines the grouping attributes and the expressions accumulated for each group."
+          "description": "Defines the grouping attributes and the statistics computed for each group."
         },
         "calculations": {
           "title": "Calculations",
-          "description": "Expressions accumulated for each group. Each entry produces one output attribute holding the sum of its expression across the group."
+          "description": "Statistics to compute for each group. Each entry names an output attribute, the aggregation method, and (except for count) the expression whose values are aggregated."
         },
         "groupBy": {
           "title": "Group By",
@@ -3438,13 +3438,41 @@
       },
       "definitionI18n": {
         "Calculation": {
+          "aggregation": {
+            "title": "Aggregation Method",
+            "description": "Statistic to compute across each group. Defaults to sum."
+          },
           "expr": {
-            "title": "Calculation Expression",
-            "description": "Expression evaluated for each feature; its numeric results are summed across the group."
+            "title": "Value Expression",
+            "description": "Expression evaluated per feature to produce the value being aggregated. Required for every method except count, which counts features regardless of value."
           },
           "newAttribute": {
             "title": "New Attribute Name",
-            "description": "Name of the output attribute that stores the accumulated result."
+            "description": "Name of the output attribute that stores the computed statistic."
+          }
+        }
+      },
+      "enumI18n": {
+        "AggregationMethod": {
+          "count": {
+            "title": "Count",
+            "description": "Counts the number of features in each group. The value expression is not required and is ignored."
+          },
+          "max": {
+            "title": "Maximum",
+            "description": "Keeps the largest value of the expression in each group."
+          },
+          "mean": {
+            "title": "Mean",
+            "description": "Averages the value of the expression across all features in each group."
+          },
+          "min": {
+            "title": "Minimum",
+            "description": "Keeps the smallest value of the expression in each group."
+          },
+          "sum": {
+            "title": "Sum",
+            "description": "Adds the value expression across all features in each group."
           }
         }
       }
