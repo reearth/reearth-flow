@@ -210,8 +210,8 @@ impl Processor for BoundsExtractor {
 
 impl BoundsExtractor {
     /// Write one bound under its configured attribute name, falling back to
-    /// `default`. A bound that is not representable as a JSON number is written
-    /// as zero.
+    /// `default`. `bound` must be finite; a bound that is not representable as a
+    /// JSON number is written as zero.
     fn insert_bound(
         &self,
         feature: &mut Feature,
