@@ -812,9 +812,10 @@ pub(super) fn join_texture_uri(mtl_uri: &Uri, tex: &str) -> Option<Uri> {
     if tex.contains("://") {
         return Uri::from_str(tex).ok();
     }
-    let base = mtl_uri.to_string();
-    let dir = base.rfind('/').map(|i| &base[..i]).unwrap_or(&base);
-    Uri::from_str(&format!("{dir}/{tex}")).ok()
+    // Resolve relative to the MTL file's directory using the path-aware
+    // `parent` + `join` (separator-safe), rather than string-splitting on '/'
+    // which breaks on Windows where `Uri` normalizes to the OS separator.
+    mtl_uri.parent()?.join(tex).ok()
 }
 
 pub(super) async fn parse_mtl(
