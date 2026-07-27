@@ -25,7 +25,7 @@ impl ProcessorFactory for AttributeConversionTableFactory {
     }
 
     fn description(&self) -> &str {
-        "Transform Feature Attributes Using Lookup Tables"
+        "Transforms feature attributes by looking up values in a conversion table loaded from a file or provided inline (CSV, TSV, or JSON)."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -150,42 +150,53 @@ struct AttributeConversionTable {
     conversion_table_indexes: HashMap<String, HashMap<AttributeValue, uuid::Uuid>>,
 }
 
-/// # AttributeConversionTable Parameters
+/// # Attribute Conversion Table Parameters
+/// Configures the lookup table and the rules that map feature attribute values to replacement values.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AttributeConversionTableParam {
+    /// # Table Format
+    /// Format used to parse the conversion table.
+    format: ConversionTableFormat,
     /// # Conversion Rules
-    /// List of rules defining how to map attributes using the conversion table
+    /// Rules that match feature attribute values against table columns and write the looked-up result back to the feature.
     rules: Vec<AttributeConversionTableRule>,
     /// # Dataset URI
-    /// Path or URI to external conversion table file
+    /// Path or URI of the conversion table file. Provide either this or inline data.
     dataset: Option<Code>,
-    /// # Inline Table Data
-    /// Conversion table data provided directly as string content
+    /// # Inline Table
+    /// Conversion table content provided directly as text. Used when no dataset URI is given.
     inline: Option<String>,
-    /// # Table Format
-    /// Format of the conversion table (CSV, TSV, or JSON)
-    format: ConversionTableFormat,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum ConversionTableFormat {
+    /// # CSV
+    /// Comma-separated values with a header row.
     Csv,
+    /// # TSV
+    /// Tab-separated values with a header row.
     Tsv,
+    /// # JSON
+    /// JSON array of objects, or a single object, where each object is a table row.
     Json,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AttributeConversionTableRule {
-    /// # Attributes to convert from
+    /// # Source Attributes
+    /// Feature attributes whose values form the key looked up in the table.
     feature_froms: Vec<Attribute>,
-    /// # Attribute to convert to
+    /// # Target Attribute
+    /// Feature attribute that receives the looked-up value.
     feature_to: Attribute,
-    /// # Keys to match in conversion table
+    /// # Lookup Key Columns
+    /// Table columns matched against the source attribute values.
     conversion_table_keys: Vec<String>,
-    /// # Attribute to convert to
+    /// # Result Column
+    /// Table column whose value is written to the target attribute.
     conversion_table_to: String,
 }
 

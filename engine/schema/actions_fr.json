@@ -182,15 +182,44 @@
           "method"
         ],
         "properties": {
+          "method": {
+            "title": "Method to use for aggregation",
+            "description": "How to aggregate the per-feature calculation value within each group: maximum, minimum, or count.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Method"
+              }
+            ]
+          },
           "aggregateAttributes": {
             "title": "List of attributes to aggregate",
+            "description": "Attributes that define each group. Each entry reads a value from an existing attribute or an expression and writes it to a new attribute on the aggregated output feature.",
             "type": "array",
             "items": {
               "$ref": "#/definitions/AggregateAttribute"
             }
           },
+          "calculationAttribute": {
+            "title": "Attribute to store calculation result",
+            "description": "Attribute on the aggregated feature that stores the computed result.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "calculationValue": {
+            "title": "Value to use for calculation",
+            "description": "Constant integer used as the per-feature value. Takes precedence over the calculation expression when set.",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
           "calculation": {
             "title": "Calculation to perform",
+            "description": "Expression evaluated to an integer per feature, used as the per-feature value when no calculation value is set.",
             "type": [
               "object",
               "null"
@@ -211,86 +240,9 @@
                 "type": "string"
               }
             }
-          },
-          "calculationValue": {
-            "title": "Value to use for calculation",
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int64"
-          },
-          "calculationAttribute": {
-            "title": "Attribute to store calculation result",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              }
-            ]
-          },
-          "method": {
-            "title": "Method to use for aggregation",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Method"
-              }
-            ]
           }
         },
         "definitions": {
-          "AggregateAttribute": {
-            "type": "object",
-            "required": [
-              "newAttribute"
-            ],
-            "properties": {
-              "newAttribute": {
-                "title": "New attribute to create",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Attribute"
-                  }
-                ]
-              },
-              "attribute": {
-                "title": "Existing attribute to use",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Attribute"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "attributeValue": {
-                "title": "Value to use for attribute",
-                "type": [
-                  "object",
-                  "null"
-                ],
-                "format": "code",
-                "required": [
-                  "type",
-                  "value"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flowExpr"
-                    ]
-                  },
-                  "value": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          },
-          "Attribute": {
-            "type": "string"
-          },
           "Method": {
             "oneOf": [
               {
@@ -318,6 +270,62 @@
                 ]
               }
             ]
+          },
+          "AggregateAttribute": {
+            "type": "object",
+            "required": [
+              "newAttribute"
+            ],
+            "properties": {
+              "newAttribute": {
+                "title": "New attribute to create",
+                "description": "Name of the attribute written to the aggregated feature that holds this group value.",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  }
+                ]
+              },
+              "attribute": {
+                "title": "Existing attribute to use",
+                "description": "Existing attribute to read the group value from. Ignored when a group value expression is provided.",
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "attributeValue": {
+                "title": "Value to use for attribute",
+                "description": "Expression that computes the group value. Takes precedence over the source attribute when both are set.",
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "Attribute": {
+            "type": "string"
           }
         }
       },
@@ -332,7 +340,7 @@
         "Attribute"
       ],
       "tags": [
-        "aggregate"
+        "aggregation"
       ]
     },
     {
@@ -382,12 +390,22 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "AttributeConversionTable Parameters",
+        "description": "Configures the lookup table and the rules that map feature attribute values to replacement values.",
         "type": "object",
         "required": [
           "format",
           "rules"
         ],
         "properties": {
+          "format": {
+            "title": "Table Format",
+            "description": "Format of the conversion table (CSV, TSV, or JSON)",
+            "allOf": [
+              {
+                "$ref": "#/definitions/ConversionTableFormat"
+              }
+            ]
+          },
           "rules": {
             "title": "Conversion Rules",
             "description": "List of rules defining how to map attributes using the conversion table",
@@ -428,18 +446,37 @@
               "string",
               "null"
             ]
-          },
-          "format": {
-            "title": "Table Format",
-            "description": "Format of the conversion table (CSV, TSV, or JSON)",
-            "allOf": [
-              {
-                "$ref": "#/definitions/ConversionTableFormat"
-              }
-            ]
           }
         },
         "definitions": {
+          "ConversionTableFormat": {
+            "oneOf": [
+              {
+                "title": "CSV",
+                "description": "Comma-separated values with a header row.",
+                "type": "string",
+                "enum": [
+                  "csv"
+                ]
+              },
+              {
+                "title": "TSV",
+                "description": "Tab-separated values with a header row.",
+                "type": "string",
+                "enum": [
+                  "tsv"
+                ]
+              },
+              {
+                "title": "JSON",
+                "description": "JSON array of objects, or a single object, where each object is a table row.",
+                "type": "string",
+                "enum": [
+                  "json"
+                ]
+              }
+            ]
+          },
           "AttributeConversionTableRule": {
             "type": "object",
             "required": [
@@ -451,6 +488,7 @@
             "properties": {
               "featureFroms": {
                 "title": "Attributes to convert from",
+                "description": "Feature attributes whose values form the key looked up in the table.",
                 "type": "array",
                 "items": {
                   "$ref": "#/definitions/Attribute"
@@ -458,6 +496,7 @@
               },
               "featureTo": {
                 "title": "Attribute to convert to",
+                "description": "Feature attribute that receives the looked-up value.",
                 "allOf": [
                   {
                     "$ref": "#/definitions/Attribute"
@@ -466,6 +505,7 @@
               },
               "conversionTableKeys": {
                 "title": "Keys to match in conversion table",
+                "description": "Table columns matched against the source attribute values.",
                 "type": "array",
                 "items": {
                   "type": "string"
@@ -473,20 +513,13 @@
               },
               "conversionTableTo": {
                 "title": "Attribute to convert to",
+                "description": "Table column whose value is written to the target attribute.",
                 "type": "string"
               }
             }
           },
           "Attribute": {
             "type": "string"
-          },
-          "ConversionTableFormat": {
-            "type": "string",
-            "enum": [
-              "csv",
-              "tsv",
-              "json"
-            ]
           }
         }
       },
@@ -591,6 +624,7 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "AttributeFlattener Parameters",
+        "description": "Configures which map-valued attributes are expanded into top-level attributes.",
         "type": "object",
         "required": [
           "attributes"
@@ -621,9 +655,7 @@
       "categories": [
         "Attribute"
       ],
-      "tags": [
-        "hierarchy"
-      ]
+      "tags": []
     },
     {
       "name": "Attribute Manager",
@@ -723,6 +755,7 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "AttributeMapper Parameters",
+        "description": "Configures the mapping rules that build the output feature's attributes.",
         "type": "object",
         "required": [
           "mappers"
@@ -743,6 +776,7 @@
             "properties": {
               "attribute": {
                 "title": "Attribute name",
+                "description": "Name of the attribute to set, taking its value from the expression, source attribute, or parent/child pair. Leave empty to use the multiple-values expression instead.",
                 "type": [
                   "string",
                   "null"
@@ -750,6 +784,7 @@
               },
               "expr": {
                 "title": "Expression to evaluate",
+                "description": "Expression evaluated to produce the attribute value. Evaluation errors yield a null value.",
                 "type": [
                   "object",
                   "null"
@@ -774,6 +809,7 @@
               },
               "valueAttribute": {
                 "title": "Attribute name to get value from",
+                "description": "Existing attribute to copy the value from. Yields null when the attribute is absent.",
                 "type": [
                   "string",
                   "null"
@@ -781,6 +817,7 @@
               },
               "parentAttribute": {
                 "title": "Parent attribute name",
+                "description": "Map-valued attribute containing the value to copy. Used together with the child attribute.",
                 "type": [
                   "string",
                   "null"
@@ -788,6 +825,7 @@
               },
               "childAttribute": {
                 "title": "Child attribute name",
+                "description": "Key within the parent map whose value is copied to the target attribute.",
                 "type": [
                   "string",
                   "null"
@@ -795,6 +833,7 @@
               },
               "multipleExpr": {
                 "title": "Expression to evaluate multiple attributes",
+                "description": "Expression returning a map whose entries are added as attributes. Used when no target attribute is set.",
                 "type": [
                   "object",
                   "null"

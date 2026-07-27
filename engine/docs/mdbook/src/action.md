@@ -160,13 +160,13 @@ Perform Area Overlay Analysis
 ### Type
 * processor
 ### Description
-Group and Aggregate Features by Attributes
+Groups features by attribute values and aggregates a computed value within each group, emitting one feature per group.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AttributeAggregator Parameters",
-  "description": "Configure how features are grouped and aggregated based on attribute values",
+  "title": "Attribute Aggregator Parameters",
+  "description": "Configures how features are grouped and which value is aggregated within each group.",
   "type": "object",
   "required": [
     "aggregateAttributes",
@@ -174,15 +174,44 @@ Group and Aggregate Features by Attributes
     "method"
   ],
   "properties": {
+    "method": {
+      "title": "Aggregation Method",
+      "description": "How to aggregate the per-feature calculation value within each group: maximum, minimum, or count.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Method"
+        }
+      ]
+    },
     "aggregateAttributes": {
-      "title": "List of attributes to aggregate",
+      "title": "Group-By Attributes",
+      "description": "Attributes that define each group. Each entry reads a value from an existing attribute or an expression and writes it to a new attribute on the aggregated output feature.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/AggregateAttribute"
       }
     },
+    "calculationAttribute": {
+      "title": "Result Attribute",
+      "description": "Attribute on the aggregated feature that stores the computed result.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
+    },
+    "calculationValue": {
+      "title": "Calculation Value",
+      "description": "Constant integer used as the per-feature value. Takes precedence over the calculation expression when set.",
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "int64"
+    },
     "calculation": {
-      "title": "Calculation to perform",
+      "title": "Calculation Expression",
+      "description": "Expression evaluated to an integer per feature, used as the per-feature value when no calculation value is set.",
       "type": [
         "object",
         "null"
@@ -203,33 +232,37 @@ Group and Aggregate Features by Attributes
           "type": "string"
         }
       }
-    },
-    "calculationValue": {
-      "title": "Value to use for calculation",
-      "type": [
-        "integer",
-        "null"
-      ],
-      "format": "int64"
-    },
-    "calculationAttribute": {
-      "title": "Attribute to store calculation result",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Attribute"
-        }
-      ]
-    },
-    "method": {
-      "title": "Method to use for aggregation",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Method"
-        }
-      ]
     }
   },
   "definitions": {
+    "Method": {
+      "oneOf": [
+        {
+          "title": "Maximum",
+          "description": "Keeps the largest per-feature calculation value in the group.",
+          "type": "string",
+          "enum": [
+            "max"
+          ]
+        },
+        {
+          "title": "Minimum",
+          "description": "Keeps the smallest per-feature calculation value in the group.",
+          "type": "string",
+          "enum": [
+            "min"
+          ]
+        },
+        {
+          "title": "Count",
+          "description": "Sums the per-feature calculation value across the group; counts features when the value is 1.",
+          "type": "string",
+          "enum": [
+            "count"
+          ]
+        }
+      ]
+    },
     "AggregateAttribute": {
       "type": "object",
       "required": [
@@ -237,7 +270,8 @@ Group and Aggregate Features by Attributes
       ],
       "properties": {
         "newAttribute": {
-          "title": "New attribute to create",
+          "title": "Output Attribute",
+          "description": "Name of the attribute written to the aggregated feature that holds this group value.",
           "allOf": [
             {
               "$ref": "#/definitions/Attribute"
@@ -245,7 +279,8 @@ Group and Aggregate Features by Attributes
           ]
         },
         "attribute": {
-          "title": "Existing attribute to use",
+          "title": "Source Attribute",
+          "description": "Existing attribute to read the group value from. Ignored when a group value expression is provided.",
           "anyOf": [
             {
               "$ref": "#/definitions/Attribute"
@@ -256,7 +291,8 @@ Group and Aggregate Features by Attributes
           ]
         },
         "attributeValue": {
-          "title": "Grouping key expression for this attribute",
+          "title": "Group Value Expression",
+          "description": "Expression that computes the group value. Takes precedence over the source attribute when both are set.",
           "type": [
             "object",
             "null"
@@ -282,34 +318,6 @@ Group and Aggregate Features by Attributes
     },
     "Attribute": {
       "type": "string"
-    },
-    "Method": {
-      "oneOf": [
-        {
-          "title": "Maximum Value",
-          "description": "Find the maximum value in the group",
-          "type": "string",
-          "enum": [
-            "max"
-          ]
-        },
-        {
-          "title": "Minimum Value",
-          "description": "Find the minimum value in the group",
-          "type": "string",
-          "enum": [
-            "min"
-          ]
-        },
-        {
-          "title": "Count Items",
-          "description": "Count the number of features in the group",
-          "type": "string",
-          "enum": [
-            "count"
-          ]
-        }
-      ]
     }
   }
 }
@@ -364,21 +372,31 @@ Join Array Attributes Into Single Values
 ### Type
 * processor
 ### Description
-Transform Feature Attributes Using Lookup Tables
+Transforms feature attributes by looking up values in a conversion table loaded from a file or provided inline (CSV, TSV, or JSON).
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AttributeConversionTable Parameters",
+  "title": "Attribute Conversion Table Parameters",
+  "description": "Configures the lookup table and the rules that map feature attribute values to replacement values.",
   "type": "object",
   "required": [
     "format",
     "rules"
   ],
   "properties": {
+    "format": {
+      "title": "Table Format",
+      "description": "Format used to parse the conversion table.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/ConversionTableFormat"
+        }
+      ]
+    },
     "rules": {
       "title": "Conversion Rules",
-      "description": "List of rules defining how to map attributes using the conversion table",
+      "description": "Rules that match feature attribute values against table columns and write the looked-up result back to the feature.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/AttributeConversionTableRule"
@@ -386,7 +404,7 @@ Transform Feature Attributes Using Lookup Tables
     },
     "dataset": {
       "title": "Dataset URI",
-      "description": "Path or URI to external conversion table file",
+      "description": "Path or URI of the conversion table file. Provide either this or inline data.",
       "type": [
         "object",
         "null"
@@ -410,24 +428,43 @@ Transform Feature Attributes Using Lookup Tables
       }
     },
     "inline": {
-      "title": "Inline Table Data",
-      "description": "Conversion table data provided directly as string content",
+      "title": "Inline Table",
+      "description": "Conversion table content provided directly as text. Used when no dataset URI is given.",
       "type": [
         "string",
         "null"
       ]
-    },
-    "format": {
-      "title": "Table Format",
-      "description": "Format of the conversion table (CSV, TSV, or JSON)",
-      "allOf": [
-        {
-          "$ref": "#/definitions/ConversionTableFormat"
-        }
-      ]
     }
   },
   "definitions": {
+    "ConversionTableFormat": {
+      "oneOf": [
+        {
+          "title": "CSV",
+          "description": "Comma-separated values with a header row.",
+          "type": "string",
+          "enum": [
+            "csv"
+          ]
+        },
+        {
+          "title": "TSV",
+          "description": "Tab-separated values with a header row.",
+          "type": "string",
+          "enum": [
+            "tsv"
+          ]
+        },
+        {
+          "title": "JSON",
+          "description": "JSON array of objects, or a single object, where each object is a table row.",
+          "type": "string",
+          "enum": [
+            "json"
+          ]
+        }
+      ]
+    },
     "AttributeConversionTableRule": {
       "type": "object",
       "required": [
@@ -438,14 +475,16 @@ Transform Feature Attributes Using Lookup Tables
       ],
       "properties": {
         "featureFroms": {
-          "title": "Attributes to convert from",
+          "title": "Source Attributes",
+          "description": "Feature attributes whose values form the key looked up in the table.",
           "type": "array",
           "items": {
             "$ref": "#/definitions/Attribute"
           }
         },
         "featureTo": {
-          "title": "Attribute to convert to",
+          "title": "Target Attribute",
+          "description": "Feature attribute that receives the looked-up value.",
           "allOf": [
             {
               "$ref": "#/definitions/Attribute"
@@ -453,28 +492,22 @@ Transform Feature Attributes Using Lookup Tables
           ]
         },
         "conversionTableKeys": {
-          "title": "Keys to match in conversion table",
+          "title": "Lookup Key Columns",
+          "description": "Table columns matched against the source attribute values.",
           "type": "array",
           "items": {
             "type": "string"
           }
         },
         "conversionTableTo": {
-          "title": "Attribute to convert to",
+          "title": "Result Column",
+          "description": "Table column whose value is written to the target attribute.",
           "type": "string"
         }
       }
     },
     "Attribute": {
       "type": "string"
-    },
-    "ConversionTableFormat": {
-      "type": "string",
-      "enum": [
-        "csv",
-        "tsv",
-        "json"
-      ]
     }
   }
 }
@@ -568,12 +601,13 @@ Extract File System Information from Path Attributes
 ### Type
 * processor
 ### Description
-Flatten Nested Object Attributes into Top-Level Attributes
+Flattens map-valued attributes into individual top-level attributes, replacing each map with its key-value entries.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AttributeFlattener Parameters",
+  "title": "Attribute Flattener Parameters",
+  "description": "Configures which map-valued attributes are expanded into top-level attributes.",
   "type": "object",
   "required": [
     "attributes"
@@ -581,7 +615,7 @@ Flatten Nested Object Attributes into Top-Level Attributes
   "properties": {
     "attributes": {
       "title": "Attributes to Flatten",
-      "description": "Map/object attributes that should be flattened - their nested properties will become top-level attributes",
+      "description": "Map-valued attributes to expand; each nested key becomes a top-level attribute and the original map is removed. Non-map attributes are left unchanged.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Attribute"
@@ -696,20 +730,21 @@ Create, Convert, Rename, and Remove Feature Attributes
 ### Type
 * processor
 ### Description
-Transform Feature Attributes Using Expressions and Mappings
+Replaces a feature's attributes with a new set built from mapping rules, each deriving its value from an expression, another attribute, or a nested map entry.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AttributeMapper Parameters",
+  "title": "Attribute Mapper Parameters",
+  "description": "Configures the mapping rules that build the output feature's attributes.",
   "type": "object",
   "required": [
     "mappers"
   ],
   "properties": {
     "mappers": {
-      "title": "Attribute Mappers",
-      "description": "List of mapping rules to transform attributes using expressions or value copying",
+      "title": "Mapping Rules",
+      "description": "Ordered list of rules; each produces one or more output attributes. The output feature contains only the attributes produced here.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Mapper"
@@ -721,14 +756,16 @@ Transform Feature Attributes Using Expressions and Mappings
       "type": "object",
       "properties": {
         "attribute": {
-          "title": "Attribute name",
+          "title": "Target Attribute",
+          "description": "Name of the attribute to set, taking its value from the expression, source attribute, or parent/child pair. Leave empty to use the multiple-values expression instead.",
           "type": [
             "string",
             "null"
           ]
         },
         "expr": {
-          "title": "Expression to evaluate",
+          "title": "Value Expression",
+          "description": "Expression evaluated to produce the attribute value. Evaluation errors yield a null value.",
           "type": [
             "object",
             "null"
@@ -752,28 +789,32 @@ Transform Feature Attributes Using Expressions and Mappings
           }
         },
         "valueAttribute": {
-          "title": "Attribute name to get value from",
+          "title": "Source Attribute",
+          "description": "Existing attribute to copy the value from. Yields null when the attribute is absent.",
           "type": [
             "string",
             "null"
           ]
         },
         "parentAttribute": {
-          "title": "Parent attribute name",
+          "title": "Parent Attribute",
+          "description": "Map-valued attribute containing the value to copy. Used together with the child attribute.",
           "type": [
             "string",
             "null"
           ]
         },
         "childAttribute": {
-          "title": "Child attribute name",
+          "title": "Child Attribute",
+          "description": "Key within the parent map whose value is copied to the target attribute.",
           "type": [
             "string",
             "null"
           ]
         },
         "multipleExpr": {
-          "title": "Expression to evaluate multiple attributes",
+          "title": "Multiple-Values Expression",
+          "description": "Expression returning a map whose entries are added as attributes. Used when no target attribute is set.",
           "type": [
             "object",
             "null"

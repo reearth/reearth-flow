@@ -58,54 +58,62 @@
     },
     {
       "name": "Attribute Aggregator",
-      "description": "属性に基づいて地物をグルーピングする",
+      "description": "属性値で地物をグループ化し、グループごとに計算値を集計して1グループにつき1地物を出力する",
       "parameterI18n": {
         "": {
-          "title": "AttributeAggregator パラメータ",
-          "description": "属性値に基づいてフィーチャーをグループ化・集計する方法を設定する"
+          "title": "Attribute Aggregator パラメータ",
+          "description": "地物をどのようにグループ化し、グループごとにどの値を集計するかを設定する"
         },
         "aggregateAttributes": {
-          "title": "集計する属性のリスト"
+          "title": "グループ化する属性",
+          "description": "各グループを定義する属性。各エントリは既存属性または式から値を読み取り、集計後の出力地物の新しい属性に書き込む"
         },
         "calculation": {
-          "title": "実行する計算"
+          "title": "計算式",
+          "description": "地物ごとに整数として評価される式。計算値が設定されていない場合の地物ごとの値として使う"
         },
         "calculationAttribute": {
-          "title": "計算結果を格納する属性"
+          "title": "結果を格納する属性",
+          "description": "計算結果を格納する集計後地物の属性"
         },
         "calculationValue": {
-          "title": "計算に使用する値"
+          "title": "計算に使用する値",
+          "description": "地物ごとの値として使う整数の定数。設定した場合は計算式より優先される"
         },
         "method": {
-          "title": "集計メソッド"
+          "title": "集計メソッド",
+          "description": "グループ内で地物ごとの計算値を集計する方法（最大・最小・カウント）"
         }
       },
       "definitionI18n": {
         "AggregateAttribute": {
           "attribute": {
-            "title": "使用する既存属性"
+            "title": "参照する既存属性",
+            "description": "グループ値を読み取る既存属性。グループ値の式が指定された場合は無視される"
           },
           "attributeValue": {
-            "title": "属性に使用する値"
+            "title": "グループ値の式",
+            "description": "グループ値を計算する式。両方設定した場合は既存属性より優先される"
           },
           "newAttribute": {
-            "title": "作成する新規属性"
+            "title": "出力属性",
+            "description": "このグループ値を格納する集計後地物の属性名"
           }
         }
       },
       "enumI18n": {
         "Method": {
           "count": {
-            "title": "アイテム数をカウント",
-            "description": "グループ内のフィーチャー数をカウントする"
+            "title": "カウント",
+            "description": "グループ内で地物ごとの計算値を合計する。値が1のときは地物数になる"
           },
           "max": {
             "title": "最大値",
-            "description": "グループ内の最大値を求める"
+            "description": "グループ内の地物ごとの計算値の最大値を保持する"
           },
           "min": {
             "title": "最小値",
-            "description": "グループ内の最小値を求める"
+            "description": "グループ内の地物ごとの計算値の最小値を保持する"
           }
         }
       }
@@ -126,41 +134,62 @@
     },
     {
       "name": "Attribute Conversion Table",
-      "description": "ルックアップテーブルを使用して地物属性を変換する",
+      "description": "ファイルまたはインラインで指定した変換テーブルで値を照合し、地物属性を変換する",
       "parameterI18n": {
         "": {
-          "title": "AttributeConversionTable パラメータ"
+          "title": "Attribute Conversion Table パラメータ",
+          "description": "ルックアップテーブルと、地物属性値を置換値にマッピングするルールを設定する"
         },
         "dataset": {
           "title": "データセット URI",
-          "description": "外部変換テーブルファイルのパスまたは URI"
+          "description": "変換テーブルファイルのパスまたは URI。これかインラインデータのいずれかを指定する"
         },
         "format": {
           "title": "テーブル形式",
-          "description": "変換テーブルの形式（CSV、TSV、または JSON）"
+          "description": "変換テーブルの解析に使う形式"
         },
         "inline": {
-          "title": "インラインテーブルデータ",
-          "description": "文字列として直接指定する変換テーブルデータ"
+          "title": "インラインテーブル",
+          "description": "テキストとして直接指定する変換テーブルの内容。データセット URI がない場合に使う"
         },
         "rules": {
           "title": "変換ルール",
-          "description": "変換テーブルを使用して属性をマッピングするルールのリスト"
+          "description": "地物属性値をテーブルの列と照合し、照合結果を地物に書き戻すルール"
         }
       },
       "definitionI18n": {
         "AttributeConversionTableRule": {
           "conversionTableKeys": {
-            "title": "変換テーブルで照合するキー"
+            "title": "照合キー列",
+            "description": "元属性の値と照合するテーブルの列"
           },
           "conversionTableTo": {
-            "title": "変換先属性"
+            "title": "結果の列",
+            "description": "変換先属性に書き込む値を持つテーブルの列"
           },
           "featureFroms": {
-            "title": "変換元属性"
+            "title": "元属性",
+            "description": "テーブルで照合するキーを構成する地物属性"
           },
           "featureTo": {
-            "title": "変換先属性"
+            "title": "変換先属性",
+            "description": "照合した値を受け取る地物属性"
+          }
+        }
+      },
+      "enumI18n": {
+        "ConversionTableFormat": {
+          "csv": {
+            "title": "CSV",
+            "description": "ヘッダー行付きのカンマ区切り値"
+          },
+          "json": {
+            "title": "JSON",
+            "description": "各オブジェクトが1行を表す、オブジェクトの JSON 配列または単一オブジェクト"
+          },
+          "tsv": {
+            "title": "TSV",
+            "description": "ヘッダー行付きのタブ区切り値"
           }
         }
       }
@@ -193,14 +222,15 @@
     },
     {
       "name": "Attribute Flattener",
-      "description": "ネストされた属性のフラット化",
+      "description": "マップ値の属性を個々のトップレベル属性にフラット化し、各マップをそのキーと値のエントリで置き換える",
       "parameterI18n": {
         "": {
-          "title": "AttributeFlattener パラメータ"
+          "title": "Attribute Flattener パラメータ",
+          "description": "どのマップ値属性をトップレベル属性に展開するかを設定する"
         },
         "attributes": {
           "title": "フラット化する属性",
-          "description": "フラット化するマップ/オブジェクト属性。ネストされたプロパティがトップレベル属性になる。"
+          "description": "展開するマップ値の属性。各ネストされたキーがトップレベル属性になり、元のマップは削除される。マップ以外の属性はそのまま残る"
         }
       }
     },
@@ -233,35 +263,42 @@
     },
     {
       "name": "Attribute Mapper",
-      "description": "属性をマッピングする",
+      "description": "地物の属性を、マッピングルールから構築した新しい属性セットで置き換える。各ルールは式・別の属性・ネストされたマップのエントリから値を導出する",
       "parameterI18n": {
         "": {
-          "title": "AttributeMapper パラメータ"
+          "title": "Attribute Mapper パラメータ",
+          "description": "出力地物の属性を構築するマッピングルールを設定する"
         },
         "mappers": {
-          "title": "属性マッパー",
-          "description": "式または値コピーで属性を変換するマッピングルールのリスト"
+          "title": "マッピングルール",
+          "description": "順序付きのルールのリスト。各ルールは1つ以上の出力属性を生成する。出力地物にはここで生成した属性のみが含まれる"
         }
       },
       "definitionI18n": {
         "Mapper": {
           "attribute": {
-            "title": "属性名"
+            "title": "対象属性",
+            "description": "設定する属性の名前。値は式・元属性・親子ペアから取得する。空にすると複数値の式が使われる"
           },
           "childAttribute": {
-            "title": "子属性名"
+            "title": "子属性",
+            "description": "対象属性に値をコピーする、親マップ内のキー"
           },
           "expr": {
-            "title": "評価する式"
+            "title": "値の式",
+            "description": "属性値を生成するために評価する式。評価エラーの場合は null 値になる"
           },
           "multipleExpr": {
-            "title": "複数属性を評価する式"
+            "title": "複数値の式",
+            "description": "マップを返す式。そのエントリが属性として追加される。対象属性が設定されていない場合に使う"
           },
           "parentAttribute": {
-            "title": "親属性名"
+            "title": "親属性",
+            "description": "コピーする値を含むマップ値の属性。子属性と一緒に使う"
           },
           "valueAttribute": {
-            "title": "値を取得する属性名"
+            "title": "元属性",
+            "description": "値をコピーする既存属性。属性が存在しない場合は null になる"
           }
         }
       }

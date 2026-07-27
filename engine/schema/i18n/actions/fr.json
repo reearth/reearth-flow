@@ -62,31 +62,39 @@
           "description": "Configure how features are grouped and aggregated based on attribute values"
         },
         "aggregateAttributes": {
-          "title": "List of attributes to aggregate"
+          "title": "List of attributes to aggregate",
+          "description": "Attributes that define each group. Each entry reads a value from an existing attribute or an expression and writes it to a new attribute on the aggregated output feature."
         },
         "calculation": {
-          "title": "Calculation to perform"
+          "title": "Calculation to perform",
+          "description": "Expression evaluated to an integer per feature, used as the per-feature value when no calculation value is set."
         },
         "calculationAttribute": {
-          "title": "Attribute to store calculation result"
+          "title": "Attribute to store calculation result",
+          "description": "Attribute on the aggregated feature that stores the computed result."
         },
         "calculationValue": {
-          "title": "Value to use for calculation"
+          "title": "Value to use for calculation",
+          "description": "Constant integer used as the per-feature value. Takes precedence over the calculation expression when set."
         },
         "method": {
-          "title": "Method to use for aggregation"
+          "title": "Method to use for aggregation",
+          "description": "How to aggregate the per-feature calculation value within each group: maximum, minimum, or count."
         }
       },
       "definitionI18n": {
         "AggregateAttribute": {
           "attribute": {
-            "title": "Existing attribute to use"
+            "title": "Existing attribute to use",
+            "description": "Existing attribute to read the group value from. Ignored when a group value expression is provided."
           },
           "attributeValue": {
-            "title": "Value to use for attribute"
+            "title": "Value to use for attribute",
+            "description": "Expression that computes the group value. Takes precedence over the source attribute when both are set."
           },
           "newAttribute": {
-            "title": "New attribute to create"
+            "title": "New attribute to create",
+            "description": "Name of the attribute written to the aggregated feature that holds this group value."
           }
         }
       },
@@ -126,7 +134,8 @@
       "description": "Transform Feature Attributes Using Lookup Tables",
       "parameterI18n": {
         "": {
-          "title": "AttributeConversionTable Parameters"
+          "title": "AttributeConversionTable Parameters",
+          "description": "Configures the lookup table and the rules that map feature attribute values to replacement values."
         },
         "dataset": {
           "title": "Dataset URI",
@@ -148,16 +157,36 @@
       "definitionI18n": {
         "AttributeConversionTableRule": {
           "conversionTableKeys": {
-            "title": "Keys to match in conversion table"
+            "title": "Keys to match in conversion table",
+            "description": "Table columns matched against the source attribute values."
           },
           "conversionTableTo": {
-            "title": "Attribute to convert to"
+            "title": "Attribute to convert to",
+            "description": "Table column whose value is written to the target attribute."
           },
           "featureFroms": {
-            "title": "Attributes to convert from"
+            "title": "Attributes to convert from",
+            "description": "Feature attributes whose values form the key looked up in the table."
           },
           "featureTo": {
-            "title": "Attribute to convert to"
+            "title": "Attribute to convert to",
+            "description": "Feature attribute that receives the looked-up value."
+          }
+        }
+      },
+      "enumI18n": {
+        "ConversionTableFormat": {
+          "csv": {
+            "title": "CSV",
+            "description": "Comma-separated values with a header row."
+          },
+          "json": {
+            "title": "JSON",
+            "description": "JSON array of objects, or a single object, where each object is a table row."
+          },
+          "tsv": {
+            "title": "TSV",
+            "description": "Tab-separated values with a header row."
           }
         }
       }
@@ -193,7 +222,8 @@
       "description": "Flatten Nested Object Attributes into Top-Level Attributes",
       "parameterI18n": {
         "": {
-          "title": "AttributeFlattener Parameters"
+          "title": "AttributeFlattener Parameters",
+          "description": "Configures which map-valued attributes are expanded into top-level attributes."
         },
         "attributes": {
           "title": "Attributes to Flatten",
@@ -233,7 +263,8 @@
       "description": "Transform Feature Attributes Using Expressions and Mappings",
       "parameterI18n": {
         "": {
-          "title": "AttributeMapper Parameters"
+          "title": "AttributeMapper Parameters",
+          "description": "Configures the mapping rules that build the output feature's attributes."
         },
         "mappers": {
           "title": "Attribute Mappers",
@@ -243,22 +274,28 @@
       "definitionI18n": {
         "Mapper": {
           "attribute": {
-            "title": "Attribute name"
+            "title": "Attribute name",
+            "description": "Name of the attribute to set, taking its value from the expression, source attribute, or parent/child pair. Leave empty to use the multiple-values expression instead."
           },
           "childAttribute": {
-            "title": "Child attribute name"
+            "title": "Child attribute name",
+            "description": "Key within the parent map whose value is copied to the target attribute."
           },
           "expr": {
-            "title": "Expression to evaluate"
+            "title": "Expression to evaluate",
+            "description": "Expression evaluated to produce the attribute value. Evaluation errors yield a null value."
           },
           "multipleExpr": {
-            "title": "Expression to evaluate multiple attributes"
+            "title": "Expression to evaluate multiple attributes",
+            "description": "Expression returning a map whose entries are added as attributes. Used when no target attribute is set."
           },
           "parentAttribute": {
-            "title": "Parent attribute name"
+            "title": "Parent attribute name",
+            "description": "Map-valued attribute containing the value to copy. Used together with the child attribute."
           },
           "valueAttribute": {
-            "title": "Attribute name to get value from"
+            "title": "Attribute name to get value from",
+            "description": "Existing attribute to copy the value from. Yields null when the attribute is absent."
           }
         }
       }
