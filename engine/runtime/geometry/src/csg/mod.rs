@@ -34,3 +34,6 @@ pub enum Csg {
 
 // Tessellation is defined only for `Polygon` / `PolygonMesh`.
 crate::unsupported!(Csg: Triangulate, Reproject, ConvertFrame, Translate);
+
+// A boolean tree is one logical solid, not a multi-part container.
+crate::unsupported!(Csg: Split);
