@@ -590,10 +590,13 @@ mod tests {
         }
     }
 
-    // An OBJ-shaped PolygonMesh (Euclidean-frame face, Phong material with a
-    // file-backed diffuse_map and per-corner UVs, as produced by the new-geometry
-    // OBJ reader) must extract with its material carried through unchanged — this
-    // proves the writer needs no OBJ-specific changes.
+    // An OBJ-shaped PolygonMesh with a Phong material, a file-backed diffuse_map,
+    // and per-corner UVs, as produced by the new-geometry OBJ reader, must extract
+    // with its material carried through unchanged, which proves the writer needs
+    // no OBJ-specific changes. A CRS frame (EPSG:4979) is used here deliberately,
+    // since the writer skips Euclidean (model-space) meshes: the OBJ reader itself
+    // emits Euclidean geometry, but placing it on a CRS is the separate
+    // georeferencing concern, not what this test is checking.
     #[test]
     fn obj_shaped_polygon_mesh_with_phong_texture_is_extracted() {
         use reearth_flow_geometry::appearance::{
