@@ -88,7 +88,7 @@ impl Cesium3DTilesWriter {
 
             // glbs stream to disk here as they are built; only the small
             // subtree/tileset outputs come back for writing below.
-            let built = build(features, options, self.params.max_zoom, render, &write_file)?;
+            let built = build(features, options, self.params.max_zoom, render, write_file)?;
 
             for (relative_path, bytes) in built.subtrees {
                 write_file(relative_path, bytes)?;
