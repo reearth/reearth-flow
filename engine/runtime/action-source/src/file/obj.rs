@@ -34,6 +34,10 @@ use crate::{
     },
 };
 
+#[cfg(feature = "new-geometry")]
+#[path = "obj_next.rs"]
+mod obj_next;
+
 #[derive(Debug, Clone, Default)]
 pub(crate) struct ObjReaderFactory;
 
@@ -103,14 +107,14 @@ impl SourceFactory for ObjReaderFactory {
 }
 
 #[derive(Debug, Clone)]
-struct ObjReaderCompiledParam {
-    common: FileReaderCompiledParam,
-    parse_materials: bool,
-    material_file: Option<CompiledCode>,
-    triangulate: bool,
-    merge_groups: bool,
-    _include_normals: bool,
-    _include_texcoords: bool,
+pub(super) struct ObjReaderCompiledParam {
+    pub(super) common: FileReaderCompiledParam,
+    pub(super) parse_materials: bool,
+    pub(super) material_file: Option<CompiledCode>,
+    pub(super) triangulate: bool,
+    pub(super) merge_groups: bool,
+    pub(super) _include_normals: bool,
+    pub(super) _include_texcoords: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -188,48 +192,61 @@ impl Source for ObjReader {
             .await
             .map_err(Into::<BoxedError>::into)
     }
+
+    #[cfg(feature = "new-geometry")]
+    async fn start(
+        &mut self,
+        ctx: NodeContext,
+        sender: Sender<(Port, IngestionMessage)>,
+    ) -> Result<(), BoxedError> {
+        let storage_resolver = Arc::clone(&ctx.storage_resolver);
+        let content = get_content(&self.params.common, storage_resolver.clone()).await?;
+        obj_next::read(&ctx, storage_resolver, &content, &self.params, &sender)
+            .await
+            .map_err(Into::<BoxedError>::into)
+    }
 }
 
 #[derive(Debug, Clone, Default)]
-struct ObjData {
-    vertices: Vec<[f64; 3]>,
-    normals: Vec<[f64; 3]>,
-    texcoords: Vec<[f64; 3]>,
-    faces: Vec<Face>,
-    groups: Vec<String>,
-    objects: Vec<String>,
-    material_libs: Vec<String>,
-    comments: Vec<String>,
+pub(super) struct ObjData {
+    pub(super) vertices: Vec<[f64; 3]>,
+    pub(super) normals: Vec<[f64; 3]>,
+    pub(super) texcoords: Vec<[f64; 3]>,
+    pub(super) faces: Vec<Face>,
+    pub(super) groups: Vec<String>,
+    pub(super) objects: Vec<String>,
+    pub(super) material_libs: Vec<String>,
+    pub(super) comments: Vec<String>,
 }
 
 #[derive(Debug, Clone)]
 #[allow(dead_code)]
-struct Face {
-    vertices: Vec<FaceVertex>,
-    group: Option<String>,
-    object: Option<String>,
-    material: Option<String>,
-    smoothing_group: Option<String>,
+pub(super) struct Face {
+    pub(super) vertices: Vec<FaceVertex>,
+    pub(super) group: Option<String>,
+    pub(super) object: Option<String>,
+    pub(super) material: Option<String>,
+    pub(super) smoothing_group: Option<String>,
 }
 
 #[derive(Debug, Clone, Copy)]
 #[allow(dead_code)]
-struct FaceVertex {
-    vertex_index: i32,
-    texture_index: Option<i32>,
-    normal_index: Option<i32>,
+pub(super) struct FaceVertex {
+    pub(super) vertex_index: i32,
+    pub(super) texture_index: Option<i32>,
+    pub(super) normal_index: Option<i32>,
 }
 
 #[derive(Debug, Clone, Default)]
-struct Material {
-    name: String,
-    ambient: Option<[f32; 3]>,
-    diffuse: Option<[f32; 3]>,
-    specular: Option<[f32; 3]>,
-    shininess: Option<f32>,
-    transparency: Option<f32>,
-    illumination: Option<i32>,
-    texture_map: Option<String>,
+pub(super) struct Material {
+    pub(super) name: String,
+    pub(super) ambient: Option<[f32; 3]>,
+    pub(super) diffuse: Option<[f32; 3]>,
+    pub(super) specular: Option<[f32; 3]>,
+    pub(super) shininess: Option<f32>,
+    pub(super) transparency: Option<f32>,
+    pub(super) illumination: Option<i32>,
+    pub(super) texture_map: Option<String>,
 }
 
 fn safe_f64_to_number(value: f64) -> serde_json::Number {
@@ -544,7 +561,7 @@ async fn read_obj(
     Ok(())
 }
 
-fn parse_obj_content(content: &Bytes) -> Result<ObjData, SourceError> {
+pub(super) fn parse_obj_content(content: &Bytes) -> Result<ObjData, SourceError> {
     let reader = BufReader::new(&content[..]);
     let mut obj_data = ObjData::default();
 
@@ -743,7 +760,7 @@ fn parse_face_vertex(vertex_str: &str) -> Result<FaceVertex, String> {
     })
 }
 
-async fn resolve_material_path(
+pub(super) async fn resolve_material_path(
     _ctx: &NodeContext,
     storage_resolver: Arc<reearth_flow_storage::resolve::StorageResolver>,
     obj_uri: &Uri,
@@ -781,7 +798,7 @@ async fn resolve_material_path(
     Ok(None)
 }
 
-async fn parse_mtl(
+pub(super) async fn parse_mtl(
     _ctx: &NodeContext,
     storage_resolver: Arc<reearth_flow_storage::resolve::StorageResolver>,
     mtl_uri: &Uri,
