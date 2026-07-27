@@ -19,11 +19,13 @@ Phase 3 quality review of the 73 base actions against [action-standard.md](actio
 While applying the standard, descriptions and parameter descriptions are being made concise per §2 and §3.3 (1–2 sentences, no reference dumps). This is correct, but some actions carried genuinely useful **reference-level** detail in their descriptions that concise text cannot hold — e.g. the Shapefile/CSV `encoding` params previously enumerated ~20 supported encodings with examples and priority order. That depth is trimmed during the audit and currently survives only in git history and source.
 
 There is no home for this today:
+
 - The schema `description` is the only user-facing text, and the UI renders it as **plain text** (no markdown) — long structured content renders poorly there anyway.
 - The mdbook `docs/mdbook/src/action.md` is **generated** from the schema (`cargo run -- doc-action`), so it cannot hold anything the schema does not.
 - Hand-written guides in `engine/docs/` (e.g. `czml-timeseries.md`) can hold arbitrary depth but are **orphaned** — not in mdbook `SUMMARY.md`, not linked from any action, not surfaced in the app.
 
 **Task (needs planning before implementation):**
+
 1. Decide the home + format for per-action extended docs (candidate: `engine/docs/actions/<action>.md`; wire into mdbook `SUMMARY.md` and/or extend `doc-action` to emit a "See also" link; consider a UI affordance linking action → doc).
 2. Fold the existing orphan (`czml-timeseries.md`) into that convention.
 3. Recover the reference detail trimmed during the audit (pull from git history of the touched factory files) and migrate it into the new docs.
@@ -60,62 +62,6 @@ GeoPackage Reader
              reading (making the text accurate) or, if tiles stay out, correct these
              descriptions. `features`, `metadataOnly`, `layerName`, and `force2D` are
              accurate.
-```
-
----
-
-## Attribute (8)
-
-<!-- Session 4 -->
-
-```
-Attribute Manager
-  desc:    title-case — "Create, Convert, Rename, and Remove Feature Attributes"; suggest
-             "Creates, converts, renames, or removes feature attributes based on a
-             configurable list of operations."
-  params:  schema-level description missing (§3.3)
-           Method enum ("convert", "create", "rename", "remove") — no per-variant
-             descriptions; plain enum type cannot hold descriptions — restructure as oneOf
-             or add variant explanations to the method property description (§3.4)
-  tags:    empty — `attribute` duplicates category (§6); no other established vocabulary
-             terms apply; 0 tags acceptable
-
-Bulk Attribute Renamer
-  desc:    title-case — "Rename Feature Attributes in Bulk"; suggest "Renames feature
-             attributes in bulk by adding or removing a prefix or suffix, or replacing text."
-  params:  RenameAction enum values PascalCase — AddPrefix, AddSuffix, RemovePrefix,
-             RemoveSuffix, StringReplace must be camelCase: addPrefix, addSuffix,
-             removePrefix, removeSuffix, replaceText (§3.4)
-           RenameType enum values PascalCase — All, Selected must be camelCase: all,
-             selected (§3.4)
-           renameType — description "Choose whether to..." is instructive; suggest "Scope
-             of the rename operation: all attributes or a selected subset."
-           selectedAttributes — description references old enum value names; update when
-             enum is renamed
-  tags:    empty — `attribute` duplicates category (§6); no other established vocabulary
-             terms apply; 0 tags acceptable
-
-Null Attribute Mapper
-  desc:    "Replace" should be "Replaces" (verb-first present tense, third-person singular)
-  params:  schema-level description "NullAttributeMapper parameters" is a name restatement
-             — replace with a meaningful summary (§3.3)
-           defaultReplacement, mappings, nullDefinition, routeNullFeatures, scope — all
-             missing title (§3.3)
-           NullKind enum — "null" variant description "AttributeValue::Null" and
-             "emptyString" variant description "AttributeValue::String(\"\")" expose Rust
-             type names; replace with plain language (§3.4)
-           routeNullFeatures — description mentions port name "hasNull"; avoid port
-             references in parameter descriptions (§2 spirit)
-           ordering — alphabetical; suggest: scope → mappings → defaultReplacement →
-             nullDefinition → routeNullFeatures (§3.5)
-  tags:    ["mapping"] — now in vocabulary; 1 tag acceptable
-
-Statistics Calculator
-  params:  groupBy — title "Group by" should be "Group By"
-           groupId — title "Group id" should be "Group ID"
-  tags:    ["statistics", "aggregate"] — `aggregate` not in vocabulary; replace with
-             `aggregation`; `statistics` now in vocabulary; suggest ["aggregation",
-             "statistics"]
 ```
 
 ---
