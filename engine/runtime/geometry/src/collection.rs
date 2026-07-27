@@ -255,37 +255,27 @@ impl crate::ops::Split for Collection3D {
 
 impl ForceTwoDimension for Collection2D {
     fn force_2d(&mut self) -> Result<Euclidean2DGeometry, ForceTwoDimensionError> {
-        // All-or-nothing: one member with no 2D counterpart fails the whole
-        // collection; `members` stays 1:1 with the input, keeping `attrs` parallel.
         let mut members = Vec::with_capacity(self.members.len());
         for member in &mut self.members {
             members.push(member.force_2d()?);
         }
-        let attrs = std::mem::take(&mut self.attrs);
-        let collection =
-            Collection2D::with_attributes(members, attrs).map_err(|_| UnsupportedOperation {
-                geometry: "Collection2D",
-                operation: "force_2d",
-            })?;
-        Ok(Euclidean2DGeometry::Collection(collection))
+        Ok(Euclidean2DGeometry::Collection(Collection2D {
+            members,
+            attrs: std::mem::take(&mut self.attrs),
+        }))
     }
 }
 
 impl ForceTwoDimension for Collection3D {
     fn force_2d(&mut self) -> Result<Euclidean2DGeometry, ForceTwoDimensionError> {
-        // All-or-nothing: one member with no 2D counterpart fails the whole
-        // collection; `members` stays 1:1 with the input, keeping `attrs` parallel.
         let mut members = Vec::with_capacity(self.members.len());
         for member in &mut self.members {
             members.push(member.force_2d()?);
         }
-        let attrs = std::mem::take(&mut self.attrs);
-        let collection =
-            Collection2D::with_attributes(members, attrs).map_err(|_| UnsupportedOperation {
-                geometry: "Collection3D",
-                operation: "force_2d",
-            })?;
-        Ok(Euclidean2DGeometry::Collection(collection))
+        Ok(Euclidean2DGeometry::Collection(Collection2D {
+            members,
+            attrs: std::mem::take(&mut self.attrs),
+        }))
     }
 }
 

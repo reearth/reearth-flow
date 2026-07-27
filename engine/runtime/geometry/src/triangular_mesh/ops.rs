@@ -237,4 +237,60 @@ mod tests {
             }
         );
     }
+
+    #[test]
+    fn triangular_mesh3d_force_2d_keeps_triangles_and_demotes_the_frame() {
+        use crate::coordinate::EpsgCode;
+
+        let mut mesh = TriangularMesh3D::from_parts(
+            CoordinateFrame::Crs(EpsgCode::new(6697)),
+            vec![
+                [0.0, 0.0, 9.0],
+                [2.0, 0.0, 8.0],
+                [2.0, 2.0, 7.0],
+                [0.0, 2.0, 6.0],
+            ],
+            [0u32, 1, 2, 0, 2, 3],
+        )
+        .unwrap();
+        let forced = match mesh.force_2d().unwrap() {
+            Euclidean2DGeometry::TriangularMesh(m) => m,
+            other => panic!("expected a 2D triangular mesh, got {other:?}"),
+        };
+        assert_eq!(forced.frame(), &CoordinateFrame::Crs(EpsgCode::new(6668)));
+        assert_eq!(
+            forced.vertices(),
+            &[[0.0, 0.0], [2.0, 0.0], [2.0, 2.0], [0.0, 2.0]]
+        );
+        assert_eq!(
+            forced.triangles().collect::<Vec<_>>(),
+            vec![[0, 1, 2], [0, 2, 3]]
+        );
+    }
+
+    #[test]
+    fn triangular_mesh2d_force_2d_clears_elevation() {
+        use crate::coordinate::EpsgCode;
+
+        let mut mesh = TriangularMesh2D::from_parts_with_elevation(
+            CoordinateFrame::Crs(EpsgCode::new(6697)),
+            vec![[0.0, 0.0, 5.0], [2.0, 0.0, 6.0], [2.0, 2.0, 7.0]],
+            [0u32, 1, 2],
+        )
+        .unwrap();
+        let forced = match mesh.force_2d().unwrap() {
+            Euclidean2DGeometry::TriangularMesh(m) => m,
+            other => panic!("expected a 2D triangular mesh, got {other:?}"),
+        };
+        assert_eq!(forced.frame(), &CoordinateFrame::Crs(EpsgCode::new(6668)));
+        assert_eq!(forced.num_triangles(), 1);
+        // The elevation is gone, so the box is purely 2D.
+        assert_eq!(
+            forced.bounding_box().unwrap(),
+            Aabb::D2 {
+                min: [0.0, 0.0],
+                max: [2.0, 2.0]
+            }
+        );
+    }
 }

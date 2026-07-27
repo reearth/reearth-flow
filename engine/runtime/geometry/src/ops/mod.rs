@@ -287,29 +287,26 @@ impl From<FrameDemotionError> for ForceTwoDimensionError {
 
 /// Force a geometry into a pure 2D embedding by dropping the Z coordinate.
 ///
-/// Any 2.5D per-vertex elevation is cleared, so the op is idempotent. The
-/// coordinate frame is demoted to its 2D counterpart rather than kept verbatim,
-/// keeping the frame's dimensionality equal to the coordinates': a geometry in
-/// EPSG:6697 comes back in EPSG:6668, one in EPSG:4979 in EPSG:4326. Coordinate
-/// values are untouched by the retag — see
+/// Any 2.5D per-vertex elevation is cleared too, so the op is idempotent. The
+/// coordinate frame is demoted alongside the coordinates so the two keep matching
+/// dimensionality: EPSG:6697 comes back as EPSG:6668, EPSG:4979 as EPSG:4326.
+/// Coordinate values are untouched by the retag — see
 /// [`CoordinateFrame::demote_to_2d`](crate::coordinate::CoordinateFrame::demote_to_2d).
 ///
-/// Two things reject. Leaves with no 2D counterpart (`Solid`, `Csg`,
-/// `PointCloud`) opt out via [`unsupported!`](crate::unsupported), and a frame
-/// whose 2D counterpart cannot be established — a geocentric (ECEF) CRS, whose Z
-/// is the rotation axis rather than a height, so dropping it would silently
-/// project onto the equatorial plane; or a CRS PROJ cannot resolve, whose
-/// dimensionality is then unknown.
+/// Rejects a type with no 2D counterpart (`Solid`, `Csg`, `PointCloud`, which opt
+/// out via [`unsupported!`](crate::unsupported)) and a frame with none, such as a
+/// geocentric CRS whose Z is the rotation axis rather than a height. A rejected
+/// member rejects the collection containing it; the op never returns a partially
+/// converted collection.
 ///
 /// Like [`Triangulate`], this consumes the leaf's buffers, leaving `self`
-/// moved-from on success (discard or overwrite it); a leaf that empties `coords`
-/// must also clear `z` to preserve the `z.len() == coords.len()` invariant. A
-/// leaf therefore resolves its frame before touching its buffers, so a rejected
-/// frame leaves it intact.
+/// moved-from on success. A leaf that empties `coords` must clear `z` with it to
+/// keep the two the same length, and must resolve its frame before touching
+/// either, so a rejected frame leaves it intact.
 #[enum_dispatch::enum_dispatch]
 pub trait ForceTwoDimension {
-    /// Re-represent this geometry in a 2D embedding. The default body reports the
-    /// type as unsupported; a leaf opts in by overriding it.
+    /// Re-represent this geometry in a 2D embedding. The default reports the type
+    /// as unsupported; a leaf opts in by overriding it.
     fn force_2d(&mut self) -> Result<crate::Euclidean2DGeometry, ForceTwoDimensionError> {
         Err(UnsupportedOperation {
             geometry: core::any::type_name::<Self>(),
