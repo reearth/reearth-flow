@@ -198,7 +198,7 @@ pub fn build_atlas_multipage(
                 let mut packer = SkylinePacker::new(max_atlas_size, max_atlas_size, extrusion);
                 let frame = packer
                     .pack(w, h)
-                    .expect("a region clamped to `usable` always fits an empty page");
+                    .expect("a region clamped to `max_atlas_size` always fits an empty page");
                 packers.push(packer);
                 frame
             }
