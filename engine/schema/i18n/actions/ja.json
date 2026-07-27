@@ -999,17 +999,19 @@
     },
     {
       "name": "Directory Decompressor",
-      "description": "アーカイブからディレクトリを展開する",
+      "description": "地物の属性が参照する zip・7z アーカイブを展開し、各属性値を展開先ディレクトリのパスに置き換える",
       "parameterI18n": {
         "": {
-          "title": "DirectoryDecompressor パラメータ",
-          "description": "アーカイブファイルの展開と解凍を設定する"
+          "title": "Directory Decompressor パラメータ",
+          "description": "どの属性がアーカイブを保持するか、展開先ディレクトリをどこまで展開するかを設定する"
         },
         "archiveAttributes": {
-          "description": "展開・解凍するアーカイブファイルパスを含む属性"
+          "title": "アーカイブ属性",
+          "description": ".zip・.7z・.7zip アーカイブのパスを保持する属性。各属性は展開先ディレクトリのパスに置き換えられ、それ以外の値を保持する属性は変更されない"
         },
         "findDeepestSingleFolder": {
-          "description": "true の場合、ディレクトリに複数のアイテムやファイルが直接含まれるまで単一フォルダーのネストを再帰的に展開する。false（デフォルト）の場合、ルート展開フォルダーをそのまま返す。"
+          "title": "最深の単一フォルダーを探索",
+          "description": "展開先ディレクトリの中身が単一のサブディレクトリのみである間は展開を続け、複数のエントリまたはファイルを含む最初のディレクトリで停止する。無効の場合は単一フォルダーのネストを1階層のみ展開する"
         }
       }
     },
@@ -1233,23 +1235,23 @@
     },
     {
       "name": "Feature File Path Extractor",
-      "description": "地物からファイルパスを抽出する",
+      "description": "データセットのパスを展開し、ファイル1件につき1地物を出力する。ディレクトリは再帰的に一覧し、zip・7z アーカイブは必要に応じて展開する。各地物にはファイルの path・name・extension 属性と入力地物の属性が付与される",
       "parameterI18n": {
         "": {
-          "title": "FeatureFilePathExtractor パラメータ",
-          "description": "データセットからファイルパスを抽出し、アーカイブを展開する方法を設定する"
+          "title": "Feature File Path Extractor パラメータ",
+          "description": "どのデータセットをファイル地物に展開するか、アーカイブを展開するかを設定する"
         },
         "destPrefix": {
           "title": "出力先プレフィックス",
-          "description": "抽出したファイルパスに追加するプレフィックス（任意）"
+          "description": "展開したファイルを格納するために一時展開ディレクトリ内に作成するサブディレクトリ。アーカイブを展開する場合にのみ適用される"
         },
         "extractArchive": {
           "title": "アーカイブを展開",
-          "description": "データセット内のアーカイブファイルを展開するか"
+          "description": "ソースデータセットが .zip・.7z・.7zip アーカイブの場合に展開し、展開されたファイル1件につき1地物を出力する。無効の場合はアーカイブ自体を1つのパスとして出力する"
         },
         "sourceDataset": {
           "title": "ソースデータセット",
-          "description": "ソースデータセットのパスまたは URL を取得する式"
+          "description": "展開対象のファイル・ディレクトリ・アーカイブのパスまたは URL を返す式。ディレクトリは再帰的に一覧され、それ以外のパスは1地物になる"
         }
       }
     },
@@ -1425,20 +1427,22 @@
     },
     {
       "name": "Feature Transformer",
-      "description": "式を用いて地物を変換する",
+      "description": "1つ以上の式が返すマップで各地物の属性を置き換える。式は順番に適用され、ジオメトリはそのまま引き継がれる",
       "parameterI18n": {
         "": {
-          "title": "FeatureTransformer パラメータ",
-          "description": "フィーチャーに変換式を適用する設定"
+          "title": "Feature Transformer パラメータ",
+          "description": "各地物の新しい属性を組み立てる式を設定する"
         },
         "transformers": {
-          "description": "各フィーチャーに適用する変換式のリスト"
+          "title": "変換式",
+          "description": "順番に適用される式。各式は直前の式が生成した属性を読み取る"
         }
       },
       "definitionI18n": {
         "Transform": {
           "expr": {
-            "description": "フィーチャーを変更する式（属性、ジオメトリなどにアクセス・変更可能）"
+            "title": "式",
+            "description": "attributes と env を参照し、地物の属性全体となるマップを返す式。マップ以外を返した場合や評価に失敗した場合、属性は変更されない"
           }
         }
       }
@@ -1487,14 +1491,15 @@
     },
     {
       "name": "File Property Extractor",
-      "description": "ファイルからプロパティを抽出する",
+      "description": "地物の属性が保持するパスのファイルまたはディレクトリを調べ、種別・サイズ・アクセス日時・更新日時・作成日時を属性として追加する。ディレクトリのサイズは含まれるファイルの合計サイズを再帰的に集計した値になる",
       "parameterI18n": {
         "": {
-          "title": "FilePropertyExtractor パラメータ",
-          "description": "ファイルからファイルシステムプロパティを抽出する設定"
+          "title": "File Property Extractor パラメータ",
+          "description": "調べるパスを保持する属性を設定する"
         },
         "filePathAttribute": {
-          "description": "プロパティ解析対象のファイルパスを含む属性名"
+          "title": "ファイルパス属性",
+          "description": "調べるファイルまたはディレクトリのパスを保持する属性名。存在しないパスとシンボリックリンクは調べられない"
         }
       }
     },
@@ -2344,14 +2349,15 @@
     },
     {
       "name": "List Exploder",
-      "description": "リスト属性を複数の要素に分解する",
+      "description": "リスト属性の要素1件につき1地物を作成し、要素のキーと値を地物の属性に統合してソース属性を削除する。属性が存在しない、空、またはキーと値のリストでない地物はそのまま通過する",
       "parameterI18n": {
         "": {
-          "title": "ListExploder パラメータ",
-          "description": "配列属性を個別のフィーチャーに分解する設定"
+          "title": "List Exploder パラメータ",
+          "description": "個別の地物に展開するリスト属性を設定する"
         },
         "sourceAttribute": {
-          "description": "分解する配列を含む属性（各要素が個別のフィーチャーになる）"
+          "title": "ソース属性",
+          "description": "作成する地物1件につき1エントリとなる、キーと値のリストを保持する属性"
         }
       }
     },
@@ -3677,24 +3683,60 @@
     },
     {
       "name": "XML Fragmenter",
-      "description": "XMLを分割する",
+      "description": "要素名の一致で XML ドキュメントを地物に分割し、一致した要素1件につき1地物を出力する。各地物には要素の XML テキスト・タグ名・要素とその親の識別子が属性として付与される",
       "parameterI18n": {
         "": {
-          "title": "XMLFragmenter パラメータ",
-          "description": "XML ドキュメントを小さな断片に分割する設定。"
+          "title": "XML Fragmenter パラメータ",
+          "description": "XML ドキュメントの取得元と、どの要素を地物にするかを設定する"
         }
       }
     },
     {
       "name": "XML Validator",
-      "description": "XMLコンテンツを検証する",
+      "description": "XML ドキュメントが整形式であるか、名前空間宣言が正しいか、参照する XSD スキーマに適合するかを検証する。検出したエラーの詳細は xmlError 属性に追加される",
       "parameterI18n": {
         "": {
-          "title": "XmlValidator パラメータ"
+          "title": "XML Validator パラメータ",
+          "description": "どの XML ドキュメントをどこまで検証するかを設定する"
         },
-        "attribute": {},
-        "inputType": {},
-        "validationType": {}
+        "attribute": {
+          "title": "XML 属性",
+          "description": "XML ドキュメントを保持する属性。入力タイプに応じて、読み込むファイルパスまたは URL か、XML テキストそのものを指定する"
+        },
+        "inputType": {
+          "title": "入力タイプ",
+          "description": "属性がドキュメントの場所を保持するか、ドキュメント自体を保持するか"
+        },
+        "validationType": {
+          "title": "検証タイプ",
+          "description": "ドキュメントに対して実行する検査"
+        }
+      },
+      "enumI18n": {
+        "ValidationType": {
+          "syntax": {
+            "title": "構文",
+            "description": "XML として整形式であるかを検査する"
+          },
+          "syntaxAndNamespace": {
+            "title": "構文と名前空間",
+            "description": "要素が使用する名前空間プレフィックスがその要素または祖先で宣言されているか、プレフィックスのない要素にデフォルト名前空間があるかも検査する"
+          },
+          "syntaxAndSchema": {
+            "title": "構文とスキーマ",
+            "description": "xsi:schemaLocation が示す XSD スキーマに対しても検証する。到達できないリモートスキーマは、XML Schema 仕様上その場所がヒントであるためスキップされる"
+          }
+        },
+        "XmlInputType": {
+          "file": {
+            "title": "XML ファイル",
+            "description": "属性が保持するファイルパスまたは URL からドキュメントを読み込む"
+          },
+          "text": {
+            "title": "XML テキスト",
+            "description": "属性値そのものをドキュメントとして使う"
+          }
+        }
       }
     },
     {

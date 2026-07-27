@@ -2866,27 +2866,29 @@ Routes features to output ports based on the number of geometry dimensions.
 ### Type
 * processor
 ### Description
-Extracts and decompresses archive files from specified attributes
+Decompresses zip and 7z archives referenced by feature attributes, replacing each attribute value with the path of the directory holding the extracted files.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "DirectoryDecompressor Parameters",
-  "description": "Configures the extraction and decompression of archive files.",
+  "title": "Directory Decompressor Parameters",
+  "description": "Configures which attributes hold archives and how deeply the extracted directory is unwrapped.",
   "type": "object",
   "required": [
     "archiveAttributes"
   ],
   "properties": {
     "archiveAttributes": {
-      "description": "Attributes containing archive file paths to be extracted and decompressed",
+      "title": "Archive Attributes",
+      "description": "Attributes holding the path of a `.zip`, `.7z`, or `.7zip` archive. Each is replaced with the extracted directory path; attributes holding any other value are left unchanged.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Attribute"
       }
     },
     "findDeepestSingleFolder": {
-      "description": "If true, recursively unwraps single-folder nesting until the directory contains multiple items or files directly. If false (default), returns the root extraction folder as-is.",
+      "title": "Find Deepest Single Folder",
+      "description": "Keeps unwrapping while the extracted directory contains nothing but a single subdirectory, stopping at the first directory with multiple entries or a file. When disabled, only one level of single-folder nesting is unwrapped.",
       "type": [
         "boolean",
         "null"
@@ -3529,22 +3531,21 @@ Filter Out Duplicate Features
 ### Type
 * processor
 ### Description
-Extract File Paths from Dataset to Features
+Expands a dataset path into one feature per file, listing directories recursively and optionally extracting zip and 7z archives. Each emitted feature carries the file's path, name, and extension attributes alongside the attributes of the incoming feature.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Feature File Path Extractor Parameters",
-  "description": "Configure how to extract file paths from datasets and optionally extract archives",
+  "description": "Configures which dataset is expanded into file features and whether archives are extracted.",
   "type": "object",
   "required": [
-    "extractArchive",
     "sourceDataset"
   ],
   "properties": {
     "sourceDataset": {
       "title": "Source Dataset",
-      "description": "Expression to get the source dataset path or URL",
+      "description": "Expression evaluating to the path or URL of the file, directory, or archive to expand. A directory is listed recursively; any other path yields a single feature.",
       "type": "object",
       "format": "code",
       "required": [
@@ -3566,12 +3567,13 @@ Extract File Paths from Dataset to Features
     },
     "extractArchive": {
       "title": "Extract Archive",
-      "description": "Whether to extract archive files found in the dataset",
+      "description": "Extracts the source dataset when it is a `.zip`, `.7z`, or `.7zip` archive and emits one feature per extracted file. When disabled, the archive itself is emitted as a single path.",
+      "default": false,
       "type": "boolean"
     },
     "destPrefix": {
       "title": "Destination Prefix",
-      "description": "Optional prefix to add to extracted file paths",
+      "description": "Subdirectory created under the temporary extraction directory to hold the extracted files. Applies only when an archive is extracted.",
       "type": [
         "string",
         "null"
@@ -3584,7 +3586,6 @@ Extract File Paths from Dataset to Features
 * features
 ### Output Ports
 * features
-* unfiltered
 ### Category
 * Feature
 
@@ -4292,20 +4293,21 @@ Sorts features based on specified attributes in ascending or descending order.
 ### Type
 * processor
 ### Description
-Applies transformation expressions to modify feature attributes and properties
+Replaces each feature's attributes with the map returned by one or more expressions, applied in order. Geometry is passed through unchanged.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "FeatureTransformer Parameters",
-  "description": "Configuration for applying transformation expressions to features.",
+  "title": "Feature Transformer Parameters",
+  "description": "Configures the expressions that build each feature's new attributes.",
   "type": "object",
   "required": [
     "transformers"
   ],
   "properties": {
     "transformers": {
-      "description": "List of transformation expressions to apply to each feature",
+      "title": "Transformations",
+      "description": "Expressions applied in order, each one reading the attributes produced by the previous.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Transform"
@@ -4320,7 +4322,8 @@ Applies transformation expressions to modify feature attributes and properties
       ],
       "properties": {
         "expr": {
-          "description": "Expression that modifies the feature (can access and modify attributes, geometry, etc.)",
+          "title": "Expression",
+          "description": "Expression over `attributes` and `env` returning a map that becomes the feature's complete attribute set. A result that is not a map, or an expression that fails to evaluate, leaves the attributes unchanged.",
           "type": "object",
           "format": "code",
           "required": [
@@ -4666,20 +4669,21 @@ Extracts file paths from directories or archives, creating features for each dis
 ### Type
 * processor
 ### Description
-Extracts file system properties (type, size, timestamps) from files
+Inspects the file or directory at a path held in a feature attribute and adds its type, size, and access, modification, and creation timestamps as attributes. Directory size is the total size of the files it contains, counted recursively.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "FilePropertyExtractor Parameters",
-  "description": "Configuration for extracting file system properties from files.",
+  "title": "File Property Extractor Parameters",
+  "description": "Configures which attribute holds the path to inspect.",
   "type": "object",
   "required": [
     "filePathAttribute"
   ],
   "properties": {
     "filePathAttribute": {
-      "description": "Attribute name containing the file path to analyze for properties",
+      "title": "File Path Attribute",
+      "description": "Name of the attribute holding the path of the file or directory to inspect. Paths that do not exist, and symbolic links, are not inspected.",
       "type": "string"
     }
   }
@@ -7864,20 +7868,21 @@ Extracts a specific attribute from each element in a list and concatenates them 
 ### Type
 * processor
 ### Description
-Explodes array attributes into separate features, creating one feature per array element
+Creates one feature per element of a list attribute, merging the element's key-value pairs into the feature's attributes and removing the source attribute. Features whose attribute is missing, empty, or not a list of key-value pairs pass through unchanged.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ListExploder Parameters",
-  "description": "Configuration for exploding array attributes into individual features.",
+  "title": "List Exploder Parameters",
+  "description": "Configures which list attribute is expanded into individual features.",
   "type": "object",
   "required": [
     "sourceAttribute"
   ],
   "properties": {
     "sourceAttribute": {
-      "description": "Attribute containing the array to explode (each element becomes a separate feature)",
+      "title": "Source Attribute",
+      "description": "Attribute holding a list of key-value pairs, one entry per feature to create.",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -12497,16 +12502,17 @@ Reproject Vertical Coordinates Between Datums
 ### Type
 * processor
 ### Description
-Fragments large XML documents into smaller pieces based on specified element patterns
+Splits an XML document into features by matching element names, emitting one feature per matched element with its XML text, tag name, and element and parent identifiers as attributes.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "XMLFragmenter Parameters",
-  "description": "Configuration for fragmenting XML documents into smaller pieces.",
+  "title": "XML Fragmenter Parameters",
+  "description": "Configures where the XML document comes from and which of its elements become features.",
   "oneOf": [
     {
-      "description": "URL-based source configuration for XML fragmenting",
+      "title": "XML File",
+      "description": "Reads the XML document from the file path or URL held in the attribute.",
       "type": "object",
       "required": [
         "attribute",
@@ -12522,6 +12528,8 @@ Fragments large XML documents into smaller pieces based on specified element pat
           ]
         },
         "elementsToMatch": {
+          "title": "Elements to Match",
+          "description": "Expression returning the list of element names whose subtrees are emitted as fragments. Names include the namespace prefix as written in the document, such as `bldg:Building`.",
           "type": "object",
           "format": "code",
           "required": [
@@ -12541,6 +12549,8 @@ Fragments large XML documents into smaller pieces based on specified element pat
           }
         },
         "elementsToExclude": {
+          "title": "Elements to Exclude",
+          "description": "Expression returning the list of element names to skip even when they also appear in the matched elements. Return an empty list to match everything.",
           "type": "object",
           "format": "code",
           "required": [
@@ -12560,7 +12570,83 @@ Fragments large XML documents into smaller pieces based on specified element pat
           }
         },
         "attribute": {
-          "$ref": "#/definitions/Attribute"
+          "title": "XML Attribute",
+          "description": "Attribute holding the XML document: the file path or URL to read when the source is a file, or the XML text itself when the source is text.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "title": "XML Text",
+      "description": "Uses the attribute value itself as the XML document.",
+      "type": "object",
+      "required": [
+        "attribute",
+        "elementsToExclude",
+        "elementsToMatch",
+        "source"
+      ],
+      "properties": {
+        "source": {
+          "type": "string",
+          "enum": [
+            "text"
+          ]
+        },
+        "elementsToMatch": {
+          "title": "Elements to Match",
+          "description": "Expression returning the list of element names whose subtrees are emitted as fragments. Names include the namespace prefix as written in the document, such as `bldg:Building`.",
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          }
+        },
+        "elementsToExclude": {
+          "title": "Elements to Exclude",
+          "description": "Expression returning the list of element names to skip even when they also appear in the matched elements. Return an empty list to match everything.",
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          }
+        },
+        "attribute": {
+          "title": "XML Attribute",
+          "description": "Attribute holding the XML document: the file path or URL to read when the source is a file, or the XML text itself when the source is text.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            }
+          ]
         }
       }
     }
@@ -12583,12 +12669,13 @@ Fragments large XML documents into smaller pieces based on specified element pat
 ### Type
 * processor
 ### Description
-Validates XML documents against XSD schemas with success/failure routing
+Validates XML documents for well-formed syntax, namespace declarations, or compliance with the XSD schemas they reference. Details of any errors found are added to an `xmlError` attribute.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "XmlValidatorParam",
+  "title": "XML Validator Parameters",
+  "description": "Configures which XML document is validated and how thoroughly.",
   "type": "object",
   "required": [
     "attribute",
@@ -12597,13 +12684,31 @@ Validates XML documents against XSD schemas with success/failure routing
   ],
   "properties": {
     "attribute": {
-      "$ref": "#/definitions/Attribute"
+      "title": "XML Attribute",
+      "description": "Attribute holding the XML document: the file path or URL to read, or the XML text itself, depending on the input type.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
     },
     "inputType": {
-      "$ref": "#/definitions/XmlInputType"
+      "title": "Input Type",
+      "description": "Whether the attribute holds the location of the document or the document itself.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/XmlInputType"
+        }
+      ]
     },
     "validationType": {
-      "$ref": "#/definitions/ValidationType"
+      "title": "Validation Type",
+      "description": "Checks to run against the document.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/ValidationType"
+        }
+      ]
     }
   },
   "definitions": {
@@ -12611,18 +12716,51 @@ Validates XML documents against XSD schemas with success/failure routing
       "type": "string"
     },
     "XmlInputType": {
-      "type": "string",
-      "enum": [
-        "file",
-        "text"
+      "oneOf": [
+        {
+          "title": "XML File",
+          "description": "Reads the document from the file path or URL held in the attribute.",
+          "type": "string",
+          "enum": [
+            "file"
+          ]
+        },
+        {
+          "title": "XML Text",
+          "description": "Uses the attribute value itself as the document.",
+          "type": "string",
+          "enum": [
+            "text"
+          ]
+        }
       ]
     },
     "ValidationType": {
-      "type": "string",
-      "enum": [
-        "syntax",
-        "syntaxAndNamespace",
-        "syntaxAndSchema"
+      "oneOf": [
+        {
+          "title": "Syntax",
+          "description": "Checks that the document is well-formed XML.",
+          "type": "string",
+          "enum": [
+            "syntax"
+          ]
+        },
+        {
+          "title": "Syntax and Namespace",
+          "description": "Also checks that every namespace prefix used by an element is declared on that element or an ancestor, and that unprefixed elements have a default namespace.",
+          "type": "string",
+          "enum": [
+            "syntaxAndNamespace"
+          ]
+        },
+        {
+          "title": "Syntax and Schema",
+          "description": "Also validates the document against the XSD schemas named by its `xsi:schemaLocation`. Unreachable remote schemas are skipped, as those locations are hints per the XML Schema specification.",
+          "type": "string",
+          "enum": [
+            "syntaxAndSchema"
+          ]
+        }
       ]
     }
   }
