@@ -69,32 +69,6 @@ GeoPackage Reader
 <!-- Session 4 -->
 
 ```
-Attribute Aggregator
-  desc:    title-case — "Group and Aggregate Features by Attributes"; suggest "Groups
-             features by attributes and aggregates values within each group."
-  params:  aggregateAttributes, calculation, calculationAttribute, calculationValue, method
-             — all have title but missing description (§3.3)
-           ordering — required and optional interleaved; correct order: method →
-             aggregateAttributes → calculationAttribute → calculationValue → calculation (§3.5)
-  tags:    ["aggregate"] — not in vocabulary; replace with `aggregation`
-
-Attribute Conversion Table
-  desc:    title-case — "Transform Feature Attributes Using Lookup Tables"; suggest
-             "Transforms attributes using rules defined in a lookup table (CSV, TSV, or JSON)."
-  params:  schema-level description missing (§3.3)
-           ConversionTableFormat enum — no per-variant descriptions; property description
-             covers them implicitly but borderline (§3.4)
-           ordering — required params `format` and `rules` are not first; correct order:
-             format → rules → dataset → inline (§3.5)
-  tags:    ["mapping"] — now in vocabulary; 1 tag acceptable (no strong second candidate)
-
-Attribute Flattener
-  desc:    title-case — "Flatten Nested Object Attributes into Top-Level Attributes"; suggest
-             "Flattens nested map attributes into individual top-level attributes."
-  params:  schema-level description missing (§3.3)
-  tags:    ["hierarchy"] — not in vocabulary; no established alternative; remove tag
-             (0 tags acceptable — name and description provide sufficient discovery)
-
 Attribute Manager
   desc:    title-case — "Create, Convert, Rename, and Remove Feature Attributes"; suggest
              "Creates, converts, renames, or removes feature attributes based on a
@@ -105,13 +79,6 @@ Attribute Manager
              or add variant explanations to the method property description (§3.4)
   tags:    empty — `attribute` duplicates category (§6); no other established vocabulary
              terms apply; 0 tags acceptable
-
-Attribute Mapper
-  desc:    title-case — "Transform Feature Attributes Using Expressions and Mappings";
-             suggest "Maps or transforms feature attributes using expressions and value
-             assignments."
-  params:  schema-level description missing (§3.3)
-  tags:    ["mapping"] — now in vocabulary; 1 tag acceptable
 
 Bulk Attribute Renamer
   desc:    title-case — "Rename Feature Attributes in Bulk"; suggest "Renames feature

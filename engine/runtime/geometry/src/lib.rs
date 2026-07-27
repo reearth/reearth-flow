@@ -59,6 +59,7 @@ use ops::{
 // `ValidationParams` / `ValidationType` / `ValidationReport` are named by the
 // `enum_dispatch`-generated `Validate` impls on the geometry enums, so they must
 // be in scope here.
+use ops::Split;
 #[cfg(feature = "new-geometry")]
 use validation_next::{Validate, ValidationParams, ValidationReport, ValidationType};
 
@@ -158,11 +159,19 @@ impl GeometryCollection {
 /// `Collection`) stays inline.
 #[cfg_attr(
     not(feature = "new-geometry"),
-    enum_dispatch(BoundingBox, Triangulate, Reproject, ConvertFrame, Translate)
+    enum_dispatch(BoundingBox, Triangulate, Reproject, ConvertFrame, Translate, Split)
 )]
 #[cfg_attr(
     feature = "new-geometry",
-    enum_dispatch(BoundingBox, Triangulate, Reproject, Validate, ConvertFrame, Translate)
+    enum_dispatch(
+        BoundingBox,
+        Triangulate,
+        Reproject,
+        Validate,
+        ConvertFrame,
+        Translate,
+        Split
+    )
 )]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Euclidean2DGeometry {
@@ -187,11 +196,19 @@ pub enum Euclidean2DGeometry {
 /// operands.
 #[cfg_attr(
     not(feature = "new-geometry"),
-    enum_dispatch(BoundingBox, Triangulate, Reproject, ConvertFrame, Translate)
+    enum_dispatch(BoundingBox, Triangulate, Reproject, ConvertFrame, Translate, Split)
 )]
 #[cfg_attr(
     feature = "new-geometry",
-    enum_dispatch(BoundingBox, Triangulate, Reproject, Validate, ConvertFrame, Translate)
+    enum_dispatch(
+        BoundingBox,
+        Triangulate,
+        Reproject,
+        Validate,
+        ConvertFrame,
+        Translate,
+        Split
+    )
 )]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub enum Euclidean3DGeometry {
@@ -335,6 +352,37 @@ impl Translate for GeometryCollection {
         for member in self.members_mut() {
             member.translate(delta)?;
         }
+        Ok(())
+    }
+}
+
+impl Split for Geometry {
+    fn split(
+        &mut self,
+        emit: &mut dyn FnMut(Geometry, Attributes),
+    ) -> Result<(), UnsupportedOperation> {
+        match self {
+            Geometry::None => Err(UnsupportedOperation {
+                geometry: "Geometry::None",
+                operation: "split",
+            }),
+            Geometry::Euclidean2D(g) => g.split(emit),
+            Geometry::Euclidean3D(g) => g.split(emit),
+            Geometry::GeometryCollection(c) => c.split(emit),
+        }
+    }
+}
+
+impl Split for GeometryCollection {
+    fn split(
+        &mut self,
+        emit: &mut dyn FnMut(Geometry, Attributes),
+    ) -> Result<(), UnsupportedOperation> {
+        ops::split::emit_members(
+            std::mem::take(&mut self.members),
+            std::mem::take(&mut self.attrs),
+            emit,
+        );
         Ok(())
     }
 }

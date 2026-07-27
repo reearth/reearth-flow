@@ -1,33 +1,53 @@
 use std::collections::HashMap;
-use std::io::{BufWriter, Write};
-use std::path::PathBuf;
 
-use reearth_flow_geometry::types::coordinate::Coordinate2D;
-use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
-use reearth_flow_geometry::types::line_string::{LineString2D, LineString3D};
-use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
-use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
 use reearth_flow_runtime::{
-    cache::executor_cache_subdir,
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
-use reearth_flow_types::{
-    Attribute, AttributeValue, CityGmlGeometry, Feature, Geometry, GeometryValue, GmlGeometry,
-};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
-
-/// Minimum number of triangles to trigger file-backed output for TriangularMesh splits.
-const FILE_BACKED_THRESHOLD: usize = 64;
 
 use super::errors::GeometryProcessorError;
 
+#[cfg(not(feature = "new-geometry"))]
+use std::io::{BufWriter, Write};
+#[cfg(not(feature = "new-geometry"))]
+use std::path::PathBuf;
+
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_geometry::types::coordinate::Coordinate2D;
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_geometry::types::geometry::{Geometry2D, Geometry3D};
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_geometry::types::line_string::{LineString2D, LineString3D};
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_geometry::types::multi_polygon::MultiPolygon2D;
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_geometry::types::polygon::{Polygon2D, Polygon3D};
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_runtime::cache::executor_cache_subdir;
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_types::{
+    Attribute, AttributeValue, CityGmlGeometry, Feature, Geometry, GeometryValue, GmlGeometry,
+};
+#[cfg(not(feature = "new-geometry"))]
+use schemars::JsonSchema;
+#[cfg(not(feature = "new-geometry"))]
+use serde::{Deserialize, Serialize};
+
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::ops::Split;
+#[cfg(feature = "new-geometry")]
+use reearth_flow_types::AttributeValue;
+
+/// Minimum number of triangles to trigger file-backed output for TriangularMesh splits.
+#[cfg(not(feature = "new-geometry"))]
+const FILE_BACKED_THRESHOLD: usize = 64;
+
 /// Split level for CityGML geometry
+#[cfg(not(feature = "new-geometry"))]
 #[derive(Debug, Clone, Copy, Default, Serialize, Deserialize, JsonSchema, PartialEq)]
 #[serde(rename_all = "lowercase")]
 pub enum SplitLevel {
@@ -39,6 +59,7 @@ pub enum SplitLevel {
 }
 
 /// Parameters for GeometrySplitter
+#[cfg(not(feature = "new-geometry"))]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GeometrySplitterParam {
@@ -49,6 +70,7 @@ pub struct GeometrySplitterParam {
     pub split_level: SplitLevel,
 }
 
+/// Factory for the Geometry Splitter processor.
 #[derive(Debug, Clone, Default)]
 pub struct GeometrySplitterFactory;
 
@@ -61,8 +83,14 @@ impl ProcessorFactory for GeometrySplitterFactory {
         "Split Multi-Geometries into Individual Features"
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
         Some(schemars::schema_for!(GeometrySplitterParam))
+    }
+
+    #[cfg(feature = "new-geometry")]
+    fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
+        None
     }
 
     fn categories(&self) -> &[&'static str] {
@@ -81,6 +109,7 @@ impl ProcessorFactory for GeometrySplitterFactory {
         vec![FEATURES_PORT.clone()]
     }
 
+    #[cfg(not(feature = "new-geometry"))]
     fn build(
         &self,
         _ctx: NodeContext,
@@ -110,8 +139,21 @@ impl ProcessorFactory for GeometrySplitterFactory {
         };
         Ok(Box::new(process))
     }
+
+    #[cfg(feature = "new-geometry")]
+    fn build(
+        &self,
+        _ctx: NodeContext,
+        _event_hub: EventHub,
+        _action: String,
+        _with: Option<HashMap<String, Value>>,
+    ) -> Result<Box<dyn Processor>, BoxedError> {
+        Ok(Box::new(GeometrySplitter))
+    }
 }
 
+/// Splits multi-part geometries into one feature per member.
+#[cfg(not(feature = "new-geometry"))]
 #[derive(Debug, Clone)]
 pub struct GeometrySplitter {
     split_level: SplitLevel,
@@ -119,6 +161,12 @@ pub struct GeometrySplitter {
     temp_dir: Option<PathBuf>,
 }
 
+/// Splits a collection, mesh, or point cloud into one feature per member.
+#[cfg(feature = "new-geometry")]
+#[derive(Debug, Clone)]
+pub struct GeometrySplitter;
+
+#[cfg(not(feature = "new-geometry"))]
 impl Drop for GeometrySplitter {
     fn drop(&mut self) {
         if let Some(ref dir) = self.temp_dir {
@@ -127,6 +175,7 @@ impl Drop for GeometrySplitter {
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn engine_cache_dir(executor_id: uuid::Uuid) -> PathBuf {
     executor_cache_subdir(executor_id, "processors")
 }
@@ -164,7 +213,46 @@ impl Processor for GeometrySplitter {
         Ok(())
     }
 
-    #[cfg(not(feature = "new-geometry"))]
+    #[cfg(feature = "new-geometry")]
+    fn process(
+        &mut self,
+        ctx: ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        let context = ctx.as_context();
+        let mut feature = ctx.feature;
+        // Take the geometry out (cloning the buffer only if it is shared) so each
+        // split member is forwarded as it is produced, without ever holding the
+        // whole decomposition in memory.
+        let mut geometry = std::mem::take(feature.geometry_mut());
+        let mut index = 0usize;
+        let result = geometry.split(&mut |member, attributes| {
+            index += 1;
+            let mut new_feature = feature.clone();
+            new_feature.set_geometry(member);
+            new_feature.extend(attributes);
+            new_feature.insert(
+                "_split_index",
+                AttributeValue::Number(serde_json::Number::from(index)),
+            );
+            fw.send(ExecutorContext::new_with_context_feature_and_port(
+                &context,
+                new_feature,
+                FEATURES_PORT.clone(),
+            ));
+        });
+        // Not a multi-part container: restore the geometry and pass through.
+        if result.is_err() {
+            feature.set_geometry(geometry);
+            fw.send(ExecutorContext::new_with_context_feature_and_port(
+                &context,
+                feature,
+                FEATURES_PORT.clone(),
+            ));
+        }
+        Ok(())
+    }
+
     fn finish(
         &mut self,
         _ctx: NodeContext,
@@ -178,8 +266,8 @@ impl Processor for GeometrySplitter {
     }
 }
 
+#[cfg(not(feature = "new-geometry"))]
 impl GeometrySplitter {
-    #[cfg(not(feature = "new-geometry"))]
     fn process_flow_geometry_2d(
         &self,
         geometry: &Geometry2D,
@@ -225,7 +313,6 @@ impl GeometrySplitter {
         Ok(())
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     fn process_flow_geometry_3d(
         &mut self,
         geometry: &Geometry3D,
@@ -285,7 +372,6 @@ impl GeometrySplitter {
         Ok(self.temp_dir.as_ref().unwrap())
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     fn process_triangular_mesh(
         &mut self,
         mesh: &reearth_flow_geometry::types::triangular_mesh::TriangularMesh<f64>,
@@ -339,7 +425,6 @@ impl GeometrySplitter {
         Ok(())
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     fn process_citygml_geometry(
         &self,
         city_gml_geometry: &CityGmlGeometry,
@@ -386,7 +471,6 @@ impl GeometrySplitter {
         Ok(())
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     fn emit_element_level_feature(
         &self,
         split_feature: CityGmlGeometry,
@@ -410,7 +494,6 @@ impl GeometrySplitter {
         Ok(())
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     fn emit_polygon_level_features(
         &self,
         split_feature: &CityGmlGeometry,
