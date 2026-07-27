@@ -11,12 +11,14 @@ use parking_lot::RwLock;
 use crate::coordinate::EpsgCode;
 use proj_sys::{
     proj_context_create, proj_context_destroy, proj_context_errno, proj_context_errno_string,
-    proj_create, proj_create_crs_to_crs_from_pj, proj_crs_get_coordinate_system,
-    proj_crs_get_sub_crs, proj_cs_get_axis_count, proj_cs_get_axis_info, proj_cs_get_type,
-    proj_destroy, proj_errno, proj_errno_reset, proj_trans, PJ, PJ_CONTEXT, PJ_COORD,
+    proj_create, proj_create_crs_to_crs_from_pj, proj_crs_demote_to_2D,
+    proj_crs_get_coordinate_system, proj_crs_get_sub_crs, proj_cs_get_axis_count,
+    proj_cs_get_axis_info, proj_cs_get_type, proj_destroy, proj_errno, proj_errno_reset,
+    proj_get_id_auth_name, proj_get_id_code, proj_get_type, proj_trans, PJ, PJ_CONTEXT, PJ_COORD,
     PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_CARTESIAN,
     PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_ELLIPSOIDAL,
-    PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_SPHERICAL, PJ_DIRECTION_PJ_FWD, PJ_XYZT,
+    PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_SPHERICAL, PJ_DIRECTION_PJ_FWD,
+    PJ_TYPE_PJ_TYPE_GEOCENTRIC_CRS, PJ_XYZT,
 };
 
 use crate::error::{Error, Result};
@@ -434,6 +436,142 @@ unsafe fn cs_type_is_linear(ctx: *mut PJ_CONTEXT, cs: *const PJ, epsg: EpsgCode)
     }
 }
 
+/// PROJ's determinate answer to "what is this CRS's 2D counterpart?".
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum TwoDimensionalCrs {
+    /// The 2D counterpart's EPSG code — the input code itself when it is already 2D.
+    Code(EpsgCode),
+    /// No usable 2D counterpart exists, with the reason why.
+    None(&'static str),
+}
+
+/// A geocentric CRS's third axis is the rotation axis, so dropping it projects
+/// onto the equatorial plane instead of removing a height. Neither the operation
+/// nor a 2D form of the CRS is defined.
+const GEOCENTRIC_REASON: &str =
+    "it is a geocentric (ECEF) CRS, whose third axis is the rotation axis rather than a vertical one";
+
+/// The 2D form exists but is unnamed in EPSG, so no code can tag the result.
+const UNNAMED_REASON: &str = "its 2D form carries no EPSG identifier";
+
+/// The demoted CRS still has a third axis, so it is not a 2D frame.
+const STILL_3D_REASON: &str = "its demoted form still has more than two axes";
+
+/// Process-wide memoization of 2D counterparts, keyed by EPSG code. Like the
+/// orientation sign, the answer is a fixed property of a CRS. Only determinate
+/// answers are cached; an unresolvable CRS is a rare error path.
+fn demote_cache() -> &'static RwLock<HashMap<EpsgCode, TwoDimensionalCrs>> {
+    static CACHE: OnceLock<RwLock<HashMap<EpsgCode, TwoDimensionalCrs>>> = OnceLock::new();
+    CACHE.get_or_init(|| RwLock::new(HashMap::new()))
+}
+
+/// The 2D counterpart of `epsg`: the horizontal component of a compound CRS, the
+/// 2D form of a geographic 3D one, and the code itself when it is already 2D.
+///
+/// [`TwoDimensionalCrs::None`] is a definitive "there is none". `Err` means PROJ
+/// could not answer at all (unknown code, missing PROJ data), which the caller
+/// must distinguish: an indeterminate answer is not evidence of a bad frame.
+///
+/// Memoized per EPSG code, so a CRS costs one PROJ lookup per process.
+pub(crate) fn crs_demote_to_2d(epsg: EpsgCode) -> Result<TwoDimensionalCrs> {
+    if let Some(&demoted) = demote_cache().read().get(&epsg) {
+        return Ok(demoted);
+    }
+    let demoted = crs_demote_to_2d_uncached(epsg)?;
+    demote_cache().write().insert(epsg, demoted);
+    Ok(demoted)
+}
+
+/// Ask PROJ for `epsg`'s 2D counterpart directly, without the cache.
+fn crs_demote_to_2d_uncached(epsg: EpsgCode) -> Result<TwoDimensionalCrs> {
+    // SAFETY: every PROJ object is null-checked and freed on all paths.
+    unsafe {
+        let ctx = proj_context_create();
+        if ctx.is_null() {
+            return Err(Error::projection("proj_context_create returned null"));
+        }
+        let def = CString::new(format!("EPSG:{epsg}")).map_err(Error::projection)?;
+        let crs = proj_create(ctx, def.as_ptr());
+        if crs.is_null() {
+            let msg = ctx_errno_string(ctx);
+            proj_context_destroy(ctx);
+            return Err(Error::projection(format!(
+                "failed to create CRS EPSG:{epsg}: {msg}"
+            )));
+        }
+        let result = demote_and_classify(ctx, crs, epsg);
+        proj_destroy(crs);
+        proj_context_destroy(ctx);
+        result
+    }
+}
+
+/// Demote `crs` to 2D and classify what came back.
+// SAFETY: `ctx` and `crs` must be valid, non-null PROJ objects.
+unsafe fn demote_and_classify(
+    ctx: *mut PJ_CONTEXT,
+    crs: *const PJ,
+    epsg: EpsgCode,
+) -> Result<TwoDimensionalCrs> {
+    // A null name asks PROJ to derive the 2D CRS's name from the input's.
+    let demoted = proj_crs_demote_to_2D(ctx, ptr::null(), crs);
+    if demoted.is_null() {
+        return Err(Error::projection(format!(
+            "failed to demote EPSG:{epsg} to 2D: {}",
+            ctx_errno_string(ctx)
+        )));
+    }
+    let result = classify_demoted(ctx, demoted);
+    proj_destroy(demoted);
+    result
+}
+
+/// Classify a demoted CRS: a two-axis CRS carrying an EPSG identifier is a usable
+/// 2D frame, anything else is not.
+///
+/// Demoting a geocentric CRS is a no-op in PROJ — it hands back the same 3-axis
+/// CRS — so the axis count alone would already reject it; it is matched first only
+/// to report the specific reason.
+// SAFETY: `ctx` and `crs` must be valid, non-null PROJ objects.
+unsafe fn classify_demoted(ctx: *mut PJ_CONTEXT, crs: *const PJ) -> Result<TwoDimensionalCrs> {
+    if proj_get_type(crs) == PJ_TYPE_PJ_TYPE_GEOCENTRIC_CRS {
+        return Ok(TwoDimensionalCrs::None(GEOCENTRIC_REASON));
+    }
+    let cs = proj_crs_get_coordinate_system(ctx, crs);
+    if cs.is_null() {
+        return Ok(TwoDimensionalCrs::None(STILL_3D_REASON));
+    }
+    let axes = proj_cs_get_axis_count(ctx, cs);
+    proj_destroy(cs);
+    if axes != 2 {
+        return Ok(TwoDimensionalCrs::None(STILL_3D_REASON));
+    }
+    Ok(match epsg_identifier(crs) {
+        Some(code) => TwoDimensionalCrs::Code(code),
+        None => TwoDimensionalCrs::None(UNNAMED_REASON),
+    })
+}
+
+/// The EPSG code `crs` declares as its first identifier, or `None` when it has
+/// none, the authority is not EPSG, or the code does not fit an [`EpsgCode`].
+// SAFETY: `crs` must be a valid, non-null PROJ object; the returned strings are
+// owned by it and are read while it is alive.
+unsafe fn epsg_identifier(crs: *const PJ) -> Option<EpsgCode> {
+    let authority = proj_get_id_auth_name(crs, 0);
+    let code = proj_get_id_code(crs, 0);
+    if authority.is_null() || code.is_null() {
+        return None;
+    }
+    if CStr::from_ptr(authority).to_string_lossy() != "EPSG" {
+        return None;
+    }
+    CStr::from_ptr(code)
+        .to_string_lossy()
+        .parse::<u16>()
+        .ok()
+        .map(EpsgCode::new)
+}
+
 /// Map a PROJ axis direction to its `(row, sign)` in the canonical
 /// `(East, North, Up)` basis, or `None` if it is not aligned to an axis.
 ///
@@ -522,6 +660,51 @@ mod tests {
             ),
             Err(e) => assert!(e.to_string().contains("7415"), "unexpected error: {e}"),
         }
+    }
+
+    fn demote(code: u16) -> TwoDimensionalCrs {
+        crs_demote_to_2d(EpsgCode::new(code)).unwrap()
+    }
+
+    #[test]
+    fn three_dimensional_crs_demotes_to_its_horizontal_component() {
+        // Geographic 3D -> geographic 2D on the same datum.
+        assert_eq!(demote(4979), TwoDimensionalCrs::Code(EpsgCode::new(4326)));
+        // Compound -> its horizontal sub-CRS: EPSG:6697 is 6668 + 6695.
+        assert_eq!(demote(6697), TwoDimensionalCrs::Code(EpsgCode::new(6668)));
+        // A compound over a projected CRS resolves to that projected CRS.
+        assert_eq!(demote(5698), TwoDimensionalCrs::Code(EpsgCode::new(2154)));
+    }
+
+    #[test]
+    fn already_2d_crs_demotes_to_itself() {
+        for code in [4326u16, 6668, 6677, 3857] {
+            assert_eq!(demote(code), TwoDimensionalCrs::Code(EpsgCode::new(code)));
+        }
+    }
+
+    #[test]
+    fn geocentric_crs_has_no_2d_counterpart() {
+        // ECEF axes are not (horizontal, horizontal, vertical), so there is no
+        // 2D form to demote to: PROJ hands the same CRS back.
+        for code in [4978u16, 6666, 4936] {
+            assert_eq!(demote(code), TwoDimensionalCrs::None(GEOCENTRIC_REASON));
+        }
+    }
+
+    #[test]
+    fn unknown_crs_is_indeterminate_rather_than_absent() {
+        // An unresolvable code must error, not report "no 2D counterpart": the
+        // caller treats the two differently.
+        assert!(crs_demote_to_2d(EpsgCode::new(1)).is_err());
+    }
+
+    #[test]
+    fn demotion_is_memoized_per_code() {
+        let code = EpsgCode::new(4979);
+        let computed = crs_demote_to_2d(code).unwrap();
+        assert_eq!(demote_cache().read().get(&code), Some(&computed));
+        assert_eq!(crs_demote_to_2d(code).unwrap(), computed);
     }
 
     #[test]

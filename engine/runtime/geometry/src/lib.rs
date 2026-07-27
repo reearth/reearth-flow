@@ -53,8 +53,8 @@ use serde::{Deserialize, Serialize};
 
 use ops::triangulation::Cache;
 use ops::{
-    Aabb, BoundingBox, ConvertFrame, ForceTwoDimension, Reproject, ReprojectionCache, Translate,
-    Triangulate, UnsupportedOperation,
+    Aabb, BoundingBox, ConvertFrame, ForceTwoDimension, ForceTwoDimensionError, Reproject,
+    ReprojectionCache, Translate, Triangulate, UnsupportedOperation,
 };
 // `ValidationParams` / `ValidationType` / `ValidationReport` are named by the
 // `enum_dispatch`-generated `Validate` impls on the geometry enums, so they must
@@ -410,12 +410,14 @@ impl Geometry {
     ///
     /// `None` passes through; a leaf delegates to [`ForceTwoDimension`]; a
     /// [`GeometryCollection`] recurses over its members. Recursion is
-    /// all-or-nothing: a single member with no 2D counterpart (`Solid`, `Csg`,
-    /// `PointCloud`) fails the whole geometry rather than dropping members. See
-    /// the [`ForceTwoDimension`] trait for the frame- and elevation-handling
-    /// contract. Like the trait, this consumes coordinate buffers, so on success
-    /// `self` is left moved-from and must be overwritten with the result.
-    pub fn force_2d(&mut self) -> Result<Geometry, UnsupportedOperation> {
+    /// all-or-nothing: a single member that cannot be flattened — because its
+    /// type has no 2D counterpart (`Solid`, `Csg`, `PointCloud`) or its
+    /// coordinate frame has none — fails the whole geometry rather than dropping
+    /// members. See the [`ForceTwoDimension`] trait for the frame- and
+    /// elevation-handling contract. Like the trait, this consumes coordinate
+    /// buffers, so on success `self` is left moved-from and must be overwritten
+    /// with the result.
+    pub fn force_2d(&mut self) -> Result<Geometry, ForceTwoDimensionError> {
         match self {
             Geometry::None => Ok(Geometry::None),
             Geometry::Euclidean2D(g) => Ok(Geometry::Euclidean2D(g.force_2d()?)),
@@ -426,18 +428,23 @@ impl Geometry {
 }
 
 impl GeometryCollection {
-    /// Force every member to 2D, preserving per-member attributes.
-    fn force_2d(&mut self) -> Result<GeometryCollection, UnsupportedOperation> {
+    /// Force every member to 2D, preserving per-member attributes. Members may
+    /// differ in coordinate frame, so each is demoted on its own.
+    fn force_2d(&mut self) -> Result<GeometryCollection, ForceTwoDimensionError> {
         let mut members = Vec::with_capacity(self.members.len());
         for member in &mut self.members {
             members.push(member.force_2d()?);
         }
         let attrs = std::mem::take(&mut self.attrs);
         // `members` stays 1:1 with the input, so `attrs` remains parallel.
-        GeometryCollection::with_attributes(members, attrs).map_err(|_| UnsupportedOperation {
-            geometry: "GeometryCollection",
-            operation: "force_2d",
-        })
+        Ok(
+            GeometryCollection::with_attributes(members, attrs).map_err(|_| {
+                UnsupportedOperation {
+                    geometry: "GeometryCollection",
+                    operation: "force_2d",
+                }
+            })?,
+        )
     }
 }
 
@@ -704,8 +711,15 @@ mod force_2d_tests {
     use std::sync::Arc;
     use triangular_mesh::TriangularMesh3DData;
 
+    /// EPSG:6697 (JGD2011 + height) — the compound CRS PLATEAU CityGML uses.
     fn crs() -> CoordinateFrame {
         CoordinateFrame::Crs(EpsgCode::new(6697))
+    }
+
+    /// EPSG:6668 (JGD2011) — the horizontal component of [`crs`], and so the
+    /// frame a geometry read in EPSG:6697 must carry once flattened.
+    fn crs_2d() -> CoordinateFrame {
+        CoordinateFrame::Crs(EpsgCode::new(6668))
     }
 
     /// A colour-only Phong material (no textures, so no UV is required).
@@ -724,17 +738,73 @@ mod force_2d_tests {
     }
 
     #[test]
-    fn point3d_drops_z_and_keeps_frame() {
+    fn point3d_drops_z_and_demotes_the_frame() {
         let mut g = Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
             crs(),
             [1.0, 2.0, 3.0],
         )));
         match g.force_2d().unwrap() {
             Geometry::Euclidean2D(Euclidean2DGeometry::Point(p)) => {
+                // Coordinates are untouched apart from losing z; only the frame's
+                // vertical axis goes with it.
                 assert_eq!(p.position(), [1.0, 2.0]);
-                assert_eq!(p.frame(), &crs());
+                assert_eq!(p.frame(), &crs_2d());
             }
             other => panic!("expected a 2D point, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn geographic_3d_demotes_to_its_2d_form() {
+        // EPSG:4979 is WGS84 3D; its 2D form is EPSG:4326.
+        let mut g = Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+            CoordinateFrame::Crs(EpsgCode::new(4979)),
+            [35.0, 139.0, 10.0],
+        )));
+        match g.force_2d().unwrap() {
+            Geometry::Euclidean2D(Euclidean2DGeometry::Point(p)) => {
+                assert_eq!(p.position(), [35.0, 139.0]);
+                assert_eq!(p.frame(), &CoordinateFrame::Crs(EpsgCode::new(4326)));
+            }
+            other => panic!("expected a 2D point, got {other:?}"),
+        }
+    }
+
+    #[test]
+    fn geocentric_frame_is_rejected() {
+        // A geocentric CRS's third axis is the rotation axis, so dropping it
+        // projects onto the equatorial plane instead of removing a height. There
+        // is no 2D form of the CRS either, so the geometry must be rejected
+        // rather than silently retagged.
+        for code in [4978u16, 6666] {
+            let mut g = Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+                CoordinateFrame::Crs(EpsgCode::new(code)),
+                [-3_957_314.0, 3_310_254.0, 3_737_540.0],
+            )));
+            let err = g.force_2d().unwrap_err();
+            assert!(
+                matches!(err, ForceTwoDimensionError::UnsupportedFrame(e) if e.epsg.get() == code),
+                "EPSG:{code} should be rejected for its frame, got {err:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn already_2d_frame_is_left_alone() {
+        // EPSG:6668 (geographic 2D) and EPSG:6677 (projected) have no vertical
+        // axis to shed, so the frame comes back unchanged.
+        for code in [6668u16, 6677] {
+            let frame = CoordinateFrame::Crs(EpsgCode::new(code));
+            let mut g = Geometry::Euclidean2D(Euclidean2DGeometry::Point(point::Point2D::new(
+                frame.clone(),
+                [1.0, 2.0],
+            )));
+            match g.force_2d().unwrap() {
+                Geometry::Euclidean2D(Euclidean2DGeometry::Point(p)) => {
+                    assert_eq!(p.frame(), &frame);
+                }
+                other => panic!("expected a 2D point, got {other:?}"),
+            }
         }
     }
 
@@ -746,7 +816,7 @@ mod force_2d_tests {
         match g.force_2d().unwrap() {
             Geometry::Euclidean2D(Euclidean2DGeometry::LineString(ls)) => {
                 assert_eq!(ls.coords(), &[[0.0, 0.0], [2.0, 1.0]]);
-                assert_eq!(ls.frame(), &crs());
+                assert_eq!(ls.frame(), &crs_2d());
             }
             other => panic!("expected a 2D line string, got {other:?}"),
         }
@@ -754,17 +824,19 @@ mod force_2d_tests {
 
     #[test]
     fn two_and_a_half_d_elevation_is_cleared_and_idempotent() {
-        // A 2.5D input must lose its elevation, yielding the same pure-2D result
-        // a fresh 2D line string would.
+        // A 2.5D input must lose its elevation and, with it, the vertical axis of
+        // its frame — yielding the same pure-2D result a fresh 2D line string in
+        // the demoted frame would.
         let mut g = Geometry::Euclidean2D(Euclidean2DGeometry::LineString(
             LineString2D::from_coords_with_elevation(crs(), [[0.0, 0.0, 5.0], [2.0, 1.0, 9.0]]),
         ));
         let forced = g.force_2d().unwrap();
         let expected = Geometry::Euclidean2D(Euclidean2DGeometry::LineString(
-            LineString2D::from_coords(crs(), [[0.0, 0.0], [2.0, 1.0]]),
+            LineString2D::from_coords(crs_2d(), [[0.0, 0.0], [2.0, 1.0]]),
         ));
         assert_eq!(forced, expected);
-        // Idempotent: forcing again is a no-op.
+        // Idempotent: the demoted frame demotes to itself, so forcing again is a
+        // no-op.
         let mut forced2 = forced.clone();
         assert_eq!(forced2.force_2d().unwrap(), expected);
     }
@@ -790,7 +862,7 @@ mod force_2d_tests {
         let mut g = Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(poly)));
         match g.force_2d().unwrap() {
             Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(p)) => {
-                assert_eq!(p.frame(), &crs());
+                assert_eq!(p.frame(), &crs_2d());
                 assert_eq!(p.exterior().len(), 5);
                 assert_eq!(p.interiors().count(), 1);
                 assert!(p.appearance().is_some(), "appearance must survive");
@@ -827,11 +899,10 @@ mod force_2d_tests {
     }
 
     #[test]
-    fn collection_forces_members_and_preserves_frames() {
-        let a = Euclidean3DGeometry::Point(Point3D::new(
-            CoordinateFrame::Crs(EpsgCode::new(6697)),
-            [1.0, 2.0, 3.0],
-        ));
+    fn collection_forces_members_and_demotes_each_frame() {
+        // Members may differ in frame, so each is demoted on its own; a
+        // Euclidean member has no vertical axis to shed and stays as it is.
+        let a = Euclidean3DGeometry::Point(Point3D::new(crs(), [1.0, 2.0, 3.0]));
         let b =
             Euclidean3DGeometry::Point(Point3D::new(CoordinateFrame::Euclidean, [4.0, 5.0, 6.0]));
         let mut g =
@@ -847,11 +918,26 @@ mod force_2d_tests {
                         other => panic!("expected a 2D point member, got {other:?}"),
                     })
                     .collect();
-                assert_eq!(frames[0], CoordinateFrame::Crs(EpsgCode::new(6697)));
+                assert_eq!(frames[0], crs_2d());
                 assert_eq!(frames[1], CoordinateFrame::Euclidean);
             }
             other => panic!("expected a 2D collection, got {other:?}"),
         }
+    }
+
+    #[test]
+    fn collection_is_all_or_nothing_on_an_unsupported_frame() {
+        // One geocentric member fails the whole collection, exactly as an
+        // unsupported member type does.
+        let ok = Euclidean3DGeometry::Point(Point3D::new(crs(), [1.0, 2.0, 3.0]));
+        let geocentric = Euclidean3DGeometry::Point(Point3D::new(
+            CoordinateFrame::Crs(EpsgCode::new(4978)),
+            [0.0, 0.0, 0.0],
+        ));
+        let mut g = Geometry::Euclidean3D(Euclidean3DGeometry::Collection(Collection3D::new([
+            ok, geocentric,
+        ])));
+        assert!(g.force_2d().is_err());
     }
 
     fn sample_solid() -> Solid {

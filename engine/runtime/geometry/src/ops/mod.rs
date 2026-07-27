@@ -12,11 +12,11 @@ pub mod reproject;
 pub mod split;
 pub mod triangulation;
 
-pub(crate) use reproject::{axis_order_sign, crs_is_linear};
+pub(crate) use reproject::{axis_order_sign, crs_demote_to_2d, crs_is_linear, TwoDimensionalCrs};
 pub use reproject::{Reproject, ReprojectionCache};
 pub use split::Split;
 
-use crate::coordinate::{CoordinateFrame, EpsgCode};
+use crate::coordinate::{CoordinateFrame, EpsgCode, FrameDemotionError};
 use crate::error::Error;
 
 /// Returned by an operation a given geometry type does not support. Carries the
@@ -252,30 +252,74 @@ impl<T: Triangulate + ?Sized> Triangulate for Box<T> {
     }
 }
 
+/// Why a geometry could not be re-represented in a pure 2D embedding.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum ForceTwoDimensionError {
+    /// The geometry type has no 2D counterpart (`Solid`, `Csg`, `PointCloud`).
+    UnsupportedGeometry(UnsupportedOperation),
+    /// The coordinate frame has no 2D counterpart, so the flattened coordinates
+    /// could not be tagged with a frame of matching dimensionality.
+    UnsupportedFrame(FrameDemotionError),
+}
+
+impl core::fmt::Display for ForceTwoDimensionError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            ForceTwoDimensionError::UnsupportedGeometry(e) => e.fmt(f),
+            ForceTwoDimensionError::UnsupportedFrame(e) => e.fmt(f),
+        }
+    }
+}
+
+impl std::error::Error for ForceTwoDimensionError {}
+
+impl From<UnsupportedOperation> for ForceTwoDimensionError {
+    fn from(e: UnsupportedOperation) -> Self {
+        ForceTwoDimensionError::UnsupportedGeometry(e)
+    }
+}
+
+impl From<FrameDemotionError> for ForceTwoDimensionError {
+    fn from(e: FrameDemotionError) -> Self {
+        ForceTwoDimensionError::UnsupportedFrame(e)
+    }
+}
+
 /// Force a geometry into a pure 2D embedding by dropping the Z coordinate.
 ///
-/// The coordinate frame is preserved verbatim (no reprojection), and any 2.5D
-/// per-vertex elevation is cleared, so the op is idempotent. Leaves with no 2D
-/// counterpart (`Solid`, `Csg`, `PointCloud`) opt out via
-/// [`unsupported!`](crate::unsupported).
+/// Any 2.5D per-vertex elevation is cleared, so the op is idempotent. The
+/// coordinate frame is demoted to its 2D counterpart rather than kept verbatim,
+/// keeping the frame's dimensionality equal to the coordinates': a geometry in
+/// EPSG:6697 comes back in EPSG:6668, one in EPSG:4979 in EPSG:4326. Coordinate
+/// values are untouched by the retag — see
+/// [`CoordinateFrame::demote_to_2d`](crate::coordinate::CoordinateFrame::demote_to_2d).
+///
+/// Two things reject. Leaves with no 2D counterpart (`Solid`, `Csg`,
+/// `PointCloud`) opt out via [`unsupported!`](crate::unsupported), and a frame
+/// with no 2D counterpart — a geocentric (ECEF) CRS, whose Z is the rotation axis
+/// rather than a height, so dropping it would silently project onto the
+/// equatorial plane.
 ///
 /// Like [`Triangulate`], this consumes the leaf's buffers, leaving `self`
 /// moved-from on success (discard or overwrite it); a leaf that empties `coords`
-/// must also clear `z` to preserve the `z.len() == coords.len()` invariant.
+/// must also clear `z` to preserve the `z.len() == coords.len()` invariant. A
+/// leaf therefore resolves its frame before touching its buffers, so a rejected
+/// frame leaves it intact.
 #[enum_dispatch::enum_dispatch]
 pub trait ForceTwoDimension {
     /// Re-represent this geometry in a 2D embedding. The default body reports the
     /// type as unsupported; a leaf opts in by overriding it.
-    fn force_2d(&mut self) -> Result<crate::Euclidean2DGeometry, UnsupportedOperation> {
+    fn force_2d(&mut self) -> Result<crate::Euclidean2DGeometry, ForceTwoDimensionError> {
         Err(UnsupportedOperation {
             geometry: core::any::type_name::<Self>(),
             operation: "force_2d",
-        })
+        }
+        .into())
     }
 }
 
 impl<T: ForceTwoDimension + ?Sized> ForceTwoDimension for Box<T> {
-    fn force_2d(&mut self) -> Result<crate::Euclidean2DGeometry, UnsupportedOperation> {
+    fn force_2d(&mut self) -> Result<crate::Euclidean2DGeometry, ForceTwoDimensionError> {
         (**self).force_2d()
     }
 }

@@ -118,6 +118,35 @@ impl CoordinateFrame {
         }
     }
 
+    /// The frame a geometry must carry once it is re-represented in a pure 2D
+    /// embedding: a frame whose dimensionality matches the coordinates'.
+    ///
+    /// A `Crs` frame is demoted to its 2D counterpart — the horizontal component
+    /// of a compound CRS (EPSG:6697 becomes EPSG:6668), the 2D form of a
+    /// geographic 3D one (EPSG:4979 becomes EPSG:4326) — and an already-2D CRS
+    /// maps to itself, so the operation is idempotent. Coordinate values are
+    /// unaffected: the counterpart shares the datum, the axis order and the
+    /// units, only the vertical axis is gone. `Euclidean` and `Tangent` carry no
+    /// vertical axis to shed and are returned unchanged.
+    ///
+    /// Errors only when the CRS definitively has no 2D counterpart. When PROJ
+    /// cannot classify the CRS at all the frame is returned verbatim, matching
+    /// [`UnitKind::Undeterminable`]: an indeterminate answer is not evidence of a
+    /// bad frame.
+    pub fn demote_to_2d(&self) -> std::result::Result<CoordinateFrame, FrameDemotionError> {
+        let CoordinateFrame::Crs(epsg) = self else {
+            return Ok(self.clone());
+        };
+        match crate::ops::crs_demote_to_2d(*epsg) {
+            Ok(crate::ops::TwoDimensionalCrs::Code(code)) => Ok(CoordinateFrame::Crs(code)),
+            Ok(crate::ops::TwoDimensionalCrs::None(reason)) => Err(FrameDemotionError {
+                epsg: *epsg,
+                reason,
+            }),
+            Err(_) => Ok(self.clone()),
+        }
+    }
+
     /// Whether coordinates in this frame are in linear (length) units, so that
     /// unit-sensitive checks (planarity, surface triangulation) are meaningful.
     /// True only for a definitely-linear frame; an angular or undeterminable
@@ -145,6 +174,29 @@ impl CoordinateFrame {
         }
     }
 }
+
+/// A CRS that has no 2D counterpart, so no frame can describe its coordinates
+/// once the vertical axis is dropped. Returned by
+/// [`demote_to_2d`](CoordinateFrame::demote_to_2d).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct FrameDemotionError {
+    /// The CRS that could not be demoted.
+    pub epsg: EpsgCode,
+    /// Why it could not be.
+    pub reason: &'static str,
+}
+
+impl fmt::Display for FrameDemotionError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "EPSG:{} has no 2D counterpart: {}",
+            self.epsg, self.reason
+        )
+    }
+}
+
+impl std::error::Error for FrameDemotionError {}
 
 /// How a coordinate frame's horizontal units classify: linear (length), angular
 /// (degrees), or unclassifiable. "Linear" rather than "metric" because a length
@@ -220,6 +272,33 @@ mod tests {
             v: [0.0, 1.0, 0.0],
         }));
         assert_eq!(tangent_over_geographic.unit_kind(), UnitKind::Linear);
+    }
+
+    #[test]
+    fn demote_to_2d_drops_the_vertical_axis() {
+        let demote = |code: u16| CoordinateFrame::Crs(EpsgCode::new(code)).demote_to_2d();
+        // Compound -> its horizontal component; geographic 3D -> its 2D form.
+        assert_eq!(demote(6697), Ok(CoordinateFrame::Crs(EpsgCode::new(6668))));
+        assert_eq!(demote(4979), Ok(CoordinateFrame::Crs(EpsgCode::new(4326))));
+        // Already 2D: idempotent, so forcing twice is stable.
+        assert_eq!(demote(6668), Ok(CoordinateFrame::Crs(EpsgCode::new(6668))));
+        assert_eq!(demote(6677), Ok(CoordinateFrame::Crs(EpsgCode::new(6677))));
+        // Geocentric: no 2D form exists.
+        assert_eq!(demote(4978).unwrap_err().epsg, EpsgCode::new(4978));
+        // Non-CRS frames have no vertical axis to shed.
+        assert_eq!(
+            CoordinateFrame::Euclidean.demote_to_2d(),
+            Ok(CoordinateFrame::Euclidean)
+        );
+    }
+
+    #[test]
+    fn an_unclassifiable_crs_keeps_its_frame() {
+        // EPSG:1 is not a real CRS. PROJ cannot say whether it has a 2D form, and
+        // an indeterminate answer is not evidence of a bad frame, so it passes
+        // through rather than failing the geometry.
+        let unknown = CoordinateFrame::Crs(EpsgCode::new(1));
+        assert_eq!(unknown.demote_to_2d(), Ok(unknown.clone()));
     }
 
     #[test]

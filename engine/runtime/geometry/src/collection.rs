@@ -14,7 +14,8 @@ use crate::coordinate::EpsgCode;
 use crate::error::Error;
 use crate::ops::union_results;
 use crate::ops::{
-    Aabb, BoundingBox, ForceTwoDimension, Reproject, ReprojectionCache, UnsupportedOperation,
+    Aabb, BoundingBox, ForceTwoDimension, ForceTwoDimensionError, Reproject, ReprojectionCache,
+    UnsupportedOperation,
 };
 #[cfg(feature = "new-geometry")]
 use crate::validation_next::Validate;
@@ -253,7 +254,7 @@ impl crate::ops::Split for Collection3D {
 }
 
 impl ForceTwoDimension for Collection2D {
-    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, UnsupportedOperation> {
+    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, ForceTwoDimensionError> {
         // All-or-nothing: one member with no 2D counterpart fails the whole
         // collection; `members` stays 1:1 with the input, keeping `attrs` parallel.
         let mut members = Vec::with_capacity(self.members.len());
@@ -271,7 +272,7 @@ impl ForceTwoDimension for Collection2D {
 }
 
 impl ForceTwoDimension for Collection3D {
-    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, UnsupportedOperation> {
+    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, ForceTwoDimensionError> {
         // All-or-nothing: one member with no 2D counterpart fails the whole
         // collection; `members` stays 1:1 with the input, keeping `attrs` parallel.
         let mut members = Vec::with_capacity(self.members.len());

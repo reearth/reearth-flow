@@ -71,9 +71,11 @@ pub struct TwoDimensionForcer;
 
 impl Processor for TwoDimensionForcer {
     // Drops the Z coordinate, re-representing 3D geometry in a 2D embedding and
-    // clearing any 2.5D elevation. The coordinate frame (CRS tag) is preserved
-    // verbatim — no reprojection; use the Coordinate Frame Reprojector to change
-    // it. Geometry with no 2D counterpart is routed to the rejected port.
+    // clearing any 2.5D elevation. The CRS tag is demoted to its 2D counterpart
+    // so it keeps describing the coordinates (EPSG:6697 becomes EPSG:6668); the
+    // coordinate values themselves are not reprojected — use the Coordinate Frame
+    // Reprojector for that. Geometry with no 2D counterpart, by type or by CRS,
+    // is routed to the rejected port.
     #[cfg(feature = "new-geometry")]
     fn process(
         &mut self,

@@ -451,13 +451,14 @@ impl Split for PolygonMesh3D {
     }
 }
 
-use crate::ops::ForceTwoDimension;
+use crate::ops::{ForceTwoDimension, ForceTwoDimensionError};
 
 impl ForceTwoDimension for PolygonMesh2D {
-    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, UnsupportedOperation> {
+    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, ForceTwoDimensionError> {
+        let frame = self.frame.demote_to_2d()?;
         self.z = None; // drop any 2.5D elevation; topology and appearance carry over
         Ok(Euclidean2DGeometry::PolygonMesh(Box::new(PolygonMesh2D {
-            frame: self.frame.clone(),
+            frame,
             vertices: std::mem::take(&mut self.vertices),
             z: None,
             face_indices: std::mem::replace(&mut self.face_indices, IndexBuffer::U8(Vec::new())),
@@ -472,13 +473,14 @@ impl ForceTwoDimension for PolygonMesh2D {
 }
 
 impl ForceTwoDimension for PolygonMesh3D {
-    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, UnsupportedOperation> {
+    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, ForceTwoDimensionError> {
+        let frame = self.frame.demote_to_2d()?;
         let vertices = std::mem::take(&mut self.data.vertices)
             .into_iter()
             .map(|[x, y, _]| [x, y])
             .collect();
         Ok(Euclidean2DGeometry::PolygonMesh(Box::new(PolygonMesh2D {
-            frame: self.frame.clone(),
+            frame,
             vertices,
             z: None,
             face_indices: std::mem::replace(

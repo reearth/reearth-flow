@@ -103,24 +103,25 @@ impl ConvertFrame for Point3D {
     }
 }
 
-use crate::ops::ForceTwoDimension;
+use crate::ops::{ForceTwoDimension, ForceTwoDimensionError};
 use crate::Euclidean2DGeometry;
 
 impl ForceTwoDimension for Point2D {
-    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, UnsupportedOperation> {
+    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, ForceTwoDimensionError> {
         // Already 2D and carries no elevation; hand back an equivalent point.
         Ok(Euclidean2DGeometry::Point(Point2D {
-            frame: self.frame.clone(),
+            frame: self.frame.demote_to_2d()?,
             position: self.position,
         }))
     }
 }
 
 impl ForceTwoDimension for Point3D {
-    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, UnsupportedOperation> {
+    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, ForceTwoDimensionError> {
+        let frame = self.frame.demote_to_2d()?;
         let [x, y, _] = self.position;
         Ok(Euclidean2DGeometry::Point(Point2D {
-            frame: self.frame.clone(),
+            frame,
             position: [x, y],
         }))
     }
