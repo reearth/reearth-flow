@@ -801,7 +801,7 @@
         },
         "textureCodec": {
           "title": "纹理编解码器",
-          "description": "图集页面的图像编解码器。未设置时不附加纹理；选择编解码器时默认为 `KTX2/ETC1S`。"
+          "description": "图集页面的图像编解码器。默认为 `KTX2/ETC1S`；选择 `Untextured` 则不附加纹理。"
         }
       },
       "enumI18n": {
@@ -817,6 +817,9 @@
           },
           "PNG": {
             "description": "PNG，带 alpha 通道的无损格式。"
+          },
+          "Untextured": {
+            "description": "不附加纹理；带纹理的几何体回退为中性颜色。"
           }
         }
       }

@@ -2222,13 +2222,11 @@
           },
           "textureCodec": {
             "title": "Códec de Textura",
-            "description": "Códec de imagen para las páginas del atlas. Si no se define, no se adjuntan texturas; cuando se elige un códec, el valor predeterminado es `KTX2/ETC1S`.",
-            "anyOf": [
+            "description": "Códec de imagen para las páginas del atlas. Valor predeterminado: `KTX2/ETC1S`; seleccione `Untextured` para no adjuntar texturas.",
+            "default": "KTX2/ETC1S",
+            "allOf": [
               {
                 "$ref": "#/definitions/TextureCodec"
-              },
-              {
-                "type": "null"
               }
             ]
           },
@@ -2305,6 +2303,13 @@
                 "type": "string",
                 "enum": [
                   "JPEG"
+                ]
+              },
+              {
+                "description": "No adjunta texturas; la geometría texturizada recurre a su color neutro.",
+                "type": "string",
+                "enum": [
+                  "Untextured"
                 ]
               }
             ]

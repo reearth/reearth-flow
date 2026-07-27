@@ -133,9 +133,9 @@ pub struct RenderOptions {
     /// Extrusion ring (pixels) blitted around each atlas region to stop
     /// bilinear bleed between neighbours. `0` disables it.
     pub atlas_extrusion: u32,
-    /// Image codec for atlas pages. `None` attaches no textures; textured
+    /// Image codec for atlas pages. `Untextured` attaches no textures; textured
     /// geometry falls back to its neutral colour.
-    pub texture_codec: Option<TextureCodec>,
+    pub texture_codec: TextureCodec,
 }
 
 /// Default atlas page size when the parameter is unset; inherited from the old
@@ -300,11 +300,11 @@ fn build_cell_glb(
     let mut primitives: Vec<(glb::PrimitiveHandle, Vec<u32>)> = Vec::new();
 
     if let Some(textured) = cells.textured {
-        // With no codec configured, skip texturing entirely and render the
-        // textured geometry in the neutral fallback colour.
+        // `Untextured` skips texturing entirely and renders the textured
+        // geometry in the neutral fallback colour.
         let pages = match render.texture_codec {
-            Some(_) => build_textured_pages(&mut builder, &textured, render, textures)?,
-            None => None,
+            TextureCodec::Untextured => None,
+            _ => build_textured_pages(&mut builder, &textured, render, textures)?,
         };
         match pages {
             Some(pages) => {
@@ -433,9 +433,7 @@ fn build_textured_pages(
         input.scale = scale;
     }
 
-    // Only reached with a codec set (see `build_cell_glb`); default to the
-    // enum's `KTX2/ETC1S`.
-    let codec = codec_for(render.texture_codec.unwrap_or_default());
+    let codec = codec_for(render.texture_codec);
     let built = match build_atlas_multipage(
         &inputs,
         render.atlas_size,
@@ -477,6 +475,9 @@ fn codec_for(codec: TextureCodec) -> Box<dyn glb::Codec> {
         }),
         TextureCodec::Png => Box::new(glb::PngCodec),
         TextureCodec::Jpeg => Box::new(glb::JpegCodec),
+        // The `Untextured` cell is filtered out before texturing (see `build`),
+        // so a codec is never resolved for it.
+        TextureCodec::Untextured => unreachable!("Untextured cells are not textured"),
     }
 }
 

@@ -801,7 +801,7 @@
         },
         "textureCodec": {
           "title": "Codec de Texture",
-          "description": "Codec d'image pour les pages de l'atlas. Si non défini, aucune texture n'est attachée ; lorsqu'un codec est choisi, la valeur par défaut est `KTX2/ETC1S`."
+          "description": "Codec d'image pour les pages de l'atlas. Valeur par défaut : `KTX2/ETC1S` ; choisissez `Untextured` pour n'attacher aucune texture."
         }
       },
       "enumI18n": {
@@ -817,6 +817,9 @@
           },
           "PNG": {
             "description": "PNG, sans perte avec canal alpha."
+          },
+          "Untextured": {
+            "description": "N'attache aucune texture ; la géométrie texturée revient à sa couleur neutre."
           }
         }
       }

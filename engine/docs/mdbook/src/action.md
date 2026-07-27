@@ -2186,13 +2186,11 @@ Writes features to Cesium 3D Tiles format for 3D web visualization.
     },
     "textureCodec": {
       "title": "Texture Codec",
-      "description": "Image codec for atlas pages. Unset attaches no textures; when a codec is chosen it defaults to `KTX2/ETC1S`.",
-      "anyOf": [
+      "description": "Image codec for atlas pages. Defaults to `KTX2/ETC1S`; select `Untextured` to attach no textures.",
+      "default": "KTX2/ETC1S",
+      "allOf": [
         {
           "$ref": "#/definitions/TextureCodec"
-        },
-        {
-          "type": "null"
         }
       ]
     },
@@ -2269,6 +2267,13 @@ Writes features to Cesium 3D Tiles format for 3D web visualization.
           "type": "string",
           "enum": [
             "JPEG"
+          ]
+        },
+        {
+          "description": "Attach no textures; textured geometry falls back to its neutral colour.",
+          "type": "string",
+          "enum": [
+            "Untextured"
           ]
         }
       ]

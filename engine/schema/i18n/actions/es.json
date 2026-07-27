@@ -801,7 +801,7 @@
         },
         "textureCodec": {
           "title": "Códec de Textura",
-          "description": "Códec de imagen para las páginas del atlas. Si no se define, no se adjuntan texturas; cuando se elige un códec, el valor predeterminado es `KTX2/ETC1S`."
+          "description": "Códec de imagen para las páginas del atlas. Valor predeterminado: `KTX2/ETC1S`; seleccione `Untextured` para no adjuntar texturas."
         }
       },
       "enumI18n": {
@@ -817,6 +817,9 @@
           },
           "PNG": {
             "description": "PNG, sin pérdida y con canal alfa."
+          },
+          "Untextured": {
+            "description": "No adjunta texturas; la geometría texturizada recurre a su color neutro."
           }
         }
       }

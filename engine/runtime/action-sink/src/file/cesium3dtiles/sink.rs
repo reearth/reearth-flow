@@ -155,6 +155,8 @@ pub enum TextureCodec {
     /// JPEG, lossy and opaque (alpha is dropped).
     #[serde(rename = "JPEG")]
     Jpeg,
+    /// Attach no textures; textured geometry falls back to its neutral colour.
+    Untextured,
 }
 
 /// # Cesium3DTilesWriter Parameters
@@ -204,9 +206,10 @@ pub struct Cesium3DTilesWriterParam {
     #[schemars(range(max = 65536))]
     pub(super) atlas_extrusion: Option<u32>,
     /// # Texture Codec
-    /// Image codec for atlas pages. Unset attaches no textures; when a codec is
-    /// chosen it defaults to `KTX2/ETC1S`.
-    pub(super) texture_codec: Option<TextureCodec>,
+    /// Image codec for atlas pages. Defaults to `KTX2/ETC1S`; select
+    /// `Untextured` to attach no textures.
+    #[serde(default)]
+    pub(super) texture_codec: TextureCodec,
     /// # Schema Key
     /// Attribute key whose value identifies the schema type and determines the output
     /// filename: all features sharing the same value are written to the same file.
@@ -238,7 +241,7 @@ pub struct Cesium3DTilesWriterCompiledParam {
     #[cfg(feature = "new-geometry")]
     pub(super) atlas_extrusion: Option<u32>,
     #[cfg(feature = "new-geometry")]
-    pub(super) texture_codec: Option<TextureCodec>,
+    pub(super) texture_codec: TextureCodec,
     pub(super) skip_unexposed_attributes: bool,
     pub(super) schema_key: Option<String>,
 }
