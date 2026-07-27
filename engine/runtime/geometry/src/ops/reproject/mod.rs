@@ -52,26 +52,32 @@ pub fn transform_coords_3d(
 ///
 /// The elevation feeds the vertical component of every coordinate's transform, so
 /// the horizontal result is correct everywhere. The output elevation is then read
-/// off the **first** coordinate: a datum shift varies with position, so the
-/// transformed heights are not all equal, and a 2.5D leaf has exactly one to keep.
-/// Anything that needs the per-vertex vertical result is a 3D leaf, which
-/// [`transform_coords_3d`] handles exactly.
+/// off the **first** coordinate: the vertical result of a transform can vary with
+/// position, and a 2.5D leaf has exactly one height to keep. Anything that needs
+/// the per-vertex vertical result is a 3D leaf, which [`transform_coords_3d`]
+/// handles exactly.
+///
+/// A leaf with no coordinates offers no position at which to evaluate the vertical
+/// transform, so it comes out pure 2D rather than keeping a height that belongs to
+/// `from` while the leaf now declares `target`.
 pub(crate) fn transform_coords_2d(
     cache: &mut ReprojectionCache,
     from: EpsgCode,
     target: EpsgCode,
     coords: &mut [[f64; 2]],
-    z: Option<&mut f64>,
+    z: &mut Option<f64>,
 ) -> Result<()> {
-    let elevation = z.as_deref().copied().unwrap_or(0.0);
+    let elevation = z.unwrap_or(0.0);
     let mut first_out_z = None;
     for c in coords.iter_mut() {
         let [x, y, new_z] = cache.transform(from, target, [c[0], c[1], elevation])?;
         *c = [x, y];
-        first_out_z.get_or_insert(new_z);
+        if first_out_z.is_none() {
+            first_out_z = Some(new_z);
+        }
     }
-    if let (Some(z), Some(new_z)) = (z, first_out_z) {
-        *z = new_z;
+    if z.is_some() {
+        *z = first_out_z;
     }
     Ok(())
 }
@@ -235,6 +241,22 @@ mod tests {
         );
         ls.reproject(EpsgCode::new(3857), &mut cache).unwrap();
         // A leaf with no elevation does not acquire one from the transform.
+        assert_eq!(ls.elevation(), None);
+    }
+
+    #[test]
+    fn coordinateless_leaf_does_not_keep_a_source_frame_elevation() {
+        let mut cache = ReprojectionCache::new();
+        let mut ls = LineString2D::from_coords_at_elevation(
+            CoordinateFrame::Crs(EpsgCode::new(4326)),
+            Vec::<[f64; 2]>::new(),
+            10.0,
+        );
+        ls.reproject(EpsgCode::new(3857), &mut cache).unwrap();
+        // The frame moved, so an untransformed height would now be stated in a
+        // frame it was never expressed in. With no coordinate to evaluate the
+        // vertical transform at, the leaf comes out pure 2D instead.
+        assert_eq!(ls.frame(), &CoordinateFrame::Crs(EpsgCode::new(3857)));
         assert_eq!(ls.elevation(), None);
     }
 

@@ -36,9 +36,7 @@ pub struct Polygon2D {
     /// holes. exterior = `coords[0 .. first interior start (or end)]`;
     /// interior j = `coords[interior_offsets[j] .. interior_offsets[j+1] (or end)]`.
     interior_offsets: Box<[u32]>,
-    /// The one elevation the whole face lies at; `None` = pure 2D. Keeping this a
-    /// scalar is what makes the face genuinely planar: a boundary whose vertices
-    /// sit at differing heights is a [`Polygon3D`], not a lifted 2D face.
+    /// The elevation the whole face lies at. `None` = pure 2D.
     z: Option<f64>,
     /// Materials / themes / single-face binding, incl. per-theme UV parallel to
     /// `coords`; `None` = bare geometry.

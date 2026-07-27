@@ -31,8 +31,7 @@ pub struct PolygonMesh2D {
     /// Coordinate frame these vertices are expressed in.
     frame: CoordinateFrame,
     vertices: Vec<[f64; 2]>,
-    /// The one elevation the whole mesh lies at; `None` = pure 2D. A surface whose
-    /// vertices sit at differing heights is a [`PolygonMesh3D`], not this.
+    /// The elevation the whole mesh lies at. `None` = pure 2D.
     z: Option<f64>,
     /// All rings of all faces concatenated; each face is its exterior ring then
     /// its hole rings. A valid face has the exterior wound counter-clockwise and

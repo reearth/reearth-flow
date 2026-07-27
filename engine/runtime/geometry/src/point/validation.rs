@@ -11,7 +11,7 @@ impl Validate for Point2D {
 
     fn check_finite(&self, _params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
-            check_finite_2d(&self.frame, std::slice::from_ref(&self.position), None, r)
+            check_finite_2d(&self.frame, std::slice::from_ref(&self.position), r)
         })
     }
 }

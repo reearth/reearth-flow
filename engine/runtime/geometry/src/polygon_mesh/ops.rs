@@ -41,7 +41,7 @@ impl Reproject for PolygonMesh2D {
     ) -> crate::error::Result<()> {
         let from = self.frame.require_crs()?;
         if from != target {
-            transform_coords_2d(cache, from, target, &mut self.vertices, self.z.as_mut())?;
+            transform_coords_2d(cache, from, target, &mut self.vertices, &mut self.z)?;
             self.frame = CoordinateFrame::Crs(target);
         }
         Ok(())

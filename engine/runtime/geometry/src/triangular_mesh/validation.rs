@@ -10,8 +10,9 @@ use crate::predicates::view::AreaView;
 use crate::predicates::view3d::TriangleSet;
 use crate::validation_next::{
     check_degenerate_ring_2d, check_degenerate_ring_3d, check_duplicate_points,
-    check_edge_orientation_3d, check_finite_2d, check_finite_3d, check_ring_orientation_2d,
-    tetra_volume_6x, FaceTopology, Validate, ValidationParams, ValidationReport, ValidationType,
+    check_edge_orientation_3d, check_finite_2d, check_finite_3d, check_finite_elevation,
+    check_ring_orientation_2d, tetra_volume_6x, FaceTopology, Validate, ValidationParams,
+    ValidationReport, ValidationType,
 };
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
@@ -73,7 +74,18 @@ impl Validate for TriangularMesh2D {
     }
 
     fn check_finite(&self, _params: &ValidationParams) -> ValidationReport {
-        ValidationReport::ran(|r| check_finite_2d(&self.frame, &self.vertices, self.z, r))
+        ValidationReport::ran(|r| {
+            check_finite_elevation(
+                self.z,
+                || {
+                    Geometry::Euclidean2D(Euclidean2DGeometry::TriangularMesh(Box::new(
+                        self.clone(),
+                    )))
+                },
+                r,
+            );
+            check_finite_2d(&self.frame, &self.vertices, r);
+        })
     }
 
     fn check_orientation(&self, _params: &ValidationParams) -> ValidationReport {

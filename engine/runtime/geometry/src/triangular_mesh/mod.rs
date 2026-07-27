@@ -25,9 +25,7 @@ pub struct TriangularMesh2D {
     /// Coordinate frame these vertices are expressed in.
     frame: CoordinateFrame,
     vertices: Vec<[f64; 2]>,
-    /// The one elevation the whole mesh lies at; `None` = pure 2D. A triangulated
-    /// surface whose vertices sit at differing heights (a TIN) is a
-    /// [`TriangularMesh3D`], not this.
+    /// The elevation the whole mesh lies at. `None` = pure 2D.
     z: Option<f64>,
     /// Flat triangle index list; width from `vertices.len() - 1`. Each triangle is
     /// wound counter-clockwise in canonical orientation (see [`crate::coordinate`]:

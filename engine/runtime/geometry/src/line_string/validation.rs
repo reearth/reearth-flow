@@ -2,9 +2,10 @@ use super::{LineString2D, LineString3D};
 use crate::validation_next::{
     check_chain_simple_2d, check_chain_simple_3d, check_degenerate_chain_2d,
     check_degenerate_chain_3d, check_duplicate_points, check_finite_2d, check_finite_3d,
-    check_too_few_points_2d, check_too_few_points_3d, Validate, ValidationParams, ValidationReport,
-    ValidationType,
+    check_finite_elevation, check_too_few_points_2d, check_too_few_points_3d, Validate,
+    ValidationParams, ValidationReport, ValidationType,
 };
+use crate::{Euclidean2DGeometry, Geometry};
 
 /// The checks that apply to a line string; 2D and 3D share the table row.
 const LINE_STRING_CHECKS: [ValidationType; 5] = [
@@ -21,7 +22,14 @@ impl Validate for LineString2D {
     }
 
     fn check_finite(&self, _params: &ValidationParams) -> ValidationReport {
-        ValidationReport::ran(|r| check_finite_2d(&self.frame, &self.coords, self.z, r))
+        ValidationReport::ran(|r| {
+            check_finite_elevation(
+                self.z,
+                || Geometry::Euclidean2D(Euclidean2DGeometry::LineString(self.clone())),
+                r,
+            );
+            check_finite_2d(&self.frame, &self.coords, r);
+        })
     }
 
     fn check_too_few_points(&self, _params: &ValidationParams) -> ValidationReport {

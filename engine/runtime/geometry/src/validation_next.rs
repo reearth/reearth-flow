@@ -29,7 +29,8 @@ use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 /// [validation matrix](validate#default-validation-per-leaf-type).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
 pub enum ValidationType {
-    /// Whether every coordinate component is finite (non-NaN, non-infinite).
+    /// Whether every coordinate component is finite (non-NaN, non-infinite),
+    /// and, on a 2D leaf, whether the elevation it lies at is.
     Finite,
     /// Whether a line or ring has fewer points than its type requires (line ≥ 2,
     /// closed ring ≥ 4).
@@ -741,34 +742,43 @@ pub(crate) fn open_ring<T: PartialEq>(ring: &[T]) -> &[T] {
     }
 }
 
-/// Scan a 2D coordinate buffer (with the leaf's optional single elevation) for
-/// non-finite values, pushing one [`ValidationType::Finite`] problem per
-/// offending coordinate into `report`, positioned at a 2D point leaf in `frame`.
+/// Scan a 2D coordinate buffer for non-finite values, pushing one
+/// [`ValidationType::Finite`] problem per offending coordinate into `report`,
+/// positioned at a 2D point leaf in `frame`.
 ///
-/// A non-finite elevation belongs to the leaf as a whole, so it faults every
-/// coordinate rather than any one of them.
+/// A 2D leaf's elevation is not a coordinate component, so it is not scanned
+/// here; see [`check_finite_elevation`].
 pub(crate) fn check_finite_2d(
     frame: &CoordinateFrame,
     coords: &[[f64; 2]],
-    z: Option<f64>,
     report: &mut ValidationReport,
 ) {
-    let z_not_finite = z.is_some_and(|v| !v.is_finite());
     for c in coords.iter() {
-        if !c[0].is_finite() || !c[1].is_finite() || z_not_finite {
-            // When the elevation is the offending component, report a 3D point
-            // carrying it so the non-finite value is visible in the position;
-            // otherwise the finite [x, y] alone would hide where the fault is.
-            if z_not_finite {
-                report.push(Geometry::Euclidean3D(Euclidean3DGeometry::Point(
-                    Point3D::new(frame.clone(), [c[0], c[1], z.unwrap()]),
-                )));
-            } else {
-                report.push(Geometry::Euclidean2D(Euclidean2DGeometry::Point(
-                    Point2D::new(frame.clone(), *c),
-                )));
-            }
+        if !c[0].is_finite() || !c[1].is_finite() {
+            report.push(Geometry::Euclidean2D(Euclidean2DGeometry::Point(
+                Point2D::new(frame.clone(), *c),
+            )));
         }
+    }
+}
+
+/// Check a 2D leaf's single elevation for a non-finite value, pushing one
+/// [`ValidationType::Finite`] problem into `report` positioned at the whole leaf
+/// that `position` builds.
+///
+/// The elevation belongs to the leaf, not to any one of its coordinates, so a bad
+/// one is a single fault reported once against the leaf itself. Positioning it at
+/// coordinates would both multiply the report by the vertex count and leave a
+/// coordinate-less leaf with nowhere to record the fault.
+///
+/// `position` is a closure so the leaf is only materialized on the failure path.
+pub(crate) fn check_finite_elevation(
+    z: Option<f64>,
+    position: impl FnOnce() -> Geometry,
+    report: &mut ValidationReport,
+) {
+    if z.is_some_and(|v| !v.is_finite()) {
+        report.push(position());
     }
 }
 
@@ -1353,6 +1363,47 @@ mod tests {
         let second = offending_point(&positions[1]);
         assert!(second[1].is_nan());
         assert_eq!(second[0], 2.0);
+    }
+
+    #[test]
+    fn non_finite_elevation_reports_the_leaf_once() {
+        let ls = LineString2D::from_coords_at_elevation(
+            CoordinateFrame::Euclidean,
+            [[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [3.0, 0.0]],
+            f64::NAN,
+        );
+        let positions = failures(&validate_leaf(&ls, &params()), ValidationType::Finite);
+        // One elevation, one fault: the report does not scale with the vertex count.
+        assert_eq!(positions.len(), 1);
+        // Positioned at the whole leaf, since the elevation belongs to no coordinate.
+        assert!(matches!(
+            positions[0],
+            Geometry::Euclidean2D(Euclidean2DGeometry::LineString(_))
+        ));
+    }
+
+    #[test]
+    fn non_finite_elevation_is_reported_without_coordinates() {
+        let ls = LineString2D::from_coords_at_elevation(
+            CoordinateFrame::Euclidean,
+            Vec::<[f64; 2]>::new(),
+            f64::INFINITY,
+        );
+        let positions = failures(&validate_leaf(&ls, &params()), ValidationType::Finite);
+        assert_eq!(positions.len(), 1);
+    }
+
+    #[test]
+    fn finite_elevation_passes() {
+        let ls = LineString2D::from_coords_at_elevation(
+            CoordinateFrame::Euclidean,
+            [[0.0, 0.0], [1.0, 0.0]],
+            10.0,
+        );
+        assert_eq!(
+            validate_leaf(&ls, &params())[&ValidationType::Finite],
+            ValidationResult::Success
+        );
     }
 
     #[test]
