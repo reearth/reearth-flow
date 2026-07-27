@@ -46,6 +46,16 @@ impl NumericValue {
         }
     }
 
+    /// Ordering that stays exact for `Integer` vs `Integer` (avoiding the
+    /// precision loss of casting large `i64` values to `f64`) and falls back
+    /// to `f64` only when at least one operand is a `Float`.
+    fn cmp_value(self, other: NumericValue) -> std::cmp::Ordering {
+        match (self, other) {
+            (NumericValue::Integer(a), NumericValue::Integer(b)) => a.cmp(&b),
+            _ => self.as_f64().total_cmp(&other.as_f64()),
+        }
+    }
+
     fn to_attribute_value(self) -> AttributeValue {
         match self {
             NumericValue::Integer(i) => AttributeValue::Number(serde_json::Number::from(i)),
@@ -130,14 +140,15 @@ impl StatAccumulator {
 
     /// Record an expression value for a numeric calculation.
     fn ingest_value(&mut self, value: NumericValue) {
+        use std::cmp::Ordering;
         self.count += 1;
         self.sum = self.sum.add(value);
         self.min = Some(match self.min {
-            Some(current) if current.as_f64() <= value.as_f64() => current,
+            Some(current) if current.cmp_value(value) != Ordering::Greater => current,
             _ => value,
         });
         self.max = Some(match self.max {
-            Some(current) if current.as_f64() >= value.as_f64() => current,
+            Some(current) if current.cmp_value(value) != Ordering::Less => current,
             _ => value,
         });
     }
@@ -637,6 +648,21 @@ mod tests {
         acc.ingest_value(NumericValue::Integer(5));
         assert_eq!(acc.finalize(AggregationMethod::Min), num(1));
         assert_eq!(acc.finalize(AggregationMethod::Max), num(5));
+    }
+
+    #[test]
+    fn stat_accumulator_min_max_exact_for_large_integers() {
+        // Beyond 2^53, consecutive i64 values collapse to the same f64, so an
+        // f64-based comparison would misorder them. Exact integer comparison
+        // must still pick the true min/max.
+        let hi = 9_007_199_254_740_993i64; // 2^53 + 1
+        let lo = 9_007_199_254_740_992i64; // 2^53
+        assert_eq!(hi as f64, lo as f64, "precondition: equal as f64");
+        let mut acc = StatAccumulator::default();
+        acc.ingest_value(NumericValue::Integer(hi));
+        acc.ingest_value(NumericValue::Integer(lo));
+        assert_eq!(acc.finalize(AggregationMethod::Min), num(lo));
+        assert_eq!(acc.finalize(AggregationMethod::Max), num(hi));
     }
 
     fn build_processor(with: Value) -> Box<dyn Processor> {
