@@ -457,11 +457,19 @@ const UNNAMED_REASON: &str = "its 2D form carries no EPSG identifier";
 /// The demoted CRS still has a third axis, so it is not a 2D frame.
 const STILL_3D_REASON: &str = "its demoted form still has more than two axes";
 
+/// A remembered demotion outcome: what PROJ answered, or the message explaining
+/// why it could not answer. Both are fixed properties of the EPSG code.
+type CachedDemotion = std::result::Result<TwoDimensionalCrs, String>;
+
 /// Process-wide memoization of 2D counterparts, keyed by EPSG code. Like the
-/// orientation sign, the answer is a fixed property of a CRS. Only determinate
-/// answers are cached; an unresolvable CRS is a rare error path.
-fn demote_cache() -> &'static RwLock<HashMap<EpsgCode, TwoDimensionalCrs>> {
-    static CACHE: OnceLock<RwLock<HashMap<EpsgCode, TwoDimensionalCrs>>> = OnceLock::new();
+/// orientation sign, the answer is a fixed property of a CRS.
+///
+/// Failures are remembered too, unlike in the caches above: a failed demotion
+/// routes one feature to the rejected port and processing continues, so a stream
+/// sharing an unusable CRS would otherwise re-ask PROJ per feature — two orders
+/// of magnitude slower than a cache hit.
+fn demote_cache() -> &'static RwLock<HashMap<EpsgCode, CachedDemotion>> {
+    static CACHE: OnceLock<RwLock<HashMap<EpsgCode, CachedDemotion>>> = OnceLock::new();
     CACHE.get_or_init(|| RwLock::new(HashMap::new()))
 }
 
@@ -470,39 +478,46 @@ fn demote_cache() -> &'static RwLock<HashMap<EpsgCode, TwoDimensionalCrs>> {
 ///
 /// [`TwoDimensionalCrs::None`] is a definitive "there is none". `Err` means PROJ
 /// could not answer at all (unknown code, missing PROJ data), which the caller
-/// must distinguish: an indeterminate answer is not evidence of a bad frame.
+/// must distinguish: the two mean different things to a user, even though both
+/// leave the frame's dimensionality unusable.
 ///
 /// Memoized per EPSG code, so a CRS costs one PROJ lookup per process.
 pub(crate) fn crs_demote_to_2d(epsg: EpsgCode) -> Result<TwoDimensionalCrs> {
-    if let Some(&demoted) = demote_cache().read().get(&epsg) {
-        return Ok(demoted);
+    if let Some(cached) = demote_cache().read().get(&epsg) {
+        return cached.clone().map_err(Error::projection);
     }
-    let demoted = crs_demote_to_2d_uncached(epsg)?;
-    demote_cache().write().insert(epsg, demoted);
-    Ok(demoted)
+    let outcome = lookup_demotion(epsg)?;
+    demote_cache().write().insert(epsg, outcome.clone());
+    outcome.map_err(Error::projection)
 }
 
 /// Ask PROJ for `epsg`'s 2D counterpart directly, without the cache.
-fn crs_demote_to_2d_uncached(epsg: EpsgCode) -> Result<TwoDimensionalCrs> {
+///
+/// The two error channels differ in whether the answer is worth remembering.
+/// `Err` is a transient failure of the PROJ context itself, which says nothing
+/// about `epsg` and must not be cached; the inner `Err` is PROJ's stable verdict
+/// on this code.
+fn lookup_demotion(epsg: EpsgCode) -> Result<CachedDemotion> {
+    let def = CString::new(format!("EPSG:{epsg}")).map_err(Error::projection)?;
     // SAFETY: every PROJ object is null-checked and freed on all paths.
     unsafe {
         let ctx = proj_context_create();
         if ctx.is_null() {
             return Err(Error::projection("proj_context_create returned null"));
         }
-        let def = CString::new(format!("EPSG:{epsg}")).map_err(Error::projection)?;
         let crs = proj_create(ctx, def.as_ptr());
-        if crs.is_null() {
-            let msg = ctx_errno_string(ctx);
-            proj_context_destroy(ctx);
-            return Err(Error::projection(format!(
-                "failed to create CRS EPSG:{epsg}: {msg}"
-            )));
-        }
-        let result = demote_and_classify(ctx, crs, epsg);
-        proj_destroy(crs);
+        let outcome = if crs.is_null() {
+            Err(format!(
+                "failed to create CRS EPSG:{epsg}: {}",
+                ctx_errno_string(ctx)
+            ))
+        } else {
+            let outcome = demote_and_classify(ctx, crs, epsg);
+            proj_destroy(crs);
+            outcome
+        };
         proj_context_destroy(ctx);
-        result
+        Ok(outcome)
     }
 }
 
@@ -512,18 +527,18 @@ unsafe fn demote_and_classify(
     ctx: *mut PJ_CONTEXT,
     crs: *const PJ,
     epsg: EpsgCode,
-) -> Result<TwoDimensionalCrs> {
+) -> CachedDemotion {
     // A null name asks PROJ to derive the 2D CRS's name from the input's.
     let demoted = proj_crs_demote_to_2D(ctx, ptr::null(), crs);
     if demoted.is_null() {
-        return Err(Error::projection(format!(
+        return Err(format!(
             "failed to demote EPSG:{epsg} to 2D: {}",
             ctx_errno_string(ctx)
-        )));
+        ));
     }
     let result = classify_demoted(ctx, demoted);
     proj_destroy(demoted);
-    result
+    Ok(result)
 }
 
 /// Classify a demoted CRS: a two-axis CRS carrying an EPSG identifier is a usable
@@ -533,23 +548,23 @@ unsafe fn demote_and_classify(
 /// CRS — so the axis count alone would already reject it; it is matched first only
 /// to report the specific reason.
 // SAFETY: `ctx` and `crs` must be valid, non-null PROJ objects.
-unsafe fn classify_demoted(ctx: *mut PJ_CONTEXT, crs: *const PJ) -> Result<TwoDimensionalCrs> {
+unsafe fn classify_demoted(ctx: *mut PJ_CONTEXT, crs: *const PJ) -> TwoDimensionalCrs {
     if proj_get_type(crs) == PJ_TYPE_PJ_TYPE_GEOCENTRIC_CRS {
-        return Ok(TwoDimensionalCrs::None(GEOCENTRIC_REASON));
+        return TwoDimensionalCrs::None(GEOCENTRIC_REASON);
     }
     let cs = proj_crs_get_coordinate_system(ctx, crs);
     if cs.is_null() {
-        return Ok(TwoDimensionalCrs::None(STILL_3D_REASON));
+        return TwoDimensionalCrs::None(STILL_3D_REASON);
     }
     let axes = proj_cs_get_axis_count(ctx, cs);
     proj_destroy(cs);
     if axes != 2 {
-        return Ok(TwoDimensionalCrs::None(STILL_3D_REASON));
+        return TwoDimensionalCrs::None(STILL_3D_REASON);
     }
-    Ok(match epsg_identifier(crs) {
+    match epsg_identifier(crs) {
         Some(code) => TwoDimensionalCrs::Code(code),
         None => TwoDimensionalCrs::None(UNNAMED_REASON),
-    })
+    }
 }
 
 /// The EPSG code `crs` declares as its first identifier, or `None` when it has
@@ -703,8 +718,20 @@ mod tests {
     fn demotion_is_memoized_per_code() {
         let code = EpsgCode::new(4979);
         let computed = crs_demote_to_2d(code).unwrap();
-        assert_eq!(demote_cache().read().get(&code), Some(&computed));
+        assert_eq!(demote_cache().read().get(&code), Some(&Ok(computed)));
         assert_eq!(crs_demote_to_2d(code).unwrap(), computed);
+    }
+
+    #[test]
+    fn an_unresolvable_code_is_memoized_too() {
+        // The failure path is a steady state, not a one-off abort: a whole stream
+        // can share an unusable CRS and each feature asks again. EPSG:2 is not a
+        // real CRS and is used by no other test, so the cache entry is this
+        // test's own.
+        let code = EpsgCode::new(2);
+        let first = crs_demote_to_2d(code).unwrap_err().to_string();
+        assert!(matches!(demote_cache().read().get(&code), Some(Err(_))));
+        assert_eq!(crs_demote_to_2d(code).unwrap_err().to_string(), first);
     }
 
     #[test]

@@ -129,22 +129,25 @@ impl CoordinateFrame {
     /// units, only the vertical axis is gone. `Euclidean` and `Tangent` carry no
     /// vertical axis to shed and are returned unchanged.
     ///
-    /// Errors only when the CRS definitively has no 2D counterpart. When PROJ
-    /// cannot classify the CRS at all the frame is returned verbatim, matching
-    /// [`UnitKind::Undeterminable`]: an indeterminate answer is not evidence of a
-    /// bad frame.
+    /// Errors when the CRS has no 2D counterpart, and equally when PROJ cannot
+    /// resolve the CRS at all: a frame that cannot be shown to be 2D must not be
+    /// attached to 2D coordinates. [`FrameDemotionError`] keeps the two cases
+    /// apart, since they call for different fixes.
     pub fn demote_to_2d(&self) -> std::result::Result<CoordinateFrame, FrameDemotionError> {
         let CoordinateFrame::Crs(epsg) = self else {
             return Ok(self.clone());
         };
-        match crate::ops::crs_demote_to_2d(*epsg) {
-            Ok(crate::ops::TwoDimensionalCrs::Code(code)) => Ok(CoordinateFrame::Crs(code)),
-            Ok(crate::ops::TwoDimensionalCrs::None(reason)) => Err(FrameDemotionError {
-                epsg: *epsg,
-                reason,
-            }),
-            Err(_) => Ok(self.clone()),
-        }
+        let reason = match crate::ops::crs_demote_to_2d(*epsg) {
+            Ok(crate::ops::TwoDimensionalCrs::Code(code)) => return Ok(CoordinateFrame::Crs(code)),
+            Ok(crate::ops::TwoDimensionalCrs::None(why)) => {
+                FrameDemotionReason::NoTwoDimensionalForm(why)
+            }
+            Err(e) => FrameDemotionReason::Unresolvable(e.to_string()),
+        };
+        Err(FrameDemotionError {
+            epsg: *epsg,
+            reason,
+        })
     }
 
     /// Whether coordinates in this frame are in linear (length) units, so that
@@ -175,24 +178,41 @@ impl CoordinateFrame {
     }
 }
 
-/// A CRS that has no 2D counterpart, so no frame can describe its coordinates
-/// once the vertical axis is dropped. Returned by
+/// A CRS whose 2D counterpart could not be established, so no frame can describe
+/// its coordinates once the vertical axis is dropped. Returned by
 /// [`demote_to_2d`](CoordinateFrame::demote_to_2d).
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct FrameDemotionError {
     /// The CRS that could not be demoted.
     pub epsg: EpsgCode,
     /// Why it could not be.
-    pub reason: &'static str,
+    pub reason: FrameDemotionReason,
+}
+
+/// The two ways demoting a CRS frame fails. They call for different fixes — one
+/// is the wrong CRS for the operation, the other is a CRS the installation
+/// cannot look up — so they are kept apart rather than flattened to one message.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum FrameDemotionReason {
+    /// PROJ resolved the CRS and it has no 2D form. Carries the specific reason.
+    NoTwoDimensionalForm(&'static str),
+    /// PROJ could not resolve the CRS, leaving its dimensionality unknown.
+    /// Carries PROJ's failure message.
+    Unresolvable(String),
 }
 
 impl fmt::Display for FrameDemotionError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "EPSG:{} has no 2D counterpart: {}",
-            self.epsg, self.reason
-        )
+        match &self.reason {
+            FrameDemotionReason::NoTwoDimensionalForm(why) => {
+                write!(f, "EPSG:{} has no 2D counterpart: {why}", self.epsg)
+            }
+            FrameDemotionReason::Unresolvable(why) => write!(
+                f,
+                "EPSG:{} cannot be demoted to 2D because PROJ could not resolve it: {why}",
+                self.epsg
+            ),
+        }
     }
 }
 
@@ -280,25 +300,64 @@ mod tests {
         // Compound -> its horizontal component; geographic 3D -> its 2D form.
         assert_eq!(demote(6697), Ok(CoordinateFrame::Crs(EpsgCode::new(6668))));
         assert_eq!(demote(4979), Ok(CoordinateFrame::Crs(EpsgCode::new(4326))));
-        // Already 2D: idempotent, so forcing twice is stable.
+        // A CRS with no vertical axis maps to itself, which is what makes forcing
+        // a geometry to 2D twice stable.
         assert_eq!(demote(6668), Ok(CoordinateFrame::Crs(EpsgCode::new(6668))));
         assert_eq!(demote(6677), Ok(CoordinateFrame::Crs(EpsgCode::new(6677))));
-        // Geocentric: no 2D form exists.
-        assert_eq!(demote(4978).unwrap_err().epsg, EpsgCode::new(4978));
-        // Non-CRS frames have no vertical axis to shed.
-        assert_eq!(
-            CoordinateFrame::Euclidean.demote_to_2d(),
-            Ok(CoordinateFrame::Euclidean)
+    }
+
+    #[test]
+    fn demote_to_2d_rejects_a_crs_with_no_2d_form() {
+        // A geocentric CRS's third axis is the rotation axis, so there is no
+        // horizontal component to fall back to.
+        let err = CoordinateFrame::Crs(EpsgCode::new(4978))
+            .demote_to_2d()
+            .unwrap_err();
+        assert_eq!(err.epsg, EpsgCode::new(4978));
+        assert!(matches!(
+            err.reason,
+            FrameDemotionReason::NoTwoDimensionalForm(_)
+        ));
+        assert!(
+            err.to_string().contains("has no 2D counterpart"),
+            "unexpected message: {err}"
         );
     }
 
     #[test]
-    fn an_unclassifiable_crs_keeps_its_frame() {
-        // EPSG:1 is not a real CRS. PROJ cannot say whether it has a 2D form, and
-        // an indeterminate answer is not evidence of a bad frame, so it passes
-        // through rather than failing the geometry.
-        let unknown = CoordinateFrame::Crs(EpsgCode::new(1));
-        assert_eq!(unknown.demote_to_2d(), Ok(unknown.clone()));
+    fn demote_to_2d_leaves_non_crs_frames_alone() {
+        // Neither frame declares a vertical axis to shed: Euclidean coordinates
+        // are dimensionless, and a tangent plane's are in-plane by construction.
+        assert_eq!(
+            CoordinateFrame::Euclidean.demote_to_2d(),
+            Ok(CoordinateFrame::Euclidean)
+        );
+        // A tangent plane stays put even when anchored in a 3D CRS: the base
+        // frame describes the plane, not the geometry's coordinates.
+        let tangent = CoordinateFrame::Tangent(Box::new(TangentPlane {
+            base: BaseFrame::Crs(EpsgCode::new(6697)),
+            origin: [0.0, 0.0, 0.0],
+            u: [1.0, 0.0, 0.0],
+            v: [0.0, 1.0, 0.0],
+        }));
+        assert_eq!(tangent.demote_to_2d(), Ok(tangent.clone()));
+    }
+
+    #[test]
+    fn an_unresolvable_crs_is_rejected() {
+        // EPSG:1 is not a real CRS, so PROJ cannot say whether it has a 2D form.
+        // "Unknown" must not become "keep the 3D tag": that is exactly the
+        // mismatch demotion exists to prevent. Reported apart from a
+        // resolved-but-2D-less CRS because the fix differs.
+        let err = CoordinateFrame::Crs(EpsgCode::new(1))
+            .demote_to_2d()
+            .unwrap_err();
+        assert_eq!(err.epsg, EpsgCode::new(1));
+        assert!(matches!(err.reason, FrameDemotionReason::Unresolvable(_)));
+        assert!(
+            err.to_string().contains("PROJ could not resolve it"),
+            "unexpected message: {err}"
+        );
     }
 
     #[test]

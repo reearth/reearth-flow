@@ -783,10 +783,25 @@ mod force_2d_tests {
             )));
             let err = g.force_2d().unwrap_err();
             assert!(
-                matches!(err, ForceTwoDimensionError::UnsupportedFrame(e) if e.epsg.get() == code),
+                matches!(&err, ForceTwoDimensionError::UnsupportedFrame(e) if e.epsg.get() == code),
                 "EPSG:{code} should be rejected for its frame, got {err:?}"
             );
         }
+    }
+
+    #[test]
+    fn unresolvable_frame_is_rejected() {
+        // PROJ cannot classify EPSG:1, so its dimensionality is unknown. Passing
+        // the tag through would risk emitting the very 2D-coordinates-with-a-3D-
+        // frame mismatch that demotion exists to prevent, so it rejects instead.
+        let mut g = Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+            CoordinateFrame::Crs(EpsgCode::new(1)),
+            [1.0, 2.0, 3.0],
+        )));
+        assert!(matches!(
+            g.force_2d().unwrap_err(),
+            ForceTwoDimensionError::UnsupportedFrame(_)
+        ));
     }
 
     #[test]

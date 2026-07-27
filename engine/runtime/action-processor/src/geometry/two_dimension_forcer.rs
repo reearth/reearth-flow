@@ -1,7 +1,13 @@
 use std::collections::HashMap;
+#[cfg(feature = "new-geometry")]
+use std::collections::HashSet;
 #[cfg(not(feature = "new-geometry"))]
 use std::sync::Arc;
 
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::coordinate::EpsgCode;
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::ops::ForceTwoDimensionError;
 #[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::types::geometry::Geometry2D;
 #[cfg(feature = "new-geometry")]
@@ -62,20 +68,23 @@ impl ProcessorFactory for TwoDimensionForcerFactory {
         _action: String,
         _with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        Ok(Box::new(TwoDimensionForcer))
+        Ok(Box::new(TwoDimensionForcer::default()))
     }
 }
 
-#[derive(Debug, Clone)]
-pub struct TwoDimensionForcer;
+#[derive(Debug, Clone, Default)]
+pub struct TwoDimensionForcer {
+    /// CRSs already reported as unusable. An unusable CRS is a property of the
+    /// stream, not of one feature, so it is logged once per code instead of once
+    /// per feature.
+    #[cfg(feature = "new-geometry")]
+    reported_frames: HashSet<EpsgCode>,
+}
 
 impl Processor for TwoDimensionForcer {
-    // Drops the Z coordinate, re-representing 3D geometry in a 2D embedding and
-    // clearing any 2.5D elevation. The CRS tag is demoted to its 2D counterpart
-    // so it keeps describing the coordinates (EPSG:6697 becomes EPSG:6668); the
-    // coordinate values themselves are not reprojected — use the Coordinate Frame
-    // Reprojector for that. Geometry with no 2D counterpart, by type or by CRS,
-    // is routed to the rejected port.
+    // Drops the Z coordinate and any 2.5D elevation, demoting the CRS tag with it
+    // (EPSG:6697 becomes EPSG:6668) so it still matches the coordinates. Geometry
+    // that cannot be flattened, by type or by CRS, goes to the rejected port.
     #[cfg(feature = "new-geometry")]
     fn process(
         &mut self,
@@ -89,8 +98,22 @@ impl Processor for TwoDimensionForcer {
                 fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
             }
             Err(e) => {
-                ctx.event_hub
-                    .debug_log(Some(ctx.error_span()), format!("force 2D rejected: {e}"));
+                // An unsupported geometry type is a routing decision the workflow
+                // author made (feeding solids here is normal), but an unusable CRS
+                // is a data or installation problem they need told about. Warn on
+                // the first feature carrying each such CRS.
+                let first_of_this_frame = match &e {
+                    ForceTwoDimensionError::UnsupportedFrame(frame) => {
+                        self.reported_frames.insert(frame.epsg)
+                    }
+                    ForceTwoDimensionError::UnsupportedGeometry(_) => false,
+                };
+                let message = format!("force 2D rejected: {e}");
+                if first_of_this_frame {
+                    ctx.event_hub.warn_log(Some(ctx.error_span()), message);
+                } else {
+                    ctx.event_hub.debug_log(Some(ctx.error_span()), message);
+                }
                 // `feature` may be partially moved-from on a collection failure;
                 // forward a pristine copy of the input to the rejected port.
                 fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));

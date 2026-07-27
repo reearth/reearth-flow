@@ -253,7 +253,7 @@ impl<T: Triangulate + ?Sized> Triangulate for Box<T> {
 }
 
 /// Why a geometry could not be re-represented in a pure 2D embedding.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ForceTwoDimensionError {
     /// The geometry type has no 2D counterpart (`Solid`, `Csg`, `PointCloud`).
     UnsupportedGeometry(UnsupportedOperation),
@@ -296,9 +296,10 @@ impl From<FrameDemotionError> for ForceTwoDimensionError {
 ///
 /// Two things reject. Leaves with no 2D counterpart (`Solid`, `Csg`,
 /// `PointCloud`) opt out via [`unsupported!`](crate::unsupported), and a frame
-/// with no 2D counterpart — a geocentric (ECEF) CRS, whose Z is the rotation axis
-/// rather than a height, so dropping it would silently project onto the
-/// equatorial plane.
+/// whose 2D counterpart cannot be established — a geocentric (ECEF) CRS, whose Z
+/// is the rotation axis rather than a height, so dropping it would silently
+/// project onto the equatorial plane; or a CRS PROJ cannot resolve, whose
+/// dimensionality is then unknown.
 ///
 /// Like [`Triangulate`], this consumes the leaf's buffers, leaving `self`
 /// moved-from on success (discard or overwrite it); a leaf that empties `coords`
