@@ -21,8 +21,7 @@ pub struct LineString2D {
     /// Coordinate frame these coords are expressed in.
     frame: CoordinateFrame,
     coords: Box<[[f64; 2]]>,
-    /// The one elevation the whole chain lies at; `None` = pure 2D. A chain whose
-    /// vertices sit at differing heights is a [`LineString3D`], not this.
+    /// The one elevation the whole chain lies at. `None` = pure 2D.
     z: Option<f64>,
 }
 
