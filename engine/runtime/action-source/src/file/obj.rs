@@ -833,15 +833,19 @@ pub(super) async fn parse_mtl(
         .bytes()
         .await
         .map_err(|e| SourceError::ObjReader(format!("Failed to read MTL file content: {e}")))?;
-    let content = content.to_vec();
-    let reader = BufReader::new(&content[..]);
+    let content = String::from_utf8(content.to_vec())
+        .map_err(|e| SourceError::ObjReader(format!("Error reading MTL file: {e}")))?;
+    Ok(parse_mtl_str(&content, mtl_uri))
+}
+
+/// The sync line-parsing core of [`parse_mtl`], split out so the MTL-to-material
+/// mapping is unit-testable without a storage resolver (no I/O here; `parse_mtl`
+/// reads the MTL bytes and hands the decoded string to this function).
+pub(super) fn parse_mtl_str(content: &str, mtl_uri: &Uri) -> HashMap<String, Material> {
     let mut materials = HashMap::new();
     let mut current_material: Option<Material> = None;
 
-    for line in reader.lines() {
-        let line =
-            line.map_err(|e| SourceError::ObjReader(format!("Error reading MTL file: {e}")))?;
-
+    for line in content.lines() {
         let line = line.trim();
         if line.is_empty() || line.starts_with('#') {
             continue;
@@ -934,7 +938,7 @@ pub(super) async fn parse_mtl(
         materials.insert(mat.name.clone(), mat);
     }
 
-    Ok(materials)
+    materials
 }
 
 fn create_geometry_from_faces(

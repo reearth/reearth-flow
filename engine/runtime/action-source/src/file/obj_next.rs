@@ -461,6 +461,21 @@ mod tests {
     }
 
     #[test]
+    fn real_detailed_obj_reads_as_textured_polygon_mesh() {
+        let bytes = include_bytes!("../../../tests/fixture/testdata/obj/detailed.obj");
+        let data = super::super::parse_obj_content(&bytes::Bytes::from_static(bytes)).unwrap();
+        // Materials from the sibling materials.mtl, resolved relative to the mtl dir.
+        let mtl = include_str!("../../../tests/fixture/testdata/obj/materials.mtl");
+        let mtl_uri =
+            reearth_flow_common::uri::Uri::from_str("file:///fixture/obj/materials.mtl").unwrap();
+        let materials = super::super::parse_mtl_str(mtl, &mtl_uri);
+        let params = test_params();
+        let mesh = mesh_of(build_geometry(&data, &data.faces, &materials, &params));
+        assert!(mesh.num_faces() > 0);
+        assert!(mesh.appearance().is_some(), "detailed.obj uses materials");
+    }
+
+    #[test]
     fn textured_face_without_uvs_falls_back_to_colour_only() {
         use reearth_flow_geometry::appearance::Material;
 
