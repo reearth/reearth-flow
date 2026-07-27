@@ -460,8 +460,17 @@ mod tests {
         );
     }
 
+    // detailed.obj's faces with `vt` indices use materials without `map_Kd`, and
+    // its one `map_Kd` material (green_material) is applied to a face lacking
+    // `vt`, so `to_phong`'s `with_texture` gating never attaches a `diffuse_map`
+    // here. This test therefore verifies a real OBJ+MTL pair reads into a
+    // PolygonMesh carrying a colour-only Phong appearance, not a textured one;
+    // the genuinely-textured (diffuse_map + UV-flip) path is covered by the
+    // synthetic `textured_face_with_uvs_gets_diffuse_map_and_flipped_v` test above.
     #[test]
-    fn real_detailed_obj_reads_as_textured_polygon_mesh() {
+    fn real_detailed_obj_reads_as_polygon_mesh_with_material() {
+        use reearth_flow_geometry::appearance::Material;
+
         let bytes = include_bytes!("../../../tests/fixture/testdata/obj/detailed.obj");
         let data = super::super::parse_obj_content(&bytes::Bytes::from_static(bytes)).unwrap();
         // Materials from the sibling materials.mtl, resolved relative to the mtl dir.
@@ -472,7 +481,17 @@ mod tests {
         let params = test_params();
         let mesh = mesh_of(build_geometry(&data, &data.faces, &materials, &params));
         assert!(mesh.num_faces() > 0);
-        assert!(mesh.appearance().is_some(), "detailed.obj uses materials");
+        let appearance = mesh
+            .appearance()
+            .as_ref()
+            .expect("detailed.obj uses materials");
+        assert!(
+            appearance
+                .materials()
+                .iter()
+                .any(|m| matches!(m, Material::Phong(_))),
+            "detailed.obj's usemtl materials should map to at least one Phong appearance"
+        );
     }
 
     #[test]
