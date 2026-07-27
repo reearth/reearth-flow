@@ -412,6 +412,55 @@ mod tests {
     }
 
     #[test]
+    fn textured_face_with_uvs_gets_diffuse_map_and_flipped_v() {
+        use reearth_flow_geometry::appearance::{Material, UvSource};
+
+        // Third corner's vt (0.25, 0.75) should end up as [0.25, 1.0 - 0.75] = [0.25, 0.25].
+        let data = parse(
+            "v 0 0 0\nv 1 0 0\nv 0 1 0\nvt 0.1 0.2\nvt 0.9 0.3\nvt 0.25 0.75\nusemtl tex\nf 1/1 2/2 3/3\n",
+        );
+        let mut materials = std::collections::HashMap::new();
+        materials.insert(
+            "tex".to_string(),
+            super::super::Material {
+                name: "tex".to_string(),
+                diffuse: Some([1.0, 1.0, 1.0]),
+                texture_uri: Some(
+                    reearth_flow_common::uri::Uri::from_str("file:///t.png").unwrap(),
+                ),
+                ..Default::default()
+            },
+        );
+        let params = test_params();
+        let mesh = mesh_of(build_geometry(&data, &data.faces, &materials, &params));
+        let app = mesh.appearance().as_ref().expect("appearance attached");
+
+        match &app.materials()[0] {
+            Material::Phong(m) => {
+                assert!(
+                    m.diffuse_map.is_some(),
+                    "complete UVs -> textured diffuse_map"
+                )
+            }
+            other => panic!("expected Phong, got {other:?}"),
+        }
+
+        let uv_set = app.themes()[0]
+            .uv_sets
+            .iter()
+            .find_map(|set| match &set.uv {
+                UvSource::Explicit(coords) => Some(coords.clone()),
+                UvSource::WorldToTexture(_) => None,
+            })
+            .expect("an explicit UV set is present");
+        assert_eq!(
+            uv_set[2],
+            [0.25, 0.25],
+            "v flipped to 1 - v (top-left canonical origin)"
+        );
+    }
+
+    #[test]
     fn textured_face_without_uvs_falls_back_to_colour_only() {
         use reearth_flow_geometry::appearance::Material;
 
