@@ -247,6 +247,10 @@ pub(super) struct Material {
     pub(super) transparency: Option<f32>,
     pub(super) illumination: Option<i32>,
     pub(super) texture_map: Option<String>,
+    // Resolved absolute Uri of `map_Kd`, relative to the MTL file's directory.
+    // Populated by `parse_mtl`; used by the new-geometry appearance path.
+    #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
+    pub(super) texture_uri: Option<Uri>,
 }
 
 fn safe_f64_to_number(value: f64) -> serde_json::Number {
@@ -798,6 +802,21 @@ pub(super) async fn resolve_material_path(
     Ok(None)
 }
 
+/// Resolves a `map_Kd` texture path to an absolute [`Uri`], relative to the
+/// MTL file's directory. Pure string join, no I/O.
+pub(super) fn join_texture_uri(mtl_uri: &Uri, tex: &str) -> Option<Uri> {
+    // Already absolute (has a scheme), e.g. `gs://bucket/tex.png`.
+    // Checked on the raw string: `Uri::from_str` always succeeds for
+    // relative paths too (it resolves them against CWD into a `file://`
+    // URI), so testing the parsed Uri's string would defeat this check.
+    if tex.contains("://") {
+        return Uri::from_str(tex).ok();
+    }
+    let base = mtl_uri.to_string();
+    let dir = base.rfind('/').map(|i| &base[..i]).unwrap_or(&base);
+    Uri::from_str(&format!("{dir}/{tex}")).ok()
+}
+
 pub(super) async fn parse_mtl(
     _ctx: &NodeContext,
     storage_resolver: Arc<reearth_flow_storage::resolve::StorageResolver>,
@@ -902,7 +921,9 @@ pub(super) async fn parse_mtl(
             }
             "map_Kd" if parts.len() >= 2 => {
                 if let Some(ref mut mat) = current_material {
-                    mat.texture_map = Some(parts[1..].join(" "));
+                    let tex = parts[1..].join(" ");
+                    mat.texture_uri = join_texture_uri(mtl_uri, &tex);
+                    mat.texture_map = Some(tex);
                 }
             }
             _ => {}
@@ -1170,6 +1191,14 @@ f 4 5 6
             safe_f64_to_number(f64::NEG_INFINITY),
             serde_json::Number::from(0)
         );
+    }
+
+    #[test]
+    fn map_kd_resolves_relative_to_mtl_dir() {
+        // join_texture_uri is the pure resolver extracted in Step 3.
+        let mtl = Uri::from_str("file:///data/models/scene.mtl").unwrap();
+        let uri = join_texture_uri(&mtl, "textures/brick.png").unwrap();
+        assert_eq!(uri.to_string(), "file:///data/models/textures/brick.png");
     }
 
     #[test]
