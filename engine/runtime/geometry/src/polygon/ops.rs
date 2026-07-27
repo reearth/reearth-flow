@@ -37,7 +37,7 @@ impl Reproject for Polygon2D {
     ) -> crate::error::Result<()> {
         let from = self.frame.require_crs()?;
         if from != target {
-            transform_coords_2d(cache, from, target, &mut self.coords, self.z.as_deref_mut())?;
+            transform_coords_2d(cache, from, target, &mut self.coords, self.z.as_mut())?;
             self.frame = CoordinateFrame::Crs(target);
         }
         Ok(())
@@ -129,50 +129,33 @@ impl Triangulate for Polygon2D {
         // earcut emits triangle corner indices into the gathered ring vertices
         // (3 per triangle, each < the vertex count), so the unchecked assembly is
         // sound. The gathered `verts` is the output mesh's own pool (not scratch).
-        let mut mesh = match &self.z {
-            None => {
-                let mut verts: Vec<[f64; 2]> = Vec::with_capacity(buffers.positions.len());
-                // SAFETY: `positions` are in-range indices into `coords`.
-                verts.extend(
-                    buffers
-                        .positions
-                        .iter()
-                        .map(|&i| unsafe { *self.coords.get_unchecked(i as usize) }),
-                );
-                triangulate_2d(earcut, &verts, &buffers.holes, &mut buffers.out);
-                // SAFETY: every earcut index is `< verts.len()`; count is a multiple of 3.
-                unsafe {
-                    TriangularMesh2D::from_parts_unchecked(
-                        self.frame.clone(),
-                        verts,
-                        buffers.out.len() / 3,
-                        buffers.out.iter().copied(),
-                    )
-                }
-            }
-            Some(z) => {
-                let mut verts: Vec<[f64; 3]> = Vec::with_capacity(buffers.positions.len());
-                verts.extend(buffers.positions.iter().map(|&i| {
-                    let i = i as usize;
-                    // SAFETY: `positions` index `coords`, and `z` is parallel to `coords`.
-                    let [x, y] = unsafe { *self.coords.get_unchecked(i) };
-                    [x, y, unsafe { *z.get_unchecked(i) }]
-                }));
-                // Triangulate the planar (x, y) footprint; elevation rides along.
-                earcut.earcut(
-                    verts.iter().map(|&[x, y, _]| [x, y]),
-                    &buffers.holes,
-                    &mut buffers.out,
-                );
-                // SAFETY: every earcut index is `< verts.len()`; count is a multiple of 3.
-                unsafe {
-                    TriangularMesh2D::from_parts_with_elevation_unchecked(
-                        self.frame.clone(),
-                        verts,
-                        buffers.out.len() / 3,
-                        buffers.out.iter().copied(),
-                    )
-                }
+        let mut verts: Vec<[f64; 2]> = Vec::with_capacity(buffers.positions.len());
+        // SAFETY: `positions` are in-range indices into `coords`.
+        verts.extend(
+            buffers
+                .positions
+                .iter()
+                .map(|&i| unsafe { *self.coords.get_unchecked(i as usize) }),
+        );
+        triangulate_2d(earcut, &verts, &buffers.holes, &mut buffers.out);
+        // The face lies at one elevation, so the tessellation of its footprint
+        // lies at that same elevation: carry it across unchanged.
+        // SAFETY: every earcut index is `< verts.len()`; count is a multiple of 3.
+        let mut mesh = unsafe {
+            match self.z {
+                None => TriangularMesh2D::from_parts_unchecked(
+                    self.frame.clone(),
+                    verts,
+                    buffers.out.len() / 3,
+                    buffers.out.iter().copied(),
+                ),
+                Some(elevation) => TriangularMesh2D::from_parts_at_elevation_unchecked(
+                    self.frame.clone(),
+                    verts,
+                    buffers.out.len() / 3,
+                    buffers.out.iter().copied(),
+                    elevation,
+                ),
             }
         };
         let src_corner: Vec<u32> = buffers
@@ -380,21 +363,19 @@ mod tests {
 
     #[test]
     fn polygon2d_preserves_elevation() {
-        let g = Polygon2D::from_rings_with_elevation(
+        let g = Polygon2D::from_rings_at_elevation(
             CoordinateFrame::Euclidean,
-            [
-                [0.0, 0.0, 10.0],
-                [4.0, 0.0, 11.0],
-                [4.0, 4.0, 12.0],
-                [0.0, 0.0, 10.0],
-            ],
-            Vec::<Vec<[f64; 3]>>::new(),
+            [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 0.0]],
+            Vec::<Vec<[f64; 2]>>::new(),
+            10.0,
         )
         .triangulate(&mut Cache::new())
         .unwrap();
-        // A 2.5D polygon stays a 2D mesh (the elevation rides along in the z buffer).
+        // A 2.5D polygon stays a 2D mesh, tessellated at the same one elevation.
         assert!(matches!(g, Geometry::Euclidean2D(_)));
-        assert_eq!(tri_mesh_2d(&g).num_triangles(), 1);
+        let m = tri_mesh_2d(&g);
+        assert_eq!(m.num_triangles(), 1);
+        assert_eq!(m.elevation(), Some(10.0));
     }
 
     #[test]

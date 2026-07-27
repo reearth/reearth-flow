@@ -35,13 +35,7 @@ impl Reproject for TriangularMesh2D {
     ) -> crate::error::Result<()> {
         let from = self.frame.require_crs()?;
         if from != target {
-            transform_coords_2d(
-                cache,
-                from,
-                target,
-                &mut self.vertices,
-                self.z.as_deref_mut(),
-            )?;
+            transform_coords_2d(cache, from, target, &mut self.vertices, self.z.as_mut())?;
             self.frame = CoordinateFrame::Crs(target);
         }
         Ok(())

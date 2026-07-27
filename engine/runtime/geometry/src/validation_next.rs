@@ -741,25 +741,27 @@ pub(crate) fn open_ring<T: PartialEq>(ring: &[T]) -> &[T] {
     }
 }
 
-/// Scan a 2D coordinate buffer (with an optional parallel elevation buffer) for
+/// Scan a 2D coordinate buffer (with the leaf's optional single elevation) for
 /// non-finite values, pushing one [`ValidationType::Finite`] problem per
 /// offending coordinate into `report`, positioned at a 2D point leaf in `frame`.
+///
+/// A non-finite elevation belongs to the leaf as a whole, so it faults every
+/// coordinate rather than any one of them.
 pub(crate) fn check_finite_2d(
     frame: &CoordinateFrame,
     coords: &[[f64; 2]],
-    z: Option<&[f64]>,
+    z: Option<f64>,
     report: &mut ValidationReport,
 ) {
-    for (i, c) in coords.iter().enumerate() {
-        let zi = z.and_then(|zs| zs.get(i)).copied();
-        let z_not_finite = zi.is_some_and(|v| !v.is_finite());
+    let z_not_finite = z.is_some_and(|v| !v.is_finite());
+    for c in coords.iter() {
         if !c[0].is_finite() || !c[1].is_finite() || z_not_finite {
             // When the elevation is the offending component, report a 3D point
             // carrying it so the non-finite value is visible in the position;
             // otherwise the finite [x, y] alone would hide where the fault is.
             if z_not_finite {
                 report.push(Geometry::Euclidean3D(Euclidean3DGeometry::Point(
-                    Point3D::new(frame.clone(), [c[0], c[1], zi.unwrap()]),
+                    Point3D::new(frame.clone(), [c[0], c[1], z.unwrap()]),
                 )));
             } else {
                 report.push(Geometry::Euclidean2D(Euclidean2DGeometry::Point(

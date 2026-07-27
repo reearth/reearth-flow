@@ -82,8 +82,8 @@ use state::{Empty, HasExterior};
 
 impl Polygon2D {
     /// Build a 2D polygon from an exterior ring and interior holes, each a
-    /// sequence of `[x, y]`. The result is pure 2D (no elevation, no allocation
-    /// for `z`); for per-vertex elevation use [`Polygon2D::from_rings_with_elevation`].
+    /// sequence of `[x, y]`. The result is pure 2D (no elevation); to place the
+    /// face at a height use [`Polygon2D::from_rings_at_elevation`].
     ///
     /// Rings are concatenated exterior-first and stored verbatim — *not* closed, so
     /// an open ring (first != last) is left as-is for later validation; empty
@@ -104,32 +104,28 @@ impl Polygon2D {
         }
     }
 
-    /// Build a 2.5D polygon from rings of `[x, y, z]`: the `(x, y)` populate
-    /// `coords` and the `z` the parallel elevation buffer. Use this for sources
-    /// that carry elevation on an otherwise 2D footprint (e.g. a height-tagged
-    /// shapefile or GeoPackage layer).
-    pub fn from_rings_with_elevation<E, I, R>(
+    /// Build a 2.5D polygon: an `[x, y]` footprint lying wholly at `elevation`.
+    /// Use this for sources that carry one height for an otherwise 2D footprint
+    /// (e.g. a height-tagged shapefile or GeoPackage layer). A boundary whose
+    /// vertices sit at differing heights is not representable here — that is a
+    /// [`Polygon3D`].
+    pub fn from_rings_at_elevation<E, I, R>(
         frame: CoordinateFrame,
         exterior: E,
         interiors: I,
+        elevation: f64,
     ) -> Self
     where
-        E: IntoIterator<Item = [f64; 3]>,
+        E: IntoIterator<Item = [f64; 2]>,
         I: IntoIterator<Item = R>,
-        R: IntoIterator<Item = [f64; 3]>,
+        R: IntoIterator<Item = [f64; 2]>,
     {
-        let (xyz, interior_offsets) = flatten_rings::<3, _, _, _>(exterior, interiors);
-        let mut coords = Vec::with_capacity(xyz.len());
-        let mut z = Vec::with_capacity(xyz.len());
-        for [x, y, zz] in xyz {
-            coords.push([x, y]);
-            z.push(zz);
-        }
+        let (coords, interior_offsets) = flatten_rings::<2, _, _, _>(exterior, interiors);
         Self {
             frame,
             coords: coords.into_boxed_slice(),
             interior_offsets: interior_offsets.into_boxed_slice(),
-            z: Some(z.into_boxed_slice()),
+            z: Some(elevation),
             appearance: None,
         }
     }
@@ -137,25 +133,15 @@ impl Polygon2D {
     /// Build directly from already-flattened CSR buffers, for callers that hold
     /// the leaf's exact layout (deserialization, slicing, geometry algorithms).
     ///
-    /// The layout invariants are validated: `z`, when present, must be parallel to
-    /// `coords`, and `interior_offsets` must be strictly increasing with each
-    /// offset in `1..coords.len()` (every ring non-empty, exterior included).
-    /// Violations return [`Error::InvalidGeometry`].
+    /// The layout invariant is validated: `interior_offsets` must be strictly
+    /// increasing with each offset in `1..coords.len()` (every ring non-empty,
+    /// exterior included). Violations return [`Error::InvalidGeometry`].
     pub fn from_raw_parts(
         frame: CoordinateFrame,
         coords: Box<[[f64; 2]]>,
         interior_offsets: Box<[u32]>,
-        z: Option<Box<[f64]>>,
+        z: Option<f64>,
     ) -> Result<Self, Error> {
-        if let Some(z) = z.as_ref() {
-            if z.len() != coords.len() {
-                return Err(Error::invalid_geometry(format!(
-                    "elevation buffer length {} does not match coordinate count {}",
-                    z.len(),
-                    coords.len()
-                )));
-            }
-        }
         check_offsets(&interior_offsets, coords.len())?;
         Ok(Self {
             frame,
@@ -654,17 +640,17 @@ mod tests {
     }
 
     #[test]
-    fn from_rings_with_elevation_splits_z() {
-        let p = Polygon2D::from_rings_with_elevation(
+    fn from_rings_at_elevation_keeps_one_height() {
+        let p = Polygon2D::from_rings_at_elevation(
             CoordinateFrame::Euclidean,
-            [[0.0, 0.0, 10.0], [1.0, 0.0, 11.0], [0.0, 1.0, 12.0]],
-            Vec::<Vec<[f64; 3]>>::new(),
+            [[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]],
+            Vec::<Vec<[f64; 2]>>::new(),
+            10.0,
         );
-        let z = p.z.as_ref().expect("elevation present");
         assert_eq!(p.coords.len(), 3);
-        assert_eq!(z.len(), p.coords.len());
         assert_eq!(p.coords[1], [1.0, 0.0]);
-        assert_eq!(z[1], 11.0);
+        // One elevation for the face, not one per vertex.
+        assert_eq!(p.elevation(), Some(10.0));
     }
 
     #[test]
@@ -697,16 +683,12 @@ mod tests {
     }
 
     #[test]
-    fn from_raw_parts_rejects_unparallel_z() {
+    fn from_raw_parts_carries_elevation() {
         let coords: Box<[[f64; 2]]> = vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]].into_boxed_slice();
-        let err = Polygon2D::from_raw_parts(
-            CoordinateFrame::Euclidean,
-            coords,
-            Box::new([]),
-            Some(vec![0.0, 0.0].into_boxed_slice()),
-        )
-        .unwrap_err();
-        assert!(matches!(err, Error::InvalidGeometry(_)));
+        let p =
+            Polygon2D::from_raw_parts(CoordinateFrame::Euclidean, coords, Box::new([]), Some(7.5))
+                .expect("valid layout");
+        assert_eq!(p.elevation(), Some(7.5));
     }
 
     #[test]

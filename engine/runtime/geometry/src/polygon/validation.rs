@@ -9,7 +9,9 @@ use crate::validation_next::{
 };
 
 /// The checks that apply to a 2D polygon face. Planarity is omitted: a 2D face
-/// lies in the coordinate plane by construction, so it is trivially planar.
+/// lies in the coordinate plane by construction, and its single elevation only
+/// lifts that whole plane, so it is trivially planar. (A boundary whose vertices
+/// sit at differing heights is a `Polygon3D`, which does run the check.)
 const POLYGON_2D_CHECKS: [ValidationType; 8] = [
     ValidationType::Finite,
     ValidationType::TooFewPoints,
@@ -44,7 +46,7 @@ impl Validate for Polygon2D {
         // `coords` holds the exterior ring then all interior rings concatenated;
         // finiteness is a per-coordinate property, so scanning the whole buffer
         // covers every ring at once.
-        ValidationReport::ran(|r| check_finite_2d(&self.frame, &self.coords, self.z.as_deref(), r))
+        ValidationReport::ran(|r| check_finite_2d(&self.frame, &self.coords, self.z, r))
     }
 
     fn check_too_few_points(&self, _params: &ValidationParams) -> ValidationReport {

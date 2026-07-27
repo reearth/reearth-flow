@@ -5,7 +5,7 @@ use crate::ops::{Aabb, BoundingBox, Reproject, ReprojectionCache, UnsupportedOpe
 
 impl BoundingBox for LineString2D {
     fn bounding_box(&self) -> Result<Aabb, UnsupportedOperation> {
-        // 2D embedding: the optional per-vertex elevation is not folded in.
+        // 2D embedding: the optional elevation is not folded in.
         Aabb::from_points_2d(self.coords.iter().copied()).ok_or(UnsupportedOperation {
             geometry: "LineString2D",
             operation: "bounding_box",
@@ -30,7 +30,7 @@ impl Reproject for LineString2D {
     ) -> crate::error::Result<()> {
         let from = self.frame.require_crs()?;
         if from != target {
-            transform_coords_2d(cache, from, target, &mut self.coords, self.z.as_deref_mut())?;
+            transform_coords_2d(cache, from, target, &mut self.coords, self.z.as_mut())?;
             self.frame = CoordinateFrame::Crs(target);
         }
         Ok(())
@@ -158,9 +158,10 @@ mod tests {
 
     #[test]
     fn linestring2d_box_ignores_elevation() {
-        let ls = LineString2D::from_coords_with_elevation(
+        let ls = LineString2D::from_coords_at_elevation(
             CoordinateFrame::Euclidean,
-            [[0.0, 0.0, 99.0], [2.0, 1.0, -99.0]],
+            [[0.0, 0.0], [2.0, 1.0]],
+            99.0,
         );
         // 2.5D elevation does not widen the 2D box.
         assert_eq!(

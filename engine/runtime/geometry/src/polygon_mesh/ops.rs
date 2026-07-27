@@ -41,13 +41,7 @@ impl Reproject for PolygonMesh2D {
     ) -> crate::error::Result<()> {
         let from = self.frame.require_crs()?;
         if from != target {
-            transform_coords_2d(
-                cache,
-                from,
-                target,
-                &mut self.vertices,
-                self.z.as_deref_mut(),
-            )?;
+            transform_coords_2d(cache, from, target, &mut self.vertices, self.z.as_mut())?;
             self.frame = CoordinateFrame::Crs(target);
         }
         Ok(())
@@ -185,33 +179,26 @@ impl Triangulate for PolygonMesh2D {
             &buffers.corner_src,
         );
         let triangle_count = buffers.tris.len() / 3;
-        // `tris` index the existing pool (each `< vertices.len()`) in triples.
-        let mut mesh = match std::mem::take(&mut self.z) {
-            Some(z) => {
-                let verts3: Vec<[f64; 3]> = std::mem::take(&mut self.vertices)
-                    .into_iter()
-                    .zip(z)
-                    .map(|([x, y], zz)| [x, y, zz])
-                    .collect();
-                // SAFETY: every index is `< verts3.len()`; count is a multiple of 3.
-                unsafe {
-                    TriangularMesh2D::from_parts_with_elevation_unchecked(
-                        self.frame.clone(),
-                        verts3,
-                        triangle_count,
-                        buffers.tris.iter().copied(),
-                    )
-                }
-            }
-            // SAFETY: every index is `< vertices.len()`; count is a multiple of 3.
-            None => unsafe {
-                TriangularMesh2D::from_parts_unchecked(
+        // `tris` index the existing pool (each `< vertices.len()`) in triples. The
+        // mesh lies at one elevation, so its tessellation lies at that same
+        // elevation: carry it across unchanged.
+        // SAFETY: every index is `< vertices.len()`; count is a multiple of 3.
+        let mut mesh = unsafe {
+            match self.z.take() {
+                Some(elevation) => TriangularMesh2D::from_parts_at_elevation_unchecked(
                     self.frame.clone(),
                     std::mem::take(&mut self.vertices),
                     triangle_count,
                     buffers.tris.iter().copied(),
-                )
-            },
+                    elevation,
+                ),
+                None => TriangularMesh2D::from_parts_unchecked(
+                    self.frame.clone(),
+                    std::mem::take(&mut self.vertices),
+                    triangle_count,
+                    buffers.tris.iter().copied(),
+                ),
+            }
         };
         mesh.set_raw_appearance(appearance);
         Ok(Geometry::Euclidean2D(Euclidean2DGeometry::TriangularMesh(

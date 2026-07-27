@@ -150,8 +150,8 @@ impl GeometryCollection {
     }
 }
 
-/// 2D-embedded geometry. All coordinates are 2D `(x, y)`; some leaves carry an
-/// optional per-vertex elevation (2.5D).
+/// 2D-embedded geometry. All coordinates are 2D `(x, y)`; some leaves carry a
+/// single optional elevation the whole leaf lies at (2.5D).
 ///
 /// The heavy aggregate leaves (`Polygon`, the meshes) are boxed so the small,
 /// common variants don't inflate the enum — and `Geometry` with them — to the
@@ -531,15 +531,11 @@ mod triangulate_tests {
 
         let poly2d = Polygon2D::from_rings(e.clone(), square, Vec::<Vec<[f64; 2]>>::new());
         let poly2d_hole = Polygon2D::from_rings(e.clone(), square, vec![hole]);
-        let poly2d_elev = Polygon2D::from_rings_with_elevation(
+        let poly2d_elev = Polygon2D::from_rings_at_elevation(
             e.clone(),
-            [
-                [0.0, 0.0, 1.0],
-                [4.0, 0.0, 2.0],
-                [4.0, 4.0, 3.0],
-                [0.0, 0.0, 1.0],
-            ],
-            Vec::<Vec<[f64; 3]>>::new(),
+            [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 0.0]],
+            Vec::<Vec<[f64; 2]>>::new(),
+            1.0,
         );
         let poly3d = Polygon3D::from_rings(
             e.clone(),

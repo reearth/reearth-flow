@@ -21,7 +21,7 @@ impl Validate for LineString2D {
     }
 
     fn check_finite(&self, _params: &ValidationParams) -> ValidationReport {
-        ValidationReport::ran(|r| check_finite_2d(&self.frame, &self.coords, self.z.as_deref(), r))
+        ValidationReport::ran(|r| check_finite_2d(&self.frame, &self.coords, self.z, r))
     }
 
     fn check_too_few_points(&self, _params: &ValidationParams) -> ValidationReport {

@@ -73,9 +73,7 @@ impl Validate for TriangularMesh2D {
     }
 
     fn check_finite(&self, _params: &ValidationParams) -> ValidationReport {
-        ValidationReport::ran(|r| {
-            check_finite_2d(&self.frame, &self.vertices, self.z.as_deref(), r)
-        })
+        ValidationReport::ran(|r| check_finite_2d(&self.frame, &self.vertices, self.z, r))
     }
 
     fn check_orientation(&self, _params: &ValidationParams) -> ValidationReport {

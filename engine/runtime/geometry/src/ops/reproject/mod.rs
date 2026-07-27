@@ -48,32 +48,30 @@ pub fn transform_coords_3d(
 }
 
 /// Reproject a 2D coordinate buffer in place from `from` to `target` (EPSG),
-/// transforming the parallel elevation buffer too when present.
+/// carrying the leaf's single elevation through the transform when present.
+///
+/// The elevation feeds the vertical component of every coordinate's transform, so
+/// the horizontal result is correct everywhere. The output elevation is then read
+/// off the **first** coordinate: a datum shift varies with position, so the
+/// transformed heights are not all equal, and a 2.5D leaf has exactly one to keep.
+/// Anything that needs the per-vertex vertical result is a 3D leaf, which
+/// [`transform_coords_3d`] handles exactly.
 pub(crate) fn transform_coords_2d(
     cache: &mut ReprojectionCache,
     from: EpsgCode,
     target: EpsgCode,
     coords: &mut [[f64; 2]],
-    z: Option<&mut [f64]>,
+    z: Option<&mut f64>,
 ) -> Result<()> {
-    if let Some(elevations) = z {
-        if elevations.len() != coords.len() {
-            return Err(Error::projection(format!(
-                "elevation buffer length {} does not match coordinate count {}",
-                elevations.len(),
-                coords.len()
-            )));
-        }
-        for (c, elevation) in coords.iter_mut().zip(elevations.iter_mut()) {
-            let [x, y, new_z] = cache.transform(from, target, [c[0], c[1], *elevation])?;
-            *c = [x, y];
-            *elevation = new_z;
-        }
-    } else {
-        for c in coords.iter_mut() {
-            let [x, y, _] = cache.transform(from, target, [c[0], c[1], 0.0])?;
-            *c = [x, y];
-        }
+    let elevation = z.as_deref().copied().unwrap_or(0.0);
+    let mut first_out_z = None;
+    for c in coords.iter_mut() {
+        let [x, y, new_z] = cache.transform(from, target, [c[0], c[1], elevation])?;
+        *c = [x, y];
+        first_out_z.get_or_insert(new_z);
+    }
+    if let (Some(z), Some(new_z)) = (z, first_out_z) {
+        *z = new_z;
     }
     Ok(())
 }
@@ -168,26 +166,30 @@ mod tests {
     #[test]
     fn linestring2d_reproject_carries_elevation() {
         let mut cache = ReprojectionCache::new();
-        let raw = [[35.6, 139.7, 10.0], [35.7, 139.8, 20.0]];
+        let raw = [[35.6, 139.7], [35.7, 139.8]];
         let expected: Vec<[f64; 3]> = raw
             .iter()
-            .map(|&[x, y, z]| {
+            .map(|&[x, y]| {
                 cache
-                    .transform(EpsgCode::new(4326), EpsgCode::new(3857), [x, y, z])
+                    .transform(EpsgCode::new(4326), EpsgCode::new(3857), [x, y, 10.0])
                     .unwrap()
             })
             .collect();
 
-        let mut ls = LineString2D::from_coords_with_elevation(
+        let mut ls = LineString2D::from_coords_at_elevation(
             CoordinateFrame::Crs(EpsgCode::new(4326)),
             raw,
+            10.0,
         );
         ls.reproject(EpsgCode::new(3857), &mut cache).unwrap();
+        // The horizontal result comes from transforming each coordinate at the
+        // chain's elevation; the one elevation kept is the first coordinate's.
         assert_eq!(
             ls,
-            LineString2D::from_coords_with_elevation(
+            LineString2D::from_coords_at_elevation(
                 CoordinateFrame::Crs(EpsgCode::new(3857)),
-                expected
+                expected.iter().map(|&[x, y, _]| [x, y]),
+                expected[0][2],
             )
         );
     }
@@ -225,20 +227,15 @@ mod tests {
     }
 
     #[test]
-    fn mismatched_elevation_buffer_is_error() {
+    fn pure_2d_leaf_stays_pure_2d() {
         let mut cache = ReprojectionCache::new();
-        let mut coords = [[139.7, 35.6], [139.8, 35.7]];
-        let mut z = [10.0]; // one short of `coords`
-        assert!(matches!(
-            transform_coords_2d(
-                &mut cache,
-                EpsgCode::new(4326),
-                EpsgCode::new(3857),
-                &mut coords,
-                Some(&mut z)
-            ),
-            Err(Error::Projection(_))
-        ));
+        let mut ls = LineString2D::from_coords(
+            CoordinateFrame::Crs(EpsgCode::new(4326)),
+            [[35.6, 139.7], [35.7, 139.8]],
+        );
+        ls.reproject(EpsgCode::new(3857), &mut cache).unwrap();
+        // A leaf with no elevation does not acquire one from the transform.
+        assert_eq!(ls.elevation(), None);
     }
 
     #[test]
