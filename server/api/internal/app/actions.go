@@ -24,15 +24,19 @@ const (
 )
 
 type Action struct {
-	Parameter   map[string]interface{} `json:"parameter"`
-	Name        string                 `json:"name"`
-	Type        ActionType             `json:"type"`
-	Description string                 `json:"description"`
-	InputPorts  []string               `json:"inputPorts"`
-	OutputPorts []string               `json:"outputPorts"`
-	Categories  []string               `json:"categories"`
-	Tags        []string               `json:"tags"`
-	Builtin     bool                   `json:"builtin"`
+	// Parameter is passed through as raw bytes rather than decoded into a map.
+	// Property order in a JSON Schema drives the field order the UI renders, and
+	// encoding/json sorts map keys alphabetically on marshal — decoding it would
+	// silently reorder every action's parameters.
+	Parameter   json.RawMessage `json:"parameter"`
+	Name        string          `json:"name"`
+	Type        ActionType      `json:"type"`
+	Description string          `json:"description"`
+	InputPorts  []string        `json:"inputPorts"`
+	OutputPorts []string        `json:"outputPorts"`
+	Categories  []string        `json:"categories"`
+	Tags        []string        `json:"tags"`
+	Builtin     bool            `json:"builtin"`
 }
 
 func (a *Action) Validate() error {
