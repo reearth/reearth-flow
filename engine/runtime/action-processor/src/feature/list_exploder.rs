@@ -23,7 +23,7 @@ impl ProcessorFactory for ListExploderFactory {
     }
 
     fn description(&self) -> &str {
-        "Explodes array attributes into separate features, creating one feature per array element"
+        "Creates one feature per element of a list attribute, merging the element's key-value pairs into the feature's attributes and removing the source attribute. Features whose attribute is missing, empty, or not a list of key-value pairs pass through unchanged."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -74,13 +74,14 @@ impl ProcessorFactory for ListExploderFactory {
     }
 }
 
-/// # ListExploder Parameters
+/// # List Exploder Parameters
 ///
-/// Configuration for exploding array attributes into individual features.
+/// Configures which list attribute is expanded into individual features.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct ListExploder {
-    /// Attribute containing the array to explode (each element becomes a separate feature)
+    /// # Source Attribute
+    /// Attribute holding a list of key-value pairs, one entry per feature to create.
     source_attribute: Attribute,
 }
 
