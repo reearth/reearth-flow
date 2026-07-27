@@ -9,10 +9,12 @@
 //! `Collection`s recurse by hand over their children.
 
 pub mod reproject;
+pub mod split;
 pub mod triangulation;
 
 pub(crate) use reproject::{axis_order_sign, crs_is_linear};
 pub use reproject::{Reproject, ReprojectionCache};
+pub use split::Split;
 
 use crate::coordinate::{CoordinateFrame, EpsgCode};
 use crate::error::Error;

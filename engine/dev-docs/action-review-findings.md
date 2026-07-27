@@ -19,11 +19,13 @@ Phase 3 quality review of the 73 base actions against [action-standard.md](actio
 While applying the standard, descriptions and parameter descriptions are being made concise per §2 and §3.3 (1–2 sentences, no reference dumps). This is correct, but some actions carried genuinely useful **reference-level** detail in their descriptions that concise text cannot hold — e.g. the Shapefile/CSV `encoding` params previously enumerated ~20 supported encodings with examples and priority order. That depth is trimmed during the audit and currently survives only in git history and source.
 
 There is no home for this today:
+
 - The schema `description` is the only user-facing text, and the UI renders it as **plain text** (no markdown) — long structured content renders poorly there anyway.
 - The mdbook `docs/mdbook/src/action.md` is **generated** from the schema (`cargo run -- doc-action`), so it cannot hold anything the schema does not.
 - Hand-written guides in `engine/docs/` (e.g. `czml-timeseries.md`) can hold arbitrary depth but are **orphaned** — not in mdbook `SUMMARY.md`, not linked from any action, not surfaced in the app.
 
 **Task (needs planning before implementation):**
+
 1. Decide the home + format for per-action extended docs (candidate: `engine/docs/actions/<action>.md`; wire into mdbook `SUMMARY.md` and/or extend `doc-action` to emit a "See also" link; consider a UI affordance linking action → doc).
 2. Fold the existing orphan (`czml-timeseries.md`) into that convention.
 3. Recover the reference detail trimmed during the audit (pull from git history of the touched factory files) and migrate it into the new docs.
@@ -60,47 +62,6 @@ GeoPackage Reader
              reading (making the text accurate) or, if tiles stay out, correct these
              descriptions. `features`, `metadataOnly`, `layerName`, and `force2D` are
              accurate.
-```
-
----
-
-## Attribute (8)
-
-<!-- Session 4 -->
-
-```
-Attribute Aggregator
-  desc:    title-case — "Group and Aggregate Features by Attributes"; suggest "Groups
-             features by attributes and aggregates values within each group."
-  params:  aggregateAttributes, calculation, calculationAttribute, calculationValue, method
-             — all have title but missing description (§3.3)
-           ordering — required and optional interleaved; correct order: method →
-             aggregateAttributes → calculationAttribute → calculationValue → calculation (§3.5)
-  tags:    ["aggregate"] — not in vocabulary; replace with `aggregation`
-
-Attribute Conversion Table
-  desc:    title-case — "Transform Feature Attributes Using Lookup Tables"; suggest
-             "Transforms attributes using rules defined in a lookup table (CSV, TSV, or JSON)."
-  params:  schema-level description missing (§3.3)
-           ConversionTableFormat enum — no per-variant descriptions; property description
-             covers them implicitly but borderline (§3.4)
-           ordering — required params `format` and `rules` are not first; correct order:
-             format → rules → dataset → inline (§3.5)
-  tags:    ["mapping"] — now in vocabulary; 1 tag acceptable (no strong second candidate)
-
-Attribute Flattener
-  desc:    title-case — "Flatten Nested Object Attributes into Top-Level Attributes"; suggest
-             "Flattens nested map attributes into individual top-level attributes."
-  params:  schema-level description missing (§3.3)
-  tags:    ["hierarchy"] — not in vocabulary; no established alternative; remove tag
-             (0 tags acceptable — name and description provide sufficient discovery)
-
-Attribute Mapper
-  desc:    title-case — "Transform Feature Attributes Using Expressions and Mappings";
-             suggest "Maps or transforms feature attributes using expressions and value
-             assignments."
-  params:  schema-level description missing (§3.3)
-  tags:    ["mapping"] — now in vocabulary; 1 tag acceptable
 ```
 
 ---
