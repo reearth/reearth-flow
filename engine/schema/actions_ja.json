@@ -2183,18 +2183,14 @@
           "dracoCompression": {
             "title": "Draco 圧縮",
             "description": "メッシュジオメトリをDracoで圧縮するか（デフォルト: true）",
-            "type": [
-              "boolean",
-              "null"
-            ]
+            "default": true,
+            "type": "boolean"
           },
           "computeFlatNormal": {
             "title": "フラット法線を計算",
             "description": "ライティング用にポリゴンごとのフラット法線を計算するか。デフォルトは true。無効にすると法線は出力されずメッシュは小さくなるが、タイルにライティング情報が含まれないためビューアー側でフラット法線を導出する必要がある",
-            "type": [
-              "boolean",
-              "null"
-            ]
+            "default": true,
+            "type": "boolean"
           },
           "texelSize": {
             "title": "テクセルサイズ",
@@ -2213,6 +2209,7 @@
               "null"
             ],
             "format": "uint32",
+            "maximum": 65536.0,
             "minimum": 1.0
           },
           "atlasExtrusion": {
@@ -2223,7 +2220,18 @@
               "null"
             ],
             "format": "uint32",
+            "maximum": 65536.0,
             "minimum": 0.0
+          },
+          "textureCodec": {
+            "title": "テクスチャコーデック",
+            "description": "アトラスページの画像コーデック。デフォルトは `KTX2/ETC1S`。テクスチャを付与しない場合は `Untextured` を選択する。",
+            "default": "KTX2/ETC1S",
+            "allOf": [
+              {
+                "$ref": "#/definitions/TextureCodec"
+              }
+            ]
           },
           "schemaKey": {
             "title": "スキーマキー",
@@ -2265,6 +2273,49 @@
                 "type": "string"
               }
             }
+          }
+        },
+        "definitions": {
+          "TextureCodec": {
+            "title": "Texture Codec",
+            "description": "Texture image codec for the new-geometry writer's atlas pages.",
+            "oneOf": [
+              {
+                "description": "Basis Universal UASTC スーパー圧縮を用いた KTX2（`KHR_texture_basisu`）。高品質だがファイルは大きい。",
+                "type": "string",
+                "enum": [
+                  "KTX2/UASTC"
+                ]
+              },
+              {
+                "description": "Basis Universal ETC1S スーパー圧縮を用いた KTX2（`KHR_texture_basisu`）。ファイルは小さく、品質は低め。",
+                "type": "string",
+                "enum": [
+                  "KTX2/ETC1S"
+                ]
+              },
+              {
+                "description": "PNG。アルファ付きの可逆圧縮。",
+                "type": "string",
+                "enum": [
+                  "PNG"
+                ]
+              },
+              {
+                "description": "JPEG。非可逆で不透明（アルファは破棄される）。",
+                "type": "string",
+                "enum": [
+                  "JPEG"
+                ]
+              },
+              {
+                "description": "テクスチャを付与しない。テクスチャ付きジオメトリはニュートラルカラーで描画される。",
+                "type": "string",
+                "enum": [
+                  "Untextured"
+                ]
+              }
+            ]
           }
         }
       },

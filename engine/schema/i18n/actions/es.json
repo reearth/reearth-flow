@@ -798,6 +798,29 @@
         "texelSize": {
           "title": "Tamaño de Téxel",
           "description": "Tamaño de téxel objetivo en metros por píxel. Las texturas más finas que este valor se reducen a él. El valor predeterminado es 0, que conserva el detalle completo de la textura."
+        },
+        "textureCodec": {
+          "title": "Códec de Textura",
+          "description": "Códec de imagen para las páginas del atlas. Valor predeterminado: `KTX2/ETC1S`; seleccione `Untextured` para no adjuntar texturas."
+        }
+      },
+      "enumI18n": {
+        "TextureCodec": {
+          "JPEG": {
+            "description": "JPEG, con pérdida y opaco (se descarta el canal alfa)."
+          },
+          "KTX2/ETC1S": {
+            "description": "KTX2 con supercompresión Basis Universal ETC1S (`KHR_texture_basisu`): archivos más pequeños, menor calidad."
+          },
+          "KTX2/UASTC": {
+            "description": "KTX2 con supercompresión Basis Universal UASTC (`KHR_texture_basisu`): mayor calidad, archivos más grandes."
+          },
+          "PNG": {
+            "description": "PNG, sin pérdida y con canal alfa."
+          },
+          "Untextured": {
+            "description": "No adjunta texturas; la geometría texturizada recurre a su color neutro."
+          }
         }
       }
     },
