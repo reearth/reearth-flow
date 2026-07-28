@@ -6,7 +6,7 @@ use crate::ops::triangulation::{
     expand_appearance, triangulate_2d, triangulate_3d, Cache, Triangulated,
 };
 use crate::ops::{
-    Aabb, BoundingBox, Reproject, ReprojectionCache, Triangulate, UnsupportedOperation,
+    lift_coords, Aabb, BoundingBox, Reproject, ReprojectionCache, Triangulate, UnsupportedOperation,
 };
 use crate::triangular_mesh::{TriangularMesh2D, TriangularMesh3D, TriangularMesh3DData};
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
@@ -33,24 +33,66 @@ impl BoundingBox for PolygonMesh3D {
     }
 }
 
+impl PolygonMesh2D {
+    /// Move the mesh out, leaving an empty husk.
+    fn take(&mut self) -> Self {
+        Self {
+            frame: std::mem::take(&mut self.frame),
+            vertices: std::mem::take(&mut self.vertices),
+            z: self.z.take(),
+            face_indices: std::mem::take(&mut self.face_indices),
+            face_offsets: std::mem::take(&mut self.face_offsets),
+            interior_offsets: std::mem::take(&mut self.interior_offsets),
+            appearance: self.appearance.take(),
+        }
+    }
+
+    /// The leaf moved out and wrapped as a [`Geometry`].
+    fn take_geometry(&mut self) -> Geometry {
+        Geometry::Euclidean2D(Euclidean2DGeometry::PolygonMesh(Box::new(self.take())))
+    }
+}
+
+impl PolygonMesh3D {
+    /// Move the mesh out, leaving an empty husk.
+    fn take(&mut self) -> Self {
+        Self {
+            frame: std::mem::take(&mut self.frame),
+            data: PolygonMesh3DData {
+                vertices: std::mem::take(&mut self.data.vertices),
+                face_indices: std::mem::take(&mut self.data.face_indices),
+                face_offsets: std::mem::take(&mut self.data.face_offsets),
+                interior_offsets: std::mem::take(&mut self.data.interior_offsets),
+                appearance: self.data.appearance.take(),
+            },
+        }
+    }
+
+    /// The leaf moved out and wrapped as a [`Geometry`].
+    fn take_geometry(&mut self) -> Geometry {
+        Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(Box::new(self.take())))
+    }
+}
+
 impl Reproject for PolygonMesh2D {
     fn reproject(
         &mut self,
         target: EpsgCode,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
+    ) -> crate::error::Result<Geometry> {
         let from = self.frame.require_crs()?;
-        if from != target {
-            transform_coords_2d(
-                cache,
-                from,
-                target,
-                &mut self.vertices,
-                self.z.as_deref_mut(),
-            )?;
-            self.frame = CoordinateFrame::Crs(target);
+        if from == target {
+            return Ok(self.take_geometry());
         }
-        Ok(())
+        if self.z.is_some() {
+            return self.take().into_3d().reproject(target, cache);
+        }
+        let mut m = self.take();
+        transform_coords_2d(cache, from, target, &mut m.vertices)?;
+        m.frame = CoordinateFrame::Crs(target);
+        Ok(Geometry::Euclidean2D(Euclidean2DGeometry::PolygonMesh(
+            Box::new(m),
+        )))
     }
 }
 
@@ -59,13 +101,16 @@ impl Reproject for PolygonMesh3D {
         &mut self,
         target: EpsgCode,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
+    ) -> crate::error::Result<Geometry> {
         let from = self.frame.require_crs()?;
+        let mut m = self.take();
         if from != target {
-            transform_coords_3d(cache, from, target, self.data.vertices_mut())?;
-            self.frame = CoordinateFrame::Crs(target);
+            transform_coords_3d(cache, from, target, m.data.vertices_mut())?;
+            m.frame = CoordinateFrame::Crs(target);
         }
-        Ok(())
+        Ok(Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(
+            Box::new(m),
+        )))
     }
 }
 
@@ -73,7 +118,7 @@ use crate::ops::{plan_frame_step, translate_2d, translate_3d, ConvertFrame, Fram
 
 impl Translate for PolygonMesh2D {
     fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
-        translate_2d(&mut self.vertices, self.z.as_deref_mut(), delta);
+        translate_2d(&mut self.vertices, &mut self.z, delta);
         Ok(())
     }
 }
@@ -91,14 +136,14 @@ impl ConvertFrame for PolygonMesh2D {
         target: &CoordinateFrame,
         base_point: Option<[f64; 3]>,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
+    ) -> crate::error::Result<Geometry> {
         match plan_frame_step(&self.frame, target, base_point)? {
-            FrameStep::Noop => Ok(()),
+            FrameStep::Noop => Ok(self.take_geometry()),
             FrameStep::Reproject(to) => self.reproject(to, cache),
             FrameStep::Translate(offset, frame) => {
                 self.translate(offset)?;
                 self.frame = frame;
-                Ok(())
+                Ok(self.take_geometry())
             }
         }
     }
@@ -110,14 +155,14 @@ impl ConvertFrame for PolygonMesh3D {
         target: &CoordinateFrame,
         base_point: Option<[f64; 3]>,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
+    ) -> crate::error::Result<Geometry> {
         match plan_frame_step(&self.frame, target, base_point)? {
-            FrameStep::Noop => Ok(()),
+            FrameStep::Noop => Ok(self.take_geometry()),
             FrameStep::Reproject(to) => self.reproject(to, cache),
             FrameStep::Translate(offset, frame) => {
                 self.translate(offset)?;
                 self.frame = frame;
-                Ok(())
+                Ok(self.take_geometry())
             }
         }
     }
@@ -186,32 +231,23 @@ impl Triangulate for PolygonMesh2D {
         );
         let triangle_count = buffers.tris.len() / 3;
         // `tris` index the existing pool (each `< vertices.len()`) in triples.
-        let mut mesh = match std::mem::take(&mut self.z) {
-            Some(z) => {
-                let verts3: Vec<[f64; 3]> = std::mem::take(&mut self.vertices)
-                    .into_iter()
-                    .zip(z)
-                    .map(|([x, y], zz)| [x, y, zz])
-                    .collect();
-                // SAFETY: every index is `< verts3.len()`; count is a multiple of 3.
-                unsafe {
-                    TriangularMesh2D::from_parts_with_elevation_unchecked(
-                        self.frame.clone(),
-                        verts3,
-                        triangle_count,
-                        buffers.tris.iter().copied(),
-                    )
-                }
-            }
-            // SAFETY: every index is `< vertices.len()`; count is a multiple of 3.
-            None => unsafe {
-                TriangularMesh2D::from_parts_unchecked(
+        // SAFETY: every index is `< vertices.len()`; count is a multiple of 3.
+        let mut mesh = unsafe {
+            match self.z.take() {
+                Some(elevation) => TriangularMesh2D::from_parts_at_elevation_unchecked(
                     self.frame.clone(),
                     std::mem::take(&mut self.vertices),
                     triangle_count,
                     buffers.tris.iter().copied(),
-                )
-            },
+                    elevation,
+                ),
+                None => TriangularMesh2D::from_parts_unchecked(
+                    self.frame.clone(),
+                    std::mem::take(&mut self.vertices),
+                    triangle_count,
+                    buffers.tris.iter().copied(),
+                ),
+            }
         };
         mesh.set_raw_appearance(appearance);
         Ok(Geometry::Euclidean2D(Euclidean2DGeometry::TriangularMesh(
@@ -448,6 +484,72 @@ impl Split for PolygonMesh3D {
             );
         });
         Ok(())
+    }
+}
+
+use crate::ops::{ForceTwoDimension, ForceTwoDimensionError};
+
+impl ForceTwoDimension for PolygonMesh2D {
+    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, ForceTwoDimensionError> {
+        let frame = self.frame.demote_to_2d()?;
+        self.z = None; // drop any 2.5D elevation; topology and appearance carry over
+        Ok(Euclidean2DGeometry::PolygonMesh(Box::new(PolygonMesh2D {
+            frame,
+            vertices: std::mem::take(&mut self.vertices),
+            z: None,
+            face_indices: std::mem::replace(&mut self.face_indices, IndexBuffer::U8(Vec::new())),
+            face_offsets: std::mem::replace(&mut self.face_offsets, IndexBuffer::U8(Vec::new())),
+            interior_offsets: std::mem::replace(
+                &mut self.interior_offsets,
+                IndexBuffer::U8(Vec::new()),
+            ),
+            appearance: self.appearance.take(),
+        })))
+    }
+}
+
+impl ForceTwoDimension for PolygonMesh3D {
+    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, ForceTwoDimensionError> {
+        let frame = self.frame.demote_to_2d()?;
+        let vertices = std::mem::take(&mut self.data.vertices)
+            .into_iter()
+            .map(|[x, y, _]| [x, y])
+            .collect();
+        Ok(Euclidean2DGeometry::PolygonMesh(Box::new(PolygonMesh2D {
+            frame,
+            vertices,
+            z: None,
+            face_indices: std::mem::replace(
+                &mut self.data.face_indices,
+                IndexBuffer::U8(Vec::new()),
+            ),
+            face_offsets: std::mem::replace(
+                &mut self.data.face_offsets,
+                IndexBuffer::U8(Vec::new()),
+            ),
+            interior_offsets: std::mem::replace(
+                &mut self.data.interior_offsets,
+                IndexBuffer::U8(Vec::new()),
+            ),
+            appearance: self.data.appearance.take(),
+        })))
+    }
+}
+
+impl PolygonMesh2D {
+    /// The 3D counterpart of this leaf, with every coordinate placed at the
+    /// elevation the leaf lies at, or at `0.0` when it carries none.
+    pub(crate) fn into_3d(self) -> PolygonMesh3D {
+        PolygonMesh3D::new(
+            self.frame,
+            PolygonMesh3DData {
+                vertices: lift_coords(self.vertices.iter(), self.z),
+                face_indices: self.face_indices,
+                face_offsets: self.face_offsets,
+                interior_offsets: self.interior_offsets,
+                appearance: self.appearance,
+            },
+        )
     }
 }
 
@@ -747,5 +849,64 @@ mod tests {
             mesh.appearance().as_ref().unwrap().themes()[0].front,
             FaceBinding::Uniform(_)
         ));
+    }
+
+    #[test]
+    fn polygon_mesh3d_force_2d_keeps_topology_and_demotes_the_frame() {
+        // One square face with one square hole, so all three CSR buffers carry
+        // content that must land back in the matching field.
+        let mut mesh = PolygonMesh3D::from_raw_parts(
+            CoordinateFrame::Crs(EpsgCode::new(6697)),
+            vec![
+                [0.0, 0.0, 9.0],
+                [4.0, 0.0, 9.0],
+                [4.0, 4.0, 9.0],
+                [0.0, 4.0, 9.0],
+                [1.0, 1.0, 9.0],
+                [3.0, 1.0, 9.0],
+                [3.0, 3.0, 9.0],
+                [1.0, 3.0, 9.0],
+            ],
+            vec![0, 1, 2, 3, 4, 5, 6, 7],
+            vec![],
+            vec![4],
+        )
+        .unwrap();
+        let forced = match mesh.force_2d().unwrap() {
+            Euclidean2DGeometry::PolygonMesh(m) => m,
+            other => panic!("expected a 2D polygon mesh, got {other:?}"),
+        };
+        assert_eq!(forced.frame(), &CoordinateFrame::Crs(EpsgCode::new(6668)));
+        assert_eq!(forced.vertices()[0], [0.0, 0.0]);
+        assert_eq!(forced.vertices()[4], [1.0, 1.0]);
+        assert_eq!(forced.num_faces(), 1);
+        let mut faces = Vec::new();
+        forced.for_each_face_polygon(|p| faces.push(p));
+        assert_eq!(faces[0].exterior().len(), 4);
+        assert_eq!(faces[0].interiors().count(), 1);
+    }
+
+    #[test]
+    fn polygon_mesh2d_force_2d_clears_elevation() {
+        let mut mesh = PolygonMesh2D::from_parts_at_elevation(
+            CoordinateFrame::Crs(EpsgCode::new(6697)),
+            vec![[0.0, 0.0], [2.0, 0.0], [2.0, 2.0]],
+            vec![vec![0u32, 1, 2]],
+            5.0,
+        )
+        .unwrap();
+        let forced = match mesh.force_2d().unwrap() {
+            Euclidean2DGeometry::PolygonMesh(m) => m,
+            other => panic!("expected a 2D polygon mesh, got {other:?}"),
+        };
+        assert_eq!(forced.frame(), &CoordinateFrame::Crs(EpsgCode::new(6668)));
+        assert_eq!(forced.num_faces(), 1);
+        assert_eq!(
+            forced.bounding_box().unwrap(),
+            Aabb::D2 {
+                min: [0.0, 0.0],
+                max: [2.0, 2.0]
+            }
+        );
     }
 }

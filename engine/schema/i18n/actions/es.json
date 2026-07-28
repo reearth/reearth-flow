@@ -233,27 +233,50 @@
     },
     {
       "name": "Attribute Manager",
-      "description": "Gestiona atributos",
+      "description": "Creates, converts, renames, or removes feature attributes based on a configurable list of operations.",
       "parameterI18n": {
         "": {
-          "title": "AttributeManager Parameters"
+          "title": "Attribute Manager Parameters",
+          "description": "Defines the ordered list of operations that create, convert, rename, or remove feature attributes."
         },
         "operations": {
           "title": "Attribute Operations",
-          "description": "List of operations to perform on feature attributes (create, convert, rename, remove)"
+          "description": "Operations applied to each feature in order. Each entry names the target attribute, the method to apply, and an optional value expression."
         }
       },
       "definitionI18n": {
         "Operation": {
           "attribute": {
-            "title": "Attribute name"
+            "title": "Attribute Name",
+            "description": "Name of the attribute to create, convert, rename, or remove."
           },
           "method": {
-            "title": "Operation to perform"
+            "title": "Method",
+            "description": "Operation to apply to the attribute."
           },
           "value": {
             "title": "Value",
-            "description": "Value to use for the operation"
+            "description": "Expression evaluated against the feature. Supplies the new value for Create and Convert, or the new attribute name for Rename. Ignored for Remove."
+          }
+        }
+      },
+      "enumI18n": {
+        "Method": {
+          "convert": {
+            "title": "Convert",
+            "description": "Replaces the value of an existing attribute with the result of the value expression. Features that do not already have the attribute are left unchanged."
+          },
+          "create": {
+            "title": "Create",
+            "description": "Sets the attribute to the result of the value expression, creating it or overwriting any existing value."
+          },
+          "remove": {
+            "title": "Remove",
+            "description": "Removes the attribute from the feature."
+          },
+          "rename": {
+            "title": "Rename",
+            "description": "Renames the attribute to the name produced by the value expression. Skipped when the attribute is absent or a target with that name already exists."
           }
         }
       }
@@ -425,61 +448,61 @@
       "description": "Cambia el nombre de atributos añadiendo/eliminando prefijos o sufijos, o reemplazando texto",
       "parameterI18n": {
         "": {
-          "title": "BulkAttributeRenamer Parameters",
-          "description": "Configure how to rename feature attributes in bulk operations"
+          "title": "Bulk Attribute Renamer Parameters",
+          "description": "Selects which attributes to rename and how their names are transformed."
         },
         "renameAction": {
           "title": "Rename Operation",
-          "description": "The type of renaming operation to perform on the attribute names"
+          "description": "Transformation applied to each attribute name."
         },
         "renameType": {
-          "title": "Which Attributes to Rename",
-          "description": "Choose whether to rename all attributes or only selected ones"
+          "title": "Rename Scope",
+          "description": "Scope of the rename operation: all attributes or a selected subset."
         },
         "renameValue": {
           "title": "Text Value",
-          "description": "The text to add as prefix/suffix, remove, or use as replacement"
+          "description": "Text to add as a prefix or suffix, remove, or use as the replacement, depending on the selected operation."
         },
         "selectedAttributes": {
           "title": "Selected Attribute Names",
-          "description": "List of specific attribute names to rename (required when \"Selected Attributes\" is chosen)"
+          "description": "Attribute names to rename. Required when the rename scope is set to a selected subset."
         },
         "textToFind": {
           "title": "Text Pattern to Find",
-          "description": "Regular expression pattern to match when using \"Replace Text\" operation"
+          "description": "Regular expression matched against attribute names. Required for the replaceText operation."
         }
       },
       "enumI18n": {
         "RenameAction": {
-          "AddPrefix": {
+          "addPrefix": {
             "title": "Add Prefix",
-            "description": "Add text to the beginning of attribute names"
+            "description": "Prepends the text value to each attribute name."
           },
-          "AddSuffix": {
+          "addSuffix": {
             "title": "Add Suffix",
-            "description": "Add text to the end of attribute names"
+            "description": "Appends the text value to each attribute name."
           },
-          "RemovePrefix": {
+          "removePrefix": {
             "title": "Remove Prefix",
-            "description": "Remove text from the beginning of attribute names"
+            "description": "Removes the text value from the start of each attribute name."
           },
-          "RemoveSuffix": {
+          "removeSuffix": {
             "title": "Remove Suffix",
-            "description": "Remove text from the end of attribute names"
+            "description": "Removes the text value from the end of each attribute name."
           },
-          "StringReplace": {
+          "replaceText": {
             "title": "Replace Text",
-            "description": "Find and replace text using regular expressions"
+            "description": "Replaces text matched by the find pattern with the text value, using regular expressions."
           }
         },
         "RenameType": {
-          "All": {
+          "all": {
             "title": "All Attributes",
-            "description": "Rename all attributes in the feature"
+            "description": "Renames every attribute on the feature."
           },
-          "Selected": {
+          "selected": {
             "title": "Selected Attributes",
-            "description": "Rename only specific attributes listed below"
+            "description": "Renames only the attributes listed in selectedAttributes."
           }
         }
       }
@@ -976,14 +999,16 @@
       "description": "Descomprime directorios de archivos",
       "parameterI18n": {
         "": {
-          "title": "DirectoryDecompressor Parameters",
-          "description": "Configures the extraction and decompression of archive files."
+          "title": "Directory Decompressor Parameters",
+          "description": "Configures which attributes hold archives and how deeply the extracted directory is unwrapped."
         },
         "archiveAttributes": {
-          "description": "Attributes containing archive file paths to be extracted and decompressed"
+          "title": "Archive Attributes",
+          "description": "Attributes holding the path of a `.zip`, `.7z`, or `.7zip` archive. Each is replaced with the extracted directory path; attributes holding any other value are left unchanged."
         },
         "findDeepestSingleFolder": {
-          "description": "If true, recursively unwraps single-folder nesting until the directory contains multiple items or files directly. If false (default), returns the root extraction folder as-is."
+          "title": "Find Deepest Single Folder",
+          "description": "Keeps unwrapping while the extracted directory contains nothing but a single subdirectory, stopping at the first directory with multiple entries or a file. When disabled, only one level of single-folder nesting is unwrapped."
         }
       }
     },
@@ -1211,19 +1236,19 @@
       "parameterI18n": {
         "": {
           "title": "Feature File Path Extractor Parameters",
-          "description": "Configure how to extract file paths from datasets and optionally extract archives"
+          "description": "Configures which dataset is expanded into file features and whether archives are extracted."
         },
         "destPrefix": {
           "title": "Destination Prefix",
-          "description": "Optional prefix to add to extracted file paths"
+          "description": "Subdirectory created under the temporary extraction directory to hold the extracted files. Applies only when an archive is extracted."
         },
         "extractArchive": {
           "title": "Extract Archive",
-          "description": "Whether to extract archive files found in the dataset"
+          "description": "Extracts the source dataset when it is a `.zip`, `.7z`, or `.7zip` archive and emits one feature per extracted file. When disabled, the archive itself is emitted as a single path."
         },
         "sourceDataset": {
           "title": "Source Dataset",
-          "description": "Expression to get the source dataset path or URL"
+          "description": "Expression evaluating to the path or URL of the file, directory, or archive to expand. A directory is listed recursively; any other path yields a single feature."
         }
       }
     },
@@ -1402,17 +1427,19 @@
       "description": "Transforma entidades mediante expresiones",
       "parameterI18n": {
         "": {
-          "title": "FeatureTransformer Parameters",
-          "description": "Configuration for applying transformation expressions to features."
+          "title": "Feature Transformer Parameters",
+          "description": "Configures the expressions that build each feature's new attributes."
         },
         "transformers": {
-          "description": "List of transformation expressions to apply to each feature"
+          "title": "Transformations",
+          "description": "Expressions applied in order, each one reading the attributes produced by the previous."
         }
       },
       "definitionI18n": {
         "Transform": {
           "expr": {
-            "description": "Expression that modifies the feature (can access and modify attributes, geometry, etc.)"
+            "title": "Expression",
+            "description": "Expression over `attributes` and `env` returning a map that becomes the feature's complete attribute set. A result that is not a map, or an expression that fails to evaluate, leaves the attributes unchanged."
           }
         }
       }
@@ -1464,11 +1491,12 @@
       "description": "Extrae propiedades de un archivo",
       "parameterI18n": {
         "": {
-          "title": "FilePropertyExtractor Parameters",
-          "description": "Configuration for extracting file system properties from files."
+          "title": "File Property Extractor Parameters",
+          "description": "Configures which attribute holds the path to inspect."
         },
         "filePathAttribute": {
-          "description": "Attribute name containing the file path to analyze for properties"
+          "title": "File Path Attribute",
+          "description": "Name of the attribute holding the path of the file or directory to inspect. Paths that do not exist, and symbolic links, are not inspected."
         }
       }
     },
@@ -2321,11 +2349,12 @@
       "description": "Divide en varios elementos los atributos de tipo lista",
       "parameterI18n": {
         "": {
-          "title": "ListExploder Parameters",
-          "description": "Configuration for exploding array attributes into individual features."
+          "title": "List Exploder Parameters",
+          "description": "Configures which list attribute is expanded into individual features."
         },
         "sourceAttribute": {
-          "description": "Attribute containing the array to explode (each element becomes a separate feature)"
+          "title": "Source Attribute",
+          "description": "Attribute holding a list of key-value pairs, one entry per feature to create."
         }
       }
     },
@@ -2465,67 +2494,82 @@
     },
     {
       "name": "Null Attribute Mapper",
-      "description": "Reemplaza valores de atributos nulos con valores predeterminados configurados",
+      "description": "Replaces null-like attribute values with configured replacement values, optionally removing or routing affected features.",
       "parameterI18n": {
         "": {
-          "title": "NullAttributeMapperParams",
-          "description": "NullAttributeMapper parameters"
+          "title": "Null Attribute Mapper Parameters",
+          "description": "Detects null-like attribute values and replaces them, removes them, or routes affected features according to per-attribute rules."
         },
         "defaultReplacement": {
-          "description": "Fallback replacement for attributes not in mappings (when scope = \"all\")"
+          "title": "Default Replacement",
+          "description": "Value used to replace null-like attributes that have no entry in the mappings. Applies only when the scope inspects all attributes."
         },
         "mappings": {
-          "description": "Per-attribute replacement rules"
+          "title": "Attribute Mappings",
+          "description": "Per-attribute rules describing how each null-like attribute is replaced, removed, or created."
         },
         "nullDefinition": {
-          "description": "Which states count as \"null\""
+          "title": "Null Definition",
+          "description": "States treated as null-like: an explicit null value, a missing attribute, or an empty string. Defaults to null values and missing attributes."
         },
         "routeNullFeatures": {
-          "description": "Emit original features with nulls to hasNull port"
+          "title": "Route Null Features",
+          "description": "When enabled, a copy of each feature that had at least one null-like value is emitted unchanged to a separate output for inspection."
         },
         "scope": {
-          "description": "Which attributes to inspect"
+          "title": "Scope",
+          "description": "Which attributes to inspect: only those named in the mappings, or every attribute on the feature."
         }
       },
       "definitionI18n": {
         "AttributeMapping": {
           "attribute": {
-            "description": "Name of the attribute to inspect"
+            "title": "Attribute",
+            "description": "Name of the attribute to inspect."
           },
           "onMissing": {
-            "description": "What to do when attribute is missing but not in nullDefinition"
+            "title": "On Missing",
+            "description": "Behavior when the attribute is absent and not treated as null-like by the null definition."
           },
           "replacement": {
-            "description": "Value to write when attribute is null-like null means remove the attribute"
+            "title": "Replacement",
+            "description": "Value written when the attribute is null-like. A null value removes the attribute instead."
           }
         }
       },
       "enumI18n": {
         "NullKind": {
           "emptyString": {
-            "description": "AttributeValue::String(\"\")"
+            "title": "Empty String",
+            "description": "An attribute holding a text value with no characters."
           },
           "missing": {
-            "description": "Attribute key absent from the feature"
+            "title": "Missing Attribute",
+            "description": "An attribute that is absent from the feature."
           },
           "null": {
-            "description": "AttributeValue::Null"
+            "title": "Null Value",
+            "description": "An attribute present on the feature but holding an explicit null value."
           }
         },
         "OnMissing": {
           "create": {
-            "description": "Write replacement value, creating the attribute"
+            "title": "Create",
+            "description": "Adds the attribute using the mapping's replacement value."
           },
           "skip": {
-            "description": "Leave unchanged"
+            "title": "Skip",
+            "description": "Leaves the feature unchanged."
           }
         },
         "Scope": {
           "all": {
-            "description": "Check all attributes on the feature"
+            "title": "All Attributes",
+            "description": "Inspects every attribute on the feature."
           },
           "listed": {
-            "description": "Only check attributes named in mappings"
+            "title": "Listed Attributes",
+            "description": "Inspects only the attributes named in the mappings list."
           }
         }
       }
@@ -3442,29 +3486,59 @@
       "description": "Calcula estadísticas de las entidades",
       "parameterI18n": {
         "": {
-          "title": "StatisticsCalculator Parameters",
-          "description": "Configuration for calculating statistical aggregations on feature attributes."
+          "title": "Statistics Calculator Parameters",
+          "description": "Defines the grouping attributes and the statistics computed for each group."
         },
         "calculations": {
           "title": "Calculations",
-          "description": "List of statistical calculations to perform on grouped features"
+          "description": "Statistics to compute for each group. Each entry names an output attribute, the aggregation method, and (except for count) the expression whose values are aggregated."
         },
         "groupBy": {
-          "title": "Group by",
-          "description": "Attributes to group features by for aggregation. All of the inputs will be grouped if not specified."
+          "title": "Group By",
+          "description": "Attributes to group features by before aggregating. When omitted, all input features form a single group."
         },
         "groupId": {
-          "title": "Group id",
-          "description": "Optional attribute to store the group identifier. The ID will be formed by concatenating the values of the group_by attributes separated by '|'."
+          "title": "Group ID",
+          "description": "Optional attribute in which to store the group identifier, formed by joining the Group By values with '|'."
         }
       },
       "definitionI18n": {
         "Calculation": {
+          "aggregation": {
+            "title": "Aggregation Method",
+            "description": "Statistic to compute across each group. Defaults to sum."
+          },
           "expr": {
-            "title": "Calculation to perform"
+            "title": "Value Expression",
+            "description": "Expression evaluated per feature to produce the value being aggregated. Required for every method except count, which counts features regardless of value."
           },
           "newAttribute": {
-            "title": "New attribute name"
+            "title": "New Attribute Name",
+            "description": "Name of the output attribute that stores the computed statistic."
+          }
+        }
+      },
+      "enumI18n": {
+        "AggregationMethod": {
+          "count": {
+            "title": "Count",
+            "description": "Counts the number of features in each group. The value expression is not required and is ignored."
+          },
+          "max": {
+            "title": "Maximum",
+            "description": "Keeps the largest value of the expression in each group."
+          },
+          "mean": {
+            "title": "Mean",
+            "description": "Averages the value of the expression across all features in each group."
+          },
+          "min": {
+            "title": "Minimum",
+            "description": "Keeps the smallest value of the expression in each group."
+          },
+          "sum": {
+            "title": "Sum",
+            "description": "Adds the value expression across all features in each group."
           }
         }
       }
@@ -3604,8 +3678,8 @@
       "description": "Fragmenta XML",
       "parameterI18n": {
         "": {
-          "title": "XMLFragmenter Parameters",
-          "description": "Configuration for fragmenting XML documents into smaller pieces."
+          "title": "XML Fragmenter Parameters",
+          "description": "Configures where the XML document comes from and which of its elements become features."
         }
       }
     },
@@ -3614,11 +3688,47 @@
       "description": "Valida contenido XML",
       "parameterI18n": {
         "": {
-          "title": "XmlValidatorParam"
+          "title": "XML Validator Parameters",
+          "description": "Configures which XML document is validated and how thoroughly."
         },
-        "attribute": {},
-        "inputType": {},
-        "validationType": {}
+        "attribute": {
+          "title": "XML Attribute",
+          "description": "Attribute holding the XML document: the file path or URL to read, or the XML text itself, depending on the input type."
+        },
+        "inputType": {
+          "title": "Input Type",
+          "description": "Whether the attribute holds the location of the document or the document itself."
+        },
+        "validationType": {
+          "title": "Validation Type",
+          "description": "Checks to run against the document."
+        }
+      },
+      "enumI18n": {
+        "ValidationType": {
+          "syntax": {
+            "title": "Syntax",
+            "description": "Checks that the document is well-formed XML."
+          },
+          "syntaxAndNamespace": {
+            "title": "Syntax and Namespace",
+            "description": "Also checks that every namespace prefix used by an element is declared on that element or an ancestor, and that unprefixed elements have a default namespace."
+          },
+          "syntaxAndSchema": {
+            "title": "Syntax and Schema",
+            "description": "Also validates the document against the XSD schemas named by its `xsi:schemaLocation`. Unreachable remote schemas are skipped, as those locations are hints per the XML Schema specification."
+          }
+        },
+        "XmlInputType": {
+          "file": {
+            "title": "XML File",
+            "description": "Reads the document from the file path or URL held in the attribute."
+          },
+          "text": {
+            "title": "XML Text",
+            "description": "Uses the attribute value itself as the document."
+          }
+        }
       }
     },
     {

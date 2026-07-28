@@ -184,7 +184,7 @@ impl ProcessorFactory for XmlValidatorFactory {
     }
 
     fn description(&self) -> &str {
-        "Validates XML documents against XSD schemas with success/failure routing"
+        "Validates XML documents for well-formed syntax, namespace declarations, or compliance with the XSD schemas they reference. Details of any errors found are added to an `xmlError` attribute."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -196,7 +196,7 @@ impl ProcessorFactory for XmlValidatorFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["xml", "validate"]
+        &["xml", "validation"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {

@@ -13,10 +13,13 @@ use serde::{Deserialize, Serialize};
 use crate::coordinate::EpsgCode;
 use crate::error::Error;
 use crate::ops::union_results;
-use crate::ops::{Aabb, BoundingBox, Reproject, ReprojectionCache, UnsupportedOperation};
+use crate::ops::{
+    Aabb, BoundingBox, ForceTwoDimension, ForceTwoDimensionError, Reproject, ReprojectionCache,
+    UnsupportedOperation,
+};
 #[cfg(feature = "new-geometry")]
 use crate::validation_next::Validate;
-use crate::{Euclidean2DGeometry, Euclidean3DGeometry};
+use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
 /// A `Multi*` collection of 2D geometries; members may differ in coordinate frame.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
@@ -148,16 +151,60 @@ impl BoundingBox for Collection3D {
     }
 }
 
+impl Collection2D {
+    /// The 3D counterpart of this collection: members carrying no elevation are
+    /// placed at `0.0`.
+    pub(crate) fn into_3d(self) -> Collection3D {
+        Collection3D {
+            members: self.members.into_iter().map(|m| m.into_3d()).collect(),
+            attrs: self.attrs,
+        }
+    }
+}
+
+impl Collection2D {
+    /// Whether any member lies at an elevation.
+    fn carries_elevation(&self) -> bool {
+        self.members
+            .iter()
+            .any(Euclidean2DGeometry::carries_elevation)
+    }
+}
+
+/// Unwrap a member's converted result back to a 2D geometry.
+fn expect_2d(g: Geometry) -> Result<Euclidean2DGeometry, Error> {
+    match g {
+        Geometry::Euclidean2D(g) => Ok(g),
+        other => Err(Error::projection(format!(
+            "a member of a pure 2D collection did not stay 2D: {other:?}"
+        ))),
+    }
+}
+
+/// Unwrap a member's converted result back to a 3D geometry.
+fn expect_3d(g: Geometry) -> Result<Euclidean3DGeometry, Error> {
+    match g {
+        Geometry::Euclidean3D(g) => Ok(g),
+        other => Err(Error::projection(format!(
+            "a member of a 3D collection did not stay 3D: {other:?}"
+        ))),
+    }
+}
+
 impl Reproject for Collection2D {
     fn reproject(
         &mut self,
         target: EpsgCode,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
-        for member in self.members_mut() {
-            member.reproject(target, cache)?;
+    ) -> crate::error::Result<Geometry> {
+        if self.carries_elevation() {
+            return std::mem::take(self).into_3d().reproject(target, cache);
         }
-        Ok(())
+        let mut out = std::mem::take(self);
+        for member in out.members.iter_mut() {
+            *member = expect_2d(member.reproject(target, cache)?)?;
+        }
+        Ok(Geometry::Euclidean2D(Euclidean2DGeometry::Collection(out)))
     }
 }
 
@@ -166,11 +213,12 @@ impl Reproject for Collection3D {
         &mut self,
         target: EpsgCode,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
-        for member in self.members_mut() {
-            member.reproject(target, cache)?;
+    ) -> crate::error::Result<Geometry> {
+        let mut out = std::mem::take(self);
+        for member in out.members.iter_mut() {
+            *member = expect_3d(member.reproject(target, cache)?)?;
         }
-        Ok(())
+        Ok(Geometry::Euclidean3D(Euclidean3DGeometry::Collection(out)))
     }
 }
 
@@ -184,11 +232,21 @@ impl crate::ops::ConvertFrame for Collection2D {
         target: &crate::coordinate::CoordinateFrame,
         base_point: Option<[f64; 3]>,
         cache: &mut crate::ops::ReprojectionCache,
-    ) -> crate::error::Result<()> {
-        for member in self.members_mut() {
-            member.convert_frame(target, base_point, cache)?;
+    ) -> crate::error::Result<Geometry> {
+        let mut reprojects = false;
+        for member in self.members.iter() {
+            reprojects |= member.reprojects_to(target, base_point)?;
         }
-        Ok(())
+        if reprojects && self.carries_elevation() {
+            return std::mem::take(self)
+                .into_3d()
+                .convert_frame(target, base_point, cache);
+        }
+        let mut out = std::mem::take(self);
+        for member in out.members.iter_mut() {
+            *member = expect_2d(member.convert_frame(target, base_point, cache)?)?;
+        }
+        Ok(Geometry::Euclidean2D(Euclidean2DGeometry::Collection(out)))
     }
 }
 
@@ -198,11 +256,12 @@ impl crate::ops::ConvertFrame for Collection3D {
         target: &crate::coordinate::CoordinateFrame,
         base_point: Option<[f64; 3]>,
         cache: &mut crate::ops::ReprojectionCache,
-    ) -> crate::error::Result<()> {
-        for member in self.members_mut() {
-            member.convert_frame(target, base_point, cache)?;
+    ) -> crate::error::Result<Geometry> {
+        let mut out = std::mem::take(self);
+        for member in out.members.iter_mut() {
+            *member = expect_3d(member.convert_frame(target, base_point, cache)?)?;
         }
-        Ok(())
+        Ok(Geometry::Euclidean3D(Euclidean3DGeometry::Collection(out)))
     }
 }
 
@@ -247,6 +306,32 @@ impl crate::ops::Split for Collection3D {
             .map(crate::Geometry::Euclidean3D);
         crate::ops::split::emit_members(members, std::mem::take(&mut self.attrs), emit);
         Ok(())
+    }
+}
+
+impl ForceTwoDimension for Collection2D {
+    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, ForceTwoDimensionError> {
+        let mut members = Vec::with_capacity(self.members.len());
+        for member in &mut self.members {
+            members.push(member.force_2d()?);
+        }
+        Ok(Euclidean2DGeometry::Collection(Collection2D {
+            members,
+            attrs: std::mem::take(&mut self.attrs),
+        }))
+    }
+}
+
+impl ForceTwoDimension for Collection3D {
+    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, ForceTwoDimensionError> {
+        let mut members = Vec::with_capacity(self.members.len());
+        for member in &mut self.members {
+            members.push(member.force_2d()?);
+        }
+        Ok(Euclidean2DGeometry::Collection(Collection2D {
+            members,
+            attrs: std::mem::take(&mut self.attrs),
+        }))
     }
 }
 

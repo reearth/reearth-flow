@@ -25,6 +25,13 @@ pub(crate) enum IndexBuffer<const N: usize> {
     U32(Vec<[u32; N]>),
 }
 
+/// An empty buffer at the narrowest width.
+impl<const N: usize> Default for IndexBuffer<N> {
+    fn default() -> Self {
+        IndexBuffer::U8(Vec::new())
+    }
+}
+
 /// Monomorphize a body over the concrete index width of an [`IndexBuffer`].
 ///
 /// The body must be a thin call into a generic function, never an inlined

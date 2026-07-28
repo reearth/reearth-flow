@@ -36,6 +36,15 @@ use crate::index::{IndexBuffer, IndexWidth};
 use super::{TriangularMesh2D, TriangularMesh3D, TriangularMesh3DData};
 
 impl TriangularMesh3DData {
+    /// Mesh data with no vertices, no triangles and no appearance.
+    pub(crate) fn empty() -> Self {
+        Self {
+            vertices: Vec::new(),
+            indices: IndexBuffer::default(),
+            appearance: None,
+        }
+    }
+
     /// Build coordinate-free mesh data from a vertex pool and a flat `u32` index
     /// stream. Validates that the index count is a multiple of three and every
     /// index is `< vertices.len()`; the width is taken from the vertex count.
@@ -229,49 +238,36 @@ impl TriangularMesh2D {
         })
     }
 
-    /// Build a 2.5D mesh from `[x, y, z]` vertices: the `(x, y)` populate the
-    /// vertex pool and the `z` the parallel elevation buffer.
-    pub fn from_parts_with_elevation(
+    /// Build a 2.5D mesh: an `[x, y]` vertex pool lying wholly at `elevation`.
+    pub fn from_parts_at_elevation(
         frame: CoordinateFrame,
-        vertices: Vec<[f64; 3]>,
+        vertices: Vec<[f64; 2]>,
         indices: impl IntoIterator<Item = u32>,
+        elevation: f64,
     ) -> Result<Self, Error> {
         let width = index_width_for(vertices.len());
         let triangles = triangles_checked(indices, vertices.len())?;
-        // Split the `[x, y, z]` vertices into the 2D pool and a parallel elevation buffer.
-        let mut xy = Vec::with_capacity(vertices.len());
-        let mut z = Vec::with_capacity(vertices.len());
-        for [x, y, elevation] in vertices {
-            xy.push([x, y]);
-            z.push(elevation);
-        }
         Ok(Self {
             frame,
-            vertices: xy,
-            z: Some(z.into_boxed_slice()),
+            vertices,
+            z: Some(elevation),
             indices: pack_checked(width, triangles),
             appearance: None,
         })
     }
 
-    /// Build a 2.5D mesh from `[x, y, z]` vertices without validating indices.
+    /// Build a 2.5D mesh at one `elevation` without validating indices.
     ///
     /// # Safety
     /// Same contract as [`TriangularMesh3DData::from_parts_unchecked`].
-    pub unsafe fn from_parts_with_elevation_unchecked(
+    pub unsafe fn from_parts_at_elevation_unchecked(
         frame: CoordinateFrame,
-        vertices: Vec<[f64; 3]>,
+        vertices: Vec<[f64; 2]>,
         triangle_count: usize,
         indices: impl IntoIterator<Item = u32>,
+        elevation: f64,
     ) -> Self {
         let width = index_width_for(vertices.len());
-        // Split the `[x, y, z]` vertices into the 2D pool and a parallel elevation buffer.
-        let mut xy = Vec::with_capacity(vertices.len());
-        let mut z = Vec::with_capacity(vertices.len());
-        for [x, y, elevation] in vertices {
-            xy.push([x, y]);
-            z.push(elevation);
-        }
         Self {
             frame,
             indices: IndexBuffer::from_exact_unchecked(
@@ -279,8 +275,8 @@ impl TriangularMesh2D {
                 triangle_count,
                 group_triples(indices),
             ),
-            vertices: xy,
-            z: Some(z.into_boxed_slice()),
+            vertices,
+            z: Some(elevation),
             appearance: None,
         }
     }
@@ -588,16 +584,17 @@ mod tests {
     }
 
     #[test]
-    fn from_parts_with_elevation_splits_z() {
-        let verts = vec![[0.0, 0.0, 10.0], [1.0, 0.0, 11.0], [0.0, 1.0, 12.0]];
-        let m = TriangularMesh2D::from_parts_with_elevation(
+    fn from_parts_at_elevation_keeps_one_height() {
+        let verts = vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]];
+        let m = TriangularMesh2D::from_parts_at_elevation(
             CoordinateFrame::Euclidean,
             verts,
             [0u32, 1, 2],
+            10.0,
         )
         .unwrap();
         assert_eq!(m.vertices, vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]]);
-        assert_eq!(m.z.as_deref(), Some(&[10.0, 11.0, 12.0][..]));
+        assert_eq!(m.elevation(), Some(10.0));
     }
 
     #[test]
