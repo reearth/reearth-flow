@@ -100,10 +100,6 @@ pub(super) fn segment_positions(seg: &Segment) -> impl Iterator<Item = [f64; 3]>
     })
 }
 
-use crate::ops::RemoveAppearance;
-
-impl RemoveAppearance for PointCloud {}
-
 #[cfg(test)]
 mod tests {
     use super::*;

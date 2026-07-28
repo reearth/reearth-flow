@@ -186,11 +186,6 @@ impl LineString2D {
     }
 }
 
-use crate::ops::RemoveAppearance;
-
-impl RemoveAppearance for LineString2D {}
-impl RemoveAppearance for LineString3D {}
-
 #[cfg(test)]
 mod tests {
     use super::*;

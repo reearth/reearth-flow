@@ -168,11 +168,6 @@ impl Point2D {
     }
 }
 
-use crate::ops::RemoveAppearance;
-
-impl RemoveAppearance for Point2D {}
-impl RemoveAppearance for Point3D {}
-
 #[cfg(test)]
 mod tests {
     use super::*;
