@@ -23,6 +23,7 @@ const METADATA_CLASS_NAME: &str = "Feature";
 pub struct MetadataOptions<'a> {
     pub schema_key: Option<&'a str>,
     pub skip_unexposed_attributes: bool,
+    pub array_map_separator: Option<&'a str>,
 }
 
 /// `properties[i] = (raw attribute path, glTF-identifier-safe property id)`;
@@ -228,7 +229,16 @@ fn flatten_attributes(feature: &Feature, options: MetadataOptions) -> BTreeMap<S
         if is_excluded(&key, options) {
             continue;
         }
-        flatten(key, value, &mut out);
+        match options.array_map_separator {
+            Some(sep) => flatten(key, value, sep, &mut out),
+            // Separator disabled: `Map`/`Array` attributes are dropped, only
+            // top-level scalars survive.
+            None => {
+                if !matches!(value, AttributeValue::Map(_) | AttributeValue::Array(_)) {
+                    insert_leaf(key, value, &mut out);
+                }
+            }
+        }
     }
     out
 }
@@ -236,26 +246,26 @@ fn flatten_attributes(feature: &Feature, options: MetadataOptions) -> BTreeMap<S
 /// Walks `value`, inserting one `path -> stringified leaf` entry per scalar
 /// reached. `EXT_structural_metadata` has no arbitrary-nesting property type,
 /// so a `Map`/`Array` contributes no entry of its own, only its descendants,
-/// with `path` extended by `_<child key>` / `_<index>`.
-fn flatten(path: String, value: &AttributeValue, out: &mut BTreeMap<String, String>) {
+/// with `path` extended by `<sep><child key>` / `<sep><index>`.
+fn flatten(path: String, value: &AttributeValue, sep: &str, out: &mut BTreeMap<String, String>) {
     match value {
         AttributeValue::Map(map) => {
             for (key, child) in map {
-                flatten(format!("{path}_{key}"), child, out);
+                flatten(format!("{path}{sep}{key}"), child, sep, out);
             }
         }
         AttributeValue::Array(items) => {
             for (i, child) in items.iter().enumerate() {
-                flatten(format!("{path}_{i}"), child, out);
+                flatten(format!("{path}{sep}{i}"), child, sep, out);
             }
         }
-        leaf => {
-            if out.insert(path.clone(), leaf.to_string()).is_some() {
-                tracing::warn!(
-                    "Cesium3DTilesWriter: attribute path {path:?} collided; overwriting"
-                );
-            }
-        }
+        leaf => insert_leaf(path, leaf, out),
+    }
+}
+
+fn insert_leaf(path: String, leaf: &AttributeValue, out: &mut BTreeMap<String, String>) {
+    if out.insert(path.clone(), leaf.to_string()).is_some() {
+        tracing::warn!("Cesium3DTilesWriter: attribute path {path:?} collided; overwriting");
     }
 }
 
@@ -291,5 +301,60 @@ fn sanitize_identifier(raw: &str, used: &mut HashSet<String>) -> String {
             return candidate;
         }
         n += 1;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use indexmap::IndexMap;
+
+    use super::*;
+
+    fn feature_with_nested() -> Feature {
+        let mut attrs: IndexMap<String, AttributeValue> = IndexMap::new();
+        attrs.insert("name".to_string(), AttributeValue::String("A".to_string()));
+        attrs.insert(
+            "addr".to_string(),
+            AttributeValue::Map(
+                [("city".to_string(), AttributeValue::String("X".to_string()))]
+                    .into_iter()
+                    .collect(),
+            ),
+        );
+        attrs.insert(
+            "heights".to_string(),
+            AttributeValue::Array(vec![AttributeValue::String("1".to_string())]),
+        );
+        Feature::from(attrs)
+    }
+
+    fn raw_paths(table: &PropertyTable) -> Vec<&str> {
+        table.properties.iter().map(|(raw, _)| raw.as_str()).collect()
+    }
+
+    #[test]
+    fn none_separator_drops_maps_and_arrays() {
+        let feature = feature_with_nested();
+        let options = MetadataOptions {
+            array_map_separator: None,
+            ..Default::default()
+        };
+        let table = build_table(&[&feature], options);
+
+        // Only the top-level scalar survives; the map and array contribute
+        // no columns at all.
+        assert_eq!(raw_paths(&table), vec!["name"]);
+    }
+
+    #[test]
+    fn separator_flattens_nested_paths() {
+        let feature = feature_with_nested();
+        let options = MetadataOptions {
+            array_map_separator: Some("."),
+            ..Default::default()
+        };
+        let table = build_table(&[&feature], options);
+
+        assert_eq!(raw_paths(&table), vec!["addr.city", "heights.0", "name"]);
     }
 }

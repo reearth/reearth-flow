@@ -77,28 +77,18 @@ fn pack_inputs(
 ) -> HashMap<&'static str, PathBuf> {
     tracing::debug!("packing citymodel zip...");
 
-    let citymodel_udx_dir = test_path.join("citymodel/udx");
-    assert!(citymodel_udx_dir.exists());
+    // Pack the whole citymodel (udx + codelists + schemas) into one archive so
+    // that, once extracted, each gml keeps codelists/schemas as siblings of its
+    // `udx` dir. The new CityGML reader resolves `codeSpace` relative to the gml,
+    // so the co-located layout is required; splitting codelists into a separate
+    // zip would break relative resolution.
+    let citymodel_dir = test_path.join("citymodel");
+    assert!(citymodel_dir.join("udx").exists());
     let citymodel = output_dir.join(format!("{}.zip", zip_stem));
-    zip_dir(&citymodel_udx_dir, &citymodel).unwrap();
+    zip_dir(&citymodel_dir, &citymodel).unwrap();
 
     let mut inputs = HashMap::new();
     inputs.insert("citymodel", citymodel);
-
-    let codelists_dir = test_path.join("citymodel/codelists");
-    if codelists_dir.exists() {
-        let path = output_dir.join(format!("{}_codelists.zip", zip_stem));
-        zip_dir(&codelists_dir, &path).unwrap();
-        inputs.insert("codelists", path);
-    }
-
-    let schemas_dir = test_path.join("citymodel/schemas");
-    if schemas_dir.exists() {
-        let path = output_dir.join(format!("{}_schemas.zip", zip_stem));
-        zip_dir(&schemas_dir, &path).unwrap();
-        inputs.insert("schemas", path);
-    }
-
     inputs
 }
 
@@ -203,16 +193,20 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
         let _ = fs::remove_dir_all(&output_dir);
         fs::create_dir_all(&output_dir).unwrap();
 
-        // do not pack gml, codelists, schemas into zip if PLATEAU_TILES_TEST_NO_PACK=1 for quick local tests
-        let no_pack = env::var("PLATEAU_TILES_TEST_NO_PACK").ok().as_deref() == Some("1");
-        let inputs = if no_pack {
-            direct_inputs(&test_path)
-        } else {
+        // Feed the citymodel directory directly by default. The new CityGML reader
+        // resolves `codeSpace` relative to each gml's own location, so codelists and
+        // schemas must sit alongside the gml; the real directory already has that
+        // layout, whereas packing splits them into separate zips. Opt into packing
+        // with PLATEAU_TILES_TEST_PACK=1 to exercise the archive-extraction path.
+        let pack = env::var("PLATEAU_TILES_TEST_PACK").ok().as_deref() == Some("1");
+        let inputs = if pack {
             let zip_stem = profile
                 .citygml_zip_name
                 .strip_suffix(".zip")
                 .unwrap_or(&profile.citygml_zip_name);
             pack_inputs(&test_path, &output_dir, zip_stem)
+        } else {
+            direct_inputs(&test_path)
         };
 
         info!(
