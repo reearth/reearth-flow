@@ -24,15 +24,18 @@ const (
 )
 
 type Action struct {
-	Parameter   map[string]interface{} `json:"parameter"`
-	Name        string                 `json:"name"`
-	Type        ActionType             `json:"type"`
-	Description string                 `json:"description"`
-	InputPorts  []string               `json:"inputPorts"`
-	OutputPorts []string               `json:"outputPorts"`
-	Categories  []string               `json:"categories"`
-	Tags        []string               `json:"tags"`
-	Builtin     bool                   `json:"builtin"`
+	// Parameter is the action's JSON Schema, forwarded verbatim to preserve
+	// property order — encoding/json sorts map keys, which would reorder the
+	// fields the UI renders. Guarded by TestGetActionDetailsPreservesParameterOrder.
+	Parameter   json.RawMessage `json:"parameter" swaggertype:"object"`
+	Name        string          `json:"name"`
+	Type        ActionType      `json:"type"`
+	Description string          `json:"description"`
+	InputPorts  []string        `json:"inputPorts"`
+	OutputPorts []string        `json:"outputPorts"`
+	Categories  []string        `json:"categories"`
+	Tags        []string        `json:"tags"`
+	Builtin     bool            `json:"builtin"`
 }
 
 func (a *Action) Validate() error {
