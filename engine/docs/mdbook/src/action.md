@@ -7868,7 +7868,7 @@ Extracts a specific attribute from each element in a list and concatenates them 
 ### Type
 * processor
 ### Description
-Creates one feature per element of a list attribute, merging the element's key-value pairs into the feature's attributes and removing the source attribute. Features whose attribute is missing, empty, or not a list of key-value pairs pass through unchanged.
+Creates one feature per element of a list attribute, merging the element's key-value pairs into the feature's attributes and removing the source attribute. A feature whose attribute is missing, empty, or not a list of key-value pairs produces nothing and is rejected instead.
 ### Parameters
 ```json
 {
@@ -7901,6 +7901,7 @@ Creates one feature per element of a list attribute, merging the element's key-v
 * features
 ### Output Ports
 * features
+* rejected
 ### Category
 * Transform
 

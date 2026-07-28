@@ -8065,7 +8065,7 @@
     {
       "name": "List Exploder",
       "type": "processor",
-      "description": "Creates one feature per element of a list attribute, merging the element's key-value pairs into the feature's attributes and removing the source attribute. Features whose attribute is missing, empty, or not a list of key-value pairs pass through unchanged.",
+      "description": "Creates one feature per element of a list attribute, merging the element's key-value pairs into the feature's attributes and removing the source attribute. A feature whose attribute is missing, empty, or not a list of key-value pairs produces nothing and is rejected instead.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "List Exploder Parameters",
@@ -8096,7 +8096,8 @@
         "features"
       ],
       "outputPorts": [
-        "features"
+        "features",
+        "rejected"
       ],
       "categories": [
         "Transform"

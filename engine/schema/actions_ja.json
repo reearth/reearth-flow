@@ -8068,7 +8068,7 @@
     {
       "name": "List Exploder",
       "type": "processor",
-      "description": "リスト属性の要素1件につき1地物を作成し、要素のキーと値を地物の属性に統合してソース属性を削除する。属性が存在しない、空、またはキーと値のリストでない地物はそのまま通過する",
+      "description": "リスト属性の要素1件につき1地物を作成し、要素のキーと値を地物の属性に統合してソース属性を削除する。属性が存在しない、空、またはキーと値のリストでない地物は何も生成せず、rejected として扱われる",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "List Exploder パラメータ",
@@ -8099,7 +8099,8 @@
         "features"
       ],
       "outputPorts": [
-        "features"
+        "features",
+        "rejected"
       ],
       "categories": [
         "Transform"
