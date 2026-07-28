@@ -12863,7 +12863,7 @@
               "source": {
                 "type": "string",
                 "enum": [
-                  "url"
+                  "file"
                 ]
               },
               "elementsToMatch": {

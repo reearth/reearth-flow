@@ -12524,7 +12524,7 @@ Splits an XML document into features by matching element names, emitting one fea
         "source": {
           "type": "string",
           "enum": [
-            "url"
+            "file"
           ]
         },
         "elementsToMatch": {
