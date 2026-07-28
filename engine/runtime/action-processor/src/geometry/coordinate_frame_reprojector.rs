@@ -79,6 +79,9 @@ enum BasePoint {
 /// CRS and a Euclidean frame. Converting across the Euclidean/CRS boundary
 /// reinterprets coordinates as-is: values and ring winding are left unchanged,
 /// so orientation follows the destination frame's axis order.
+///
+/// Reprojecting across coordinate reference systems takes 2D geometry lying at a
+/// single elevation into 3D.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CoordinateFrameReprojectorParam {
@@ -226,7 +229,7 @@ impl CoordinateFrameReprojector {
         base_point: Option<[f64; 3]>,
     ) -> Result<Feature, BoxedError> {
         let mut feature = feature.clone();
-        REPROJECTION_CACHE
+        let converted = REPROJECTION_CACHE
             .with(|cache| {
                 feature.geometry_mut().convert_frame(
                     &self.target,
@@ -239,6 +242,7 @@ impl CoordinateFrameReprojector {
                     e.to_string(),
                 )) as BoxedError
             })?;
+        *feature.geometry_mut() = converted;
         Ok(feature)
     }
 
@@ -247,10 +251,10 @@ impl CoordinateFrameReprojector {
     /// point or cannot be converted.
     fn base_point_in_target(&self, geometry: &Geometry) -> Option<[f64; 3]> {
         let mut geometry = geometry.clone();
-        REPROJECTION_CACHE
+        let converted = REPROJECTION_CACHE
             .with(|cache| geometry.convert_frame(&self.target, None, &mut cache.borrow_mut()))
             .ok()?;
-        representative_point(&geometry)
+        representative_point(&converted)
     }
 
     /// Convert `feature` and forward it to the features port, or forward the

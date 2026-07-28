@@ -48,8 +48,8 @@
 //!   relationship that alone determines the result (disjoint, boundary-only
 //!   touch, containment, equality) bypasses the backend instead of trusting
 //!   its snapped output near zero-area configurations.
-//! - Output is pure 2D: any per-vertex elevation on the inputs is ignored and
-//!   dropped, and appearance does not propagate.
+//! - Output is pure 2D: any elevation on the inputs is ignored and dropped, and
+//!   appearance does not propagate.
 
 mod segments;
 mod shapes;
