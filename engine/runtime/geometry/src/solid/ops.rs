@@ -116,6 +116,10 @@ impl ConvertFrame for Solid {
     }
 }
 
+// A solid is a volume; flattening its boundary to 2D has no single well-defined
+// result, so it has no 2D counterpart.
+crate::unsupported!(Solid: ForceTwoDimension);
+
 #[cfg(test)]
 mod tests {
     use super::*;
