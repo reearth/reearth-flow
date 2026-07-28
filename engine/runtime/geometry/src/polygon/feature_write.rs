@@ -2,8 +2,8 @@
 //!
 //! The wire form presents the rings decoded: an explicit exterior ring and a list
 //! of interior rings, rather than the stored flat `coords` buffer plus the
-//! `interior_offsets` that slice it. Elevation stays a flat buffer parallel to the
-//! ring concatenation. Decoding rebuilds `interior_offsets` from the ring lengths.
+//! `interior_offsets` that slice it. Elevation stays the one number the whole face
+//! lies at. Decoding rebuilds `interior_offsets` from the ring lengths.
 //!
 //! Per-corner UV is nested the same way, so it mirrors the exterior and interior
 //! rings rather than the flat corner buffer they concatenate into.
@@ -34,7 +34,7 @@ struct Polygon2DWire {
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     interiors: Vec<Vec<[f64; 2]>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    z: Option<Vec<f64>>,
+    z: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     appearance: Option<AppearanceWire>,
 }
@@ -81,7 +81,7 @@ impl TryFrom<&Polygon2D> for Polygon2DWire {
             appearance: encode_appearance(&p.appearance, &layout)?,
             exterior,
             interiors,
-            z: p.z.as_ref().map(|z| z.to_vec()),
+            z: p.elevation(),
         })
     }
 }
@@ -93,8 +93,7 @@ impl TryFrom<Polygon2DWire> for Polygon2D {
         let layout = polygon_layout(w.exterior.len(), w.interiors.iter().map(Vec::len));
         let appearance = decode_appearance(w.appearance, &layout)?;
         let (coords, interior_offsets) = flatten_rings(w.exterior, w.interiors);
-        let z = w.z.map(Vec::into_boxed_slice);
-        let mut polygon = Polygon2D::from_raw_parts(w.frame, coords, interior_offsets, z)?;
+        let mut polygon = Polygon2D::from_raw_parts(w.frame, coords, interior_offsets, w.z)?;
         polygon.appearance = appearance;
         Ok(polygon)
     }
@@ -204,20 +203,21 @@ mod tests {
         round_trip_2d(&Polygon2D::from_rings(
             CoordinateFrame::Euclidean,
             square,
-            vec![hole],
+            vec![hole.clone()],
         ));
 
-        let elev = [
-            [0.0, 0.0, 1.0],
-            [4.0, 0.0, 2.0],
-            [4.0, 4.0, 3.0],
-            [0.0, 0.0, 1.0],
-        ];
-        round_trip_2d(&Polygon2D::from_rings_with_elevation(
+        let lifted = Polygon2D::from_rings_at_elevation(
             CoordinateFrame::Euclidean,
-            elev,
-            Vec::<Vec<[f64; 3]>>::new(),
-        ));
+            square,
+            vec![hole],
+            10.0,
+        );
+        round_trip_2d(&lifted);
+
+        // The face lies at one height, so the wire form carries one number for it,
+        // not a value per corner.
+        let json = serde_json::to_value(&lifted).unwrap();
+        assert_eq!(json["z"], serde_json::json!(10.0));
     }
 
     #[test]

@@ -47,7 +47,7 @@ struct PolygonMesh2DWire {
     vertices: Vec<[f64; 2]>,
     faces: Vec<FaceWire>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    z: Option<Vec<f64>>,
+    z: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     appearance: Option<AppearanceWire>,
 }
@@ -150,7 +150,7 @@ impl TryFrom<&PolygonMesh2D> for PolygonMesh2DWire {
             vertices: m.vertices.clone(),
             appearance: encode_appearance(&m.appearance, &layout)?,
             faces,
-            z: m.z.as_ref().map(|z| z.to_vec()),
+            z: m.elevation(),
         })
     }
 }
@@ -168,7 +168,7 @@ impl TryFrom<PolygonMesh2DWire> for PolygonMesh2D {
             face_offsets,
             interior_offsets,
         )?;
-        mesh.z = w.z.map(Vec::into_boxed_slice);
+        mesh.z = w.z;
         mesh.appearance = appearance;
         Ok(mesh)
     }
@@ -284,6 +284,35 @@ mod tests {
         let json = serde_json::to_string(&mesh).unwrap();
         let back: PolygonMesh2D = serde_json::from_str(&json).unwrap();
         assert_eq!(mesh, back);
+    }
+
+    #[test]
+    fn mesh2d_writes_one_elevation_for_the_whole_mesh() {
+        let mesh = PolygonMesh2D::from_parts_at_elevation(
+            CoordinateFrame::Euclidean,
+            vec![[0.0, 0.0], [2.0, 0.0], [2.0, 2.0], [0.0, 2.0]],
+            vec![vec![0u32, 1, 2, 3]],
+            10.0,
+        )
+        .unwrap();
+
+        let json = serde_json::to_value(&mesh).unwrap();
+        assert_eq!(json["z"], serde_json::json!(10.0));
+
+        let back: PolygonMesh2D = serde_json::from_value(json).unwrap();
+        assert_eq!(mesh, back);
+    }
+
+    #[test]
+    fn mesh2d_omits_elevation_when_pure_2d() {
+        let mesh = PolygonMesh2D::from_parts(
+            CoordinateFrame::Euclidean,
+            vec![[0.0, 0.0], [2.0, 0.0], [2.0, 2.0], [0.0, 2.0]],
+            vec![vec![0u32, 1, 2, 3]],
+        )
+        .unwrap();
+        let json = serde_json::to_value(&mesh).unwrap();
+        assert!(json.get("z").is_none(), "pure 2D writes no elevation");
     }
 
     #[test]

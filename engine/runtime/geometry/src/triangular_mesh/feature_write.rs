@@ -29,7 +29,7 @@ struct TriangularMesh2DWire {
     vertices: Vec<[f64; 2]>,
     triangles: Vec<[u32; 3]>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    z: Option<Vec<f64>>,
+    z: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     appearance: Option<AppearanceWire>,
 }
@@ -55,7 +55,7 @@ impl TryFrom<&TriangularMesh2D> for TriangularMesh2DWire {
             vertices: m.vertices.clone(),
             appearance: encode_appearance(&m.appearance, &layout)?,
             triangles,
-            z: m.z.as_ref().map(|z| z.to_vec()),
+            z: m.elevation(),
         })
     }
 }
@@ -67,7 +67,7 @@ impl TryFrom<TriangularMesh2DWire> for TriangularMesh2D {
         let appearance = decode_appearance(w.appearance, &triangle_layout(w.triangles.len()))?;
         let mut mesh =
             TriangularMesh2D::from_parts(w.frame, w.vertices, w.triangles.into_iter().flatten())?;
-        mesh.z = w.z.map(Vec::into_boxed_slice);
+        mesh.z = w.z;
         mesh.appearance = appearance;
         Ok(mesh)
     }
@@ -197,14 +197,18 @@ mod tests {
 
     #[test]
     fn mesh2d_round_trips_with_elevation() {
-        let mesh = TriangularMesh2D::from_parts_with_elevation(
+        let mesh = TriangularMesh2D::from_parts_at_elevation(
             CoordinateFrame::Euclidean,
-            vec![[0.0, 0.0, 10.0], [1.0, 0.0, 11.0], [0.0, 1.0, 12.0]],
+            vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]],
             [0u32, 1, 2],
+            10.0,
         )
         .unwrap();
-        let json = serde_json::to_string(&mesh).unwrap();
-        let back: TriangularMesh2D = serde_json::from_str(&json).unwrap();
+        let json = serde_json::to_value(&mesh).unwrap();
+        // One elevation for the whole mesh, not one per vertex.
+        assert_eq!(json["z"], serde_json::json!(10.0));
+
+        let back: TriangularMesh2D = serde_json::from_value(json).unwrap();
         assert_eq!(mesh, back);
     }
 

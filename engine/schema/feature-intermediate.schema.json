@@ -72,7 +72,7 @@
       ]
     },
     "Euclidean2DGeometry": {
-      "description": "2D-embedded geometry. All coordinates are 2D `(x, y)`; some leaves carry an optional per-vertex elevation (2.5D).\n\nThe heavy aggregate leaves (`Polygon`, the meshes) are boxed so the small, common variants don't inflate the enum — and `Geometry` with them — to the size of the largest leaf. The small tier (`Point`, `LineString`, `Collection`) stays inline.",
+      "description": "2D-embedded geometry. All coordinates are 2D `(x, y)`; some leaves carry a single optional elevation the whole leaf lies at (2.5D).\n\nThe heavy aggregate leaves (`Polygon`, the meshes) are boxed so the small, common variants don't inflate the enum — and `Geometry` with them — to the size of the largest leaf. The small tier (`Point`, `LineString`, `Collection`) stays inline.",
       "oneOf": [
         {
           "type": "object",
@@ -297,7 +297,7 @@
       ]
     },
     "LineString2D": {
-      "description": "A polyline in 2D space, with optional per-vertex elevation (2.5D).",
+      "description": "A polyline in 2D space, lying at a single optional elevation (2.5D).",
       "type": "object",
       "required": [
         "coords",
@@ -325,15 +325,12 @@
           }
         },
         "z": {
-          "description": "Optional per-vertex elevation, parallel to `coords`. INVARIANT: when `Some`, `z.len() == coords.len()`. `None` = pure 2D.",
+          "description": "The one elevation the whole chain lies at. `None` = pure 2D.",
           "type": [
-            "array",
+            "number",
             "null"
           ],
-          "items": {
-            "type": "number",
-            "format": "double"
-          }
+          "format": "double"
         }
       }
     },
@@ -377,13 +374,10 @@
         },
         "z": {
           "type": [
-            "array",
+            "number",
             "null"
           ],
-          "items": {
-            "type": "number",
-            "format": "double"
-          }
+          "format": "double"
         },
         "appearance": {
           "anyOf": [
@@ -1123,13 +1117,10 @@
         },
         "z": {
           "type": [
-            "array",
+            "number",
             "null"
           ],
-          "items": {
-            "type": "number",
-            "format": "double"
-          }
+          "format": "double"
         },
         "appearance": {
           "anyOf": [
@@ -1210,13 +1201,10 @@
         },
         "z": {
           "type": [
-            "array",
+            "number",
             "null"
           ],
-          "items": {
-            "type": "number",
-            "format": "double"
-          }
+          "format": "double"
         },
         "appearance": {
           "anyOf": [
