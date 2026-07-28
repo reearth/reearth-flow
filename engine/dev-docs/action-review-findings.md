@@ -68,8 +68,8 @@ GeoPackage Reader
 
 ## Feature · File · Transform — deferred items only (batch resolved in PR)
 
-The Feature (1) · File (2) · Transform (4) batch was resolved per the standard. Two items
-found while auditing it are deferred, both flagged rather than fixed:
+The Feature (1) · File (2) · Transform (4) batch was resolved per the standard. One item
+found while auditing it is deferred:
 
 ```
 XML Fragmenter
@@ -81,15 +81,6 @@ XML Fragmenter
              languages. Fixing this needs either i18n support for root-level oneOf
              variants or a flat param struct with a plain `source` enum. Not urgent: the
              root title/description do translate, and the English text is accurate.
-
-List Exploder
-  code:    a list whose elements are not all key-value maps produces duplicate output.
-             Elements before the first non-map element are emitted as exploded features,
-             and then the ORIGINAL feature is emitted too before processing stops
-             (`list_exploder.rs::process`). Either the whole list should be validated
-             before emitting anything, or non-map elements should be skipped. Behavioral
-             fix, no test coverage today, so it is left for its own PR; the current
-             description documents only the all-or-nothing pass-through case.
 ```
 
 ---
