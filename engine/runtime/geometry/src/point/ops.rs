@@ -137,7 +137,6 @@ impl ConvertFrame for Point3D {
 }
 
 use crate::ops::{ForceTwoDimension, ForceTwoDimensionError};
-use crate::Euclidean2DGeometry;
 
 impl ForceTwoDimension for Point2D {
     fn force_2d(&mut self) -> Result<Euclidean2DGeometry, ForceTwoDimensionError> {

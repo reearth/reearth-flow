@@ -147,7 +147,6 @@ impl ConvertFrame for LineString3D {
 }
 
 use crate::ops::{ForceTwoDimension, ForceTwoDimensionError};
-use crate::Euclidean2DGeometry;
 
 impl ForceTwoDimension for LineString2D {
     fn force_2d(&mut self) -> Result<Euclidean2DGeometry, ForceTwoDimensionError> {
