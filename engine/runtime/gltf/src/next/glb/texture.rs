@@ -18,7 +18,7 @@ impl TextureRef {
 }
 
 /// Handle to an image embedded via [`Builder::push_image`]. `index` is what a
-/// texture extension references (e.g. `EXT_texture_webp`'s `source`).
+/// texture extension references (e.g. `KHR_texture_basisu`'s `source`).
 #[derive(Clone, Copy)]
 pub struct ImageRef(json::Index<json::Image>);
 
@@ -61,7 +61,7 @@ pub enum MinFilter {
 
 impl Builder {
     /// Embed `image_bytes` as a bufferView-backed image. A `mime_type` glTF
-    /// admits only via an extension (e.g. `"image/webp"`) embeds fine; the
+    /// admits only via an extension (e.g. `"image/ktx2"`) embeds fine; the
     /// caller references it through [`push_texture`](Self::push_texture).
     pub fn push_image(&mut self, image_bytes: &[u8], mime_type: &str) -> ImageRef {
         let buffer_view = self.push_buffer_view_targeted(image_bytes, None);
@@ -77,7 +77,7 @@ impl Builder {
 
     /// Build a texture, attaching the given texture-level extension payloads and
     /// marking each `extensionsUsed`. `source` is `None` when an extension
-    /// supplies the image (e.g. `EXT_texture_webp`), which the caller must then
+    /// supplies the image (e.g. `KHR_texture_basisu`), which the caller must then
     /// also [`require_extension`](Self::require_extension).
     pub fn push_texture(
         &mut self,

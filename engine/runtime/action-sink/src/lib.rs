@@ -4,6 +4,7 @@
 // full lint coverage).
 #![cfg_attr(feature = "new-geometry", allow(unused_imports, dead_code))]
 
+#[cfg(not(feature = "new-geometry"))]
 mod atlas;
 pub mod echo;
 pub mod errors;

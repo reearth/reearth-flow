@@ -11,9 +11,9 @@ use parking_lot::RwLock;
 use crate::coordinate::EpsgCode;
 use proj_sys::{
     proj_context_create, proj_context_destroy, proj_context_errno, proj_context_errno_string,
-    proj_create, proj_create_crs_to_crs, proj_crs_get_coordinate_system, proj_crs_get_sub_crs,
-    proj_cs_get_axis_count, proj_cs_get_axis_info, proj_cs_get_type, proj_destroy, proj_errno,
-    proj_errno_reset, proj_trans, PJ, PJ_CONTEXT, PJ_COORD,
+    proj_create, proj_create_crs_to_crs_from_pj, proj_crs_get_coordinate_system,
+    proj_crs_get_sub_crs, proj_cs_get_axis_count, proj_cs_get_axis_info, proj_cs_get_type,
+    proj_destroy, proj_errno, proj_errno_reset, proj_trans, PJ, PJ_CONTEXT, PJ_COORD,
     PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_CARTESIAN,
     PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_ELLIPSOIDAL,
     PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_SPHERICAL, PJ_DIRECTION_PJ_FWD, PJ_XYZT,
@@ -107,10 +107,20 @@ impl ReprojectionCache {
 
 impl Entry {
     /// Build the PROJ transformation for the `(from, to)` EPSG pair.
+    ///
+    /// The transformation forbids ballpark fallback (`ALLOW_BALLPARK=NO`): a
+    /// ballpark silently omits the datum and geoid shift (leaving, for example,
+    /// an orthometric height untouched instead of converting it to an
+    /// ellipsoidal one), placing geometry tens of metres off. With ballpark
+    /// disallowed, any coordinate that has no accurate operation errors at
+    /// transform time instead. PROJ can only ballpark when a required grid is
+    /// absent or the build cannot read it.
     fn build(from: EpsgCode, to: EpsgCode) -> Result<Self> {
         // SAFETY: each PROJ object is null-checked before use; errno is read
         // while the context is still alive; on any failure all objects created
-        // so far are freed before returning.
+        // so far are freed before returning. The source and target CRS objects
+        // are only needed to build the transformation and are freed once it is
+        // created.
         unsafe {
             let ctx = proj_context_create();
             if ctx.is_null() {
@@ -120,7 +130,30 @@ impl Entry {
             let c_from = CString::new(format!("EPSG:{from}")).map_err(Error::projection)?;
             let c_to = CString::new(format!("EPSG:{to}")).map_err(Error::projection)?;
 
-            let pj = proj_create_crs_to_crs(ctx, c_from.as_ptr(), c_to.as_ptr(), ptr::null_mut());
+            let src = proj_create(ctx, c_from.as_ptr());
+            if src.is_null() {
+                let msg = ctx_errno_string(ctx);
+                proj_context_destroy(ctx);
+                return Err(Error::projection(format!(
+                    "failed to create CRS EPSG:{from}: {msg}"
+                )));
+            }
+            let dst = proj_create(ctx, c_to.as_ptr());
+            if dst.is_null() {
+                let msg = ctx_errno_string(ctx);
+                proj_destroy(src);
+                proj_context_destroy(ctx);
+                return Err(Error::projection(format!(
+                    "failed to create CRS EPSG:{to}: {msg}"
+                )));
+            }
+
+            let allow_ballpark = CString::new("ALLOW_BALLPARK=NO").map_err(Error::projection)?;
+            let options = [allow_ballpark.as_ptr(), ptr::null()];
+            let pj =
+                proj_create_crs_to_crs_from_pj(ctx, src, dst, ptr::null_mut(), options.as_ptr());
+            proj_destroy(src);
+            proj_destroy(dst);
             if pj.is_null() {
                 let msg = ctx_errno_string(ctx);
                 proj_context_destroy(ctx);
@@ -467,6 +500,28 @@ mod tests {
         assert!(linear(3857)); // Web Mercator (metres)
         assert!(linear(4978)); // WGS84 geocentric (Cartesian, metres)
         assert!(crs_is_linear(EpsgCode::new(1)).is_err());
+    }
+
+    #[test]
+    fn dutch_vertical_is_corrected_or_rejected_never_silently_wrong() {
+        // EPSG:7415 (Amersfoort / RD New + NAP height) carries an orthometric
+        // height; converting to WGS84 3D must add the ~46 m NL geoid separation.
+        // With the grid present the height is corrected; without it PROJ can only
+        // ballpark, which is disallowed so the transform errors. The one outcome
+        // that must never happen is silently returning the input height as if it
+        // were ellipsoidal.
+        let mut cache = ReprojectionCache::new();
+        match cache.transform(
+            EpsgCode::new(7415),
+            EpsgCode::new(4979),
+            [204000.0, 325300.0, 95.0],
+        ) {
+            Ok([_, _, z]) => assert!(
+                z > 130.0,
+                "expected a geoid-corrected ellipsoidal height (~140 m), got {z}"
+            ),
+            Err(e) => assert!(e.to_string().contains("7415"), "unexpected error: {e}"),
+        }
     }
 
     #[test]

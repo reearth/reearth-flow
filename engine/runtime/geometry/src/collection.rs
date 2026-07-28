@@ -76,6 +76,12 @@ impl Collection2D {
     pub fn members(&self) -> &[Euclidean2DGeometry] {
         &self.members
     }
+
+    /// Per-member attributes, parallel to [`members`](Self::members), or empty
+    /// if no member carries any.
+    pub fn member_attributes(&self) -> &[Attributes] {
+        &self.attrs
+    }
 }
 
 impl Collection3D {
@@ -115,6 +121,12 @@ impl Collection3D {
     /// The members, in order.
     pub fn members(&self) -> &[Euclidean3DGeometry] {
         &self.members
+    }
+
+    /// Per-member attributes, parallel to [`members`](Self::members), or empty
+    /// if no member carries any.
+    pub fn member_attributes(&self) -> &[Attributes] {
+        &self.attrs
     }
 }
 
@@ -165,6 +177,78 @@ impl Reproject for Collection3D {
 // Tessellation is defined per-primitive, not over a collection.
 crate::unsupported!(Collection2D: Triangulate);
 crate::unsupported!(Collection3D: Triangulate);
+
+impl crate::ops::ConvertFrame for Collection2D {
+    fn convert_frame(
+        &mut self,
+        target: &crate::coordinate::CoordinateFrame,
+        base_point: Option<[f64; 3]>,
+        cache: &mut crate::ops::ReprojectionCache,
+    ) -> crate::error::Result<()> {
+        for member in self.members_mut() {
+            member.convert_frame(target, base_point, cache)?;
+        }
+        Ok(())
+    }
+}
+
+impl crate::ops::ConvertFrame for Collection3D {
+    fn convert_frame(
+        &mut self,
+        target: &crate::coordinate::CoordinateFrame,
+        base_point: Option<[f64; 3]>,
+        cache: &mut crate::ops::ReprojectionCache,
+    ) -> crate::error::Result<()> {
+        for member in self.members_mut() {
+            member.convert_frame(target, base_point, cache)?;
+        }
+        Ok(())
+    }
+}
+
+impl crate::ops::Translate for Collection2D {
+    fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
+        for member in self.members_mut() {
+            member.translate(delta)?;
+        }
+        Ok(())
+    }
+}
+
+impl crate::ops::Translate for Collection3D {
+    fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
+        for member in self.members_mut() {
+            member.translate(delta)?;
+        }
+        Ok(())
+    }
+}
+
+impl crate::ops::Split for Collection2D {
+    fn split(
+        &mut self,
+        emit: &mut dyn FnMut(crate::Geometry, Attributes),
+    ) -> Result<(), crate::ops::UnsupportedOperation> {
+        let members = std::mem::take(&mut self.members)
+            .into_iter()
+            .map(crate::Geometry::Euclidean2D);
+        crate::ops::split::emit_members(members, std::mem::take(&mut self.attrs), emit);
+        Ok(())
+    }
+}
+
+impl crate::ops::Split for Collection3D {
+    fn split(
+        &mut self,
+        emit: &mut dyn FnMut(crate::Geometry, Attributes),
+    ) -> Result<(), crate::ops::UnsupportedOperation> {
+        let members = std::mem::take(&mut self.members)
+            .into_iter()
+            .map(crate::Geometry::Euclidean3D);
+        crate::ops::split::emit_members(members, std::mem::take(&mut self.attrs), emit);
+        Ok(())
+    }
+}
 
 // A collection validates by recursing into its members (see
 // `validation_next::validate`), so it declares no direct checks and inherits

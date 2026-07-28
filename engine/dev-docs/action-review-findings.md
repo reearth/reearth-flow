@@ -14,253 +14,54 @@ Phase 3 quality review of the 73 base actions against [action-standard.md](actio
 
 ---
 
-## Input (10)
+## Deferred: Extended action documentation (not yet started)
 
-<!-- Session 2 -->
+While applying the standard, descriptions and parameter descriptions are being made concise per §2 and §3.3 (1–2 sentences, no reference dumps). This is correct, but some actions carried genuinely useful **reference-level** detail in their descriptions that concise text cannot hold — e.g. the Shapefile/CSV `encoding` params previously enumerated ~20 supported encodings with examples and priority order. That depth is trimmed during the audit and currently survives only in git history and source.
+
+There is no home for this today:
+
+- The schema `description` is the only user-facing text, and the UI renders it as **plain text** (no markdown) — long structured content renders poorly there anyway.
+- The mdbook `docs/mdbook/src/action.md` is **generated** from the schema (`cargo run -- doc-action`), so it cannot hold anything the schema does not.
+- Hand-written guides in `engine/docs/` (e.g. `czml-timeseries.md`) can hold arbitrary depth but are **orphaned** — not in mdbook `SUMMARY.md`, not linked from any action, not surfaced in the app.
+
+**Task (needs planning before implementation):**
+
+1. Decide the home + format for per-action extended docs (candidate: `engine/docs/actions/<action>.md`; wire into mdbook `SUMMARY.md` and/or extend `doc-action` to emit a "See also" link; consider a UI affordance linking action → doc).
+2. Fold the existing orphan (`czml-timeseries.md`) into that convention.
+3. Recover the reference detail trimmed during the audit (pull from git history of the touched factory files) and migrate it into the new docs.
+
+Until this is planned, concise wins (Option A) — do not re-inflate descriptions to preserve reference material.
+
+---
+
+## Input — deferred items only (batch resolved in PR)
+
+The Input batch (10 actions) was resolved per the standard. Deferred items remain, split out by decision:
 
 ```
-CityGML Reader
-  params:  flatten — missing title and description (§3.3)
-           dataset — description example "data.csv" copy-pasted from CsvReader; should
-             reference a .gml file (§3.3)
-           ordering — `flatten` sits between `dataset` and `inline`; correct order:
-             dataset → inline → flatten (§3.5)
-
-CSV Reader
-  desc:    title-case — "Read Features from CSV or TSV File"; suggest "Reads features
-             from CSV and TSV files."
-  params:  ordering — `format` is required but is 3rd in properties (after dataset,
-             encoding); move to first (§3.5)
-           encoding — description is paragraph-length; §3.3 prefers ≤2 sentences
-           headerRows — description exceeds 2 sentences (§3.3)
-  tags:    ["csv"] — 1 tag; suggest adding `file`
-
-Feature Creator
-  desc:    title-case — "Generate Custom Features Using Scripts"; suggest "Creates
-             features from a script expression that returns one or more attribute maps."
-  params:  creator — description opens with imperative "Write a script expression…";
-             should describe, not instruct; suggest "Script expression that returns a map
-             (single feature) or an array of maps (multiple features)."
-  tags:    empty — no fitting established vocabulary terms; consider proposing `scripting`
-
-File Path Extractor
-  tags:    ["file-system"] — not in established vocabulary; replace with `file`; 1 tag
-             acceptable (no strong second candidate)
-
-GeoJSON Reader
-  params:  dataset — description example "data.csv" copy-pasted; should reference a
-             .geojson file (§3.3)
-  tags:    ["geojson"] — 1 tag; suggest adding `vector`
-
 GeoPackage Reader
-  params:  schema-level description missing (§3.3)
-           attributeFilter, batchSize, force2D, includeMetadata, layerName, readMode,
-             spatialFilter, tileFormat — all missing title and/or description (§3.3)
-           readMode enum variants ("features", "tiles", "all", "metadataOnly") — no
-             per-variant descriptions (§3.4)
-           tileFormat enum variants ("png", "jpeg", "webp") — no per-variant descriptions
-             (§3.4)
-           10 params — exceeds 8; justification required (§3.5); batchSize looks like
-             implementation leakage — evaluate removal (§3.5)
-           ordering — alphabetical, not usability-ordered; suggest: dataset → readMode →
-             layerName → attributeFilter → spatialFilter → includeMetadata → force2D →
-             tileFormat → batchSize (§3.5)
-  tags:    ["geopackage"] — 1 tag; suggest adding `vector` (and `raster` if tile reading
-             is a primary use case)
-
-JSON Reader
-  tags:    ["json"] — 1 tag; acceptable (no strong second candidate)
-
-Shapefile Reader
-  params:  allowEmptyPath — description mentions "Rhai `()`"; remove implementation
-             detail; suggest "If true, a null dataset path produces zero features instead
-             of an error."
-           encoding — description is paragraph-length; §3.3 prefers ≤2 sentences
-           force2d — should be `force2D` per camelCase (§3.1)
-           dataset — description example "data.csv" copy-pasted; should reference a .zip
-             file (§3.3)
-           ordering — allowEmptyPath (edge-case) is first; correct order: dataset →
-             inline → encoding → force2D → allowEmptyPath (§3.5)
-  tags:    ["shapefile"] — 1 tag; suggest adding `vector`
-
-SQL Reader
-  desc:    title-case — "Read Features from SQL Database"; suggest "Reads features from
-             a SQL database."
-  tags:    ["database"] — 1 tag; acceptable (no strong second candidate)
-
-Feature CityGML Reader
-  desc:    "Reads and processes features from CityGML files with optional flattening" —
-             "reads and processes" is redundant; suggest "Reads CityGML features from a
-             file path stored in the incoming feature, optionally flattening nested
-             attributes."
-  params:  ordering — required `dataset` is not first (codelistsPath is); correct order:
-             dataset → flatten → codelistsPath (§3.5)
-  ports:   inputPorts `default` — global note
-           outputPorts `default` — global note
-```
-
----
-
-## Output (10)
-
-<!-- Session 3 -->
-
-```
-Cesium 3D Tiles Writer
-  desc:    title-case — "Export Features as Cesium 3D Tiles for Web Visualization"; suggest
-             "Writes features to Cesium 3D Tiles format for 3D web visualization."
-  params:  schema-level description missing (§3.3)
-           skipUnexposedAttributes — title "Skip unexposed Attributes" inconsistent
-             capitalization; should be "Skip Unexposed Attributes"
-           ordering — alphabetical; suggest: output → maxZoom → minZoom → attachTexture →
-             dracoCompression → schemaKey → skipUnexposedAttributes → compressOutput (§3.5)
-  tags:    ["3d-tiles", "3d"] — `3d-tiles` not in vocabulary; suggest ["3d", "tiling"]
-
-CityGML Writer
-  params:  schema-level description missing (§3.3)
-           epsgCode, lodFilter, output, prettyPrint — all missing title (§3.3)
-           ordering — required `output` is 3rd; correct order: output → prettyPrint →
-             lodFilter → epsgCode (§3.5)
-
-CSV Writer
-  params:  format, output — missing title (§3.3)
-           ordering — `geometry` (optional) sits between two required params; correct order:
-             format → output → geometry (§3.5)
-  tags:    ["csv"] — 1 tag; suggest adding `file`
-
-GeoJSON Writer
-  params:  groupBy, output — missing title (§3.3)
-           ordering — required `output` is last; correct order: output → groupBy (§3.5)
-  tags:    ["geojson"] — 1 tag; suggest adding `vector`
-
-GeoPackage Writer
-  desc:    "with proper SQLite structure, spatial indexing, and metadata tables" —
-             implementation detail; suggest "Writes features to a GeoPackage (.gpkg) file."
-  params:  createSpatialIndex, geometryColumn, geometryType, output, overwrite, srsId,
-             tableName — all missing title (§3.3)
-           ordering — alphabetical; suggest: output → tableName → geometryType →
-             geometryColumn → srsId → overwrite → createSpatialIndex (§3.5)
-  tags:    ["geopackage"] — 1 tag; suggest adding `vector`
-
-JSON Writer
-  params:  converter, output — missing title (§3.3)
-           ordering — required `output` is last; correct order: output → converter (§3.5)
-
-MVT Writer
-  desc:    "with TileJSON 3.0.0 metadata" — version detail; suggest "Writes features to
-             Mapbox Vector Tiles (MVT) format."
-  params:  schema-level description contains implementation details (internal file paths,
-             HTTP root note); replace with a plain summary (§3.3)
-           extent — tile coordinate resolution (default 4096); users rarely adjust this;
-             evaluate for removal as implementation leakage (§3.5)
-           9 params — exceeds 8; justification required (§3.5)
-           ordering — alphabetical; suggest: output → layerName → minZoom → maxZoom →
-             compressOutput → schemaKey → skipUnexposedAttributes → colonToUnderscore →
-             extent (§3.5)
-  tags:    ["mvt"] — not in vocabulary; suggest ["vector", "tiling"]
-
-Shapefile Writer
-  params:  groupBy, output — missing title (§3.3)
-           ordering — required `output` is last; correct order: output → groupBy (§3.5)
-  tags:    ["shapefile"] — 1 tag; suggest adding `vector`
-
-XML Writer
-  params:  output — missing title (§3.3)
-
-Zip File Writer
-  params:  output — missing title (§3.3); description "Output path" too brief — should
-             describe the accepted expression types
-  tags:    ["file-system", "compression"] — `file-system` not in vocabulary; replace with
-             `file`; `compression` now in vocabulary — keep as second tag
-```
-
----
-
-## Attribute (8)
-
-<!-- Session 4 -->
-
-```
-Attribute Aggregator
-  desc:    title-case — "Group and Aggregate Features by Attributes"; suggest "Groups
-             features by attributes and aggregates values within each group."
-  params:  aggregateAttributes, calculation, calculationAttribute, calculationValue, method
-             — all have title but missing description (§3.3)
-           ordering — required and optional interleaved; correct order: method →
-             aggregateAttributes → calculationAttribute → calculationValue → calculation (§3.5)
-  tags:    ["aggregate"] — not in vocabulary; replace with `aggregation`
-
-Attribute Conversion Table
-  desc:    title-case — "Transform Feature Attributes Using Lookup Tables"; suggest
-             "Transforms attributes using rules defined in a lookup table (CSV, TSV, or JSON)."
-  params:  schema-level description missing (§3.3)
-           ConversionTableFormat enum — no per-variant descriptions; property description
-             covers them implicitly but borderline (§3.4)
-           ordering — required params `format` and `rules` are not first; correct order:
-             format → rules → dataset → inline (§3.5)
-  tags:    ["mapping"] — now in vocabulary; 1 tag acceptable (no strong second candidate)
-
-Attribute Flattener
-  desc:    title-case — "Flatten Nested Object Attributes into Top-Level Attributes"; suggest
-             "Flattens nested map attributes into individual top-level attributes."
-  params:  schema-level description missing (§3.3)
-  tags:    ["hierarchy"] — not in vocabulary; no established alternative; remove tag
-             (0 tags acceptable — name and description provide sufficient discovery)
-
-Attribute Manager
-  desc:    title-case — "Create, Convert, Rename, and Remove Feature Attributes"; suggest
-             "Creates, converts, renames, or removes feature attributes based on a
-             configurable list of operations."
-  params:  schema-level description missing (§3.3)
-           Method enum ("convert", "create", "rename", "remove") — no per-variant
-             descriptions; plain enum type cannot hold descriptions — restructure as oneOf
-             or add variant explanations to the method property description (§3.4)
-  tags:    empty — `attribute` duplicates category (§6); no other established vocabulary
-             terms apply; 0 tags acceptable
-
-Attribute Mapper
-  desc:    title-case — "Transform Feature Attributes Using Expressions and Mappings";
-             suggest "Maps or transforms feature attributes using expressions and value
-             assignments."
-  params:  schema-level description missing (§3.3)
-  tags:    ["mapping"] — now in vocabulary; 1 tag acceptable
-
-Bulk Attribute Renamer
-  desc:    title-case — "Rename Feature Attributes in Bulk"; suggest "Renames feature
-             attributes in bulk by adding or removing a prefix or suffix, or replacing text."
-  params:  RenameAction enum values PascalCase — AddPrefix, AddSuffix, RemovePrefix,
-             RemoveSuffix, StringReplace must be camelCase: addPrefix, addSuffix,
-             removePrefix, removeSuffix, replaceText (§3.4)
-           RenameType enum values PascalCase — All, Selected must be camelCase: all,
-             selected (§3.4)
-           renameType — description "Choose whether to..." is instructive; suggest "Scope
-             of the rename operation: all attributes or a selected subset."
-           selectedAttributes — description references old enum value names; update when
-             enum is renamed
-  tags:    empty — `attribute` duplicates category (§6); no other established vocabulary
-             terms apply; 0 tags acceptable
-
-Null Attribute Mapper
-  desc:    "Replace" should be "Replaces" (verb-first present tense, third-person singular)
-  params:  schema-level description "NullAttributeMapper parameters" is a name restatement
-             — replace with a meaningful summary (§3.3)
-           defaultReplacement, mappings, nullDefinition, routeNullFeatures, scope — all
-             missing title (§3.3)
-           NullKind enum — "null" variant description "AttributeValue::Null" and
-             "emptyString" variant description "AttributeValue::String(\"\")" expose Rust
-             type names; replace with plain language (§3.4)
-           routeNullFeatures — description mentions port name "hasNull"; avoid port
-             references in parameter descriptions (§2 spirit)
-           ordering — alphabetical; suggest: scope → mappings → defaultReplacement →
-             nullDefinition → routeNullFeatures (§3.5)
-  tags:    ["mapping"] — now in vocabulary; 1 tag acceptable
-
-Statistics Calculator
-  params:  groupBy — title "Group by" should be "Group By"
-           groupId — title "Group id" should be "Group ID"
-  tags:    ["statistics", "aggregate"] — `aggregate` not in vocabulary; replace with
-             `aggregation`; `statistics` now in vocabulary; suggest ["aggregation",
-             "statistics"]
+  params:  includeMetadata, attributeFilter, batchSize, spatialFilter — these four
+             params are accepted but never read (stored with `_` prefixes, no effect).
+             They should be REMOVED (drops 10→6 params, clears the >8 flag). Removal is
+             deferred to the `feat/engine-geopackage-reader-new-geometry` branch, which
+             is actively editing the same file — folding the removal there avoids a
+             conflicting structural change. The Input PR applied only the safe findings
+             (schema description, titles/descriptions + enum docs for the working params,
+             tags). Once removed, re-check ordering (natural order becomes dataset →
+             inline → readMode → layerName → tileFormat → force2D).
+  desc/enum: tile reading is currently stubbed out — the dispatch in geopackage.rs
+             (`match params.read_mode`) routes `Tiles` and `All` to `read_features`
+             with a `// Temporarily disabled tile processing` comment; `read_tiles` /
+             `read_layer_tiles` exist but are never called, so `tileFormat` has no
+             runtime effect. As a result these texts describe non-functional behavior:
+             the action description ("supporting vector features, tiles, and metadata"),
+             the `Tiles` variant ("Reads raster tiles."), the `All` variant ("Reads both
+             vector features and raster tiles."), and the `tileFormat` param ("Image
+             format to decode when reading raster tiles."). Deferred to the same
+             `feat/engine-geopackage-reader-new-geometry` branch: either re-enable tile
+             reading (making the text accurate) or, if tiles stay out, correct these
+             descriptions. `features`, `metadataOnly`, `layerName`, and `force2D` are
+             accurate.
 ```
 
 ---

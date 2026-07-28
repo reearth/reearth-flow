@@ -82,6 +82,40 @@ fn reproject_shell(
     transform_coords_3d(cache, from, target, vertices)
 }
 
+use crate::ops::{plan_frame_step, translate_3d, ConvertFrame, FrameStep, Translate};
+
+impl Translate for Solid {
+    fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
+        for shell in std::iter::once(&mut self.exterior).chain(self.interiors.iter_mut()) {
+            let vertices = match shell {
+                Shell::PolygonMesh(data) => data.vertices_mut(),
+                Shell::TriangularMesh(data) => data.vertices_mut(),
+            };
+            translate_3d(vertices, delta);
+        }
+        Ok(())
+    }
+}
+
+impl ConvertFrame for Solid {
+    fn convert_frame(
+        &mut self,
+        target: &CoordinateFrame,
+        base_point: Option<[f64; 3]>,
+        cache: &mut ReprojectionCache,
+    ) -> crate::error::Result<()> {
+        match plan_frame_step(&self.frame, target, base_point)? {
+            FrameStep::Noop => Ok(()),
+            FrameStep::Reproject(to) => self.reproject(to, cache),
+            FrameStep::Translate(offset, frame) => {
+                self.translate(offset)?;
+                self.frame = frame;
+                Ok(())
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

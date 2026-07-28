@@ -24,7 +24,7 @@ impl SourceFactory for SqlReaderFactory {
     }
 
     fn description(&self) -> &str {
-        "Read Features from SQL Database"
+        "Reads features from a SQL database."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {

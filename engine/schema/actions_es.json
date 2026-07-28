@@ -182,15 +182,44 @@
           "method"
         ],
         "properties": {
+          "method": {
+            "title": "Method to use for aggregation",
+            "description": "How to aggregate the per-feature calculation value within each group: maximum, minimum, or count.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Method"
+              }
+            ]
+          },
           "aggregateAttributes": {
             "title": "List of attributes to aggregate",
+            "description": "Attributes that define each group. Each entry reads a value from an existing attribute or an expression and writes it to a new attribute on the aggregated output feature.",
             "type": "array",
             "items": {
               "$ref": "#/definitions/AggregateAttribute"
             }
           },
+          "calculationAttribute": {
+            "title": "Attribute to store calculation result",
+            "description": "Attribute on the aggregated feature that stores the computed result.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              }
+            ]
+          },
+          "calculationValue": {
+            "title": "Value to use for calculation",
+            "description": "Constant integer used as the per-feature value. Takes precedence over the calculation expression when set.",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
           "calculation": {
             "title": "Calculation to perform",
+            "description": "Expression evaluated to an integer per feature, used as the per-feature value when no calculation value is set.",
             "type": [
               "object",
               "null"
@@ -211,86 +240,9 @@
                 "type": "string"
               }
             }
-          },
-          "calculationValue": {
-            "title": "Value to use for calculation",
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "int64"
-          },
-          "calculationAttribute": {
-            "title": "Attribute to store calculation result",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              }
-            ]
-          },
-          "method": {
-            "title": "Method to use for aggregation",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Method"
-              }
-            ]
           }
         },
         "definitions": {
-          "AggregateAttribute": {
-            "type": "object",
-            "required": [
-              "newAttribute"
-            ],
-            "properties": {
-              "newAttribute": {
-                "title": "New attribute to create",
-                "allOf": [
-                  {
-                    "$ref": "#/definitions/Attribute"
-                  }
-                ]
-              },
-              "attribute": {
-                "title": "Existing attribute to use",
-                "anyOf": [
-                  {
-                    "$ref": "#/definitions/Attribute"
-                  },
-                  {
-                    "type": "null"
-                  }
-                ]
-              },
-              "attributeValue": {
-                "title": "Value to use for attribute",
-                "type": [
-                  "object",
-                  "null"
-                ],
-                "format": "code",
-                "required": [
-                  "type",
-                  "value"
-                ],
-                "properties": {
-                  "type": {
-                    "type": "string",
-                    "enum": [
-                      "flowExpr"
-                    ]
-                  },
-                  "value": {
-                    "type": "string"
-                  }
-                }
-              }
-            }
-          },
-          "Attribute": {
-            "type": "string"
-          },
           "Method": {
             "oneOf": [
               {
@@ -318,6 +270,62 @@
                 ]
               }
             ]
+          },
+          "AggregateAttribute": {
+            "type": "object",
+            "required": [
+              "newAttribute"
+            ],
+            "properties": {
+              "newAttribute": {
+                "title": "New attribute to create",
+                "description": "Name of the attribute written to the aggregated feature that holds this group value.",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  }
+                ]
+              },
+              "attribute": {
+                "title": "Existing attribute to use",
+                "description": "Existing attribute to read the group value from. Ignored when a group value expression is provided.",
+                "anyOf": [
+                  {
+                    "$ref": "#/definitions/Attribute"
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "attributeValue": {
+                "title": "Value to use for attribute",
+                "description": "Expression that computes the group value. Takes precedence over the source attribute when both are set.",
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "format": "code",
+                "required": [
+                  "type",
+                  "value"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "flowExpr"
+                    ]
+                  },
+                  "value": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          },
+          "Attribute": {
+            "type": "string"
           }
         }
       },
@@ -332,7 +340,7 @@
         "Attribute"
       ],
       "tags": [
-        "aggregate"
+        "aggregation"
       ]
     },
     {
@@ -382,12 +390,22 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "AttributeConversionTable Parameters",
+        "description": "Configures the lookup table and the rules that map feature attribute values to replacement values.",
         "type": "object",
         "required": [
           "format",
           "rules"
         ],
         "properties": {
+          "format": {
+            "title": "Table Format",
+            "description": "Format of the conversion table (CSV, TSV, or JSON)",
+            "allOf": [
+              {
+                "$ref": "#/definitions/ConversionTableFormat"
+              }
+            ]
+          },
           "rules": {
             "title": "Conversion Rules",
             "description": "List of rules defining how to map attributes using the conversion table",
@@ -428,18 +446,37 @@
               "string",
               "null"
             ]
-          },
-          "format": {
-            "title": "Table Format",
-            "description": "Format of the conversion table (CSV, TSV, or JSON)",
-            "allOf": [
-              {
-                "$ref": "#/definitions/ConversionTableFormat"
-              }
-            ]
           }
         },
         "definitions": {
+          "ConversionTableFormat": {
+            "oneOf": [
+              {
+                "title": "CSV",
+                "description": "Comma-separated values with a header row.",
+                "type": "string",
+                "enum": [
+                  "csv"
+                ]
+              },
+              {
+                "title": "TSV",
+                "description": "Tab-separated values with a header row.",
+                "type": "string",
+                "enum": [
+                  "tsv"
+                ]
+              },
+              {
+                "title": "JSON",
+                "description": "JSON array of objects, or a single object, where each object is a table row.",
+                "type": "string",
+                "enum": [
+                  "json"
+                ]
+              }
+            ]
+          },
           "AttributeConversionTableRule": {
             "type": "object",
             "required": [
@@ -451,6 +488,7 @@
             "properties": {
               "featureFroms": {
                 "title": "Attributes to convert from",
+                "description": "Feature attributes whose values form the key looked up in the table.",
                 "type": "array",
                 "items": {
                   "$ref": "#/definitions/Attribute"
@@ -458,6 +496,7 @@
               },
               "featureTo": {
                 "title": "Attribute to convert to",
+                "description": "Feature attribute that receives the looked-up value.",
                 "allOf": [
                   {
                     "$ref": "#/definitions/Attribute"
@@ -466,6 +505,7 @@
               },
               "conversionTableKeys": {
                 "title": "Keys to match in conversion table",
+                "description": "Table columns matched against the source attribute values.",
                 "type": "array",
                 "items": {
                   "type": "string"
@@ -473,20 +513,13 @@
               },
               "conversionTableTo": {
                 "title": "Attribute to convert to",
+                "description": "Table column whose value is written to the target attribute.",
                 "type": "string"
               }
             }
           },
           "Attribute": {
             "type": "string"
-          },
-          "ConversionTableFormat": {
-            "type": "string",
-            "enum": [
-              "csv",
-              "tsv",
-              "json"
-            ]
           }
         }
       },
@@ -591,6 +624,7 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "AttributeFlattener Parameters",
+        "description": "Configures which map-valued attributes are expanded into top-level attributes.",
         "type": "object",
         "required": [
           "attributes"
@@ -621,17 +655,16 @@
       "categories": [
         "Attribute"
       ],
-      "tags": [
-        "hierarchy"
-      ]
+      "tags": []
     },
     {
       "name": "Attribute Manager",
       "type": "processor",
-      "description": "Gestiona atributos",
+      "description": "Creates, converts, renames, or removes feature attributes based on a configurable list of operations.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "AttributeManager Parameters",
+        "title": "Attribute Manager Parameters",
+        "description": "Defines the ordered list of operations that create, convert, rename, or remove feature attributes.",
         "type": "object",
         "required": [
           "operations"
@@ -639,7 +672,7 @@
         "properties": {
           "operations": {
             "title": "Attribute Operations",
-            "description": "List of operations to perform on feature attributes (create, convert, rename, remove)",
+            "description": "Operations applied to each feature in order. Each entry names the target attribute, the method to apply, and an optional value expression.",
             "type": "array",
             "items": {
               "$ref": "#/definitions/Operation"
@@ -655,11 +688,13 @@
             ],
             "properties": {
               "attribute": {
-                "title": "Attribute name",
+                "title": "Attribute Name",
+                "description": "Name of the attribute to create, convert, rename, or remove.",
                 "type": "string"
               },
               "method": {
-                "title": "Operation to perform",
+                "title": "Method",
+                "description": "Operation to apply to the attribute.",
                 "allOf": [
                   {
                     "$ref": "#/definitions/Method"
@@ -668,7 +703,7 @@
               },
               "value": {
                 "title": "Value",
-                "description": "Value to use for the operation",
+                "description": "Expression evaluated against the feature. Supplies the new value for Create and Convert, or the new attribute name for Rename. Ignored for Remove.",
                 "type": [
                   "object",
                   "null"
@@ -694,12 +729,39 @@
             }
           },
           "Method": {
-            "type": "string",
-            "enum": [
-              "convert",
-              "create",
-              "rename",
-              "remove"
+            "oneOf": [
+              {
+                "title": "Convert",
+                "description": "Replaces the value of an existing attribute with the result of the value expression. Features that do not already have the attribute are left unchanged.",
+                "type": "string",
+                "enum": [
+                  "convert"
+                ]
+              },
+              {
+                "title": "Create",
+                "description": "Sets the attribute to the result of the value expression, creating it or overwriting any existing value.",
+                "type": "string",
+                "enum": [
+                  "create"
+                ]
+              },
+              {
+                "title": "Rename",
+                "description": "Renames the attribute to the name produced by the value expression. Skipped when the attribute is absent or a target with that name already exists.",
+                "type": "string",
+                "enum": [
+                  "rename"
+                ]
+              },
+              {
+                "title": "Remove",
+                "description": "Removes the attribute from the feature.",
+                "type": "string",
+                "enum": [
+                  "remove"
+                ]
+              }
             ]
           }
         }
@@ -723,6 +785,7 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "AttributeMapper Parameters",
+        "description": "Configures the mapping rules that build the output feature's attributes.",
         "type": "object",
         "required": [
           "mappers"
@@ -743,6 +806,7 @@
             "properties": {
               "attribute": {
                 "title": "Attribute name",
+                "description": "Name of the attribute to set, taking its value from the expression, source attribute, or parent/child pair. Leave empty to use the multiple-values expression instead.",
                 "type": [
                   "string",
                   "null"
@@ -750,6 +814,7 @@
               },
               "expr": {
                 "title": "Expression to evaluate",
+                "description": "Expression evaluated to produce the attribute value. Evaluation errors yield a null value.",
                 "type": [
                   "object",
                   "null"
@@ -774,6 +839,7 @@
               },
               "valueAttribute": {
                 "title": "Attribute name to get value from",
+                "description": "Existing attribute to copy the value from. Yields null when the attribute is absent.",
                 "type": [
                   "string",
                   "null"
@@ -781,6 +847,7 @@
               },
               "parentAttribute": {
                 "title": "Parent attribute name",
+                "description": "Map-valued attribute containing the value to copy. Used together with the child attribute.",
                 "type": [
                   "string",
                   "null"
@@ -788,6 +855,7 @@
               },
               "childAttribute": {
                 "title": "Child attribute name",
+                "description": "Key within the parent map whose value is copied to the target attribute.",
                 "type": [
                   "string",
                   "null"
@@ -795,6 +863,7 @@
               },
               "multipleExpr": {
                 "title": "Expression to evaluate multiple attributes",
+                "description": "Expression returning a map whose entries are added as attributes. Used when no target attribute is set.",
                 "type": [
                   "object",
                   "null"
@@ -1121,8 +1190,8 @@
       "description": "Cambia el nombre de atributos añadiendo/eliminando prefijos o sufijos, o reemplazando texto",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "BulkAttributeRenamer Parameters",
-        "description": "Configure how to rename feature attributes in bulk operations",
+        "title": "Bulk Attribute Renamer Parameters",
+        "description": "Selects which attributes to rename and how their names are transformed.",
         "type": "object",
         "required": [
           "renameAction",
@@ -1131,8 +1200,8 @@
         ],
         "properties": {
           "renameType": {
-            "title": "Which Attributes to Rename",
-            "description": "Choose whether to rename all attributes or only selected ones",
+            "title": "Rename Scope",
+            "description": "Scope of the rename operation: all attributes or a selected subset.",
             "allOf": [
               {
                 "$ref": "#/definitions/RenameType"
@@ -1141,29 +1210,29 @@
           },
           "renameAction": {
             "title": "Rename Operation",
-            "description": "The type of renaming operation to perform on the attribute names",
+            "description": "Transformation applied to each attribute name.",
             "allOf": [
               {
                 "$ref": "#/definitions/RenameAction"
               }
             ]
           },
+          "renameValue": {
+            "title": "Text Value",
+            "description": "Text to add as a prefix or suffix, remove, or use as the replacement, depending on the selected operation.",
+            "type": "string"
+          },
           "textToFind": {
             "title": "Text Pattern to Find",
-            "description": "Regular expression pattern to match when using \"Replace Text\" operation",
+            "description": "Regular expression matched against attribute names. Required for the replaceText operation.",
             "type": [
               "string",
               "null"
             ]
           },
-          "renameValue": {
-            "title": "Text Value",
-            "description": "The text to add as prefix/suffix, remove, or use as replacement",
-            "type": "string"
-          },
           "selectedAttributes": {
             "title": "Selected Attribute Names",
-            "description": "List of specific attribute names to rename (required when \"Selected Attributes\" is chosen)",
+            "description": "Attribute names to rename. Required when the rename scope is set to a selected subset.",
             "type": [
               "array",
               "null"
@@ -1178,18 +1247,18 @@
             "oneOf": [
               {
                 "title": "All Attributes",
-                "description": "Rename all attributes in the feature",
+                "description": "Renames every attribute on the feature.",
                 "type": "string",
                 "enum": [
-                  "All"
+                  "all"
                 ]
               },
               {
                 "title": "Selected Attributes",
-                "description": "Rename only specific attributes listed below",
+                "description": "Renames only the attributes listed in selectedAttributes.",
                 "type": "string",
                 "enum": [
-                  "Selected"
+                  "selected"
                 ]
               }
             ]
@@ -1198,42 +1267,42 @@
             "oneOf": [
               {
                 "title": "Add Prefix",
-                "description": "Add text to the beginning of attribute names",
+                "description": "Prepends the text value to each attribute name.",
                 "type": "string",
                 "enum": [
-                  "AddPrefix"
+                  "addPrefix"
                 ]
               },
               {
                 "title": "Add Suffix",
-                "description": "Add text to the end of attribute names",
+                "description": "Appends the text value to each attribute name.",
                 "type": "string",
                 "enum": [
-                  "AddSuffix"
+                  "addSuffix"
                 ]
               },
               {
                 "title": "Remove Prefix",
-                "description": "Remove text from the beginning of attribute names",
+                "description": "Removes the text value from the start of each attribute name.",
                 "type": "string",
                 "enum": [
-                  "RemovePrefix"
+                  "removePrefix"
                 ]
               },
               {
                 "title": "Remove Suffix",
-                "description": "Remove text from the end of attribute names",
+                "description": "Removes the text value from the end of each attribute name.",
                 "type": "string",
                 "enum": [
-                  "RemoveSuffix"
+                  "removeSuffix"
                 ]
               },
               {
                 "title": "Replace Text",
-                "description": "Find and replace text using regular expressions",
+                "description": "Replaces text matched by the find pattern with the text value, using regular expressions.",
                 "type": "string",
                 "enum": [
-                  "StringReplace"
+                  "replaceText"
                 ]
               }
             ]
@@ -1385,7 +1454,7 @@
         "properties": {
           "format": {
             "title": "File Format",
-            "description": "Choose the delimiter format for the input file",
+            "description": "Delimiter format of the input file.",
             "allOf": [
               {
                 "$ref": "#/definitions/CsvFormat"
@@ -1394,7 +1463,7 @@
           },
           "encoding": {
             "title": "Character Encoding",
-            "description": "Character encoding for the CSV/TSV file. If not specified, defaults to UTF-8.\n\nSupported encodings include: - **UTF-8** - Unicode UTF-8 (default) - **Shift-JIS** - Japanese encoding - **EUC-JP** - Japanese encoding - **Windows Code Pages** - Windows-1250 through Windows-1258 - **ISO-8859 family** - ISO-8859-1 through ISO-8859-16\n\nAll encoding labels are case-insensitive.",
+            "description": "Character encoding of the input file, such as \"UTF-8\" or \"Shift-JIS\". Defaults to UTF-8 when omitted; labels are case-insensitive.",
             "type": [
               "string",
               "null"
@@ -1402,7 +1471,7 @@
           },
           "dataset": {
             "title": "File Path",
-            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+            "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
             "type": [
               "object",
               "null"
@@ -1462,7 +1531,7 @@
           },
           "headerRows": {
             "title": "Header Row Count",
-            "description": "Number of consecutive rows that make up the header (default: 1). When 0, no header rows are read and column names are auto-generated as \"column1\", \"column2\", etc. When greater than 1, column names are formed by joining non-empty values from each header row with \"_\".",
+            "description": "Number of consecutive rows that make up the header (default: 1). When 0, column names are auto-generated as \"column1\", \"column2\", and so on; when greater than 1, names are formed by joining values from each header row with \"_\".",
             "type": [
               "integer",
               "null"
@@ -1596,6 +1665,7 @@
         ],
         "properties": {
           "output": {
+            "title": "Output File",
             "description": "Output path or expression for the CSV/TSV file to create",
             "type": "object",
             "format": "code",
@@ -1617,6 +1687,7 @@
             }
           },
           "format": {
+            "title": "File Format",
             "description": "File format: csv (comma) or tsv (tab)",
             "allOf": [
               {
@@ -1757,7 +1828,7 @@
           },
           "dataset": {
             "title": "File Path",
-            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+            "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
             "type": [
               "object",
               "null"
@@ -2084,6 +2155,7 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Parámetros de Cesium3DTilesWriter",
+        "description": "Configuration for writing features to Cesium 3D Tiles.",
         "type": "object",
         "required": [
           "maxZoom",
@@ -2135,6 +2207,75 @@
               "null"
             ]
           },
+          "dracoCompression": {
+            "title": "Compresión Draco",
+            "description": "Usar compresión Draco. Verdadero por defecto.",
+            "default": true,
+            "type": "boolean"
+          },
+          "computeFlatNormal": {
+            "title": "Calcular Normales Planas",
+            "description": "Calcula normales planas por polígono para la iluminación. Verdadero por defecto. Cuando se desactiva, no se escriben normales y la malla es más pequeña, pero el mosaico no incluye datos de iluminación (el visor debe derivar las normales planas por sí mismo).",
+            "default": true,
+            "type": "boolean"
+          },
+          "texelSize": {
+            "title": "Tamaño de Téxel",
+            "description": "Tamaño de téxel objetivo en metros por píxel. Las texturas más finas que este valor se reducen a él. El valor predeterminado es 0, que conserva el detalle completo de la textura.",
+            "type": [
+              "number",
+              "null"
+            ],
+            "format": "double"
+          },
+          "atlasSize": {
+            "title": "Tamaño del Atlas",
+            "description": "Dimensión máxima del atlas de texturas en píxeles. Las texturas que la superan se distribuyen en páginas de atlas adicionales; una sola textura mayor que este valor se reduce para que quepa. El valor predeterminado es 2048.",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "maximum": 65536.0,
+            "minimum": 1.0
+          },
+          "atlasExtrusion": {
+            "title": "Extrusión del Atlas",
+            "description": "Anillo de píxeles dibujado alrededor de cada región de textura del atlas para evitar el sangrado bilineal entre regiones vecinas. El valor predeterminado es 0 (desactivado).",
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint32",
+            "maximum": 65536.0,
+            "minimum": 0.0
+          },
+          "textureCodec": {
+            "title": "Códec de Textura",
+            "description": "Códec de imagen para las páginas del atlas. Valor predeterminado: `KTX2/ETC1S`; seleccione `Untextured` para no adjuntar texturas.",
+            "default": "KTX2/ETC1S",
+            "allOf": [
+              {
+                "$ref": "#/definitions/TextureCodec"
+              }
+            ]
+          },
+          "schemaKey": {
+            "title": "Clave de Esquema",
+            "description": "Clave de atributo cuyo valor identifica el tipo de esquema y determina el nombre del archivo de salida: todas las entidades que comparten el mismo valor se escriben en el mismo archivo. Este atributo se excluye de la salida.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "skipUnexposedAttributes": {
+            "title": "Omitir Atributos no Expuestos",
+            "description": "Omitir atributos con prefijo de doble guion bajo",
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
           "compressOutput": {
             "title": "Ruta de Salida Comprimida",
             "description": "Ruta opcional para la salida del archivo comprimido",
@@ -2159,37 +2300,48 @@
                 "type": "string"
               }
             }
-          },
-          "dracoCompression": {
-            "title": "Compresión Draco",
-            "description": "Usar compresión Draco. Verdadero por defecto.",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "computeFlatNormal": {
-            "title": "Calcular Normales Planas",
-            "description": "Calcula normales planas por polígono para la iluminación. Verdadero por defecto. Cuando se desactiva, no se escriben normales y la malla es más pequeña, pero el mosaico no incluye datos de iluminación (el visor debe derivar las normales planas por sí mismo).",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "skipUnexposedAttributes": {
-            "title": "Omitir Atributos no Expuestos",
-            "description": "Omitir atributos con prefijo de doble guion bajo",
-            "type": [
-              "boolean",
-              "null"
-            ]
-          },
-          "schemaKey": {
-            "title": "Clave de Esquema",
-            "description": "Clave de atributo cuyo valor identifica el tipo de esquema y determina el nombre del archivo de salida: todas las entidades que comparten el mismo valor se escriben en el mismo archivo. Este atributo se excluye de la salida.",
-            "type": [
-              "string",
-              "null"
+          }
+        },
+        "definitions": {
+          "TextureCodec": {
+            "title": "Texture Codec",
+            "description": "Texture image codec for the new-geometry writer's atlas pages.",
+            "oneOf": [
+              {
+                "description": "KTX2 con supercompresión Basis Universal UASTC (`KHR_texture_basisu`): mayor calidad, archivos más grandes.",
+                "type": "string",
+                "enum": [
+                  "KTX2/UASTC"
+                ]
+              },
+              {
+                "description": "KTX2 con supercompresión Basis Universal ETC1S (`KHR_texture_basisu`): archivos más pequeños, menor calidad.",
+                "type": "string",
+                "enum": [
+                  "KTX2/ETC1S"
+                ]
+              },
+              {
+                "description": "PNG, sin pérdida y con canal alfa.",
+                "type": "string",
+                "enum": [
+                  "PNG"
+                ]
+              },
+              {
+                "description": "JPEG, con pérdida y opaco (se descarta el canal alfa).",
+                "type": "string",
+                "enum": [
+                  "JPEG"
+                ]
+              },
+              {
+                "description": "No adjunta texturas; la geometría texturizada recurre a su color neutro.",
+                "type": "string",
+                "enum": [
+                  "Untextured"
+                ]
+              }
             ]
           }
         }
@@ -2204,8 +2356,8 @@
         "Output"
       ],
       "tags": [
-        "3d-tiles",
-        "3d"
+        "3d",
+        "tiling"
       ]
     },
     {
@@ -2220,7 +2372,7 @@
         "properties": {
           "dataset": {
             "title": "File Path",
-            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+            "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
             "type": [
               "object",
               "null"
@@ -2269,6 +2421,8 @@
             }
           },
           "flatten": {
+            "title": "Flatten Feature Tree",
+            "description": "When enabled, extracts nested child city objects as separate features, each tagged with `parentId` and `parentType` attributes. Defaults to false.",
             "type": [
               "boolean",
               "null"
@@ -2296,12 +2450,14 @@
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "CityGmlWriterParam",
+        "description": "Configuration for writing features to CityGML 2.0 files.",
         "type": "object",
         "required": [
           "output"
         ],
         "properties": {
           "output": {
+            "title": "Output File",
             "description": "Output file path expression",
             "type": "object",
             "format": "code",
@@ -2322,7 +2478,17 @@
               }
             }
           },
+          "prettyPrint": {
+            "title": "Pretty Print",
+            "description": "Whether to format output with indentation (default: true)",
+            "default": true,
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
           "lodFilter": {
+            "title": "LOD Filter",
             "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs.",
             "default": null,
             "type": [
@@ -2336,6 +2502,7 @@
             }
           },
           "epsgCode": {
+            "title": "EPSG Code",
             "description": "EPSG code for coordinate reference system",
             "default": null,
             "type": [
@@ -2344,14 +2511,6 @@
             ],
             "format": "uint32",
             "minimum": 0.0
-          },
-          "prettyPrint": {
-            "description": "Whether to format output with indentation (default: true)",
-            "default": true,
-            "type": [
-              "boolean",
-              "null"
-            ]
           }
         }
       },
@@ -3416,7 +3575,7 @@
         "properties": {
           "creator": {
             "title": "Script Expression",
-            "description": "Write a script expression that returns a map (single feature) or array of maps (multiple features). Each map represents feature attributes as key-value pairs.",
+            "description": "Script expression that returns a map (single feature) or an array of maps (multiple features). Each map holds feature attributes as key-value pairs.",
             "type": "object",
             "format": "code",
             "required": [
@@ -3445,7 +3604,9 @@
       "categories": [
         "Input"
       ],
-      "tags": []
+      "tags": [
+        "scripting"
+      ]
     },
     {
       "name": "Feature Duplicate Filter",
@@ -4606,7 +4767,7 @@
           },
           "extractArchive": {
             "title": "Extract Archive",
-            "description": "Whether to extract files from archives (zip files, etc.) or just list them",
+            "description": "When enabled, archive files (.zip, .7z) are extracted and a feature is emitted for each contained file; when disabled, the archive is emitted as a single file path without extraction.",
             "type": "boolean"
           }
         }
@@ -4620,7 +4781,7 @@
         "Input"
       ],
       "tags": [
-        "file-system"
+        "file"
       ]
     },
     {
@@ -4690,7 +4851,7 @@
         "properties": {
           "dataset": {
             "title": "File Path",
-            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+            "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
             "type": [
               "object",
               "null"
@@ -4749,7 +4910,8 @@
         "Input"
       ],
       "tags": [
-        "geojson"
+        "geojson",
+        "vector"
       ]
     },
     {
@@ -4766,6 +4928,7 @@
         ],
         "properties": {
           "output": {
+            "title": "Output File",
             "description": "Output path or expression for the GeoJSON file to create",
             "type": "object",
             "format": "code",
@@ -4787,6 +4950,7 @@
             }
           },
           "groupBy": {
+            "title": "Group By",
             "description": "Optional attributes to group features by, creating separate files for each group",
             "type": [
               "array",
@@ -4812,7 +4976,8 @@
         "Output"
       ],
       "tags": [
-        "geojson"
+        "geojson",
+        "vector"
       ]
     },
     {
@@ -4821,10 +4986,13 @@
       "description": "Lee características geográficas de archivos GeoPackage (.gpkg) con soporte para características vectoriales, mosaicos y metadatos",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "GeoPackageReaderParam",
+        "title": "GeoPackage Reader Parameters",
+        "description": "Configures which content to read from the GeoPackage file and how geometries are produced.",
         "type": "object",
         "properties": {
           "readMode": {
+            "title": "Read Mode",
+            "description": "Which content to read from the GeoPackage file. Defaults to reading vector features.",
             "default": "features",
             "allOf": [
               {
@@ -4833,6 +5001,8 @@
             ]
           },
           "layerName": {
+            "title": "Layer Name",
+            "description": "Name of the layer to read. When omitted, the first available layer is used.",
             "type": [
               "string",
               "null"
@@ -4843,6 +5013,8 @@
             "type": "boolean"
           },
           "tileFormat": {
+            "title": "Tile Format",
+            "description": "Image format to decode when reading raster tiles. Defaults to PNG.",
             "default": "png",
             "allOf": [
               {
@@ -4867,6 +5039,8 @@
             "minimum": 0.0
           },
           "force2D": {
+            "title": "Force 2D",
+            "description": "If true, forces all geometries to be 2D (ignoring Z values).",
             "default": false,
             "type": "boolean"
           },
@@ -4879,7 +5053,7 @@
           },
           "dataset": {
             "title": "File Path",
-            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+            "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
             "type": [
               "object",
               "null"
@@ -4930,20 +5104,67 @@
         },
         "definitions": {
           "GeoPackageReadMode": {
-            "type": "string",
-            "enum": [
-              "features",
-              "tiles",
-              "all",
-              "metadataOnly"
+            "oneOf": [
+              {
+                "title": "Features",
+                "description": "Reads vector features (geometry and attributes).",
+                "type": "string",
+                "enum": [
+                  "features"
+                ]
+              },
+              {
+                "title": "Tiles",
+                "description": "Reads raster tiles.",
+                "type": "string",
+                "enum": [
+                  "tiles"
+                ]
+              },
+              {
+                "title": "All",
+                "description": "Reads both vector features and raster tiles.",
+                "type": "string",
+                "enum": [
+                  "all"
+                ]
+              },
+              {
+                "title": "Metadata Only",
+                "description": "Reads only the file's metadata, without features or tiles.",
+                "type": "string",
+                "enum": [
+                  "metadataOnly"
+                ]
+              }
             ]
           },
           "TileFormat": {
-            "type": "string",
-            "enum": [
-              "png",
-              "jpeg",
-              "webp"
+            "oneOf": [
+              {
+                "title": "PNG",
+                "description": "Decodes tiles as PNG images.",
+                "type": "string",
+                "enum": [
+                  "png"
+                ]
+              },
+              {
+                "title": "JPEG",
+                "description": "Decodes tiles as JPEG images.",
+                "type": "string",
+                "enum": [
+                  "jpeg"
+                ]
+              },
+              {
+                "title": "WebP",
+                "description": "Decodes tiles as WebP images.",
+                "type": "string",
+                "enum": [
+                  "webp"
+                ]
+              }
             ]
           }
         }
@@ -4957,7 +5178,8 @@
         "Input"
       ],
       "tags": [
-        "geopackage"
+        "geopackage",
+        "vector"
       ]
     },
     {
@@ -4974,6 +5196,7 @@
         ],
         "properties": {
           "output": {
+            "title": "Output File",
             "description": "Output path for the GeoPackage file to create",
             "type": "object",
             "format": "code",
@@ -4995,35 +5218,109 @@
             }
           },
           "tableName": {
+            "title": "Table Name",
             "description": "Table name to create (default: \"features\")",
             "default": "features",
             "type": "string"
           },
-          "geometryColumn": {
-            "description": "Geometry column name (default: \"geom\")",
-            "default": "geom",
-            "type": "string"
-          },
           "srsId": {
+            "title": "SRS ID",
             "description": "Spatial Reference System ID (default: 4326 for WGS84)",
             "default": 4326,
             "type": "integer",
             "format": "int32"
           },
           "geometryType": {
+            "title": "Geometry Type",
             "description": "Geometry type for table (Point, LineString, Polygon, MultiPoint, MultiLineString, MultiPolygon, or GEOMETRY for mixed)",
-            "default": "GEOMETRY",
-            "type": "string"
-          },
-          "createSpatialIndex": {
-            "description": "Create RTree spatial index (default: true)",
-            "default": true,
-            "type": "boolean"
+            "default": "geometry",
+            "allOf": [
+              {
+                "$ref": "#/definitions/GeometryType"
+              }
+            ]
           },
           "overwrite": {
+            "title": "Overwrite Existing File",
             "description": "Overwrite existing file (default: false)",
             "default": false,
             "type": "boolean"
+          },
+          "geometryColumn": {
+            "title": "Geometry Column",
+            "description": "Geometry column name (default: \"geom\")",
+            "default": "geom",
+            "type": "string"
+          },
+          "createSpatialIndex": {
+            "title": "Create Spatial Index",
+            "description": "Create RTree spatial index (default: true)",
+            "default": true,
+            "type": "boolean"
+          }
+        },
+        "definitions": {
+          "GeometryType": {
+            "title": "Geometry Type",
+            "description": "Geometry type declared for a GeoPackage feature table.",
+            "oneOf": [
+              {
+                "title": "Point",
+                "description": "A single point per feature.",
+                "type": "string",
+                "enum": [
+                  "point"
+                ]
+              },
+              {
+                "title": "Line String",
+                "description": "A single connected sequence of points per feature.",
+                "type": "string",
+                "enum": [
+                  "lineString"
+                ]
+              },
+              {
+                "title": "Polygon",
+                "description": "A single polygon, with optional holes, per feature.",
+                "type": "string",
+                "enum": [
+                  "polygon"
+                ]
+              },
+              {
+                "title": "Multi Point",
+                "description": "A collection of points per feature.",
+                "type": "string",
+                "enum": [
+                  "multiPoint"
+                ]
+              },
+              {
+                "title": "Multi Line String",
+                "description": "A collection of line strings per feature.",
+                "type": "string",
+                "enum": [
+                  "multiLineString"
+                ]
+              },
+              {
+                "title": "Multi Polygon",
+                "description": "A collection of polygons per feature.",
+                "type": "string",
+                "enum": [
+                  "multiPolygon"
+                ]
+              },
+              {
+                "title": "Geometry (Mixed)",
+                "description": "Any geometry type; use when the table holds mixed or unknown geometry types.",
+                "type": "string",
+                "enum": [
+                  "geometry"
+                ]
+              }
+            ]
           }
         }
       },
@@ -5036,7 +5333,8 @@
         "Output"
       ],
       "tags": [
-        "geopackage"
+        "geopackage",
+        "vector"
       ]
     },
     {
@@ -7504,7 +7802,7 @@
         "properties": {
           "dataset": {
             "title": "File Path",
-            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+            "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
             "type": [
               "object",
               "null"
@@ -7580,6 +7878,7 @@
         ],
         "properties": {
           "output": {
+            "title": "Output File",
             "description": "Output path or expression for the JSON file to create",
             "type": "object",
             "format": "code",
@@ -7601,6 +7900,7 @@
             }
           },
           "converter": {
+            "title": "Converter Expression",
             "description": "Optional converter expression to transform features before writing",
             "type": [
               "object",
@@ -7934,8 +8234,8 @@
             "minimum": 0.0
           },
           "compressOutput": {
-            "title": "Compress Output",
-            "description": "Optional expression to determine whether to compress the output tiles",
+            "title": "Compressed Output Path",
+            "description": "Optional path where a compressed archive of the tiles is also written.",
             "type": [
               "object",
               "null"
@@ -7957,6 +8257,14 @@
                 "type": "string"
               }
             }
+          },
+          "schemaKey": {
+            "title": "Schema Key",
+            "description": "Attribute key to match data and schema features for attribute filtering and casting. This attribute is excluded from output.",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "skipUnexposedAttributes": {
             "title": "Skip Unexposed Attributes",
@@ -7983,14 +8291,6 @@
             ],
             "format": "uint32",
             "minimum": 0.0
-          },
-          "schemaKey": {
-            "title": "Schema Key",
-            "description": "Attribute key to match data and schema features for attribute filtering and casting. This attribute is excluded from output.",
-            "type": [
-              "string",
-              "null"
-            ]
           }
         }
       },
@@ -8004,7 +8304,8 @@
         "Output"
       ],
       "tags": [
-        "mvt"
+        "vector",
+        "tiling"
       ]
     },
     {
@@ -8190,15 +8491,26 @@
     {
       "name": "Null Attribute Mapper",
       "type": "processor",
-      "description": "Reemplaza valores de atributos nulos con valores predeterminados configurados",
+      "description": "Replaces null-like attribute values with configured replacement values, optionally removing or routing affected features.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "NullAttributeMapperParams",
-        "description": "NullAttributeMapper parameters",
+        "title": "Null Attribute Mapper Parameters",
+        "description": "Detects null-like attribute values and replaces them, removes them, or routes affected features according to per-attribute rules.",
         "type": "object",
         "properties": {
+          "scope": {
+            "title": "Scope",
+            "description": "Which attributes to inspect: only those named in the mappings, or every attribute on the feature.",
+            "default": "listed",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Scope"
+              }
+            ]
+          },
           "mappings": {
-            "description": "Per-attribute replacement rules",
+            "title": "Attribute Mappings",
+            "description": "Per-attribute rules describing how each null-like attribute is replaced, removed, or created.",
             "default": [],
             "type": "array",
             "items": {
@@ -8206,11 +8518,13 @@
             }
           },
           "defaultReplacement": {
-            "description": "Fallback replacement for attributes not in mappings (when scope = \"all\")",
+            "title": "Default Replacement",
+            "description": "Value used to replace null-like attributes that have no entry in the mappings. Applies only when the scope inspects all attributes.",
             "default": null
           },
           "nullDefinition": {
-            "description": "Which states count as \"null\"",
+            "title": "Null Definition",
+            "description": "States treated as null-like: an explicit null value, a missing attribute, or an empty string. Defaults to null values and missing attributes.",
             "default": [
               "null",
               "missing"
@@ -8221,21 +8535,35 @@
             }
           },
           "routeNullFeatures": {
-            "description": "Emit original features with nulls to hasNull port",
+            "title": "Route Null Features",
+            "description": "When enabled, a copy of each feature that had at least one null-like value is emitted unchanged to a separate output for inspection.",
             "default": false,
             "type": "boolean"
-          },
-          "scope": {
-            "description": "Which attributes to inspect",
-            "default": "listed",
-            "allOf": [
-              {
-                "$ref": "#/definitions/Scope"
-              }
-            ]
           }
         },
         "definitions": {
+          "Scope": {
+            "title": "Scope",
+            "description": "Which attributes the action inspects.",
+            "oneOf": [
+              {
+                "title": "Listed Attributes",
+                "description": "Inspects only the attributes named in the mappings list.",
+                "type": "string",
+                "enum": [
+                  "listed"
+                ]
+              },
+              {
+                "title": "All Attributes",
+                "description": "Inspects every attribute on the feature.",
+                "type": "string",
+                "enum": [
+                  "all"
+                ]
+              }
+            ]
+          },
           "AttributeMapping": {
             "description": "Per-attribute replacement mapping",
             "type": "object",
@@ -8244,14 +8572,17 @@
             ],
             "properties": {
               "attribute": {
-                "description": "Name of the attribute to inspect",
+                "title": "Attribute",
+                "description": "Name of the attribute to inspect.",
                 "type": "string"
               },
               "replacement": {
-                "description": "Value to write when attribute is null-like null means remove the attribute"
+                "title": "Replacement",
+                "description": "Value written when the attribute is null-like. A null value removes the attribute instead."
               },
               "onMissing": {
-                "description": "What to do when attribute is missing but not in nullDefinition",
+                "title": "On Missing",
+                "description": "Behavior when the attribute is absent and not treated as null-like by the null definition.",
                 "default": "skip",
                 "allOf": [
                   {
@@ -8262,17 +8593,20 @@
             }
           },
           "OnMissing": {
-            "description": "What to do when attribute is missing but not in nullDefinition",
+            "title": "On Missing",
+            "description": "Behavior when an inspected attribute is absent from the feature.",
             "oneOf": [
               {
-                "description": "Leave unchanged",
+                "title": "Skip",
+                "description": "Leaves the feature unchanged.",
                 "type": "string",
                 "enum": [
                   "skip"
                 ]
               },
               {
-                "description": "Write replacement value, creating the attribute",
+                "title": "Create",
+                "description": "Adds the attribute using the mapping's replacement value.",
                 "type": "string",
                 "enum": [
                   "create"
@@ -8281,46 +8615,31 @@
             ]
           },
           "NullKind": {
-            "description": "Defines what states count as \"null\"",
+            "title": "Null Definition",
+            "description": "States that are treated as null-like.",
             "oneOf": [
               {
-                "description": "AttributeValue::Null",
+                "title": "Null Value",
+                "description": "An attribute present on the feature but holding an explicit null value.",
                 "type": "string",
                 "enum": [
                   "null"
                 ]
               },
               {
-                "description": "Attribute key absent from the feature",
+                "title": "Missing Attribute",
+                "description": "An attribute that is absent from the feature.",
                 "type": "string",
                 "enum": [
                   "missing"
                 ]
               },
               {
-                "description": "AttributeValue::String(\"\")",
+                "title": "Empty String",
+                "description": "An attribute holding a text value with no characters.",
                 "type": "string",
                 "enum": [
                   "emptyString"
-                ]
-              }
-            ]
-          },
-          "Scope": {
-            "description": "Scope of attributes to inspect",
-            "oneOf": [
-              {
-                "description": "Only check attributes named in mappings",
-                "type": "string",
-                "enum": [
-                  "listed"
-                ]
-              },
-              {
-                "description": "Check all attributes on the feature",
-                "type": "string",
-                "enum": [
-                  "all"
                 ]
               }
             ]
@@ -8333,7 +8652,7 @@
       ],
       "outputPorts": [
         "features",
-        "hasNull",
+        "has-null",
         "rejected"
       ],
       "categories": [
@@ -8411,7 +8730,7 @@
           },
           "dataset": {
             "title": "File Path",
-            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+            "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
             "type": [
               "object",
               "null"
@@ -11533,27 +11852,27 @@
         "properties": {
           "encoding": {
             "title": "Character Encoding",
-            "description": "Character encoding for attribute data in the DBF file. If not specified, encoding is determined from the .cpg file (if present), otherwise defaults to UTF-8.\n\nSupported encodings include: - **UTF-8** - Unicode UTF-8 (default, recommended for all new shapefiles) - **Windows Code Pages** - Windows-1250 through Windows-1258, Windows-874 - **ISO-8859 family** - ISO-8859-1 (Latin-1) through ISO-8859-16 - **Asian encodings** - Shift-JIS, EUC-JP, EUC-KR, Big5, GBK, GB18030 - **Other legacy encodings** - KOI8-R, KOI8-U, IBM866, Macintosh\n\nAll encoding labels are case-insensitive and support common variations (e.g., \"UTF-8\", \"UTF8\", \"utf8\" all work).\n\nUTF-16 is not supported due to byte-level handling requirements. If a UTF-16 shapefile is encountered, an error with conversion instructions is returned.\n\nExamples: - `\"UTF-8\"` - Modern standard - `\"Windows-1252\"` - Common for Western European legacy data - `\"ISO-8859-1\"` - Latin-1, common in older shapefiles - `\"Shift-JIS\"` - Japanese data\n\nPriority order: encoding parameter > .cpg file > UTF-8 default",
+            "description": "Character encoding for attribute data in the DBF file, such as \"UTF-8\", \"Shift-JIS\", or \"Windows-1252\"; labels are case-insensitive. When omitted, the encoding is taken from the .cpg file if present, otherwise UTF-8 (UTF-16 is not supported).",
             "type": [
               "string",
               "null"
             ]
           },
-          "force2d": {
+          "force2D": {
             "title": "Force 2D",
-            "description": "If true, forces all geometries to be 2D (ignoring Z values)",
+            "description": "If true, forces all geometries to be 2D (ignoring Z values).",
             "default": false,
             "type": "boolean"
           },
           "allowEmptyPath": {
             "title": "Allow Null Path",
-            "description": "If true, a dataset expression that evaluates to null produces zero features instead of an error. This is useful for optional shapefile inputs where the path may not be configured.",
+            "description": "If true, a null dataset path produces zero features instead of an error, allowing optional shapefile inputs.",
             "default": false,
             "type": "boolean"
           },
           "dataset": {
             "title": "File Path",
-            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+            "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
             "type": [
               "object",
               "null"
@@ -11612,7 +11931,8 @@
         "Input"
       ],
       "tags": [
-        "shapefile"
+        "shapefile",
+        "vector"
       ]
     },
     {
@@ -11629,7 +11949,8 @@
         ],
         "properties": {
           "output": {
-            "description": "Output path or expression for the Shapefile to create",
+            "title": "Output Directory",
+            "description": "Output directory path or expression where the generated Shapefile files are written.",
             "type": "object",
             "format": "code",
             "required": [
@@ -11650,6 +11971,7 @@
             }
           },
           "groupBy": {
+            "title": "Group By",
             "description": "Optional attributes to group features by, creating separate files for each group",
             "type": [
               "array",
@@ -11675,7 +11997,8 @@
         "Output"
       ],
       "tags": [
-        "shapefile"
+        "shapefile",
+        "vector"
       ]
     },
     {
@@ -11879,28 +12202,24 @@
       "description": "Calcula estadísticas de las entidades",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "StatisticsCalculator Parameters",
-        "description": "Configuration for calculating statistical aggregations on feature attributes.",
+        "title": "Statistics Calculator Parameters",
+        "description": "Defines the grouping attributes and the statistics computed for each group.",
         "type": "object",
         "required": [
           "calculations"
         ],
         "properties": {
-          "groupId": {
-            "title": "Group id",
-            "description": "Optional attribute to store the group identifier. The ID will be formed by concatenating the values of the group_by attributes separated by '|'.",
-            "anyOf": [
-              {
-                "$ref": "#/definitions/Attribute"
-              },
-              {
-                "type": "null"
-              }
-            ]
+          "calculations": {
+            "title": "Calculations",
+            "description": "Statistics to compute for each group. Each entry names an output attribute, the aggregation method, and (except for count) the expression whose values are aggregated.",
+            "type": "array",
+            "items": {
+              "$ref": "#/definitions/Calculation"
+            }
           },
           "groupBy": {
-            "title": "Group by",
-            "description": "Attributes to group features by for aggregation. All of the inputs will be grouped if not specified.",
+            "title": "Group By",
+            "description": "Attributes to group features by before aggregating. When omitted, all input features form a single group.",
             "type": [
               "array",
               "null"
@@ -11909,37 +12228,52 @@
               "$ref": "#/definitions/Attribute"
             }
           },
-          "calculations": {
-            "title": "Calculations",
-            "description": "List of statistical calculations to perform on grouped features",
-            "type": "array",
-            "items": {
-              "$ref": "#/definitions/Calculation"
-            }
+          "groupId": {
+            "title": "Group ID",
+            "description": "Optional attribute in which to store the group identifier, formed by joining the Group By values with '|'.",
+            "anyOf": [
+              {
+                "$ref": "#/definitions/Attribute"
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "definitions": {
-          "Attribute": {
-            "type": "string"
-          },
           "Calculation": {
             "type": "object",
             "required": [
-              "expr",
               "newAttribute"
             ],
             "properties": {
               "newAttribute": {
-                "title": "New attribute name",
+                "title": "New Attribute Name",
+                "description": "Name of the output attribute that stores the computed statistic.",
                 "allOf": [
                   {
                     "$ref": "#/definitions/Attribute"
                   }
                 ]
               },
+              "aggregation": {
+                "title": "Aggregation Method",
+                "description": "Statistic to compute across each group. Defaults to sum.",
+                "default": "sum",
+                "allOf": [
+                  {
+                    "$ref": "#/definitions/AggregationMethod"
+                  }
+                ]
+              },
               "expr": {
-                "title": "Calculation to perform",
-                "type": "object",
+                "title": "Value Expression",
+                "description": "Expression evaluated per feature to produce the value being aggregated. Required for every method except count, which counts features regardless of value.",
+                "type": [
+                  "object",
+                  "null"
+                ],
                 "format": "code",
                 "required": [
                   "type",
@@ -11958,6 +12292,53 @@
                 }
               }
             }
+          },
+          "Attribute": {
+            "type": "string"
+          },
+          "AggregationMethod": {
+            "oneOf": [
+              {
+                "title": "Count",
+                "description": "Counts the number of features in each group. The value expression is not required and is ignored.",
+                "type": "string",
+                "enum": [
+                  "count"
+                ]
+              },
+              {
+                "title": "Sum",
+                "description": "Adds the value expression across all features in each group.",
+                "type": "string",
+                "enum": [
+                  "sum"
+                ]
+              },
+              {
+                "title": "Minimum",
+                "description": "Keeps the smallest value of the expression in each group.",
+                "type": "string",
+                "enum": [
+                  "min"
+                ]
+              },
+              {
+                "title": "Maximum",
+                "description": "Keeps the largest value of the expression in each group.",
+                "type": "string",
+                "enum": [
+                  "max"
+                ]
+              },
+              {
+                "title": "Mean",
+                "description": "Averages the value of the expression across all features in each group.",
+                "type": "string",
+                "enum": [
+                  "mean"
+                ]
+              }
+            ]
           }
         }
       },
@@ -11973,8 +12354,8 @@
         "Attribute"
       ],
       "tags": [
-        "statistics",
-        "aggregate"
+        "aggregation",
+        "statistics"
       ]
     },
     {
@@ -12611,6 +12992,7 @@
         ],
         "properties": {
           "output": {
+            "title": "Output File",
             "description": "Output path or expression for the XML file to create",
             "type": "object",
             "format": "code",
@@ -12659,6 +13041,7 @@
         ],
         "properties": {
           "output": {
+            "title": "Output File",
             "description": "Output path",
             "type": "object",
             "format": "code",
@@ -12690,7 +13073,7 @@
         "Output"
       ],
       "tags": [
-        "file-system",
+        "file",
         "compression"
       ]
     },
@@ -12723,7 +13106,7 @@
           },
           "dataset": {
             "title": "File Path",
-            "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)",
+            "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
             "type": [
               "object",
               "null"

@@ -24,7 +24,7 @@ impl SourceFactory for GeoJsonReaderFactory {
     }
 
     fn description(&self) -> &str {
-        "Reads geographic features from GeoJSON files, supporting both single features and feature collections"
+        "Reads geographic features from a GeoJSON FeatureCollection file."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -36,7 +36,7 @@ impl SourceFactory for GeoJsonReaderFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["geojson"]
+        &["geojson", "vector"]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {

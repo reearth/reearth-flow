@@ -58,54 +58,62 @@
     },
     {
       "name": "Attribute Aggregator",
-      "description": "属性に基づいて地物をグルーピングする",
+      "description": "属性値で地物をグループ化し、グループごとに計算値を集計して1グループにつき1地物を出力する",
       "parameterI18n": {
         "": {
-          "title": "AttributeAggregator パラメータ",
-          "description": "属性値に基づいてフィーチャーをグループ化・集計する方法を設定する"
+          "title": "Attribute Aggregator パラメータ",
+          "description": "地物をどのようにグループ化し、グループごとにどの値を集計するかを設定する"
         },
         "aggregateAttributes": {
-          "title": "集計する属性のリスト"
+          "title": "グループ化する属性",
+          "description": "各グループを定義する属性。各エントリは既存属性または式から値を読み取り、集計後の出力地物の新しい属性に書き込む"
         },
         "calculation": {
-          "title": "実行する計算"
+          "title": "計算式",
+          "description": "地物ごとに整数として評価される式。計算値が設定されていない場合の地物ごとの値として使う"
         },
         "calculationAttribute": {
-          "title": "計算結果を格納する属性"
+          "title": "結果を格納する属性",
+          "description": "計算結果を格納する集計後地物の属性"
         },
         "calculationValue": {
-          "title": "計算に使用する値"
+          "title": "計算に使用する値",
+          "description": "地物ごとの値として使う整数の定数。設定した場合は計算式より優先される"
         },
         "method": {
-          "title": "集計メソッド"
+          "title": "集計メソッド",
+          "description": "グループ内で地物ごとの計算値を集計する方法（最大・最小・カウント）"
         }
       },
       "definitionI18n": {
         "AggregateAttribute": {
           "attribute": {
-            "title": "使用する既存属性"
+            "title": "参照する既存属性",
+            "description": "グループ値を読み取る既存属性。グループ値の式が指定された場合は無視される"
           },
           "attributeValue": {
-            "title": "属性に使用する値"
+            "title": "グループ値の式",
+            "description": "グループ値を計算する式。両方設定した場合は既存属性より優先される"
           },
           "newAttribute": {
-            "title": "作成する新規属性"
+            "title": "出力属性",
+            "description": "このグループ値を格納する集計後地物の属性名"
           }
         }
       },
       "enumI18n": {
         "Method": {
           "count": {
-            "title": "アイテム数をカウント",
-            "description": "グループ内のフィーチャー数をカウントする"
+            "title": "カウント",
+            "description": "グループ内で地物ごとの計算値を合計する。値が1のときは地物数になる"
           },
           "max": {
             "title": "最大値",
-            "description": "グループ内の最大値を求める"
+            "description": "グループ内の地物ごとの計算値の最大値を保持する"
           },
           "min": {
             "title": "最小値",
-            "description": "グループ内の最小値を求める"
+            "description": "グループ内の地物ごとの計算値の最小値を保持する"
           }
         }
       }
@@ -126,41 +134,62 @@
     },
     {
       "name": "Attribute Conversion Table",
-      "description": "ルックアップテーブルを使用して地物属性を変換する",
+      "description": "ファイルまたはインラインで指定した変換テーブルで値を照合し、地物属性を変換する",
       "parameterI18n": {
         "": {
-          "title": "AttributeConversionTable パラメータ"
+          "title": "Attribute Conversion Table パラメータ",
+          "description": "ルックアップテーブルと、地物属性値を置換値にマッピングするルールを設定する"
         },
         "dataset": {
           "title": "データセット URI",
-          "description": "外部変換テーブルファイルのパスまたは URI"
+          "description": "変換テーブルファイルのパスまたは URI。これかインラインデータのいずれかを指定する"
         },
         "format": {
           "title": "テーブル形式",
-          "description": "変換テーブルの形式（CSV、TSV、または JSON）"
+          "description": "変換テーブルの解析に使う形式"
         },
         "inline": {
-          "title": "インラインテーブルデータ",
-          "description": "文字列として直接指定する変換テーブルデータ"
+          "title": "インラインテーブル",
+          "description": "テキストとして直接指定する変換テーブルの内容。データセット URI がない場合に使う"
         },
         "rules": {
           "title": "変換ルール",
-          "description": "変換テーブルを使用して属性をマッピングするルールのリスト"
+          "description": "地物属性値をテーブルの列と照合し、照合結果を地物に書き戻すルール"
         }
       },
       "definitionI18n": {
         "AttributeConversionTableRule": {
           "conversionTableKeys": {
-            "title": "変換テーブルで照合するキー"
+            "title": "照合キー列",
+            "description": "元属性の値と照合するテーブルの列"
           },
           "conversionTableTo": {
-            "title": "変換先属性"
+            "title": "結果の列",
+            "description": "変換先属性に書き込む値を持つテーブルの列"
           },
           "featureFroms": {
-            "title": "変換元属性"
+            "title": "元属性",
+            "description": "テーブルで照合するキーを構成する地物属性"
           },
           "featureTo": {
-            "title": "変換先属性"
+            "title": "変換先属性",
+            "description": "照合した値を受け取る地物属性"
+          }
+        }
+      },
+      "enumI18n": {
+        "ConversionTableFormat": {
+          "csv": {
+            "title": "CSV",
+            "description": "ヘッダー行付きのカンマ区切り値"
+          },
+          "json": {
+            "title": "JSON",
+            "description": "各オブジェクトが1行を表す、オブジェクトの JSON 配列または単一オブジェクト"
+          },
+          "tsv": {
+            "title": "TSV",
+            "description": "ヘッダー行付きのタブ区切り値"
           }
         }
       }
@@ -193,75 +222,106 @@
     },
     {
       "name": "Attribute Flattener",
-      "description": "ネストされた属性のフラット化",
+      "description": "マップ値の属性を個々のトップレベル属性にフラット化し、各マップをそのキーと値のエントリで置き換える",
       "parameterI18n": {
         "": {
-          "title": "AttributeFlattener パラメータ"
+          "title": "Attribute Flattener パラメータ",
+          "description": "どのマップ値属性をトップレベル属性に展開するかを設定する"
         },
         "attributes": {
           "title": "フラット化する属性",
-          "description": "フラット化するマップ/オブジェクト属性。ネストされたプロパティがトップレベル属性になる。"
+          "description": "展開するマップ値の属性。各ネストされたキーがトップレベル属性になり、元のマップは削除される。マップ以外の属性はそのまま残る"
         }
       }
     },
     {
       "name": "Attribute Manager",
-      "description": "フィーチャー属性の作成、変換、名前変更、削除",
+      "description": "設定した操作リストに基づいて地物属性を作成・変換・名前変更・削除する",
       "parameterI18n": {
         "": {
-          "title": "AttributeManager パラメータ"
+          "title": "Attribute Manager パラメータ",
+          "description": "地物属性を作成・変換・名前変更・削除する操作の順序付きリストを定義する"
         },
         "operations": {
           "title": "属性操作",
-          "description": "フィーチャー属性に対して実行する操作のリスト"
+          "description": "各地物に順番に適用する操作。各項目で対象の属性、適用するメソッド、任意の値式を指定する"
         }
       },
       "definitionI18n": {
         "Operation": {
           "attribute": {
-            "title": "属性名"
+            "title": "属性名",
+            "description": "作成・変換・名前変更・削除する属性の名前"
           },
           "method": {
-            "title": "実行する操作"
+            "title": "メソッド",
+            "description": "属性に適用する操作"
           },
           "value": {
             "title": "値",
-            "description": "操作に使用する値"
+            "description": "地物に対して評価される式。Create と Convert では新しい値を、Rename では新しい属性名を指定する。Remove では無視される"
+          }
+        }
+      },
+      "enumI18n": {
+        "Method": {
+          "convert": {
+            "title": "変換",
+            "description": "既存の属性の値を値式の結果で置き換える。属性を持たない地物は変更されない"
+          },
+          "create": {
+            "title": "作成",
+            "description": "属性を値式の結果に設定し、属性を作成するか既存の値を上書きする"
+          },
+          "remove": {
+            "title": "削除",
+            "description": "属性を地物から削除する"
+          },
+          "rename": {
+            "title": "名前変更",
+            "description": "値式が生成する名前に属性を変更する。属性が存在しない場合、または同名の属性が既に存在する場合はスキップされる"
           }
         }
       }
     },
     {
       "name": "Attribute Mapper",
-      "description": "属性をマッピングする",
+      "description": "地物の属性を、マッピングルールから構築した新しい属性セットで置き換える。各ルールは式・別の属性・ネストされたマップのエントリから値を導出する",
       "parameterI18n": {
         "": {
-          "title": "AttributeMapper パラメータ"
+          "title": "Attribute Mapper パラメータ",
+          "description": "出力地物の属性を構築するマッピングルールを設定する"
         },
         "mappers": {
-          "title": "属性マッパー",
-          "description": "式または値コピーで属性を変換するマッピングルールのリスト"
+          "title": "マッピングルール",
+          "description": "順序付きのルールのリスト。各ルールは1つ以上の出力属性を生成する。出力地物にはここで生成した属性のみが含まれる"
         }
       },
       "definitionI18n": {
         "Mapper": {
           "attribute": {
-            "title": "属性名"
+            "title": "対象属性",
+            "description": "設定する属性の名前。値は式・元属性・親子ペアから取得する。空にすると複数値の式が使われる"
           },
           "childAttribute": {
-            "title": "子属性名"
+            "title": "子属性",
+            "description": "対象属性に値をコピーする、親マップ内のキー"
           },
           "expr": {
-            "title": "評価する式"
+            "title": "値の式",
+            "description": "属性値を生成するために評価する式。評価エラーの場合は null 値になる"
           },
           "multipleExpr": {
-            "title": "複数属性を評価する式"
+            "title": "複数値の式",
+            "description": "マップを返す式。そのエントリが属性として追加される。対象属性が設定されていない場合に使う"
           },
           "parentAttribute": {
-            "title": "親属性名"
+            "title": "親属性",
+            "description": "コピーする値を含むマップ値の属性。子属性と一緒に使う"
           },
           "valueAttribute": {
-            "title": "値を取得する属性名"
+            "title": "元属性",
+            "description": "値をコピーする既存属性。属性が存在しない場合は null になる"
           }
         }
       }
@@ -388,64 +448,64 @@
     },
     {
       "name": "Bulk Attribute Renamer",
-      "description": "属性名にプレフィックス／サフィックスを追加・削除、またはテキスト置換して一括でリネームする",
+      "description": "プレフィックスやサフィックスの追加・削除、またはテキスト置換により地物属性を一括で名前変更する",
       "parameterI18n": {
         "": {
-          "title": "BulkAttributeRenamer パラメータ",
-          "description": "フィーチャー属性を一括リネームする方法を設定する"
+          "title": "Bulk Attribute Renamer パラメータ",
+          "description": "名前変更する属性と、その名前の変換方法を選択する"
         },
         "renameAction": {
-          "title": "リネーム操作",
-          "description": "属性名に対して実行するリネーム操作の種類"
+          "title": "名前変更操作",
+          "description": "各属性名に適用する変換"
         },
         "renameType": {
-          "title": "リネーム対象",
-          "description": "すべての属性をリネームするか、選択した属性のみをリネームするかを選択する"
+          "title": "名前変更の範囲",
+          "description": "名前変更の対象範囲。すべての属性か、選択した一部の属性か"
         },
         "renameValue": {
           "title": "テキスト値",
-          "description": "プレフィックス/サフィックスとして追加・削除、または置換に使用するテキスト"
+          "description": "選択した操作に応じて、プレフィックス／サフィックスとして追加・削除、または置換に使用するテキスト"
         },
         "selectedAttributes": {
           "title": "選択した属性名",
-          "description": "リネームする属性名のリスト（「選択した属性」を選んだ場合に必須）"
+          "description": "名前変更する属性名。名前変更の範囲を選択した一部に設定した場合は必須"
         },
         "textToFind": {
           "title": "検索テキストパターン",
-          "description": "「テキストを置換」操作で使用する正規表現パターン"
+          "description": "属性名に対して照合する正規表現。replaceText 操作では必須"
         }
       },
       "enumI18n": {
         "RenameAction": {
-          "AddPrefix": {
+          "addPrefix": {
             "title": "プレフィックスを追加",
-            "description": "属性名の先頭にテキストを追加する"
+            "description": "各属性名の先頭にテキスト値を追加する"
           },
-          "AddSuffix": {
+          "addSuffix": {
             "title": "サフィックスを追加",
-            "description": "属性名の末尾にテキストを追加する"
+            "description": "各属性名の末尾にテキスト値を追加する"
           },
-          "RemovePrefix": {
+          "removePrefix": {
             "title": "プレフィックスを削除",
-            "description": "属性名の先頭からテキストを削除する"
+            "description": "各属性名の先頭からテキスト値を削除する"
           },
-          "RemoveSuffix": {
+          "removeSuffix": {
             "title": "サフィックスを削除",
-            "description": "属性名の末尾からテキストを削除する"
+            "description": "各属性名の末尾からテキスト値を削除する"
           },
-          "StringReplace": {
+          "replaceText": {
             "title": "テキストを置換",
-            "description": "正規表現を使用してテキストを検索・置換する"
+            "description": "正規表現を使用して、検索パターンに一致するテキストをテキスト値で置換する"
           }
         },
         "RenameType": {
-          "All": {
+          "all": {
             "title": "すべての属性",
-            "description": "フィーチャーのすべての属性をリネームする"
+            "description": "地物のすべての属性を名前変更する"
           },
-          "Selected": {
+          "selected": {
             "title": "選択した属性",
-            "description": "以下に列挙した特定の属性のみをリネームする"
+            "description": "selectedAttributes に列挙した属性のみを名前変更する"
           }
         }
       }
@@ -488,7 +548,7 @@
     },
     {
       "name": "CSV Reader",
-      "description": "CSVファイルから地物を読み取る",
+      "description": "CSV および TSV ファイルから地物を読み取る",
       "parameterI18n": {
         "": {
           "title": "CsvReader パラメータ",
@@ -496,15 +556,15 @@
         },
         "dataset": {
           "title": "ファイルパス",
-          "description": "入力ファイルのパスを返す式（例: \"data.csv\" や変数参照）"
+          "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）"
         },
         "encoding": {
           "title": "文字エンコーディング",
-          "description": "CSV/TSV ファイルの文字エンコーディング。未指定の場合は UTF-8。\n\nサポートされるエンコーディング: - **UTF-8** - Unicode UTF-8（デフォルト）- **Shift-JIS** - 日本語エンコーディング - **EUC-JP** - 日本語エンコーディング - **Windows コードページ** - Windows-1250〜Windows-1258 - **ISO-8859 ファミリー** - ISO-8859-1〜ISO-8859-16\n\nエンコーディングラベルは大文字・小文字を区別しない。"
+          "description": "入力ファイルの文字エンコーディング（例: \"UTF-8\" や \"Shift-JIS\"）。未指定時は UTF-8 で、ラベルは大文字小文字を区別しない"
         },
         "format": {
           "title": "ファイル形式",
-          "description": "入力ファイルの区切り形式を選択する"
+          "description": "入力ファイルの区切り形式"
         },
         "geometry": {
           "title": "ジオメトリ設定",
@@ -512,7 +572,7 @@
         },
         "headerRows": {
           "title": "ヘッダー行数",
-          "description": "ヘッダーを構成する連続した行数（デフォルト: 1）。0 の場合はヘッダー行を読まず、列名は \"column1\"、\"column2\" などと自動生成される。2 以上の場合、各ヘッダー行の空でない値を \"_\" で結合して列名とする。"
+          "description": "ヘッダーを構成する連続した行数（デフォルト: 1）。0 の場合は列名を \"column1\"、\"column2\" のように自動生成し、1 より大きい場合は各ヘッダー行の値を \"_\" で連結して列名とする"
         },
         "inline": {
           "title": "インラインコンテンツ",
@@ -550,17 +610,19 @@
       "parameterI18n": {
         "": {
           "title": "CsvWriter パラメータ",
-          "description": "フィーチャーを CSV/TSV ファイルに書き出す設定"
+          "description": "地物をCSV/TSVファイルに書き出す設定"
         },
         "format": {
-          "description": "ファイル形式: csv（カンマ区切り）または tsv（タブ区切り）"
+          "title": "ファイル形式",
+          "description": "書き出すファイル形式: CSV（カンマ区切り）またはTSV（タブ区切り）"
         },
         "geometry": {
           "title": "ジオメトリ設定",
-          "description": "CSV 列にジオメトリをエクスポートするための設定（任意）"
+          "description": "CSV列にジオメトリをエクスポートするための設定（任意）"
         },
         "output": {
-          "description": "作成する CSV/TSV ファイルの出力パスまたは式"
+          "title": "出力ファイル",
+          "description": "作成するCSV/TSVファイルの出力パスまたは式"
         }
       },
       "enumI18n": {
@@ -586,7 +648,7 @@
         },
         "dataset": {
           "title": "ファイルパス",
-          "description": "入力ファイルのパスを返す式（例: \"data.czml\" や変数参照）"
+          "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）"
         },
         "force2d": {
           "title": "2D に強制",
@@ -709,10 +771,19 @@
     },
     {
       "name": "Cesium 3D Tiles Writer",
-      "description": "地物をファイルに書き出す",
+      "description": "地物を3D Web可視化向けのCesium 3D Tiles形式に書き出す",
       "parameterI18n": {
         "": {
-          "title": "Cesium3DTilesWriter パラメータ"
+          "title": "Cesium3DTilesWriter パラメータ",
+          "description": "地物をCesium 3D Tilesに書き出す設定"
+        },
+        "atlasExtrusion": {
+          "title": "アトラスの縁取り",
+          "description": "隣接する領域間のバイリニアにじみを防ぐため、アトラス内の各テクスチャ領域の周囲に描画する縁取りのピクセル数。デフォルトは 0（無効）。"
+        },
+        "atlasSize": {
+          "title": "アトラスサイズ",
+          "description": "テクスチャアトラスの最大寸法（ピクセル）。これを超えるテクスチャは追加のアトラスページに分割され、単一のテクスチャがこれより大きい場合は収まるようにダウンサンプリングされる。デフォルトは 2048。"
         },
         "attachTexture": {
           "title": "テクスチャを添付",
@@ -720,35 +791,62 @@
         },
         "compressOutput": {
           "title": "圧縮出力パス",
-          "description": "圧縮アーカイブ出力の出力先パス（任意）"
+          "description": "タイルの圧縮アーカイブを書き出す出力先パス（任意）"
         },
         "computeFlatNormal": {
           "title": "フラット法線を計算",
-          "description": "ライティング用にポリゴンごとのフラット法線を計算する。デフォルトは true。無効にすると法線は出力されずメッシュは小さくなるが、タイルにライティング情報が含まれないため、ビューアー側でフラット法線を導出する必要がある。"
+          "description": "ライティング用にポリゴンごとのフラット法線を計算するか。デフォルトは true。無効にすると法線は出力されずメッシュは小さくなるが、タイルにライティング情報が含まれないためビューアー側でフラット法線を導出する必要がある"
         },
         "dracoCompression": {
           "title": "Draco 圧縮",
-          "description": "Draco 圧縮を使用する。デフォルトは true。"
+          "description": "メッシュジオメトリをDracoで圧縮するか（デフォルト: true）"
         },
         "maxZoom": {
           "title": "最大ズームレベル",
-          "description": "タイル生成の最大ズームレベル（0〜24）"
+          "description": "タイルを生成する最大ズームレベル（0〜24）"
         },
         "minZoom": {
           "title": "最小ズームレベル",
-          "description": "タイル生成の最小ズームレベル（0〜24）"
+          "description": "タイルを生成する最小ズームレベル（0〜24）"
         },
         "output": {
           "title": "出力パス",
-          "description": "3D タイルを書き出すディレクトリパス"
+          "description": "3D Tilesを書き出すディレクトリパス"
         },
         "schemaKey": {
           "title": "スキーマキー",
-          "description": "スキーマタイプを識別し出力ファイル名を決定する属性キー。同じ値を持つすべてのフィーチャーは同一ファイルに書き出される。この属性は出力から除外される。"
+          "description": "スキーマタイプを識別し出力ファイル名を決定する属性キー。同じ値を持つすべての地物は同一ファイルに書き出される。この属性は出力から除外される"
         },
         "skipUnexposedAttributes": {
           "title": "非公開属性をスキップ",
-          "description": "ダブルアンダースコアで始まる属性をスキップする"
+          "description": "ダブルアンダースコアで始まる属性をスキップするか"
+        },
+        "texelSize": {
+          "title": "テクセルサイズ",
+          "description": "目標とするテクセルサイズ（メートル毎ピクセル）。これより細かいテクスチャはこの値までダウンサンプリングされる。デフォルトは 0 で、テクスチャの詳細を最大限維持する。"
+        },
+        "textureCodec": {
+          "title": "テクスチャコーデック",
+          "description": "アトラスページの画像コーデック。デフォルトは `KTX2/ETC1S`。テクスチャを付与しない場合は `Untextured` を選択する。"
+        }
+      },
+      "enumI18n": {
+        "TextureCodec": {
+          "JPEG": {
+            "description": "JPEG。非可逆で不透明（アルファは破棄される）。"
+          },
+          "KTX2/ETC1S": {
+            "description": "Basis Universal ETC1S スーパー圧縮を用いた KTX2（`KHR_texture_basisu`）。ファイルは小さく、品質は低め。"
+          },
+          "KTX2/UASTC": {
+            "description": "Basis Universal UASTC スーパー圧縮を用いた KTX2（`KHR_texture_basisu`）。高品質だがファイルは大きい。"
+          },
+          "PNG": {
+            "description": "PNG。アルファ付きの可逆圧縮。"
+          },
+          "Untextured": {
+            "description": "テクスチャを付与しない。テクスチャ付きジオメトリはニュートラルカラーで描画される。"
+          }
         }
       }
     },
@@ -762,9 +860,12 @@
         },
         "dataset": {
           "title": "ファイルパス",
-          "description": "入力ファイルのパスを返す式（例: \"data.csv\" や変数参照）"
+          "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）"
         },
-        "flatten": {},
+        "flatten": {
+          "title": "地物ツリーをフラット化",
+          "description": "有効にすると、ネストされた子都市オブジェクトをそれぞれ個別の地物として抽出し、各地物に `parentId` と `parentType` 属性を付与する（デフォルト: false）。"
+        },
         "inline": {
           "title": "インラインコンテンツ",
           "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式"
@@ -776,19 +877,24 @@
       "description": "地物をCityGML 2.0ファイルに書き出す",
       "parameterI18n": {
         "": {
-          "title": "CityGmlWriter パラメータ"
+          "title": "CityGmlWriter パラメータ",
+          "description": "地物をCityGML 2.0ファイルに書き出す設定"
         },
         "epsgCode": {
-          "description": "座標参照系の EPSG コード"
+          "title": "EPSGコード",
+          "description": "出力に記録する座標参照系のEPSGコード"
         },
         "lodFilter": {
-          "description": "含める LOD レベル（例: [0, 1, 2]）。空の場合はすべての LOD を含む。"
+          "title": "LODフィルター",
+          "description": "含めるLODレベル（例: [0, 1, 2]）。空の場合はすべてのレベルを含む"
         },
         "output": {
-          "description": "出力ファイルパスの式"
+          "title": "出力ファイル",
+          "description": "作成するCityGMLファイルの出力パスまたは式"
         },
         "prettyPrint": {
-          "description": "インデント付きでフォーマット出力するか（デフォルト: true）"
+          "title": "整形出力",
+          "description": "読みやすさのため出力をインデントするか（デフォルト: true）"
         }
       }
     },
@@ -1065,7 +1171,7 @@
     },
     {
       "name": "Feature CityGML Reader",
-      "description": "CityGMLファイルから地物を読み取る",
+      "description": "受け取った地物が参照するファイルパスから CityGML 地物を読み取り、任意でネストされた子都市オブジェクトを個別の地物として抽出する。",
       "parameterI18n": {
         "": {
           "title": "FeatureCityGmlReader パラメータ",
@@ -1109,7 +1215,7 @@
     },
     {
       "name": "Feature Creator",
-      "description": "式に基づいて地物を作成する",
+      "description": "1 つ以上の属性マップを返すスクリプト式から地物を作成する",
       "parameterI18n": {
         "": {
           "title": "FeatureCreator パラメータ",
@@ -1117,7 +1223,7 @@
         },
         "creator": {
           "title": "スクリプト式",
-          "description": "マップ（単一フィーチャー）またはマップの配列（複数フィーチャー）を返すスクリプト式を記述する。各マップはフィーチャー属性をキーと値のペアで表す。"
+          "description": "マップ（単一地物）またはマップの配列（複数地物）を返すスクリプト式。各マップは地物の属性をキーと値のペアで保持する"
         }
       }
     },
@@ -1363,7 +1469,7 @@
     },
     {
       "name": "File Path Extractor",
-      "description": "ディレクトリまたはアーカイブからファイルを抽出する",
+      "description": "ディレクトリまたはアーカイブからファイルパスを抽出し、見つかった各ファイルに対して地物を作成する",
       "parameterI18n": {
         "": {
           "title": "FilePathExtractor パラメータ",
@@ -1371,7 +1477,7 @@
         },
         "extractArchive": {
           "title": "アーカイブを展開",
-          "description": "アーカイブ（ZIP ファイルなど）からファイルを展開するか、一覧表示のみするか"
+          "description": "有効にすると、アーカイブファイル（.zip、.7z）を展開し、含まれる各ファイルごとに地物を出力する。無効にすると、アーカイブを展開せず単一のファイルパスとして出力する。"
         },
         "sourceDataset": {
           "title": "ソースデータセット",
@@ -1398,7 +1504,7 @@
     },
     {
       "name": "GeoJSON Reader",
-      "description": "GeoJSONファイルから地物を読み取る",
+      "description": "GeoJSON の FeatureCollection ファイルから地理地物を読み取る。",
       "parameterI18n": {
         "": {
           "title": "GeoJsonReader パラメータ",
@@ -1406,7 +1512,7 @@
         },
         "dataset": {
           "title": "ファイルパス",
-          "description": "入力ファイルのパスを返す式（例: \"data.geojson\" や変数参照）"
+          "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）"
         },
         "inline": {
           "title": "インラインコンテンツ",
@@ -1416,73 +1522,161 @@
     },
     {
       "name": "GeoJSON Writer",
-      "description": "地物をGeoJSONファイルに書き出す",
+      "description": "地物をGeoJSONファイルに書き出し、任意でグループごとに別ファイルに分割する",
       "parameterI18n": {
         "": {
           "title": "GeoJsonWriter パラメータ",
-          "description": "フィーチャーを GeoJSON ファイルに書き出す設定"
+          "description": "地物をGeoJSONファイルに書き出す設定"
         },
         "groupBy": {
-          "description": "フィーチャーをグループ化してグループごとに別ファイルを作成する属性（任意）"
+          "title": "グループ化属性",
+          "description": "地物をグループ化し、グループごとに別ファイルを作成する属性"
         },
         "output": {
-          "description": "作成する GeoJSON ファイルの出力パスまたは式"
+          "title": "出力ファイル",
+          "description": "作成するGeoJSONファイルの出力パスまたは式"
         }
       }
     },
     {
       "name": "GeoPackage Reader",
-      "description": "GeoPackage（.gpkg）ファイルからベクター地物、タイル、メタデータを読み取る",
+      "description": "GeoPackage（.gpkg）ファイルから地理地物を読み取る。ベクター地物、タイル、メタデータに対応",
       "parameterI18n": {
         "": {
-          "title": "GeoPackageReader パラメータ"
+          "title": "GeoPackage Reader パラメータ",
+          "description": "GeoPackage ファイルから読み取る内容と、ジオメトリの生成方法を設定する"
         },
         "attributeFilter": {},
         "batchSize": {},
         "dataset": {
           "title": "ファイルパス",
-          "description": "入力ファイルのパスを返す式（例: \"data.gpkg\" や変数参照）"
+          "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）"
         },
-        "force2D": {},
+        "force2D": {
+          "title": "2D に強制",
+          "description": "true の場合、すべてのジオメトリを 2D に強制する（Z 値を無視）"
+        },
         "includeMetadata": {},
         "inline": {
           "title": "インラインコンテンツ",
           "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式"
         },
-        "layerName": {},
-        "readMode": {},
+        "layerName": {
+          "title": "レイヤー名",
+          "description": "読み取るレイヤーの名前。省略時は最初に利用可能なレイヤーを使用する"
+        },
+        "readMode": {
+          "title": "読み取りモード",
+          "description": "GeoPackage ファイルから読み取る内容。デフォルトはベクター地物の読み取り"
+        },
         "spatialFilter": {},
-        "tileFormat": {}
+        "tileFormat": {
+          "title": "タイル形式",
+          "description": "ラスタータイルを読み取る際にデコードする画像形式。デフォルトは PNG"
+        }
+      },
+      "enumI18n": {
+        "GeoPackageReadMode": {
+          "all": {
+            "title": "すべて",
+            "description": "ベクター地物とラスタータイルの両方を読み取る"
+          },
+          "features": {
+            "title": "地物",
+            "description": "ベクター地物（ジオメトリと属性）を読み取る"
+          },
+          "metadataOnly": {
+            "title": "メタデータのみ",
+            "description": "地物やタイルを読み取らず、ファイルのメタデータのみを読み取る"
+          },
+          "tiles": {
+            "title": "タイル",
+            "description": "ラスタータイルを読み取る"
+          }
+        },
+        "TileFormat": {
+          "jpeg": {
+            "title": "JPEG",
+            "description": "タイルを JPEG 画像としてデコードする"
+          },
+          "png": {
+            "title": "PNG",
+            "description": "タイルを PNG 画像としてデコードする"
+          },
+          "webp": {
+            "title": "WebP",
+            "description": "タイルを WebP 画像としてデコードする"
+          }
+        }
       }
     },
     {
       "name": "GeoPackage Writer",
-      "description": "地物をGeoPackage（.gpkg）ファイルに書き出す。SQLite構造、空間インデックス、メタデータテーブルを適切に作成",
+      "description": "地物をGeoPackage（.gpkg）ファイルに書き出す",
       "parameterI18n": {
         "": {
           "title": "GeoPackageWriter パラメータ",
-          "description": "フィーチャーを GeoPackage ファイルに書き出す設定"
+          "description": "地物をGeoPackageファイルに書き出す設定"
         },
         "createSpatialIndex": {
-          "description": "RTree 空間インデックスを作成する（デフォルト: true）"
+          "title": "空間インデックスを作成",
+          "description": "クエリを高速化するためジオメトリ列にR-tree空間インデックスを作成するか（デフォルト: true）"
         },
         "geometryColumn": {
-          "description": "ジオメトリ列名（デフォルト: \"geom\"）"
+          "title": "ジオメトリ列",
+          "description": "ジオメトリを格納する列の名前（デフォルト: \"geom\"）"
         },
         "geometryType": {
-          "description": "テーブルのジオメトリタイプ（Point、LineString、Polygon、MultiPoint、MultiLineString、MultiPolygon、または混在の場合は GEOMETRY）"
+          "title": "ジオメトリタイプ",
+          "description": "テーブルに宣言するジオメトリタイプ: Point、LineString、Polygon、MultiPoint、MultiLineString、MultiPolygon、または混在の場合はGEOMETRY（デフォルト: GEOMETRY）"
         },
         "output": {
-          "description": "作成する GeoPackage ファイルの出力パス"
+          "title": "出力ファイル",
+          "description": "作成するGeoPackageファイルの出力パスまたは式"
         },
         "overwrite": {
-          "description": "既存ファイルを上書きする（デフォルト: false）"
+          "title": "既存ファイルを上書き",
+          "description": "出力ファイルが既に存在する場合に上書きするか（デフォルト: false）"
         },
         "srsId": {
-          "description": "空間参照系 ID（デフォルト: WGS84 の 4326）"
+          "title": "SRS ID",
+          "description": "ジオメトリに記録する空間参照系ID（EPSGコード）。再投影は行わずこのコードを付与するだけのため、入力データの座標系と一致させる必要がある（デフォルト: 4326、WGS 84）"
         },
         "tableName": {
-          "description": "作成するテーブル名（デフォルト: \"features\"）"
+          "title": "テーブル名",
+          "description": "作成する地物テーブルの名前。GISクライアントではレイヤー名として表示される（デフォルト: \"features\"）"
+        }
+      },
+      "enumI18n": {
+        "GeometryType": {
+          "geometry": {
+            "title": "Geometry (Mixed)",
+            "description": "Any geometry type; use when the table holds mixed or unknown geometry types."
+          },
+          "lineString": {
+            "title": "Line String",
+            "description": "A single connected sequence of points per feature."
+          },
+          "multiLineString": {
+            "title": "Multi Line String",
+            "description": "A collection of line strings per feature."
+          },
+          "multiPoint": {
+            "title": "Multi Point",
+            "description": "A collection of points per feature."
+          },
+          "multiPolygon": {
+            "title": "Multi Polygon",
+            "description": "A collection of polygons per feature."
+          },
+          "point": {
+            "title": "Point",
+            "description": "A single point per feature."
+          },
+          "polygon": {
+            "title": "Polygon",
+            "description": "A single polygon, with optional holes, per feature."
+          }
         }
       }
     },
@@ -2085,7 +2279,7 @@
         },
         "dataset": {
           "title": "ファイルパス",
-          "description": "入力ファイルのパスを返す式（例: \"data.json\" や変数参照）"
+          "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）"
         },
         "inline": {
           "title": "インラインコンテンツ",
@@ -2099,13 +2293,15 @@
       "parameterI18n": {
         "": {
           "title": "JsonWriter パラメータ",
-          "description": "フィーチャーを JSON ファイルに書き出す設定"
+          "description": "地物をJSONファイルに書き出す設定"
         },
         "converter": {
-          "description": "書き出し前にフィーチャーを変換するコンバーター式（任意）"
+          "title": "コンバーター式",
+          "description": "書き出すJSON値に地物を変換する式。省略した場合、地物は属性の配列として書き出される"
         },
         "output": {
-          "description": "作成する JSON ファイルの出力パスまたは式"
+          "title": "出力ファイル",
+          "description": "作成するJSONファイルの出力パスまたは式"
         }
       }
     },
@@ -2183,27 +2379,27 @@
     },
     {
       "name": "MVT Writer",
-      "description": "地物をファイルに書き出す",
+      "description": "地物をMapbox Vector Tiles（MVT）形式に書き出す",
       "parameterI18n": {
         "": {
           "title": "MVTWriter パラメータ",
-          "description": "フィーチャーを Mapbox Vector Tiles（MVT）形式に書き出す設定。/{z}/{x}/{y}.mvt および tilejson.json を生成する。親ディレクトリが HTTP ルートとして扱われる（tileJSON は絶対 URL が必要）。"
+          "description": "地物をMapbox Vector Tiles（MVT）形式に書き出す設定"
         },
         "colonToUnderscore": {
           "title": "コロンをアンダースコアに変換",
-          "description": "属性キーのコロン（XML 名前空間など）をアンダースコアに置換する"
+          "description": "属性キーのコロン（XML名前空間など）をアンダースコアに置換するか"
         },
         "compressOutput": {
-          "title": "出力を圧縮",
-          "description": "出力タイルを圧縮するかを決定する式（任意）"
+          "title": "圧縮出力パス",
+          "description": "タイルの圧縮アーカイブを書き出すパス（任意）"
         },
         "extent": {
-          "title": "エクステント",
-          "description": "MVT タイルの解像度。デフォルトは 4096。"
+          "title": "タイルエクステント",
+          "description": "各タイル内の座標グリッド解像度。値を大きくすると高精細データの位置精度が保たれるが、タイルサイズは大きくなる（デフォルト: 4096、MVT標準）"
         },
         "layerName": {
           "title": "レイヤー名",
-          "description": "MVT タイル内のレイヤー名"
+          "description": "生成するタイル内のレイヤー名または式"
         },
         "maxZoom": {
           "title": "最大ズームレベル",
@@ -2214,16 +2410,16 @@
           "description": "タイルを生成する最小ズームレベル"
         },
         "output": {
-          "title": "出力先",
-          "description": "生成する MVT タイルの出力ディレクトリパスまたは式"
+          "title": "出力ディレクトリ",
+          "description": "生成したMVTタイルを書き出す出力ディレクトリパスまたは式"
         },
         "schemaKey": {
           "title": "スキーマキー",
-          "description": "属性フィルタリングとキャストのためにデータとスキーマのフィーチャーを照合する属性キー。この属性は出力から除外される。"
+          "description": "属性のフィルタリングとキャストのためにデータとスキーマの地物を照合する属性キー。この属性は出力から除外される"
         },
         "skipUnexposedAttributes": {
           "title": "非公開属性をスキップ",
-          "description": "ダブルアンダースコアで始まる属性をスキップする"
+          "description": "ダブルアンダースコアで始まる属性をスキップするか"
         }
       }
     },
@@ -2295,67 +2491,82 @@
     },
     {
       "name": "Null Attribute Mapper",
-      "description": "null値の属性を設定されたデフォルト値に置き換える",
+      "description": "null に相当する属性値を設定した置換値に置き換え、必要に応じて対象の地物を削除または振り分ける",
       "parameterI18n": {
         "": {
-          "title": "NullAttributeMapper パラメータ",
-          "description": "NullAttributeMapper のパラメータ"
+          "title": "Null Attribute Mapper パラメータ",
+          "description": "null に相当する属性値を検出し、属性ごとのルールに従って置換・削除、または対象地物の振り分けを行う"
         },
         "defaultReplacement": {
-          "description": "マッピングにない属性のフォールバック置換値（scope = \"all\" の場合）"
+          "title": "デフォルト置換値",
+          "description": "マッピングに登録されていない null 相当の属性を置き換える値。範囲がすべての属性を検査する場合にのみ適用される"
         },
         "mappings": {
-          "description": "属性ごとの置換ルール"
+          "title": "属性マッピング",
+          "description": "null に相当する各属性をどのように置換・削除・作成するかを定める属性ごとのルール"
         },
         "nullDefinition": {
-          "description": "「null」とみなす状態"
+          "title": "null の定義",
+          "description": "null に相当するとみなす状態。明示的な null 値、欠落した属性、空文字列のいずれか。既定では null 値と欠落した属性"
         },
         "routeNullFeatures": {
-          "description": "null を持つ元のフィーチャーを hasNull ポートに出力する"
+          "title": "null 地物の振り分け",
+          "description": "有効にすると、null 相当の値を 1 つ以上持つ地物の複製を、確認用に別の出力へそのまま出力する"
         },
         "scope": {
-          "description": "検査する属性"
+          "title": "範囲",
+          "description": "検査する属性。マッピングで指定した属性のみか、地物のすべての属性か"
         }
       },
       "definitionI18n": {
         "AttributeMapping": {
           "attribute": {
-            "description": "検査する属性名"
+            "title": "属性",
+            "description": "検査する属性の名前"
           },
           "onMissing": {
-            "description": "属性が欠落しているが nullDefinition にない場合の処理"
+            "title": "欠落時の動作",
+            "description": "属性が存在せず、null の定義でも null 相当とみなされない場合の動作"
           },
           "replacement": {
-            "description": "属性が null 的な場合に書き込む値。null は属性を削除することを意味する。"
+            "title": "置換値",
+            "description": "属性が null に相当する場合に書き込む値。null 値の場合は属性を削除する"
           }
         }
       },
       "enumI18n": {
         "NullKind": {
           "emptyString": {
-            "description": "空文字列（AttributeValue::String(\"\")）"
+            "title": "空文字列",
+            "description": "文字を含まないテキスト値を保持する属性"
           },
           "missing": {
-            "description": "フィーチャーに属性キーが存在しない"
+            "title": "欠落した属性",
+            "description": "地物に存在しない属性"
           },
           "null": {
-            "description": "null 値（AttributeValue::Null）"
+            "title": "null 値",
+            "description": "地物に存在するが明示的な null 値を保持する属性"
           }
         },
         "OnMissing": {
           "create": {
-            "description": "属性を作成し、置換値を書き込む"
+            "title": "作成",
+            "description": "マッピングの置換値を使用して属性を追加する"
           },
           "skip": {
-            "description": "変更しない"
+            "title": "スキップ",
+            "description": "地物を変更しない"
           }
         },
         "Scope": {
           "all": {
-            "description": "フィーチャーのすべての属性を検査する"
+            "title": "すべての属性",
+            "description": "地物のすべての属性を検査する"
           },
           "listed": {
-            "description": "マッピングに指定された属性のみを検査する"
+            "title": "指定した属性",
+            "description": "マッピングリストで指定した属性のみを検査する"
           }
         }
       }
@@ -2370,7 +2581,7 @@
         },
         "dataset": {
           "title": "ファイルパス",
-          "description": "入力ファイルのパスを返す式（例: \"model.obj\" や変数参照）"
+          "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）"
         },
         "includeNormals": {
           "title": "法線を含める",
@@ -3133,7 +3344,7 @@
     },
     {
       "name": "SQL Reader",
-      "description": "SQLデータベースから地物を読み取る",
+      "description": "SQL データベースから地物を読み取る",
       "parameterI18n": {
         "": {
           "title": "SQL Reader パラメータ",
@@ -3151,7 +3362,7 @@
     },
     {
       "name": "Shapefile Reader",
-      "description": "Shapefileアーカイブ（.shp、.dbf、.shxを含む.zip）から地理的地物を読み込む",
+      "description": "Shapefile アーカイブ（.shp、.dbf、.shx を含む .zip）から地理地物を読み取る",
       "parameterI18n": {
         "": {
           "title": "ShapefileReader パラメータ",
@@ -3159,17 +3370,17 @@
         },
         "allowEmptyPath": {
           "title": "null パスを許可",
-          "description": "true の場合、null に評価されるデータセット式はエラーの代わりにフィーチャーを 0 件生成する。パスが設定されない可能性がある省略可能な Shapefile 入力に便利。"
+          "description": "true の場合、null のデータセットパスはエラーの代わりに地物を 0 件生成し、省略可能な Shapefile 入力を許可する"
         },
         "dataset": {
           "title": "ファイルパス",
-          "description": "入力ファイルのパスを返す式（例: \"data.csv\" や変数参照）"
+          "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）"
         },
         "encoding": {
           "title": "文字エンコーディング",
-          "description": "DBF ファイルの属性データの文字エンコーディング。指定しない場合は .cpg ファイル（存在する場合）から判定し、なければ UTF-8 をデフォルトとする。\n\n対応するエンコーディング: - **UTF-8** - Unicode UTF-8（デフォルト、新しい Shapefile に推奨） - **Windows コードページ** - Windows-1250〜1258、Windows-874 - **ISO-8859 ファミリ** - ISO-8859-1（Latin-1）〜ISO-8859-16 - **アジア系** - Shift-JIS、EUC-JP、EUC-KR、Big5、GBK、GB18030 - **その他レガシー** - KOI8-R、KOI8-U、IBM866、Macintosh\n\nエンコーディングラベルは大文字小文字を区別せず、一般的な表記のバリエーションに対応（例: \"UTF-8\"、\"UTF8\"、\"utf8\" すべて有効）。\n\nUTF-16 はバイトレベルの処理要件により非対応。UTF-16 の Shapefile を読み込むとエラーと変換手順が返される。\n\n優先順位: encoding パラメータ > .cpg ファイル > UTF-8 デフォルト"
+          "description": "DBF ファイルの属性データの文字エンコーディング（例: \"UTF-8\"、\"Shift-JIS\"、\"Windows-1252\"）。ラベルは大文字小文字を区別しない。未指定時は .cpg ファイルがあればそれに従い、なければ UTF-8（UTF-16 は非対応）"
         },
-        "force2d": {
+        "force2D": {
           "title": "2D に強制",
           "description": "true の場合、すべてのジオメトリを 2D に強制する（Z 値を無視）"
         },
@@ -3181,17 +3392,19 @@
     },
     {
       "name": "Shapefile Writer",
-      "description": "シェープファイルに地物を書き込む",
+      "description": "地物をESRI Shapefile形式に書き出し、任意でグループごとに別ファイルに分割する",
       "parameterI18n": {
         "": {
           "title": "ShapefileWriter パラメータ",
-          "description": "フィーチャーを ESRI Shapefile 形式に書き出す設定。"
+          "description": "地物をESRI Shapefile形式に書き出す設定"
         },
         "groupBy": {
-          "description": "フィーチャーをグループ化する属性（任意）。グループごとに別ファイルを作成する"
+          "title": "グループ化属性",
+          "description": "地物をグループ化し、グループごとに別ファイルを作成する属性"
         },
         "output": {
-          "description": "作成する Shapefile の出力パスまたは式"
+          "title": "出力ディレクトリ",
+          "description": "生成されたShapefileファイルを書き出す出力ディレクトリのパスまたは式"
         }
       }
     },
@@ -3272,32 +3485,62 @@
     },
     {
       "name": "Statistics Calculator",
-      "description": "地物の統計情報を計算する",
+      "description": "1 つ以上の属性で地物をグループ化し、各グループについて統計量（件数・合計・最小値・最大値・平均値）を計算して、グループごとに 1 つの地物を出力する",
       "parameterI18n": {
         "": {
-          "title": "StatisticsCalculator パラメータ",
-          "description": "フィーチャー属性の統計集計を計算する設定。"
+          "title": "Statistics Calculator パラメータ",
+          "description": "グループ化する属性と、各グループについて計算する統計量を定義する"
         },
         "calculations": {
           "title": "計算項目",
-          "description": "グループ化されたフィーチャーに対して実行する統計計算のリスト"
+          "description": "各グループについて計算する統計量。各項目で出力属性名、集計方法、および（件数を除き）集計対象の値を求める式を指定する"
         },
         "groupBy": {
           "title": "グループ化属性",
-          "description": "集計のためにフィーチャーをグループ化する属性。指定しない場合はすべての入力がグループ化される。"
+          "description": "集計前に地物をグループ化する属性。省略した場合、すべての入力地物が 1 つのグループになる"
         },
         "groupId": {
           "title": "グループ ID",
-          "description": "グループ識別子を格納する属性（任意）。ID は group_by 属性の値を「|」で連結して形成される。"
+          "description": "グループ識別子を格納する属性（任意）。グループ化属性の値を「|」で連結して生成される"
         }
       },
       "definitionI18n": {
         "Calculation": {
+          "aggregation": {
+            "title": "集計方法",
+            "description": "各グループについて計算する統計量。既定は合計"
+          },
           "expr": {
-            "title": "実行する計算"
+            "title": "値の式",
+            "description": "各地物について集計対象の値を求める式。件数を除くすべての方法で必須"
           },
           "newAttribute": {
-            "title": "新しい属性名"
+            "title": "新しい属性名",
+            "description": "計算した統計量を格納する出力属性の名前"
+          }
+        }
+      },
+      "enumI18n": {
+        "AggregationMethod": {
+          "count": {
+            "title": "件数",
+            "description": "各グループの地物の数を数える。値の式は不要で、指定しても無視される"
+          },
+          "max": {
+            "title": "最大値",
+            "description": "各グループで式の最大値を保持する"
+          },
+          "mean": {
+            "title": "平均値",
+            "description": "各グループのすべての地物で式の値を平均する"
+          },
+          "min": {
+            "title": "最小値",
+            "description": "各グループで式の最小値を保持する"
+          },
+          "sum": {
+            "title": "合計",
+            "description": "各グループのすべての地物で値の式を合計する"
           }
         }
       }
@@ -3460,23 +3703,25 @@
       "parameterI18n": {
         "": {
           "title": "XmlWriter パラメータ",
-          "description": "フィーチャーを XML ファイルに書き出す設定。"
+          "description": "地物をXMLファイルに書き出す設定"
         },
         "output": {
-          "description": "作成する XML ファイルの出力パスまたは式"
+          "title": "出力ファイル",
+          "description": "作成するXMLファイルの出力パスまたは式"
         }
       }
     },
     {
       "name": "Zip File Writer",
-      "description": "zipファイルに地物を書き込む",
+      "description": "入力地物が参照するファイルを1つのZIPアーカイブに圧縮する",
       "parameterI18n": {
         "": {
           "title": "ZipFileWriter パラメータ",
-          "description": "フィーチャーから ZIP アーカイブファイルを作成する設定。"
+          "description": "地物からZIPアーカイブを作成する設定"
         },
         "output": {
-          "description": "出力パス"
+          "title": "出力ファイル",
+          "description": "作成するZIPアーカイブの出力パスまたは式"
         }
       }
     },
@@ -3489,7 +3734,7 @@
         },
         "dataset": {
           "title": "ファイルパス",
-          "description": "入力ファイルのパスを返す式（例: \"model.glb\" や変数参照）"
+          "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）"
         },
         "includeNodes": {
           "title": "ノードを含める",

@@ -99,9 +99,11 @@ pub(super) struct JsonWriter {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct JsonWriterParam {
-    /// Output path or expression for the JSON file to create
+    /// # Output File
+    /// Output path or expression for the JSON file to create.
     pub(super) output: Code,
-    /// Optional converter expression to transform features before writing
+    /// # Converter Expression
+    /// Expression that transforms features into the JSON value to write. When omitted, features are written as an array of their attributes.
     pub(super) converter: Option<Code<{ CodeType::FlowExpr as u32 }>>,
 }
 

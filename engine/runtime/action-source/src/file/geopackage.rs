@@ -23,13 +23,19 @@ use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryV
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use sqlx::{any::AnyRow, Column, Row, TypeInfo, ValueRef};
+use sqlx::{sqlite::SqliteRow, Column, Row, TypeInfo, ValueRef};
 use tokio::sync::mpsc::Sender;
 
 use crate::{
     errors::SourceError,
     file::reader::runner::{get_content, FileReaderCommonParam, FileReaderCompiledParam},
 };
+
+// New-geometry WKB parsing lives in a sibling file, declared here as a child module
+// so it can reuse this module's private SQL/decoding helpers via `super::`.
+#[cfg(feature = "new-geometry")]
+#[path = "geopackage_next.rs"]
+mod geopackage_next;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct GeoPackageReaderFactory;
@@ -40,7 +46,7 @@ impl SourceFactory for GeoPackageReaderFactory {
     }
 
     fn description(&self) -> &str {
-        "Reads geographic features from GeoPackage (.gpkg) files with support for vector features, tiles, and metadata"
+        "Reads geographic features from GeoPackage (.gpkg) files, supporting vector features, tiles, and metadata."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -52,7 +58,7 @@ impl SourceFactory for GeoPackageReaderFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["geopackage"]
+        &["geopackage", "vector"]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
@@ -101,22 +107,32 @@ impl SourceFactory for GeoPackageReaderFactory {
     }
 }
 
+/// # GeoPackage Reader Parameters
+/// Configures which content to read from the GeoPackage file and how geometries are produced.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct GeoPackageReaderParam {
     #[serde(flatten)]
     pub(super) common_property: FileReaderCommonParam,
+    /// # Read Mode
+    /// Which content to read from the GeoPackage file. Defaults to reading vector features.
     #[serde(default)]
     read_mode: GeoPackageReadMode,
+    /// # Layer Name
+    /// Name of the layer to read. When omitted, the first available layer is used.
     layer_name: Option<String>,
     #[serde(default)]
     include_metadata: bool,
+    /// # Tile Format
+    /// Image format to decode when reading raster tiles. Defaults to PNG.
     #[serde(default)]
     tile_format: TileFormat,
     #[serde(default)]
     attribute_filter: Option<String>,
     #[serde(default)]
     batch_size: Option<usize>,
+    /// # Force 2D
+    /// If true, forces all geometries to be 2D (ignoring Z values).
     #[serde(default, rename = "force2D")]
     force_2d: bool,
     #[serde(default)]
@@ -126,19 +142,33 @@ pub(super) struct GeoPackageReaderParam {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 #[serde(rename_all = "camelCase")]
 enum GeoPackageReadMode {
+    /// # Features
+    /// Reads vector features (geometry and attributes).
     #[default]
     Features,
+    /// # Tiles
+    /// Reads raster tiles.
     Tiles,
+    /// # All
+    /// Reads both vector features and raster tiles.
     All,
+    /// # Metadata Only
+    /// Reads only the file's metadata, without features or tiles.
     MetadataOnly,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 #[serde(rename_all = "lowercase")]
 enum TileFormat {
+    /// # PNG
+    /// Decodes tiles as PNG images.
     #[default]
     Png,
+    /// # JPEG
+    /// Decodes tiles as JPEG images.
     Jpeg,
+    /// # WebP
+    /// Decodes tiles as WebP images.
     Webp,
 }
 
@@ -182,6 +212,32 @@ impl Source for GeoPackageReader {
         let content = get_content(&self.params.common, storage_resolver).await?;
 
         let features = process_geopackage(content, &self.params).await?;
+
+        for feature in features {
+            sender
+                .send((
+                    FEATURES_PORT.clone(),
+                    IngestionMessage::OperationEvent { feature },
+                ))
+                .await
+                .map_err(|e| {
+                    SourceError::GeoPackageReader(format!("Failed to send feature: {e}"))
+                })?;
+        }
+
+        Ok(())
+    }
+
+    #[cfg(feature = "new-geometry")]
+    async fn start(
+        &mut self,
+        ctx: NodeContext,
+        sender: Sender<(Port, IngestionMessage)>,
+    ) -> Result<(), BoxedError> {
+        let storage_resolver = Arc::clone(&ctx.storage_resolver);
+        let content = get_content(&self.params.common, storage_resolver).await?;
+
+        let features = geopackage_next::read(content, &self.params).await?;
 
         for feature in features {
             sender
@@ -319,7 +375,10 @@ async fn read_layer_features(
 
     validate_table_name(layer_name)?;
     let query = format!("SELECT * FROM \"{}\"", escape_identifier(layer_name));
-    let rows = adapter.fetch_many(&query).await.map_err(|e| {
+    // Read via the native SQLite driver: GeoPackage is a SQLite database and its
+    // user columns can be types the generic `Any` driver rejects (e.g. BOOLEAN),
+    // which would otherwise fail the whole layer read.
+    let rows = adapter.fetch_many_sqlite(&query).await.map_err(|e| {
         SourceError::GeoPackageReader(format!("Failed to query layer {layer_name}: {e}"))
     })?;
 
@@ -383,7 +442,7 @@ async fn get_layer_srs_id(adapter: &SqlAdapter, table_name: &str) -> Result<i32,
 
 #[cfg(not(feature = "new-geometry"))]
 fn row_to_feature(
-    row: &AnyRow,
+    row: &SqliteRow,
     geom_col: &str,
     srs_id: i32,
     force_2d: bool,
@@ -412,7 +471,7 @@ fn row_to_feature(
     Ok(feature)
 }
 
-fn get_attribute_value(row: &AnyRow, idx: usize) -> Result<AttributeValue, SourceError> {
+fn get_attribute_value(row: &SqliteRow, idx: usize) -> Result<AttributeValue, SourceError> {
     let raw = row.try_get_raw(idx).map_err(|e| {
         SourceError::GeoPackageReader(format!("Failed to get value at index {idx}: {e}"))
     })?;
