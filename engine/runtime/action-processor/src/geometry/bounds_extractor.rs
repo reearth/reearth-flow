@@ -225,8 +225,7 @@ impl BoundsExtractor {
     }
 
     /// Write the box onto the feature as one attribute per bound. A 2D box
-    /// writes no z attributes: the optional per-vertex elevation of a
-    /// 2D-embedded geometry is not part of its box.
+    /// writes no z attributes.
     #[cfg(feature = "new-geometry")]
     fn insert_bounds(&self, feature: &mut Feature, aabb: Aabb) {
         let (min, max, z) = match aabb {
@@ -478,9 +477,10 @@ mod tests {
 
     #[test]
     fn elevation_of_a_two_dimensional_geometry_is_not_folded_in() {
-        let line = LineString2D::from_coords_with_elevation(
+        let line = LineString2D::from_coords_at_elevation(
             CoordinateFrame::Euclidean,
-            [[1.0, 2.0, 10.0], [3.0, 4.0, 20.0]],
+            [[1.0, 2.0], [3.0, 4.0]],
+            10.0,
         );
         let feature = extract(Geometry::Euclidean2D(Euclidean2DGeometry::LineString(line)));
         assert!(feature.attributes.get(&Attribute::new("zmin")).is_none());
