@@ -15,6 +15,8 @@ import {
   ShowGeometryInstanceAttribute,
 } from "cesium";
 
+import { isValidWgs84Position } from "./wgs84";
+
 // ── Types ────────────────────────────────────────────────────────────────────
 
 type CityGmlGeometry = {
@@ -165,15 +167,15 @@ function coordsToPositions(coordinates: any[]): Cartesian3[] {
   return coordinates
     .filter((coord) => coord != null)
     .map((coord) => {
-      if (
-        typeof coord === "object" &&
-        coord.x !== undefined &&
-        coord.y !== undefined
-      ) {
-        return Cartesian3.fromDegrees(coord.x, coord.y, coord.z || 0);
+      // Non-WGS84 positions are rejected here too — see utils/wgs84.ts for why
+      // handing them to Cesium takes the whole tab down.
+      if (Array.isArray(coord)) {
+        return coord.length >= 2 && isValidWgs84Position(coord[0], coord[1])
+          ? Cartesian3.fromDegrees(coord[0], coord[1], coord[2] || 0)
+          : null;
       }
-      if (Array.isArray(coord) && coord.length >= 2) {
-        return Cartesian3.fromDegrees(coord[0], coord[1], coord[2] || 0);
+      if (typeof coord === "object" && isValidWgs84Position(coord.x, coord.y)) {
+        return Cartesian3.fromDegrees(coord.x, coord.y, coord.z || 0);
       }
       return null;
     })

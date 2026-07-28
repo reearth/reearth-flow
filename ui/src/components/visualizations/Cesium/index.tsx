@@ -14,12 +14,16 @@ import {
   ViewerProps,
 } from "resium";
 
+import BasicBoiler from "@flow/components/BasicBoiler";
+import { FlowLogo } from "@flow/components/Icon";
 import { config } from "@flow/config";
 import useDoubleClick from "@flow/hooks/useDoubleClick";
+import { useT } from "@flow/lib/i18n";
 import { initializeSentinel } from "@flow/services/sentinel";
 
 import CityGmlData from "./CityGmlData";
 import GeoJsonData from "./GeoJson";
+import { hasUnsupportedCrs } from "./utils/wgs84";
 
 // const REEARTH_TERRAIN_URL =
 //   "https://terrain.reearth.land/cesium-mesh/ellipsoid";
@@ -104,6 +108,7 @@ const CesiumViewer: React.FC<Props> = ({
   onShowFeatureDetailsOverlay,
   setCityGmlBoundingSphere,
 }) => {
+  const t = useT();
   const [isLoaded, setIsLoaded] = useState(false);
   const { tileServerBaseUrl, tileServerToken } = config();
   const [sentinelReady, setSentinelReady] = useState(
@@ -207,14 +212,21 @@ const CesiumViewer: React.FC<Props> = ({
     });
   }, [tileServerBaseUrl, tileServerToken, sentinelReady]);
 
-  // Separate features by geometry type
-  const { geoJsonData, cityGmlData } = useMemo(() => {
+  // Separate features by geometry type, holding back anything that is not
+  // WGS84 — Cesium reads coordinates as degrees and projected values make it
+  // allocate itself to death (see utils/wgs84.ts).
+  const { geoJsonData, cityGmlData, unsupportedCrsCount } = useMemo(() => {
     const features = fileContent?.features || [];
 
     const geoJsonFeatures: any[] = [];
     const cityGmlFeatures: any[] = [];
+    let unsupported = 0;
 
     for (const feature of features) {
+      if (hasUnsupportedCrs(feature?.geometry)) {
+        unsupported++;
+        continue;
+      }
       if (feature?.geometry?.type === "CityGmlGeometry") {
         cityGmlFeatures.push(feature);
       } else {
@@ -223,6 +235,7 @@ const CesiumViewer: React.FC<Props> = ({
     }
 
     return {
+      unsupportedCrsCount: unsupported,
       geoJsonData:
         geoJsonFeatures.length > 0
           ? { type: "FeatureCollection" as const, features: geoJsonFeatures }
@@ -234,58 +247,83 @@ const CesiumViewer: React.FC<Props> = ({
     };
   }, [fileContent]);
 
+  const unsupportedCrsMessage =
+    unsupportedCrsCount > 0
+      ? t(
+          "{{featureCount}} feature(s) hidden because their coordinates are not WGS84 (EPSG:4326). The Geo Viewer only supports EPSG:4326 — reproject the data to view it.",
+          { featureCount: unsupportedCrsCount },
+        )
+      : null;
+
+  if (unsupportedCrsMessage && !geoJsonData && !cityGmlData) {
+    return (
+      <BasicBoiler
+        text={unsupportedCrsMessage}
+        className="size-4 h-full [&>div>p]:text-sm"
+        icon={<FlowLogo className="size-20 text-accent" />}
+      />
+    );
+  }
+
   return (
-    <Viewer
-      ref={viewerRef}
-      sceneMode={
-        visualizerType === "2d-map" ? SceneMode.SCENE2D : SceneMode.SCENE3D
-      }
-      full
-      {...defaultCesiumProps}>
-      {baseImageryProvider && (
-        <ImageryLayer imageryProvider={baseImageryProvider} />
+    <>
+      {unsupportedCrsMessage && (
+        <div className="absolute top-2 right-2 left-2 z-10 rounded-md bg-warning/90 px-3 py-2 text-xs text-warning-foreground">
+          {unsupportedCrsMessage}
+        </div>
       )}
-      {/* <TerrainController
+      <Viewer
+        ref={viewerRef}
+        sceneMode={
+          visualizerType === "2d-map" ? SceneMode.SCENE2D : SceneMode.SCENE3D
+        }
+        full
+        {...defaultCesiumProps}>
+        {baseImageryProvider && (
+          <ImageryLayer imageryProvider={baseImageryProvider} />
+        )}
+        {/* <TerrainController
         show3DTerrain={visualizerType === "3d-map" && !cityGmlData}
       /> */}
-      {onSelectedFeature && (
-        <ScreenSpaceEventHandler>
-          <ScreenSpaceEvent
-            action={handleSingleClick}
-            type={ScreenSpaceEventType.LEFT_CLICK}
-          />
-          <ScreenSpaceEvent
-            action={handleDoubleClick}
-            type={ScreenSpaceEventType.LEFT_DOUBLE_CLICK}
-          />
-        </ScreenSpaceEventHandler>
-      )}
-
-      {isLoaded && (
-        <>
-          {/* Standard GeoJSON features */}
-          {geoJsonData && (
-            <GeoJsonData
-              geoJsonData={geoJsonData}
-              selectedFeatureId={selectedFeatureId}
-              showSelectedFeatureOnly={showSelectedFeatureOnly}
-              clampToGround={false}
+        {onSelectedFeature && (
+          <ScreenSpaceEventHandler>
+            <ScreenSpaceEvent
+              action={handleSingleClick}
+              type={ScreenSpaceEventType.LEFT_CLICK}
             />
-          )}
-
-          {/* CityGML features */}
-          {cityGmlData && (
-            <CityGmlData
-              cityGmlData={cityGmlData}
-              setCityGmlBoundingSphere={setCityGmlBoundingSphere}
-              selectedFeatureId={selectedFeatureId}
-              detailsOverlayOpen={detailsOverlayOpen}
-              showSelectedFeatureOnly={showSelectedFeatureOnly}
+            <ScreenSpaceEvent
+              action={handleDoubleClick}
+              type={ScreenSpaceEventType.LEFT_DOUBLE_CLICK}
             />
-          )}
-        </>
-      )}
-    </Viewer>
+          </ScreenSpaceEventHandler>
+        )}
+
+        {isLoaded && (
+          <>
+            {/* Standard GeoJSON features */}
+            {geoJsonData && (
+              <GeoJsonData
+                geoJsonData={geoJsonData}
+                selectedFeatureId={selectedFeatureId}
+                showSelectedFeatureOnly={showSelectedFeatureOnly}
+                clampToGround={false}
+              />
+            )}
+
+            {/* CityGML features */}
+            {cityGmlData && (
+              <CityGmlData
+                cityGmlData={cityGmlData}
+                setCityGmlBoundingSphere={setCityGmlBoundingSphere}
+                selectedFeatureId={selectedFeatureId}
+                detailsOverlayOpen={detailsOverlayOpen}
+                showSelectedFeatureOnly={showSelectedFeatureOnly}
+              />
+            )}
+          </>
+        )}
+      </Viewer>
+    </>
   );
 };
 export { CesiumViewer };

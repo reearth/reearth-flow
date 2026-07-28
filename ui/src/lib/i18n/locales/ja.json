@@ -32,6 +32,7 @@
   "literal": "リテラル",
   "No value set": "値が設定されていません",
   "Reset": "リセット",
+  "{{featureCount}} feature(s) hidden because their coordinates are not WGS84 (EPSG:4326). The Geo Viewer only supports EPSG:4326 — reproject the data to view it.": "座標がWGS84（EPSG:4326）ではないため、{{featureCount}}件のフィーチャーを非表示にしました。ジオビューアはEPSG:4326のみに対応しています。データを再投影してから表示してください。",
   "Select All": "すべて選択",
   "Deselect All": "すべて選択解除",
   "Default Value": "デフォルト値",
