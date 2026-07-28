@@ -1,13 +1,7 @@
-//! Lossless intermediate-data encoding for the polygon-mesh leaves.
-//!
-//! The wire form presents the CSR topology decoded: an explicit list of faces,
-//! each a vertex-index exterior ring plus any hole rings, rather than the three
-//! stored `face_indices` / `face_offsets` / `interior_offsets` buffers. Decoding
-//! flattens the faces back into those buffers, whose widths are re-derived from
-//! the vertex and corner counts, so the round trip is exact.
-//!
-//! Per-corner UV is nested the same way, so it mirrors the faces and their rings
-//! rather than the flat corner buffer they concatenate into.
+//! Intermediate-data encoding for the polygon-mesh leaves: an explicit list of
+//! faces, each an exterior ring of vertex indices plus any hole rings, in place
+//! of the stored `face_indices` / `face_offsets` / `interior_offsets` buffers.
+//! Per-corner UV is nested to mirror those faces and rings.
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -19,7 +13,7 @@ use crate::index::IndexBuffer;
 
 use super::{PolygonMesh2D, PolygonMesh3DData};
 
-/// The mesh's ring layout, read straight off the decoded faces.
+/// The ring layout of `faces`.
 fn mesh_layout(faces: &[FaceWire]) -> Vec<FaceRings> {
     faces
         .iter()
@@ -69,7 +63,7 @@ fn flat(buf: &IndexBuffer<1>) -> Vec<u32> {
 
 /// Split the flat CSR buffers into explicit faces. `face_offsets` holds the
 /// `n_faces - 1` internal boundaries; `interior_offsets` holds each hole ring's
-/// start, globally ascending across faces.
+/// start, ascending across all faces.
 fn decode_faces(
     face_indices: &[u32],
     face_offsets: &[u32],
@@ -87,7 +81,6 @@ fn decode_faces(
         .map(|&o| o as usize)
         .chain(std::iter::once(corner_count));
     for face_end in face_ends {
-        // Hole ring starts inside this face, in order.
         let mut ring_starts = Vec::new();
         while let Some(&h) = holes.peek() {
             if (h as usize) < face_end {
@@ -240,8 +233,6 @@ impl<'de> Deserialize<'de> for PolygonMesh3DData {
     }
 }
 
-// The intermediate-data schema is the wire form, so each leaf's schema is its
-// wire struct's.
 #[cfg(feature = "schema")]
 impl schemars::JsonSchema for PolygonMesh2D {
     fn schema_name() -> String {

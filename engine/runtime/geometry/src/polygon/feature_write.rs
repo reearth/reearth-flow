@@ -1,12 +1,6 @@
-//! Lossless intermediate-data encoding for the polygon leaves.
-//!
-//! The wire form presents the rings decoded: an explicit exterior ring and a list
-//! of interior rings, rather than the stored flat `coords` buffer plus the
-//! `interior_offsets` that slice it. Elevation stays the one number the whole face
-//! lies at. Decoding rebuilds `interior_offsets` from the ring lengths.
-//!
-//! Per-corner UV is nested the same way, so it mirrors the exterior and interior
-//! rings rather than the flat corner buffer they concatenate into.
+//! Intermediate-data encoding for the polygon leaves: an explicit exterior ring
+//! and a list of interior rings in place of the stored flat `coords` buffer and
+//! its `interior_offsets`. Per-corner UV is nested to mirror those rings.
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -51,8 +45,7 @@ struct Polygon3DWire {
     appearance: Option<AppearanceWire>,
 }
 
-/// Concatenate the exterior and interior rings and record where each interior ring
-/// starts in the combined buffer.
+/// Concatenate the exterior and interior rings into `(coords, interior_offsets)`.
 fn flatten_rings<const N: usize>(
     exterior: Vec<[f64; N]>,
     interiors: Vec<Vec<[f64; N]>>,
@@ -158,8 +151,6 @@ impl<'de> Deserialize<'de> for Polygon3D {
     }
 }
 
-// The intermediate-data schema is the wire form, so each leaf's schema is its
-// wire struct's.
 #[cfg(feature = "schema")]
 impl schemars::JsonSchema for Polygon2D {
     fn schema_name() -> String {
@@ -214,8 +205,6 @@ mod tests {
         );
         round_trip_2d(&lifted);
 
-        // The face lies at one height, so the wire form carries one number for it,
-        // not a value per corner.
         let json = serde_json::to_value(&lifted).unwrap();
         assert_eq!(json["z"], serde_json::json!(10.0));
     }

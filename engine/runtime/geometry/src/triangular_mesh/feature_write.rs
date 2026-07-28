@@ -1,11 +1,6 @@
-//! Lossless intermediate-data encoding for the triangular-mesh leaves.
-//!
-//! The wire form lists the triangles as explicit vertex-index triples, widened
-//! from the stored index buffer. Decoding packs them back through `from_parts`,
-//! whose index width is fixed by the vertex count, so the round trip is exact.
-//!
-//! Per-corner UV is nested to match, one three-corner entry per triangle, rather
-//! than one flat buffer across the whole mesh.
+//! Intermediate-data encoding for the triangular-mesh leaves: explicit
+//! vertex-index triples in place of the stored index buffer. Per-corner UV is
+//! nested to match, one three-corner entry per triangle.
 
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
@@ -129,8 +124,6 @@ impl<'de> Deserialize<'de> for TriangularMesh3DData {
     }
 }
 
-// The intermediate-data schema is the wire form, so each leaf's schema is its
-// wire struct's.
 #[cfg(feature = "schema")]
 impl schemars::JsonSchema for TriangularMesh2D {
     fn schema_name() -> String {
@@ -205,7 +198,6 @@ mod tests {
         )
         .unwrap();
         let json = serde_json::to_value(&mesh).unwrap();
-        // One elevation for the whole mesh, not one per vertex.
         assert_eq!(json["z"], serde_json::json!(10.0));
 
         let back: TriangularMesh2D = serde_json::from_value(json).unwrap();

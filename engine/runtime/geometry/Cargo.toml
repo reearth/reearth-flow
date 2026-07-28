@@ -15,16 +15,12 @@ version.workspace = true
 # TODO: Remove after migration.
 new-geometry = []
 
-# When enabled, geometry leaves keep their derived `serde` impls, which write the
-# raw internal representation (index-buffer widths, CSR offset buffers, the packed
-# point-cloud byte stream). This is a debug-only intermediate-data form. When
-# disabled (the default), the leaves use the hand-written, lossless intermediate
-# form in each leaf's `feature_write.rs`, which decodes those internal structures.
+# Debug-only intermediate-data form: the leaves keep their derived `serde`, which
+# writes the raw internal representation. Off by default, where each leaf's
+# `feature_write.rs` supplies the production form instead.
 debug-geom-feature-write = []
 
-# Emits `JsonSchema` for the production intermediate-data form (the leaves' wire
-# structs), so a schema can be generated for downstream consumers (e.g. the UI).
-# Describes the production form only, so it is incompatible with
+# Emits `JsonSchema` for the production intermediate-data form. Incompatible with
 # `debug-geom-feature-write`.
 schema = ["dep:schemars"]
 

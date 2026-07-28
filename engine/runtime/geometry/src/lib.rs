@@ -1,8 +1,6 @@
 #![recursion_limit = "2048"]
 extern crate alloc;
 
-// The `schema` feature describes the production intermediate-data form, so it
-// cannot coexist with the debug form.
 #[cfg(all(feature = "schema", feature = "debug-geom-feature-write"))]
 compile_error!(
     "the `schema` feature describes the production intermediate-data form; \

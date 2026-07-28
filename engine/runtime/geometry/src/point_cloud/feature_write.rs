@@ -1,15 +1,10 @@
-//! Lossless intermediate-data encoding for the point-cloud leaf.
+//! Intermediate-data encoding for the point-cloud leaf: typed per-point
+//! positions in place of each segment's packed byte stream, tagged with the
+//! position encoding. Attribute columns and the acquisition source pass through
+//! unchanged.
 //!
-//! The wire form presents each segment's packed little-endian byte stream decoded
-//! into typed per-point positions, keeping the position encoding
-//! (`F64` / `F32` / scaled-`i32`) so the exact stored bytes are recovered on
-//! decode. User attribute columns and the acquisition source pass through as-is;
-//! their `IndexMap` order is preserved. Decoding recomputes the stride and repacks
-//! the byte stream.
-//!
-//! Optional per-point fields (RGB, intensity, ...) are not yet produced by any
-//! reader, so a segment carrying them is rejected rather than silently lost; the
-//! wire form must grow a typed representation for them when they land.
+//! TODO: represent the optional per-point fields (RGB, intensity, ...). No
+//! reader produces them yet, and a segment carrying them is rejected.
 
 use std::sync::{Arc, OnceLock};
 
@@ -44,9 +39,7 @@ struct SegmentWire {
     attributes: IndexMap<String, AttributeColumn>,
 }
 
-/// Per-point positions in their stored encoding. Raw `i32` values (with the
-/// segment's scale / offset) are kept rather than the derived `f64`, so a scaled
-/// segment round-trips byte-for-byte.
+/// Per-point positions in their stored encoding.
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize)]
 enum PositionsWire {
@@ -59,7 +52,7 @@ enum PositionsWire {
     },
 }
 
-/// Decode a segment's positions out of its packed byte stream.
+/// Read a segment's positions out of its packed byte stream.
 fn encode_positions(seg: &Segment) -> PositionsWire {
     let stride = seg.stride as usize;
     match &seg.position {
@@ -101,7 +94,7 @@ fn encode_positions(seg: &Segment) -> PositionsWire {
     }
 }
 
-/// Repack decoded positions into the `(encoding, stride, byte stream, count)` a
+/// Pack positions back into the `(encoding, stride, byte stream, count)` a
 /// [`Segment`] stores.
 fn decode_positions(positions: PositionsWire) -> (PositionEncoding, u16, Vec<u8>, usize) {
     match positions {
@@ -195,8 +188,6 @@ impl<'de> Deserialize<'de> for PointCloud {
     }
 }
 
-// The intermediate-data schema is the wire form, so the leaf's schema is its
-// wire struct's.
 #[cfg(feature = "schema")]
 impl schemars::JsonSchema for PointCloud {
     fn schema_name() -> String {

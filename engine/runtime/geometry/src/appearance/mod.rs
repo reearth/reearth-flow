@@ -102,8 +102,7 @@ impl<'de> Deserialize<'de> for MaterialIndex {
     }
 }
 
-// The wire form is the logical palette index, so the schema is that of a `u32`.
-// Delegating drops the type's own docs, so the description is restated here.
+// Delegating to `u32` drops this type's own docs, so the description is restated.
 #[cfg(feature = "schema")]
 impl schemars::JsonSchema for MaterialIndex {
     fn schema_name() -> String {
@@ -130,9 +129,6 @@ impl schemars::JsonSchema for MaterialIndex {
 /// confined to the geometry crate, where the corner count is in hand. Read
 /// through [`materials`](Self::materials) / [`themes`](Self::themes) /
 /// [`default_theme`](Self::default_theme).
-///
-/// The intermediate-data form is `AppearanceWire`, which nests UV to mirror the
-/// host's rings; this type is not itself a wire type.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Appearance {
     /// Palette; bindings index into it.

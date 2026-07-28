@@ -1,5 +1,6 @@
 use clap::{ArgMatches, Command};
 
+/// The `schema-feature` subcommand.
 pub fn build_schema_feature_command() -> Command {
     Command::new("schema-feature")
         .about("Show the production intermediate-data (feature) JSON schema.")
@@ -11,23 +12,15 @@ pub fn build_schema_feature_command() -> Command {
 }
 
 /// One record of intermediate-data JSONL: a feature's id, its attributes, and its
-/// geometry.
-//
-// Schema-only mirror of a serialized `reearth_flow_types::Feature`. Kept here as a
-// wire mirror (like the geometry leaves' `*Wire` structs) so the schema can describe
-// the whole feature envelope without deriving `JsonSchema` across the entire
-// attribute tree. It must stay in step with `Feature`'s serialized form:
-//   - `id` — the feature's UUID, serialized as a string.
-//   - `attributes` — an open, string-keyed bag of attribute values; the values are
-//     untagged JSON, so they are left unconstrained here.
-//   - `geometry` — the geometry payload, whose schema is reused from the geometry
-//     crate.
+/// geometry. Must stay in step with the serialized form of
+/// `reearth_flow_types::Feature`, which it mirrors for schema generation only.
 #[cfg(feature = "schema")]
 #[derive(schemars::JsonSchema)]
 #[schemars(rename = "Feature")]
 #[allow(dead_code)]
 struct FeatureSchema {
     id: uuid::Uuid,
+    /// Open, string-keyed attribute values; untagged JSON, so unconstrained.
     attributes: std::collections::HashMap<String, serde_json::Value>,
     geometry: reearth_flow_geometry::Geometry,
 }

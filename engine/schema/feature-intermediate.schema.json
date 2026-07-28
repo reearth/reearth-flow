@@ -1,7 +1,7 @@
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Feature",
-  "description": "One record of intermediate-data JSONL: a feature's id, its attributes, and its geometry.",
+  "description": "One record of intermediate-data JSONL: a feature's id, its attributes, and its geometry. Must stay in step with the serialized form of `reearth_flow_types::Feature`, which it mirrors for schema generation only.",
   "type": "object",
   "required": [
     "attributes",
@@ -14,6 +14,7 @@
       "format": "uuid"
     },
     "attributes": {
+      "description": "Open, string-keyed attribute values; untagged JSON, so unconstrained.",
       "type": "object",
       "additionalProperties": true
     },
@@ -890,7 +891,7 @@
           ]
         },
         "back": {
-          "description": "Back-side binding; absent means single-sided, i.e. only the front is painted. When present the back side has its own mapping, which may bind different materials or leave faces unbound.",
+          "description": "Back-side binding; absent means single-sided.",
           "anyOf": [
             {
               "$ref": "#/definitions/FaceBinding"
@@ -961,7 +962,7 @@
       "minimum": 0.0
     },
     "UvSetWire": {
-      "description": "One UV set belonging to the theme that owns it.\n\nA textured map does not point at a UV set directly; the set is found by matching. To resolve the UV a face samples:\n\n1. Pick the [`ThemeBindingWire`] whose `theme` you are rendering. 2. Look the face up in that binding's `front` (or `back`) to get a material index, and remember which of the two sides you used. 3. Index the appearance's `materials` palette with it. 4. Read the `uv_channel` of the material map you are shading, then take the entry of the same theme's `uv_sets` whose `side` and `channel` both match.",
+      "description": "One UV set, owned by the theme it belongs to. A map finds its set by matching both `side` and `channel`.",
       "type": "object",
       "required": [
         "channel",
@@ -970,7 +971,7 @@
       ],
       "properties": {
         "side": {
-          "description": "Surface side these coordinates parameterise; `Front` in the common single-sided case.",
+          "description": "Surface side these coordinates parameterise.",
           "allOf": [
             {
               "$ref": "#/definitions/Side"
@@ -978,7 +979,7 @@
           ]
         },
         "channel": {
-          "description": "Material-local UV channel these coordinates serve, matched against a texture's `uv_channel`; `0` in the common single-map case. The value has no meaning outside its own theme and side.",
+          "description": "Material-local UV channel these coordinates serve, matched against a texture's `uv_channel`.",
           "allOf": [
             {
               "$ref": "#/definitions/ChannelId"
@@ -999,10 +1000,10 @@
       ]
     },
     "UvSourceWire": {
-      "description": "Where a UV set's coordinates come from: sampled per corner, or evaluated from a matrix.\n\n# Coordinate convention\n\nThe UV origin is **top-left, with `v` increasing downward** — the glTF and image-storage convention, in which `(0, 0)` is the first texel. Every producer and consumer assumes it; a source using a bottom-left origin (CityGML) is converted at ingest, and a consumer whose own convention differs must convert at its own boundary.",
+      "description": "Wire form of [`UvSource`]; see it for the UV coordinate convention.",
       "oneOf": [
         {
-          "description": "Per-corner coordinates, nested to mirror the host geometry's faces and rings. See [`FaceUvWire`] for how the nesting lines up with each geometry type.",
+          "description": "Per-corner coordinates, nested to mirror the host geometry's faces and rings.",
           "type": "object",
           "required": [
             "Explicit"
@@ -1018,7 +1019,7 @@
           "additionalProperties": false
         },
         {
-          "description": "A 3x4 world-to-texture projective matrix, evaluated per position instead of stored per corner. Applies to the whole surface, so it carries no nesting.",
+          "description": "A 3x4 world-to-texture projective matrix, applying to the whole surface.",
           "type": "object",
           "required": [
             "WorldToTexture"
@@ -1033,7 +1034,7 @@
       ]
     },
     "FaceUvWire": {
-      "description": "UV coordinates for one host face, nested to mirror that face's rings.\n\nEach entry pairs up positionally with a corner of the host geometry: `exterior` runs parallel to the face's exterior ring, and `holes[j]` to its `j`-th hole ring. The face itself is identified by position, so the enclosing array runs parallel to the host's own face list:\n\n- `Polygon2D` / `Polygon3D` — exactly one entry, whose `exterior` matches the polygon's `exterior` and whose `holes` match its `interiors`. - `PolygonMesh2D` / `PolygonMesh3DData` — one entry per member of `faces`, matching that face's `exterior` and `holes`. - `TriangularMesh2D` / `TriangularMesh3DData` — one entry per member of `triangles`, whose `exterior` holds that triangle's three corners and whose `holes` is empty.",
+      "description": "UV coordinates for one host face, nested to mirror that face's rings.\n\nThe enclosing array runs parallel to the host's own face list: one entry for a polygon, one per member of `faces`, or one per member of `triangles`.",
       "type": "object",
       "required": [
         "exterior"
@@ -1432,7 +1433,7 @@
       }
     },
     "PositionsWire": {
-      "description": "Per-point positions in their stored encoding. Raw `i32` values (with the segment's scale / offset) are kept rather than the derived `f64`, so a scaled segment round-trips byte-for-byte.",
+      "description": "Per-point positions in their stored encoding.",
       "oneOf": [
         {
           "type": "object",
