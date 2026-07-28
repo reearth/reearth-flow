@@ -14,10 +14,11 @@ use crate::predicates::view3d::TriangleSet;
 use crate::validation_next::{
     check_chain_simple_2d, check_chain_simple_3d, check_degenerate_ring_2d,
     check_degenerate_ring_3d, check_duplicate_points, check_finite_2d, check_finite_3d,
-    check_holes_in_exterior_2d, check_holes_in_exterior_3d, check_ring_orientation_2d,
-    check_ring_pair_2d, check_ring_pair_3d, check_too_few_points_2d, check_too_few_points_3d,
-    check_unclosed_ring_2d, check_unclosed_ring_3d, open_ring, tetra_volume_6x, EdgeOrientation,
-    FaceOrientation, FaceTopology, Validate, ValidationParams, ValidationReport, ValidationType,
+    check_finite_elevation, check_holes_in_exterior_2d, check_holes_in_exterior_3d,
+    check_ring_orientation_2d, check_ring_pair_2d, check_ring_pair_3d, check_too_few_points_2d,
+    check_too_few_points_3d, check_unclosed_ring_2d, check_unclosed_ring_3d, open_ring,
+    tetra_volume_6x, EdgeOrientation, FaceOrientation, FaceTopology, Validate, ValidationParams,
+    ValidationReport, ValidationType,
 };
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
@@ -360,7 +361,12 @@ impl Validate for PolygonMesh2D {
 
     fn check_finite(&self, _params: &ValidationParams) -> ValidationReport {
         ValidationReport::ran(|r| {
-            check_finite_2d(&self.frame, &self.vertices, self.z.as_deref(), r)
+            check_finite_elevation(
+                self.z,
+                || Geometry::Euclidean2D(Euclidean2DGeometry::PolygonMesh(Box::new(self.clone()))),
+                r,
+            );
+            check_finite_2d(&self.frame, &self.vertices, r);
         })
     }
 

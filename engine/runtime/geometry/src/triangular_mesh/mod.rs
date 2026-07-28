@@ -5,8 +5,8 @@
 //! `vertices.len() - 1` at construction.
 //!
 //! Comes in 2D and 3D variants. The 2D variant carries `vertices: Vec<[f64; 2]>`
-//! plus an optional per-vertex elevation buffer parallel to `vertices`, matching
-//! the 2D leaf convention.
+//! plus the one optional elevation the whole surface lies at, matching the 2D leaf
+//! convention.
 
 use serde::{Deserialize, Serialize};
 
@@ -19,15 +19,14 @@ mod ops;
 #[cfg(feature = "new-geometry")]
 mod validation;
 
-/// A triangle mesh in 2D space, with optional per-vertex elevation.
+/// A triangle mesh in 2D space, lying at a single optional elevation.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct TriangularMesh2D {
     /// Coordinate frame these vertices are expressed in.
     frame: CoordinateFrame,
     vertices: Vec<[f64; 2]>,
-    /// Optional per-vertex elevation, parallel to `vertices`. INVARIANT: when
-    /// `Some`, `z.len() == vertices.len()`. `None` = pure 2D.
-    z: Option<Box<[f64]>>,
+    /// The elevation the whole mesh lies at. `None` = pure 2D.
+    z: Option<f64>,
     /// Flat triangle index list; width from `vertices.len() - 1`. Each triangle is
     /// wound counter-clockwise in canonical orientation (see [`crate::coordinate`]:
     /// judged after applying the frame's orientation sign, not by the raw signed
@@ -90,6 +89,12 @@ impl TriangularMesh2D {
     #[inline]
     pub fn vertices(&self) -> &[[f64; 2]] {
         &self.vertices
+    }
+
+    /// The elevation the mesh lies at, or `None` when it is pure 2D.
+    #[inline]
+    pub fn elevation(&self) -> Option<f64> {
+        self.z
     }
 
     /// The number of triangles in the mesh.

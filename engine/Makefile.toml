@@ -11,23 +11,24 @@ script = ['''
 cargo fmt --all ${@:-}
 ''']
 
-# NOTE: `--all-features` is intentionally avoided. It would enable the `new-geometry`
-# migration flag, which switches `Feature.geometry` to the new type and is mutually
-# exclusive with the default geometry world. So the default world is checked plainly,
-# and `new-geometry` is built separately (lib/bin only, since un-ported actions hit
-# the loud runtime default and their tests fail by design until ported). CI builds both.
+# NOTE: the `new-geometry` migration flag switches `Feature.geometry` to the new type
+# and is mutually exclusive with the default geometry world, so no single feature set
+# covers both. Each world therefore gets its own full `--workspace --all-targets`
+# invocation, and CI runs both.
 [tasks.check]
 script = ['''
 #!/usr/bin/env bash -eux
 cargo check --workspace --all-targets
-cargo check -p reearth-flow-cli -p reearth-flow-worker --features new-geometry
+cargo check --workspace --all-targets --features new-geometry \
+  --exclude workflow-tests --exclude reearth-flow-tests
 ''']
 
 [tasks.clippy]
 script = ['''
 #!/usr/bin/env bash -eux
 cargo clippy --workspace --all-targets -- -D warnings
-cargo clippy -p reearth-flow-cli -p reearth-flow-worker --features new-geometry -- -D warnings
+cargo clippy --workspace --all-targets --features new-geometry \
+  --exclude workflow-tests --exclude reearth-flow-tests -- -D warnings
 ''']
 
 [tasks.clippy-fix]
@@ -47,9 +48,10 @@ cargo make test-conv ${@:-}
 [tasks.test-rs]
 script = ['''
 #!/usr/bin/env bash -eux
-# Default geometry world only. The `new-geometry` world cannot be tested until
-# actions are ported (un-ported actions hit the loud runtime default).
+# Both geometry worlds.
 cargo test --workspace --all-targets --exclude workflow-tests ${@:-}
+cargo test --workspace --all-targets --features new-geometry \
+  --exclude workflow-tests --exclude reearth-flow-tests ${@:-}
 ''']
 
 [tasks.test-qc]
