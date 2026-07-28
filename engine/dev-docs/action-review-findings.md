@@ -66,80 +66,21 @@ GeoPackage Reader
 
 ---
 
-## Feature (1) · File (2) · Transform (4)
+## Feature · File · Transform — deferred items only (batch resolved in PR)
 
-<!-- Session 7 -->
+The Feature (1) · File (2) · Transform (4) batch was resolved per the standard. One item
+found while auditing it is deferred:
 
 ```
-Feature File Path Extractor
-  desc:    title-case — "Extract File Paths from Dataset to Features"; suggest "Extracts
-             file paths from a dataset source and creates one feature per path."
-  params:  extractArchive — required but is a boolean with an obvious false default;
-             evaluate as optional with default false (§3.2)
-           ordering — required params `extractArchive` and `sourceDataset` are not first;
-             `destPrefix` (optional) is 1st; correct order: sourceDataset → extractArchive
-             → destPrefix (§3.5)
-  ports:   inputPorts `default` — global note
-           outputPorts `default` — needs semantic name; `unfiltered` semantics worth
-             clarifying during Phase 4
-  tags:    ["file", "path"] — `path` not in vocabulary; suggest ["file"]
-
-Directory Decompressor
-  desc:    "from specified attributes" is slightly implementation-leaky; suggest
-             "Decompresses archive files referenced in feature attributes and emits the
-             extracted paths."
-  params:  archiveAttributes, findDeepestSingleFolder — both missing title (§3.3)
-  ports:   inputPorts `default` — global note
-           outputPorts `default` — global note; no `rejected` port — evaluate whether
-             failed extractions need a rejected route (§4.3)
-  tags:    ["file-system", "compression"] — `file-system` not in vocabulary; replace with
-             `file`; `compression` in vocabulary; suggest ["file", "compression"]
-
-File Property Extractor
-  params:  filePathAttribute — missing title (§3.3)
-  ports:   inputPorts `default` — global note
-           outputPorts `default` — needs semantic name; `rejected` ✓
-  tags:    ["file-system"] — not in vocabulary; replace with `file`
-
-Feature Transformer
-  params:  transformers — missing title (§3.3)
-           Transform.expr — missing title (§3.3)
-  ports:   inputPorts `default`, outputPorts `default` — global note; rename both to
-             `features`
-  tags:    empty — 0 tags acceptable
-
-List Exploder
-  params:  sourceAttribute — missing title (§3.3)
-  ports:   inputPorts `default`, outputPorts `default` — global note
-  tags:    ["list"] — in vocabulary ✓
-
 XML Fragmenter
-  desc:    suggest "Splits an XML document into features by matching element patterns,
-             emitting each matched element as a separate feature."
-  params:  oneOf with a single variant suggests incomplete design — other source types
-             planned but only "url" implemented
-           attribute, elementsToExclude, elementsToMatch, source — all missing title and
-             description within the oneOf variant (§3.3)
-  ports:   inputPorts `default`, outputPorts `default` — global note; evaluate adding
-             `rejected` for malformed XML (§4.3)
-  tags:    ["xml"] — in vocabulary ✓
-
-XML Validator
-  desc:    "against XSD schemas" inaccurate for syntax/namespace modes; "with
-             success/failure routing" references port behavior; suggest "Validates XML
-             documents for syntax, namespace conformance, or XSD schema compliance."
-  params:  schema title "XmlValidatorParam" — inconsistent casing; should be "XML
-             Validator Parameters"
-           schema-level description missing (§3.3)
-           attribute, inputType, validationType — all missing title and description (§3.3)
-           ValidationType enum ("syntax", "syntaxAndNamespace", "syntaxAndSchema") — no
-             per-variant descriptions; plain enum type (§3.4)
-           XmlInputType enum ("file", "text") — no per-variant descriptions; plain enum
-             type (§3.4)
-  ports:   inputPorts `default` — global note; outputPorts `success`, `failed` ✓;
-             evaluate adding `rejected` for parse errors (§4.3)
-  tags:    ["xml", "validate"] — `validate` not in vocabulary; `validation` is; correct
-             to ["xml", "validation"]
+  i18n:    the parameter schema is a root-level `oneOf` (source variants), and the i18n
+             overlay only reaches root `properties`, `definitions[*].properties`, and
+             `definitions[*].oneOf` enum variants (`cli/src/utils.rs::apply_parameter_i18n`).
+             So this action's per-parameter titles/descriptions, and the variant labels
+             "XML File"/"XML Text", can never be translated — they stay English in all
+             languages. Fixing this needs either i18n support for root-level oneOf
+             variants or a flat param struct with a plain `source` enum. Not urgent: the
+             root title/description do translate, and the English text is accurate.
 ```
 
 ---

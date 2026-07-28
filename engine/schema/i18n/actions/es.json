@@ -999,14 +999,16 @@
       "description": "Descomprime directorios de archivos",
       "parameterI18n": {
         "": {
-          "title": "DirectoryDecompressor Parameters",
-          "description": "Configures the extraction and decompression of archive files."
+          "title": "Directory Decompressor Parameters",
+          "description": "Configures which attributes hold archives and how deeply the extracted directory is unwrapped."
         },
         "archiveAttributes": {
-          "description": "Attributes containing archive file paths to be extracted and decompressed"
+          "title": "Archive Attributes",
+          "description": "Attributes holding the path of a `.zip`, `.7z`, or `.7zip` archive. Each is replaced with the extracted directory path; attributes holding any other value are left unchanged."
         },
         "findDeepestSingleFolder": {
-          "description": "If true, recursively unwraps single-folder nesting until the directory contains multiple items or files directly. If false (default), returns the root extraction folder as-is."
+          "title": "Find Deepest Single Folder",
+          "description": "Keeps unwrapping while the extracted directory contains nothing but a single subdirectory, stopping at the first directory with multiple entries or a file. When disabled, only one level of single-folder nesting is unwrapped."
         }
       }
     },
@@ -1234,19 +1236,19 @@
       "parameterI18n": {
         "": {
           "title": "Feature File Path Extractor Parameters",
-          "description": "Configure how to extract file paths from datasets and optionally extract archives"
+          "description": "Configures which dataset is expanded into file features and whether archives are extracted."
         },
         "destPrefix": {
           "title": "Destination Prefix",
-          "description": "Optional prefix to add to extracted file paths"
+          "description": "Subdirectory created under the temporary extraction directory to hold the extracted files. Applies only when an archive is extracted."
         },
         "extractArchive": {
           "title": "Extract Archive",
-          "description": "Whether to extract archive files found in the dataset"
+          "description": "Extracts the source dataset when it is a `.zip`, `.7z`, or `.7zip` archive and emits one feature per extracted file. When disabled, the archive itself is emitted as a single path."
         },
         "sourceDataset": {
           "title": "Source Dataset",
-          "description": "Expression to get the source dataset path or URL"
+          "description": "Expression evaluating to the path or URL of the file, directory, or archive to expand. A directory is listed recursively; any other path yields a single feature."
         }
       }
     },
@@ -1425,17 +1427,19 @@
       "description": "Transforma entidades mediante expresiones",
       "parameterI18n": {
         "": {
-          "title": "FeatureTransformer Parameters",
-          "description": "Configuration for applying transformation expressions to features."
+          "title": "Feature Transformer Parameters",
+          "description": "Configures the expressions that build each feature's new attributes."
         },
         "transformers": {
-          "description": "List of transformation expressions to apply to each feature"
+          "title": "Transformations",
+          "description": "Expressions applied in order, each one reading the attributes produced by the previous."
         }
       },
       "definitionI18n": {
         "Transform": {
           "expr": {
-            "description": "Expression that modifies the feature (can access and modify attributes, geometry, etc.)"
+            "title": "Expression",
+            "description": "Expression over `attributes` and `env` returning a map that becomes the feature's complete attribute set. A result that is not a map, or an expression that fails to evaluate, leaves the attributes unchanged."
           }
         }
       }
@@ -1487,11 +1491,12 @@
       "description": "Extrae propiedades de un archivo",
       "parameterI18n": {
         "": {
-          "title": "FilePropertyExtractor Parameters",
-          "description": "Configuration for extracting file system properties from files."
+          "title": "File Property Extractor Parameters",
+          "description": "Configures which attribute holds the path to inspect."
         },
         "filePathAttribute": {
-          "description": "Attribute name containing the file path to analyze for properties"
+          "title": "File Path Attribute",
+          "description": "Name of the attribute holding the path of the file or directory to inspect. Paths that do not exist, and symbolic links, are not inspected."
         }
       }
     },
@@ -2344,11 +2349,12 @@
       "description": "Divide en varios elementos los atributos de tipo lista",
       "parameterI18n": {
         "": {
-          "title": "ListExploder Parameters",
-          "description": "Configuration for exploding array attributes into individual features."
+          "title": "List Exploder Parameters",
+          "description": "Configures which list attribute is expanded into individual features."
         },
         "sourceAttribute": {
-          "description": "Attribute containing the array to explode (each element becomes a separate feature)"
+          "title": "Source Attribute",
+          "description": "Attribute holding a list of key-value pairs, one entry per feature to create."
         }
       }
     },
@@ -3672,8 +3678,8 @@
       "description": "Fragmenta XML",
       "parameterI18n": {
         "": {
-          "title": "XMLFragmenter Parameters",
-          "description": "Configuration for fragmenting XML documents into smaller pieces."
+          "title": "XML Fragmenter Parameters",
+          "description": "Configures where the XML document comes from and which of its elements become features."
         }
       }
     },
@@ -3682,11 +3688,47 @@
       "description": "Valida contenido XML",
       "parameterI18n": {
         "": {
-          "title": "XmlValidatorParam"
+          "title": "XML Validator Parameters",
+          "description": "Configures which XML document is validated and how thoroughly."
         },
-        "attribute": {},
-        "inputType": {},
-        "validationType": {}
+        "attribute": {
+          "title": "XML Attribute",
+          "description": "Attribute holding the XML document: the file path or URL to read, or the XML text itself, depending on the input type."
+        },
+        "inputType": {
+          "title": "Input Type",
+          "description": "Whether the attribute holds the location of the document or the document itself."
+        },
+        "validationType": {
+          "title": "Validation Type",
+          "description": "Checks to run against the document."
+        }
+      },
+      "enumI18n": {
+        "ValidationType": {
+          "syntax": {
+            "title": "Syntax",
+            "description": "Checks that the document is well-formed XML."
+          },
+          "syntaxAndNamespace": {
+            "title": "Syntax and Namespace",
+            "description": "Also checks that every namespace prefix used by an element is declared on that element or an ancestor, and that unprefixed elements have a default namespace."
+          },
+          "syntaxAndSchema": {
+            "title": "Syntax and Schema",
+            "description": "Also validates the document against the XSD schemas named by its `xsi:schemaLocation`. Unreachable remote schemas are skipped, as those locations are hints per the XML Schema specification."
+          }
+        },
+        "XmlInputType": {
+          "file": {
+            "title": "XML File",
+            "description": "Reads the document from the file path or URL held in the attribute."
+          },
+          "text": {
+            "title": "XML Text",
+            "description": "Uses the attribute value itself as the document."
+          }
+        }
       }
     },
     {
