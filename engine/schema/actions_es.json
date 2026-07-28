@@ -8879,16 +8879,16 @@
     {
       "name": "Offsetter",
       "type": "processor",
-      "description": "Añade desplazamientos a las coordenadas de la entidad.",
+      "description": "Desplaza todas las coordenadas de la geometría una distancia fija en cada eje.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Offsetter Parameters",
-        "description": "Configure the X, Y, and Z coordinate offsets to apply to all geometry coordinates",
+        "description": "Distances added to every geometry coordinate, one per axis.",
         "type": "object",
         "properties": {
           "offsetX": {
             "title": "X Offset",
-            "description": "Offset to add to all X coordinates (longitude)",
+            "description": "Distance added to every X coordinate; defaults to zero.",
             "type": [
               "number",
               "null"
@@ -8897,7 +8897,7 @@
           },
           "offsetY": {
             "title": "Y Offset",
-            "description": "Offset to add to all Y coordinates (latitude)",
+            "description": "Distance added to every Y coordinate; defaults to zero.",
             "type": [
               "number",
               "null"
@@ -8906,7 +8906,7 @@
           },
           "offsetZ": {
             "title": "Z Offset",
-            "description": "Offset to add to all Z coordinates (elevation)",
+            "description": "Distance added to every Z coordinate; defaults to zero.",
             "type": [
               "number",
               "null"
@@ -8920,12 +8920,16 @@
         "features"
       ],
       "outputPorts": [
-        "features"
+        "features",
+        "rejected"
       ],
       "categories": [
         "Geometry"
       ],
-      "tags": []
+      "tags": [
+        "coordinate-system",
+        "3d"
+      ]
     },
     {
       "name": "Orientation Extractor",

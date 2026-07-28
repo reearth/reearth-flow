@@ -2644,23 +2644,23 @@
     },
     {
       "name": "Offsetter",
-      "description": "为实体的坐标添加偏移",
+      "description": "沿各坐标轴将几何图形的所有坐标平移固定距离",
       "parameterI18n": {
         "": {
           "title": "Offsetter Parameters",
-          "description": "Configure the X, Y, and Z coordinate offsets to apply to all geometry coordinates"
+          "description": "Distances added to every geometry coordinate, one per axis."
         },
         "offsetX": {
           "title": "X Offset",
-          "description": "Offset to add to all X coordinates (longitude)"
+          "description": "Distance added to every X coordinate; defaults to zero."
         },
         "offsetY": {
           "title": "Y Offset",
-          "description": "Offset to add to all Y coordinates (latitude)"
+          "description": "Distance added to every Y coordinate; defaults to zero."
         },
         "offsetZ": {
           "title": "Z Offset",
-          "description": "Offset to add to all Z coordinates (elevation)"
+          "description": "Distance added to every Z coordinate; defaults to zero."
         }
       }
     },

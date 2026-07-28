@@ -8666,18 +8666,18 @@ Writes 3D features to Wavefront OBJ format with optional material (MTL) files
 ### Type
 * processor
 ### Description
-Apply Coordinate Offsets to Geometry
+Shifts every geometry coordinate by a fixed distance along each axis.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Offsetter Parameters",
-  "description": "Configure the X, Y, and Z coordinate offsets to apply to all geometry coordinates",
+  "description": "Distances added to every geometry coordinate, one per axis.",
   "type": "object",
   "properties": {
     "offsetX": {
       "title": "X Offset",
-      "description": "Offset to add to all X coordinates (longitude)",
+      "description": "Distance added to every X coordinate; defaults to zero.",
       "type": [
         "number",
         "null"
@@ -8686,7 +8686,7 @@ Apply Coordinate Offsets to Geometry
     },
     "offsetY": {
       "title": "Y Offset",
-      "description": "Offset to add to all Y coordinates (latitude)",
+      "description": "Distance added to every Y coordinate; defaults to zero.",
       "type": [
         "number",
         "null"
@@ -8695,7 +8695,7 @@ Apply Coordinate Offsets to Geometry
     },
     "offsetZ": {
       "title": "Z Offset",
-      "description": "Offset to add to all Z coordinates (elevation)",
+      "description": "Distance added to every Z coordinate; defaults to zero.",
       "type": [
         "number",
         "null"
@@ -8709,6 +8709,7 @@ Apply Coordinate Offsets to Geometry
 * features
 ### Output Ports
 * features
+* rejected
 ### Category
 * Geometry
 

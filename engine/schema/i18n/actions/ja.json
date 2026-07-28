@@ -2647,23 +2647,23 @@
     },
     {
       "name": "Offsetter",
-      "description": "地物の座標にオフセットを加える",
+      "description": "ジオメトリのすべての座標を各軸ごとに一定の距離だけ移動する",
       "parameterI18n": {
         "": {
           "title": "Offsetter パラメータ",
-          "description": "すべてのジオメトリ座標に適用する X・Y・Z 座標オフセットを設定する"
+          "description": "すべてのジオメトリ座標に各軸ごとに加える距離を設定する"
         },
         "offsetX": {
           "title": "X オフセット",
-          "description": "すべての X 座標（経度）に加えるオフセット"
+          "description": "すべての X 座標に加える距離。省略時は 0"
         },
         "offsetY": {
           "title": "Y オフセット",
-          "description": "すべての Y 座標（緯度）に加えるオフセット"
+          "description": "すべての Y 座標に加える距離。省略時は 0"
         },
         "offsetZ": {
           "title": "Z オフセット",
-          "description": "すべての Z 座標（標高）に加えるオフセット"
+          "description": "すべての Z 座標に加える距離。省略時は 0"
         }
       }
     },

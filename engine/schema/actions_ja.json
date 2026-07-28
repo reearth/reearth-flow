@@ -8882,16 +8882,16 @@
     {
       "name": "Offsetter",
       "type": "processor",
-      "description": "地物の座標にオフセットを加える",
+      "description": "ジオメトリのすべての座標を各軸ごとに一定の距離だけ移動する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Offsetter パラメータ",
-        "description": "すべてのジオメトリ座標に適用する X・Y・Z 座標オフセットを設定する",
+        "description": "すべてのジオメトリ座標に各軸ごとに加える距離を設定する",
         "type": "object",
         "properties": {
           "offsetX": {
             "title": "X オフセット",
-            "description": "すべての X 座標（経度）に加えるオフセット",
+            "description": "すべての X 座標に加える距離。省略時は 0",
             "type": [
               "number",
               "null"
@@ -8900,7 +8900,7 @@
           },
           "offsetY": {
             "title": "Y オフセット",
-            "description": "すべての Y 座標（緯度）に加えるオフセット",
+            "description": "すべての Y 座標に加える距離。省略時は 0",
             "type": [
               "number",
               "null"
@@ -8909,7 +8909,7 @@
           },
           "offsetZ": {
             "title": "Z オフセット",
-            "description": "すべての Z 座標（標高）に加えるオフセット",
+            "description": "すべての Z 座標に加える距離。省略時は 0",
             "type": [
               "number",
               "null"
@@ -8923,12 +8923,16 @@
         "features"
       ],
       "outputPorts": [
-        "features"
+        "features",
+        "rejected"
       ],
       "categories": [
         "Geometry"
       ],
-      "tags": []
+      "tags": [
+        "coordinate-system",
+        "3d"
+      ]
     },
     {
       "name": "Orientation Extractor",
