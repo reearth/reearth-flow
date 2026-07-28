@@ -5,6 +5,7 @@ use crate::ops::triangulation::Cache;
 use crate::ops::{
     Aabb, BoundingBox, Reproject, ReprojectionCache, Triangulate, UnsupportedOperation,
 };
+use crate::triangular_mesh::TriangularMesh3DData;
 use crate::{Euclidean3DGeometry, Geometry};
 
 impl BoundingBox for Solid {
@@ -50,21 +51,43 @@ impl Shell {
     }
 }
 
+impl Solid {
+    /// Move the solid out, leaving an empty husk.
+    fn take(&mut self) -> Self {
+        Self {
+            frame: std::mem::take(&mut self.frame),
+            exterior: std::mem::replace(
+                &mut self.exterior,
+                Shell::TriangularMesh(TriangularMesh3DData::empty()),
+            ),
+            interiors: std::mem::take(&mut self.interiors),
+        }
+    }
+
+    /// The leaf moved out and wrapped as a [`Geometry`].
+    fn take_geometry(&mut self) -> Geometry {
+        Geometry::Euclidean3D(Euclidean3DGeometry::Solid(Box::new(self.take())))
+    }
+}
+
 impl Reproject for Solid {
     fn reproject(
         &mut self,
         target: EpsgCode,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
+    ) -> crate::error::Result<Geometry> {
         let from = self.frame.require_crs()?;
+        let mut solid = self.take();
         if from != target {
-            reproject_shell(&mut self.exterior, from, target, cache)?;
-            for shell in &mut self.interiors {
+            reproject_shell(&mut solid.exterior, from, target, cache)?;
+            for shell in &mut solid.interiors {
                 reproject_shell(shell, from, target, cache)?;
             }
-            self.frame = CoordinateFrame::Crs(target);
+            solid.frame = CoordinateFrame::Crs(target);
         }
-        Ok(())
+        Ok(Geometry::Euclidean3D(Euclidean3DGeometry::Solid(Box::new(
+            solid,
+        ))))
     }
 }
 
@@ -103,18 +126,22 @@ impl ConvertFrame for Solid {
         target: &CoordinateFrame,
         base_point: Option<[f64; 3]>,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
+    ) -> crate::error::Result<Geometry> {
         match plan_frame_step(&self.frame, target, base_point)? {
-            FrameStep::Noop => Ok(()),
+            FrameStep::Noop => Ok(self.take_geometry()),
             FrameStep::Reproject(to) => self.reproject(to, cache),
             FrameStep::Translate(offset, frame) => {
                 self.translate(offset)?;
                 self.frame = frame;
-                Ok(())
+                Ok(self.take_geometry())
             }
         }
     }
 }
+
+// A solid is a volume; flattening its boundary to 2D has no single well-defined
+// result, so it has no 2D counterpart.
+crate::unsupported!(Solid: ForceTwoDimension);
 
 #[cfg(test)]
 mod tests {

@@ -640,12 +640,13 @@ Flattens map-valued attributes into individual top-level attributes, replacing e
 ### Type
 * processor
 ### Description
-Create, Convert, Rename, and Remove Feature Attributes
+Creates, converts, renames, or removes feature attributes based on a configurable list of operations.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AttributeManager Parameters",
+  "title": "Attribute Manager Parameters",
+  "description": "Defines the ordered list of operations that create, convert, rename, or remove feature attributes.",
   "type": "object",
   "required": [
     "operations"
@@ -653,7 +654,7 @@ Create, Convert, Rename, and Remove Feature Attributes
   "properties": {
     "operations": {
       "title": "Attribute Operations",
-      "description": "List of operations to perform on feature attributes (create, convert, rename, remove)",
+      "description": "Operations applied to each feature in order. Each entry names the target attribute, the method to apply, and an optional value expression.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Operation"
@@ -669,11 +670,13 @@ Create, Convert, Rename, and Remove Feature Attributes
       ],
       "properties": {
         "attribute": {
-          "title": "Attribute name",
+          "title": "Attribute Name",
+          "description": "Name of the attribute to create, convert, rename, or remove.",
           "type": "string"
         },
         "method": {
-          "title": "Operation to perform",
+          "title": "Method",
+          "description": "Operation to apply to the attribute.",
           "allOf": [
             {
               "$ref": "#/definitions/Method"
@@ -682,7 +685,7 @@ Create, Convert, Rename, and Remove Feature Attributes
         },
         "value": {
           "title": "Value",
-          "description": "Value to use for the operation",
+          "description": "Expression evaluated against the feature. Supplies the new value for Create and Convert, or the new attribute name for Rename. Ignored for Remove.",
           "type": [
             "object",
             "null"
@@ -708,12 +711,39 @@ Create, Convert, Rename, and Remove Feature Attributes
       }
     },
     "Method": {
-      "type": "string",
-      "enum": [
-        "convert",
-        "create",
-        "rename",
-        "remove"
+      "oneOf": [
+        {
+          "title": "Convert",
+          "description": "Replaces the value of an existing attribute with the result of the value expression. Features that do not already have the attribute are left unchanged.",
+          "type": "string",
+          "enum": [
+            "convert"
+          ]
+        },
+        {
+          "title": "Create",
+          "description": "Sets the attribute to the result of the value expression, creating it or overwriting any existing value.",
+          "type": "string",
+          "enum": [
+            "create"
+          ]
+        },
+        {
+          "title": "Rename",
+          "description": "Renames the attribute to the name produced by the value expression. Skipped when the attribute is absent or a target with that name already exists.",
+          "type": "string",
+          "enum": [
+            "rename"
+          ]
+        },
+        {
+          "title": "Remove",
+          "description": "Removes the attribute from the feature.",
+          "type": "string",
+          "enum": [
+            "remove"
+          ]
+        }
       ]
     }
   }
@@ -1127,13 +1157,13 @@ Create Buffer Around Features
 ### Type
 * processor
 ### Description
-Rename Feature Attributes in Bulk
+Renames feature attributes in bulk by adding or removing a prefix or suffix, or replacing text.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "BulkAttributeRenamer Parameters",
-  "description": "Configure how to rename feature attributes in bulk operations",
+  "title": "Bulk Attribute Renamer Parameters",
+  "description": "Selects which attributes to rename and how their names are transformed.",
   "type": "object",
   "required": [
     "renameAction",
@@ -1142,8 +1172,8 @@ Rename Feature Attributes in Bulk
   ],
   "properties": {
     "renameType": {
-      "title": "Which Attributes to Rename",
-      "description": "Choose whether to rename all attributes or only selected ones",
+      "title": "Rename Scope",
+      "description": "Scope of the rename operation: all attributes or a selected subset.",
       "allOf": [
         {
           "$ref": "#/definitions/RenameType"
@@ -1152,29 +1182,29 @@ Rename Feature Attributes in Bulk
     },
     "renameAction": {
       "title": "Rename Operation",
-      "description": "The type of renaming operation to perform on the attribute names",
+      "description": "Transformation applied to each attribute name.",
       "allOf": [
         {
           "$ref": "#/definitions/RenameAction"
         }
       ]
     },
+    "renameValue": {
+      "title": "Text Value",
+      "description": "Text to add as a prefix or suffix, remove, or use as the replacement, depending on the selected operation.",
+      "type": "string"
+    },
     "textToFind": {
       "title": "Text Pattern to Find",
-      "description": "Regular expression pattern to match when using \"Replace Text\" operation",
+      "description": "Regular expression matched against attribute names. Required for the replaceText operation.",
       "type": [
         "string",
         "null"
       ]
     },
-    "renameValue": {
-      "title": "Text Value",
-      "description": "The text to add as prefix/suffix, remove, or use as replacement",
-      "type": "string"
-    },
     "selectedAttributes": {
       "title": "Selected Attribute Names",
-      "description": "List of specific attribute names to rename (required when \"Selected Attributes\" is chosen)",
+      "description": "Attribute names to rename. Required when the rename scope is set to a selected subset.",
       "type": [
         "array",
         "null"
@@ -1189,18 +1219,18 @@ Rename Feature Attributes in Bulk
       "oneOf": [
         {
           "title": "All Attributes",
-          "description": "Rename all attributes in the feature",
+          "description": "Renames every attribute on the feature.",
           "type": "string",
           "enum": [
-            "All"
+            "all"
           ]
         },
         {
           "title": "Selected Attributes",
-          "description": "Rename only specific attributes listed below",
+          "description": "Renames only the attributes listed in selectedAttributes.",
           "type": "string",
           "enum": [
-            "Selected"
+            "selected"
           ]
         }
       ]
@@ -1209,42 +1239,42 @@ Rename Feature Attributes in Bulk
       "oneOf": [
         {
           "title": "Add Prefix",
-          "description": "Add text to the beginning of attribute names",
+          "description": "Prepends the text value to each attribute name.",
           "type": "string",
           "enum": [
-            "AddPrefix"
+            "addPrefix"
           ]
         },
         {
           "title": "Add Suffix",
-          "description": "Add text to the end of attribute names",
+          "description": "Appends the text value to each attribute name.",
           "type": "string",
           "enum": [
-            "AddSuffix"
+            "addSuffix"
           ]
         },
         {
           "title": "Remove Prefix",
-          "description": "Remove text from the beginning of attribute names",
+          "description": "Removes the text value from the start of each attribute name.",
           "type": "string",
           "enum": [
-            "RemovePrefix"
+            "removePrefix"
           ]
         },
         {
           "title": "Remove Suffix",
-          "description": "Remove text from the end of attribute names",
+          "description": "Removes the text value from the end of each attribute name.",
           "type": "string",
           "enum": [
-            "RemoveSuffix"
+            "removeSuffix"
           ]
         },
         {
           "title": "Replace Text",
-          "description": "Find and replace text using regular expressions",
+          "description": "Replaces text matched by the find pattern with the text value, using regular expressions.",
           "type": "string",
           "enum": [
-            "StringReplace"
+            "replaceText"
           ]
         }
       ]
@@ -2836,27 +2866,29 @@ Routes features to output ports based on the number of geometry dimensions.
 ### Type
 * processor
 ### Description
-Extracts and decompresses archive files from specified attributes
+Decompresses zip and 7z archives referenced by feature attributes, replacing each attribute value with the path of the directory holding the extracted files.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "DirectoryDecompressor Parameters",
-  "description": "Configures the extraction and decompression of archive files.",
+  "title": "Directory Decompressor Parameters",
+  "description": "Configures which attributes hold archives and how deeply the extracted directory is unwrapped.",
   "type": "object",
   "required": [
     "archiveAttributes"
   ],
   "properties": {
     "archiveAttributes": {
-      "description": "Attributes containing archive file paths to be extracted and decompressed",
+      "title": "Archive Attributes",
+      "description": "Attributes holding the path of a `.zip`, `.7z`, or `.7zip` archive. Each is replaced with the extracted directory path; attributes holding any other value are left unchanged.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Attribute"
       }
     },
     "findDeepestSingleFolder": {
-      "description": "If true, recursively unwraps single-folder nesting until the directory contains multiple items or files directly. If false (default), returns the root extraction folder as-is.",
+      "title": "Find Deepest Single Folder",
+      "description": "Keeps unwrapping while the extracted directory contains nothing but a single subdirectory, stopping at the first directory with multiple entries or a file. When disabled, only one level of single-folder nesting is unwrapped.",
       "type": [
         "boolean",
         "null"
@@ -3499,22 +3531,21 @@ Filter Out Duplicate Features
 ### Type
 * processor
 ### Description
-Extract File Paths from Dataset to Features
+Expands a dataset path into one feature per file, listing directories recursively and optionally extracting zip and 7z archives. Each emitted feature carries the file's path, name, and extension attributes alongside the attributes of the incoming feature.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Feature File Path Extractor Parameters",
-  "description": "Configure how to extract file paths from datasets and optionally extract archives",
+  "description": "Configures which dataset is expanded into file features and whether archives are extracted.",
   "type": "object",
   "required": [
-    "extractArchive",
     "sourceDataset"
   ],
   "properties": {
     "sourceDataset": {
       "title": "Source Dataset",
-      "description": "Expression to get the source dataset path or URL",
+      "description": "Expression evaluating to the path or URL of the file, directory, or archive to expand. A directory is listed recursively; any other path yields a single feature.",
       "type": "object",
       "format": "code",
       "required": [
@@ -3536,12 +3567,13 @@ Extract File Paths from Dataset to Features
     },
     "extractArchive": {
       "title": "Extract Archive",
-      "description": "Whether to extract archive files found in the dataset",
+      "description": "Extracts the source dataset when it is a `.zip`, `.7z`, or `.7zip` archive and emits one feature per extracted file. When disabled, the archive itself is emitted as a single path.",
+      "default": false,
       "type": "boolean"
     },
     "destPrefix": {
       "title": "Destination Prefix",
-      "description": "Optional prefix to add to extracted file paths",
+      "description": "Subdirectory created under the temporary extraction directory to hold the extracted files. Applies only when an archive is extracted.",
       "type": [
         "string",
         "null"
@@ -3554,7 +3586,6 @@ Extract File Paths from Dataset to Features
 * features
 ### Output Ports
 * features
-* unfiltered
 ### Category
 * Feature
 
@@ -4262,20 +4293,21 @@ Sorts features based on specified attributes in ascending or descending order.
 ### Type
 * processor
 ### Description
-Applies transformation expressions to modify feature attributes and properties
+Replaces each feature's attributes with the map returned by one or more expressions, applied in order. Geometry is passed through unchanged.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "FeatureTransformer Parameters",
-  "description": "Configuration for applying transformation expressions to features.",
+  "title": "Feature Transformer Parameters",
+  "description": "Configures the expressions that build each feature's new attributes.",
   "type": "object",
   "required": [
     "transformers"
   ],
   "properties": {
     "transformers": {
-      "description": "List of transformation expressions to apply to each feature",
+      "title": "Transformations",
+      "description": "Expressions applied in order, each one reading the attributes produced by the previous.",
       "type": "array",
       "items": {
         "$ref": "#/definitions/Transform"
@@ -4290,7 +4322,8 @@ Applies transformation expressions to modify feature attributes and properties
       ],
       "properties": {
         "expr": {
-          "description": "Expression that modifies the feature (can access and modify attributes, geometry, etc.)",
+          "title": "Expression",
+          "description": "Expression over `attributes` and `env` returning a map that becomes the feature's complete attribute set. A result that is not a map, or an expression that fails to evaluate, leaves the attributes unchanged.",
           "type": "object",
           "format": "code",
           "required": [
@@ -4636,20 +4669,21 @@ Extracts file paths from directories or archives, creating features for each dis
 ### Type
 * processor
 ### Description
-Extracts file system properties (type, size, timestamps) from files
+Inspects the file or directory at a path held in a feature attribute and adds its type, size, and access, modification, and creation timestamps as attributes. Directory size is the total size of the files it contains, counted recursively.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "FilePropertyExtractor Parameters",
-  "description": "Configuration for extracting file system properties from files.",
+  "title": "File Property Extractor Parameters",
+  "description": "Configures which attribute holds the path to inspect.",
   "type": "object",
   "required": [
     "filePathAttribute"
   ],
   "properties": {
     "filePathAttribute": {
-      "description": "Attribute name containing the file path to analyze for properties",
+      "title": "File Path Attribute",
+      "description": "Name of the attribute holding the path of the file or directory to inspect. Paths that do not exist, and symbolic links, are not inspected.",
       "type": "string"
     }
   }
@@ -7834,20 +7868,21 @@ Extracts a specific attribute from each element in a list and concatenates them 
 ### Type
 * processor
 ### Description
-Explodes array attributes into separate features, creating one feature per array element
+Creates one feature per element of a list attribute, merging the element's key-value pairs into the feature's attributes and removing the source attribute. A feature whose attribute is missing, empty, or not a list of key-value pairs produces nothing and is rejected instead.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ListExploder Parameters",
-  "description": "Configuration for exploding array attributes into individual features.",
+  "title": "List Exploder Parameters",
+  "description": "Configures which list attribute is expanded into individual features.",
   "type": "object",
   "required": [
     "sourceAttribute"
   ],
   "properties": {
     "sourceAttribute": {
-      "description": "Attribute containing the array to explode (each element becomes a separate feature)",
+      "title": "Source Attribute",
+      "description": "Attribute holding a list of key-value pairs, one entry per feature to create.",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -7866,6 +7901,7 @@ Explodes array attributes into separate features, creating one feature per array
 * features
 ### Output Ports
 * features
+* rejected
 ### Category
 * Transform
 
@@ -8255,17 +8291,28 @@ Discards all incoming features.
 ### Type
 * processor
 ### Description
-Replace null-like attribute values with configured defaults
+Replaces null-like attribute values with configured replacement values, optionally removing or routing affected features.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "NullAttributeMapperParams",
-  "description": "NullAttributeMapper parameters",
+  "title": "Null Attribute Mapper Parameters",
+  "description": "Detects null-like attribute values and replaces them, removes them, or routes affected features according to per-attribute rules.",
   "type": "object",
   "properties": {
+    "scope": {
+      "title": "Scope",
+      "description": "Which attributes to inspect: only those named in the mappings, or every attribute on the feature.",
+      "default": "listed",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Scope"
+        }
+      ]
+    },
     "mappings": {
-      "description": "Per-attribute replacement rules",
+      "title": "Attribute Mappings",
+      "description": "Per-attribute rules describing how each null-like attribute is replaced, removed, or created.",
       "default": [],
       "type": "array",
       "items": {
@@ -8273,11 +8320,13 @@ Replace null-like attribute values with configured defaults
       }
     },
     "defaultReplacement": {
-      "description": "Fallback replacement for attributes not in mappings (when scope = \"all\")",
+      "title": "Default Replacement",
+      "description": "Value used to replace null-like attributes that have no entry in the mappings. Applies only when the scope inspects all attributes.",
       "default": null
     },
     "nullDefinition": {
-      "description": "Which states count as \"null\"",
+      "title": "Null Definition",
+      "description": "States treated as null-like: an explicit null value, a missing attribute, or an empty string. Defaults to null values and missing attributes.",
       "default": [
         "null",
         "missing"
@@ -8288,21 +8337,35 @@ Replace null-like attribute values with configured defaults
       }
     },
     "routeNullFeatures": {
-      "description": "Emit original features with nulls to hasNull port",
+      "title": "Route Null Features",
+      "description": "When enabled, a copy of each feature that had at least one null-like value is emitted unchanged to a separate output for inspection.",
       "default": false,
       "type": "boolean"
-    },
-    "scope": {
-      "description": "Which attributes to inspect",
-      "default": "listed",
-      "allOf": [
-        {
-          "$ref": "#/definitions/Scope"
-        }
-      ]
     }
   },
   "definitions": {
+    "Scope": {
+      "title": "Scope",
+      "description": "Which attributes the action inspects.",
+      "oneOf": [
+        {
+          "title": "Listed Attributes",
+          "description": "Inspects only the attributes named in the mappings list.",
+          "type": "string",
+          "enum": [
+            "listed"
+          ]
+        },
+        {
+          "title": "All Attributes",
+          "description": "Inspects every attribute on the feature.",
+          "type": "string",
+          "enum": [
+            "all"
+          ]
+        }
+      ]
+    },
     "AttributeMapping": {
       "description": "Per-attribute replacement mapping",
       "type": "object",
@@ -8311,14 +8374,17 @@ Replace null-like attribute values with configured defaults
       ],
       "properties": {
         "attribute": {
-          "description": "Name of the attribute to inspect",
+          "title": "Attribute",
+          "description": "Name of the attribute to inspect.",
           "type": "string"
         },
         "replacement": {
-          "description": "Value to write when attribute is null-like null means remove the attribute"
+          "title": "Replacement",
+          "description": "Value written when the attribute is null-like. A null value removes the attribute instead."
         },
         "onMissing": {
-          "description": "What to do when attribute is missing but not in nullDefinition",
+          "title": "On Missing",
+          "description": "Behavior when the attribute is absent and not treated as null-like by the null definition.",
           "default": "skip",
           "allOf": [
             {
@@ -8329,17 +8395,20 @@ Replace null-like attribute values with configured defaults
       }
     },
     "OnMissing": {
-      "description": "What to do when attribute is missing but not in nullDefinition",
+      "title": "On Missing",
+      "description": "Behavior when an inspected attribute is absent from the feature.",
       "oneOf": [
         {
-          "description": "Leave unchanged",
+          "title": "Skip",
+          "description": "Leaves the feature unchanged.",
           "type": "string",
           "enum": [
             "skip"
           ]
         },
         {
-          "description": "Write replacement value, creating the attribute",
+          "title": "Create",
+          "description": "Adds the attribute using the mapping's replacement value.",
           "type": "string",
           "enum": [
             "create"
@@ -8348,46 +8417,31 @@ Replace null-like attribute values with configured defaults
       ]
     },
     "NullKind": {
-      "description": "Defines what states count as \"null\"",
+      "title": "Null Definition",
+      "description": "States that are treated as null-like.",
       "oneOf": [
         {
-          "description": "AttributeValue::Null",
+          "title": "Null Value",
+          "description": "An attribute present on the feature but holding an explicit null value.",
           "type": "string",
           "enum": [
             "null"
           ]
         },
         {
-          "description": "Attribute key absent from the feature",
+          "title": "Missing Attribute",
+          "description": "An attribute that is absent from the feature.",
           "type": "string",
           "enum": [
             "missing"
           ]
         },
         {
-          "description": "AttributeValue::String(\"\")",
+          "title": "Empty String",
+          "description": "An attribute holding a text value with no characters.",
           "type": "string",
           "enum": [
             "emptyString"
-          ]
-        }
-      ]
-    },
-    "Scope": {
-      "description": "Scope of attributes to inspect",
-      "oneOf": [
-        {
-          "description": "Only check attributes named in mappings",
-          "type": "string",
-          "enum": [
-            "listed"
-          ]
-        },
-        {
-          "description": "Check all attributes on the feature",
-          "type": "string",
-          "enum": [
-            "all"
           ]
         }
       ]
@@ -8399,7 +8453,7 @@ Replace null-like attribute values with configured defaults
 * features
 ### Output Ports
 * features
-* hasNull
+* has-null
 * rejected
 ### Category
 * Attribute
@@ -11842,33 +11896,29 @@ Filters candidate features based on their spatial relationship to filter geometr
 ### Type
 * processor
 ### Description
-Calculates statistical aggregations on feature attributes with customizable expressions
+Groups features by one or more attributes and computes an aggregate statistic (count, sum, minimum, maximum, or mean) for each group, emitting one feature per group.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "StatisticsCalculator Parameters",
-  "description": "Configuration for calculating statistical aggregations on feature attributes.",
+  "title": "Statistics Calculator Parameters",
+  "description": "Defines the grouping attributes and the statistics computed for each group.",
   "type": "object",
   "required": [
     "calculations"
   ],
   "properties": {
-    "groupId": {
-      "title": "Group id",
-      "description": "Optional attribute to store the group identifier. The ID will be formed by concatenating the values of the group_by attributes separated by '|'.",
-      "anyOf": [
-        {
-          "$ref": "#/definitions/Attribute"
-        },
-        {
-          "type": "null"
-        }
-      ]
+    "calculations": {
+      "title": "Calculations",
+      "description": "Statistics to compute for each group. Each entry names an output attribute, the aggregation method, and (except for count) the expression whose values are aggregated.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/Calculation"
+      }
     },
     "groupBy": {
-      "title": "Group by",
-      "description": "Attributes to group features by for aggregation. All of the inputs will be grouped if not specified.",
+      "title": "Group By",
+      "description": "Attributes to group features by before aggregating. When omitted, all input features form a single group.",
       "type": [
         "array",
         "null"
@@ -11877,37 +11927,52 @@ Calculates statistical aggregations on feature attributes with customizable expr
         "$ref": "#/definitions/Attribute"
       }
     },
-    "calculations": {
-      "title": "Calculations",
-      "description": "List of statistical calculations to perform on grouped features",
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/Calculation"
-      }
+    "groupId": {
+      "title": "Group ID",
+      "description": "Optional attribute in which to store the group identifier, formed by joining the Group By values with '|'.",
+      "anyOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        },
+        {
+          "type": "null"
+        }
+      ]
     }
   },
   "definitions": {
-    "Attribute": {
-      "type": "string"
-    },
     "Calculation": {
       "type": "object",
       "required": [
-        "expr",
         "newAttribute"
       ],
       "properties": {
         "newAttribute": {
-          "title": "New attribute name",
+          "title": "New Attribute Name",
+          "description": "Name of the output attribute that stores the computed statistic.",
           "allOf": [
             {
               "$ref": "#/definitions/Attribute"
             }
           ]
         },
+        "aggregation": {
+          "title": "Aggregation Method",
+          "description": "Statistic to compute across each group. Defaults to sum.",
+          "default": "sum",
+          "allOf": [
+            {
+              "$ref": "#/definitions/AggregationMethod"
+            }
+          ]
+        },
         "expr": {
-          "title": "Calculation to perform",
-          "type": "object",
+          "title": "Value Expression",
+          "description": "Expression evaluated per feature to produce the value being aggregated. Required for every method except count, which counts features regardless of value.",
+          "type": [
+            "object",
+            "null"
+          ],
           "format": "code",
           "required": [
             "type",
@@ -11926,6 +11991,53 @@ Calculates statistical aggregations on feature attributes with customizable expr
           }
         }
       }
+    },
+    "Attribute": {
+      "type": "string"
+    },
+    "AggregationMethod": {
+      "oneOf": [
+        {
+          "title": "Count",
+          "description": "Counts the number of features in each group. The value expression is not required and is ignored.",
+          "type": "string",
+          "enum": [
+            "count"
+          ]
+        },
+        {
+          "title": "Sum",
+          "description": "Adds the value expression across all features in each group.",
+          "type": "string",
+          "enum": [
+            "sum"
+          ]
+        },
+        {
+          "title": "Minimum",
+          "description": "Keeps the smallest value of the expression in each group.",
+          "type": "string",
+          "enum": [
+            "min"
+          ]
+        },
+        {
+          "title": "Maximum",
+          "description": "Keeps the largest value of the expression in each group.",
+          "type": "string",
+          "enum": [
+            "max"
+          ]
+        },
+        {
+          "title": "Mean",
+          "description": "Averages the value of the expression across all features in each group.",
+          "type": "string",
+          "enum": [
+            "mean"
+          ]
+        }
+      ]
     }
   }
 }
@@ -12391,16 +12503,17 @@ Reproject Vertical Coordinates Between Datums
 ### Type
 * processor
 ### Description
-Fragments large XML documents into smaller pieces based on specified element patterns
+Splits an XML document into features by matching element names, emitting one feature per matched element with its XML text, tag name, and element and parent identifiers as attributes.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "XMLFragmenter Parameters",
-  "description": "Configuration for fragmenting XML documents into smaller pieces.",
+  "title": "XML Fragmenter Parameters",
+  "description": "Configures where the XML document comes from and which of its elements become features.",
   "oneOf": [
     {
-      "description": "URL-based source configuration for XML fragmenting",
+      "title": "XML File",
+      "description": "Reads the XML document from the file path or URL held in the attribute.",
       "type": "object",
       "required": [
         "attribute",
@@ -12412,10 +12525,12 @@ Fragments large XML documents into smaller pieces based on specified element pat
         "source": {
           "type": "string",
           "enum": [
-            "url"
+            "file"
           ]
         },
         "elementsToMatch": {
+          "title": "Elements to Match",
+          "description": "Expression returning the list of element names whose subtrees are emitted as fragments. Names include the namespace prefix as written in the document, such as `bldg:Building`.",
           "type": "object",
           "format": "code",
           "required": [
@@ -12435,6 +12550,8 @@ Fragments large XML documents into smaller pieces based on specified element pat
           }
         },
         "elementsToExclude": {
+          "title": "Elements to Exclude",
+          "description": "Expression returning the list of element names to skip even when they also appear in the matched elements. Return an empty list to match everything.",
           "type": "object",
           "format": "code",
           "required": [
@@ -12454,7 +12571,83 @@ Fragments large XML documents into smaller pieces based on specified element pat
           }
         },
         "attribute": {
-          "$ref": "#/definitions/Attribute"
+          "title": "XML Attribute",
+          "description": "Attribute holding the XML document: the file path or URL to read when the source is a file, or the XML text itself when the source is text.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "title": "XML Text",
+      "description": "Uses the attribute value itself as the XML document.",
+      "type": "object",
+      "required": [
+        "attribute",
+        "elementsToExclude",
+        "elementsToMatch",
+        "source"
+      ],
+      "properties": {
+        "source": {
+          "type": "string",
+          "enum": [
+            "text"
+          ]
+        },
+        "elementsToMatch": {
+          "title": "Elements to Match",
+          "description": "Expression returning the list of element names whose subtrees are emitted as fragments. Names include the namespace prefix as written in the document, such as `bldg:Building`.",
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          }
+        },
+        "elementsToExclude": {
+          "title": "Elements to Exclude",
+          "description": "Expression returning the list of element names to skip even when they also appear in the matched elements. Return an empty list to match everything.",
+          "type": "object",
+          "format": "code",
+          "required": [
+            "type",
+            "value"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "flowExpr"
+              ]
+            },
+            "value": {
+              "type": "string"
+            }
+          }
+        },
+        "attribute": {
+          "title": "XML Attribute",
+          "description": "Attribute holding the XML document: the file path or URL to read when the source is a file, or the XML text itself when the source is text.",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Attribute"
+            }
+          ]
         }
       }
     }
@@ -12477,12 +12670,13 @@ Fragments large XML documents into smaller pieces based on specified element pat
 ### Type
 * processor
 ### Description
-Validates XML documents against XSD schemas with success/failure routing
+Validates XML documents for well-formed syntax, namespace declarations, or compliance with the XSD schemas they reference. Details of any errors found are added to an `xmlError` attribute.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "XmlValidatorParam",
+  "title": "XML Validator Parameters",
+  "description": "Configures which XML document is validated and how thoroughly.",
   "type": "object",
   "required": [
     "attribute",
@@ -12491,13 +12685,31 @@ Validates XML documents against XSD schemas with success/failure routing
   ],
   "properties": {
     "attribute": {
-      "$ref": "#/definitions/Attribute"
+      "title": "XML Attribute",
+      "description": "Attribute holding the XML document: the file path or URL to read, or the XML text itself, depending on the input type.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/Attribute"
+        }
+      ]
     },
     "inputType": {
-      "$ref": "#/definitions/XmlInputType"
+      "title": "Input Type",
+      "description": "Whether the attribute holds the location of the document or the document itself.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/XmlInputType"
+        }
+      ]
     },
     "validationType": {
-      "$ref": "#/definitions/ValidationType"
+      "title": "Validation Type",
+      "description": "Checks to run against the document.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/ValidationType"
+        }
+      ]
     }
   },
   "definitions": {
@@ -12505,18 +12717,51 @@ Validates XML documents against XSD schemas with success/failure routing
       "type": "string"
     },
     "XmlInputType": {
-      "type": "string",
-      "enum": [
-        "file",
-        "text"
+      "oneOf": [
+        {
+          "title": "XML File",
+          "description": "Reads the document from the file path or URL held in the attribute.",
+          "type": "string",
+          "enum": [
+            "file"
+          ]
+        },
+        {
+          "title": "XML Text",
+          "description": "Uses the attribute value itself as the document.",
+          "type": "string",
+          "enum": [
+            "text"
+          ]
+        }
       ]
     },
     "ValidationType": {
-      "type": "string",
-      "enum": [
-        "syntax",
-        "syntaxAndNamespace",
-        "syntaxAndSchema"
+      "oneOf": [
+        {
+          "title": "Syntax",
+          "description": "Checks that the document is well-formed XML.",
+          "type": "string",
+          "enum": [
+            "syntax"
+          ]
+        },
+        {
+          "title": "Syntax and Namespace",
+          "description": "Also checks that every namespace prefix used by an element is declared on that element or an ancestor, and that unprefixed elements have a default namespace.",
+          "type": "string",
+          "enum": [
+            "syntaxAndNamespace"
+          ]
+        },
+        {
+          "title": "Syntax and Schema",
+          "description": "Also validates the document against the XSD schemas named by its `xsi:schemaLocation`. Unreachable remote schemas are skipped, as those locations are hints per the XML Schema specification.",
+          "type": "string",
+          "enum": [
+            "syntaxAndSchema"
+          ]
+        }
       ]
     }
   }

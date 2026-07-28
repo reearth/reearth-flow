@@ -23,7 +23,7 @@ impl ProcessorFactory for FeatureTransformerFactory {
     }
 
     fn description(&self) -> &str {
-        "Applies transformation expressions to modify feature attributes and properties"
+        "Replaces each feature's attributes with the map returned by one or more expressions, applied in order. Geometry is passed through unchanged."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -32,6 +32,10 @@ impl ProcessorFactory for FeatureTransformerFactory {
 
     fn categories(&self) -> &[&'static str] {
         &["Transform"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["scripting", "attribute"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -84,20 +88,24 @@ struct FeatureTransformer {
     transformers: Vec<CompiledTransform>,
 }
 
-/// # FeatureTransformer Parameters
+/// # Feature Transformer Parameters
 ///
-/// Configuration for applying transformation expressions to features.
+/// Configures the expressions that build each feature's new attributes.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct FeatureTransformerParam {
-    /// List of transformation expressions to apply to each feature
+    /// # Transformations
+    /// Expressions applied in order, each one reading the attributes produced by the previous.
     transformers: Vec<Transform>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct Transform {
-    /// Expression that modifies the feature (can access and modify attributes, geometry, etc.)
+    /// # Expression
+    /// Expression over `attributes` and `env` returning a map that becomes the feature's complete
+    /// attribute set. A result that is not a map, or an expression that fails to evaluate, leaves
+    /// the attributes unchanged.
     expr: Code<{ CodeType::FlowExpr as u32 }>,
 }
 
@@ -144,7 +152,10 @@ fn mapper(
         return feature.clone();
     };
     if let AttributeValue::Map(new_value) = new_value {
-        return Feature::new_with_attributes(
+        // Keep the feature's identity and geometry: the expression only sees `attributes`
+        // (and `env`), so it can never produce geometry, and building a brand new feature
+        // here silently dropped it.
+        return feature.with_attributes(
             new_value
                 .iter()
                 .map(|(k, v)| (Attribute::new(k.clone()), v.clone()))
