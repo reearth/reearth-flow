@@ -165,6 +165,44 @@ impl Split for TriangularMesh3D {
     }
 }
 
+use crate::index::IndexBuffer;
+use crate::ops::{ForceTwoDimension, ForceTwoDimensionError};
+
+impl ForceTwoDimension for TriangularMesh2D {
+    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, ForceTwoDimensionError> {
+        let frame = self.frame.demote_to_2d()?;
+        self.z = None; // drop any 2.5D elevation; indices and appearance carry over
+        Ok(Euclidean2DGeometry::TriangularMesh(Box::new(
+            TriangularMesh2D {
+                frame,
+                vertices: std::mem::take(&mut self.vertices),
+                z: None,
+                indices: std::mem::replace(&mut self.indices, IndexBuffer::U8(Vec::new())),
+                appearance: self.appearance.take(),
+            },
+        )))
+    }
+}
+
+impl ForceTwoDimension for TriangularMesh3D {
+    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, ForceTwoDimensionError> {
+        let frame = self.frame.demote_to_2d()?;
+        let vertices = std::mem::take(&mut self.data.vertices)
+            .into_iter()
+            .map(|[x, y, _]| [x, y])
+            .collect();
+        Ok(Euclidean2DGeometry::TriangularMesh(Box::new(
+            TriangularMesh2D {
+                frame,
+                vertices,
+                z: None,
+                indices: std::mem::replace(&mut self.data.indices, IndexBuffer::U8(Vec::new())),
+                appearance: self.data.appearance.take(),
+            },
+        )))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -196,6 +234,62 @@ mod tests {
             Aabb::D3 {
                 min: [0.0, 0.0, -1.0],
                 max: [3.0, 2.0, 1.0]
+            }
+        );
+    }
+
+    #[test]
+    fn triangular_mesh3d_force_2d_keeps_triangles_and_demotes_the_frame() {
+        use crate::coordinate::EpsgCode;
+
+        let mut mesh = TriangularMesh3D::from_parts(
+            CoordinateFrame::Crs(EpsgCode::new(6697)),
+            vec![
+                [0.0, 0.0, 9.0],
+                [2.0, 0.0, 8.0],
+                [2.0, 2.0, 7.0],
+                [0.0, 2.0, 6.0],
+            ],
+            [0u32, 1, 2, 0, 2, 3],
+        )
+        .unwrap();
+        let forced = match mesh.force_2d().unwrap() {
+            Euclidean2DGeometry::TriangularMesh(m) => m,
+            other => panic!("expected a 2D triangular mesh, got {other:?}"),
+        };
+        assert_eq!(forced.frame(), &CoordinateFrame::Crs(EpsgCode::new(6668)));
+        assert_eq!(
+            forced.vertices(),
+            &[[0.0, 0.0], [2.0, 0.0], [2.0, 2.0], [0.0, 2.0]]
+        );
+        assert_eq!(
+            forced.triangles().collect::<Vec<_>>(),
+            vec![[0, 1, 2], [0, 2, 3]]
+        );
+    }
+
+    #[test]
+    fn triangular_mesh2d_force_2d_clears_elevation() {
+        use crate::coordinate::EpsgCode;
+
+        let mut mesh = TriangularMesh2D::from_parts_with_elevation(
+            CoordinateFrame::Crs(EpsgCode::new(6697)),
+            vec![[0.0, 0.0, 5.0], [2.0, 0.0, 6.0], [2.0, 2.0, 7.0]],
+            [0u32, 1, 2],
+        )
+        .unwrap();
+        let forced = match mesh.force_2d().unwrap() {
+            Euclidean2DGeometry::TriangularMesh(m) => m,
+            other => panic!("expected a 2D triangular mesh, got {other:?}"),
+        };
+        assert_eq!(forced.frame(), &CoordinateFrame::Crs(EpsgCode::new(6668)));
+        assert_eq!(forced.num_triangles(), 1);
+        // The elevation is gone, so the box is purely 2D.
+        assert_eq!(
+            forced.bounding_box().unwrap(),
+            Aabb::D2 {
+                min: [0.0, 0.0],
+                max: [2.0, 2.0]
             }
         );
     }

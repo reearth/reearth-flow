@@ -12,11 +12,11 @@ pub mod reproject;
 pub mod split;
 pub mod triangulation;
 
-pub(crate) use reproject::{axis_order_sign, crs_is_linear};
+pub(crate) use reproject::{axis_order_sign, crs_demote_to_2d, crs_is_linear, TwoDimensionalCrs};
 pub use reproject::{Reproject, ReprojectionCache};
 pub use split::Split;
 
-use crate::coordinate::{CoordinateFrame, EpsgCode};
+use crate::coordinate::{CoordinateFrame, EpsgCode, FrameDemotionError};
 use crate::error::Error;
 
 /// Returned by an operation a given geometry type does not support. Carries the
@@ -249,6 +249,76 @@ impl<T: Triangulate + ?Sized> Triangulate for Box<T> {
         cache: &mut crate::ops::triangulation::Cache,
     ) -> Result<crate::Geometry, UnsupportedOperation> {
         (**self).triangulate(cache)
+    }
+}
+
+/// Why a geometry could not be re-represented in a pure 2D embedding.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum ForceTwoDimensionError {
+    /// The geometry type has no 2D counterpart (`Solid`, `Csg`, `PointCloud`).
+    UnsupportedGeometry(UnsupportedOperation),
+    /// The coordinate frame has no 2D counterpart, so the flattened coordinates
+    /// could not be tagged with a frame of matching dimensionality.
+    UnsupportedFrame(FrameDemotionError),
+}
+
+impl core::fmt::Display for ForceTwoDimensionError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            ForceTwoDimensionError::UnsupportedGeometry(e) => e.fmt(f),
+            ForceTwoDimensionError::UnsupportedFrame(e) => e.fmt(f),
+        }
+    }
+}
+
+impl std::error::Error for ForceTwoDimensionError {}
+
+impl From<UnsupportedOperation> for ForceTwoDimensionError {
+    fn from(e: UnsupportedOperation) -> Self {
+        ForceTwoDimensionError::UnsupportedGeometry(e)
+    }
+}
+
+impl From<FrameDemotionError> for ForceTwoDimensionError {
+    fn from(e: FrameDemotionError) -> Self {
+        ForceTwoDimensionError::UnsupportedFrame(e)
+    }
+}
+
+/// Force a geometry into a pure 2D embedding by dropping the Z coordinate.
+///
+/// Any 2.5D per-vertex elevation is cleared too, so the op is idempotent. The
+/// coordinate frame is demoted alongside the coordinates so the two keep matching
+/// dimensionality: EPSG:6697 comes back as EPSG:6668, EPSG:4979 as EPSG:4326.
+/// Coordinate values are untouched by the retag — see
+/// [`CoordinateFrame::demote_to_2d`](crate::coordinate::CoordinateFrame::demote_to_2d).
+///
+/// Rejects a type with no 2D counterpart (`Solid`, `Csg`, `PointCloud`, which opt
+/// out via [`unsupported!`](crate::unsupported)) and a frame with none, such as a
+/// geocentric CRS whose Z is the rotation axis rather than a height. A rejected
+/// member rejects the collection containing it; the op never returns a partially
+/// converted collection.
+///
+/// Like [`Triangulate`], this consumes the leaf's buffers, leaving `self`
+/// moved-from on success. A leaf that empties `coords` must clear `z` with it to
+/// keep the two the same length, and must resolve its frame before touching
+/// either, so a rejected frame leaves it intact.
+#[enum_dispatch::enum_dispatch]
+pub trait ForceTwoDimension {
+    /// Re-represent this geometry in a 2D embedding. The default reports the type
+    /// as unsupported; a leaf opts in by overriding it.
+    fn force_2d(&mut self) -> Result<crate::Euclidean2DGeometry, ForceTwoDimensionError> {
+        Err(UnsupportedOperation {
+            geometry: core::any::type_name::<Self>(),
+            operation: "force_2d",
+        }
+        .into())
+    }
+}
+
+impl<T: ForceTwoDimension + ?Sized> ForceTwoDimension for Box<T> {
+    fn force_2d(&mut self) -> Result<crate::Euclidean2DGeometry, ForceTwoDimensionError> {
+        (**self).force_2d()
     }
 }
 

@@ -13,7 +13,10 @@ use serde::{Deserialize, Serialize};
 use crate::coordinate::EpsgCode;
 use crate::error::Error;
 use crate::ops::union_results;
-use crate::ops::{Aabb, BoundingBox, Reproject, ReprojectionCache, UnsupportedOperation};
+use crate::ops::{
+    Aabb, BoundingBox, ForceTwoDimension, ForceTwoDimensionError, Reproject, ReprojectionCache,
+    UnsupportedOperation,
+};
 #[cfg(feature = "new-geometry")]
 use crate::validation_next::Validate;
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry};
@@ -247,6 +250,32 @@ impl crate::ops::Split for Collection3D {
             .map(crate::Geometry::Euclidean3D);
         crate::ops::split::emit_members(members, std::mem::take(&mut self.attrs), emit);
         Ok(())
+    }
+}
+
+impl ForceTwoDimension for Collection2D {
+    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, ForceTwoDimensionError> {
+        let mut members = Vec::with_capacity(self.members.len());
+        for member in &mut self.members {
+            members.push(member.force_2d()?);
+        }
+        Ok(Euclidean2DGeometry::Collection(Collection2D {
+            members,
+            attrs: std::mem::take(&mut self.attrs),
+        }))
+    }
+}
+
+impl ForceTwoDimension for Collection3D {
+    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, ForceTwoDimensionError> {
+        let mut members = Vec::with_capacity(self.members.len());
+        for member in &mut self.members {
+            members.push(member.force_2d()?);
+        }
+        Ok(Euclidean2DGeometry::Collection(Collection2D {
+            members,
+            attrs: std::mem::take(&mut self.attrs),
+        }))
     }
 }
 

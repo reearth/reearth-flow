@@ -451,6 +451,55 @@ impl Split for PolygonMesh3D {
     }
 }
 
+use crate::ops::{ForceTwoDimension, ForceTwoDimensionError};
+
+impl ForceTwoDimension for PolygonMesh2D {
+    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, ForceTwoDimensionError> {
+        let frame = self.frame.demote_to_2d()?;
+        self.z = None; // drop any 2.5D elevation; topology and appearance carry over
+        Ok(Euclidean2DGeometry::PolygonMesh(Box::new(PolygonMesh2D {
+            frame,
+            vertices: std::mem::take(&mut self.vertices),
+            z: None,
+            face_indices: std::mem::replace(&mut self.face_indices, IndexBuffer::U8(Vec::new())),
+            face_offsets: std::mem::replace(&mut self.face_offsets, IndexBuffer::U8(Vec::new())),
+            interior_offsets: std::mem::replace(
+                &mut self.interior_offsets,
+                IndexBuffer::U8(Vec::new()),
+            ),
+            appearance: self.appearance.take(),
+        })))
+    }
+}
+
+impl ForceTwoDimension for PolygonMesh3D {
+    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, ForceTwoDimensionError> {
+        let frame = self.frame.demote_to_2d()?;
+        let vertices = std::mem::take(&mut self.data.vertices)
+            .into_iter()
+            .map(|[x, y, _]| [x, y])
+            .collect();
+        Ok(Euclidean2DGeometry::PolygonMesh(Box::new(PolygonMesh2D {
+            frame,
+            vertices,
+            z: None,
+            face_indices: std::mem::replace(
+                &mut self.data.face_indices,
+                IndexBuffer::U8(Vec::new()),
+            ),
+            face_offsets: std::mem::replace(
+                &mut self.data.face_offsets,
+                IndexBuffer::U8(Vec::new()),
+            ),
+            interior_offsets: std::mem::replace(
+                &mut self.data.interior_offsets,
+                IndexBuffer::U8(Vec::new()),
+            ),
+            appearance: self.data.appearance.take(),
+        })))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -747,5 +796,63 @@ mod tests {
             mesh.appearance().as_ref().unwrap().themes()[0].front,
             FaceBinding::Uniform(_)
         ));
+    }
+
+    #[test]
+    fn polygon_mesh3d_force_2d_keeps_topology_and_demotes_the_frame() {
+        // One square face with one square hole, so all three CSR buffers carry
+        // content that must land back in the matching field.
+        let mut mesh = PolygonMesh3D::from_raw_parts(
+            CoordinateFrame::Crs(EpsgCode::new(6697)),
+            vec![
+                [0.0, 0.0, 9.0],
+                [4.0, 0.0, 9.0],
+                [4.0, 4.0, 9.0],
+                [0.0, 4.0, 9.0],
+                [1.0, 1.0, 9.0],
+                [3.0, 1.0, 9.0],
+                [3.0, 3.0, 9.0],
+                [1.0, 3.0, 9.0],
+            ],
+            vec![0, 1, 2, 3, 4, 5, 6, 7],
+            vec![],
+            vec![4],
+        )
+        .unwrap();
+        let forced = match mesh.force_2d().unwrap() {
+            Euclidean2DGeometry::PolygonMesh(m) => m,
+            other => panic!("expected a 2D polygon mesh, got {other:?}"),
+        };
+        assert_eq!(forced.frame(), &CoordinateFrame::Crs(EpsgCode::new(6668)));
+        assert_eq!(forced.vertices()[0], [0.0, 0.0]);
+        assert_eq!(forced.vertices()[4], [1.0, 1.0]);
+        assert_eq!(forced.num_faces(), 1);
+        let mut faces = Vec::new();
+        forced.for_each_face_polygon(|p| faces.push(p));
+        assert_eq!(faces[0].exterior().len(), 4);
+        assert_eq!(faces[0].interiors().count(), 1);
+    }
+
+    #[test]
+    fn polygon_mesh2d_force_2d_clears_elevation() {
+        let mut mesh = PolygonMesh2D::from_parts_with_elevation(
+            CoordinateFrame::Crs(EpsgCode::new(6697)),
+            vec![[0.0, 0.0, 5.0], [2.0, 0.0, 6.0], [2.0, 2.0, 7.0]],
+            vec![vec![0u32, 1, 2]],
+        )
+        .unwrap();
+        let forced = match mesh.force_2d().unwrap() {
+            Euclidean2DGeometry::PolygonMesh(m) => m,
+            other => panic!("expected a 2D polygon mesh, got {other:?}"),
+        };
+        assert_eq!(forced.frame(), &CoordinateFrame::Crs(EpsgCode::new(6668)));
+        assert_eq!(forced.num_faces(), 1);
+        assert_eq!(
+            forced.bounding_box().unwrap(),
+            Aabb::D2 {
+                min: [0.0, 0.0],
+                max: [2.0, 2.0]
+            }
+        );
     }
 }

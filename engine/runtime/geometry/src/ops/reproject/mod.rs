@@ -6,7 +6,7 @@ use crate::error::{Error, Result};
 mod ffi;
 
 pub use ffi::ReprojectionCache;
-pub(crate) use ffi::{axis_order_sign, crs_is_linear};
+pub(crate) use ffi::{axis_order_sign, crs_demote_to_2d, crs_is_linear, TwoDimensionalCrs};
 
 /// Reproject a geometry's coordinates to a target CRS.
 #[enum_dispatch::enum_dispatch]
