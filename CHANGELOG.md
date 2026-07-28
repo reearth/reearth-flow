@@ -2,6 +2,72 @@
 
 All notable changes to this project will be documented in this file.
 
+## 0.1.0-alpha.29 - 2026-07-28
+
+### Misc
+
+#### 🚀 Features
+
+- BoundsExtractor behind new-geometry ([#2295](https://github.com/reearth/reearth-flow/pull/2295)) [`90418b`](https://github.com/reearth/reearth-flow/commit/90418b)
+- Reprojection bug fix and action migration for new geometry ([#2286](https://github.com/reearth/reearth-flow/pull/2286)) [`ce41dc`](https://github.com/reearth/reearth-flow/commit/ce41dc)
+
+#### ✨ Refactor
+
+- Serve base action schema for English and drop redundant en overlay ([#2284](https://github.com/reearth/reearth-flow/pull/2284)) [`529879`](https://github.com/reearth/reearth-flow/commit/529879)
+
+#### Miscellaneous Tasks
+
+- Add CODEOWNERS for websocket-go directory [`8331c1`](https://github.com/reearth/reearth-flow/commit/8331c1)
+
+### api
+
+#### 🔧 Bug Fixes
+
+- Preserve parameter order in Action by using json.RawMessage ([#2298](https://github.com/reearth/reearth-flow/pull/2298)) [`eaa8bc`](https://github.com/reearth/reearth-flow/commit/eaa8bc)
+
+### engine
+
+#### 🚀 Features
+
+- Read glTF geometry + appearances into new-geometry and render via 3D Tiles ([#2287](https://github.com/reearth/reearth-flow/pull/2287)) [`2e7125`](https://github.com/reearth/reearth-flow/commit/2e7125)
+- KTX2 support for cesium writer ([#2285](https://github.com/reearth/reearth-flow/pull/2285)) [`2acabd`](https://github.com/reearth/reearth-flow/commit/2acabd)
+- Geometry Splitter in new-geometry ([#2292](https://github.com/reearth/reearth-flow/pull/2292)) [`23e95c`](https://github.com/reearth/reearth-flow/commit/23e95c)
+- Polish Output action suite (descriptions, params, tags) ([#2279](https://github.com/reearth/reearth-flow/pull/2279)) [`7a0eea`](https://github.com/reearth/reearth-flow/commit/7a0eea)
+- Migrate GeoPackage Reader to new geometry behind feature flag ([#2255](https://github.com/reearth/reearth-flow/pull/2255)) [`1320b6`](https://github.com/reearth/reearth-flow/commit/1320b6)
+- Implement fixed-size atlas and multi-page planner in atlas packer ([#2275](https://github.com/reearth/reearth-flow/pull/2275)) [`e17248`](https://github.com/reearth/reearth-flow/commit/e17248)
+
+#### ✨ Refactor
+
+- Apply action standard to Attribute group (part 2: manager, renamer, null-mapper, statistics) ([#2291](https://github.com/reearth/reearth-flow/pull/2291)) [`6a7c46`](https://github.com/reearth/reearth-flow/commit/6a7c46)
+- Apply action standard to Attribute group (part 1: aggregation &amp; mapping) ([#2289](https://github.com/reearth/reearth-flow/pull/2289)) [`6d63e1`](https://github.com/reearth/reearth-flow/commit/6d63e1)
+- Apply action standard to Input group ([#2280](https://github.com/reearth/reearth-flow/pull/2280)) [`de1748`](https://github.com/reearth/reearth-flow/commit/de1748)
+
+### websocket-go
+
+#### 🚀 Features
+
+- Enable SlowPeerResync by default ([#2281](https://github.com/reearth/reearth-flow/pull/2281)) [`faa457`](https://github.com/reearth/reearth-flow/commit/faa457)
+
+#### Miscellaneous Tasks
+
+- Bump ygo to v1.37.0 ([#2288](https://github.com/reearth/reearth-flow/pull/2288)) [`ca6f46`](https://github.com/reearth/reearth-flow/commit/ca6f46)
+- Bump ygo to v1.36.0 ([#2283](https://github.com/reearth/reearth-flow/pull/2283)) [`f2adeb`](https://github.com/reearth/reearth-flow/commit/f2adeb)
+
+### 
+
+#### 🚀 Features
+
+- BoundsExtractor behind new-geometry ([#2295](https://github.com/reearth/reearth-flow/pull/2295)) [`90418b`](https://github.com/reearth/reearth-flow/commit/90418b)
+- Reprojection bug fix and action migration for new geometry ([#2286](https://github.com/reearth/reearth-flow/pull/2286)) [`ce41dc`](https://github.com/reearth/reearth-flow/commit/ce41dc)
+
+#### ✨ Refactor
+
+- Serve base action schema for English and drop redundant en overlay ([#2284](https://github.com/reearth/reearth-flow/pull/2284)) [`529879`](https://github.com/reearth/reearth-flow/commit/529879)
+
+#### Miscellaneous Tasks
+
+- Add CODEOWNERS for websocket-go directory [`8331c1`](https://github.com/reearth/reearth-flow/commit/8331c1)
+
 ## 0.1.0-alpha.28 - 2026-07-22
 
 ### Web
