@@ -8709,7 +8709,6 @@ Shifts every geometry coordinate by a fixed distance along each axis.
 * features
 ### Output Ports
 * features
-* rejected
 ### Category
 * Geometry
 

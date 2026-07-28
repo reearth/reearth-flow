@@ -5,7 +5,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -53,7 +53,7 @@ impl ProcessorFactory for OffsetterFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![FEATURES_PORT.clone(), REJECTED_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
     fn build(
         &self,
@@ -184,22 +184,19 @@ impl Processor for Offsetter {
         Ok(())
     }
 
-    /// Shift the feature's geometry by the configured offsets. A feature whose
-    /// geometry cannot be translated is forwarded unchanged to `rejected`.
+    /// Shift the feature's geometry by the configured offsets. Every geometry
+    /// type supports translation, so a failure here is a node error rather than
+    /// a per-feature rejection.
     #[cfg(feature = "new-geometry")]
     fn process(
         &mut self,
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        match self.offset(&ctx.feature) {
-            Ok(feature) => fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone())),
-            Err(e) => {
-                ctx.event_hub
-                    .warn_log(Some(ctx.error_span()), format!("offset failed: {e}"));
-                fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
-            }
-        }
+        let feature = self.offset(&ctx.feature).map_err(|e| {
+            GeometryProcessorError::Offsetter(format!("Failed to offset geometry: {e}"))
+        })?;
+        fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
         Ok(())
     }
 
@@ -222,6 +219,7 @@ mod tests {
     use pretty_assertions::assert_eq;
     use reearth_flow_geometry::coordinate::CoordinateFrame;
     use reearth_flow_geometry::line_string::{LineString2D, LineString3D};
+    use reearth_flow_geometry::ops::{Aabb, BoundingBox};
     use reearth_flow_geometry::point_cloud::PointCloud;
     use reearth_flow_geometry::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
@@ -229,12 +227,10 @@ mod tests {
         Offsetter { delta }
     }
 
-    fn offset(delta: [f64; 3], geometry: Geometry) -> Result<Geometry, ()> {
+    fn offset(delta: [f64; 3], geometry: Geometry) -> Geometry {
         let feature = Feature::from(geometry);
-        offsetter(delta)
-            .offset(&feature)
-            .map(|f| (*f.geometry).clone())
-            .map_err(|_| ())
+        let shifted = offsetter(delta).offset(&feature).unwrap();
+        (*shifted.geometry).clone()
     }
 
     #[test]
@@ -246,8 +242,7 @@ mod tests {
         let shifted = offset(
             [10.0, 20.0, 30.0],
             Geometry::Euclidean3D(Euclidean3DGeometry::LineString(line)),
-        )
-        .unwrap();
+        );
         let Geometry::Euclidean3D(Euclidean3DGeometry::LineString(line)) = shifted else {
             panic!("expected a 3D line string");
         };
@@ -260,12 +255,30 @@ mod tests {
         let shifted = offset(
             [10.0, 20.0, 30.0],
             Geometry::Euclidean2D(Euclidean2DGeometry::LineString(line)),
-        )
-        .unwrap();
+        );
         let Geometry::Euclidean2D(Euclidean2DGeometry::LineString(line)) = shifted else {
             panic!("expected a 2D line string");
         };
         assert_eq!(line.coords(), [[11.0, 22.0], [13.0, 24.0]]);
+        assert_eq!(line.elevation(), None);
+    }
+
+    #[test]
+    fn a_two_and_a_half_dimensional_geometry_shifts_its_elevation() {
+        let line = LineString2D::from_coords_at_elevation(
+            CoordinateFrame::Euclidean,
+            [[1.0, 2.0], [3.0, 4.0]],
+            5.0,
+        );
+        let shifted = offset(
+            [10.0, 20.0, 30.0],
+            Geometry::Euclidean2D(Euclidean2DGeometry::LineString(line)),
+        );
+        let Geometry::Euclidean2D(Euclidean2DGeometry::LineString(line)) = shifted else {
+            panic!("expected a 2D line string");
+        };
+        assert_eq!(line.coords(), [[11.0, 22.0], [13.0, 24.0]]);
+        assert_eq!(line.elevation(), Some(35.0));
     }
 
     #[test]
@@ -278,17 +291,26 @@ mod tests {
     }
 
     #[test]
-    fn a_feature_without_geometry_is_not_rejected() {
-        assert!(offset([1.0, 2.0, 3.0], Geometry::None).is_ok());
+    fn a_feature_without_geometry_passes_through() {
+        assert_eq!(offset([1.0, 2.0, 3.0], Geometry::None), Geometry::None);
     }
 
     #[test]
-    fn a_geometry_that_cannot_be_translated_is_rejected() {
+    fn every_sample_of_a_point_cloud_shifts() {
         let cloud = PointCloud::from_positions(
             CoordinateFrame::Euclidean,
             [[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]],
         );
-        let geometry = Geometry::Euclidean3D(Euclidean3DGeometry::PointCloud(Box::new(cloud)));
-        assert!(offset([1.0, 2.0, 3.0], geometry).is_err());
+        let shifted = offset(
+            [1.0, 2.0, 3.0],
+            Geometry::Euclidean3D(Euclidean3DGeometry::PointCloud(Box::new(cloud))),
+        );
+        assert_eq!(
+            shifted.bounding_box().unwrap(),
+            Aabb::D3 {
+                min: [1.0, 2.0, 3.0],
+                max: [2.0, 3.0, 4.0]
+            }
+        );
     }
 }

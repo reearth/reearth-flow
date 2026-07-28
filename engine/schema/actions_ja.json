@@ -8923,8 +8923,7 @@
         "features"
       ],
       "outputPorts": [
-        "features",
-        "rejected"
+        "features"
       ],
       "categories": [
         "Geometry"
