@@ -143,6 +143,19 @@ impl ConvertFrame for Solid {
 // result, so it has no 2D counterpart.
 crate::unsupported!(Solid: ForceTwoDimension);
 
+use crate::ops::RemoveAppearance;
+
+impl RemoveAppearance for Solid {
+    fn remove_appearance(&mut self) {
+        for shell in std::iter::once(&mut self.exterior).chain(self.interiors.iter_mut()) {
+            match shell {
+                Shell::PolygonMesh(data) => data.remove_appearance(),
+                Shell::TriangularMesh(data) => data.remove_appearance(),
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

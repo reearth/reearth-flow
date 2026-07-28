@@ -4,7 +4,7 @@
 ### Type
 * processor
 ### Description
-Removes appearance information (materials, textures) from CityGML geometry
+Discards the materials, textures and texture coordinates carried by a feature's geometry.
 ### Parameters
 * No parameters
 ### Input Ports
@@ -5410,7 +5410,7 @@ Extract geometry parts (surfaces) from 3D geometries as separate features
 ### Type
 * processor
 ### Description
-Removes geometry from a feature
+Discards a feature's geometry, keeping its attributes.
 ### Parameters
 * No parameters
 ### Input Ports

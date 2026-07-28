@@ -2,7 +2,7 @@
   "actions": [
     {
       "name": "Appearance Remover",
-      "description": "CityGMLジオメトリから外観情報（マテリアル、テクスチャ）を削除する"
+      "description": "地物のジオメトリが持つマテリアル、テクスチャ、テクスチャ座標を削除する"
     },
     {
       "name": "Area Calculator",
@@ -1745,7 +1745,7 @@
     },
     {
       "name": "Geometry Remover",
-      "description": "地物からジオメトリを削除する"
+      "description": "地物のジオメトリを削除し、属性はそのまま残す"
     },
     {
       "name": "Geometry Replacer",

@@ -2,7 +2,7 @@
   "actions": [
     {
       "name": "Appearance Remover",
-      "description": "Elimina información de apariencia (materiales, texturas) de la geometría CityGML"
+      "description": "Descarta los materiales, las texturas y las coordenadas de textura de la geometría de una entidad."
     },
     {
       "name": "Area Calculator",
@@ -1742,7 +1742,7 @@
     },
     {
       "name": "Geometry Remover",
-      "description": "Elimina la geometría de una entidad"
+      "description": "Descarta la geometría de una entidad y conserva sus atributos."
     },
     {
       "name": "Geometry Replacer",
