@@ -259,7 +259,8 @@ const CesiumViewer: React.FC<Props> = ({
     return (
       <BasicBoiler
         text={unsupportedCrsMessage}
-        className="size-4 h-full [&>div>p]:text-sm"
+        className="h-full"
+        textClassName="text-sm"
         icon={<FlowLogo className="size-20 text-accent" />}
       />
     );
