@@ -888,10 +888,11 @@ mod tests {
 
     #[test]
     fn polygon_mesh2d_force_2d_clears_elevation() {
-        let mut mesh = PolygonMesh2D::from_parts_with_elevation(
+        let mut mesh = PolygonMesh2D::from_parts_at_elevation(
             CoordinateFrame::Crs(EpsgCode::new(6697)),
-            vec![[0.0, 0.0, 5.0], [2.0, 0.0, 6.0], [2.0, 2.0, 7.0]],
+            vec![[0.0, 0.0], [2.0, 0.0], [2.0, 2.0]],
             vec![vec![0u32, 1, 2]],
+            5.0,
         )
         .unwrap();
         let forced = match mesh.force_2d().unwrap() {

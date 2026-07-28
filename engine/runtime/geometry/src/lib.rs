@@ -833,7 +833,7 @@ mod force_2d_tests {
         // A 2.5D input loses its elevation and its frame's vertical axis, giving
         // exactly what a natively 2D line string in the demoted frame would.
         let mut g = Geometry::Euclidean2D(Euclidean2DGeometry::LineString(
-            LineString2D::from_coords_with_elevation(crs(), [[0.0, 0.0, 5.0], [2.0, 1.0, 9.0]]),
+            LineString2D::from_coords_at_elevation(crs(), [[0.0, 0.0], [2.0, 1.0]], 5.0),
         ));
         let forced = g.force_2d().unwrap();
         let expected = Geometry::Euclidean2D(Euclidean2DGeometry::LineString(
