@@ -12,7 +12,9 @@ pub mod reproject;
 pub mod split;
 pub mod triangulation;
 
-pub(crate) use reproject::{axis_order_sign, crs_demote_to_2d, crs_is_linear, TwoDimensionalCrs, lift_coords};
+pub(crate) use reproject::{
+    axis_order_sign, crs_demote_to_2d, crs_is_linear, lift_coords, TwoDimensionalCrs,
+};
 pub use reproject::{Reproject, ReprojectionCache};
 pub use split::Split;
 
