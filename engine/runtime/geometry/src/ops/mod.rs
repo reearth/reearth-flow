@@ -12,7 +12,7 @@ pub mod reproject;
 pub mod split;
 pub mod triangulation;
 
-pub(crate) use reproject::{axis_order_sign, crs_demote_to_2d, crs_is_linear, TwoDimensionalCrs};
+pub(crate) use reproject::{axis_order_sign, crs_demote_to_2d, crs_is_linear, TwoDimensionalCrs, lift_coords};
 pub use reproject::{Reproject, ReprojectionCache};
 pub use split::Split;
 
@@ -349,17 +349,20 @@ impl<T: Translate + ?Sized> Translate for Box<T> {
     }
 }
 
-/// Add `delta`'s `(x, y)` to a 2D coordinate buffer, and its `z` to a parallel
-/// elevation buffer when present.
-pub(crate) fn translate_2d(coords: &mut [[f64; 2]], z: Option<&mut [f64]>, delta: [f64; 3]) {
+/// Add `delta`'s `(x, y)` to a 2D coordinate buffer, and its `z` to the leaf's
+/// elevation when present.
+///
+/// A translation is rigid, so it shifts the one elevation the whole leaf lies at
+/// and the leaf stays planar. A leaf with no elevation does not acquire one, even
+/// from a delta with a non-zero `z`: it is pure 2D, and lifting it is a change of
+/// embedding rather than a translation.
+pub(crate) fn translate_2d(coords: &mut [[f64; 2]], z: &mut Option<f64>, delta: [f64; 3]) {
     for c in coords.iter_mut() {
         c[0] += delta[0];
         c[1] += delta[1];
     }
-    if let Some(z) = z {
-        for elevation in z.iter_mut() {
-            *elevation += delta[2];
-        }
+    if let Some(elevation) = z {
+        *elevation += delta[2];
     }
 }
 

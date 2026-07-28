@@ -1,7 +1,9 @@
-use super::{TriangularMesh2D, TriangularMesh3D};
+use super::{TriangularMesh2D, TriangularMesh3D, TriangularMesh3DData};
 use crate::coordinate::{CoordinateFrame, EpsgCode};
 use crate::ops::reproject::{transform_coords_2d, transform_coords_3d};
-use crate::ops::{Aabb, BoundingBox, Reproject, ReprojectionCache, UnsupportedOperation};
+use crate::ops::{
+    lift_coords, Aabb, BoundingBox, Reproject, ReprojectionCache, UnsupportedOperation,
+};
 
 use reearth_flow_common::attribute::Attributes;
 
@@ -61,7 +63,7 @@ use crate::ops::{plan_frame_step, translate_2d, translate_3d, ConvertFrame, Fram
 
 impl Translate for TriangularMesh2D {
     fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
-        translate_2d(&mut self.vertices, self.z.as_deref_mut(), delta);
+        translate_2d(&mut self.vertices, &mut self.z, delta);
         Ok(())
     }
 }
@@ -118,6 +120,9 @@ impl Split for TriangularMesh2D {
     ) -> Result<(), UnsupportedOperation> {
         let vertices = self.vertices();
         let frame = self.frame();
+        // The mesh lies at one elevation, so every triangle split out of it lies
+        // at that same elevation.
+        let elevation = self.elevation();
         for [i, j, k] in self.triangles() {
             let ring = [
                 vertices[i as usize],
@@ -125,7 +130,13 @@ impl Split for TriangularMesh2D {
                 vertices[k as usize],
                 vertices[i as usize],
             ];
-            let polygon = Polygon2D::from_rings(frame.clone(), ring, Vec::<Vec<[f64; 2]>>::new());
+            let no_holes = Vec::<Vec<[f64; 2]>>::new();
+            let polygon = match elevation {
+                None => Polygon2D::from_rings(frame.clone(), ring, no_holes),
+                Some(elevation) => {
+                    Polygon2D::from_rings_at_elevation(frame.clone(), ring, no_holes, elevation)
+                }
+            };
             emit(
                 Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(polygon))),
                 Attributes::new(),
@@ -194,6 +205,23 @@ impl ForceTwoDimension for TriangularMesh3D {
                 appearance: self.data.appearance.take(),
             },
         )))
+    }
+}
+
+impl TriangularMesh2D {
+    /// The 3D counterpart of this leaf, with every coordinate placed at the
+    /// elevation the leaf lies at, or at `0.0` when it carries none.
+    /// The triangle index list indexes the vertex pool, whose length lifting
+    /// leaves unchanged, so the buffer keeps its width and contents.
+    pub(crate) fn into_3d(self) -> TriangularMesh3D {
+        TriangularMesh3D::new(
+            self.frame,
+            TriangularMesh3DData {
+                vertices: lift_coords(self.vertices.iter(), self.z),
+                indices: self.indices,
+                appearance: self.appearance,
+            },
+        )
     }
 }
 

@@ -79,6 +79,10 @@ enum BasePoint {
 /// CRS and a Euclidean frame. Converting across the Euclidean/CRS boundary
 /// reinterprets coordinates as-is: values and ring winding are left unchanged,
 /// so orientation follows the destination frame's axis order.
+///
+/// Reprojecting across coordinate reference systems takes 2D geometry lying at a
+/// single elevation into 3D, because the vertical result varies with position and
+/// one elevation cannot describe it.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CoordinateFrameReprojectorParam {

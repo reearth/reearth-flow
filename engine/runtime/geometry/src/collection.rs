@@ -151,6 +151,20 @@ impl BoundingBox for Collection3D {
     }
 }
 
+impl Collection2D {
+    /// The 3D counterpart of this collection.
+    ///
+    /// A collection holds one embedding, so it converts as a unit: members that
+    /// carry no elevation are placed at `0.0` alongside those that do. Per-child
+    /// attributes stay parallel, since the member count is unchanged.
+    pub(crate) fn into_3d(self) -> Collection3D {
+        Collection3D {
+            members: self.members.into_iter().map(|m| m.into_3d()).collect(),
+            attrs: self.attrs,
+        }
+    }
+}
+
 impl Reproject for Collection2D {
     fn reproject(
         &mut self,

@@ -3,7 +3,7 @@ use crate::coordinate::{CoordinateFrame, EpsgCode};
 use crate::ops::reproject::{transform_coords_2d, transform_coords_3d};
 use crate::ops::triangulation::{expand_appearance, triangulate_2d, triangulate_3d, Cache};
 use crate::ops::{
-    Aabb, BoundingBox, Reproject, ReprojectionCache, Triangulate, UnsupportedOperation,
+    lift_coords, Aabb, BoundingBox, Reproject, ReprojectionCache, Triangulate, UnsupportedOperation,
 };
 use crate::triangular_mesh::{TriangularMesh2D, TriangularMesh3D};
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
@@ -63,7 +63,7 @@ use crate::ops::{plan_frame_step, translate_2d, translate_3d, ConvertFrame, Fram
 
 impl Translate for Polygon2D {
     fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
-        translate_2d(&mut self.coords, self.z.as_deref_mut(), delta);
+        translate_2d(&mut self.coords, &mut self.z, delta);
         Ok(())
     }
 }
@@ -297,6 +297,22 @@ impl ForceTwoDimension for Polygon3D {
             z: None,
             appearance: self.appearance.take(),
         })))
+    }
+}
+
+impl Polygon2D {
+    /// The 3D counterpart of this leaf, with every coordinate placed at the
+    /// elevation the leaf lies at, or at `0.0` when it carries none.
+    /// The rings, their CSR offsets and the appearance are all indexed by
+    /// corner, and lifting neither adds nor drops a corner, so they carry over
+    /// verbatim.
+    pub(crate) fn into_3d(self) -> Polygon3D {
+        Polygon3D {
+            frame: self.frame,
+            coords: lift_coords(self.coords.iter(), self.z).into_boxed_slice(),
+            interior_offsets: self.interior_offsets,
+            appearance: self.appearance,
+        }
     }
 }
 

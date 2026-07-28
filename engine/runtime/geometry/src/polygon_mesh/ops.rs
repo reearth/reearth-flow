@@ -6,7 +6,7 @@ use crate::ops::triangulation::{
     expand_appearance, triangulate_2d, triangulate_3d, Cache, Triangulated,
 };
 use crate::ops::{
-    Aabb, BoundingBox, Reproject, ReprojectionCache, Triangulate, UnsupportedOperation,
+    lift_coords, Aabb, BoundingBox, Reproject, ReprojectionCache, Triangulate, UnsupportedOperation,
 };
 use crate::triangular_mesh::{TriangularMesh2D, TriangularMesh3D, TriangularMesh3DData};
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
@@ -67,7 +67,7 @@ use crate::ops::{plan_frame_step, translate_2d, translate_3d, ConvertFrame, Fram
 
 impl Translate for PolygonMesh2D {
     fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
-        translate_2d(&mut self.vertices, self.z.as_deref_mut(), delta);
+        translate_2d(&mut self.vertices, &mut self.z, delta);
         Ok(())
     }
 }
@@ -484,6 +484,25 @@ impl ForceTwoDimension for PolygonMesh3D {
             ),
             appearance: self.data.appearance.take(),
         })))
+    }
+}
+
+impl PolygonMesh2D {
+    /// The 3D counterpart of this leaf, with every coordinate placed at the
+    /// elevation the leaf lies at, or at `0.0` when it carries none.
+    /// The CSR face topology indexes the vertex pool, whose length lifting
+    /// leaves unchanged, so every index buffer keeps its width and contents.
+    pub(crate) fn into_3d(self) -> PolygonMesh3D {
+        PolygonMesh3D::new(
+            self.frame,
+            PolygonMesh3DData {
+                vertices: lift_coords(self.vertices.iter(), self.z),
+                face_indices: self.face_indices,
+                face_offsets: self.face_offsets,
+                interior_offsets: self.interior_offsets,
+                appearance: self.appearance,
+            },
+        )
     }
 }
 

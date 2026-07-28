@@ -478,9 +478,10 @@ mod tests {
 
     #[test]
     fn elevation_of_a_two_dimensional_geometry_is_not_folded_in() {
-        let line = LineString2D::from_coords_with_elevation(
+        let line = LineString2D::from_coords_at_elevation(
             CoordinateFrame::Euclidean,
-            [[1.0, 2.0, 10.0], [3.0, 4.0, 20.0]],
+            [[1.0, 2.0], [3.0, 4.0]],
+            10.0,
         );
         let feature = extract(Geometry::Euclidean2D(Euclidean2DGeometry::LineString(line)));
         assert!(feature.attributes.get(&Attribute::new("zmin")).is_none());

@@ -63,7 +63,7 @@ use ops::Split;
 #[cfg(feature = "new-geometry")]
 use validation_next::{Validate, ValidationParams, ValidationReport, ValidationType};
 
-use coordinate::EpsgCode;
+use coordinate::{CoordinateFrame, EpsgCode};
 
 use collection::{Collection2D, Collection3D};
 use csg::Csg;
@@ -296,12 +296,97 @@ impl Triangulate for GeometryCollection {
     }
 }
 
+impl Euclidean2DGeometry {
+    /// Whether any part of this geometry lies at an elevation, making it 2.5D
+    /// rather than pure 2D. A `Collection` answers for its members: they share
+    /// one embedding, so one member with an elevation makes the whole 2.5D.
+    pub(crate) fn carries_elevation(&self) -> bool {
+        match self {
+            Self::Point(_) => false,
+            Self::LineString(g) => g.elevation().is_some(),
+            Self::Polygon(g) => g.elevation().is_some(),
+            Self::PolygonMesh(g) => g.elevation().is_some(),
+            Self::TriangularMesh(g) => g.elevation().is_some(),
+            Self::Collection(c) => c.members().iter().any(Self::carries_elevation),
+        }
+    }
+
+    /// Whether converting to `target` reprojects this geometry across CRSs, the
+    /// one frame step whose vertical result varies with position. A `Collection`
+    /// answers for its members, whose frames need not agree.
+    pub(crate) fn reprojects_to(
+        &self,
+        target: &CoordinateFrame,
+        base_point: Option<[f64; 3]>,
+    ) -> crate::error::Result<bool> {
+        let frame = match self {
+            Self::Point(g) => g.frame(),
+            Self::LineString(g) => g.frame(),
+            Self::Polygon(g) => g.frame(),
+            Self::PolygonMesh(g) => g.frame(),
+            Self::TriangularMesh(g) => g.frame(),
+            Self::Collection(c) => {
+                for member in c.members() {
+                    if member.reprojects_to(target, base_point)? {
+                        return Ok(true);
+                    }
+                }
+                return Ok(false);
+            }
+        };
+        Ok(matches!(
+            ops::plan_frame_step(frame, target, base_point)?,
+            ops::FrameStep::Reproject(_)
+        ))
+    }
+
+    /// The 3D counterpart of this geometry, with every coordinate placed at the
+    /// elevation its leaf lies at, or at `0.0` where there is none.
+    pub(crate) fn into_3d(self) -> Euclidean3DGeometry {
+        match self {
+            Self::Point(g) => Euclidean3DGeometry::Point(g.into_3d()),
+            Self::LineString(g) => Euclidean3DGeometry::LineString(g.into_3d()),
+            Self::Polygon(g) => Euclidean3DGeometry::Polygon(Box::new(g.into_3d())),
+            Self::PolygonMesh(g) => Euclidean3DGeometry::PolygonMesh(Box::new(g.into_3d())),
+            Self::TriangularMesh(g) => Euclidean3DGeometry::TriangularMesh(Box::new(g.into_3d())),
+            Self::Collection(c) => Euclidean3DGeometry::Collection(c.into_3d()),
+        }
+    }
+}
+
+impl Geometry {
+    /// Give up the 2D embedding when a 2.5D geometry is about to be reprojected
+    /// across CRSs, replacing it with its 3D counterpart.
+    ///
+    /// A leaf holds one elevation for all of its coordinates, and a reprojection
+    /// is the one frame step whose vertical result varies with position, so the
+    /// single elevation cannot describe the result. The rigid steps can: a
+    /// translation shifts that one elevation along with the coordinates, so a
+    /// 2.5D geometry stays 2.5D across the Euclidean/CRS boundary.
+    fn make_3d_for_reprojection(&mut self, step_reprojects: bool) {
+        if !step_reprojects {
+            return;
+        }
+        let Self::Euclidean2D(g) = self else { return };
+        if !g.carries_elevation() {
+            return;
+        }
+        let Self::Euclidean2D(g) = std::mem::take(self) else {
+            unreachable!("just matched as 2D")
+        };
+        *self = Self::Euclidean3D(g.into_3d());
+    }
+}
+
 impl Reproject for Geometry {
     fn reproject(
         &mut self,
         target: EpsgCode,
         cache: &mut ReprojectionCache,
     ) -> crate::error::Result<()> {
+        // Reprojecting is always a CRS-to-CRS step, so a 2.5D geometry gives up
+        // its single elevation here and comes out 3D.
+        self.make_3d_for_reprojection(true);
         match self {
             Geometry::None => Ok(()),
             Geometry::Euclidean2D(g) => g.reproject(target, cache),
@@ -333,7 +418,17 @@ impl ConvertFrame for Geometry {
     ) -> crate::error::Result<()> {
         match self {
             Geometry::None => Ok(()),
-            Geometry::Euclidean2D(g) => g.convert_frame(target, base_point, cache),
+            Geometry::Euclidean2D(g) => {
+                // Only a CRS-to-CRS step reprojects; the rigid steps keep a 2.5D
+                // geometry 2.5D, so the embedding turns on the planned step.
+                let reprojects = g.reprojects_to(target, base_point)?;
+                self.make_3d_for_reprojection(reprojects);
+                match self {
+                    Geometry::Euclidean2D(g) => g.convert_frame(target, base_point, cache),
+                    Geometry::Euclidean3D(g) => g.convert_frame(target, base_point, cache),
+                    _ => unreachable!("stayed 2D or became 3D"),
+                }
+            }
             Geometry::Euclidean3D(g) => g.convert_frame(target, base_point, cache),
             Geometry::GeometryCollection(c) => c.convert_frame(target, base_point, cache),
         }

@@ -26,6 +26,16 @@ pub trait Reproject {
     }
 }
 
+/// Pair a 2D coordinate buffer with the leaf's elevation, the shared body of
+/// every 2D leaf's `into_3d`.
+pub(crate) fn lift_coords<'a>(
+    coords: impl IntoIterator<Item = &'a [f64; 2]>,
+    z: Option<f64>,
+) -> Vec<[f64; 3]> {
+    let z = z.unwrap_or(0.0);
+    coords.into_iter().map(|&[x, y]| [x, y, z]).collect()
+}
+
 // The boxed enum variants (`Box<Polygon2D>`, `Box<Solid>`, …) need the trait on
 // the `Box` itself: `enum_dispatch` forwards by UFCS, not auto-deref.
 impl<T: Reproject + ?Sized> Reproject for Box<T> {
@@ -167,6 +177,54 @@ mod tests {
             p,
             Point2D::new(CoordinateFrame::Crs(EpsgCode::new(3857)), [x, y])
         );
+    }
+
+    #[test]
+    fn scratch_euclid_crs_roundtrip() {
+        use crate::line_string::LineString2D;
+        use crate::ops::ConvertFrame;
+        use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry as G};
+        let mut cache = ReprojectionCache::new();
+        let pts = [[35.680, 139.760], [35.685, 139.765]];
+        let wgs = CoordinateFrame::Crs(EpsgCode::new(4326));
+        let euc = CoordinateFrame::Euclidean;
+        let bp = Some([1.0, 2.0, 3.0]);
+
+        let mk = |f: &CoordinateFrame| {
+            G::Euclidean2D(Euclidean2DGeometry::LineString(
+                LineString2D::from_coords_at_elevation(f.clone(), pts, 10.0),
+            ))
+        };
+        let label = |g: &G| match g {
+            G::Euclidean2D(Euclidean2DGeometry::LineString(l)) => format!(
+                "2.5D kept, elevation {:?}, frame {:?}",
+                l.elevation(),
+                l.frame()
+            ),
+            G::Euclidean3D(Euclidean3DGeometry::LineString(_)) => "PROMOTED TO 3D".to_string(),
+            _ => "other".into(),
+        };
+
+        for (name, src, dst, base) in [
+            ("euclid -> crs  (base point)", &euc, &wgs, bp),
+            ("crs    -> euclid (base point)", &wgs, &euc, bp),
+            ("euclid -> crs  (as-is)", &euc, &wgs, None),
+            ("crs    -> euclid (as-is)", &wgs, &euc, None),
+            ("euclid -> euclid (base point)", &euc, &euc, bp),
+            ("euclid -> euclid (as-is)", &euc, &euc, None),
+        ] {
+            let mut g = mk(src);
+            match g.convert_frame(dst, base, &mut cache) {
+                Ok(()) => println!("SCRATCH {name:<30} => {}", label(&g)),
+                Err(e) => println!("SCRATCH {name:<30} => ERR {e}"),
+            }
+        }
+
+        // And a full round trip: crs -> euclid -> crs.
+        let mut g = mk(&wgs);
+        g.convert_frame(&euc, bp, &mut cache).unwrap();
+        g.convert_frame(&wgs, bp, &mut cache).unwrap();
+        println!("SCRATCH {:<30} => {}", "crs -> euclid -> crs", label(&g));
     }
 
     #[test]
