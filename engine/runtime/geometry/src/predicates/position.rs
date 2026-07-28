@@ -20,7 +20,7 @@
 //!   classification wins (`Inside` > `OnBoundary` > `Outside`), with the
 //!   line-endpoint boundary counted mod 2 across all line members.
 //!
-//! The optional per-vertex elevation of 2D leaves is ignored throughout.
+//! The optional elevation of 2D leaves is ignored throughout.
 
 use super::kernel::{coord_pos_relative_to_edges, point_on_segment, same_direction, CoordPos};
 use super::view::{AreaView, FaceView, Leaf2D, Operand2D, RingView};

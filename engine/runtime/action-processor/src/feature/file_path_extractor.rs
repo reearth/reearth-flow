@@ -1,6 +1,5 @@
 use std::{collections::HashMap, fs, str::FromStr};
 
-use once_cell::sync::Lazy;
 use reearth_flow_common::{dir::project_temp_dir, uri::Uri};
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -18,8 +17,6 @@ use crate::utils::decompressor::extract_archive;
 
 use super::errors::FeatureProcessorError;
 
-static UNFILTERED_PORT: Lazy<Port> = Lazy::new(|| Port::new("unfiltered"));
-
 #[derive(Debug, Clone, Default)]
 pub(super) struct FeatureFilePathExtractorFactory;
 
@@ -29,7 +26,7 @@ impl ProcessorFactory for FeatureFilePathExtractorFactory {
     }
 
     fn description(&self) -> &str {
-        "Extract File Paths from Dataset to Features"
+        "Expands a dataset path into one feature per file, listing directories recursively and optionally extracting zip and 7z archives. Each emitted feature carries the file's path, name, and extension attributes alongside the attributes of the incoming feature."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -41,7 +38,7 @@ impl ProcessorFactory for FeatureFilePathExtractorFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["file", "path"]
+        &["file", "compression"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -49,7 +46,7 @@ impl ProcessorFactory for FeatureFilePathExtractorFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![FEATURES_PORT.clone(), UNFILTERED_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -93,18 +90,22 @@ impl ProcessorFactory for FeatureFilePathExtractorFactory {
 }
 
 /// # Feature File Path Extractor Parameters
-/// Configure how to extract file paths from datasets and optionally extract archives
+/// Configures which dataset is expanded into file features and whether archives are extracted.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct FeatureFilePathExtractorParam {
     /// # Source Dataset
-    /// Expression to get the source dataset path or URL
+    /// Expression evaluating to the path or URL of the file, directory, or archive to expand.
+    /// A directory is listed recursively; any other path yields a single feature.
     source_dataset: Code,
     /// # Extract Archive
-    /// Whether to extract archive files found in the dataset
+    /// Extracts the source dataset when it is a `.zip`, `.7z`, or `.7zip` archive and emits one
+    /// feature per extracted file. When disabled, the archive itself is emitted as a single path.
+    #[serde(default)]
     extract_archive: bool,
     /// # Destination Prefix
-    /// Optional prefix to add to extracted file paths
+    /// Subdirectory created under the temporary extraction directory to hold the extracted files.
+    /// Applies only when an archive is extracted.
     dest_prefix: Option<String>,
 }
 
