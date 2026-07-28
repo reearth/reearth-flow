@@ -126,10 +126,9 @@ pub struct PropertySchema {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(tag = "source", rename_all = "camelCase")]
 pub enum XmlFragmenterParam {
-    #[serde(rename = "url")]
     /// # XML File
     /// Reads the XML document from the file path or URL held in the attribute.
-    Url {
+    File {
         #[serde(flatten)]
         property: PropertySchema,
     },
@@ -144,7 +143,7 @@ pub enum XmlFragmenterParam {
 impl XmlFragmenterParam {
     fn property(&self) -> &PropertySchema {
         match self {
-            XmlFragmenterParam::Url { property } | XmlFragmenterParam::Text { property } => {
+            XmlFragmenterParam::File { property } | XmlFragmenterParam::Text { property } => {
                 property
             }
         }
@@ -282,7 +281,7 @@ fn send_xml_fragment(
     // `scope` namespaces the generated xmlId/xmlParentId hashes. A document read from a file is
     // scoped by its location; XML held in an attribute has none, so the carrying feature is used.
     let result = match params {
-        XmlFragmenterParam::Url { property } => {
+        XmlFragmenterParam::File { property } => {
             let url = match feature.get(&property.attribute) {
                 Some(AttributeValue::String(url)) => Uri::from_str(url)
                     .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?,
