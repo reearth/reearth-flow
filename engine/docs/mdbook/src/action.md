@@ -8666,18 +8666,18 @@ Writes 3D features to Wavefront OBJ format with optional material (MTL) files
 ### Type
 * processor
 ### Description
-Shifts every geometry coordinate by a fixed distance along each axis.
+Shifts every geometry coordinate by a fixed amount along each axis.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Offsetter Parameters",
-  "description": "Distances added to every geometry coordinate, one per axis.",
+  "description": "Amounts added to every geometry coordinate, one per axis, in the coordinate unit of the geometry's frame.",
   "type": "object",
   "properties": {
     "offsetX": {
       "title": "X Offset",
-      "description": "Distance added to every X coordinate; defaults to zero.",
+      "description": "Amount added to every X coordinate, in the coordinate unit of the geometry's frame (degrees for a geographic CRS). Defaults to zero.",
       "type": [
         "number",
         "null"
@@ -8686,7 +8686,7 @@ Shifts every geometry coordinate by a fixed distance along each axis.
     },
     "offsetY": {
       "title": "Y Offset",
-      "description": "Distance added to every Y coordinate; defaults to zero.",
+      "description": "Amount added to every Y coordinate, in the coordinate unit of the geometry's frame (degrees for a geographic CRS). Defaults to zero.",
       "type": [
         "number",
         "null"
@@ -8695,7 +8695,7 @@ Shifts every geometry coordinate by a fixed distance along each axis.
     },
     "offsetZ": {
       "title": "Z Offset",
-      "description": "Distance added to every Z coordinate; defaults to zero.",
+      "description": "Amount added to every Z coordinate, in the coordinate unit of the geometry's frame (metres for a geographic CRS). Defaults to zero.",
       "type": [
         "number",
         "null"

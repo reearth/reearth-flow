@@ -8882,16 +8882,16 @@
     {
       "name": "Offsetter",
       "type": "processor",
-      "description": "ジオメトリのすべての座標を各軸ごとに一定の距離だけ移動する",
+      "description": "ジオメトリのすべての座標を各軸ごとに一定量だけ移動する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Offsetter パラメータ",
-        "description": "すべてのジオメトリ座標に各軸ごとに加える距離を設定する",
+        "description": "すべてのジオメトリ座標に各軸ごとに加える量を、ジオメトリの座標フレームの座標単位で設定する",
         "type": "object",
         "properties": {
           "offsetX": {
             "title": "X オフセット",
-            "description": "すべての X 座標に加える距離。省略時は 0",
+            "description": "すべての X 座標に加える量。単位はジオメトリの座標フレームの座標単位（地理座標系では度）。省略時は 0",
             "type": [
               "number",
               "null"
@@ -8900,7 +8900,7 @@
           },
           "offsetY": {
             "title": "Y オフセット",
-            "description": "すべての Y 座標に加える距離。省略時は 0",
+            "description": "すべての Y 座標に加える量。単位はジオメトリの座標フレームの座標単位（地理座標系では度）。省略時は 0",
             "type": [
               "number",
               "null"
@@ -8909,7 +8909,7 @@
           },
           "offsetZ": {
             "title": "Z オフセット",
-            "description": "すべての Z 座標に加える距離。省略時は 0",
+            "description": "すべての Z 座標に加える量。単位はジオメトリの座標フレームの座標単位（地理座標系ではメートル）。省略時は 0",
             "type": [
               "number",
               "null"

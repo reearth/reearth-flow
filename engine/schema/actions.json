@@ -8878,16 +8878,16 @@
     {
       "name": "Offsetter",
       "type": "processor",
-      "description": "Shifts every geometry coordinate by a fixed distance along each axis.",
+      "description": "Shifts every geometry coordinate by a fixed amount along each axis.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Offsetter Parameters",
-        "description": "Distances added to every geometry coordinate, one per axis.",
+        "description": "Amounts added to every geometry coordinate, one per axis, in the coordinate unit of the geometry's frame.",
         "type": "object",
         "properties": {
           "offsetX": {
             "title": "X Offset",
-            "description": "Distance added to every X coordinate; defaults to zero.",
+            "description": "Amount added to every X coordinate, in the coordinate unit of the geometry's frame (degrees for a geographic CRS). Defaults to zero.",
             "type": [
               "number",
               "null"
@@ -8896,7 +8896,7 @@
           },
           "offsetY": {
             "title": "Y Offset",
-            "description": "Distance added to every Y coordinate; defaults to zero.",
+            "description": "Amount added to every Y coordinate, in the coordinate unit of the geometry's frame (degrees for a geographic CRS). Defaults to zero.",
             "type": [
               "number",
               "null"
@@ -8905,7 +8905,7 @@
           },
           "offsetZ": {
             "title": "Z Offset",
-            "description": "Distance added to every Z coordinate; defaults to zero.",
+            "description": "Amount added to every Z coordinate, in the coordinate unit of the geometry's frame (metres for a geographic CRS). Defaults to zero.",
             "type": [
               "number",
               "null"

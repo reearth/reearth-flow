@@ -2644,23 +2644,23 @@
     },
     {
       "name": "Offsetter",
-      "description": "沿各坐标轴将几何图形的所有坐标平移固定距离",
+      "description": "沿各坐标轴将几何图形的所有坐标平移固定量",
       "parameterI18n": {
         "": {
           "title": "Offsetter Parameters",
-          "description": "Distances added to every geometry coordinate, one per axis."
+          "description": "Amounts added to every geometry coordinate, one per axis, in the coordinate unit of the geometry's frame."
         },
         "offsetX": {
           "title": "X Offset",
-          "description": "Distance added to every X coordinate; defaults to zero."
+          "description": "Amount added to every X coordinate, in the coordinate unit of the geometry's frame (degrees for a geographic CRS). Defaults to zero."
         },
         "offsetY": {
           "title": "Y Offset",
-          "description": "Distance added to every Y coordinate; defaults to zero."
+          "description": "Amount added to every Y coordinate, in the coordinate unit of the geometry's frame (degrees for a geographic CRS). Defaults to zero."
         },
         "offsetZ": {
           "title": "Z Offset",
-          "description": "Distance added to every Z coordinate; defaults to zero."
+          "description": "Amount added to every Z coordinate, in the coordinate unit of the geometry's frame (metres for a geographic CRS). Defaults to zero."
         }
       }
     },

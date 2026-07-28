@@ -33,7 +33,7 @@ impl ProcessorFactory for OffsetterFactory {
     }
 
     fn description(&self) -> &str {
-        "Shifts every geometry coordinate by a fixed distance along each axis."
+        "Shifts every geometry coordinate by a fixed amount along each axis."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -90,18 +90,22 @@ impl ProcessorFactory for OffsetterFactory {
 }
 
 /// # Offsetter Parameters
-/// Distances added to every geometry coordinate, one per axis.
+/// Amounts added to every geometry coordinate, one per axis, in the coordinate
+/// unit of the geometry's frame.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct OffsetterParam {
     /// # X Offset
-    /// Distance added to every X coordinate; defaults to zero.
+    /// Amount added to every X coordinate, in the coordinate unit of the
+    /// geometry's frame (degrees for a geographic CRS). Defaults to zero.
     offset_x: Option<f64>,
     /// # Y Offset
-    /// Distance added to every Y coordinate; defaults to zero.
+    /// Amount added to every Y coordinate, in the coordinate unit of the
+    /// geometry's frame (degrees for a geographic CRS). Defaults to zero.
     offset_y: Option<f64>,
     /// # Z Offset
-    /// Distance added to every Z coordinate; defaults to zero.
+    /// Amount added to every Z coordinate, in the coordinate unit of the
+    /// geometry's frame (metres for a geographic CRS). Defaults to zero.
     offset_z: Option<f64>,
 }
 
