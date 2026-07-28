@@ -66,7 +66,6 @@ impl Reproject for LineString2D {
         if from == target {
             return Ok(self.take_geometry());
         }
-        // One elevation cannot describe a position-varying vertical result.
         if self.z.is_some() {
             return self.take().into_3d().reproject(target, cache);
         }

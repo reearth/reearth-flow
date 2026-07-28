@@ -23,9 +23,7 @@ impl LineString2D {
         }
     }
 
-    /// Build a 2.5D polyline: an `[x, y]` chain lying wholly at `elevation`. A
-    /// chain whose vertices sit at differing heights is not representable here —
-    /// that is a [`LineString3D`].
+    /// Build a 2.5D polyline: an `[x, y]` chain lying wholly at `elevation`.
     pub fn from_coords_at_elevation(
         frame: CoordinateFrame,
         coords: impl IntoIterator<Item = [f64; 2]>,
@@ -85,7 +83,6 @@ mod tests {
             10.0,
         );
         assert_eq!(l.coords, vec![[0.0, 0.0], [1.0, 0.0]].into_boxed_slice());
-        // One elevation for the chain, not one per vertex.
         assert_eq!(l.elevation(), Some(10.0));
     }
 

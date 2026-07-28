@@ -11,8 +11,7 @@ use crate::line_string::{LineString2D, LineString3D};
 use crate::types::coordinate::Coordinate3D;
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
-/// The total Euclidean length of a 2D chain. A 2.5D leaf's elevation lifts the
-/// whole chain, so it does not change the length.
+/// The total Euclidean length of a 2D chain (elevation ignored).
 pub(crate) fn chain_length_2d(coords: &[[f64; 2]]) -> f64 {
     coords
         .windows(2)

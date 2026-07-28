@@ -74,7 +74,6 @@ impl Reproject for Polygon2D {
         if from == target {
             return Ok(self.take_geometry());
         }
-        // One elevation cannot describe a position-varying vertical result.
         if self.z.is_some() {
             return self.take().into_3d().reproject(target, cache);
         }
@@ -184,8 +183,6 @@ impl Triangulate for Polygon2D {
                 .map(|&i| unsafe { *self.coords.get_unchecked(i as usize) }),
         );
         triangulate_2d(earcut, &verts, &buffers.holes, &mut buffers.out);
-        // The face lies at one elevation, so the tessellation of its footprint
-        // lies at that same elevation: carry it across unchanged.
         // SAFETY: every earcut index is `< verts.len()`; count is a multiple of 3.
         let mut mesh = unsafe {
             match self.z {
@@ -349,9 +346,6 @@ impl ForceTwoDimension for Polygon3D {
 impl Polygon2D {
     /// The 3D counterpart of this leaf, with every coordinate placed at the
     /// elevation the leaf lies at, or at `0.0` when it carries none.
-    /// The rings, their CSR offsets and the appearance are all indexed by
-    /// corner, and lifting neither adds nor drops a corner, so they carry over
-    /// verbatim.
     pub(crate) fn into_3d(self) -> Polygon3D {
         Polygon3D {
             frame: self.frame,

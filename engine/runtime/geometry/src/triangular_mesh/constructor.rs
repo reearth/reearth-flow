@@ -238,9 +238,7 @@ impl TriangularMesh2D {
         })
     }
 
-    /// Build a 2.5D mesh: an `[x, y]` vertex pool lying wholly at `elevation`. A
-    /// triangulated surface whose vertices sit at differing heights (a TIN) is not
-    /// representable here — that is a [`TriangularMesh3D`].
+    /// Build a 2.5D mesh: an `[x, y]` vertex pool lying wholly at `elevation`.
     pub fn from_parts_at_elevation(
         frame: CoordinateFrame,
         vertices: Vec<[f64; 2]>,
@@ -596,7 +594,6 @@ mod tests {
         )
         .unwrap();
         assert_eq!(m.vertices, vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]]);
-        // One elevation for the mesh, not one per vertex.
         assert_eq!(m.elevation(), Some(10.0));
     }
 

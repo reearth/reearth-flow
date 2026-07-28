@@ -225,8 +225,7 @@ impl BoundsExtractor {
     }
 
     /// Write the box onto the feature as one attribute per bound. A 2D box
-    /// writes no z attributes: the optional elevation a 2D-embedded geometry
-    /// lies at is not part of its box.
+    /// writes no z attributes.
     #[cfg(feature = "new-geometry")]
     fn insert_bounds(&self, feature: &mut Feature, aabb: Aabb) {
         let (min, max, z) = match aabb {

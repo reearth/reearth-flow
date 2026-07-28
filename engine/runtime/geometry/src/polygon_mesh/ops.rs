@@ -84,7 +84,6 @@ impl Reproject for PolygonMesh2D {
         if from == target {
             return Ok(self.take_geometry());
         }
-        // One elevation cannot describe a position-varying vertical result.
         if self.z.is_some() {
             return self.take().into_3d().reproject(target, cache);
         }
@@ -231,9 +230,7 @@ impl Triangulate for PolygonMesh2D {
             &buffers.corner_src,
         );
         let triangle_count = buffers.tris.len() / 3;
-        // `tris` index the existing pool (each `< vertices.len()`) in triples. The
-        // mesh lies at one elevation, so its tessellation lies at that same
-        // elevation: carry it across unchanged.
+        // `tris` index the existing pool (each `< vertices.len()`) in triples.
         // SAFETY: every index is `< vertices.len()`; count is a multiple of 3.
         let mut mesh = unsafe {
             match self.z.take() {
@@ -542,8 +539,6 @@ impl ForceTwoDimension for PolygonMesh3D {
 impl PolygonMesh2D {
     /// The 3D counterpart of this leaf, with every coordinate placed at the
     /// elevation the leaf lies at, or at `0.0` when it carries none.
-    /// The CSR face topology indexes the vertex pool, whose length lifting
-    /// leaves unchanged, so every index buffer keeps its width and contents.
     pub(crate) fn into_3d(self) -> PolygonMesh3D {
         PolygonMesh3D::new(
             self.frame,

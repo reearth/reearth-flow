@@ -297,9 +297,7 @@ impl Triangulate for GeometryCollection {
 }
 
 impl Euclidean2DGeometry {
-    /// Whether any part of this geometry lies at an elevation, making it 2.5D
-    /// rather than pure 2D. A `Collection` answers for its members: they share
-    /// one embedding, so one member with an elevation makes the whole 2.5D.
+    /// Whether any part of this geometry lies at an elevation (2.5D).
     pub(crate) fn carries_elevation(&self) -> bool {
         match self {
             Self::Point(_) => false,
@@ -311,9 +309,7 @@ impl Euclidean2DGeometry {
         }
     }
 
-    /// Whether converting to `target` reprojects this geometry across CRSs, the
-    /// one frame step whose vertical result varies with position. A `Collection`
-    /// answers for its members, whose frames need not agree.
+    /// Whether converting to `target` reprojects this geometry across CRSs.
     pub(crate) fn reprojects_to(
         &self,
         target: &CoordinateFrame,
@@ -375,7 +371,6 @@ impl Reproject for GeometryCollection {
         target: EpsgCode,
         cache: &mut ReprojectionCache,
     ) -> crate::error::Result<Geometry> {
-        // Cross-dimensional by definition: members convert independently.
         let mut out = std::mem::take(self);
         for member in out.members.iter_mut() {
             *member = member.reproject(target, cache)?;

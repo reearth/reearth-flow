@@ -81,8 +81,7 @@ enum BasePoint {
 /// so orientation follows the destination frame's axis order.
 ///
 /// Reprojecting across coordinate reference systems takes 2D geometry lying at a
-/// single elevation into 3D, because the vertical result varies with position and
-/// one elevation cannot describe it.
+/// single elevation into 3D.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CoordinateFrameReprojectorParam {

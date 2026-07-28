@@ -30,7 +30,7 @@ use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash, Serialize)]
 pub enum ValidationType {
     /// Whether every coordinate component is finite (non-NaN, non-infinite),
-    /// and, on a 2D leaf, whether the elevation it lies at is.
+    /// including a 2D leaf's elevation.
     Finite,
     /// Whether a line or ring has fewer points than its type requires (line ≥ 2,
     /// closed ring ≥ 4).
@@ -746,8 +746,7 @@ pub(crate) fn open_ring<T: PartialEq>(ring: &[T]) -> &[T] {
 /// [`ValidationType::Finite`] problem per offending coordinate into `report`,
 /// positioned at a 2D point leaf in `frame`.
 ///
-/// A 2D leaf's elevation is not a coordinate component, so it is not scanned
-/// here; see [`check_finite_elevation`].
+/// The leaf's elevation is not scanned here; see [`check_finite_elevation`].
 pub(crate) fn check_finite_2d(
     frame: &CoordinateFrame,
     coords: &[[f64; 2]],
@@ -764,14 +763,7 @@ pub(crate) fn check_finite_2d(
 
 /// Check a 2D leaf's single elevation for a non-finite value, pushing one
 /// [`ValidationType::Finite`] problem into `report` positioned at the whole leaf
-/// that `position` builds.
-///
-/// The elevation belongs to the leaf, not to any one of its coordinates, so a bad
-/// one is a single fault reported once against the leaf itself. Positioning it at
-/// coordinates would both multiply the report by the vertex count and leave a
-/// coordinate-less leaf with nowhere to record the fault.
-///
-/// `position` is a closure so the leaf is only materialized on the failure path.
+/// that `position` builds. `position` is called only on failure.
 pub(crate) fn check_finite_elevation(
     z: Option<f64>,
     position: impl FnOnce() -> Geometry,
@@ -1373,9 +1365,7 @@ mod tests {
             f64::NAN,
         );
         let positions = failures(&validate_leaf(&ls, &params()), ValidationType::Finite);
-        // One elevation, one fault: the report does not scale with the vertex count.
         assert_eq!(positions.len(), 1);
-        // Positioned at the whole leaf, since the elevation belongs to no coordinate.
         assert!(matches!(
             positions[0],
             Geometry::Euclidean2D(Euclidean2DGeometry::LineString(_))

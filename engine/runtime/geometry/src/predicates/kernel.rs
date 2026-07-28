@@ -397,8 +397,8 @@ pub enum CoordPos {
 /// Point-in-ring by winding number, with an on-boundary short-circuit.
 ///
 /// `ring` is a closed ring (first vertex == last), the storage convention of the
-/// [`Polygon`](mod@crate::polygon) leaves. A 2.5D leaf's elevation lifts the whole
-/// ring, so it cannot change the answer: the test is the XY-projection algorithm.
+/// [`Polygon`](mod@crate::polygon) leaves. The test is the XY-projection
+/// algorithm; a 2.5D leaf's elevation is ignored.
 pub fn coord_pos_relative_to_ring(coord: [f64; 2], ring: &[[f64; 2]]) -> CoordPos {
     if ring.is_empty() {
         return CoordPos::Outside;

@@ -164,7 +164,6 @@ impl Point2D {
     /// The 3D counterpart of this leaf, with every coordinate placed at the
     /// elevation the leaf lies at, or at `0.0` when it carries none.
     pub(crate) fn into_3d(self) -> Point3D {
-        // A point carries no elevation, so it lands at zero.
         let [x, y] = self.position;
         Point3D::new(self.frame, [x, y, 0.0])
     }

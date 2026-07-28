@@ -98,8 +98,7 @@ pub(crate) fn for_each_face_coords<const N: usize>(
 impl PolygonMesh2D {
     /// Invoke `f` once per face with that face rebuilt as a standalone bare
     /// [`Polygon2D`] in the mesh's frame. Faces are streamed rather than
-    /// collected. Appearance is not carried onto them; the mesh's elevation is,
-    /// since every face of it lies at that one height.
+    /// collected. Appearance is not carried onto them; the mesh's elevation is.
     pub(crate) fn for_each_face_polygon(&self, mut f: impl FnMut(Polygon2D)) {
         let (face_indices, face_offsets, interior_offsets) = self.csr_buffers();
         let frame = self.frame();

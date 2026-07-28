@@ -105,10 +105,6 @@ impl Polygon2D {
     }
 
     /// Build a 2.5D polygon: an `[x, y]` footprint lying wholly at `elevation`.
-    /// Use this for sources that carry one height for an otherwise 2D footprint
-    /// (e.g. a height-tagged shapefile or GeoPackage layer). A boundary whose
-    /// vertices sit at differing heights is not representable here — that is a
-    /// [`Polygon3D`].
     pub fn from_rings_at_elevation<E, I, R>(
         frame: CoordinateFrame,
         exterior: E,
@@ -649,7 +645,6 @@ mod tests {
         );
         assert_eq!(p.coords.len(), 3);
         assert_eq!(p.coords[1], [1.0, 0.0]);
-        // One elevation for the face, not one per vertex.
         assert_eq!(p.elevation(), Some(10.0));
     }
 

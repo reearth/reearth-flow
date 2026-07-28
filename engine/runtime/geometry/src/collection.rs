@@ -152,11 +152,8 @@ impl BoundingBox for Collection3D {
 }
 
 impl Collection2D {
-    /// The 3D counterpart of this collection.
-    ///
-    /// A collection holds one embedding, so it converts as a unit: members that
-    /// carry no elevation are placed at `0.0` alongside those that do. Per-child
-    /// attributes stay parallel, since the member count is unchanged.
+    /// The 3D counterpart of this collection: members carrying no elevation are
+    /// placed at `0.0`.
     pub(crate) fn into_3d(self) -> Collection3D {
         Collection3D {
             members: self.members.into_iter().map(|m| m.into_3d()).collect(),
@@ -174,8 +171,7 @@ impl Collection2D {
     }
 }
 
-/// Unwrap a member's converted result back to a 2D geometry. Errors if it is
-/// not 2D, which only a collection carrying no elevation is asked for.
+/// Unwrap a member's converted result back to a 2D geometry.
 fn expect_2d(g: Geometry) -> Result<Euclidean2DGeometry, Error> {
     match g {
         Geometry::Euclidean2D(g) => Ok(g),
@@ -185,8 +181,7 @@ fn expect_2d(g: Geometry) -> Result<Euclidean2DGeometry, Error> {
     }
 }
 
-/// Unwrap a member's converted result back to a 3D geometry. Errors if it is
-/// not 3D.
+/// Unwrap a member's converted result back to a 3D geometry.
 fn expect_3d(g: Geometry) -> Result<Euclidean3DGeometry, Error> {
     match g {
         Geometry::Euclidean3D(g) => Ok(g),
@@ -202,7 +197,6 @@ impl Reproject for Collection2D {
         target: EpsgCode,
         cache: &mut ReprojectionCache,
     ) -> crate::error::Result<Geometry> {
-        // One embedding for the collection: one 2.5D member takes all of it to 3D.
         if self.carries_elevation() {
             return std::mem::take(self).into_3d().reproject(target, cache);
         }
@@ -239,8 +233,6 @@ impl crate::ops::ConvertFrame for Collection2D {
         base_point: Option<[f64; 3]>,
         cache: &mut crate::ops::ReprojectionCache,
     ) -> crate::error::Result<Geometry> {
-        // Members need not share a frame, so any one of them reprojecting
-        // decides the embedding for the whole collection.
         let mut reprojects = false;
         for member in self.members.iter() {
             reprojects |= member.reprojects_to(target, base_point)?;

@@ -76,7 +76,6 @@ impl Reproject for TriangularMesh2D {
         if from == target {
             return Ok(self.take_geometry());
         }
-        // One elevation cannot describe a position-varying vertical result.
         if self.z.is_some() {
             return self.take().into_3d().reproject(target, cache);
         }
@@ -168,8 +167,6 @@ impl Split for TriangularMesh2D {
     ) -> Result<(), UnsupportedOperation> {
         let vertices = self.vertices();
         let frame = self.frame();
-        // The mesh lies at one elevation, so every triangle split out of it lies
-        // at that same elevation.
         let elevation = self.elevation();
         for [i, j, k] in self.triangles() {
             let ring = [
@@ -259,8 +256,6 @@ impl ForceTwoDimension for TriangularMesh3D {
 impl TriangularMesh2D {
     /// The 3D counterpart of this leaf, with every coordinate placed at the
     /// elevation the leaf lies at, or at `0.0` when it carries none.
-    /// The triangle index list indexes the vertex pool, whose length lifting
-    /// leaves unchanged, so the buffer keeps its width and contents.
     pub(crate) fn into_3d(self) -> TriangularMesh3D {
         TriangularMesh3D::new(
             self.frame,

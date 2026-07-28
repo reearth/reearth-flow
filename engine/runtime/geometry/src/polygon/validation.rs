@@ -11,9 +11,7 @@ use crate::validation_next::{
 use crate::{Euclidean2DGeometry, Geometry};
 
 /// The checks that apply to a 2D polygon face. Planarity is omitted: a 2D face
-/// lies in the coordinate plane by construction, and its single elevation only
-/// lifts that whole plane, so it is trivially planar. (A boundary whose vertices
-/// sit at differing heights is a `Polygon3D`, which does run the check.)
+/// is trivially planar.
 const POLYGON_2D_CHECKS: [ValidationType; 8] = [
     ValidationType::Finite,
     ValidationType::TooFewPoints,
@@ -79,8 +77,8 @@ impl Validate for Polygon2D {
     }
 
     fn check_duplicate_points(&self, params: &ValidationParams) -> ValidationReport {
-        // Coincidences are per ring, excluding the closing vertex. The face lies
-        // at one elevation, so two vertices coincide exactly when their (x, y) do.
+        // Coincidences are per ring, excluding the closing vertex; elevation is
+        // not considered.
         ValidationReport::ran(|r| {
             for ring in std::iter::once(self.exterior()).chain(self.interiors()) {
                 check_duplicate_points(

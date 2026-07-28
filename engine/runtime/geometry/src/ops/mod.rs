@@ -329,9 +329,9 @@ impl<T: ForceTwoDimension + ?Sized> ForceTwoDimension for Box<T> {
 /// job of [`Reproject`] and [`ConvertFrame`].
 #[enum_dispatch::enum_dispatch]
 pub trait Translate {
-    /// Add `delta` to every coordinate. For a 2D-embedded geometry, `delta`'s
-    /// `z` shifts the one elevation the leaf lies at, when it carries one. The
-    /// default body reports the type as unsupported; a leaf opts in by overriding it.
+    /// Add `delta` to every coordinate. For a 2D-embedded geometry, `delta`'s `z`
+    /// shifts the leaf's elevation when it carries one. The default body reports
+    /// the type as unsupported.
     fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
         let _ = delta;
         Err(Error::projection(format!(
@@ -350,12 +350,7 @@ impl<T: Translate + ?Sized> Translate for Box<T> {
 }
 
 /// Add `delta`'s `(x, y)` to a 2D coordinate buffer, and its `z` to the leaf's
-/// elevation when present.
-///
-/// A translation is rigid, so it shifts the one elevation the whole leaf lies at
-/// and the leaf stays planar. A leaf with no elevation does not acquire one, even
-/// from a delta with a non-zero `z`: it is pure 2D, and lifting it is a change of
-/// embedding rather than a translation.
+/// elevation when present. A leaf with no elevation does not acquire one.
 pub(crate) fn translate_2d(coords: &mut [[f64; 2]], z: &mut Option<f64>, delta: [f64; 3]) {
     for c in coords.iter_mut() {
         c[0] += delta[0];
@@ -387,15 +382,12 @@ pub(crate) fn translate_3d(coords: &mut [[f64; 3]], delta: [f64; 3]) {
 /// are left unchanged, so a ring's orientation follows the axis order of the
 /// frame it is retagged into. A `Tangent` frame on either side is rejected.
 ///
-/// Like [`Reproject`], a conversion consumes its input and returns a
-/// [`Geometry`](crate::Geometry): only the reprojecting step changes a
-/// geometry's embedding, so a 2.5D geometry stays 2.5D across the
-/// Euclidean/CRS boundary.
+/// Consumes its input and returns a [`Geometry`](crate::Geometry); only the
+/// reprojecting step changes a geometry's embedding.
 #[enum_dispatch::enum_dispatch]
 pub trait ConvertFrame {
     /// Convert every coordinate to `target`, consuming `self` into the result.
-    /// The default body reports the type as unsupported; a leaf opts in by
-    /// overriding it.
+    /// The default body reports the type as unsupported.
     fn convert_frame(
         &mut self,
         target: &crate::coordinate::CoordinateFrame,

@@ -223,8 +223,7 @@ impl PolygonMesh2D {
     }
 
     /// Build a 2.5D mesh: an `[x, y]` vertex pool lying wholly at `elevation`,
-    /// with index-list faces (no holes). A surface whose vertices sit at differing
-    /// heights is not representable here — that is a [`PolygonMesh3D`].
+    /// with index-list faces (no holes).
     pub fn from_parts_at_elevation(
         frame: CoordinateFrame,
         vertices: Vec<[f64; 2]>,
@@ -792,7 +791,6 @@ mod tests {
         )
         .unwrap();
         assert_eq!(m.vertices, vec![[0., 0.], [1., 0.], [0., 1.]]);
-        // One elevation for the mesh, not one per vertex.
         assert_eq!(m.elevation(), Some(10.));
     }
 
