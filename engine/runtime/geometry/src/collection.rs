@@ -19,7 +19,7 @@ use crate::ops::{
 };
 #[cfg(feature = "new-geometry")]
 use crate::validation_next::Validate;
-use crate::{Euclidean2DGeometry, Euclidean3DGeometry};
+use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
 /// A `Multi*` collection of 2D geometries; members may differ in coordinate frame.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
@@ -165,16 +165,52 @@ impl Collection2D {
     }
 }
 
+impl Collection2D {
+    /// Whether any member lies at an elevation.
+    fn carries_elevation(&self) -> bool {
+        self.members
+            .iter()
+            .any(Euclidean2DGeometry::carries_elevation)
+    }
+}
+
+/// Unwrap a member's converted result back to a 2D geometry. Errors if it is
+/// not 2D, which only a collection carrying no elevation is asked for.
+fn expect_2d(g: Geometry) -> Result<Euclidean2DGeometry, Error> {
+    match g {
+        Geometry::Euclidean2D(g) => Ok(g),
+        other => Err(Error::projection(format!(
+            "a member of a pure 2D collection did not stay 2D: {other:?}"
+        ))),
+    }
+}
+
+/// Unwrap a member's converted result back to a 3D geometry. Errors if it is
+/// not 3D.
+fn expect_3d(g: Geometry) -> Result<Euclidean3DGeometry, Error> {
+    match g {
+        Geometry::Euclidean3D(g) => Ok(g),
+        other => Err(Error::projection(format!(
+            "a member of a 3D collection did not stay 3D: {other:?}"
+        ))),
+    }
+}
+
 impl Reproject for Collection2D {
     fn reproject(
         &mut self,
         target: EpsgCode,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
-        for member in self.members_mut() {
-            member.reproject(target, cache)?;
+    ) -> crate::error::Result<Geometry> {
+        // One embedding for the collection: one 2.5D member takes all of it to 3D.
+        if self.carries_elevation() {
+            return std::mem::take(self).into_3d().reproject(target, cache);
         }
-        Ok(())
+        let mut out = std::mem::take(self);
+        for member in out.members.iter_mut() {
+            *member = expect_2d(member.reproject(target, cache)?)?;
+        }
+        Ok(Geometry::Euclidean2D(Euclidean2DGeometry::Collection(out)))
     }
 }
 
@@ -183,11 +219,12 @@ impl Reproject for Collection3D {
         &mut self,
         target: EpsgCode,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
-        for member in self.members_mut() {
-            member.reproject(target, cache)?;
+    ) -> crate::error::Result<Geometry> {
+        let mut out = std::mem::take(self);
+        for member in out.members.iter_mut() {
+            *member = expect_3d(member.reproject(target, cache)?)?;
         }
-        Ok(())
+        Ok(Geometry::Euclidean3D(Euclidean3DGeometry::Collection(out)))
     }
 }
 
@@ -201,11 +238,23 @@ impl crate::ops::ConvertFrame for Collection2D {
         target: &crate::coordinate::CoordinateFrame,
         base_point: Option<[f64; 3]>,
         cache: &mut crate::ops::ReprojectionCache,
-    ) -> crate::error::Result<()> {
-        for member in self.members_mut() {
-            member.convert_frame(target, base_point, cache)?;
+    ) -> crate::error::Result<Geometry> {
+        // Members need not share a frame, so any one of them reprojecting
+        // decides the embedding for the whole collection.
+        let mut reprojects = false;
+        for member in self.members.iter() {
+            reprojects |= member.reprojects_to(target, base_point)?;
         }
-        Ok(())
+        if reprojects && self.carries_elevation() {
+            return std::mem::take(self)
+                .into_3d()
+                .convert_frame(target, base_point, cache);
+        }
+        let mut out = std::mem::take(self);
+        for member in out.members.iter_mut() {
+            *member = expect_2d(member.convert_frame(target, base_point, cache)?)?;
+        }
+        Ok(Geometry::Euclidean2D(Euclidean2DGeometry::Collection(out)))
     }
 }
 
@@ -215,11 +264,12 @@ impl crate::ops::ConvertFrame for Collection3D {
         target: &crate::coordinate::CoordinateFrame,
         base_point: Option<[f64; 3]>,
         cache: &mut crate::ops::ReprojectionCache,
-    ) -> crate::error::Result<()> {
-        for member in self.members_mut() {
-            member.convert_frame(target, base_point, cache)?;
+    ) -> crate::error::Result<Geometry> {
+        let mut out = std::mem::take(self);
+        for member in out.members.iter_mut() {
+            *member = expect_3d(member.convert_frame(target, base_point, cache)?)?;
         }
-        Ok(())
+        Ok(Geometry::Euclidean3D(Euclidean3DGeometry::Collection(out)))
     }
 }
 

@@ -330,8 +330,8 @@ impl<T: ForceTwoDimension + ?Sized> ForceTwoDimension for Box<T> {
 #[enum_dispatch::enum_dispatch]
 pub trait Translate {
     /// Add `delta` to every coordinate. For a 2D-embedded geometry, `delta`'s
-    /// `z` applies to the optional per-vertex elevation. The default body reports
-    /// the type as unsupported; a leaf opts in by overriding it.
+    /// `z` shifts the one elevation the leaf lies at, when it carries one. The
+    /// default body reports the type as unsupported; a leaf opts in by overriding it.
     fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
         let _ = delta;
         Err(Error::projection(format!(
@@ -386,16 +386,22 @@ pub(crate) fn translate_3d(coords: &mut [[f64; 3]], delta: [f64; 3]) {
 /// bridge is a positional reinterpretation: coordinate values and ring winding
 /// are left unchanged, so a ring's orientation follows the axis order of the
 /// frame it is retagged into. A `Tangent` frame on either side is rejected.
+///
+/// Like [`Reproject`], a conversion consumes its input and returns a
+/// [`Geometry`](crate::Geometry): only the reprojecting step changes a
+/// geometry's embedding, so a 2.5D geometry stays 2.5D across the
+/// Euclidean/CRS boundary.
 #[enum_dispatch::enum_dispatch]
 pub trait ConvertFrame {
-    /// Convert every coordinate to `target`. The default body reports the type
-    /// as unsupported; a leaf opts in by overriding it.
+    /// Convert every coordinate to `target`, consuming `self` into the result.
+    /// The default body reports the type as unsupported; a leaf opts in by
+    /// overriding it.
     fn convert_frame(
         &mut self,
         target: &crate::coordinate::CoordinateFrame,
         base_point: Option<[f64; 3]>,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
+    ) -> crate::error::Result<crate::Geometry> {
         let _ = (target, base_point, cache);
         Err(Error::projection(format!(
             "convert_frame is not supported by `{}`",
@@ -410,7 +416,7 @@ impl<T: ConvertFrame + ?Sized> ConvertFrame for Box<T> {
         target: &crate::coordinate::CoordinateFrame,
         base_point: Option<[f64; 3]>,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
+    ) -> crate::error::Result<crate::Geometry> {
         (**self).convert_frame(target, base_point, cache)
     }
 }
@@ -497,17 +503,28 @@ mod convert_frame_tests {
     use super::{ConvertFrame, ReprojectionCache};
     use crate::coordinate::{BaseFrame, CoordinateFrame, EpsgCode, TangentPlane};
     use crate::point::Point3D;
+    use crate::{Euclidean3DGeometry, Geometry};
+
+    /// Unwrap a converted result back to the single 3D point these cases build.
+    fn point(g: Geometry) -> Point3D {
+        match g {
+            Geometry::Euclidean3D(Euclidean3DGeometry::Point(p)) => p,
+            other => panic!("expected a 3D point, got {other:?}"),
+        }
+    }
 
     #[test]
     fn euclidean_to_crs_adds_base_point() {
         let mut cache = ReprojectionCache::new();
-        let mut p = Point3D::new(CoordinateFrame::Euclidean, [1.0, 2.0, 3.0]);
-        p.convert_frame(
-            &CoordinateFrame::Crs(EpsgCode::new(6697)),
-            Some([10.0, 20.0, 30.0]),
-            &mut cache,
-        )
-        .unwrap();
+        let p = point(
+            Point3D::new(CoordinateFrame::Euclidean, [1.0, 2.0, 3.0])
+                .convert_frame(
+                    &CoordinateFrame::Crs(EpsgCode::new(6697)),
+                    Some([10.0, 20.0, 30.0]),
+                    &mut cache,
+                )
+                .unwrap(),
+        );
         assert_eq!(p.position(), [11.0, 22.0, 33.0]);
         assert_eq!(p.frame(), &CoordinateFrame::Crs(EpsgCode::new(6697)));
     }
@@ -515,16 +532,18 @@ mod convert_frame_tests {
     #[test]
     fn crs_to_euclidean_subtracts_base_point() {
         let mut cache = ReprojectionCache::new();
-        let mut p = Point3D::new(
-            CoordinateFrame::Crs(EpsgCode::new(6697)),
-            [11.0, 22.0, 33.0],
+        let p = point(
+            Point3D::new(
+                CoordinateFrame::Crs(EpsgCode::new(6697)),
+                [11.0, 22.0, 33.0],
+            )
+            .convert_frame(
+                &CoordinateFrame::Euclidean,
+                Some([10.0, 20.0, 30.0]),
+                &mut cache,
+            )
+            .unwrap(),
         );
-        p.convert_frame(
-            &CoordinateFrame::Euclidean,
-            Some([10.0, 20.0, 30.0]),
-            &mut cache,
-        )
-        .unwrap();
         assert_eq!(p.position(), [1.0, 2.0, 3.0]);
         assert_eq!(p.frame(), &CoordinateFrame::Euclidean);
     }
@@ -532,9 +551,11 @@ mod convert_frame_tests {
     #[test]
     fn as_is_bridge_only_retags() {
         let mut cache = ReprojectionCache::new();
-        let mut p = Point3D::new(CoordinateFrame::Euclidean, [1.0, 2.0, 3.0]);
-        p.convert_frame(&CoordinateFrame::Crs(EpsgCode::new(4979)), None, &mut cache)
-            .unwrap();
+        let p = point(
+            Point3D::new(CoordinateFrame::Euclidean, [1.0, 2.0, 3.0])
+                .convert_frame(&CoordinateFrame::Crs(EpsgCode::new(4979)), None, &mut cache)
+                .unwrap(),
+        );
         assert_eq!(p.position(), [1.0, 2.0, 3.0]);
         assert_eq!(p.frame(), &CoordinateFrame::Crs(EpsgCode::new(4979)));
     }
@@ -542,9 +563,11 @@ mod convert_frame_tests {
     #[test]
     fn same_crs_is_noop() {
         let mut cache = ReprojectionCache::new();
-        let mut p = Point3D::new(CoordinateFrame::Crs(EpsgCode::new(4979)), [1.0, 2.0, 3.0]);
-        p.convert_frame(&CoordinateFrame::Crs(EpsgCode::new(4979)), None, &mut cache)
-            .unwrap();
+        let p = point(
+            Point3D::new(CoordinateFrame::Crs(EpsgCode::new(4979)), [1.0, 2.0, 3.0])
+                .convert_frame(&CoordinateFrame::Crs(EpsgCode::new(4979)), None, &mut cache)
+                .unwrap(),
+        );
         assert_eq!(p.position(), [1.0, 2.0, 3.0]);
     }
 
@@ -552,12 +575,14 @@ mod convert_frame_tests {
     fn crs_to_crs_reprojects_without_a_base_point() {
         let mut cache = ReprojectionCache::new();
         // 4979 (geographic 3D) -> 4978 (ECEF) is a grid-free datum-identity transform.
-        let mut p = Point3D::new(
-            CoordinateFrame::Crs(EpsgCode::new(4979)),
-            [35.0, 139.0, 0.0],
+        let p = point(
+            Point3D::new(
+                CoordinateFrame::Crs(EpsgCode::new(4979)),
+                [35.0, 139.0, 0.0],
+            )
+            .convert_frame(&CoordinateFrame::Crs(EpsgCode::new(4978)), None, &mut cache)
+            .unwrap(),
         );
-        p.convert_frame(&CoordinateFrame::Crs(EpsgCode::new(4978)), None, &mut cache)
-            .unwrap();
         assert_eq!(p.frame(), &CoordinateFrame::Crs(EpsgCode::new(4978)));
         // ECEF magnitude is ~ Earth radius.
         let [x, y, z] = p.position();

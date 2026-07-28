@@ -36,6 +36,15 @@ use crate::index::{IndexBuffer, IndexWidth};
 use super::{TriangularMesh2D, TriangularMesh3D, TriangularMesh3DData};
 
 impl TriangularMesh3DData {
+    /// Mesh data with no vertices, no triangles and no appearance.
+    pub(crate) fn empty() -> Self {
+        Self {
+            vertices: Vec::new(),
+            indices: IndexBuffer::default(),
+            appearance: None,
+        }
+    }
+
     /// Build coordinate-free mesh data from a vertex pool and a flat `u32` index
     /// stream. Validates that the index count is a multiple of three and every
     /// index is `< vertices.len()`; the width is taken from the vertex count.

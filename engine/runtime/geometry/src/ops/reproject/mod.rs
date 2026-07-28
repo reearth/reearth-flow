@@ -2,6 +2,7 @@
 
 use crate::coordinate::EpsgCode;
 use crate::error::{Error, Result};
+use crate::Geometry;
 
 mod ffi;
 
@@ -9,15 +10,22 @@ pub use ffi::ReprojectionCache;
 pub(crate) use ffi::{axis_order_sign, crs_demote_to_2d, crs_is_linear, TwoDimensionalCrs};
 
 /// Reproject a geometry's coordinates to a target CRS.
+///
+/// Reprojection consumes its input. An implementor takes `&mut self`,
+/// deconstructs it, and returns a [`Geometry`] owning the reprojected buffers.
+///
+/// The result is a `Geometry` rather than `()` because reprojecting can change a
+/// geometry's embedding; a 2D leaf lying at a single elevation comes out 3D.
 #[enum_dispatch::enum_dispatch]
 pub trait Reproject {
-    /// Reproject every coordinate to `target` (an EPSG code). The default body
-    /// reports the type as unsupported; a leaf opts in by overriding it.
+    /// Reproject every coordinate to `target` (an EPSG code), consuming `self`
+    /// into the result. The default body reports the type as unsupported; a leaf
+    /// opts in by overriding it.
     fn reproject(
         &mut self,
         target: EpsgCode,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
+    ) -> crate::error::Result<Geometry> {
         let _ = (target, cache);
         Err(Error::projection(format!(
             "reproject is not supported by `{}`",
@@ -39,7 +47,7 @@ pub(crate) fn lift_coords<'a>(
 // The boxed enum variants (`Box<Polygon2D>`, `Box<Solid>`, …) need the trait on
 // the `Box` itself: `enum_dispatch` forwards by UFCS, not auto-deref.
 impl<T: Reproject + ?Sized> Reproject for Box<T> {
-    fn reproject(&mut self, target: EpsgCode, cache: &mut ReprojectionCache) -> Result<()> {
+    fn reproject(&mut self, target: EpsgCode, cache: &mut ReprojectionCache) -> Result<Geometry> {
         (**self).reproject(target, cache)
     }
 }
@@ -57,37 +65,16 @@ pub fn transform_coords_3d(
     Ok(())
 }
 
-/// Reproject a 2D coordinate buffer in place from `from` to `target` (EPSG),
-/// carrying the leaf's single elevation through the transform when present.
-///
-/// The elevation feeds the vertical component of every coordinate's transform, so
-/// the horizontal result is correct everywhere. The output elevation is then read
-/// off the **first** coordinate: the vertical result of a transform can vary with
-/// position, and a 2.5D leaf has exactly one height to keep. Anything that needs
-/// the per-vertex vertical result is a 3D leaf, which [`transform_coords_3d`]
-/// handles exactly.
-///
-/// A leaf with no coordinates offers no position at which to evaluate the vertical
-/// transform, so it comes out pure 2D rather than keeping a height that belongs to
-/// `from` while the leaf now declares `target`.
+/// Reproject a 2D coordinate buffer in place from `from` to `target` (EPSG).
 pub(crate) fn transform_coords_2d(
     cache: &mut ReprojectionCache,
     from: EpsgCode,
     target: EpsgCode,
     coords: &mut [[f64; 2]],
-    z: &mut Option<f64>,
 ) -> Result<()> {
-    let elevation = z.unwrap_or(0.0);
-    let mut first_out_z = None;
     for c in coords.iter_mut() {
-        let [x, y, new_z] = cache.transform(from, target, [c[0], c[1], elevation])?;
+        let [x, y, _] = cache.transform(from, target, [c[0], c[1], 0.0])?;
         *c = [x, y];
-        if first_out_z.is_none() {
-            first_out_z = Some(new_z);
-        }
-    }
-    if z.is_some() {
-        *z = first_out_z;
     }
     Ok(())
 }
@@ -97,12 +84,12 @@ mod tests {
     use approx::assert_relative_eq;
 
     use super::*;
-    use crate::collection::Collection3D;
+    use crate::collection::{Collection2D, Collection3D};
     use crate::coordinate::CoordinateFrame;
-    use crate::line_string::LineString2D;
+    use crate::line_string::{LineString2D, LineString3D};
     use crate::point::{Point2D, Point3D};
     use crate::point_cloud::PointCloud;
-    use crate::Euclidean3DGeometry;
+    use crate::{Euclidean2DGeometry, Euclidean3DGeometry};
 
     #[test]
     fn transform_round_trip_3d() {
@@ -153,10 +140,13 @@ mod tests {
             .unwrap();
 
         let mut p = Point3D::new(CoordinateFrame::Crs(EpsgCode::new(4979)), start);
-        p.reproject(EpsgCode::new(4978), &mut cache).unwrap();
+        let out = p.reproject(EpsgCode::new(4978), &mut cache).unwrap();
         assert_eq!(
-            p,
-            Point3D::new(CoordinateFrame::Crs(EpsgCode::new(4978)), expected)
+            out,
+            Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+                CoordinateFrame::Crs(EpsgCode::new(4978)),
+                expected
+            )))
         );
     }
 
@@ -172,89 +162,83 @@ mod tests {
             .unwrap();
 
         let mut p = Point2D::new(CoordinateFrame::Crs(EpsgCode::new(4326)), [35.681, 139.767]);
-        p.reproject(EpsgCode::new(3857), &mut cache).unwrap();
+        let out = p.reproject(EpsgCode::new(3857), &mut cache).unwrap();
+        // A point carries no elevation, so it stays 2D.
         assert_eq!(
-            p,
-            Point2D::new(CoordinateFrame::Crs(EpsgCode::new(3857)), [x, y])
+            out,
+            Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
+                CoordinateFrame::Crs(EpsgCode::new(3857)),
+                [x, y]
+            )))
         );
     }
 
     #[test]
-    fn scratch_euclid_crs_roundtrip() {
-        use crate::line_string::LineString2D;
-        use crate::ops::ConvertFrame;
-        use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry as G};
+    fn a_2_5d_leaf_reprojects_to_3d_keeping_every_vertical_result() {
         let mut cache = ReprojectionCache::new();
-        let pts = [[35.680, 139.760], [35.685, 139.765]];
-        let wgs = CoordinateFrame::Crs(EpsgCode::new(4326));
-        let euc = CoordinateFrame::Euclidean;
-        let bp = Some([1.0, 2.0, 3.0]);
-
-        let mk = |f: &CoordinateFrame| {
-            G::Euclidean2D(Euclidean2DGeometry::LineString(
-                LineString2D::from_coords_at_elevation(f.clone(), pts, 10.0),
-            ))
-        };
-        let label = |g: &G| match g {
-            G::Euclidean2D(Euclidean2DGeometry::LineString(l)) => format!(
-                "2.5D kept, elevation {:?}, frame {:?}",
-                l.elevation(),
-                l.frame()
-            ),
-            G::Euclidean3D(Euclidean3DGeometry::LineString(_)) => "PROMOTED TO 3D".to_string(),
-            _ => "other".into(),
-        };
-
-        for (name, src, dst, base) in [
-            ("euclid -> crs  (base point)", &euc, &wgs, bp),
-            ("crs    -> euclid (base point)", &wgs, &euc, bp),
-            ("euclid -> crs  (as-is)", &euc, &wgs, None),
-            ("crs    -> euclid (as-is)", &wgs, &euc, None),
-            ("euclid -> euclid (base point)", &euc, &euc, bp),
-            ("euclid -> euclid (as-is)", &euc, &euc, None),
-        ] {
-            let mut g = mk(src);
-            match g.convert_frame(dst, base, &mut cache) {
-                Ok(()) => println!("SCRATCH {name:<30} => {}", label(&g)),
-                Err(e) => println!("SCRATCH {name:<30} => ERR {e}"),
-            }
-        }
-
-        // And a full round trip: crs -> euclid -> crs.
-        let mut g = mk(&wgs);
-        g.convert_frame(&euc, bp, &mut cache).unwrap();
-        g.convert_frame(&wgs, bp, &mut cache).unwrap();
-        println!("SCRATCH {:<30} => {}", "crs -> euclid -> crs", label(&g));
-    }
-
-    #[test]
-    fn linestring2d_reproject_carries_elevation() {
-        let mut cache = ReprojectionCache::new();
-        let raw = [[35.6, 139.7], [35.7, 139.8]];
+        let raw = [[35.6, 139.7], [35.9, 140.0]];
         let expected: Vec<[f64; 3]> = raw
             .iter()
             .map(|&[x, y]| {
                 cache
-                    .transform(EpsgCode::new(4326), EpsgCode::new(3857), [x, y, 10.0])
+                    .transform(EpsgCode::new(4979), EpsgCode::new(4978), [x, y, 10.0])
                     .unwrap()
             })
             .collect();
+        // One shared elevation in, two different heights out.
+        assert_ne!(expected[0][2], expected[1][2]);
 
         let mut ls = LineString2D::from_coords_at_elevation(
-            CoordinateFrame::Crs(EpsgCode::new(4326)),
+            CoordinateFrame::Crs(EpsgCode::new(4979)),
             raw,
             10.0,
         );
-        ls.reproject(EpsgCode::new(3857), &mut cache).unwrap();
-        // The horizontal result comes from transforming each coordinate at the
-        // chain's elevation; the one elevation kept is the first coordinate's.
+        let out = ls.reproject(EpsgCode::new(4978), &mut cache).unwrap();
         assert_eq!(
-            ls,
+            out,
+            Geometry::Euclidean3D(Euclidean3DGeometry::LineString(LineString3D::from_coords(
+                CoordinateFrame::Crs(EpsgCode::new(4978)),
+                expected,
+            )))
+        );
+        // Deconstructed, not copied: the input is left empty.
+        assert!(ls.coords().is_empty());
+    }
+
+    #[test]
+    fn the_same_promotion_happens_through_geometry() {
+        let mut cache = ReprojectionCache::new();
+        let raw = [[35.6, 139.7], [35.9, 140.0]];
+        let mk = || {
             LineString2D::from_coords_at_elevation(
-                CoordinateFrame::Crs(EpsgCode::new(3857)),
-                expected.iter().map(|&[x, y, _]| [x, y]),
-                expected[0][2],
+                CoordinateFrame::Crs(EpsgCode::new(4979)),
+                raw,
+                10.0,
             )
+        };
+        let direct = mk().reproject(EpsgCode::new(4978), &mut cache).unwrap();
+        let via_geometry = Geometry::Euclidean2D(Euclidean2DGeometry::LineString(mk()))
+            .reproject(EpsgCode::new(4978), &mut cache)
+            .unwrap();
+        assert_eq!(direct, via_geometry);
+    }
+
+    #[test]
+    fn same_crs_reprojection_of_a_2_5d_leaf_keeps_it_2_5d() {
+        let mut cache = ReprojectionCache::new();
+        let before = LineString2D::from_coords_at_elevation(
+            CoordinateFrame::Crs(EpsgCode::new(4979)),
+            [[35.6, 139.7], [35.7, 139.8]],
+            10.0,
+        );
+        let out = before
+            .clone()
+            .reproject(EpsgCode::new(4979), &mut cache)
+            .unwrap();
+        // Nothing reprojected, so the chain keeps its one elevation.
+        assert_eq!(
+            out,
+            Geometry::Euclidean2D(Euclidean2DGeometry::LineString(before))
         );
     }
 
@@ -274,10 +258,10 @@ mod tests {
             Euclidean3DGeometry::Point(Point3D::new(CoordinateFrame::Crs(EpsgCode::new(4979)), a)),
             Euclidean3DGeometry::Point(Point3D::new(CoordinateFrame::Crs(EpsgCode::new(4979)), b)),
         ]);
-        col.reproject(EpsgCode::new(4978), &mut cache).unwrap();
+        let out = col.reproject(EpsgCode::new(4978), &mut cache).unwrap();
         assert_eq!(
-            col,
-            Collection3D::new([
+            out,
+            Geometry::Euclidean3D(Euclidean3DGeometry::Collection(Collection3D::new([
                 Euclidean3DGeometry::Point(Point3D::new(
                     CoordinateFrame::Crs(EpsgCode::new(4978)),
                     ea
@@ -286,8 +270,31 @@ mod tests {
                     CoordinateFrame::Crs(EpsgCode::new(4978)),
                     eb
                 )),
-            ])
+            ])))
         );
+    }
+
+    #[test]
+    fn a_2_5d_collection_gives_up_its_embedding_as_a_unit() {
+        let mut cache = ReprojectionCache::new();
+        // One 2.5D member and one pure-2D member: all of it comes back 3D.
+        let mut col = Collection2D::new([
+            Euclidean2DGeometry::LineString(LineString2D::from_coords_at_elevation(
+                CoordinateFrame::Crs(EpsgCode::new(4979)),
+                [[35.6, 139.7]],
+                10.0,
+            )),
+            Euclidean2DGeometry::Point(Point2D::new(
+                CoordinateFrame::Crs(EpsgCode::new(4979)),
+                [35.9, 140.0],
+            )),
+        ]);
+        let out = col.reproject(EpsgCode::new(4978), &mut cache).unwrap();
+        let Geometry::Euclidean3D(Euclidean3DGeometry::Collection(c)) = &out else {
+            panic!("expected a promoted 3D collection, got {out:?}");
+        };
+        assert_eq!(c.members().len(), 2);
+        assert!(matches!(c.members()[1], Euclidean3DGeometry::Point(_),));
     }
 
     #[test]
@@ -297,25 +304,30 @@ mod tests {
             CoordinateFrame::Crs(EpsgCode::new(4326)),
             [[35.6, 139.7], [35.7, 139.8]],
         );
-        ls.reproject(EpsgCode::new(3857), &mut cache).unwrap();
-        // A leaf with no elevation does not acquire one from the transform.
+        let out = ls.reproject(EpsgCode::new(3857), &mut cache).unwrap();
+        // No elevation in, none acquired from the transform.
+        let Geometry::Euclidean2D(Euclidean2DGeometry::LineString(ls)) = &out else {
+            panic!("expected a 2D line string, got {out:?}");
+        };
         assert_eq!(ls.elevation(), None);
     }
 
     #[test]
-    fn coordinateless_leaf_does_not_keep_a_source_frame_elevation() {
+    fn a_coordinateless_2_5d_leaf_promotes_rather_than_keeping_a_stale_height() {
         let mut cache = ReprojectionCache::new();
         let mut ls = LineString2D::from_coords_at_elevation(
-            CoordinateFrame::Crs(EpsgCode::new(4326)),
+            CoordinateFrame::Crs(EpsgCode::new(4979)),
             Vec::<[f64; 2]>::new(),
             10.0,
         );
-        ls.reproject(EpsgCode::new(3857), &mut cache).unwrap();
-        // The frame moved, so an untransformed height would now be stated in a
-        // frame it was never expressed in. With no coordinate to evaluate the
-        // vertical transform at, the leaf comes out pure 2D instead.
-        assert_eq!(ls.frame(), &CoordinateFrame::Crs(EpsgCode::new(3857)));
-        assert_eq!(ls.elevation(), None);
+        let out = ls.reproject(EpsgCode::new(4978), &mut cache).unwrap();
+        // No coordinate to evaluate the vertical transform at, so the height
+        // cannot be restated in the target frame.
+        let Geometry::Euclidean3D(Euclidean3DGeometry::LineString(ls)) = &out else {
+            panic!("expected a promoted 3D line string, got {out:?}");
+        };
+        assert_eq!(ls.frame(), &CoordinateFrame::Crs(EpsgCode::new(4978)));
+        assert!(ls.coords().is_empty());
     }
 
     #[test]
@@ -325,13 +337,13 @@ mod tests {
             CoordinateFrame::Crs(EpsgCode::new(4979)),
             [139.7, 35.6, 50.0],
         );
-        p.reproject(EpsgCode::new(4979), &mut cache).unwrap();
+        let out = p.reproject(EpsgCode::new(4979), &mut cache).unwrap();
         assert_eq!(
-            p,
-            Point3D::new(
+            out,
+            Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
                 CoordinateFrame::Crs(EpsgCode::new(4979)),
                 [139.7, 35.6, 50.0]
-            )
+            )))
         );
     }
 

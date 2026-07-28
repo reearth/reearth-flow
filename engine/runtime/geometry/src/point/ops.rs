@@ -1,6 +1,7 @@
 use super::{Point2D, Point3D};
 use crate::coordinate::{CoordinateFrame, EpsgCode};
 use crate::ops::{Aabb, BoundingBox, Reproject, ReprojectionCache, UnsupportedOperation};
+use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
 impl BoundingBox for Point2D {
     fn bounding_box(&self) -> Result<Aabb, UnsupportedOperation> {
@@ -14,20 +15,51 @@ impl BoundingBox for Point3D {
     }
 }
 
+impl Point2D {
+    /// Move the point out, leaving an empty husk.
+    fn take(&mut self) -> Self {
+        Self {
+            frame: std::mem::take(&mut self.frame),
+            position: std::mem::take(&mut self.position),
+        }
+    }
+
+    /// The leaf moved out and wrapped as a [`Geometry`].
+    fn take_geometry(&mut self) -> Geometry {
+        Geometry::Euclidean2D(Euclidean2DGeometry::Point(self.take()))
+    }
+}
+
+impl Point3D {
+    /// Move the point out, leaving an empty husk.
+    fn take(&mut self) -> Self {
+        Self {
+            frame: std::mem::take(&mut self.frame),
+            position: std::mem::take(&mut self.position),
+        }
+    }
+
+    /// The leaf moved out and wrapped as a [`Geometry`].
+    fn take_geometry(&mut self) -> Geometry {
+        Geometry::Euclidean3D(Euclidean3DGeometry::Point(self.take()))
+    }
+}
+
 impl Reproject for Point2D {
     fn reproject(
         &mut self,
         target: EpsgCode,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
+    ) -> crate::error::Result<Geometry> {
         let from = self.frame.require_crs()?;
+        let mut p = self.take();
         if from != target {
-            let [x, y] = self.position;
+            let [x, y] = p.position;
             let [nx, ny, _] = cache.transform(from, target, [x, y, 0.0])?;
-            self.position = [nx, ny];
-            self.frame = CoordinateFrame::Crs(target);
+            p.position = [nx, ny];
+            p.frame = CoordinateFrame::Crs(target);
         }
-        Ok(())
+        Ok(Geometry::Euclidean2D(Euclidean2DGeometry::Point(p)))
     }
 }
 
@@ -36,13 +68,14 @@ impl Reproject for Point3D {
         &mut self,
         target: EpsgCode,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
+    ) -> crate::error::Result<Geometry> {
         let from = self.frame.require_crs()?;
+        let mut p = self.take();
         if from != target {
-            self.position = cache.transform(from, target, self.position)?;
-            self.frame = CoordinateFrame::Crs(target);
+            p.position = cache.transform(from, target, p.position)?;
+            p.frame = CoordinateFrame::Crs(target);
         }
-        Ok(())
+        Ok(Geometry::Euclidean3D(Euclidean3DGeometry::Point(p)))
     }
 }
 
@@ -71,14 +104,14 @@ impl ConvertFrame for Point2D {
         target: &CoordinateFrame,
         base_point: Option<[f64; 3]>,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
+    ) -> crate::error::Result<Geometry> {
         match plan_frame_step(&self.frame, target, base_point)? {
-            FrameStep::Noop => Ok(()),
+            FrameStep::Noop => Ok(self.take_geometry()),
             FrameStep::Reproject(to) => self.reproject(to, cache),
             FrameStep::Translate(offset, frame) => {
                 self.translate(offset)?;
                 self.frame = frame;
-                Ok(())
+                Ok(self.take_geometry())
             }
         }
     }
@@ -90,14 +123,14 @@ impl ConvertFrame for Point3D {
         target: &CoordinateFrame,
         base_point: Option<[f64; 3]>,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
+    ) -> crate::error::Result<Geometry> {
         match plan_frame_step(&self.frame, target, base_point)? {
-            FrameStep::Noop => Ok(()),
+            FrameStep::Noop => Ok(self.take_geometry()),
             FrameStep::Reproject(to) => self.reproject(to, cache),
             FrameStep::Translate(offset, frame) => {
                 self.translate(offset)?;
                 self.frame = frame;
-                Ok(())
+                Ok(self.take_geometry())
             }
         }
     }

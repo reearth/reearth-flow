@@ -33,18 +33,67 @@ impl BoundingBox for PolygonMesh3D {
     }
 }
 
+impl PolygonMesh2D {
+    /// Move the mesh out, leaving an empty husk.
+    fn take(&mut self) -> Self {
+        Self {
+            frame: std::mem::take(&mut self.frame),
+            vertices: std::mem::take(&mut self.vertices),
+            z: self.z.take(),
+            face_indices: std::mem::take(&mut self.face_indices),
+            face_offsets: std::mem::take(&mut self.face_offsets),
+            interior_offsets: std::mem::take(&mut self.interior_offsets),
+            appearance: self.appearance.take(),
+        }
+    }
+
+    /// The leaf moved out and wrapped as a [`Geometry`].
+    fn take_geometry(&mut self) -> Geometry {
+        Geometry::Euclidean2D(Euclidean2DGeometry::PolygonMesh(Box::new(self.take())))
+    }
+}
+
+impl PolygonMesh3D {
+    /// Move the mesh out, leaving an empty husk.
+    fn take(&mut self) -> Self {
+        Self {
+            frame: std::mem::take(&mut self.frame),
+            data: PolygonMesh3DData {
+                vertices: std::mem::take(&mut self.data.vertices),
+                face_indices: std::mem::take(&mut self.data.face_indices),
+                face_offsets: std::mem::take(&mut self.data.face_offsets),
+                interior_offsets: std::mem::take(&mut self.data.interior_offsets),
+                appearance: self.data.appearance.take(),
+            },
+        }
+    }
+
+    /// The leaf moved out and wrapped as a [`Geometry`].
+    fn take_geometry(&mut self) -> Geometry {
+        Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(Box::new(self.take())))
+    }
+}
+
 impl Reproject for PolygonMesh2D {
     fn reproject(
         &mut self,
         target: EpsgCode,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
+    ) -> crate::error::Result<Geometry> {
         let from = self.frame.require_crs()?;
-        if from != target {
-            transform_coords_2d(cache, from, target, &mut self.vertices, &mut self.z)?;
-            self.frame = CoordinateFrame::Crs(target);
+        if from == target {
+            return Ok(self.take_geometry());
         }
-        Ok(())
+        // One elevation cannot describe a position-varying vertical result.
+        if self.z.is_some() {
+            return self.take().into_3d().reproject(target, cache);
+        }
+        let mut m = self.take();
+        transform_coords_2d(cache, from, target, &mut m.vertices)?;
+        m.frame = CoordinateFrame::Crs(target);
+        Ok(Geometry::Euclidean2D(Euclidean2DGeometry::PolygonMesh(
+            Box::new(m),
+        )))
     }
 }
 
@@ -53,13 +102,16 @@ impl Reproject for PolygonMesh3D {
         &mut self,
         target: EpsgCode,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
+    ) -> crate::error::Result<Geometry> {
         let from = self.frame.require_crs()?;
+        let mut m = self.take();
         if from != target {
-            transform_coords_3d(cache, from, target, self.data.vertices_mut())?;
-            self.frame = CoordinateFrame::Crs(target);
+            transform_coords_3d(cache, from, target, m.data.vertices_mut())?;
+            m.frame = CoordinateFrame::Crs(target);
         }
-        Ok(())
+        Ok(Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(
+            Box::new(m),
+        )))
     }
 }
 
@@ -85,14 +137,14 @@ impl ConvertFrame for PolygonMesh2D {
         target: &CoordinateFrame,
         base_point: Option<[f64; 3]>,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
+    ) -> crate::error::Result<Geometry> {
         match plan_frame_step(&self.frame, target, base_point)? {
-            FrameStep::Noop => Ok(()),
+            FrameStep::Noop => Ok(self.take_geometry()),
             FrameStep::Reproject(to) => self.reproject(to, cache),
             FrameStep::Translate(offset, frame) => {
                 self.translate(offset)?;
                 self.frame = frame;
-                Ok(())
+                Ok(self.take_geometry())
             }
         }
     }
@@ -104,14 +156,14 @@ impl ConvertFrame for PolygonMesh3D {
         target: &CoordinateFrame,
         base_point: Option<[f64; 3]>,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
+    ) -> crate::error::Result<Geometry> {
         match plan_frame_step(&self.frame, target, base_point)? {
-            FrameStep::Noop => Ok(()),
+            FrameStep::Noop => Ok(self.take_geometry()),
             FrameStep::Reproject(to) => self.reproject(to, cache),
             FrameStep::Translate(offset, frame) => {
                 self.translate(offset)?;
                 self.frame = frame;
-                Ok(())
+                Ok(self.take_geometry())
             }
         }
     }

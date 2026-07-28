@@ -354,41 +354,14 @@ impl Euclidean2DGeometry {
     }
 }
 
-impl Geometry {
-    /// Give up the 2D embedding when a 2.5D geometry is about to be reprojected
-    /// across CRSs, replacing it with its 3D counterpart.
-    ///
-    /// A leaf holds one elevation for all of its coordinates, and a reprojection
-    /// is the one frame step whose vertical result varies with position, so the
-    /// single elevation cannot describe the result. The rigid steps can: a
-    /// translation shifts that one elevation along with the coordinates, so a
-    /// 2.5D geometry stays 2.5D across the Euclidean/CRS boundary.
-    fn make_3d_for_reprojection(&mut self, step_reprojects: bool) {
-        if !step_reprojects {
-            return;
-        }
-        let Self::Euclidean2D(g) = self else { return };
-        if !g.carries_elevation() {
-            return;
-        }
-        let Self::Euclidean2D(g) = std::mem::take(self) else {
-            unreachable!("just matched as 2D")
-        };
-        *self = Self::Euclidean3D(g.into_3d());
-    }
-}
-
 impl Reproject for Geometry {
     fn reproject(
         &mut self,
         target: EpsgCode,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
-        // Reprojecting is always a CRS-to-CRS step, so a 2.5D geometry gives up
-        // its single elevation here and comes out 3D.
-        self.make_3d_for_reprojection(true);
+    ) -> crate::error::Result<Geometry> {
         match self {
-            Geometry::None => Ok(()),
+            Geometry::None => Ok(Geometry::None),
             Geometry::Euclidean2D(g) => g.reproject(target, cache),
             Geometry::Euclidean3D(g) => g.reproject(target, cache),
             Geometry::GeometryCollection(c) => c.reproject(target, cache),
@@ -401,11 +374,13 @@ impl Reproject for GeometryCollection {
         &mut self,
         target: EpsgCode,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
-        for member in self.members_mut() {
-            member.reproject(target, cache)?;
+    ) -> crate::error::Result<Geometry> {
+        // Cross-dimensional by definition: members convert independently.
+        let mut out = std::mem::take(self);
+        for member in out.members.iter_mut() {
+            *member = member.reproject(target, cache)?;
         }
-        Ok(())
+        Ok(Geometry::GeometryCollection(out))
     }
 }
 
@@ -415,20 +390,10 @@ impl ConvertFrame for Geometry {
         target: &coordinate::CoordinateFrame,
         base_point: Option<[f64; 3]>,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
+    ) -> crate::error::Result<Geometry> {
         match self {
-            Geometry::None => Ok(()),
-            Geometry::Euclidean2D(g) => {
-                // Only a CRS-to-CRS step reprojects; the rigid steps keep a 2.5D
-                // geometry 2.5D, so the embedding turns on the planned step.
-                let reprojects = g.reprojects_to(target, base_point)?;
-                self.make_3d_for_reprojection(reprojects);
-                match self {
-                    Geometry::Euclidean2D(g) => g.convert_frame(target, base_point, cache),
-                    Geometry::Euclidean3D(g) => g.convert_frame(target, base_point, cache),
-                    _ => unreachable!("stayed 2D or became 3D"),
-                }
-            }
+            Geometry::None => Ok(Geometry::None),
+            Geometry::Euclidean2D(g) => g.convert_frame(target, base_point, cache),
             Geometry::Euclidean3D(g) => g.convert_frame(target, base_point, cache),
             Geometry::GeometryCollection(c) => c.convert_frame(target, base_point, cache),
         }
@@ -441,11 +406,12 @@ impl ConvertFrame for GeometryCollection {
         target: &coordinate::CoordinateFrame,
         base_point: Option<[f64; 3]>,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
-        for member in self.members_mut() {
-            member.convert_frame(target, base_point, cache)?;
+    ) -> crate::error::Result<Geometry> {
+        let mut out = std::mem::take(self);
+        for member in out.members.iter_mut() {
+            *member = member.convert_frame(target, base_point, cache)?;
         }
-        Ok(())
+        Ok(Geometry::GeometryCollection(out))
     }
 }
 
