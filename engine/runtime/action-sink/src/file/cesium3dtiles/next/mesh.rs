@@ -217,10 +217,19 @@ fn extract_one(mut mesh: PolygonMesh3D, caches: &mut ExtractCaches) -> Option<Ex
         return None;
     }
 
-    if let Err(e) = mesh.reproject(WGS84_GEOCENTRIC, &mut caches.geocentric) {
-        tracing::warn!("Cesium3DTilesWriter: failed to reproject to ECEF: {e:?}");
-        return None;
-    }
+    let mut mesh = match mesh.reproject(WGS84_GEOCENTRIC, &mut caches.geocentric) {
+        Ok(Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(mesh))) => *mesh,
+        Ok(other) => {
+            tracing::warn!(
+                "Cesium3DTilesWriter: ECEF reprojection did not yield a 3D polygon mesh: {other:?}"
+            );
+            return None;
+        }
+        Err(e) => {
+            tracing::warn!("Cesium3DTilesWriter: failed to reproject to ECEF: {e:?}");
+            return None;
+        }
+    };
 
     let result = match mesh.triangulate_with_normals(&mut caches.triangulation) {
         Ok(result) => result,
@@ -269,10 +278,19 @@ fn extract_triangular(
         return None;
     }
 
-    if let Err(e) = mesh.reproject(WGS84_GEOCENTRIC, &mut caches.geocentric) {
-        tracing::warn!("Cesium3DTilesWriter: failed to reproject to ECEF: {e:?}");
-        return None;
-    }
+    let mesh = match mesh.reproject(WGS84_GEOCENTRIC, &mut caches.geocentric) {
+        Ok(Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(mesh))) => *mesh,
+        Ok(other) => {
+            tracing::warn!(
+                "Cesium3DTilesWriter: ECEF reprojection did not yield a 3D triangle mesh: {other:?}"
+            );
+            return None;
+        }
+        Err(e) => {
+            tracing::warn!("Cesium3DTilesWriter: failed to reproject to ECEF: {e:?}");
+            return None;
+        }
+    };
 
     // Same convention as the polygon path: the flat normal is the triangle's
     // right-hand-rule normal in the (now ECEF) coordinates, times the frame's

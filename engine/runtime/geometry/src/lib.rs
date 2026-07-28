@@ -63,7 +63,7 @@ use ops::Split;
 #[cfg(feature = "new-geometry")]
 use validation_next::{Validate, ValidationParams, ValidationReport, ValidationType};
 
-use coordinate::EpsgCode;
+use coordinate::{CoordinateFrame, EpsgCode};
 
 use collection::{Collection2D, Collection3D};
 use csg::Csg;
@@ -150,8 +150,8 @@ impl GeometryCollection {
     }
 }
 
-/// 2D-embedded geometry. All coordinates are 2D `(x, y)`; some leaves carry an
-/// optional per-vertex elevation (2.5D).
+/// 2D-embedded geometry. All coordinates are 2D `(x, y)`; some leaves carry a
+/// single optional elevation the whole leaf lies at (2.5D).
 ///
 /// The heavy aggregate leaves (`Polygon`, the meshes) are boxed so the small,
 /// common variants don't inflate the enum — and `Geometry` with them — to the
@@ -296,14 +296,68 @@ impl Triangulate for GeometryCollection {
     }
 }
 
+impl Euclidean2DGeometry {
+    /// Whether any part of this geometry lies at an elevation (2.5D).
+    pub(crate) fn carries_elevation(&self) -> bool {
+        match self {
+            Self::Point(_) => false,
+            Self::LineString(g) => g.elevation().is_some(),
+            Self::Polygon(g) => g.elevation().is_some(),
+            Self::PolygonMesh(g) => g.elevation().is_some(),
+            Self::TriangularMesh(g) => g.elevation().is_some(),
+            Self::Collection(c) => c.members().iter().any(Self::carries_elevation),
+        }
+    }
+
+    /// Whether converting to `target` reprojects this geometry across CRSs.
+    pub(crate) fn reprojects_to(
+        &self,
+        target: &CoordinateFrame,
+        base_point: Option<[f64; 3]>,
+    ) -> crate::error::Result<bool> {
+        let frame = match self {
+            Self::Point(g) => g.frame(),
+            Self::LineString(g) => g.frame(),
+            Self::Polygon(g) => g.frame(),
+            Self::PolygonMesh(g) => g.frame(),
+            Self::TriangularMesh(g) => g.frame(),
+            Self::Collection(c) => {
+                for member in c.members() {
+                    if member.reprojects_to(target, base_point)? {
+                        return Ok(true);
+                    }
+                }
+                return Ok(false);
+            }
+        };
+        Ok(matches!(
+            ops::plan_frame_step(frame, target, base_point)?,
+            ops::FrameStep::Reproject(_)
+        ))
+    }
+
+    /// The 3D counterpart of this geometry, with every coordinate placed at the
+    /// elevation its leaf lies at, or at `0.0` where there is none.
+    pub(crate) fn into_3d(self) -> Euclidean3DGeometry {
+        match self {
+            Self::Point(g) => Euclidean3DGeometry::Point(g.into_3d()),
+            Self::LineString(g) => Euclidean3DGeometry::LineString(g.into_3d()),
+            Self::Polygon(g) => Euclidean3DGeometry::Polygon(Box::new(g.into_3d())),
+            Self::PolygonMesh(g) => Euclidean3DGeometry::PolygonMesh(Box::new(g.into_3d())),
+            Self::TriangularMesh(g) => Euclidean3DGeometry::TriangularMesh(Box::new(g.into_3d())),
+            Self::Collection(c) => Euclidean3DGeometry::Collection(c.into_3d()),
+        }
+    }
+}
+
 impl Reproject for Geometry {
     fn reproject(
         &mut self,
         target: EpsgCode,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
+    ) -> crate::error::Result<Geometry> {
         match self {
-            Geometry::None => Ok(()),
+            Geometry::None => Ok(Geometry::None),
             Geometry::Euclidean2D(g) => g.reproject(target, cache),
             Geometry::Euclidean3D(g) => g.reproject(target, cache),
             Geometry::GeometryCollection(c) => c.reproject(target, cache),
@@ -316,11 +370,12 @@ impl Reproject for GeometryCollection {
         &mut self,
         target: EpsgCode,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
-        for member in self.members_mut() {
-            member.reproject(target, cache)?;
+    ) -> crate::error::Result<Geometry> {
+        let mut out = std::mem::take(self);
+        for member in out.members.iter_mut() {
+            *member = member.reproject(target, cache)?;
         }
-        Ok(())
+        Ok(Geometry::GeometryCollection(out))
     }
 }
 
@@ -330,9 +385,9 @@ impl ConvertFrame for Geometry {
         target: &coordinate::CoordinateFrame,
         base_point: Option<[f64; 3]>,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
+    ) -> crate::error::Result<Geometry> {
         match self {
-            Geometry::None => Ok(()),
+            Geometry::None => Ok(Geometry::None),
             Geometry::Euclidean2D(g) => g.convert_frame(target, base_point, cache),
             Geometry::Euclidean3D(g) => g.convert_frame(target, base_point, cache),
             Geometry::GeometryCollection(c) => c.convert_frame(target, base_point, cache),
@@ -346,11 +401,12 @@ impl ConvertFrame for GeometryCollection {
         target: &coordinate::CoordinateFrame,
         base_point: Option<[f64; 3]>,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
-        for member in self.members_mut() {
-            member.convert_frame(target, base_point, cache)?;
+    ) -> crate::error::Result<Geometry> {
+        let mut out = std::mem::take(self);
+        for member in out.members.iter_mut() {
+            *member = member.convert_frame(target, base_point, cache)?;
         }
-        Ok(())
+        Ok(Geometry::GeometryCollection(out))
     }
 }
 
@@ -531,15 +587,11 @@ mod triangulate_tests {
 
         let poly2d = Polygon2D::from_rings(e.clone(), square, Vec::<Vec<[f64; 2]>>::new());
         let poly2d_hole = Polygon2D::from_rings(e.clone(), square, vec![hole]);
-        let poly2d_elev = Polygon2D::from_rings_with_elevation(
+        let poly2d_elev = Polygon2D::from_rings_at_elevation(
             e.clone(),
-            [
-                [0.0, 0.0, 1.0],
-                [4.0, 0.0, 2.0],
-                [4.0, 4.0, 3.0],
-                [0.0, 0.0, 1.0],
-            ],
-            Vec::<Vec<[f64; 3]>>::new(),
+            [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 0.0]],
+            Vec::<Vec<[f64; 2]>>::new(),
+            1.0,
         );
         let poly3d = Polygon3D::from_rings(
             e.clone(),
@@ -781,7 +833,7 @@ mod force_2d_tests {
         // A 2.5D input loses its elevation and its frame's vertical axis, giving
         // exactly what a natively 2D line string in the demoted frame would.
         let mut g = Geometry::Euclidean2D(Euclidean2DGeometry::LineString(
-            LineString2D::from_coords_with_elevation(crs(), [[0.0, 0.0, 5.0], [2.0, 1.0, 9.0]]),
+            LineString2D::from_coords_at_elevation(crs(), [[0.0, 0.0], [2.0, 1.0]], 5.0),
         ));
         let forced = g.force_2d().unwrap();
         let expected = Geometry::Euclidean2D(Euclidean2DGeometry::LineString(

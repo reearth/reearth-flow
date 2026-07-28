@@ -21,7 +21,7 @@ mod validation;
 
 pub use constructor::{state, PolygonBuilder2D, PolygonBuilder3D, PolygonFace};
 
-/// A planar polygon face in 2D space, with optional per-vertex elevation.
+/// A planar polygon face in 2D space, lying at a single optional elevation.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Polygon2D {
     /// Coordinate frame these coords are expressed in.
@@ -36,10 +36,8 @@ pub struct Polygon2D {
     /// holes. exterior = `coords[0 .. first interior start (or end)]`;
     /// interior j = `coords[interior_offsets[j] .. interior_offsets[j+1] (or end)]`.
     interior_offsets: Box<[u32]>,
-    /// Optional per-vertex elevation, parallel to `coords` (same ring
-    /// concatenation). INVARIANT: when `Some`, `z.len() == coords.len()`.
-    /// `None` = pure 2D (no allocation).
-    z: Option<Box<[f64]>>,
+    /// The elevation the whole face lies at. `None` = pure 2D.
+    z: Option<f64>,
     /// Materials / themes / single-face binding, incl. per-theme UV parallel to
     /// `coords`; `None` = bare geometry.
     appearance: Option<Appearance>,
@@ -90,6 +88,12 @@ impl Polygon2D {
             let end = offsets.get(j + 1).map_or(coords.len(), |&o| o as usize);
             &coords[start..end]
         })
+    }
+
+    /// The elevation the face lies at, or `None` when it is pure 2D.
+    #[inline]
+    pub fn elevation(&self) -> Option<f64> {
+        self.z
     }
 
     /// Borrow the appearance, if any.

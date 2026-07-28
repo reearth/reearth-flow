@@ -1,7 +1,9 @@
-use super::{TriangularMesh2D, TriangularMesh3D};
+use super::{TriangularMesh2D, TriangularMesh3D, TriangularMesh3DData};
 use crate::coordinate::{CoordinateFrame, EpsgCode};
 use crate::ops::reproject::{transform_coords_2d, transform_coords_3d};
-use crate::ops::{Aabb, BoundingBox, Reproject, ReprojectionCache, UnsupportedOperation};
+use crate::ops::{
+    lift_coords, Aabb, BoundingBox, Reproject, ReprojectionCache, UnsupportedOperation,
+};
 
 use reearth_flow_common::attribute::Attributes;
 
@@ -27,24 +29,62 @@ impl BoundingBox for TriangularMesh3D {
     }
 }
 
+impl TriangularMesh2D {
+    /// Move the mesh out, leaving an empty husk.
+    fn take(&mut self) -> Self {
+        Self {
+            frame: std::mem::take(&mut self.frame),
+            vertices: std::mem::take(&mut self.vertices),
+            z: self.z.take(),
+            indices: std::mem::take(&mut self.indices),
+            appearance: self.appearance.take(),
+        }
+    }
+
+    /// The leaf moved out and wrapped as a [`Geometry`].
+    fn take_geometry(&mut self) -> Geometry {
+        Geometry::Euclidean2D(Euclidean2DGeometry::TriangularMesh(Box::new(self.take())))
+    }
+}
+
+impl TriangularMesh3D {
+    /// Move the mesh out, leaving an empty husk.
+    fn take(&mut self) -> Self {
+        Self {
+            frame: std::mem::take(&mut self.frame),
+            data: TriangularMesh3DData {
+                vertices: std::mem::take(&mut self.data.vertices),
+                indices: std::mem::take(&mut self.data.indices),
+                appearance: self.data.appearance.take(),
+            },
+        }
+    }
+
+    /// The leaf moved out and wrapped as a [`Geometry`].
+    fn take_geometry(&mut self) -> Geometry {
+        Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(self.take())))
+    }
+}
+
 impl Reproject for TriangularMesh2D {
     fn reproject(
         &mut self,
         target: EpsgCode,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
+    ) -> crate::error::Result<Geometry> {
         let from = self.frame.require_crs()?;
-        if from != target {
-            transform_coords_2d(
-                cache,
-                from,
-                target,
-                &mut self.vertices,
-                self.z.as_deref_mut(),
-            )?;
-            self.frame = CoordinateFrame::Crs(target);
+        if from == target {
+            return Ok(self.take_geometry());
         }
-        Ok(())
+        if self.z.is_some() {
+            return self.take().into_3d().reproject(target, cache);
+        }
+        let mut m = self.take();
+        transform_coords_2d(cache, from, target, &mut m.vertices)?;
+        m.frame = CoordinateFrame::Crs(target);
+        Ok(Geometry::Euclidean2D(Euclidean2DGeometry::TriangularMesh(
+            Box::new(m),
+        )))
     }
 }
 
@@ -53,13 +93,16 @@ impl Reproject for TriangularMesh3D {
         &mut self,
         target: EpsgCode,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
+    ) -> crate::error::Result<Geometry> {
         let from = self.frame.require_crs()?;
+        let mut m = self.take();
         if from != target {
-            transform_coords_3d(cache, from, target, self.data.vertices_mut())?;
-            self.frame = CoordinateFrame::Crs(target);
+            transform_coords_3d(cache, from, target, m.data.vertices_mut())?;
+            m.frame = CoordinateFrame::Crs(target);
         }
-        Ok(())
+        Ok(Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(
+            Box::new(m),
+        )))
     }
 }
 
@@ -67,7 +110,7 @@ use crate::ops::{plan_frame_step, translate_2d, translate_3d, ConvertFrame, Fram
 
 impl Translate for TriangularMesh2D {
     fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
-        translate_2d(&mut self.vertices, self.z.as_deref_mut(), delta);
+        translate_2d(&mut self.vertices, &mut self.z, delta);
         Ok(())
     }
 }
@@ -85,14 +128,14 @@ impl ConvertFrame for TriangularMesh2D {
         target: &CoordinateFrame,
         base_point: Option<[f64; 3]>,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
+    ) -> crate::error::Result<Geometry> {
         match plan_frame_step(&self.frame, target, base_point)? {
-            FrameStep::Noop => Ok(()),
+            FrameStep::Noop => Ok(self.take_geometry()),
             FrameStep::Reproject(to) => self.reproject(to, cache),
             FrameStep::Translate(offset, frame) => {
                 self.translate(offset)?;
                 self.frame = frame;
-                Ok(())
+                Ok(self.take_geometry())
             }
         }
     }
@@ -104,14 +147,14 @@ impl ConvertFrame for TriangularMesh3D {
         target: &CoordinateFrame,
         base_point: Option<[f64; 3]>,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
+    ) -> crate::error::Result<Geometry> {
         match plan_frame_step(&self.frame, target, base_point)? {
-            FrameStep::Noop => Ok(()),
+            FrameStep::Noop => Ok(self.take_geometry()),
             FrameStep::Reproject(to) => self.reproject(to, cache),
             FrameStep::Translate(offset, frame) => {
                 self.translate(offset)?;
                 self.frame = frame;
-                Ok(())
+                Ok(self.take_geometry())
             }
         }
     }
@@ -124,6 +167,7 @@ impl Split for TriangularMesh2D {
     ) -> Result<(), UnsupportedOperation> {
         let vertices = self.vertices();
         let frame = self.frame();
+        let elevation = self.elevation();
         for [i, j, k] in self.triangles() {
             let ring = [
                 vertices[i as usize],
@@ -131,7 +175,13 @@ impl Split for TriangularMesh2D {
                 vertices[k as usize],
                 vertices[i as usize],
             ];
-            let polygon = Polygon2D::from_rings(frame.clone(), ring, Vec::<Vec<[f64; 2]>>::new());
+            let no_holes = Vec::<Vec<[f64; 2]>>::new();
+            let polygon = match elevation {
+                None => Polygon2D::from_rings(frame.clone(), ring, no_holes),
+                Some(elevation) => {
+                    Polygon2D::from_rings_at_elevation(frame.clone(), ring, no_holes, elevation)
+                }
+            };
             emit(
                 Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(polygon))),
                 Attributes::new(),
@@ -200,6 +250,21 @@ impl ForceTwoDimension for TriangularMesh3D {
                 appearance: self.data.appearance.take(),
             },
         )))
+    }
+}
+
+impl TriangularMesh2D {
+    /// The 3D counterpart of this leaf, with every coordinate placed at the
+    /// elevation the leaf lies at, or at `0.0` when it carries none.
+    pub(crate) fn into_3d(self) -> TriangularMesh3D {
+        TriangularMesh3D::new(
+            self.frame,
+            TriangularMesh3DData {
+                vertices: lift_coords(self.vertices.iter(), self.z),
+                indices: self.indices,
+                appearance: self.appearance,
+            },
+        )
     }
 }
 
@@ -272,10 +337,11 @@ mod tests {
     fn triangular_mesh2d_force_2d_clears_elevation() {
         use crate::coordinate::EpsgCode;
 
-        let mut mesh = TriangularMesh2D::from_parts_with_elevation(
+        let mut mesh = TriangularMesh2D::from_parts_at_elevation(
             CoordinateFrame::Crs(EpsgCode::new(6697)),
-            vec![[0.0, 0.0, 5.0], [2.0, 0.0, 6.0], [2.0, 2.0, 7.0]],
+            vec![[0.0, 0.0], [2.0, 0.0], [2.0, 2.0]],
             [0u32, 1, 2],
+            5.0,
         )
         .unwrap();
         let forced = match mesh.force_2d().unwrap() {
