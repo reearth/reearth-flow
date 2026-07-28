@@ -285,7 +285,12 @@ fn send_xml_fragment(
             let url = match feature.get(&property.attribute) {
                 Some(AttributeValue::String(url)) => Uri::from_str(url)
                     .map_err(|e| XmlProcessorError::Fragmenter(format!("{e:?}")))?,
-                _ => return Err(XmlProcessorError::Fragmenter("No url found".to_string())),
+                _ => {
+                    return Err(XmlProcessorError::Fragmenter(format!(
+                        "No XML file path or URL found in attribute `{}`",
+                        property.attribute
+                    )))
+                }
             };
             let storage = storage_resolver
                 .resolve(&url)
