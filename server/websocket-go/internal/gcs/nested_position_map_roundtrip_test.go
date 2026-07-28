@@ -93,9 +93,12 @@ func TestGCSStoreLoad_PreservesNestedPositionMap(t *testing.T) {
 		t.Fatal("Load returned empty state")
 	}
 
+	// lr.Update is a V1 update (MergeUpdatesV1 in persistence.Load); rehydrate
+	// with the explicit V1 helper to match the adapter contract and the other
+	// gcs tests.
 	doc := crdt.New()
-	if err := doc.ApplyUpdate(lr.Update); err != nil {
-		t.Fatalf("ApplyUpdate(loaded): %v", err)
+	if err := crdt.ApplyUpdateV1(doc, lr.Update, nil); err != nil {
+		t.Fatalf("ApplyUpdateV1(loaded): %v", err)
 	}
 
 	pos := nestedPositionOf(t, doc, "nodeB")
