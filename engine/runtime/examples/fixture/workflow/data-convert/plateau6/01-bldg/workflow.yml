@@ -95,6 +95,11 @@ graphs:
           output:
             type: flowExpr
             value: '"bldg_lod1"'
+          compressOutput:
+            type: flowExpr
+            value: |
+              city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
+              city_gml + "_bldg_3dtiles_lod1.zip"
 
       # --- LOD2 branch ---
       - id: acf7b926-7c8b-4448-9a3d-af4a1d1aa2cd
@@ -120,6 +125,11 @@ graphs:
           output:
             type: flowExpr
             value: '"bldg_lod2"'
+          compressOutput:
+            type: flowExpr
+            value: |
+              city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
+              city_gml + "_bldg_3dtiles_lod2.zip"
 
       # --- LOD3 branch ---
       - id: acd88b8a-708a-4adf-ad6e-b471d934191d
@@ -145,6 +155,11 @@ graphs:
           output:
             type: flowExpr
             value: '"bldg_lod3"'
+          compressOutput:
+            type: flowExpr
+            value: |
+              city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
+              city_gml + "_bldg_3dtiles_lod3.zip"
 
     edges:
       - id: b312699e-9e9f-48e9-9624-512c788bdbe1

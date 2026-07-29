@@ -82,7 +82,7 @@ fn pack_inputs(
     // `udx` dir. The new CityGML reader resolves `codeSpace` relative to the gml,
     // so the co-located layout is required; splitting codelists into a separate
     // zip would break relative resolution.
-    let citymodel_dir = test_path.join("citymodel");
+    let citymodel_dir = test_path.join(zip_stem);
     assert!(citymodel_dir.join("udx").exists());
     let citymodel = output_dir.join(format!("{}.zip", zip_stem));
     zip_dir(&citymodel_dir, &citymodel).unwrap();
@@ -92,8 +92,8 @@ fn pack_inputs(
     inputs
 }
 
-fn direct_inputs(test_path: &Path) -> HashMap<&'static str, PathBuf> {
-    let citymodel = test_path.join("citymodel");
+fn direct_inputs(test_path: &Path, zip_stem: &str) -> HashMap<&'static str, PathBuf> {
+    let citymodel = test_path.join(zip_stem);
     assert!(
         citymodel.exists(),
         "citymodel dir not found: {}",
@@ -198,15 +198,15 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
         // schemas must sit alongside the gml; the real directory already has that
         // layout, whereas packing splits them into separate zips. Opt into packing
         // with PLATEAU_TILES_TEST_PACK=1 to exercise the archive-extraction path.
+        let zip_stem = profile
+            .citygml_zip_name
+            .strip_suffix(".zip")
+            .unwrap_or(&profile.citygml_zip_name);
         let pack = env::var("PLATEAU_TILES_TEST_PACK").ok().as_deref() == Some("1");
         let inputs = if pack {
-            let zip_stem = profile
-                .citygml_zip_name
-                .strip_suffix(".zip")
-                .unwrap_or(&profile.citygml_zip_name);
             pack_inputs(&test_path, &output_dir, zip_stem)
         } else {
-            direct_inputs(&test_path)
+            direct_inputs(&test_path, zip_stem)
         };
 
         info!(
@@ -216,10 +216,6 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
         );
         let start_time = std::time::Instant::now();
 
-        let zip_stem = profile
-            .citygml_zip_name
-            .strip_suffix(".zip")
-            .unwrap_or(&profile.citygml_zip_name);
         let target_package = zip_stem
             .find("_op_")
             .map(|pos| zip_stem[pos + 4..].to_string());
