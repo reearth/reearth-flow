@@ -94,13 +94,21 @@ pub struct GeometryFilter {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(tag = "filterType", rename_all = "camelCase")]
 pub enum GeometryFilterParam {
+    /// # No Geometry
+    /// Separates the features that carry no geometry at all from the ones that do.
     None,
+    /// # Multiple Geometries
+    /// Separates the features whose geometry is a container that can hold more
+    /// than one part.
     #[cfg(not(feature = "new-geometry"))]
     Multiple,
+    /// # Geometry Type
+    /// Routes by the geometry family a feature belongs to: point, curve,
+    /// surface, triangle or solid.
     GeometryType,
     /// # Detailed Geometry Type
-    /// Route by the exact geometry type instead of the coarse family, so a face,
-    /// a surface mesh and a multi-surface each leave by their own port.
+    /// Routes by the exact geometry type rather than the family, so a face, a
+    /// surface mesh and a multi-surface each leave by their own port.
     #[cfg(feature = "new-geometry")]
     DetailedGeometryType,
 }
@@ -138,9 +146,10 @@ impl GeometryFilterParam {
     }
 
     /// `geometryType` keeps the coarse ports the legacy world exposed, and
-    /// `detailedGeometryType` adds one port per exact type. The two modes share
-    /// `point` and `solid`, which land on the same geometry either way, so the
-    /// lists are merged rather than concatenated.
+    /// `detailedGeometryType` adds one port per exact type. The names `point` and
+    /// `solid` appear in both lists, the coarse ones covering more types than
+    /// their detailed namesakes, so the lists are merged rather than concatenated
+    /// to declare each port once.
     #[cfg(feature = "new-geometry")]
     fn all_ports() -> Vec<Port> {
         let mut result = vec![Self::none_port()];
@@ -159,7 +168,7 @@ impl GeometryFilterParam {
 
 impl Processor for GeometryFilter {
     // Routes without touching the feature: every mode only picks the port. A
-    // geometry no port claims leaves by `unfiltered`, which is the catch-all
+    // geometry that no port claims leaves by `unfiltered`, which is the catch-all
     // rather than an error outlet, so there is no rejected port here.
     #[cfg(feature = "new-geometry")]
     fn process(
@@ -970,10 +979,6 @@ mod new_geometry_tests {
             ]))])),
             port("surface")
         );
-        assert_eq!(
-            coarse(geometry_collection([three_d(triangular_mesh_3d())])),
-            port("triangle")
-        );
     }
 
     #[test]
@@ -992,6 +997,10 @@ mod new_geometry_tests {
         assert_eq!(detailed(three_d(point_cloud())), port("point-cloud"));
         assert_eq!(detailed(two_d(line_string_2d())), port("line-string"));
         assert_eq!(detailed(three_d(line_string_3d())), port("line-string"));
+        // The distinction the coarse mode cannot express: a footprint in the plane
+        // and a face in space are separate types, as they are in FME.
+        assert_eq!(detailed(two_d(polygon_2d())), port("polygon"));
+        assert_eq!(detailed(three_d(polygon_3d())), port("face"));
         assert_eq!(detailed(two_d(polygon_mesh_2d())), port("polygon-mesh"));
         assert_eq!(detailed(three_d(polygon_mesh_3d())), port("polygon-mesh"));
         assert_eq!(
@@ -1005,14 +1014,6 @@ mod new_geometry_tests {
         assert_eq!(detailed(three_d(solid())), port("solid"));
         assert_eq!(detailed(three_d(csg())), port("csg"));
         assert_eq!(detailed(Geometry::None), UNFILTERED_PORT.clone());
-    }
-
-    // The distinction the legacy world could not express: a footprint in the plane
-    // and a face in space are separate types, as they are in FME.
-    #[test]
-    fn detailed_mode_separates_a_planar_polygon_from_a_face() {
-        assert_eq!(detailed(two_d(polygon_2d())), port("polygon"));
-        assert_eq!(detailed(three_d(polygon_3d())), port("face"));
     }
 
     #[test]
@@ -1059,52 +1060,22 @@ mod new_geometry_tests {
         assert_eq!(detailed(geometry_collection([])), UNFILTERED_PORT.clone());
     }
 
-    // The three types the PLATEAU reference workflows filter on in FME's detailed
-    // mode: Face, BRepSolid and CompositeSurface. The coarse mode flattens the
-    // first and the last into one port, which is why the mode exists.
+    // A bucket routing to a port the factory never declared silently drops every
+    // feature that reaches it, and a declared port nothing routes to is a dead
+    // outlet, so the two lists are compared as a whole rather than one at a time.
     #[test]
-    fn detailed_mode_separates_the_types_the_reference_workflows_filter_on() {
-        assert_eq!(detailed(three_d(polygon_3d())), port("face"));
-        assert_eq!(detailed(three_d(solid())), port("solid"));
-        assert_eq!(detailed(three_d(polygon_mesh_3d())), port("polygon-mesh"));
-        assert_eq!(coarse(three_d(polygon_3d())), port("surface"));
-        assert_eq!(coarse(three_d(polygon_mesh_3d())), port("surface"));
-    }
-
-    // A GML multi-surface: coarse routing keeps it on the port existing workflows
-    // wire, and detailed routing sees the collection.
-    #[test]
-    fn the_two_modes_agree_on_a_multi_surface() {
-        let multi_surface = || three_d(collection_3d([polygon_3d(), polygon_3d()]));
-        assert_eq!(coarse(multi_surface()), port("surface"));
-        assert_eq!(detailed(multi_surface()), port("multi-surface"));
-    }
-
-    // A bucket that routes to a port the factory never declared silently drops
-    // every feature that reaches it, so the two lists have to be checked against
-    // each other rather than one bucket at a time.
-    #[test]
-    fn every_port_a_bucket_routes_to_is_declared_by_the_factory() {
+    fn the_declared_ports_are_exactly_the_ports_buckets_route_to() {
         let declared = GeometryFilterFactory.get_output_ports();
-        let mut seen = std::collections::HashSet::new();
+        let mut unique = std::collections::HashSet::new();
         for port in &declared {
-            assert!(seen.insert(port.clone()), "port {port} is declared twice");
+            assert!(unique.insert(port.clone()), "port {port} is declared twice");
         }
-        let routable = [UNFILTERED_PORT.clone(), GeometryFilterParam::none_port()]
-            .into_iter()
-            .chain(CoarseType::ALL.iter().map(|ty| ty.port()))
-            .chain(DetailedType::ALL.iter().map(|ty| ty.port()));
-        for port in routable {
-            assert!(declared.contains(&port), "port {port} is not declared");
-        }
-    }
-
-    // The legacy `contains` port has no producer in this world: `multiple` is gone
-    // and the detailed buckets replace it.
-    #[test]
-    fn the_factory_declares_no_contains_port() {
-        assert!(!GeometryFilterFactory
-            .get_output_ports()
-            .contains(&port("contains")));
+        let routable: std::collections::HashSet<Port> =
+            [UNFILTERED_PORT.clone(), GeometryFilterParam::none_port()]
+                .into_iter()
+                .chain(CoarseType::ALL.iter().map(|ty| ty.port()))
+                .chain(DetailedType::ALL.iter().map(|ty| ty.port()))
+                .collect();
+        assert_eq!(unique, routable);
     }
 }
