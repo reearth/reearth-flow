@@ -104,6 +104,21 @@ describe("normalizeParams", () => {
     ).toEqual({ outer: { keep: "yes", inner: { keep: 1 } } });
   });
 
+  it("strips the same params the engine-conversion step used to strip", () => {
+    expect(
+      normalizeParams({
+        dataset: { value: "https://example.com/a.geojson", type: "string" },
+        inline: { value: "", type: "string" },
+        format: "geojson",
+        prefix: "",
+        nullish: null,
+      }),
+    ).toEqual({
+      dataset: { value: "https://example.com/a.geojson", type: "string" },
+      format: "geojson",
+    });
+  });
+
   it("returns an empty object when every param is empty", () => {
     expect(normalizeParams({ a: "", b: null })).toEqual({});
   });
