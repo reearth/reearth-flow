@@ -49,12 +49,15 @@ impl SchemaFeatureCliCommand {
     }
 }
 
-#[cfg(all(test, feature = "schema"))]
+/// Staleness of the committed schema is gated by `cargo make check-schema`,
+/// which regenerates it and fails on a diff, the same way the action schemas are
+/// checked. What that cannot see is whether `FeatureSchema` still describes the
+/// real `Feature`, so that is what is tested here.
+#[cfg(all(test, feature = "schema", feature = "new-geometry"))]
 mod tests {
     /// `FeatureSchema` is a hand mirror, so nothing stops `Feature` from growing
     /// a field the schema never learns about. Compare the two field sets on a
     /// real value.
-    #[cfg(feature = "new-geometry")]
     #[test]
     fn mirror_covers_every_field_feature_serializes() {
         use std::collections::BTreeSet;
@@ -79,23 +82,6 @@ mod tests {
         assert_eq!(
             actual, mirrored,
             "FeatureSchema no longer mirrors reearth_flow_types::Feature"
-        );
-    }
-
-    /// The committed schema must match the current wire form. If this fails, run
-    /// `cargo make schema-feature` and commit the result.
-    #[test]
-    fn committed_schema_is_up_to_date() {
-        let generated =
-            serde_json::to_string_pretty(&schemars::schema_for!(super::FeatureSchema)).unwrap();
-        let committed = include_str!(concat!(
-            env!("CARGO_MANIFEST_DIR"),
-            "/../schema/feature-intermediate.schema.json"
-        ));
-        assert_eq!(
-            generated.trim(),
-            committed.trim(),
-            "intermediate-data schema is stale; run `cargo make schema-feature` and commit"
         );
     }
 }

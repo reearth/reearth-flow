@@ -49,9 +49,7 @@ cargo make test-conv-new-geometry ${@:-}
 [tasks.test-rs]
 script = ['''
 #!/usr/bin/env bash -eux
-# Both geometry worlds. `schema` rides along with `new-geometry` so the
-# intermediate-data schema impls are compiled and the committed
-# schema/feature-intermediate.schema.json is checked for staleness.
+# Both geometry worlds.
 cargo test --workspace --all-targets --exclude workflow-tests ${@:-}
 cargo test --workspace --all-targets --features new-geometry,schema \
   --exclude workflow-tests --exclude reearth-flow-tests ${@:-}
@@ -156,13 +154,15 @@ cargo run --package reearth-flow-cli -- scaffold-i18n --dir "$PWD/schema/i18n/ac
 
 # Generates the production intermediate-data (feature) JSON schema.
 # Run after changing any geometry leaf's wire form, and commit the result.
-# `new-geometry` is the world the schema describes, so the generator is built in
-# it; `test-rs` checks the committed file against the same feature set.
 [tasks.schema-feature]
 script = [
   '''
 #!/usr/bin/env bash -eux
-cargo run --package reearth-flow-cli --features schema,new-geometry -- schema-feature > ./schema/feature-intermediate.schema.json
+out=$(mktemp)
+trap 'rm -f "$out"' EXIT
+cargo run --package reearth-flow-cli --features schema -- schema-feature > "$out"
+mv "$out" ./schema/feature-intermediate.schema.json
+trap - EXIT
 ''',
 ]
 
@@ -204,10 +204,11 @@ script = [
 
 cargo make schema-base
 cargo make schema-translated
+cargo make schema-feature
 git add -N .
 line=$(git diff | wc -l)
 if [ "$line" -gt 0 ]; then
-  echo "Please run 'cargo make schema-base' and 'cargo make schema-translated' and commit the changes."
+  echo "Please run 'cargo make schema-base', 'cargo make schema-translated' and 'cargo make schema-feature' and commit the changes."
   git --no-pager diff
   exit 1
 fi
