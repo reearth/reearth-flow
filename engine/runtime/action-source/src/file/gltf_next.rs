@@ -163,7 +163,7 @@ async fn send_feature(
 /// palette. This is the shape `TriangularMesh3D` (via `from_soup`) and its
 /// appearance setters consume; keeping it flat lets the merge-meshes path simply
 /// concatenate builds (offsetting the palette).
-#[derive(Default)]
+#[derive(Default, Debug)]
 struct MeshBuild {
     /// Triangle soup: three coordinates per triangle, in corner order.
     soup: Vec<[f64; 3]>,
@@ -197,6 +197,17 @@ fn extract_mesh_build(
     let mut palette_by_index: HashMap<usize, u32> = HashMap::new();
 
     for primitive in primitives {
+        if primitive
+            .extension_value("KHR_draco_mesh_compression")
+            .is_some()
+        {
+            return Err(SourceError::GltfReader(
+                "KHR_draco_mesh_compression is not yet supported \
+                 (Draco decode pending; see issue #2311)"
+                    .to_string(),
+            ));
+        }
+
         let pos_accessor = primitive
             .get(&gltf::Semantic::Positions)
             .ok_or_else(|| SourceError::GltfReader("Primitive has no positions".to_string()))?;
@@ -764,6 +775,32 @@ mod tests {
         for z in [1.0_f64, 2.0, 3.0] {
             assert!(zs.contains(&z), "z={z} missing from mesh vertices {zs:?}");
         }
+    }
+
+    #[test]
+    fn draco_compressed_primitive_errors_clearly() {
+        // Minimal glTF: one mesh, one primitive carrying KHR_draco_mesh_compression.
+        let json = r#"{
+          "asset": {"version": "2.0"},
+          "extensionsUsed": ["KHR_draco_mesh_compression"],
+          "meshes": [{"primitives": [{
+            "attributes": {"POSITION": 0},
+            "extensions": {"KHR_draco_mesh_compression": {"bufferView": 0, "attributes": {"POSITION": 0}}}
+          }]}],
+          "nodes": [{"mesh": 0}],
+          "scenes": [{"nodes": [0]}],
+          "scene": 0,
+          "accessors": [{"componentType": 5126, "count": 3, "type": "VEC3", "min": [0.0, 0.0, 0.0], "max": [0.0, 0.0, 0.0]}],
+          "bufferViews": [{"buffer": 0, "byteLength": 12}],
+          "buffers": [{"byteLength": 12}]
+        }"#;
+        let gltf = gltf::Gltf::from_slice(json.as_bytes()).expect("parse");
+        let prim: Vec<_> = gltf.meshes().next().unwrap().primitives().collect();
+        let base = Uri::from_str("file://./x.gltf").unwrap();
+        let err = extract_mesh_build(&prim, &[vec![0u8; 12]], None, &base).unwrap_err();
+        let msg = format!("{err:?}");
+        assert!(msg.contains("KHR_draco_mesh_compression"), "got: {msg}");
+        assert!(msg.contains("2311"), "should point to follow-up issue: {msg}");
     }
 
     // A textured glTF: one triangle with TEXCOORD_0 and a PBR material whose
