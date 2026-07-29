@@ -170,7 +170,7 @@ mod tests {
     use reearth_flow_common::compress::compress;
     use reearth_flow_geometry::coordinate::CoordinateFrame;
     use reearth_flow_geometry::line_string::LineString3D;
-    use reearth_flow_geometry::{Euclidean3DGeometry, Geometry};
+    use reearth_flow_geometry::Euclidean3DGeometry;
 
     const SOURCE: &str = "geom";
 
