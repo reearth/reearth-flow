@@ -40,7 +40,7 @@ impl ProcessorFactory for GridDividerFactory {
     }
 
     fn description(&self) -> &str {
-        "Divide Polygons into Regular Grid Cells"
+        "Divides polygon geometries into a regular grid of equal-sized cells."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -52,7 +52,7 @@ impl ProcessorFactory for GridDividerFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["2d"]
+        &["spatial"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -116,18 +116,22 @@ impl ProcessorFactory for GridDividerFactory {
     }
 }
 
-/// # GridDivider Parameters
+/// # Grid Divider Parameters
+/// Configure the size of the grid cells and how features are grouped onto a shared grid.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GridDividerParam {
     /// # Unit Square Size
-    /// Side length of each grid cell (in the same units as the geometry coordinates)
+    /// Side length of each grid cell, in the same units as the geometry coordinates.
+    /// Must be greater than zero.
     pub unit_square_size: f64,
     /// # Keep Square Only
-    /// If true, only output complete grid squares (discard edge pieces). Default: false
+    /// Whether to emit only complete grid squares, discarding partial cells at the
+    /// edge of a geometry. Defaults to false.
     pub keep_square_only: Option<bool>,
     /// # Group By Attributes
-    /// Attributes used to group features - each group gets its own grid origin
+    /// Attributes whose values group features together. Each group is divided on
+    /// its own grid origin, derived from that group's combined bounds.
     pub group_by: Option<Vec<Attribute>>,
 }
 

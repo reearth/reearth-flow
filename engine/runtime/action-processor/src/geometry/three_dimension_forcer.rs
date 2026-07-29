@@ -27,7 +27,7 @@ impl ProcessorFactory for ThreeDimensionForcerFactory {
     }
 
     fn description(&self) -> &str {
-        "Convert 2D Geometry to 3D by Adding Z-Coordinates"
+        "Adds Z-coordinates to 2D geometries to produce 3D output."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -90,18 +90,20 @@ impl ProcessorFactory for ThreeDimensionForcerFactory {
     }
 }
 
-/// # ThreeDimensionForcer Parameters
-/// Configure how to convert 2D geometries to 3D by adding Z-coordinates
+/// # Three Dimension Forcer Parameters
+/// Configure the elevation applied to 2D geometry and how existing Z values are treated.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 #[derive(Default)]
 pub struct ThreeDimensionForcerParam {
     /// # Elevation
-    /// The Z-coordinate (elevation) value to add to all points. Can be a constant value or an expression. Defaults to 0.0 if not specified.
+    /// Z-coordinate applied to every point, as a constant or an expression.
+    /// Defaults to 0.0.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub elevation: Option<Code<{ CodeType::FlowExpr as u32 }>>,
     /// # Preserve Existing Z Values
-    /// If true, geometries that are already 3D will pass through unchanged. If false, existing Z values will be replaced with the specified elevation. Defaults to false.
+    /// Whether geometry that is already 3D passes through untouched. When false,
+    /// existing Z values are replaced with the elevation. Defaults to false.
     #[serde(default)]
     pub preserve_existing_z: bool,
 }

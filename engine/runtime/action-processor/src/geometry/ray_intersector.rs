@@ -36,7 +36,7 @@ use crate::ACCUMULATOR_BUFFER_BYTE_THRESHOLD;
 static RAY_PORT: Lazy<Port> = Lazy::new(|| Port::new("ray"));
 static GEOM_PORT: Lazy<Port> = Lazy::new(|| Port::new("geom"));
 static INTERSECTION_PORT: Lazy<Port> = Lazy::new(|| Port::new("intersection"));
-static NO_INTERSECTION_PORT: Lazy<Port> = Lazy::new(|| Port::new("no_intersection"));
+static NO_INTERSECTION_PORT: Lazy<Port> = Lazy::new(|| Port::new("no-intersection"));
 
 /// Sanitize a pair_id string for safe use as a filename component.
 /// Only allows alphanumeric, hyphen, and underscore; replaces everything
@@ -79,7 +79,7 @@ impl ProcessorFactory for RayIntersectorFactory {
     }
 
     fn description(&self) -> &str {
-        "Computes intersection points between rays and geometries"
+        "Computes intersection points between rays and geometries."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -91,7 +91,7 @@ impl ProcessorFactory for RayIntersectorFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["ray", "intersection", "3d"]
+        &["3d", "spatial"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -204,67 +204,81 @@ impl ProcessorFactory for RayIntersectorFactory {
 #[derive(Serialize, Deserialize, Debug, Clone, Default, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum OutputGeometryType {
-    /// Output a point at the intersection location (default behavior)
+    /// # Point of Intersection
+    /// Emits a point at the location where the ray meets the geometry.
     #[default]
     PointOfIntersection,
-    /// Output a line segment from ray origin to intersection point
+    /// # Line Segment to Intersection
+    /// Emits a line running from the ray's origin to the intersection point.
     LineSegmentToIntersection,
 }
 
-/// RayIntersector Parameters
+/// # Ray Intersector Parameters
+/// Configure how rays and geometries are paired and how intersection results are output.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct RayIntersectorParams {
-    /// Defines how to extract ray data from feature attributes
+    /// # Ray
+    /// Attributes on the ray features that hold the ray's origin and direction.
     pub ray: RayDefinition,
 
-    /// Expression that evaluates to a pair ID (int or string) for grouping rays with geometries.
-    /// Only rays and geometries with matching pairId values are tested against each other.
+    /// # Pair ID
+    /// Expression producing the key that pairs rays with geometries. Only rays and
+    /// geometries whose keys match are tested against each other.
     pub pair_id: Code<{ CodeType::FlowExpr as u32 }>,
 
-    /// When true (default), return only the closest intersection point per ray-geometry pair.
-    /// When false, return all intersection points.
+    /// # Closest Intersection Only
+    /// Expression deciding whether to keep only the nearest hit per ray-geometry
+    /// pair rather than every hit. Defaults to true.
     #[serde(default)]
     pub closest_intersection_only: Option<Code<{ CodeType::FlowExpr as u32 }>>,
 
-    /// Tolerance for intersection calculations (evaluates to f64).
-    /// If not specified, a default tolerance is used.
-    #[serde(default)]
-    pub tolerance: Option<Code<{ CodeType::FlowExpr as u32 }>>,
-
-    /// When true (default), include intersections at the ray origin.
-    /// When false, exclude intersections where t < tolerance.
+    /// # Include Ray Origin
+    /// Expression deciding whether hits at the ray's own origin count. When false,
+    /// intersections nearer than the tolerance are discarded. Defaults to true.
     #[serde(default)]
     pub include_ray_origin: Option<Code<{ CodeType::FlowExpr as u32 }>>,
 
-    /// Type of geometry to output for intersection results.
-    /// - "pointOfIntersection" (default): Output a point at the intersection location
-    /// - "lineSegmentToIntersection": Output a line segment from ray origin to intersection point
+    /// # Output Geometry Type
+    /// Geometry to emit for each intersection.
     #[serde(default)]
     pub output_geometry_type: OutputGeometryType,
 
-    /// Expression evaluated on geometry features to extract an ID string.
-    /// When set, intersection features will include a `geom_id` attribute
-    /// identifying which geometry was hit.
+    /// # Geometry ID
+    /// Expression evaluated on each geometry feature to label it. When set, every
+    /// intersection carries a `geom_id` attribute naming the geometry it hit.
     #[serde(default)]
     pub geom_id: Option<Code<{ CodeType::FlowExpr as u32 }>>,
+
+    /// # Tolerance
+    /// Expression producing the distance below which an intersection is treated as
+    /// coincident. Defaults to 1e-10.
+    #[serde(default)]
+    pub tolerance: Option<Code<{ CodeType::FlowExpr as u32 }>>,
 }
 
-/// Defines how ray data is extracted from feature attributes.
+/// # Ray Definition
+/// Attributes that hold a ray's origin and direction.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct RayDefinition {
-    /// Attribute containing ray origin X coordinate
+    /// # Origin X Attribute
+    /// Attribute holding the X coordinate of the ray's origin.
     pub pos_x: Attribute,
-    /// Attribute containing ray origin Y coordinate
+    /// # Origin Y Attribute
+    /// Attribute holding the Y coordinate of the ray's origin.
     pub pos_y: Attribute,
-    /// Attribute containing ray origin Z coordinate
+    /// # Origin Z Attribute
+    /// Attribute holding the Z coordinate of the ray's origin.
     pub pos_z: Attribute,
-    /// Attribute containing ray direction X component
+    /// # Direction X Attribute
+    /// Attribute holding the X component of the ray's direction.
     pub dir_x: Attribute,
-    /// Attribute containing ray direction Y component
+    /// # Direction Y Attribute
+    /// Attribute holding the Y component of the ray's direction.
     pub dir_y: Attribute,
-    /// Attribute containing ray direction Z component
+    /// # Direction Z Attribute
+    /// Attribute holding the Z component of the ray's direction.
     pub dir_z: Attribute,
 }
 

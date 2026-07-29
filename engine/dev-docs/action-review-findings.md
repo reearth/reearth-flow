@@ -197,119 +197,73 @@ Image Rasterizer
 
 ---
 
-## Geometry B (11)
+## Geometry B — deferred items only (batch resolved in PR)
 
-<!-- Session 9 — GeometryReplacer through VerticalReprojector -->
+The Geometry B (11) batch was resolved per the standard. Items deferred out of it:
 
 ```
-Geometry Replacer
-  desc:    title-case — "Replace Feature Geometry from Attribute"; suggest "Replaces a
-             feature's geometry with the compressed geometry data stored in a named attribute."
-  ports:   inputPorts `default` — global note; outputPorts `default` — global note; no
-             `rejected` — evaluate for missing or malformed attribute value (§4.3)
+Horizontal Reprojector / Vertical Reprojector
+  removal: both are superseded by `Coordinate Frame Reprojector`. Each already has a
+             `#[cfg(feature = "new-geometry")] process` that errors with "use Coordinate
+             Frame Reprojector instead", above a `TODO(new-geometry)` to delete the action.
+             They were audited anyway rather than deferred, because the replacement is
+             gated out of the default build: `geometry.rs` gates the module and
+             `geometry/mapping.rs` gates the factory registration behind `new-geometry`,
+             so `Coordinate Frame Reprojector` is absent from the generated `actions.json`
+             and cannot be added to `server/api/internal/app/base_actions.go`. Until
+             new-geometry becomes the default build these two ARE the shipped reprojection
+             actions. Removal task, to land with that flip: delete both files, drop them
+             from `base_actions.go`, add `Coordinate Frame Reprojector` there, and migrate
+             the 29 (horizontal) + 20 (vertical) fixture files that reference them.
 
-Geometry Splitter
-  desc:    title-case — "Split Multi-Geometries into Individual Features"; suggest "Splits
-             multi-part geometries into individual single-geometry features."
-  params:  schema-level description "Parameters for GeometrySplitter" is an internal name
-             recycled as description — not descriptive (§3.3); suggest "Configure how
-             multi-part geometries are split into individual features."
-           splitLevel — missing title (§3.3); description duplicates the oneOf variant
-             content; trim to one sentence
-  ports:   inputPorts `default` — global note; outputPorts `default` — global note; no
-             `rejected` — evaluate for features without multi-part geometry (§4.3)
-  tags:    ["split", "geometry"] — `split` not in vocabulary; `geometry` duplicates category
-             (§6); remove both → 0 tags acceptable
+Coordinate Frame Reprojector
+  params:  `epsgCode` is required only when `destinationFrame` is `crs`, which the schema
+             cannot express as written — it is declared `Option<u16>` and validated in
+             `build`. Folding it into a tagged enum on `destinationFrame`, the way
+             `BasePoint` already is in the same file, would make it structurally required.
+           `basePointSource` is titled "Base Point" and the nested `BasePoint::Value`
+             field `basePoint` is also titled "Base Point", so the UI shows the same
+             label twice.
+  name:    Notion FLOW-DEV-182 says "Reprojector will be added instead", but the action is
+             named "Coordinate Frame Reprojector". Settle which name ships.
+  note:    not audited here — it is not in the base action set and does not appear in the
+             generated schema. Audit it when it is ungated.
 
 Geometry Validator
-  desc:    title-case — "Validate Feature Geometry Quality"; suggest "Validates feature
-             geometry for issues such as duplicate points, corrupt geometry, or
-             self-intersection."
-  params:  ValidationType oneOf — `duplicatePoints` and `duplicateConsecutivePoints` variants
-             missing per-variant descriptions; `corruptGeometry` and `selfIntersection` have
-             descriptions but no `title` (§3.4). Same UI rendering bug as ImageRasterizer
-             OnOverlap: `ValidationType` mixes one string variant (`duplicatePoints`) with three
-             object variants, causing `consolidateOneOfToEnum` in `patchSchemaTypes.ts` to bail
-             and RJSF to label all variants "option N". Requires both the Rust-side `/// # Title`
-             fix on all variants and the UI-side fix to `patchSchemaTypes.ts`.
-  ports:   inputPorts `default` — global note; outputPorts `success` ✓, `failed` ✓,
-             `rejected` ✓
-  tags:    ["validate"] — not in vocabulary; `validation` is; correct to ["validation"]
-
-Grid Divider
-  desc:    title-case — "Divide Polygons into Regular Grid Cells"; suggest "Divides polygon
-             geometries into a regular grid of equal-sized cells."
-  params:  schema-level description missing (§3.3)
-           ordering — required `unitSquareSize` comes after optionals `groupBy` and
-             `keepSquareOnly`; correct order: unitSquareSize → keepSquareOnly → groupBy (§3.5)
-  ports:   inputPorts `default` — global note; outputPorts `default` + `rejected` ✓
-  tags:    ["2d"] — not in vocabulary; replace with ["spatial"]
-
-Horizontal Reprojector
-  desc:    title-case — "Reproject Geometry to Different Coordinate System"; suggest
-             "Reprojects feature geometry from one horizontal coordinate system to another
-             using EPSG codes."
-  params:  sourceEpsgCode — description is 4 sentences; exceeds 2-sentence guideline (§3.3)
-           ordering — sourceEpsgCode (optional) appears before targetEpsgCode (required);
-             correct order: targetEpsgCode → sourceEpsgCode (§3.5)
-  ports:   inputPorts `default` — global note; outputPorts `default` — global note; no
-             `rejected` — evaluate for invalid EPSG codes or reprojection failure (§4.3)
-  tags:    ["projection", "2d"] — neither in vocabulary; replace with ["coordinate-system"]
+  params:  the param struct differs per build. `validationTypes` is
+             `#[cfg(not(feature = "new-geometry"))]`, while `disabledOptionalChecks`,
+             `planarityThreshold`, `duplicateTolerance` and `degenerateThresholds` are
+             `allow(dead_code)` in the default build and only read under `new-geometry`.
+             Because `schema-base` generates from the default build, today's `actions.json`
+             advertises all five and four of them do nothing. Removing the four would break
+             the migrated world, so they were documented rather than removed. Revisit when
+             new-geometry becomes the default: `validationTypes` disappears then, and the
+             per-variant titles added to `ValidationType` in this batch go with it.
 
 Polygon Normal Extractor
-  desc:    imperative not verb-first — "Extract normal vectors and other properties for
-             polygon features"; "other properties" is vague; suggest "Extracts the normal
-             vector and geometric properties from polygon features and stores them as
-             attributes."
-  ports:   inputPorts `default` — global note; outputPorts `default` — global note; no
-             `rejected` — evaluate for non-polygon features (§4.3)
-  tags:    ["normal", "3d"] — `normal` not in vocabulary; remove → ["3d"]
-
-Ray Intersector
-  params:  schema-level description "RayIntersector Parameters" is an internal name, not a
-             description (§3.3); suggest "Configure how rays and geometries are paired and
-             how intersection results are output."
-           closestIntersectionOnly, geomId, includeRayOrigin, outputGeometryType, pairId,
-             ray, tolerance — all 7 top-level params missing title (§3.3)
-           RayDefinition sub-properties dirX, dirY, dirZ, posX, posY, posZ — all missing
-             title (§3.3)
-           ordering — required pairId and ray come after all optional params; correct:
-             pairId → ray → outputGeometryType → closestIntersectionOnly → includeRayOrigin
-             → geomId → tolerance (§3.5)
-  ports:   inputPorts `ray`, `geom` ✓; outputPorts `no_intersection` — snake_case violates
-             §4.1; rename to `no-intersection`; `intersection` ✓, `rejected` ✓
-  tags:    ["ray", "intersection", "3d"] — `ray` and `intersection` not in vocabulary;
-             replace with ["3d", "spatial"]
+  impl:    CityGML features with more than one polygon are rejected ("not supported yet")
+             rather than measured, though the `FlowGeometry3D::MultiPolygon` branch already
+             handles the multi-polygon case with `_{index}` attribute suffixes. Marked with
+             a TODO in the code.
+  scope:   Notion FLOW-DEV-182 has this "On hold" because "PlanarityFilter implicitly does
+             the same thing". Only partly true: `PlanarityFilter` writes
+             `surfaceNormalX/Y/Z` + `pointOnSurfaceX/Y/Z`, and has no equivalent for
+             `slope`, `azimuth` (conventioned 0 deg = South to match SunPositionCalculator)
+             or `signedArea2D`. It is also a filter, not an extractor. Merging the two is
+             not the free win the note implies.
 
 Refiner
-  desc:    title-case — "Refine Complex Geometries into Simple Geometries"; suggest "Refines
-             complex geometry types into simpler primitives."
-  ports:   inputPorts `default` — global note; outputPorts `remain` — suggest rename to
-             `remaining` for natural English; `default` — global note
+  impl:    `refine_geometry` only descends into a top-level `GeometryCollection` and only
+             collects `Multi*` members, so a plain MultiPolygon input refines to nothing and
+             now passes through unchanged. CityGML refinement is unimplemented and also
+             passes through (TODO in code). A full implementation — homogeneous aggregate to
+             multi, single-member aggregate to its part, hole-less donut to polygon,
+             single-segment path to segment, and merging consecutive line segments — is a
+             separate task.
 
-Three Dimension Forcer
-  name:    → "Three Dimension Forcer" — "Dimension" should be plural or adjectival; suggest
-             "Three Dimensions Forcer" or "Three-Dimensional Forcer"
-  desc:    title-case — "Convert 2D Geometry to 3D by Adding Z-Coordinates"; suggest "Adds
-             Z-coordinates to 2D geometries to produce 3D output."
-  ports:   inputPorts `default`, outputPorts `default` — global note
-
-Two Dimension Forcer
-  name:    → "Two Dimension Forcer" — same English issue as ThreeDimensionForcer; suggest
-             "Two Dimensions Forcer" or "Two-Dimensional Forcer"
-  desc:    title-case — "Force 3D Geometry to 2D by Removing Z-Coordinates"; suggest
-             "Removes Z-coordinates from 3D geometries to produce 2D output."
-  ports:   inputPorts `default`, outputPorts `default` — global note
-  tags:    ["2d"] — not in vocabulary; `geometry` duplicates category (§6); remove both
-             → 0 tags acceptable
-
-Vertical Reprojector
-  desc:    title-case — "Reproject Vertical Coordinates Between Datums"; suggest "Reprojects
-             the vertical coordinate of feature geometry between vertical datums."
-  params:  VerticalReprojectorType plain enum — single value `jgd2011ToWgs84` only
-             (incomplete design); no per-variant description (§3.4)
-  ports:   inputPorts `default` — global note; outputPorts `default` — global note; no
-             `rejected` — evaluate for geometry without Z or transformation failure (§4.3)
-  tags:    ["projection", "3d"] — `projection` not in vocabulary; replace with
-             ["coordinate-system", "3d"]
+UI (separate PR, shared with Geometry A)
+  `consolidateOneOfToEnum` in the UI's `patchSchemaTypes.ts` bails when a `oneOf` mixes
+  string and object variants, so RJSF labels the variants "option 1/2/...". Affects
+  `Geometry Validator`'s `ValidationType` and `Image Rasterizer`'s `OnOverlap`. The
+  Rust-side `/// # Title` fixes are done in the respective engine PRs; the UI fix is not.
 ```

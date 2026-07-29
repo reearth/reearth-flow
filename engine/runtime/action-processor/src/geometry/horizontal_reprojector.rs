@@ -284,7 +284,7 @@ impl ProcessorFactory for HorizontalReprojectorFactory {
     }
 
     fn description(&self) -> &str {
-        "Reproject Geometry to Different Coordinate System"
+        "Reprojects feature geometry from one horizontal coordinate system to another using EPSG codes."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -296,7 +296,7 @@ impl ProcessorFactory for HorizontalReprojectorFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["projection", "2d"]
+        &["coordinate-system"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -356,22 +356,21 @@ impl ProcessorFactory for HorizontalReprojectorFactory {
 }
 
 /// # Horizontal Reprojector Parameters
-/// Configure the source and target coordinate systems for geometry reprojection
+/// Configure the source and target coordinate systems for geometry reprojection.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct HorizontalReprojectorParam {
+    /// # Target EPSG Code
+    /// EPSG code to reproject into, as a constant such as "4326" or an expression
+    /// referencing feature attributes.
+    target_epsg_code: Code<{ CodeType::FlowExpr as u32 }>,
+
     /// # Source EPSG Code
-    /// Source coordinate system EPSG code expression. If not provided, will use the EPSG code from the geometry.
-    /// This is optional to maintain backward compatibility but recommended to be explicit.
-    /// Can be a constant value (e.g., "4326") or an expression referencing feature attributes.
+    /// EPSG code to reproject from, as a constant or an expression. Defaults to the
+    /// EPSG code carried on the geometry, so setting it is only necessary when the
+    /// geometry has none or carries the wrong one.
     #[serde(default)]
     source_epsg_code: Option<Code<{ CodeType::FlowExpr as u32 }>>,
-
-    /// # Target EPSG Code
-    /// Target coordinate system EPSG code expression for the reprojection.
-    /// Can be a constant value (e.g., "4326" for WGS84, "2193" for NZTM2000, "3857" for Web Mercator)
-    /// or an expression referencing feature attributes.
-    target_epsg_code: Code<{ CodeType::FlowExpr as u32 }>,
 }
 
 #[derive(Debug, Clone)]

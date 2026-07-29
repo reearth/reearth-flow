@@ -2102,11 +2102,11 @@ graphs:
 
 
 
-      # RayIntersector no_intersection → ComputeRadiation
+      # RayIntersector no-intersection → ComputeRadiation
       - id: e0000001-0000-0000-0000-000000000035
         from: 00000001-0000-0000-0000-000000000010
         to: 00000001-0000-0000-0000-00000000001d
-        fromPort: no_intersection
+        fromPort: no-intersection
         toPort: features
 
       # ComputeCosTheta → SnowFactorMerger (requestor)
@@ -2175,11 +2175,11 @@ graphs:
         toPort: supplier
 
       # Section 7: Reflection Computation (conditional on outputReflection)
-      # RayIntersector no_intersection → ReflectionOutputFilter
+      # RayIntersector no-intersection → ReflectionOutputFilter
       - id: e0000001-0000-0000-0000-000000000013
         from: 00000001-0000-0000-0000-000000000010
         to: 00000004-0000-0000-0000-000000000010
-        fromPort: no_intersection
+        fromPort: no-intersection
         toPort: features
 
       # ReflectionOutputFilter → ComputeReflection (only when outputReflection=true)
