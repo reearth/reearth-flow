@@ -9,7 +9,7 @@
 //! reprojection, unlike the GeoPackage/GeoJSON readers).
 
 use std::{
-    collections::{BTreeMap, BTreeSet, HashMap},
+    collections::{BTreeMap, BTreeSet, HashMap, HashSet},
     str::FromStr,
     sync::Arc,
 };
@@ -56,6 +56,13 @@ pub(super) async fn read(
 
     let buffer_data = load_buffers(&gltf, ctx, storage_resolver, &gltf_uri, content).await?;
 
+    // Decoded once per document: every split feature below looks up its row in
+    // here by (propertyTable index, feature ID).
+    let structural_metadata = reearth_flow_gltf::read_structural_metadata(&gltf, &buffer_data)
+        .map_err(|e| {
+            SourceError::GltfReader(format!("Failed to read glTF structural metadata: {e}"))
+        })?;
+
     // Collect lightweight mesh info with transforms (traversal only; heavy geometry
     // processing happens per-mesh below), same as the old-world path.
     let mut mesh_infos = Vec::new();
@@ -83,60 +90,87 @@ pub(super) async fn read(
         )?;
     }
 
-    if !params.merge_meshes {
-        // Stream each mesh's feature as it is produced (no full-list buffering).
-        for mesh_info in mesh_infos {
-            let build = extract_mesh_build(
-                &mesh_info.primitives,
-                &buffer_data,
-                Some(&mesh_info.transform),
-                &gltf_uri,
-            )?;
+    // Meshes that carry their own EXT_mesh_features feature IDs always split
+    // into one Flow feature per ID, streamed immediately, regardless of
+    // `merge_meshes` (splitting takes precedence over merging; logged once
+    // below). Meshes without feature IDs keep today's behaviour: one feature
+    // each, or accumulated here to merge into a single feature at the end.
+    let mut merge_candidates = Vec::new();
+    let mut merge_mesh_names: HashSet<String> = HashSet::new();
+    let mut merge_node_names: HashSet<String> = HashSet::new();
+    let mut merge_primitive_count = 0usize;
+    let mut merge_override_logged = false;
 
-            let mesh_names = mesh_info.mesh_name.map(|n| vec![n]).unwrap_or_default();
-            let node_names = mesh_info.node_name.map(|n| vec![n]).unwrap_or_default();
+    for mesh_info in mesh_infos {
+        let build = extract_mesh_build(
+            &mesh_info.primitives,
+            &buffer_data,
+            Some(&mesh_info.transform),
+            &gltf_uri,
+        )?;
 
+        let mesh_names = mesh_info.mesh_name.map(|n| vec![n]).unwrap_or_default();
+        let node_names = mesh_info.node_name.map(|n| vec![n]).unwrap_or_default();
+        let primitive_count = mesh_info.primitives.len();
+        let has_feature_ids = build.tri_feature_id.iter().any(Option::is_some);
+
+        if !has_feature_ids && structural_metadata.is_some() {
+            tracing::warn!(
+                "glTF: EXT_structural_metadata is present but this mesh has no \
+                 EXT_mesh_features feature IDs; per-object metadata was not surfaced"
+            );
+        }
+
+        if has_feature_ids {
+            if params.merge_meshes && !merge_override_logged {
+                tracing::warn!(
+                    "glTF: merge_meshes is set, but EXT_mesh_features feature IDs are \
+                     present; splitting by feature ID takes precedence and merge was \
+                     overridden"
+                );
+                merge_override_logged = true;
+            }
+            for feature in split_features(
+                build,
+                structural_metadata.as_ref(),
+                &mesh_names,
+                &node_names,
+                primitive_count,
+                params,
+            ) {
+                send_feature(sender, feature).await?;
+            }
+        } else if !params.merge_meshes {
+            // Stream each mesh's feature as it is produced (no full-list buffering).
             let feature = build_feature(
                 build_geometry(build),
                 &mesh_names,
                 &node_names,
-                mesh_info.primitives.len(),
+                primitive_count,
                 params,
+                IndexMap::new(),
             );
             send_feature(sender, feature).await?;
+        } else {
+            merge_mesh_names.extend(mesh_names);
+            merge_node_names.extend(node_names);
+            merge_primitive_count += primitive_count;
+            merge_candidates.push(build);
         }
-    } else if !mesh_infos.is_empty() {
-        let mut builds = Vec::new();
-        let mut all_mesh_names = std::collections::HashSet::new();
-        let mut all_node_names = std::collections::HashSet::new();
-        let mut total_primitives = 0;
+    }
 
-        for mesh_info in mesh_infos {
-            builds.push(extract_mesh_build(
-                &mesh_info.primitives,
-                &buffer_data,
-                Some(&mesh_info.transform),
-                &gltf_uri,
-            )?);
-            if let Some(name) = mesh_info.mesh_name {
-                all_mesh_names.insert(name);
-            }
-            if let Some(name) = mesh_info.node_name {
-                all_node_names.insert(name);
-            }
-            total_primitives += mesh_info.primitives.len();
-        }
-
-        let merged = merge_builds(builds);
-        let merged_mesh_names: Vec<String> = all_mesh_names.into_iter().collect();
-        let merged_node_names: Vec<String> = all_node_names.into_iter().collect();
+    if !merge_candidates.is_empty() {
+        let merged = merge_builds(merge_candidates);
+        let merged_mesh_names: Vec<String> = merge_mesh_names.into_iter().collect();
+        let merged_node_names: Vec<String> = merge_node_names.into_iter().collect();
 
         let feature = build_feature(
             build_geometry(merged),
             &merged_mesh_names,
             &merged_node_names,
-            total_primitives,
+            merge_primitive_count,
             params,
+            IndexMap::new(),
         );
         send_feature(sender, feature).await?;
     }
@@ -180,6 +214,17 @@ struct MeshBuild {
     /// UV channels sampled by any textured material (drives the appearance's UV
     /// sets). Empty when nothing is textured.
     channels: BTreeSet<ChannelId>,
+    /// Per triangle: the `EXT_mesh_features` feature ID of its first corner (see
+    /// `extract_mesh_build`), or `None` when the primitive that produced it
+    /// carries no feature-ID set. All-`None` (including empty) means the mesh
+    /// isn't split; otherwise the reader groups triangles by this value into
+    /// one Flow `Feature` per distinct ID (see `split_features`).
+    tri_feature_id: Vec<Option<u32>>,
+    /// The `propertyTable` index named by the mesh's feature-ID set (first one
+    /// found across its primitives), used to look up each split feature's
+    /// `EXT_structural_metadata` row. `None` when no primitive named one
+    /// (equivalently, no primitive carries a feature-ID set at all).
+    property_table_index: Option<usize>,
 }
 
 /// Read every primitive of one glTF mesh into a flat [`MeshBuild`]: positions
@@ -231,7 +276,18 @@ fn extract_mesh_build(
     // (`build.channels`) gets an entry — the real tex-coord when the corner's
     // own material samples that channel, `[0, 0]` otherwise — so every
     // channel's buffer stays aligned to the whole mesh's corner soup.
+    // `warned_feature_id_disagreement` caps the corner-mismatch warning to once
+    // per mesh (i.e. once per `extract_mesh_build` call), not once per triangle.
+    let mut warned_feature_id_disagreement = false;
     for primitive in primitives {
+        let feature_ids =
+            reearth_flow_gltf::read_mesh_features(primitive, buffer_data).map_err(|e| {
+                SourceError::GltfReader(format!("Failed to read EXT_mesh_features: {e}"))
+            })?;
+        if feature_ids.is_some() && build.property_table_index.is_none() {
+            build.property_table_index = mesh_features_property_table(primitive);
+        }
+
         let pos_accessor = primitive
             .get(&gltf::Semantic::Positions)
             .ok_or_else(|| SourceError::GltfReader("Primitive has no positions".to_string()))?;
@@ -270,10 +326,49 @@ fn extract_mesh_build(
                 }
             }
             build.tri_material.push(slot);
+
+            let fid = feature_ids.as_ref().map(|ids| {
+                // A `constant` feature-ID set (see `read_mesh_features`) comes
+                // back as a single-element vec applying to every vertex; a
+                // per-vertex `attribute` set has one entry per vertex.
+                let id_at = |vertex_index: usize| -> u32 {
+                    if ids.len() == 1 {
+                        ids[0]
+                    } else {
+                        ids.get(vertex_index).copied().unwrap_or(ids[0])
+                    }
+                };
+                let (fa, fb, fc) = (id_at(a), id_at(b), id_at(c));
+                if (fa != fb || fa != fc) && !warned_feature_id_disagreement {
+                    tracing::warn!(
+                        "glTF: a triangle's corners disagree on their EXT_mesh_features \
+                         feature ID ({fa}, {fb}, {fc}); using the first corner's ID"
+                    );
+                    warned_feature_id_disagreement = true;
+                }
+                fa
+            });
+            build.tri_feature_id.push(fid);
         }
     }
 
     Ok(build)
+}
+
+/// The `propertyTable` index declared on a primitive's first `EXT_mesh_features`
+/// feature-ID set, defaulting to `0` when the set doesn't name one explicitly
+/// (per the extension's spec). `None` when the primitive carries no
+/// `EXT_mesh_features` feature-ID set at all.
+fn mesh_features_property_table(primitive: &gltf::Primitive) -> Option<usize> {
+    let mesh_features = primitive.extension_value("EXT_mesh_features")?;
+    let feature_ids = mesh_features.get("featureIds")?.as_array()?;
+    let first = feature_ids.first()?.as_object()?;
+    Some(
+        first
+            .get("propertyTable")
+            .and_then(|v| v.as_u64())
+            .unwrap_or(0) as usize,
+    )
 }
 
 /// The vertex-index triples of a primitive's triangles, replicating the crate's
@@ -607,6 +702,130 @@ fn merge_builds(builds: Vec<MeshBuild>) -> MeshBuild {
     out
 }
 
+/// Extract the triangles at `tri_indices` (0-based into `build`'s per-triangle
+/// arrays) into their own [`MeshBuild`], sharing the parent's material palette
+/// and channel set. Used by [`split_features`] to turn one node's mesh into
+/// one sub-mesh per distinct `EXT_mesh_features` feature ID; `build_geometry`'s
+/// `from_soup` then dedups vertices within each sub-mesh independently, so
+/// per-face material/UV bindings still line up.
+fn sub_build(build: &MeshBuild, tri_indices: &[usize]) -> MeshBuild {
+    let mut soup = Vec::with_capacity(tri_indices.len() * 3);
+    let mut tri_material = Vec::with_capacity(tri_indices.len());
+    let mut corner_uv: BTreeMap<ChannelId, Vec<[f64; 2]>> = build
+        .channels
+        .iter()
+        .map(|&channel| (channel, Vec::with_capacity(tri_indices.len() * 3)))
+        .collect();
+
+    for &tri in tri_indices {
+        soup.extend_from_slice(&build.soup[tri * 3..tri * 3 + 3]);
+        for (&channel, buf) in corner_uv.iter_mut() {
+            buf.extend_from_slice(&build.corner_uv[&channel][tri * 3..tri * 3 + 3]);
+        }
+        tri_material.push(build.tri_material[tri]);
+    }
+
+    MeshBuild {
+        soup,
+        tri_material,
+        corner_uv,
+        materials: build.materials.clone(),
+        channels: build.channels.clone(),
+        tri_feature_id: Vec::new(),
+        property_table_index: None,
+    }
+}
+
+/// Split `build` into one Flow [`Feature`] per distinct `EXT_mesh_features`
+/// feature ID (grouping its triangles by [`MeshBuild::tri_feature_id`]),
+/// decorating each with `featureId` and, when `structural_metadata` resolves a
+/// property-table row for that ID, that row's properties (plus `class` when
+/// the table names one). Only called once the caller has confirmed
+/// `build.tri_feature_id` has at least one `Some` entry.
+///
+/// A triangle whose primitive carried no feature-ID set (a mix within one
+/// mesh) falls into its own feature with no `featureId`, so its geometry
+/// isn't silently dropped; this shouldn't occur on well-formed PLATEAU
+/// exports, where every primitive in a mesh shares the same extension usage.
+fn split_features(
+    build: MeshBuild,
+    structural_metadata: Option<&reearth_flow_gltf::PropertyTables>,
+    mesh_names: &[String],
+    node_names: &[String],
+    primitive_count: usize,
+    params: &GltfReaderCompiledParam,
+) -> Vec<Feature> {
+    let mut groups: BTreeMap<Option<u32>, Vec<usize>> = BTreeMap::new();
+    for (tri, &fid) in build.tri_feature_id.iter().enumerate() {
+        groups.entry(fid).or_default().push(tri);
+    }
+
+    groups
+        .into_iter()
+        .map(|(fid, tri_indices)| {
+            let sub = sub_build(&build, &tri_indices);
+            let mut extra = IndexMap::new();
+
+            match fid {
+                Some(feature_id) => {
+                    if let Some(tables) = structural_metadata {
+                        let table_index = build.property_table_index.unwrap_or(0);
+                        match tables.tables.get(table_index) {
+                            Some(table) if (feature_id as usize) < table.count => {
+                                for (name, value) in reearth_flow_gltf::feature_properties(
+                                    tables,
+                                    table_index,
+                                    feature_id,
+                                ) {
+                                    extra.insert(Attribute::new(name), value);
+                                }
+                                if let Some(class_name) = &table.class {
+                                    extra.insert(
+                                        Attribute::new("class"),
+                                        AttributeValue::String(class_name.clone()),
+                                    );
+                                }
+                            }
+                            Some(table) => tracing::warn!(
+                                "glTF: feature ID {feature_id} is out of range for \
+                                 structural-metadata property table {table_index} \
+                                 ({} rows); attaching only featureId",
+                                table.count
+                            ),
+                            None => tracing::warn!(
+                                "glTF: EXT_mesh_features references property table \
+                                 {table_index}, but EXT_structural_metadata only has \
+                                 {} table(s); attaching only featureId",
+                                tables.tables.len()
+                            ),
+                        }
+                    }
+                    // Always set last so it can't be shadowed by a same-named
+                    // metadata property.
+                    extra.insert(
+                        Attribute::new("featureId"),
+                        AttributeValue::Number(serde_json::Number::from(feature_id)),
+                    );
+                }
+                None => tracing::warn!(
+                    "glTF: mesh mixes EXT_mesh_features feature IDs with feature-ID-less \
+                     primitives; the latter's triangles are emitted as one feature with \
+                     no featureId"
+                ),
+            }
+
+            build_feature(
+                build_geometry(sub),
+                mesh_names,
+                node_names,
+                primitive_count,
+                params,
+                extra,
+            )
+        })
+        .collect()
+}
+
 /// Build the new-geometry [`Geometry`] from a [`MeshBuild`]: a single
 /// `Euclidean3D::TriangularMesh` (`from_soup` deduplicates shared vertices while
 /// preserving winding; glTF is model-space, so the frame is `Euclidean`), with an
@@ -648,12 +867,19 @@ fn build_geometry(build: MeshBuild) -> Geometry {
     Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(mesh)))
 }
 
+/// Build a Flow [`Feature`] from `geometry` plus the reader's base attributes
+/// (`source`, `mesh`/`meshes`, `node`/`nodes`, `primitiveCount`), then merge in
+/// `extra_attributes` (e.g. `featureId` + decoded structural-metadata
+/// properties from [`split_features`]) on top. A colliding key is written
+/// under `meta_<name>` instead of overwriting the base attribute, so nothing
+/// from either side is silently lost.
 fn build_feature(
     geometry: Geometry,
     mesh_names: &[String],
     node_names: &[String],
     primitive_count: usize,
     params: &GltfReaderCompiledParam,
+    extra_attributes: IndexMap<Attribute, AttributeValue>,
 ) -> Feature {
     let mut attributes = IndexMap::new();
 
@@ -684,6 +910,14 @@ fn build_feature(
         Attribute::new("primitiveCount"),
         AttributeValue::Number(serde_json::Number::from(primitive_count)),
     );
+
+    for (key, value) in extra_attributes {
+        if attributes.contains_key(&key) {
+            attributes.insert(Attribute::new(format!("meta_{}", key.inner())), value);
+        } else {
+            attributes.insert(key, value);
+        }
+    }
 
     Feature::new_with_attributes_and_geometry(attributes, geometry)
 }
@@ -790,6 +1024,7 @@ mod tests {
             corner_uv: BTreeMap::from([(ChannelId(0), vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]])]),
             materials: vec![material],
             channels: BTreeSet::from([ChannelId(0)]),
+            ..MeshBuild::default()
         };
 
         let mesh = mesh_of(build_geometry(build));
@@ -1117,5 +1352,75 @@ mod tests {
             "emissive scaled by strength"
         );
         assert!(!channels.is_empty());
+    }
+
+    /// Runs the full new-geometry read path (`read`) over `bytes` (an
+    /// embedded-buffer `.glb`) and collects every emitted `Feature`. Both
+    /// fixtures embed their buffer as the GLB's binary chunk, so `load_buffers`
+    /// never touches the storage resolver, letting tests use a bare default
+    /// `NodeContext`/`StorageResolver` with no real I/O.
+    fn read_all_features_for_test(bytes: &'static [u8]) -> Vec<Feature> {
+        let params = GltfReaderCompiledParam {
+            common: crate::file::reader::runner::FileReaderCompiledParam {
+                dataset: None,
+                inline: None,
+            },
+            _triangulate: true,
+            merge_meshes: false,
+            include_nodes: true,
+        };
+        let ctx = NodeContext::default();
+        let storage_resolver = Arc::new(reearth_flow_storage::resolve::StorageResolver::default());
+        let content = Bytes::from_static(bytes);
+
+        let rt = tokio::runtime::Runtime::new().expect("build tokio runtime");
+        rt.block_on(async {
+            let (tx, mut rx) = tokio::sync::mpsc::channel(64);
+            read(&ctx, storage_resolver, &content, &params, &tx)
+                .await
+                .expect("read succeeds");
+            drop(tx);
+
+            let mut features = Vec::new();
+            while let Some((_, msg)) = rx.recv().await {
+                let IngestionMessage::OperationEvent { feature } = msg;
+                features.push(feature);
+            }
+            features
+        })
+    }
+
+    #[test]
+    fn plateau_glb_splits_into_features_with_metadata() {
+        let bytes = include_bytes!("../../testdata/test_data_39255_tran_AuxiliaryTrafficArea.glb");
+        let features = read_all_features_for_test(bytes);
+        assert!(
+            features.len() > 1,
+            "metadata glb splits into multiple features: {}",
+            features.len()
+        );
+        let f = &features[0];
+        assert!(f.attributes.contains_key(&Attribute::new("featureId")));
+        // at least one decoded structural-metadata property present
+        assert!(
+            f.attributes.keys().any(|k| {
+                let n = k.to_string();
+                n != "featureId"
+                    && n != "source"
+                    && n != "mesh"
+                    && n != "meshes"
+                    && n != "nodes"
+                    && n != "node"
+                    && n != "primitiveCount"
+            }),
+            "a metadata property is surfaced"
+        );
+    }
+
+    #[test]
+    fn no_metadata_glb_stays_single_feature() {
+        let bytes = include_bytes!("../../testdata/minimal_rectangle.glb");
+        let features = read_all_features_for_test(bytes);
+        assert_eq!(features.len(), 1);
     }
 }
