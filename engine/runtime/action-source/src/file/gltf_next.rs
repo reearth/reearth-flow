@@ -747,6 +747,19 @@ fn sub_build(build: &MeshBuild, tri_indices: &[usize]) -> MeshBuild {
 /// mesh) falls into its own feature with no `featureId`, so its geometry
 /// isn't silently dropped; this shouldn't occur on well-formed PLATEAU
 /// exports, where every primitive in a mesh shares the same extension usage.
+/// If `extra` already holds `key` (a decoded structural-metadata property
+/// that happens to share a name with one of `split_features`'s own reserved
+/// attributes, `featureId` or `class`), move it out from under `key` to
+/// `meta_<key>` first, so the reserved attribute can then be inserted under
+/// `key` without silently dropping the metadata value. Mirrors
+/// `build_feature`'s `meta_` collision rule against the base attributes, just
+/// applied here against these reader-reserved keys before that later merge.
+fn reserve_extra_attr(extra: &mut IndexMap<Attribute, AttributeValue>, key: &str) {
+    if let Some(value) = extra.shift_remove(&Attribute::new(key)) {
+        extra.insert(Attribute::new(format!("meta_{key}")), value);
+    }
+}
+
 fn split_features(
     build: MeshBuild,
     structural_metadata: Option<&reearth_flow_gltf::PropertyTables>,
@@ -780,6 +793,7 @@ fn split_features(
                                     extra.insert(Attribute::new(name), value);
                                 }
                                 if let Some(class_name) = &table.class {
+                                    reserve_extra_attr(&mut extra, "class");
                                     extra.insert(
                                         Attribute::new("class"),
                                         AttributeValue::String(class_name.clone()),
@@ -800,8 +814,12 @@ fn split_features(
                             ),
                         }
                     }
-                    // Always set last so it can't be shadowed by a same-named
-                    // metadata property.
+                    // Always set last so the reader's own numeric ID wins the
+                    // slot; a metadata property that happens to be named
+                    // `featureId` is preserved (renamed, not dropped) by the
+                    // `reserve_extra_attr` call above/below rather than being
+                    // silently overwritten.
+                    reserve_extra_attr(&mut extra, "featureId");
                     extra.insert(
                         Attribute::new("featureId"),
                         AttributeValue::Number(serde_json::Number::from(feature_id)),
@@ -1359,7 +1377,7 @@ mod tests {
     /// fixtures embed their buffer as the GLB's binary chunk, so `load_buffers`
     /// never touches the storage resolver, letting tests use a bare default
     /// `NodeContext`/`StorageResolver` with no real I/O.
-    fn read_all_features_for_test(bytes: &'static [u8]) -> Vec<Feature> {
+    fn read_all_features_for_test(bytes: &[u8]) -> Vec<Feature> {
         let params = GltfReaderCompiledParam {
             common: crate::file::reader::runner::FileReaderCompiledParam {
                 dataset: None,
@@ -1371,7 +1389,7 @@ mod tests {
         };
         let ctx = NodeContext::default();
         let storage_resolver = Arc::new(reearth_flow_storage::resolve::StorageResolver::default());
-        let content = Bytes::from_static(bytes);
+        let content = Bytes::copy_from_slice(bytes);
 
         let rt = tokio::runtime::Runtime::new().expect("build tokio runtime");
         rt.block_on(async {
@@ -1414,6 +1432,266 @@ mod tests {
                     && n != "primitiveCount"
             }),
             "a metadata property is surfaced"
+        );
+
+        // Regression guard for the EXT_structural_metadata bufferView-offset
+        // fix: a wrong offset/buffer resolution would still leave `featureId`
+        // present and *a* property surfaced (the checks above), but with
+        // garbage values. Locate a specific feature by its stable `gml_id`
+        // (hand-verified against this fixture, same values independently
+        // confirmed via the old blob-based `extract_feature_properties` in
+        // `runtime/gltf/src/metadata/decode.rs`'s own `test_extract_feature_properties`)
+        // and assert several of its STRING properties decode exactly.
+        //
+        // This fixture's `EXT_structural_metadata` schema has no NUMERIC
+        // properties at all (every property is STRING) — see
+        // `split_features_decodes_numeric_property_at_nonzero_buffer_offset`
+        // below for the numeric-decode regression guard, using a small
+        // synthetic fixture built for that purpose instead.
+        let target = features
+            .iter()
+            .find(|f| {
+                f.attributes.get(&Attribute::new("gml_id"))
+                    == Some(&AttributeValue::String(
+                        "tran_4d448e8a-db1d-48ef-8f04-feb24b49b701".to_string(),
+                    ))
+            })
+            .expect("fixture has a feature with the expected gml_id");
+
+        assert_eq!(
+            target.attributes.get(&Attribute::new("meshcode")),
+            Some(&AttributeValue::String("54401008".to_string()))
+        );
+        assert_eq!(
+            target.attributes.get(&Attribute::new("tran:class")),
+            Some(&AttributeValue::String("road traffic".to_string()))
+        );
+        assert_eq!(
+            target.attributes.get(&Attribute::new("feature_type")),
+            Some(&AttributeValue::String(
+                "tran:AuxiliaryTrafficArea".to_string()
+            ))
+        );
+        assert_eq!(
+            target.attributes.get(&Attribute::new("core:creationDate")),
+            Some(&AttributeValue::String("2024-03-19".to_string()))
+        );
+        assert_eq!(
+            target.attributes.get(&Attribute::new("city_code")),
+            Some(&AttributeValue::String("08220".to_string()))
+        );
+        assert_eq!(
+            target.attributes.get(&Attribute::new("city_name")),
+            Some(&AttributeValue::String("茨城県つくば市".to_string()))
+        );
+        assert_eq!(
+            target.attributes.get(&Attribute::new("tran:function")),
+            Some(&AttributeValue::String("路肩".to_string()))
+        );
+    }
+
+    /// Regression guard for the `EXT_structural_metadata` bufferView-offset
+    /// fix (`resolve_metadata_buffer_view` in
+    /// `runtime/gltf/src/metadata/decode.rs`): the real PLATEAU fixture used
+    /// above has no NUMERIC property to assert against (every property in its
+    /// schema is STRING), so this hand-built glTF supplies one. Two
+    /// primitives (`constant` feature IDs 0 and 1) share one buffer whose
+    /// numeric property's bufferView sits at a **non-zero** byte offset,
+    /// after the geometry data — exactly the layout that broke before the
+    /// fix (bufferView index used to be read as a *buffer* index, and even a
+    /// correct buffer index alone would miss a non-zero `byteOffset`).
+    #[test]
+    fn split_features_decodes_numeric_property_at_nonzero_buffer_offset() {
+        // Triangle A's geometry, then triangle B's, then the numeric
+        // property's own bytes — built programmatically so the JSON below can
+        // reference exact offsets without hand arithmetic.
+        let mut buf = Vec::new();
+
+        let pos_a_offset = buf.len();
+        for xyz in [[0.0f32, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]] {
+            for c in xyz {
+                buf.extend_from_slice(&c.to_le_bytes());
+            }
+        }
+        let idx_a_offset = buf.len();
+        for i in [0u16, 1, 2] {
+            buf.extend_from_slice(&i.to_le_bytes());
+        }
+        while buf.len() % 4 != 0 {
+            buf.push(0);
+        }
+
+        let pos_b_offset = buf.len();
+        for xyz in [[2.0f32, 0.0, 0.0], [3.0, 0.0, 0.0], [2.0, 1.0, 0.0]] {
+            for c in xyz {
+                buf.extend_from_slice(&c.to_le_bytes());
+            }
+        }
+        let idx_b_offset = buf.len();
+        for i in [0u16, 1, 2] {
+            buf.extend_from_slice(&i.to_le_bytes());
+        }
+        while buf.len() % 4 != 0 {
+            buf.push(0);
+        }
+
+        // The "height" UINT32 property, one row per feature: [111, 222].
+        // Its bufferView offset (`height_offset`) is well past zero, unlike
+        // every earlier synthetic fixture in this crate's tests.
+        let height_offset = buf.len();
+        for v in [111u32, 222u32] {
+            buf.extend_from_slice(&v.to_le_bytes());
+        }
+        let height_length = buf.len() - height_offset;
+
+        use base64::Engine;
+        let buffer_data_uri = format!(
+            "data:application/octet-stream;base64,{}",
+            base64::engine::general_purpose::STANDARD.encode(&buf)
+        );
+
+        let json = format!(
+            r#"{{
+              "asset": {{"version": "2.0"}},
+              "extensionsUsed": ["EXT_mesh_features", "EXT_structural_metadata"],
+              "scene": 0,
+              "scenes": [{{"nodes": [0]}}],
+              "nodes": [{{"mesh": 0}}],
+              "meshes": [{{"primitives": [
+                {{
+                  "attributes": {{"POSITION": 0}},
+                  "indices": 1,
+                  "mode": 4,
+                  "extensions": {{"EXT_mesh_features": {{"featureIds": [
+                    {{"featureCount": 2, "constant": 0, "propertyTable": 0}}
+                  ]}}}}
+                }},
+                {{
+                  "attributes": {{"POSITION": 2}},
+                  "indices": 3,
+                  "mode": 4,
+                  "extensions": {{"EXT_mesh_features": {{"featureIds": [
+                    {{"featureCount": 2, "constant": 1, "propertyTable": 0}}
+                  ]}}}}
+                }}
+              ]}}],
+              "accessors": [
+                {{"bufferView": 0, "componentType": 5126, "count": 3, "type": "VEC3", "min": [0.0, 0.0, 0.0], "max": [1.0, 1.0, 0.0]}},
+                {{"bufferView": 1, "componentType": 5123, "count": 3, "type": "SCALAR"}},
+                {{"bufferView": 2, "componentType": 5126, "count": 3, "type": "VEC3", "min": [2.0, 0.0, 0.0], "max": [3.0, 1.0, 0.0]}},
+                {{"bufferView": 3, "componentType": 5123, "count": 3, "type": "SCALAR"}}
+              ],
+              "bufferViews": [
+                {{"buffer": 0, "byteOffset": {pos_a_offset}, "byteLength": 36, "target": 34962}},
+                {{"buffer": 0, "byteOffset": {idx_a_offset}, "byteLength": 6, "target": 34963}},
+                {{"buffer": 0, "byteOffset": {pos_b_offset}, "byteLength": 36, "target": 34962}},
+                {{"buffer": 0, "byteOffset": {idx_b_offset}, "byteLength": 6, "target": 34963}},
+                {{"buffer": 0, "byteOffset": {height_offset}, "byteLength": {height_length}}}
+              ],
+              "buffers": [{{"byteLength": {buf_len}, "uri": "{buffer_data_uri}"}}],
+              "extensions": {{
+                "EXT_structural_metadata": {{
+                  "schema": {{
+                    "id": "S",
+                    "classes": {{"T": {{"properties": {{
+                      "height": {{"type": "SCALAR", "componentType": "UINT32"}}
+                    }}}}}}
+                  }},
+                  "propertyTables": [
+                    {{"class": "T", "count": 2, "properties": {{"height": {{"values": 4}}}}}}
+                  ]
+                }}
+              }}
+            }}"#,
+            pos_a_offset = pos_a_offset,
+            idx_a_offset = idx_a_offset,
+            pos_b_offset = pos_b_offset,
+            idx_b_offset = idx_b_offset,
+            height_offset = height_offset,
+            height_length = height_length,
+            buf_len = buf.len(),
+            buffer_data_uri = buffer_data_uri,
+        );
+
+        let features = read_all_features_for_test(json.as_bytes());
+        assert_eq!(features.len(), 2, "one feature per constant feature ID");
+
+        let by_feature_id = |id: u32| -> &Feature {
+            features
+                .iter()
+                .find(|f| {
+                    f.attributes.get(&Attribute::new("featureId"))
+                        == Some(&AttributeValue::Number(serde_json::Number::from(id)))
+                })
+                .unwrap_or_else(|| panic!("no feature with featureId {id}"))
+        };
+
+        assert_eq!(
+            by_feature_id(0).attributes.get(&Attribute::new("height")),
+            Some(&AttributeValue::Number(111u64.into())),
+            "numeric property at a non-zero bufferView offset decodes correctly"
+        );
+        assert_eq!(
+            by_feature_id(1).attributes.get(&Attribute::new("height")),
+            Some(&AttributeValue::Number(222u64.into()))
+        );
+    }
+
+    /// Unit-level guard for Finding 2: a metadata property literally named
+    /// `featureId` must not be silently clobbered when the reader inserts its
+    /// own reserved `featureId` attribute — it should survive renamed to
+    /// `meta_featureId`, the same collision rule `build_feature` applies
+    /// against the base attributes.
+    #[test]
+    fn split_features_preserves_a_metadata_property_literally_named_feature_id() {
+        let build = MeshBuild {
+            soup: vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            tri_material: vec![None],
+            tri_feature_id: vec![Some(0)],
+            property_table_index: Some(0),
+            ..MeshBuild::default()
+        };
+
+        let mut properties = IndexMap::new();
+        properties.insert(
+            "featureId".to_string(),
+            reearth_flow_gltf::PropertyData {
+                values: vec![AttributeValue::String("colliding-value".to_string())],
+            },
+        );
+        let tables = reearth_flow_gltf::PropertyTables {
+            schema: serde_json::json!({}),
+            tables: vec![reearth_flow_gltf::PropertyTable {
+                class: None,
+                count: 1,
+                properties,
+            }],
+        };
+
+        let params = GltfReaderCompiledParam {
+            common: crate::file::reader::runner::FileReaderCompiledParam {
+                dataset: None,
+                inline: None,
+            },
+            _triangulate: true,
+            merge_meshes: false,
+            include_nodes: true,
+        };
+        let empty: Vec<String> = Vec::new();
+
+        let features = split_features(build, Some(&tables), &empty, &empty, 1, &params);
+        assert_eq!(features.len(), 1);
+        let f = &features[0];
+
+        assert_eq!(
+            f.attributes.get(&Attribute::new("featureId")),
+            Some(&AttributeValue::Number(serde_json::Number::from(0u32))),
+            "the reader's own numeric featureId wins the reserved slot"
+        );
+        assert_eq!(
+            f.attributes.get(&Attribute::new("meta_featureId")),
+            Some(&AttributeValue::String("colliding-value".to_string())),
+            "colliding metadata property preserved under meta_ prefix, not dropped"
         );
     }
 
