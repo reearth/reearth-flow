@@ -223,8 +223,8 @@ fn parse_property_table(
 
         // BOOLEAN properties have no `componentType` (their `type` IS
         // "BOOLEAN").
-        let property_type = schema_property_field(schema, class.as_deref(), key, "type")
-            .and_then(|v| v.as_str());
+        let property_type =
+            schema_property_field(schema, class.as_deref(), key, "type").and_then(|v| v.as_str());
 
         if property_type == Some("BOOLEAN") {
             if let Some(values) = parse_boolean_property(gltf, prop_obj, buffer_data, count)? {
@@ -485,9 +485,7 @@ fn decode_numeric_element(
             if is_no_data_f64(no_data, v) {
                 AttributeValue::Null
             } else {
-                AttributeValue::Number(
-                    serde_json::Number::from_f64(v).unwrap_or_else(|| 0.into()),
-                )
+                AttributeValue::Number(serde_json::Number::from_f64(v).unwrap_or_else(|| 0.into()))
             }
         }
         "FLOAT64" => {
@@ -496,9 +494,7 @@ fn decode_numeric_element(
             if is_no_data_f64(no_data, v) {
                 AttributeValue::Null
             } else {
-                AttributeValue::Number(
-                    serde_json::Number::from_f64(v).unwrap_or_else(|| 0.into()),
-                )
+                AttributeValue::Number(serde_json::Number::from_f64(v).unwrap_or_else(|| 0.into()))
             }
         }
         other => {
@@ -954,11 +950,17 @@ mod tests {
         let tables = read_structural_metadata(&gltf, &buffers).unwrap().unwrap();
 
         let f0 = feature_properties(&tables, 0, 0);
-        assert_eq!(f0.get("height"), Some(&AttributeValue::Number(10u64.into())));
+        assert_eq!(
+            f0.get("height"),
+            Some(&AttributeValue::Number(10u64.into()))
+        );
         assert_eq!(f0.get("name"), Some(&AttributeValue::String("a".into())));
 
         let f1 = feature_properties(&tables, 0, 1);
-        assert_eq!(f1.get("height"), Some(&AttributeValue::Number(20u64.into())));
+        assert_eq!(
+            f1.get("height"),
+            Some(&AttributeValue::Number(20u64.into()))
+        );
         assert_eq!(f1.get("name"), Some(&AttributeValue::String("b".into())));
 
         // Out-of-range feature id -> empty, no panic.
@@ -1015,17 +1017,17 @@ mod tests {
         };
 
         let buffers: Vec<Vec<u8>> = vec![
-            vec![(-5i8) as u8],                       // i8 = -5
-            vec![200u8],                               // u8 = 200
-            (-1000i16).to_le_bytes().to_vec(),          // i16 = -1000
-            60000u16.to_le_bytes().to_vec(),            // u16 = 60000
-            (-70000i32).to_le_bytes().to_vec(),         // i32 = -70000
-            4_000_000_000u32.to_le_bytes().to_vec(),    // u32 = 4_000_000_000
-            (-9_000_000_000_000i64).to_le_bytes().to_vec(), // i64
+            vec![(-5i8) as u8],                                   // i8 = -5
+            vec![200u8],                                          // u8 = 200
+            (-1000i16).to_le_bytes().to_vec(),                    // i16 = -1000
+            60000u16.to_le_bytes().to_vec(),                      // u16 = 60000
+            (-70000i32).to_le_bytes().to_vec(),                   // i32 = -70000
+            4_000_000_000u32.to_le_bytes().to_vec(),              // u32 = 4_000_000_000
+            (-9_000_000_000_000i64).to_le_bytes().to_vec(),       // i64
             18_000_000_000_000_000_000u64.to_le_bytes().to_vec(), // u64
-            1.5f32.to_le_bytes().to_vec(),              // f32 = 1.5
-            2.25f64.to_le_bytes().to_vec(),              // f64 = 2.25
-            vec![0b0000_0001],                          // flag row 0 = true
+            1.5f32.to_le_bytes().to_vec(),                        // f32 = 1.5
+            2.25f64.to_le_bytes().to_vec(),                       // f64 = 2.25
+            vec![0b0000_0001],                                    // flag row 0 = true
         ];
 
         let gltf =
@@ -1072,7 +1074,10 @@ mod tests {
             table.properties["f64"].values[0],
             AttributeValue::Number(serde_json::Number::from_f64(2.25).unwrap())
         );
-        assert_eq!(table.properties["flag"].values[0], AttributeValue::Bool(true));
+        assert_eq!(
+            table.properties["flag"].values[0],
+            AttributeValue::Bool(true)
+        );
     }
 
     #[test]
@@ -1121,9 +1126,15 @@ mod tests {
         let table = parse_property_table(&gltf, &table_obj, &schema, &buffers).unwrap();
 
         // noData rows decode to Null internally...
-        assert_eq!(table.properties["height"].values[0], AttributeValue::Number(10u64.into()));
+        assert_eq!(
+            table.properties["height"].values[0],
+            AttributeValue::Number(10u64.into())
+        );
         assert_eq!(table.properties["height"].values[1], AttributeValue::Null);
-        assert_eq!(table.properties["name"].values[0], AttributeValue::String("a".into()));
+        assert_eq!(
+            table.properties["name"].values[0],
+            AttributeValue::String("a".into())
+        );
         assert_eq!(table.properties["name"].values[1], AttributeValue::Null);
 
         // ...and feature_properties skips them entirely rather than
@@ -1133,7 +1144,10 @@ mod tests {
             tables: vec![table],
         };
         let f0 = feature_properties(&tables, 0, 0);
-        assert_eq!(f0.get("height"), Some(&AttributeValue::Number(10u64.into())));
+        assert_eq!(
+            f0.get("height"),
+            Some(&AttributeValue::Number(10u64.into()))
+        );
         assert_eq!(f0.get("name"), Some(&AttributeValue::String("a".into())));
 
         let f1 = feature_properties(&tables, 0, 1);
