@@ -1,4 +1,0 @@
-citygml_zip_name = "12347_tako-machi_city_2025_citygml_1_op_bldg.zip"
-
-[filter.tree]
-"udx/bldg" = ["53404336_bldg_6697.gml"]
