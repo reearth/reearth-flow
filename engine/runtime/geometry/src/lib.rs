@@ -53,8 +53,8 @@ use serde::{Deserialize, Serialize};
 
 use ops::triangulation::Cache;
 use ops::{
-    Aabb, BoundingBox, ConvertFrame, ForceTwoDimension, ForceTwoDimensionError, RemoveAppearance,
-    Reproject, ReprojectionCache, Translate, Triangulate, UnsupportedOperation,
+    Aabb, BoundingBox, ConvertFrame, CountHoles, ForceTwoDimension, ForceTwoDimensionError,
+    RemoveAppearance, Reproject, ReprojectionCache, Translate, Triangulate, UnsupportedOperation,
 };
 // `ValidationParams` / `ValidationType` / `ValidationReport` are named by the
 // `enum_dispatch`-generated `Validate` impls on the geometry enums, so they must
@@ -167,7 +167,8 @@ impl GeometryCollection {
         Translate,
         Split,
         ForceTwoDimension,
-        RemoveAppearance
+        RemoveAppearance,
+        CountHoles
     )
 )]
 #[cfg_attr(
@@ -181,7 +182,8 @@ impl GeometryCollection {
         Translate,
         Split,
         ForceTwoDimension,
-        RemoveAppearance
+        RemoveAppearance,
+        CountHoles
     )
 )]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -215,7 +217,8 @@ pub enum Euclidean2DGeometry {
         Translate,
         Split,
         ForceTwoDimension,
-        RemoveAppearance
+        RemoveAppearance,
+        CountHoles
     )
 )]
 #[cfg_attr(
@@ -229,7 +232,8 @@ pub enum Euclidean2DGeometry {
         Translate,
         Split,
         ForceTwoDimension,
-        RemoveAppearance
+        RemoveAppearance,
+        CountHoles
     )
 )]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -450,6 +454,24 @@ impl RemoveAppearance for GeometryCollection {
         for member in self.members_mut() {
             member.remove_appearance();
         }
+    }
+}
+
+impl CountHoles for Geometry {
+    fn count_holes(&self) -> usize {
+        match self {
+            // An absent geometry has no faces, so no holes.
+            Geometry::None => 0,
+            Geometry::Euclidean2D(g) => g.count_holes(),
+            Geometry::Euclidean3D(g) => g.count_holes(),
+            Geometry::GeometryCollection(c) => c.count_holes(),
+        }
+    }
+}
+
+impl CountHoles for GeometryCollection {
+    fn count_holes(&self) -> usize {
+        self.members.iter().map(Geometry::count_holes).sum()
     }
 }
 
@@ -1206,5 +1228,203 @@ mod remove_appearance_tests {
         let mut none = Geometry::None;
         none.remove_appearance();
         assert_eq!(none, Geometry::None);
+    }
+}
+
+#[cfg(test)]
+mod count_holes_tests {
+    use super::*;
+    use coordinate::CoordinateFrame;
+    use line_string::LineString3D;
+    use point::Point3D;
+    use point_cloud::PointCloud;
+    use polygon::{Polygon2D, Polygon3D};
+    use polygon_mesh::{PolygonMesh2D, PolygonMesh3D, PolygonMesh3DData};
+    use solid::{Shell, Solid};
+    use triangular_mesh::TriangularMesh3D;
+
+    /// A unit square, as an exterior ring.
+    const SQUARE: [[f64; 3]; 5] = [
+        [0.0, 0.0, 0.0],
+        [4.0, 0.0, 0.0],
+        [4.0, 4.0, 0.0],
+        [0.0, 4.0, 0.0],
+        [0.0, 0.0, 0.0],
+    ];
+
+    /// A closed square hole ring of side 1, with its lower-left corner at `(x, y)`.
+    fn hole(x: f64, y: f64) -> Vec<[f64; 3]> {
+        vec![
+            [x, y, 0.0],
+            [x + 1.0, y, 0.0],
+            [x + 1.0, y + 1.0, 0.0],
+            [x, y + 1.0, 0.0],
+            [x, y, 0.0],
+        ]
+    }
+
+    /// A square face carrying `n` holes.
+    fn face_with_holes(n: usize) -> Polygon3D {
+        let holes: Vec<_> = (0..n).map(|i| hole(1.0 + i as f64 * 1.5, 1.0)).collect();
+        Polygon3D::from_rings(CoordinateFrame::Euclidean, SQUARE, holes)
+    }
+
+    /// A one-quad shell mesh whose single face carries `n` holes.
+    fn shell_with_holes(n: usize) -> PolygonMesh3DData {
+        PolygonMesh3DData::from_polygons([&face_with_holes(n)])
+    }
+
+    fn geometry_3d(g: Euclidean3DGeometry) -> Geometry {
+        Geometry::Euclidean3D(g)
+    }
+
+    #[test]
+    fn a_polygon_counts_its_interior_rings() {
+        assert_eq!(face_with_holes(0).count_holes(), 0);
+        assert_eq!(face_with_holes(2).count_holes(), 2);
+    }
+
+    #[test]
+    fn a_2d_polygon_counts_its_interior_rings() {
+        let square = [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]];
+        let hole = vec![[1.0, 1.0], [2.0, 1.0], [2.0, 2.0], [1.0, 2.0], [1.0, 1.0]];
+        let p = Polygon2D::from_rings_at_elevation(
+            CoordinateFrame::Euclidean,
+            square,
+            vec![hole],
+            10.0,
+        );
+        assert_eq!(p.count_holes(), 1);
+    }
+
+    #[test]
+    fn a_mesh_counts_the_holes_of_every_face() {
+        // Two faces, one with two holes and one with none: three rings in the
+        // shared `interior_offsets`, counted once each.
+        let mesh = PolygonMesh3D::from_polygons(
+            CoordinateFrame::Euclidean,
+            [&face_with_holes(2), &face_with_holes(0)],
+        )
+        .unwrap();
+        assert_eq!(mesh.num_faces(), 2);
+        assert_eq!(mesh.count_holes(), 2);
+    }
+
+    #[test]
+    fn a_mesh_without_holes_counts_zero() {
+        let mesh = PolygonMesh2D::from_parts(
+            CoordinateFrame::Euclidean,
+            vec![[0.0, 0.0], [3.0, 0.0], [3.0, 2.0]],
+            vec![vec![0u32, 1, 2]],
+        )
+        .unwrap();
+        assert_eq!(mesh.count_holes(), 0);
+    }
+
+    #[test]
+    fn a_2d_mesh_counts_the_holes_of_every_face() {
+        // One quad face (corners 0..4) with one hole ring (corners 4..8).
+        let mesh = PolygonMesh2D::from_raw_parts(
+            CoordinateFrame::Euclidean,
+            vec![
+                [0.0, 0.0],
+                [4.0, 0.0],
+                [4.0, 4.0],
+                [0.0, 4.0],
+                [1.0, 1.0],
+                [2.0, 1.0],
+                [2.0, 2.0],
+                [1.0, 2.0],
+            ],
+            vec![0, 1, 2, 3, 4, 5, 6, 7],
+            Vec::new(),
+            vec![4],
+        )
+        .unwrap();
+        assert_eq!(mesh.count_holes(), 1);
+    }
+
+    #[test]
+    fn a_solid_counts_the_holes_in_the_faces_of_every_shell() {
+        // Exterior face has two holes, the void shell's face has one: three in
+        // all. The void shell itself is not a hole and adds nothing.
+        let solid = Solid::new(
+            CoordinateFrame::Euclidean,
+            shell_with_holes(2),
+            vec![Shell::from(shell_with_holes(1))],
+        );
+        assert_eq!(solid.interiors().len(), 1);
+        assert_eq!(solid.count_holes(), 3);
+    }
+
+    #[test]
+    fn a_solid_bounded_by_triangles_counts_zero() {
+        let mesh = triangular_mesh::TriangularMesh3DData::from_parts(
+            vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            [0u32, 1, 2],
+        )
+        .unwrap();
+        let solid = Solid::from_exterior(CoordinateFrame::Euclidean, mesh);
+        assert_eq!(solid.count_holes(), 0);
+    }
+
+    #[test]
+    fn a_type_that_cannot_carry_a_hole_counts_zero() {
+        let tris = TriangularMesh3D::from_parts(
+            CoordinateFrame::Euclidean,
+            vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            [0u32, 1, 2],
+        )
+        .unwrap();
+        let cloud = PointCloud::from_positions(CoordinateFrame::Euclidean, [[0.0, 0.0, 0.0]]);
+        let csg = csg::Csg::union(
+            Solid::from_exterior(CoordinateFrame::Euclidean, shell_with_holes(2)),
+            Solid::from_exterior(CoordinateFrame::Euclidean, shell_with_holes(1)),
+        );
+
+        for g in [
+            Euclidean3DGeometry::Point(Point3D::new(CoordinateFrame::Euclidean, [1.0, 2.0, 3.0])),
+            Euclidean3DGeometry::LineString(LineString3D::from_coords(
+                CoordinateFrame::Euclidean,
+                [[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]],
+            )),
+            Euclidean3DGeometry::TriangularMesh(Box::new(tris)),
+            Euclidean3DGeometry::PointCloud(Box::new(cloud)),
+            // An unevaluated tree has no faces of its own, so its operands'
+            // holes do not surface.
+            Euclidean3DGeometry::Csg(csg),
+        ] {
+            assert_eq!(geometry_3d(g).count_holes(), 0);
+        }
+    }
+
+    #[test]
+    fn an_absent_geometry_counts_zero() {
+        assert_eq!(Geometry::None.count_holes(), 0);
+    }
+
+    #[test]
+    fn a_collection_sums_its_members() {
+        let c = collection::Collection3D::new([
+            Euclidean3DGeometry::Polygon(Box::new(face_with_holes(2))),
+            Euclidean3DGeometry::Point(Point3D::new(CoordinateFrame::Euclidean, [0.0, 0.0, 0.0])),
+        ]);
+        assert_eq!(
+            geometry_3d(Euclidean3DGeometry::Collection(c)).count_holes(),
+            2
+        );
+    }
+
+    #[test]
+    fn counting_reaches_through_nested_collections() {
+        let inner = Geometry::GeometryCollection(GeometryCollection::new([geometry_3d(
+            Euclidean3DGeometry::Polygon(Box::new(face_with_holes(1))),
+        )]));
+        let outer = Geometry::GeometryCollection(GeometryCollection::new([
+            inner,
+            geometry_3d(Euclidean3DGeometry::Polygon(Box::new(face_with_holes(3)))),
+            Geometry::None,
+        ]));
+        assert_eq!(outer.count_holes(), 4);
     }
 }

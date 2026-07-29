@@ -268,6 +268,31 @@ impl<T: RemoveAppearance + ?Sized> RemoveAppearance for Box<T> {
     }
 }
 
+/// Count the interior (hole) rings a geometry's faces carry.
+///
+/// Total over the hierarchy: a type that cannot carry a hole inherits the `0`
+/// default, so counting never fails and a caller cannot tell "has no holes" from
+/// "cannot have holes". The unit counted is the ring, not the face: a face with
+/// two holes contributes two, matching the inner boundaries a donut reports.
+///
+/// A [`Solid`](crate::solid::Solid)'s void shells are not holes in this sense —
+/// they are hollow volumes, not boundaries of a face — so they are not counted;
+/// the holes in the faces of those shells are.
+#[enum_dispatch::enum_dispatch]
+pub trait CountHoles {
+    /// The number of interior rings across this geometry, recursing into
+    /// collections.
+    fn count_holes(&self) -> usize {
+        0
+    }
+}
+
+impl<T: CountHoles + ?Sized> CountHoles for Box<T> {
+    fn count_holes(&self) -> usize {
+        (**self).count_holes()
+    }
+}
+
 /// Why a geometry could not be re-represented in a pure 2D embedding.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ForceTwoDimensionError {

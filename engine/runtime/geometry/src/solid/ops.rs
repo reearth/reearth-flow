@@ -143,7 +143,23 @@ impl ConvertFrame for Solid {
 // result, so it has no 2D counterpart.
 crate::unsupported!(Solid: ForceTwoDimension);
 
-use crate::ops::RemoveAppearance;
+use crate::ops::{CountHoles, RemoveAppearance};
+
+impl CountHoles for Solid {
+    /// The holes in the boundary faces of every shell. The void shells
+    /// themselves are hollow volumes rather than face boundaries, so they are
+    /// not counted; only the rings inside their faces are. A triangle-mesh shell
+    /// carries no rings and contributes nothing.
+    fn count_holes(&self) -> usize {
+        std::iter::once(&self.exterior)
+            .chain(self.interiors.iter())
+            .map(|shell| match shell {
+                Shell::PolygonMesh(data) => data.num_holes(),
+                Shell::TriangularMesh(_) => 0,
+            })
+            .sum()
+    }
+}
 
 impl RemoveAppearance for Solid {
     fn remove_appearance(&mut self) {

@@ -155,5 +155,6 @@ crate::unsupported!(
     Reproject,
     ConvertFrame,
     ForceTwoDimension,
-    RemoveAppearance
+    RemoveAppearance,
+    CountHoles
 );
