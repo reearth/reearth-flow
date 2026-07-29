@@ -195,14 +195,25 @@ fn parse_property_table(
             continue;
         };
 
-        // Extract string properties using buffer views
+        let no_data = schema_property_field(schema, class.as_deref(), key, "noData");
+
+        // Extract string properties using buffer views. A row matching the
+        // schema's `noData` (compared as a string) becomes `Null` so
+        // `feature_properties` can elide it, the same as numeric `noData`.
         if let Some(string_values) = parse_string_property(prop_obj, buffer_data, count)? {
+            let no_data_str = no_data.and_then(|nd| nd.as_str());
             parsed_properties.insert(
                 key.clone(),
                 PropertyData {
                     values: string_values
                         .into_iter()
-                        .map(AttributeValue::String)
+                        .map(|s| {
+                            if no_data_str == Some(s.as_str()) {
+                                AttributeValue::Null
+                            } else {
+                                AttributeValue::String(s)
+                            }
+                        })
                         .collect(),
                 },
             );
@@ -210,10 +221,7 @@ fn parse_property_table(
         }
 
         // BOOLEAN properties have no `componentType` (their `type` IS
-        // "BOOLEAN"); everything else that reaches here is either numeric
-        // (has a `componentType`) or an unsupported shape (ENUM, VECN/MATN,
-        // arrays) that we still leave as an empty column rather than failing
-        // the whole table.
+        // "BOOLEAN").
         let property_type = schema_property_field(schema, class.as_deref(), key, "type")
             .and_then(|v| v.as_str());
 
@@ -224,15 +232,26 @@ fn parse_property_table(
             }
         }
 
-        let component_type = schema_property_field(schema, class.as_deref(), key, "componentType")
-            .and_then(|v| v.as_str());
+        // VEC2/3/4, MAT2/3/4, and array-flagged SCALAR properties also carry
+        // a `componentType`, but decoding them with the flat-scalar reader
+        // below would read the wrong stride and produce corrupt values,
+        // so only dispatch to it for genuine scalar (non-array) properties.
+        let is_array = schema_property_field(schema, class.as_deref(), key, "array")
+            .and_then(|v| v.as_bool())
+            .unwrap_or(false);
 
-        if let Some(component_type) = component_type {
-            if let Some(values) =
-                parse_numeric_property(prop_obj, buffer_data, count, component_type)?
-            {
-                parsed_properties.insert(key.clone(), PropertyData { values });
-                continue;
+        if property_type == Some("SCALAR") && !is_array {
+            let component_type =
+                schema_property_field(schema, class.as_deref(), key, "componentType")
+                    .and_then(|v| v.as_str());
+
+            if let Some(component_type) = component_type {
+                if let Some(values) =
+                    parse_numeric_property(prop_obj, buffer_data, count, component_type, no_data)?
+                {
+                    parsed_properties.insert(key.clone(), PropertyData { values });
+                    continue;
+                }
             }
         }
 
@@ -294,20 +313,19 @@ fn parse_boolean_property(
 /// [`extract_feature_properties`], but resolves bytes from the
 /// caller-supplied `buffer_data` (buffers already resolved by index, same
 /// convention as [`parse_string_property`]) instead of the glTF binary blob
-/// plus bufferViews.
+/// plus bufferViews. Only ever called for genuine SCALAR, non-array
+/// properties (see the caller in [`parse_property_table`]): VEC2/3/4,
+/// MAT2/3/4, and fixed/variable-length arrays also carry a `componentType`
+/// but need a different, wider stride and are intentionally left unhandled.
 ///
-/// Note on `noData`: `PropertyData::values` is a dense `Vec`, so there is no
-/// "hole" representation for a skipped row without changing that struct's
-/// shape. Rather than over-engineering a sparse representation, every row's
-/// raw decoded value is kept as-is, including ones that equal a configured
-/// `noData` sentinel; `feature_properties` returns whatever was decoded here
-/// unfiltered. Callers that need strict `noData` semantics should compare the
-/// returned value against the schema's `noData` themselves.
+/// A row whose raw decoded value equals the schema's `noData` becomes
+/// `AttributeValue::Null`; [`feature_properties`] skips `Null` entries.
 fn parse_numeric_property(
     prop_obj: &serde_json::Map<String, Value>,
     buffer_data: &[Vec<u8>],
     count: usize,
     component_type: &str,
+    no_data: Option<&Value>,
 ) -> Result<Option<Vec<AttributeValue>>, GltfReaderError> {
     let values_idx = match prop_obj.get("values").and_then(|v| v.as_u64()) {
         Some(idx) => idx as usize,
@@ -320,18 +338,40 @@ fn parse_numeric_property(
 
     let mut values = Vec::with_capacity(count);
     for i in 0..count {
-        values.push(decode_numeric_element(values_buffer, i, component_type)?);
+        values.push(decode_numeric_element(
+            values_buffer,
+            i,
+            component_type,
+            no_data,
+        )?);
     }
     Ok(Some(values))
+}
+
+fn is_no_data_i64(no_data: Option<&Value>, v: i64) -> bool {
+    no_data.and_then(|nd| nd.as_i64()).is_some_and(|nd| nd == v)
+}
+
+fn is_no_data_u64(no_data: Option<&Value>, v: u64) -> bool {
+    no_data.and_then(|nd| nd.as_u64()).is_some_and(|nd| nd == v)
+}
+
+fn is_no_data_f64(no_data: Option<&Value>, v: f64) -> bool {
+    no_data
+        .and_then(|nd| nd.as_f64())
+        .is_some_and(|nd| (nd - v).abs() < f64::EPSILON)
 }
 
 /// Decode the `index`-th element of `component_type` out of `buffer`,
 /// little-endian, mapping signed types to `AttributeValue::Number` backed by
 /// `i64`, unsigned types by `u64`, and floats via `serde_json::Number::from_f64`.
+/// Returns `AttributeValue::Null` when the decoded value matches `no_data`
+/// (comparison mirrors [`extract_feature_properties`]'s `is_no_data` checks).
 fn decode_numeric_element(
     buffer: &[u8],
     index: usize,
     component_type: &str,
+    no_data: Option<&Value>,
 ) -> Result<AttributeValue, GltfReaderError> {
     fn bytes_at(buffer: &[u8], start: usize, len: usize) -> Result<&[u8], GltfReaderError> {
         buffer.get(start..start + len).ok_or_else(|| {
@@ -340,43 +380,97 @@ fn decode_numeric_element(
     }
 
     Ok(match component_type {
-        "INT8" => AttributeValue::Number((bytes_at(buffer, index, 1)?[0] as i8 as i64).into()),
-        "UINT8" => AttributeValue::Number((bytes_at(buffer, index, 1)?[0] as u64).into()),
+        "INT8" => {
+            let v = bytes_at(buffer, index, 1)?[0] as i8 as i64;
+            if is_no_data_i64(no_data, v) {
+                AttributeValue::Null
+            } else {
+                AttributeValue::Number(v.into())
+            }
+        }
+        "UINT8" => {
+            let v = bytes_at(buffer, index, 1)?[0] as u64;
+            if is_no_data_u64(no_data, v) {
+                AttributeValue::Null
+            } else {
+                AttributeValue::Number(v.into())
+            }
+        }
         "INT16" => {
             let b = bytes_at(buffer, index * 2, 2)?;
-            AttributeValue::Number((i16::from_le_bytes([b[0], b[1]]) as i64).into())
+            let v = i16::from_le_bytes([b[0], b[1]]) as i64;
+            if is_no_data_i64(no_data, v) {
+                AttributeValue::Null
+            } else {
+                AttributeValue::Number(v.into())
+            }
         }
         "UINT16" => {
             let b = bytes_at(buffer, index * 2, 2)?;
-            AttributeValue::Number((u16::from_le_bytes([b[0], b[1]]) as u64).into())
+            let v = u16::from_le_bytes([b[0], b[1]]) as u64;
+            if is_no_data_u64(no_data, v) {
+                AttributeValue::Null
+            } else {
+                AttributeValue::Number(v.into())
+            }
         }
         "INT32" => {
             let b = bytes_at(buffer, index * 4, 4)?;
-            AttributeValue::Number((i32::from_le_bytes([b[0], b[1], b[2], b[3]]) as i64).into())
+            let v = i32::from_le_bytes([b[0], b[1], b[2], b[3]]) as i64;
+            if is_no_data_i64(no_data, v) {
+                AttributeValue::Null
+            } else {
+                AttributeValue::Number(v.into())
+            }
         }
         "UINT32" => {
             let b = bytes_at(buffer, index * 4, 4)?;
-            AttributeValue::Number((u32::from_le_bytes([b[0], b[1], b[2], b[3]]) as u64).into())
+            let v = u32::from_le_bytes([b[0], b[1], b[2], b[3]]) as u64;
+            if is_no_data_u64(no_data, v) {
+                AttributeValue::Null
+            } else {
+                AttributeValue::Number(v.into())
+            }
         }
         "INT64" => {
             let b = bytes_at(buffer, index * 8, 8)?;
             let v = i64::from_le_bytes(b.try_into().unwrap());
-            AttributeValue::Number(v.into())
+            if is_no_data_i64(no_data, v) {
+                AttributeValue::Null
+            } else {
+                AttributeValue::Number(v.into())
+            }
         }
         "UINT64" => {
             let b = bytes_at(buffer, index * 8, 8)?;
             let v = u64::from_le_bytes(b.try_into().unwrap());
-            AttributeValue::Number(v.into())
+            if is_no_data_u64(no_data, v) {
+                AttributeValue::Null
+            } else {
+                AttributeValue::Number(v.into())
+            }
         }
         "FLOAT32" => {
             let b = bytes_at(buffer, index * 4, 4)?;
             let v = f32::from_le_bytes([b[0], b[1], b[2], b[3]]) as f64;
-            AttributeValue::Number(serde_json::Number::from_f64(v).unwrap_or_else(|| 0.into()))
+            if is_no_data_f64(no_data, v) {
+                AttributeValue::Null
+            } else {
+                AttributeValue::Number(
+                    serde_json::Number::from_f64(v).unwrap_or_else(|| 0.into()),
+                )
+            }
         }
         "FLOAT64" => {
             let b = bytes_at(buffer, index * 8, 8)?;
             let v = f64::from_le_bytes(b.try_into().unwrap());
-            AttributeValue::Number(serde_json::Number::from_f64(v).unwrap_or_else(|| 0.into()))
+            if is_no_data_f64(no_data, v) {
+                AttributeValue::Null
+            } else {
+                AttributeValue::Number(
+                    serde_json::Number::from_f64(v).unwrap_or_else(|| 0.into()),
+                )
+            }
         }
         other => {
             return Err(GltfReaderError::Parse(format!(
@@ -389,6 +483,8 @@ fn decode_numeric_element(
 
 /// Look up `feature_id`'s attributes in property table `table_index`.
 /// Returns an empty map if the table or the feature id is out of range.
+/// Rows decoded as `AttributeValue::Null` (i.e. matched the schema's
+/// `noData`) are skipped, so `noData` sentinels never surface as attributes.
 pub fn feature_properties(
     tables: &PropertyTables,
     table_index: usize,
@@ -404,7 +500,9 @@ pub fn feature_properties(
     }
     for (name, data) in &table.properties {
         if let Some(v) = data.values.get(row) {
-            out.insert(name.clone(), v.clone());
+            if !matches!(v, AttributeValue::Null) {
+                out.insert(name.clone(), v.clone());
+            }
         }
     }
     out
@@ -925,6 +1023,129 @@ mod tests {
             AttributeValue::Number(serde_json::Number::from_f64(2.25).unwrap())
         );
         assert_eq!(table.properties["flag"].values[0], AttributeValue::Bool(true));
+    }
+
+    #[test]
+    fn no_data_rows_are_omitted_from_feature_properties() {
+        // Two features. "height" UINT32 noData = u32::MAX; row 1 is noData.
+        // "name" STRING noData = "N/A"; row 1 is noData.
+        let schema = serde_json::json!({
+            "classes": {
+                "Feature": {
+                    "properties": {
+                        "height": {"type": "SCALAR", "componentType": "UINT32", "noData": u32::MAX},
+                        "name": {"type": "STRING", "noData": "N/A"}
+                    }
+                }
+            }
+        });
+        let table_obj_value = serde_json::json!({
+            "class": "Feature",
+            "count": 2,
+            "properties": {
+                "height": {"values": 0},
+                "name": {"values": 1, "stringOffsets": 2}
+            }
+        });
+        let Value::Object(table_obj) = table_obj_value else {
+            unreachable!()
+        };
+
+        // buffer 0: "height" UINT32 values: [10, u32::MAX]
+        let height_buffer: Vec<u8> = [10u32, u32::MAX]
+            .iter()
+            .flat_map(|v| v.to_le_bytes())
+            .collect();
+        // buffer 1: "name" STRING raw UTF-8 bytes: "a" + "N/A"
+        let name_values_buffer: Vec<u8> = b"aN/A".to_vec();
+        // buffer 2: "name" stringOffsets, UINT32 LE cumulative byte offsets
+        // into buffer 1 (count + 1 = 3 entries): [0, 1, 4]
+        let name_offsets_buffer: Vec<u8> = [0u32, 1u32, 4u32]
+            .iter()
+            .flat_map(|v| v.to_le_bytes())
+            .collect();
+        let buffers = vec![height_buffer, name_values_buffer, name_offsets_buffer];
+
+        let table = parse_property_table(&table_obj, &schema, &buffers).unwrap();
+
+        // noData rows decode to Null internally...
+        assert_eq!(table.properties["height"].values[0], AttributeValue::Number(10u64.into()));
+        assert_eq!(table.properties["height"].values[1], AttributeValue::Null);
+        assert_eq!(table.properties["name"].values[0], AttributeValue::String("a".into()));
+        assert_eq!(table.properties["name"].values[1], AttributeValue::Null);
+
+        // ...and feature_properties skips them entirely rather than
+        // surfacing the noData sentinel as a real attribute value.
+        let tables = PropertyTables {
+            schema,
+            tables: vec![table],
+        };
+        let f0 = feature_properties(&tables, 0, 0);
+        assert_eq!(f0.get("height"), Some(&AttributeValue::Number(10u64.into())));
+        assert_eq!(f0.get("name"), Some(&AttributeValue::String("a".into())));
+
+        let f1 = feature_properties(&tables, 0, 1);
+        assert_eq!(f1.get("height"), None, "noData height must be omitted");
+        assert_eq!(f1.get("name"), None, "noData name must be omitted");
+    }
+
+    #[test]
+    fn non_scalar_and_array_numeric_properties_are_not_mis_decoded() {
+        // A VEC3 property and an array-flagged SCALAR property both carry a
+        // `componentType`, exactly like a plain SCALAR does. Decoding them
+        // with the flat-scalar reader would read the wrong stride and
+        // produce garbage; they must be left as an empty column instead.
+        let schema = serde_json::json!({
+            "classes": {
+                "Feature": {
+                    "properties": {
+                        "position": {"type": "VEC3", "componentType": "FLOAT32"},
+                        "tags": {"type": "SCALAR", "componentType": "UINT8", "array": true, "count": 3}
+                    }
+                }
+            }
+        });
+        let table_obj_value = serde_json::json!({
+            "class": "Feature",
+            "count": 1,
+            "properties": {
+                "position": {"values": 0},
+                "tags": {"values": 1}
+            }
+        });
+        let Value::Object(table_obj) = table_obj_value else {
+            unreachable!()
+        };
+
+        // buffer 0: one VEC3<FLOAT32> = (1.0, 2.0, 3.0), 12 bytes.
+        let position_buffer: Vec<u8> = [1.0f32, 2.0f32, 3.0f32]
+            .iter()
+            .flat_map(|v| v.to_le_bytes())
+            .collect();
+        // buffer 1: one 3-element UINT8 array = [7, 8, 9].
+        let tags_buffer: Vec<u8> = vec![7, 8, 9];
+        let buffers = vec![position_buffer, tags_buffer];
+
+        let table = parse_property_table(&table_obj, &schema, &buffers).unwrap();
+
+        assert!(
+            table.properties["position"].values.is_empty(),
+            "VEC3 must not be decoded as flat scalars"
+        );
+        assert!(
+            table.properties["tags"].values.is_empty(),
+            "array-flagged SCALAR must not be decoded as flat scalars"
+        );
+
+        // feature_properties over such a table simply has nothing to return
+        // for these columns rather than surfacing corrupt values.
+        let tables = PropertyTables {
+            schema,
+            tables: vec![table],
+        };
+        let f0 = feature_properties(&tables, 0, 0);
+        assert_eq!(f0.get("position"), None);
+        assert_eq!(f0.get("tags"), None);
     }
 
     /// Test-only fixtures for constructing minimal, hand-verified
