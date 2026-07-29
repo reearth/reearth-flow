@@ -2,7 +2,7 @@
   "actions": [
     {
       "name": "Appearance Remover",
-      "description": "从CityGML几何体中移除外观信息（材质、纹理）"
+      "description": "移除要素几何体所携带的材质、纹理和纹理坐标"
     },
     {
       "name": "Area Calculator",
@@ -1742,7 +1742,7 @@
     },
     {
       "name": "Geometry Remover",
-      "description": "从要素中移除几何体"
+      "description": "移除要素的几何体，并保留其属性"
     },
     {
       "name": "Geometry Replacer",
@@ -2644,23 +2644,23 @@
     },
     {
       "name": "Offsetter",
-      "description": "为实体的坐标添加偏移",
+      "description": "沿各坐标轴将几何图形的所有坐标平移固定量",
       "parameterI18n": {
         "": {
           "title": "Offsetter Parameters",
-          "description": "Configure the X, Y, and Z coordinate offsets to apply to all geometry coordinates"
+          "description": "Amounts added to every geometry coordinate, one per axis, in the coordinate unit of the geometry's frame."
         },
         "offsetX": {
           "title": "X Offset",
-          "description": "Offset to add to all X coordinates (longitude)"
+          "description": "Amount added to every X coordinate, in the coordinate unit of the geometry's frame (degrees for a geographic CRS). Defaults to zero."
         },
         "offsetY": {
           "title": "Y Offset",
-          "description": "Offset to add to all Y coordinates (latitude)"
+          "description": "Amount added to every Y coordinate, in the coordinate unit of the geometry's frame (degrees for a geographic CRS). Defaults to zero."
         },
         "offsetZ": {
           "title": "Z Offset",
-          "description": "Offset to add to all Z coordinates (elevation)"
+          "description": "Amount added to every Z coordinate, in the coordinate unit of the geometry's frame (metres for a geographic CRS). Defaults to zero."
         }
       }
     },

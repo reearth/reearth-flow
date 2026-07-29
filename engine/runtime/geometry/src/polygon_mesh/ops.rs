@@ -553,6 +553,20 @@ impl PolygonMesh2D {
     }
 }
 
+use crate::ops::RemoveAppearance;
+
+impl RemoveAppearance for PolygonMesh2D {
+    fn remove_appearance(&mut self) {
+        *self.appearance_mut() = None;
+    }
+}
+
+impl RemoveAppearance for PolygonMesh3D {
+    fn remove_appearance(&mut self) {
+        *self.appearance_mut() = None;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

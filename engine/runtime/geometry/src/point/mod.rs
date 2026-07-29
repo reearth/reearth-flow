@@ -60,3 +60,6 @@ crate::unsupported!(Point3D: Triangulate);
 
 crate::unsupported!(Point2D: Split);
 crate::unsupported!(Point3D: Split);
+
+crate::unsupported!(Point2D: RemoveAppearance);
+crate::unsupported!(Point3D: RemoveAppearance);

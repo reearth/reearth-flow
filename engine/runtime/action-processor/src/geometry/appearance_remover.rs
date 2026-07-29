@@ -1,5 +1,4 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -8,8 +7,16 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
-use reearth_flow_types::{Feature, GeometryValue};
 use serde_json::Value;
+
+#[cfg(not(feature = "new-geometry"))]
+use std::sync::Arc;
+
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_types::{Feature, GeometryValue};
+
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::ops::RemoveAppearance;
 
 #[derive(Debug, Clone, Default)]
 pub struct AppearanceRemoverFactory;
@@ -20,7 +27,7 @@ impl ProcessorFactory for AppearanceRemoverFactory {
     }
 
     fn description(&self) -> &str {
-        "Removes appearance information (materials, textures) from CityGML geometry"
+        "Discards the materials, textures and texture coordinates carried by a feature's geometry."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -91,7 +98,18 @@ impl Processor for AppearanceRemover {
         Ok(())
     }
 
-    #[cfg(not(feature = "new-geometry"))]
+    #[cfg(feature = "new-geometry")]
+    fn process(
+        &mut self,
+        ctx: ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        let mut feature = ctx.feature.clone();
+        feature.geometry_mut().remove_appearance();
+        fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
+        Ok(())
+    }
+
     fn finish(
         &mut self,
         _ctx: NodeContext,
