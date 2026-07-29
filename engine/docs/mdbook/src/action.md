@@ -5303,6 +5303,8 @@ Filter Features by Geometry Type
   "description": "Configure how to filter features based on their geometry type",
   "oneOf": [
     {
+      "title": "No Geometry",
+      "description": "Separates the features that carry no geometry at all from the ones that do.",
       "type": "object",
       "required": [
         "filterType"
@@ -5317,6 +5319,8 @@ Filter Features by Geometry Type
       }
     },
     {
+      "title": "Multiple Geometries",
+      "description": "Separates the features whose geometry is a container that can hold more than one part.",
       "type": "object",
       "required": [
         "filterType"
@@ -5331,6 +5335,8 @@ Filter Features by Geometry Type
       }
     },
     {
+      "title": "Geometry Type",
+      "description": "Routes by the geometry family a feature belongs to: point, curve, surface, triangle or solid.",
       "type": "object",
       "required": [
         "filterType"
