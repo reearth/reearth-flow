@@ -150,4 +150,10 @@ impl fmt::Debug for PointCloud {
     }
 }
 
-crate::unsupported!(PointCloud: Triangulate, Reproject, ConvertFrame, Translate, ForceTwoDimension);
+crate::unsupported!(
+    PointCloud: Triangulate,
+    Reproject,
+    ConvertFrame,
+    ForceTwoDimension,
+    RemoveAppearance
+);

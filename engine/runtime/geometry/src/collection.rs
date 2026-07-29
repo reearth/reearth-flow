@@ -283,6 +283,22 @@ impl crate::ops::Translate for Collection3D {
     }
 }
 
+impl crate::ops::RemoveAppearance for Collection2D {
+    fn remove_appearance(&mut self) {
+        for member in self.members_mut() {
+            member.remove_appearance();
+        }
+    }
+}
+
+impl crate::ops::RemoveAppearance for Collection3D {
+    fn remove_appearance(&mut self) {
+        for member in self.members_mut() {
+            member.remove_appearance();
+        }
+    }
+}
+
 impl crate::ops::Split for Collection2D {
     fn split(
         &mut self,
