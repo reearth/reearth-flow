@@ -329,7 +329,11 @@ mod tests {
     }
 
     fn raw_paths(table: &PropertyTable) -> Vec<&str> {
-        table.properties.iter().map(|(raw, _)| raw.as_str()).collect()
+        table
+            .properties
+            .iter()
+            .map(|(raw, _)| raw.as_str())
+            .collect()
     }
 
     #[test]

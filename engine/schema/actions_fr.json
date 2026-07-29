@@ -2276,6 +2276,14 @@
               "null"
             ]
           },
+          "arrayMapSeparator": {
+            "title": "Séparateur Array/Map",
+            "description": "Séparateur reliant un attribut array ou map imbriqué à sa clé ou son index enfant lors de son aplatissement en colonnes de métadonnées. Laissez non défini pour exclure entièrement les attributs array et map de la sortie.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "compressOutput": {
             "title": "Chemin de Sortie Compressé",
             "description": "Chemin optionnel pour la sortie de l'archive compressée",

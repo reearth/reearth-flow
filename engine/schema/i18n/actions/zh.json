@@ -774,6 +774,10 @@
           "title": "Cesium3DTilesWriter 参数",
           "description": "Configuration for writing features to Cesium 3D Tiles."
         },
+        "arrayMapSeparator": {
+          "title": "数组/映射分隔符",
+          "description": "在将嵌套的数组或映射属性展平为元数据列时，用于连接其子键或索引的分隔符。留空则在输出中完全丢弃数组和映射属性。"
+        },
         "atlasExtrusion": {
           "title": "图集外扩",
           "description": "在图集中每个纹理区域周围绘制的像素环，用于防止相邻区域之间的双线性渗色。默认值为 0（禁用）。"

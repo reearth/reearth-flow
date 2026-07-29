@@ -2240,6 +2240,14 @@ Writes features to Cesium 3D Tiles format for 3D web visualization.
         "null"
       ]
     },
+    "arrayMapSeparator": {
+      "title": "Array/Map Separator",
+      "description": "Separator joining a nested array or map attribute to its child key or index when flattening it into metadata columns. Leave unset to drop array and map attributes from the output entirely.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "compressOutput": {
       "title": "Compressed Output Path",
       "description": "Optional path where a compressed archive of the tiles is also written.",
