@@ -20,7 +20,7 @@ use reearth_flow_common::{image::MimeType, uri::Uri};
 use reearth_flow_geometry::{
     appearance::{
         AlphaMode, ChannelId, FaceBinding, Filter, Material, MaterialIndex, PbrMaterial, Raster,
-        RasterData, Sampler, Texture, ThemeId, UvSource, WrapMode,
+        RasterData, Sampler, Texture, TextureTransform, ThemeId, UvSource, WrapMode,
     },
     coordinate::CoordinateFrame,
     triangular_mesh::TriangularMesh3D,
@@ -170,9 +170,11 @@ struct MeshBuild {
     /// Per triangle: palette slot in `materials`, or `None` for the glTF default
     /// material (left unpainted so the writer's neutral default applies).
     tri_material: Vec<Option<u32>>,
-    /// Per corner (three per triangle), aligned to `soup`. `[0, 0]` where a
-    /// triangle's material is untextured (the slot is never sampled then).
-    corner_uv: Vec<[f64; 2]>,
+    /// Per UV channel, one entry per corner (aligned to `soup`, i.e. every
+    /// channel's buffer has the same length as the whole mesh's corner count).
+    /// `[0, 0]` at corners whose triangle's material doesn't sample that
+    /// channel (untextured, or textured on a different channel).
+    corner_uv: BTreeMap<ChannelId, Vec<[f64; 2]>>,
     /// Distinct authored materials; `tri_material` indexes this.
     materials: Vec<Material>,
     /// UV channels sampled by any textured material (drives the appearance's UV
@@ -196,6 +198,11 @@ fn extract_mesh_build(
     // primitives is converted (and its image decoded) once.
     let mut palette_by_index: HashMap<usize, u32> = HashMap::new();
 
+    // Pass 1: resolve/convert every distinct material up front, so the full
+    // per-mesh UV channel set (`build.channels`) is known before any per-corner
+    // UV buffer is written in pass 2 — a channel introduced by a later
+    // primitive's material must still get zero-filled entries for every corner
+    // that came before it.
     for primitive in primitives {
         if primitive
             .extension_value("KHR_draco_mesh_compression")
@@ -208,6 +215,23 @@ fn extract_mesh_build(
             ));
         }
 
+        let material = primitive.material();
+        if let Some(index) = material.index() {
+            palette_by_index.entry(index).or_insert_with(|| {
+                let (converted, channels) = convert_material(&material, buffer_data, base_uri);
+                let slot = build.materials.len() as u32;
+                build.materials.push(converted);
+                build.channels.extend(channels);
+                slot
+            });
+        }
+    }
+
+    // Pass 2: expand triangles. For each corner, every known channel
+    // (`build.channels`) gets an entry — the real tex-coord when the corner's
+    // own material samples that channel, `[0, 0]` otherwise — so every
+    // channel's buffer stays aligned to the whole mesh's corner soup.
+    for primitive in primitives {
         let pos_accessor = primitive
             .get(&gltf::Semantic::Positions)
             .ok_or_else(|| SourceError::GltfReader("Primitive has no positions".to_string()))?;
@@ -215,37 +239,19 @@ fn extract_mesh_build(
             reearth_flow_gltf::read_positions_with_transform(&pos_accessor, buffer_data, transform)
                 .map_err(|e| SourceError::GltfReader(format!("Failed to read positions: {e}")))?;
 
-        // Resolve (and dedup) this primitive's material, learning which UV channel
-        // its base-colour texture samples (if any).
         let material = primitive.material();
-        let (slot, channel) = match material.index() {
-            Some(index) => {
-                let slot = match palette_by_index.get(&index) {
-                    Some(&slot) => slot,
-                    None => {
-                        let (converted, channel) =
-                            convert_material(&material, buffer_data, base_uri);
-                        let slot = build.materials.len() as u32;
-                        build.materials.push(converted);
-                        palette_by_index.insert(index, slot);
-                        if let Some(channel) = channel {
-                            build.channels.insert(channel);
-                        }
-                        slot
-                    }
-                };
-                (
-                    Some(slot),
-                    textured_channel(&build.materials[slot as usize]),
-                )
-            }
-            // The glTF default material: leave faces unpainted.
-            None => (None, None),
-        };
+        let slot = material.index().map(|index| palette_by_index[&index]);
+        let sampled_channels: BTreeSet<ChannelId> = slot
+            .map(|s| build.materials[s as usize].referenced_channels())
+            .unwrap_or_default();
 
         let reader = primitive.reader(|b| buffer_data.get(b.index()).map(|v| v.as_slice()));
-        let uv: Option<Vec<[f32; 2]>> =
-            channel.and_then(|c| reader.read_tex_coords(c.0).map(|t| t.into_f32().collect()));
+        let mut uv_by_channel: HashMap<ChannelId, Vec<[f32; 2]>> = HashMap::new();
+        for &channel in &sampled_channels {
+            if let Some(tex_coords) = reader.read_tex_coords(channel.0) {
+                uv_by_channel.insert(channel, tex_coords.into_f32().collect());
+            }
+        }
         let indices: Option<Vec<usize>> = reader
             .read_indices()
             .map(|i| i.into_u32().map(|v| v as usize).collect());
@@ -254,12 +260,14 @@ fn extract_mesh_build(
             for &i in &[a, b, c] {
                 let p = positions[i];
                 build.soup.push([p.x, p.y, p.z]);
-                let corner = uv
-                    .as_ref()
-                    .and_then(|u| u.get(i))
-                    .map(|&[u, v]| [u as f64, v as f64])
-                    .unwrap_or([0.0, 0.0]);
-                build.corner_uv.push(corner);
+                for &channel in &build.channels {
+                    let corner = uv_by_channel
+                        .get(&channel)
+                        .and_then(|u| u.get(i))
+                        .map(|&[u, v]| [u as f64, v as f64])
+                        .unwrap_or([0.0, 0.0]);
+                    build.corner_uv.entry(channel).or_default().push(corner);
+                }
             }
             build.tri_material.push(slot);
         }
@@ -326,52 +334,138 @@ fn triangle_corners(
     Ok(tris)
 }
 
-/// The UV channel a converted material's base-colour texture samples, if textured.
-fn textured_channel(material: &Material) -> Option<ChannelId> {
-    match material {
-        Material::Pbr(m) => m.base_color_map.as_ref().map(|t| t.uv_channel),
-        Material::Phong(m) => m.diffuse_map.as_ref().map(|t| t.uv_channel),
-    }
+/// Resolve one glTF texture reference (its image, sampler, and optional
+/// `KHR_texture_transform`) to a new-geometry [`Texture`] plus the UV channel it
+/// samples. Shared by every PBR map slot (`Info`, `NormalTexture`,
+/// `OcclusionTexture` all expose the same `texture()` / `tex_coord()` /
+/// `texture_transform()` shape, just as distinct gltf-rs types). `None` when the
+/// image can't be resolved (unsupported format, missing buffer view, ...).
+///
+/// When `KHR_texture_transform` carries its own `tex_coord` override, that wins
+/// over the texture-info's `tex_coord`, per the extension's spec.
+fn convert_texture(
+    texture: gltf::texture::Texture,
+    tex_coord: u32,
+    khr_transform: Option<gltf::texture::TextureTransform>,
+    buffer_data: &[Vec<u8>],
+    base_uri: &Uri,
+) -> Option<(Texture, ChannelId)> {
+    let raster = resolve_image(texture.source().source(), buffer_data, base_uri)?;
+    let uv_channel = ChannelId(
+        khr_transform
+            .as_ref()
+            .and_then(|t| t.tex_coord())
+            .unwrap_or(tex_coord),
+    );
+    let transform = khr_transform.map(|t| TextureTransform {
+        offset: t.offset(),
+        rotation: t.rotation(),
+        scale: t.scale(),
+    });
+    Some((
+        Texture {
+            raster: Arc::new(raster),
+            sampler: convert_sampler(&texture.sampler()),
+            transform,
+            uv_channel,
+        },
+        uv_channel,
+    ))
 }
 
-/// Convert a glTF PBR material to the new-geometry [`Material`], resolving its
-/// base-colour texture to an embedded raster (or an external URI) when present.
-/// Returns the UV channel the texture samples so the caller can read that set.
+/// Convert a glTF PBR material to the new-geometry [`Material`], resolving every
+/// texture slot (base colour, metallic-roughness, normal, occlusion, emissive) to
+/// an embedded raster (or an external URI) when present, folding
+/// `KHR_materials_emissive_strength` into the emissive factor, and reading
+/// `KHR_texture_transform` on each map. Returns every UV channel sampled by any
+/// of its textures so the caller knows which UV sets to read.
 fn convert_material(
     material: &gltf::Material,
     buffer_data: &[Vec<u8>],
     base_uri: &Uri,
-) -> (Material, Option<ChannelId>) {
+) -> (Material, Vec<ChannelId>) {
     let pbr = material.pbr_metallic_roughness();
+    let mut channels: Vec<ChannelId> = Vec::new();
 
-    let mut channel = None;
-    let base_color_map = pbr.base_color_texture().and_then(|info| {
-        let raster = resolve_image(info.texture().source().source(), buffer_data, base_uri)?;
-        let uv_channel = ChannelId(info.tex_coord());
-        channel = Some(uv_channel);
-        Some(Texture {
-            raster: Arc::new(raster),
-            sampler: convert_sampler(&info.texture().sampler()),
-            transform: None,
-            uv_channel,
+    let mut record = |resolved: Option<(Texture, ChannelId)>| -> Option<Texture> {
+        resolved.map(|(texture, channel)| {
+            channels.push(channel);
+            texture
         })
-    });
+    };
+
+    let base_color_map = record(pbr.base_color_texture().and_then(|info| {
+        convert_texture(
+            info.texture(),
+            info.tex_coord(),
+            info.texture_transform(),
+            buffer_data,
+            base_uri,
+        )
+    }));
+    let metallic_roughness_map = record(pbr.metallic_roughness_texture().and_then(|info| {
+        convert_texture(
+            info.texture(),
+            info.tex_coord(),
+            info.texture_transform(),
+            buffer_data,
+            base_uri,
+        )
+    }));
+    let normal_map = record(material.normal_texture().and_then(|normal| {
+        convert_texture(
+            normal.texture(),
+            normal.tex_coord(),
+            normal.texture_transform(),
+            buffer_data,
+            base_uri,
+        )
+    }));
+    let occlusion_map = record(material.occlusion_texture().and_then(|occlusion| {
+        convert_texture(
+            occlusion.texture(),
+            occlusion.tex_coord(),
+            occlusion.texture_transform(),
+            buffer_data,
+            base_uri,
+        )
+    }));
+    let emissive_map = record(material.emissive_texture().and_then(|info| {
+        convert_texture(
+            info.texture(),
+            info.tex_coord(),
+            info.texture_transform(),
+            buffer_data,
+            base_uri,
+        )
+    }));
+
+    // KHR_materials_emissive_strength scales emissiveFactor beyond its normal
+    // [0, 1] range; fold it in now so downstream consumers see one linear
+    // emissive colour without needing to know about the extension.
+    let strength = material.emissive_strength().unwrap_or(1.0);
+    let emissive_factor = material.emissive_factor();
+    let emissive = [
+        emissive_factor[0] * strength,
+        emissive_factor[1] * strength,
+        emissive_factor[2] * strength,
+    ];
 
     let converted = Material::Pbr(PbrMaterial {
         base_color: pbr.base_color_factor(),
         metallic: pbr.metallic_factor(),
         roughness: pbr.roughness_factor(),
-        emissive: material.emissive_factor(),
+        emissive,
         base_color_map,
-        metallic_roughness_map: None,
-        normal_map: None,
-        occlusion_map: None,
-        emissive_map: None,
+        metallic_roughness_map,
+        normal_map,
+        occlusion_map,
+        emissive_map,
         alpha_mode: convert_alpha_mode(material.alpha_mode(), material.alpha_cutoff()),
         double_sided: material.double_sided(),
     });
 
-    (converted, channel)
+    (converted, channels)
 }
 
 /// Resolve a glTF image to a [`Raster`]: embedded (`View`) and `data:` URIs become
@@ -482,15 +576,33 @@ fn convert_alpha_mode(mode: gltf::material::AlphaMode, cutoff: Option<f32>) -> A
 /// soup / UV / triangle-material, offsetting palette slots into the combined
 /// material list and unioning the sampled channels.
 fn merge_builds(builds: Vec<MeshBuild>) -> MeshBuild {
-    let mut out = MeshBuild::default();
+    // The union of every build's channels, decided up front: a channel a given
+    // build never sampled still needs `[0, 0]`-filled entries for that build's
+    // corners, to keep every channel's buffer aligned to the merged soup.
+    let channels: BTreeSet<ChannelId> = builds
+        .iter()
+        .flat_map(|b| b.channels.iter().copied())
+        .collect();
+    let mut out = MeshBuild {
+        channels,
+        ..MeshBuild::default()
+    };
+
     for build in builds {
         let base = out.materials.len() as u32;
+        let corner_count = build.soup.len();
         out.materials.extend(build.materials);
         out.soup.extend(build.soup);
-        out.corner_uv.extend(build.corner_uv);
         out.tri_material
             .extend(build.tri_material.into_iter().map(|s| s.map(|s| s + base)));
-        out.channels.extend(build.channels);
+
+        for &channel in &out.channels {
+            let buf = out.corner_uv.entry(channel).or_default();
+            match build.corner_uv.get(&channel) {
+                Some(values) => buf.extend(values.iter().copied()),
+                None => buf.extend(std::iter::repeat_n([0.0, 0.0], corner_count)),
+            }
+        }
     }
     out
 }
@@ -507,18 +619,13 @@ fn build_geometry(build: MeshBuild) -> Geometry {
     let mut mesh = TriangularMesh3D::from_soup(CoordinateFrame::Euclidean, build.soup);
 
     if !build.materials.is_empty() {
-        // One `Explicit` UV buffer (per-corner, aligned to the triangles) reused
-        // for every sampled channel; a given triangle only ever binds one
-        // material, so its corner slot already holds that material's UV.
+        // One `Explicit` UV buffer per sampled channel, built from that
+        // channel's own per-corner buffer (extract_mesh_build/merge_builds keep
+        // each channel's buffer aligned to the full corner soup already).
         let uvs: BTreeMap<ChannelId, UvSource> = build
-            .channels
-            .iter()
-            .map(|&channel| {
-                (
-                    channel,
-                    UvSource::Explicit(build.corner_uv.clone().into_boxed_slice()),
-                )
-            })
+            .corner_uv
+            .into_iter()
+            .map(|(channel, buf)| (channel, UvSource::Explicit(buf.into_boxed_slice())))
             .collect();
         let binding = FaceBinding::PerFace(
             build
@@ -607,10 +714,10 @@ mod tests {
     }
 
     /// A material-less `MeshBuild` from a raw triangle soup (three coords/triangle).
+    /// No materials means no sampled channels, so `corner_uv` stays empty.
     fn bare_build(soup: Vec<[f64; 3]>) -> MeshBuild {
         let tris = soup.len() / 3;
         MeshBuild {
-            corner_uv: vec![[0.0, 0.0]; soup.len()],
             tri_material: vec![None; tris],
             soup,
             ..MeshBuild::default()
@@ -680,7 +787,7 @@ mod tests {
         let build = MeshBuild {
             soup: vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
             tri_material: vec![Some(0)],
-            corner_uv: vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]],
+            corner_uv: BTreeMap::from([(ChannelId(0), vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]])]),
             materials: vec![material],
             channels: BTreeSet::from([ChannelId(0)]),
         };
@@ -800,7 +907,10 @@ mod tests {
         let err = extract_mesh_build(&prim, &[vec![0u8; 12]], None, &base).unwrap_err();
         let msg = format!("{err:?}");
         assert!(msg.contains("KHR_draco_mesh_compression"), "got: {msg}");
-        assert!(msg.contains("2311"), "should point to follow-up issue: {msg}");
+        assert!(
+            msg.contains("2311"),
+            "should point to follow-up issue: {msg}"
+        );
     }
 
     // A textured glTF: one triangle with TEXCOORD_0 and a PBR material whose
@@ -871,7 +981,10 @@ mod tests {
             "triangle binds material 0"
         );
         // UVs read from TEXCOORD_0 survive per corner (f32 -> f64), in corner order.
-        assert_eq!(build.corner_uv, vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]]);
+        assert_eq!(
+            build.corner_uv.get(&ChannelId(0)),
+            Some(&vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]])
+        );
 
         match &build.materials[0] {
             Material::Pbr(m) => {
@@ -932,5 +1045,77 @@ mod tests {
             mesh.vertices().len(),
             mesh.num_triangles(),
         );
+    }
+
+    /// Fixtures for the full PBR material-extension tests: a self-contained glTF
+    /// JSON document (no buffers/meshes needed) whose sole material wires up
+    /// base-colour, normal and emissive textures plus `KHR_texture_transform` and
+    /// `KHR_materials_emissive_strength`.
+    mod fixtures {
+        /// A valid, minimal 1x1 transparent PNG, reused as the image payload for
+        /// every texture slot; `convert_material` only cares that the bytes
+        /// round-trip, not that they decode to real pixels.
+        const ONE_PX_PNG_DATA_URI: &str = "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=";
+
+        /// A material-only glTF document: one image/texture (reused by all three
+        /// map slots), and one material with `baseColorTexture` (carrying
+        /// `KHR_texture_transform`), `normalTexture`, `emissiveTexture`, and
+        /// `KHR_materials_emissive_strength.emissiveStrength = 2.0`. No
+        /// meshes/accessors/buffers: `convert_material` never touches them.
+        pub fn material_glb_full() -> (gltf::Gltf, Vec<Vec<u8>>) {
+            let json = format!(
+                r#"{{
+                  "asset": {{"version": "2.0"}},
+                  "extensionsUsed": ["KHR_texture_transform", "KHR_materials_emissive_strength"],
+                  "images": [{{"mimeType": "image/png", "uri": "{uri}"}}],
+                  "textures": [{{"source": 0}}],
+                  "materials": [{{
+                    "pbrMetallicRoughness": {{
+                      "baseColorFactor": [1.0, 1.0, 1.0, 1.0],
+                      "baseColorTexture": {{
+                        "index": 0,
+                        "texCoord": 0,
+                        "extensions": {{
+                          "KHR_texture_transform": {{"offset": [0.1, 0.2], "rotation": 0.5, "scale": [2.0, 2.0]}}
+                        }}
+                      }}
+                    }},
+                    "normalTexture": {{"index": 0, "texCoord": 0, "scale": 1.0}},
+                    "emissiveTexture": {{"index": 0, "texCoord": 0}},
+                    "emissiveFactor": [1.0, 1.0, 1.0],
+                    "extensions": {{
+                      "KHR_materials_emissive_strength": {{"emissiveStrength": 2.0}}
+                    }}
+                  }}]
+                }}"#,
+                uri = ONE_PX_PNG_DATA_URI
+            );
+            let gltf = gltf::Gltf::from_slice(json.as_bytes()).expect("parse glTF");
+            (gltf, Vec::new())
+        }
+    }
+
+    #[test]
+    fn convert_material_reads_all_maps_transform_and_emissive_strength() {
+        let (gltf, buffers) = fixtures::material_glb_full();
+        let mat = gltf.materials().next().unwrap();
+        let base = Uri::from_str("file://./x.gltf").unwrap();
+        let (converted, channels) = convert_material(&mat, &buffers, &base);
+        let Material::Pbr(p) = converted else {
+            panic!("expected PBR")
+        };
+        assert!(p.base_color_map.is_some());
+        assert!(p.normal_map.is_some(), "normal map populated");
+        assert!(p.emissive_map.is_some(), "emissive map populated");
+        assert!(
+            p.base_color_map.as_ref().unwrap().transform.is_some(),
+            "KHR_texture_transform read"
+        );
+        // emissiveStrength = 2.0 scales emissive_factor
+        assert!(
+            p.emissive.iter().any(|&c| c > 1.0),
+            "emissive scaled by strength"
+        );
+        assert!(!channels.is_empty());
     }
 }
