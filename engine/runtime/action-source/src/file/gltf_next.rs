@@ -100,6 +100,7 @@ pub(super) async fn read(
     let mut merge_node_names: HashSet<String> = HashSet::new();
     let mut merge_primitive_count = 0usize;
     let mut merge_override_logged = false;
+    let mut metadata_no_features_logged = false;
 
     for mesh_info in mesh_infos {
         let build = extract_mesh_build(
@@ -114,11 +115,12 @@ pub(super) async fn read(
         let primitive_count = mesh_info.primitives.len();
         let has_feature_ids = build.tri_feature_id.iter().any(Option::is_some);
 
-        if !has_feature_ids && structural_metadata.is_some() {
+        if !has_feature_ids && structural_metadata.is_some() && !metadata_no_features_logged {
             tracing::warn!(
                 "glTF: EXT_structural_metadata is present but this mesh has no \
                  EXT_mesh_features feature IDs; per-object metadata was not surfaced"
             );
+            metadata_no_features_logged = true;
         }
 
         if has_feature_ids {

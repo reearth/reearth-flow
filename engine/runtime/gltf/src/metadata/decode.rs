@@ -272,6 +272,14 @@ fn parse_property_table(
     })
 }
 
+/// Escape a single JSON Pointer reference token per RFC 6901: `~` must be
+/// escaped first (to `~0`), then `/` (to `~1`), or a token containing either
+/// character will make `Value::pointer` mis-parse the path and silently miss
+/// the lookup.
+fn escape_json_pointer_token(token: &str) -> String {
+    token.replace('~', "~0").replace('/', "~1")
+}
+
 /// Look up `/classes/<class>/properties/<prop_name>/<field>` in a
 /// `EXT_structural_metadata` schema (e.g. `componentType`, `type`, `noData`).
 fn schema_property_field<'a>(
@@ -280,10 +288,10 @@ fn schema_property_field<'a>(
     prop_name: &str,
     field: &str,
 ) -> Option<&'a Value> {
-    schema.pointer(&format!(
-        "/classes/{}/properties/{}/{}",
-        class?, prop_name, field
-    ))
+    let class = escape_json_pointer_token(class?);
+    let prop_name = escape_json_pointer_token(prop_name);
+    let field = escape_json_pointer_token(field);
+    schema.pointer(&format!("/classes/{class}/properties/{prop_name}/{field}"))
 }
 
 /// Resolve an `EXT_structural_metadata` property's `values`/`stringOffsets`/
@@ -485,7 +493,10 @@ fn decode_numeric_element(
             if is_no_data_f64(no_data, v) {
                 AttributeValue::Null
             } else {
-                AttributeValue::Number(serde_json::Number::from_f64(v).unwrap_or_else(|| 0.into()))
+                match serde_json::Number::from_f64(v) {
+                    Some(n) => AttributeValue::Number(n),
+                    None => AttributeValue::Null,
+                }
             }
         }
         "FLOAT64" => {
@@ -494,7 +505,10 @@ fn decode_numeric_element(
             if is_no_data_f64(no_data, v) {
                 AttributeValue::Null
             } else {
-                AttributeValue::Number(serde_json::Number::from_f64(v).unwrap_or_else(|| 0.into()))
+                match serde_json::Number::from_f64(v) {
+                    Some(n) => AttributeValue::Number(n),
+                    None => AttributeValue::Null,
+                }
             }
         }
         other => {
@@ -1153,6 +1167,85 @@ mod tests {
         let f1 = feature_properties(&tables, 0, 1);
         assert_eq!(f1.get("height"), None, "noData height must be omitted");
         assert_eq!(f1.get("name"), None, "noData name must be omitted");
+    }
+
+    #[test]
+    fn nan_and_infinite_floats_decode_to_null_not_zero() {
+        // f32::NAN, f32::INFINITY, f32::NEG_INFINITY, f64::NAN all fail
+        // `serde_json::Number::from_f64`; they must surface as
+        // `AttributeValue::Null`, never silently coerced to 0.
+        let f32_nan_bytes = f32::NAN.to_le_bytes();
+        assert_eq!(
+            decode_numeric_element(&f32_nan_bytes, 0, "FLOAT32", None).unwrap(),
+            AttributeValue::Null
+        );
+
+        let f32_inf_bytes = f32::INFINITY.to_le_bytes();
+        assert_eq!(
+            decode_numeric_element(&f32_inf_bytes, 0, "FLOAT32", None).unwrap(),
+            AttributeValue::Null
+        );
+
+        let f32_neg_inf_bytes = f32::NEG_INFINITY.to_le_bytes();
+        assert_eq!(
+            decode_numeric_element(&f32_neg_inf_bytes, 0, "FLOAT32", None).unwrap(),
+            AttributeValue::Null
+        );
+
+        let f64_nan_bytes = f64::NAN.to_le_bytes();
+        assert_eq!(
+            decode_numeric_element(&f64_nan_bytes, 0, "FLOAT64", None).unwrap(),
+            AttributeValue::Null
+        );
+
+        let f64_inf_bytes = f64::INFINITY.to_le_bytes();
+        assert_eq!(
+            decode_numeric_element(&f64_inf_bytes, 0, "FLOAT64", None).unwrap(),
+            AttributeValue::Null
+        );
+
+        // Sanity: a normal finite value still decodes as a Number, not Null.
+        let f32_finite_bytes = 1.5f32.to_le_bytes();
+        assert_eq!(
+            decode_numeric_element(&f32_finite_bytes, 0, "FLOAT32", None).unwrap(),
+            AttributeValue::Number(serde_json::Number::from_f64(1.5).unwrap())
+        );
+    }
+
+    #[test]
+    fn escape_json_pointer_token_escapes_tilde_and_slash() {
+        // RFC 6901: `~` -> `~0` must happen before `/` -> `~1`, or a literal
+        // `~1` in the input would be mistaken for an already-escaped `/`.
+        assert_eq!(escape_json_pointer_token("a/b"), "a~1b");
+        assert_eq!(escape_json_pointer_token("x~y"), "x~0y");
+        assert_eq!(escape_json_pointer_token("a/b~c"), "a~1b~0c");
+        assert_eq!(escape_json_pointer_token("plain"), "plain");
+    }
+
+    #[test]
+    fn schema_property_field_resolves_names_containing_slash() {
+        // A class or property name containing "/" would otherwise be
+        // mis-parsed as a JSON Pointer path separator, making the lookup
+        // silently fail. Verify the escaped pointer still resolves.
+        let schema = serde_json::json!({
+            "classes": {
+                "tran/Road": {
+                    "properties": {
+                        "core/creationDate": {"type": "STRING"}
+                    }
+                }
+            }
+        });
+
+        let field = schema_property_field(&schema, Some("tran/Road"), "core/creationDate", "type");
+        assert_eq!(field, Some(&Value::String("STRING".to_string())));
+
+        // A non-existent name must still miss cleanly (no panic, no
+        // mis-resolution into an unrelated part of the schema).
+        assert_eq!(
+            schema_property_field(&schema, Some("tran/Road"), "missing/prop", "type"),
+            None
+        );
     }
 
     #[test]
