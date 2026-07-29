@@ -51,6 +51,37 @@ impl SchemaFeatureCliCommand {
 
 #[cfg(all(test, feature = "schema"))]
 mod tests {
+    /// `FeatureSchema` is a hand mirror, so nothing stops `Feature` from growing
+    /// a field the schema never learns about. Compare the two field sets on a
+    /// real value.
+    #[cfg(feature = "new-geometry")]
+    #[test]
+    fn mirror_covers_every_field_feature_serializes() {
+        use std::collections::BTreeSet;
+
+        let feature = reearth_flow_types::Feature::new_with_attributes(Default::default());
+        let serialized: serde_json::Value = serde_json::to_value(&feature).unwrap();
+        let actual: BTreeSet<&str> = serialized
+            .as_object()
+            .expect("a feature serializes as an object")
+            .keys()
+            .map(String::as_str)
+            .collect();
+
+        let schema = serde_json::to_value(schemars::schema_for!(super::FeatureSchema)).unwrap();
+        let mirrored: BTreeSet<&str> = schema["properties"]
+            .as_object()
+            .unwrap()
+            .keys()
+            .map(String::as_str)
+            .collect();
+
+        assert_eq!(
+            actual, mirrored,
+            "FeatureSchema no longer mirrors reearth_flow_types::Feature"
+        );
+    }
+
     /// The committed schema must match the current wire form. If this fails, run
     /// `cargo make schema-feature` and commit the result.
     #[test]

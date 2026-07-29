@@ -279,15 +279,20 @@ pub enum BaseFrame {
 /// local tangent (ENU) frame at `origin`, with in-plane coordinates in metres.
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "schema", schemars(title = "Tangent plane"))]
 pub struct TangentPlane {
     /// Frame that `origin`, `u` and `v` are expressed in.
+    #[cfg_attr(feature = "schema", schemars(title = "Anchor frame"))]
     pub base: BaseFrame,
     /// Plane origin, in `base`.
+    #[cfg_attr(feature = "schema", schemars(title = "Plane origin"))]
     pub origin: [f64; 3],
     /// Orthonormal in-plane axis; the plane normal is the cross product of `u`
     /// and `v`.
+    #[cfg_attr(feature = "schema", schemars(title = "In-plane axis U"))]
     pub u: [f64; 3],
     /// Orthonormal in-plane axis.
+    #[cfg_attr(feature = "schema", schemars(title = "In-plane axis V"))]
     pub v: [f64; 3],
 }
 

@@ -111,6 +111,7 @@ impl schemars::JsonSchema for MaterialIndex {
 
     fn json_schema(generator: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
         let mut schema = <u32 as schemars::JsonSchema>::json_schema(generator).into_object();
+        schema.metadata().title = Some("Material index".to_string());
         schema.metadata().description = Some(
             "Position of a material in the enclosing appearance's `materials` palette, \
              counting from zero."

@@ -14,35 +14,44 @@ use smallvec::SmallVec;
 
 use crate::coordinate::CoordinateFrame;
 
-use super::{AttributeColumn, PointCloud, PositionEncoding, Segment};
+use super::{AttributeColumn, PositionEncoding};
 
-/// Decoded wire form of a [`PointCloud`].
+/// A 3D point cloud: one or more acquisition segments sharing a coordinate
+/// frame.
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize)]
-struct PointCloudWire {
+#[cfg_attr(feature = "schema", schemars(title = "Point cloud"))]
+struct PointCloud {
+    #[cfg_attr(feature = "schema", schemars(title = "Coordinate frame"))]
     frame: CoordinateFrame,
-    segments: Vec<SegmentWire>,
+    #[cfg_attr(feature = "schema", schemars(title = "Segments"))]
+    segments: Vec<Segment>,
 }
 
-/// Decoded wire form of one acquisition [`Segment`].
+/// One acquisition source's points: their positions in the encoding they are
+/// stored in, plus any per-point attribute columns.
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize)]
-struct SegmentWire {
+#[cfg_attr(feature = "schema", schemars(title = "Acquisition segment"))]
+struct Segment {
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "schema", schemars(title = "Source"))]
     source: Option<Arc<str>>,
-    positions: PositionsWire,
+    #[cfg_attr(feature = "schema", schemars(title = "Positions"))]
+    positions: Positions,
     #[serde(default, skip_serializing_if = "IndexMap::is_empty")]
     #[cfg_attr(
         feature = "schema",
         schemars(with = "std::collections::HashMap<String, AttributeColumn>")
     )]
+    #[cfg_attr(feature = "schema", schemars(title = "Attribute columns"))]
     attributes: IndexMap<String, AttributeColumn>,
 }
 
 /// Per-point positions in their stored encoding.
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize)]
-enum PositionsWire {
+enum Positions {
     F64(Vec<[f64; 3]>),
     F32(Vec<[f32; 3]>),
     ScaledI32 {
@@ -53,10 +62,10 @@ enum PositionsWire {
 }
 
 /// Read a segment's positions out of its packed byte stream.
-fn encode_positions(seg: &Segment) -> PositionsWire {
+fn encode_positions(seg: &super::Segment) -> Positions {
     let stride = seg.stride as usize;
     match &seg.position {
-        PositionEncoding::F64 => PositionsWire::F64(
+        PositionEncoding::F64 => Positions::F64(
             (0..seg.count)
                 .map(|i| {
                     let base = i * stride;
@@ -67,7 +76,7 @@ fn encode_positions(seg: &Segment) -> PositionsWire {
                 })
                 .collect(),
         ),
-        PositionEncoding::F32 => PositionsWire::F32(
+        PositionEncoding::F32 => Positions::F32(
             (0..seg.count)
                 .map(|i| {
                     let base = i * stride;
@@ -78,7 +87,7 @@ fn encode_positions(seg: &Segment) -> PositionsWire {
                 })
                 .collect(),
         ),
-        PositionEncoding::ScaledI32 { scale, offset } => PositionsWire::ScaledI32 {
+        PositionEncoding::ScaledI32 { scale, offset } => Positions::ScaledI32 {
             scale: *scale,
             offset: *offset,
             values: (0..seg.count)
@@ -95,10 +104,10 @@ fn encode_positions(seg: &Segment) -> PositionsWire {
 }
 
 /// Pack positions back into the `(encoding, stride, byte stream, count)` a
-/// [`Segment`] stores.
-fn decode_positions(positions: PositionsWire) -> (PositionEncoding, u16, Vec<u8>, usize) {
+/// [`super::Segment`] stores.
+fn decode_positions(positions: Positions) -> (PositionEncoding, u16, Vec<u8>, usize) {
     match positions {
-        PositionsWire::F64(values) => {
+        Positions::F64(values) => {
             let mut data = Vec::with_capacity(values.len() * 24);
             for [x, y, z] in &values {
                 data.extend_from_slice(&x.to_le_bytes());
@@ -107,7 +116,7 @@ fn decode_positions(positions: PositionsWire) -> (PositionEncoding, u16, Vec<u8>
             }
             (PositionEncoding::F64, 24, data, values.len())
         }
-        PositionsWire::F32(values) => {
+        Positions::F32(values) => {
             let mut data = Vec::with_capacity(values.len() * 12);
             for [x, y, z] in &values {
                 data.extend_from_slice(&x.to_le_bytes());
@@ -116,7 +125,7 @@ fn decode_positions(positions: PositionsWire) -> (PositionEncoding, u16, Vec<u8>
             }
             (PositionEncoding::F32, 12, data, values.len())
         }
-        PositionsWire::ScaledI32 {
+        Positions::ScaledI32 {
             scale,
             offset,
             values,
@@ -137,7 +146,7 @@ fn decode_positions(positions: PositionsWire) -> (PositionEncoding, u16, Vec<u8>
     }
 }
 
-impl Serialize for PointCloud {
+impl Serialize for super::PointCloud {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
         let mut segments = Vec::with_capacity(self.segments.len());
         for seg in &self.segments {
@@ -146,13 +155,13 @@ impl Serialize for PointCloud {
                     "point-cloud optional fields are not yet supported by the intermediate-data encoder",
                 ));
             }
-            segments.push(SegmentWire {
+            segments.push(Segment {
                 source: seg.source.clone(),
                 positions: encode_positions(seg),
                 attributes: seg.attributes.clone(),
             });
         }
-        PointCloudWire {
+        PointCloud {
             frame: self.frame.clone(),
             segments,
         }
@@ -160,15 +169,15 @@ impl Serialize for PointCloud {
     }
 }
 
-impl<'de> Deserialize<'de> for PointCloud {
+impl<'de> Deserialize<'de> for super::PointCloud {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        let wire = PointCloudWire::deserialize(deserializer)?;
-        let segments: SmallVec<[Segment; 1]> = wire
+        let wire = PointCloud::deserialize(deserializer)?;
+        let segments: SmallVec<[super::Segment; 1]> = wire
             .segments
             .into_iter()
             .map(|s| {
                 let (position, stride, data, count) = decode_positions(s.positions);
-                Segment {
+                super::Segment {
                     source: s.source,
                     position,
                     fields: 0,
@@ -180,7 +189,7 @@ impl<'de> Deserialize<'de> for PointCloud {
                 }
             })
             .collect();
-        Ok(PointCloud {
+        Ok(super::PointCloud {
             frame: wire.frame,
             segments,
             kdtree: OnceLock::new(),
@@ -189,18 +198,19 @@ impl<'de> Deserialize<'de> for PointCloud {
 }
 
 #[cfg(feature = "schema")]
-impl schemars::JsonSchema for PointCloud {
+impl schemars::JsonSchema for super::PointCloud {
     fn schema_name() -> String {
         "PointCloud".to_string()
     }
     fn json_schema(generator: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
-        <PointCloudWire as schemars::JsonSchema>::json_schema(generator)
+        <PointCloud as schemars::JsonSchema>::json_schema(generator)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::point_cloud::{PointCloud, Segment};
 
     fn round_trip(pc: &PointCloud) {
         let json = serde_json::to_string(pc).unwrap();

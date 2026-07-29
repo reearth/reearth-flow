@@ -24,6 +24,7 @@
   },
   "definitions": {
     "Geometry": {
+      "title": "Geometry",
       "description": "The top-level geometry type: an absent `None`, a geometry in one of the two embedding dimensions, or a heterogeneous, cross-dimensional collection.",
       "oneOf": [
         {
@@ -73,6 +74,7 @@
       ]
     },
     "Euclidean2DGeometry": {
+      "title": "2D geometry",
       "description": "2D-embedded geometry. All coordinates are 2D `(x, y)`; some leaves carry a single optional elevation the whole leaf lies at (2.5D).\n\nThe heavy aggregate leaves (`Polygon`, the meshes) are boxed so the small, common variants don't inflate the enum — and `Geometry` with them — to the size of the largest leaf. The small tier (`Point`, `LineString`, `Collection`) stays inline.",
       "oneOf": [
         {
@@ -154,6 +156,7 @@
       ]
     },
     "Point2D": {
+      "title": "Point (2D)",
       "description": "A single position in 2D space. Used for CityGML `gml:Point` and 2D point features.",
       "type": "object",
       "required": [
@@ -162,6 +165,7 @@
       ],
       "properties": {
         "frame": {
+          "title": "Coordinate frame",
           "description": "Coordinate frame this position is expressed in.",
           "allOf": [
             {
@@ -170,6 +174,7 @@
           ]
         },
         "position": {
+          "title": "Position",
           "type": "array",
           "items": {
             "type": "number",
@@ -221,6 +226,7 @@
       ]
     },
     "TangentPlane": {
+      "title": "Tangent plane",
       "description": "A 2D Euclidean plane embedded in 3D space.\n\nA [`CoordinateFrame::Tangent`] geometry stores in-plane `(x, y)` whose 3D position is `origin + x * u + y * v`. When `base` is a geographic CRS this is the local tangent (ENU) frame at `origin`, with in-plane coordinates in metres.",
       "type": "object",
       "required": [
@@ -231,6 +237,7 @@
       ],
       "properties": {
         "base": {
+          "title": "Anchor frame",
           "description": "Frame that `origin`, `u` and `v` are expressed in.",
           "allOf": [
             {
@@ -239,6 +246,7 @@
           ]
         },
         "origin": {
+          "title": "Plane origin",
           "description": "Plane origin, in `base`.",
           "type": "array",
           "items": {
@@ -249,6 +257,7 @@
           "minItems": 3
         },
         "u": {
+          "title": "In-plane axis U",
           "description": "Orthonormal in-plane axis; the plane normal is the cross product of `u` and `v`.",
           "type": "array",
           "items": {
@@ -259,6 +268,7 @@
           "minItems": 3
         },
         "v": {
+          "title": "In-plane axis V",
           "description": "Orthonormal in-plane axis.",
           "type": "array",
           "items": {
@@ -298,6 +308,7 @@
       ]
     },
     "LineString2D": {
+      "title": "Polyline (2D)",
       "description": "A polyline in 2D space, lying at a single optional elevation (2.5D).",
       "type": "object",
       "required": [
@@ -306,6 +317,7 @@
       ],
       "properties": {
         "frame": {
+          "title": "Coordinate frame",
           "description": "Coordinate frame these coords are expressed in.",
           "allOf": [
             {
@@ -314,6 +326,7 @@
           ]
         },
         "coords": {
+          "title": "Coordinates",
           "type": "array",
           "items": {
             "type": "array",
@@ -326,6 +339,7 @@
           }
         },
         "z": {
+          "title": "Elevation",
           "description": "The one elevation the whole chain lies at. `None` = pure 2D.",
           "type": [
             "number",
@@ -336,7 +350,8 @@
       }
     },
     "Polygon2D": {
-      "description": "Decoded wire form of a [`Polygon2D`].",
+      "title": "Polygon (2D)",
+      "description": "A planar polygon face in 2D space: an exterior ring plus any interior rings (holes), lying at a single optional elevation.",
       "type": "object",
       "required": [
         "exterior",
@@ -344,9 +359,15 @@
       ],
       "properties": {
         "frame": {
-          "$ref": "#/definitions/CoordinateFrame"
+          "title": "Coordinate frame",
+          "allOf": [
+            {
+              "$ref": "#/definitions/CoordinateFrame"
+            }
+          ]
         },
         "exterior": {
+          "title": "Exterior ring",
           "type": "array",
           "items": {
             "type": "array",
@@ -359,6 +380,7 @@
           }
         },
         "interiors": {
+          "title": "Interior rings (holes)",
           "type": "array",
           "items": {
             "type": "array",
@@ -374,6 +396,7 @@
           }
         },
         "z": {
+          "title": "Elevation",
           "type": [
             "number",
             "null"
@@ -381,9 +404,10 @@
           "format": "double"
         },
         "appearance": {
+          "title": "Appearance",
           "anyOf": [
             {
-              "$ref": "#/definitions/AppearanceWire"
+              "$ref": "#/definitions/Appearance"
             },
             {
               "type": "null"
@@ -392,7 +416,7 @@
         }
       }
     },
-    "AppearanceWire": {
+    "Appearance": {
       "description": "Materials, themes, per-face material bindings and per-theme UV for one surface geometry.",
       "type": "object",
       "required": [
@@ -402,6 +426,7 @@
       ],
       "properties": {
         "materials": {
+          "title": "Material palette",
           "description": "Material palette; the bindings in `themes` index into it by position.",
           "type": "array",
           "items": {
@@ -409,13 +434,15 @@
           }
         },
         "themes": {
+          "title": "Themes",
           "description": "One independent binding per theme; never empty.",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/ThemeBindingWire"
+            "$ref": "#/definitions/ThemeBinding"
           }
         },
         "default_theme": {
+          "title": "Default theme",
           "description": "Which of `themes` a single-theme consumer (glTF / OBJ / CZML / 3D Tiles) should render.",
           "allOf": [
             {
@@ -426,6 +453,7 @@
       }
     },
     "Material": {
+      "title": "Material",
       "description": "One self-contained shading description: exactly one of the two shading models.",
       "oneOf": [
         {
@@ -457,6 +485,7 @@
       ]
     },
     "PhongMaterial": {
+      "title": "Phong material",
       "description": "Classic Phong / Blinn-Phong material.",
       "type": "object",
       "required": [
@@ -469,6 +498,7 @@
       ],
       "properties": {
         "diffuse": {
+          "title": "Diffuse color",
           "description": "Kd / diffuseColor.",
           "type": "array",
           "items": {
@@ -479,6 +509,7 @@
           "minItems": 3
         },
         "specular": {
+          "title": "Specular color",
           "description": "Ks / specularColor.",
           "type": "array",
           "items": {
@@ -489,6 +520,7 @@
           "minItems": 3
         },
         "emissive": {
+          "title": "Emissive color",
           "description": "Ke / emissiveColor.",
           "type": "array",
           "items": {
@@ -499,21 +531,25 @@
           "minItems": 3
         },
         "ambient_intensity": {
+          "title": "Ambient intensity",
           "description": "Ka / ambientIntensity.",
           "type": "number",
           "format": "float"
         },
         "shininess": {
+          "title": "Shininess",
           "description": "Ns / shininess.",
           "type": "number",
           "format": "float"
         },
         "transparency": {
+          "title": "Transparency",
           "description": "0 = opaque (CityGML transparency / OBJ d, Tr).",
           "type": "number",
           "format": "float"
         },
         "diffuse_map": {
+          "title": "Diffuse map",
           "description": "ParameterizedTexture / map_Kd.",
           "anyOf": [
             {
@@ -525,6 +561,7 @@
           ]
         },
         "emissive_map": {
+          "title": "Emissive map",
           "description": "map_Ke.",
           "anyOf": [
             {
@@ -536,6 +573,7 @@
           ]
         },
         "normal_map": {
+          "title": "Normal map",
           "description": "OBJ norm / map_bump (CityGML carries none).",
           "anyOf": [
             {
@@ -558,6 +596,7 @@
       ],
       "properties": {
         "raster": {
+          "title": "Image",
           "description": "Shared image; copy-on-write on edit.",
           "allOf": [
             {
@@ -566,9 +605,15 @@
           ]
         },
         "sampler": {
-          "$ref": "#/definitions/Sampler"
+          "title": "Sampler",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Sampler"
+            }
+          ]
         },
         "transform": {
+          "title": "Texture transform",
           "description": "Optional texture-coordinate transform (offset / rotation / scale).",
           "anyOf": [
             {
@@ -580,6 +625,7 @@
           ]
         },
         "uv_channel": {
+          "title": "UV channel",
           "description": "Which UV set within the resolved theme this map samples; 0 in the common case.",
           "allOf": [
             {
@@ -621,6 +667,7 @@
       ]
     },
     "RasterData": {
+      "title": "Raster data",
       "description": "Owned, encoded image payload: the original bytes plus their image format.",
       "type": "object",
       "required": [
@@ -629,9 +676,15 @@
       ],
       "properties": {
         "mime_type": {
-          "$ref": "#/definitions/MimeType"
+          "title": "MIME type",
+          "allOf": [
+            {
+              "$ref": "#/definitions/MimeType"
+            }
+          ]
         },
         "bytes": {
+          "title": "Image bytes",
           "type": "array",
           "items": {
             "type": "integer",
@@ -660,16 +713,36 @@
       ],
       "properties": {
         "wrap_s": {
-          "$ref": "#/definitions/WrapMode"
+          "title": "Wrap mode (S)",
+          "allOf": [
+            {
+              "$ref": "#/definitions/WrapMode"
+            }
+          ]
         },
         "wrap_t": {
-          "$ref": "#/definitions/WrapMode"
+          "title": "Wrap mode (T)",
+          "allOf": [
+            {
+              "$ref": "#/definitions/WrapMode"
+            }
+          ]
         },
         "mag_filter": {
-          "$ref": "#/definitions/Filter"
+          "title": "Magnification filter",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Filter"
+            }
+          ]
         },
         "min_filter": {
-          "$ref": "#/definitions/Filter"
+          "title": "Minification filter",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Filter"
+            }
+          ]
         }
       }
     },
@@ -704,6 +777,7 @@
       ],
       "properties": {
         "offset": {
+          "title": "Offset",
           "type": "array",
           "items": {
             "type": "number",
@@ -713,10 +787,12 @@
           "minItems": 2
         },
         "rotation": {
+          "title": "Rotation",
           "type": "number",
           "format": "float"
         },
         "scale": {
+          "title": "Scale",
           "type": "array",
           "items": {
             "type": "number",
@@ -734,6 +810,7 @@
       "minimum": 0.0
     },
     "PbrMaterial": {
+      "title": "PBR material",
       "description": "glTF metallic-roughness PBR material.",
       "type": "object",
       "required": [
@@ -746,6 +823,7 @@
       ],
       "properties": {
         "base_color": {
+          "title": "Base color",
           "description": "baseColorFactor, including alpha.",
           "type": "array",
           "items": {
@@ -756,16 +834,19 @@
           "minItems": 4
         },
         "metallic": {
+          "title": "Metallic",
           "description": "metallicFactor.",
           "type": "number",
           "format": "float"
         },
         "roughness": {
+          "title": "Roughness",
           "description": "roughnessFactor.",
           "type": "number",
           "format": "float"
         },
         "emissive": {
+          "title": "Emissive color",
           "description": "emissiveFactor.",
           "type": "array",
           "items": {
@@ -776,6 +857,7 @@
           "minItems": 3
         },
         "base_color_map": {
+          "title": "Base color map",
           "anyOf": [
             {
               "$ref": "#/definitions/Texture"
@@ -786,6 +868,7 @@
           ]
         },
         "metallic_roughness_map": {
+          "title": "Metallic-roughness map",
           "anyOf": [
             {
               "$ref": "#/definitions/Texture"
@@ -796,6 +879,7 @@
           ]
         },
         "normal_map": {
+          "title": "Normal map",
           "anyOf": [
             {
               "$ref": "#/definitions/Texture"
@@ -806,6 +890,7 @@
           ]
         },
         "occlusion_map": {
+          "title": "Occlusion map",
           "anyOf": [
             {
               "$ref": "#/definitions/Texture"
@@ -816,6 +901,7 @@
           ]
         },
         "emissive_map": {
+          "title": "Emissive map",
           "anyOf": [
             {
               "$ref": "#/definitions/Texture"
@@ -826,9 +912,15 @@
           ]
         },
         "alpha_mode": {
-          "$ref": "#/definitions/AlphaMode"
+          "title": "Alpha mode",
+          "allOf": [
+            {
+              "$ref": "#/definitions/AlphaMode"
+            }
+          ]
         },
         "double_sided": {
+          "title": "Double sided",
           "type": "boolean"
         }
       }
@@ -866,7 +958,8 @@
         }
       ]
     },
-    "ThemeBindingWire": {
+    "ThemeBinding": {
+      "title": "Theme binding",
       "description": "One theme's face-to-material binding plus the UV sets that theme's textured materials sample.",
       "type": "object",
       "required": [
@@ -875,6 +968,7 @@
       ],
       "properties": {
         "theme": {
+          "title": "Theme name",
           "description": "This theme's name, unique within the appearance.",
           "allOf": [
             {
@@ -883,6 +977,7 @@
           ]
         },
         "front": {
+          "title": "Front face materials",
           "description": "Front-side face-to-material binding.",
           "allOf": [
             {
@@ -891,6 +986,7 @@
           ]
         },
         "back": {
+          "title": "Back face materials",
           "description": "Back-side binding; absent means single-sided.",
           "anyOf": [
             {
@@ -902,10 +998,11 @@
           ]
         },
         "uv_sets": {
+          "title": "UV sets",
           "description": "This theme's UV pool: one entry per `(side, channel)` its materials reference.",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/UvSetWire"
+            "$ref": "#/definitions/UvSet"
           }
         }
       }
@@ -956,12 +1053,14 @@
       ]
     },
     "MaterialIndex": {
+      "title": "Material index",
       "description": "Position of a material in the enclosing appearance's `materials` palette, counting from zero.",
       "type": "integer",
       "format": "uint32",
       "minimum": 0.0
     },
-    "UvSetWire": {
+    "UvSet": {
+      "title": "UV set",
       "description": "One UV set, owned by the theme it belongs to. A map finds its set by matching both `side` and `channel`.",
       "type": "object",
       "required": [
@@ -971,6 +1070,7 @@
       ],
       "properties": {
         "side": {
+          "title": "Surface side",
           "description": "Surface side these coordinates parameterise.",
           "allOf": [
             {
@@ -979,6 +1079,7 @@
           ]
         },
         "channel": {
+          "title": "UV channel",
           "description": "Material-local UV channel these coordinates serve, matched against a texture's `uv_channel`.",
           "allOf": [
             {
@@ -987,7 +1088,12 @@
           ]
         },
         "uv": {
-          "$ref": "#/definitions/UvSourceWire"
+          "title": "UV source",
+          "allOf": [
+            {
+              "$ref": "#/definitions/UvSource"
+            }
+          ]
         }
       }
     },
@@ -999,7 +1105,7 @@
         "Back"
       ]
     },
-    "UvSourceWire": {
+    "UvSource": {
       "description": "Wire form of [`UvSource`]; see it for the UV coordinate convention.",
       "oneOf": [
         {
@@ -1012,7 +1118,7 @@
             "Explicit": {
               "type": "array",
               "items": {
-                "$ref": "#/definitions/FaceUvWire"
+                "$ref": "#/definitions/FaceUv"
               }
             }
           },
@@ -1033,7 +1139,8 @@
         }
       ]
     },
-    "FaceUvWire": {
+    "FaceUv": {
+      "title": "Per-face UV",
       "description": "UV coordinates for one host face, nested to mirror that face's rings.\n\nThe enclosing array runs parallel to the host's own face list: one entry for a polygon, one per member of `faces`, or one per member of `triangles`.",
       "type": "object",
       "required": [
@@ -1041,6 +1148,7 @@
       ],
       "properties": {
         "exterior": {
+          "title": "Exterior ring UV",
           "description": "UV for the face's exterior ring, one pair per corner.",
           "type": "array",
           "items": {
@@ -1054,6 +1162,7 @@
           }
         },
         "holes": {
+          "title": "Hole ring UV",
           "description": "UV for each hole ring, in the host's hole order, one pair per corner.",
           "type": "array",
           "items": {
@@ -1072,6 +1181,7 @@
       }
     },
     "TexMatrix": {
+      "title": "World-to-texture matrix",
       "description": "A 3x4 world-to-texture projective matrix. Maps a homogeneous world position `(x, y, z, 1)` to `(s', t', q')`, with the texture coordinate recovered as `(s, t) = (s'/q', t'/q')`.",
       "type": "array",
       "items": {
@@ -1087,36 +1197,31 @@
       "minItems": 3
     },
     "PolygonMesh2D": {
-      "description": "Decoded wire form of a [`PolygonMesh2D`].",
+      "title": "Polygon mesh (2D)",
+      "description": "A connected, vertex-sharing polygon mesh in 2D space, lying at a single optional elevation. Each face carries its rings as coordinates.",
       "type": "object",
       "required": [
         "faces",
-        "frame",
-        "vertices"
+        "frame"
       ],
       "properties": {
         "frame": {
-          "$ref": "#/definitions/CoordinateFrame"
-        },
-        "vertices": {
-          "type": "array",
-          "items": {
-            "type": "array",
-            "items": {
-              "type": "number",
-              "format": "double"
-            },
-            "maxItems": 2,
-            "minItems": 2
-          }
+          "title": "Coordinate frame",
+          "allOf": [
+            {
+              "$ref": "#/definitions/CoordinateFrame"
+            }
+          ]
         },
         "faces": {
+          "title": "Faces",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/FaceWire"
+            "$ref": "#/definitions/Face2D"
           }
         },
         "z": {
+          "title": "Elevation",
           "type": [
             "number",
             "null"
@@ -1124,9 +1229,10 @@
           "format": "double"
         },
         "appearance": {
+          "title": "Appearance",
           "anyOf": [
             {
-              "$ref": "#/definitions/AppearanceWire"
+              "$ref": "#/definitions/Appearance"
             },
             {
               "type": "null"
@@ -1135,47 +1241,16 @@
         }
       }
     },
-    "FaceWire": {
-      "description": "One mesh face: an exterior ring of vertex indices and any hole rings.",
+    "Face2D": {
+      "title": "Face (2D)",
+      "description": "One mesh face in 2D: an exterior ring of coordinates and any hole rings.",
       "type": "object",
       "required": [
         "exterior"
       ],
       "properties": {
         "exterior": {
-          "type": "array",
-          "items": {
-            "type": "integer",
-            "format": "uint32",
-            "minimum": 0.0
-          }
-        },
-        "holes": {
-          "type": "array",
-          "items": {
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "format": "uint32",
-              "minimum": 0.0
-            }
-          }
-        }
-      }
-    },
-    "TriangularMesh2D": {
-      "description": "Decoded wire form of a [`TriangularMesh2D`].",
-      "type": "object",
-      "required": [
-        "frame",
-        "triangles",
-        "vertices"
-      ],
-      "properties": {
-        "frame": {
-          "$ref": "#/definitions/CoordinateFrame"
-        },
-        "vertices": {
+          "title": "Exterior ring",
           "type": "array",
           "items": {
             "type": "array",
@@ -1187,20 +1262,61 @@
             "minItems": 2
           }
         },
-        "triangles": {
+        "holes": {
+          "title": "Hole rings",
           "type": "array",
           "items": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "uint32",
-              "minimum": 0.0
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "double"
+              },
+              "maxItems": 2,
+              "minItems": 2
+            }
+          }
+        }
+      }
+    },
+    "TriangularMesh2D": {
+      "title": "Triangle mesh (2D)",
+      "description": "A triangle mesh in 2D space, lying at a single optional elevation. Each triangle carries its three corners as coordinates.",
+      "type": "object",
+      "required": [
+        "frame",
+        "triangles"
+      ],
+      "properties": {
+        "frame": {
+          "title": "Coordinate frame",
+          "allOf": [
+            {
+              "$ref": "#/definitions/CoordinateFrame"
+            }
+          ]
+        },
+        "triangles": {
+          "title": "Triangles",
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "double"
+              },
+              "maxItems": 2,
+              "minItems": 2
             },
             "maxItems": 3,
             "minItems": 3
           }
         },
         "z": {
+          "title": "Elevation",
           "type": [
             "number",
             "null"
@@ -1208,9 +1324,10 @@
           "format": "double"
         },
         "appearance": {
+          "title": "Appearance",
           "anyOf": [
             {
-              "$ref": "#/definitions/AppearanceWire"
+              "$ref": "#/definitions/Appearance"
             },
             {
               "type": "null"
@@ -1220,20 +1337,22 @@
       }
     },
     "Collection2D": {
+      "title": "2D collection",
       "description": "A `Multi*` collection of 2D geometries; members may differ in coordinate frame.",
       "type": "object",
       "required": [
-        "attrs",
         "members"
       ],
       "properties": {
         "members": {
+          "title": "Members",
           "type": "array",
           "items": {
             "$ref": "#/definitions/Euclidean2DGeometry"
           }
         },
         "attrs": {
+          "title": "Per-member attributes",
           "description": "Per-member attributes, parallel to `members`; empty = no member carries any. Child-scoped.",
           "type": "array",
           "items": {
@@ -1244,6 +1363,7 @@
       }
     },
     "Euclidean3DGeometry": {
+      "title": "3D geometry",
       "description": "3D-embedded geometry. All coordinates are 3D `(x, y, z)`.\n\nThe heavy aggregate leaves (`PointCloud`, `Polygon`, the meshes, `Solid`) are boxed so the small, common variants don't inflate the enum — and `Geometry` with them — to the size of the largest leaf. The small tier (`Point`, `LineString`, `Csg`, `Collection`) stays inline; `Csg` already boxes its own operands.",
       "oneOf": [
         {
@@ -1363,6 +1483,7 @@
       ]
     },
     "Point3D": {
+      "title": "Point (3D)",
       "description": "A single position in 3D space. Used for CityGML `gml:Point`, OBJ vertices, and 3D point features.",
       "type": "object",
       "required": [
@@ -1371,6 +1492,7 @@
       ],
       "properties": {
         "frame": {
+          "title": "Coordinate frame",
           "description": "Coordinate frame this position is expressed in.",
           "allOf": [
             {
@@ -1379,6 +1501,7 @@
           ]
         },
         "position": {
+          "title": "Position",
           "type": "array",
           "items": {
             "type": "number",
@@ -1390,7 +1513,8 @@
       }
     },
     "PointCloud": {
-      "description": "Decoded wire form of a [`PointCloud`].",
+      "title": "Point cloud",
+      "description": "A 3D point cloud: one or more acquisition segments sharing a coordinate frame.",
       "type": "object",
       "required": [
         "frame",
@@ -1398,33 +1522,47 @@
       ],
       "properties": {
         "frame": {
-          "$ref": "#/definitions/CoordinateFrame"
+          "title": "Coordinate frame",
+          "allOf": [
+            {
+              "$ref": "#/definitions/CoordinateFrame"
+            }
+          ]
         },
         "segments": {
+          "title": "Segments",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/SegmentWire"
+            "$ref": "#/definitions/Segment"
           }
         }
       }
     },
-    "SegmentWire": {
-      "description": "Decoded wire form of one acquisition [`Segment`].",
+    "Segment": {
+      "title": "Acquisition segment",
+      "description": "One acquisition source's points: their positions in the encoding they are stored in, plus any per-point attribute columns.",
       "type": "object",
       "required": [
         "positions"
       ],
       "properties": {
         "source": {
+          "title": "Source",
           "type": [
             "string",
             "null"
           ]
         },
         "positions": {
-          "$ref": "#/definitions/PositionsWire"
+          "title": "Positions",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Positions"
+            }
+          ]
         },
         "attributes": {
+          "title": "Attribute columns",
           "type": "object",
           "additionalProperties": {
             "$ref": "#/definitions/AttributeColumn"
@@ -1432,7 +1570,7 @@
         }
       }
     },
-    "PositionsWire": {
+    "Positions": {
       "description": "Per-point positions in their stored encoding.",
       "oneOf": [
         {
@@ -1717,6 +1855,7 @@
       ]
     },
     "LineString3D": {
+      "title": "Polyline (3D)",
       "description": "A polyline in 3D space.",
       "type": "object",
       "required": [
@@ -1725,6 +1864,7 @@
       ],
       "properties": {
         "frame": {
+          "title": "Coordinate frame",
           "description": "Coordinate frame these coords are expressed in.",
           "allOf": [
             {
@@ -1733,6 +1873,7 @@
           ]
         },
         "coords": {
+          "title": "Coordinates",
           "type": "array",
           "items": {
             "type": "array",
@@ -1747,7 +1888,8 @@
       }
     },
     "Polygon3D": {
-      "description": "Decoded wire form of a [`Polygon3D`].",
+      "title": "Polygon (3D)",
+      "description": "A planar polygon face in 3D space: an exterior ring plus any interior rings (holes).",
       "type": "object",
       "required": [
         "exterior",
@@ -1755,9 +1897,15 @@
       ],
       "properties": {
         "frame": {
-          "$ref": "#/definitions/CoordinateFrame"
+          "title": "Coordinate frame",
+          "allOf": [
+            {
+              "$ref": "#/definitions/CoordinateFrame"
+            }
+          ]
         },
         "exterior": {
+          "title": "Exterior ring",
           "type": "array",
           "items": {
             "type": "array",
@@ -1770,6 +1918,7 @@
           }
         },
         "interiors": {
+          "title": "Interior rings (holes)",
           "type": "array",
           "items": {
             "type": "array",
@@ -1785,9 +1934,10 @@
           }
         },
         "appearance": {
+          "title": "Appearance",
           "anyOf": [
             {
-              "$ref": "#/definitions/AppearanceWire"
+              "$ref": "#/definitions/Appearance"
             },
             {
               "type": "null"
@@ -1797,61 +1947,34 @@
       }
     },
     "PolygonMesh3D": {
-      "description": "A connected, vertex-sharing polygon mesh in 3D space: coordinate-free mesh data plus the frame it is expressed in.",
+      "title": "Polygon mesh (3D)",
+      "description": "A connected, vertex-sharing polygon mesh in 3D space. Each face carries its rings as coordinates, written alongside the frame rather than nested under the frameless mesh data a solid's shell shares.",
       "type": "object",
       "required": [
-        "data",
+        "faces",
         "frame"
       ],
       "properties": {
         "frame": {
-          "description": "Coordinate frame the mesh data is expressed in.",
+          "title": "Coordinate frame",
           "allOf": [
             {
               "$ref": "#/definitions/CoordinateFrame"
             }
           ]
         },
-        "data": {
-          "description": "coordinate-free mesh data; the same form a [`Solid`](crate::solid::Solid) shell stores directly.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/PolygonMesh3DData"
-            }
-          ]
-        }
-      }
-    },
-    "PolygonMesh3DData": {
-      "description": "Decoded wire form of a [`PolygonMesh3DData`].",
-      "type": "object",
-      "required": [
-        "faces",
-        "vertices"
-      ],
-      "properties": {
-        "vertices": {
-          "type": "array",
-          "items": {
-            "type": "array",
-            "items": {
-              "type": "number",
-              "format": "double"
-            },
-            "maxItems": 3,
-            "minItems": 3
-          }
-        },
         "faces": {
+          "title": "Faces",
           "type": "array",
           "items": {
-            "$ref": "#/definitions/FaceWire"
+            "$ref": "#/definitions/Face3D"
           }
         },
         "appearance": {
+          "title": "Appearance",
           "anyOf": [
             {
-              "$ref": "#/definitions/AppearanceWire"
+              "$ref": "#/definitions/Appearance"
             },
             {
               "type": "null"
@@ -1860,41 +1983,16 @@
         }
       }
     },
-    "TriangularMesh3D": {
-      "description": "A triangle mesh in 3D space: coordinate-free mesh data plus the frame it is expressed in.",
+    "Face3D": {
+      "title": "Face (3D)",
+      "description": "One mesh face in 3D: an exterior ring of coordinates and any hole rings.",
       "type": "object",
       "required": [
-        "data",
-        "frame"
+        "exterior"
       ],
       "properties": {
-        "frame": {
-          "description": "Coordinate frame the mesh data is expressed in.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/CoordinateFrame"
-            }
-          ]
-        },
-        "data": {
-          "description": "coordinate-free mesh data; the same form a [`Solid`](crate::solid::Solid) shell stores directly.",
-          "allOf": [
-            {
-              "$ref": "#/definitions/TriangularMesh3DData"
-            }
-          ]
-        }
-      }
-    },
-    "TriangularMesh3DData": {
-      "description": "Decoded wire form of a [`TriangularMesh3DData`].",
-      "type": "object",
-      "required": [
-        "triangles",
-        "vertices"
-      ],
-      "properties": {
-        "vertices": {
+        "exterior": {
+          "title": "Exterior ring",
           "type": "array",
           "items": {
             "type": "array",
@@ -1906,23 +2004,64 @@
             "minItems": 3
           }
         },
-        "triangles": {
+        "holes": {
+          "title": "Hole rings",
           "type": "array",
           "items": {
             "type": "array",
             "items": {
-              "type": "integer",
-              "format": "uint32",
-              "minimum": 0.0
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "double"
+              },
+              "maxItems": 3,
+              "minItems": 3
+            }
+          }
+        }
+      }
+    },
+    "TriangularMesh3D": {
+      "title": "Triangle mesh (3D)",
+      "description": "A triangle mesh in 3D space. Each triangle carries its three corners as coordinates, written alongside the frame rather than nested under the frameless mesh data a solid's shell shares.",
+      "type": "object",
+      "required": [
+        "frame",
+        "triangles"
+      ],
+      "properties": {
+        "frame": {
+          "title": "Coordinate frame",
+          "allOf": [
+            {
+              "$ref": "#/definitions/CoordinateFrame"
+            }
+          ]
+        },
+        "triangles": {
+          "title": "Triangles",
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "double"
+              },
+              "maxItems": 3,
+              "minItems": 3
             },
             "maxItems": 3,
             "minItems": 3
           }
         },
         "appearance": {
+          "title": "Appearance",
           "anyOf": [
             {
-              "$ref": "#/definitions/AppearanceWire"
+              "$ref": "#/definitions/Appearance"
             },
             {
               "type": "null"
@@ -1932,15 +2071,16 @@
       }
     },
     "Solid": {
+      "title": "Solid",
       "description": "A volumetric solid bounded by an exterior shell and any number of interior (void) shells. Appearance lives on each shell's mesh.",
       "type": "object",
       "required": [
         "exterior",
-        "frame",
-        "interiors"
+        "frame"
       ],
       "properties": {
         "frame": {
+          "title": "Coordinate frame",
           "description": "Coordinate frame this solid's shells are expressed in; the shells themselves are coordless raw meshes.",
           "allOf": [
             {
@@ -1949,9 +2089,15 @@
           ]
         },
         "exterior": {
-          "$ref": "#/definitions/Shell"
+          "title": "Exterior shell",
+          "allOf": [
+            {
+              "$ref": "#/definitions/Shell"
+            }
+          ]
         },
         "interiors": {
+          "title": "Interior shells (voids)",
           "description": "Hollow voids.",
           "type": "array",
           "items": {
@@ -1961,6 +2107,7 @@
       }
     },
     "Shell": {
+      "title": "Boundary shell",
       "description": "One closed boundary of a [`Solid`]: a general polygon mesh or a triangle mesh, stored as coordinate-free mesh data so the boundary cannot carry a frame of its own — its frame is the `Solid`'s.",
       "oneOf": [
         {
@@ -1989,7 +2136,75 @@
         }
       ]
     },
+    "PolygonMesh3DData": {
+      "title": "Polygon mesh data (3D)",
+      "description": "The faces of a 3D polygon mesh, with no coordinate frame of their own: a solid's shell stores this form and takes the frame from the solid.",
+      "type": "object",
+      "required": [
+        "faces"
+      ],
+      "properties": {
+        "faces": {
+          "title": "Faces",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/Face3D"
+          }
+        },
+        "appearance": {
+          "title": "Appearance",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Appearance"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
+    "TriangularMesh3DData": {
+      "title": "Triangle mesh data (3D)",
+      "description": "The triangles of a 3D triangle mesh, with no coordinate frame of their own: a solid's shell stores this form and takes the frame from the solid.",
+      "type": "object",
+      "required": [
+        "triangles"
+      ],
+      "properties": {
+        "triangles": {
+          "title": "Triangles",
+          "type": "array",
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "array",
+              "items": {
+                "type": "number",
+                "format": "double"
+              },
+              "maxItems": 3,
+              "minItems": 3
+            },
+            "maxItems": 3,
+            "minItems": 3
+          }
+        },
+        "appearance": {
+          "title": "Appearance",
+          "anyOf": [
+            {
+              "$ref": "#/definitions/Appearance"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        }
+      }
+    },
     "Csg": {
+      "title": "Boolean combination",
       "description": "A boolean combination of two volumetric operands.",
       "oneOf": [
         {
@@ -2061,6 +2276,7 @@
       ]
     },
     "ThreeDimensional": {
+      "title": "Volumetric operand",
       "description": "Volumetric, closed 3D geometries that `Csg` boolean operations are defined over.",
       "oneOf": [
         {
@@ -2091,20 +2307,22 @@
       ]
     },
     "Collection3D": {
+      "title": "3D collection",
       "description": "A `Multi*` collection of 3D geometries; members may differ in coordinate frame.",
       "type": "object",
       "required": [
-        "attrs",
         "members"
       ],
       "properties": {
         "members": {
+          "title": "Members",
           "type": "array",
           "items": {
             "$ref": "#/definitions/Euclidean3DGeometry"
           }
         },
         "attrs": {
+          "title": "Per-member attributes",
           "description": "Per-member attributes, parallel to `members`; empty = no member carries any. Child-scoped.",
           "type": "array",
           "items": {
@@ -2115,20 +2333,22 @@
       }
     },
     "GeometryCollection": {
+      "title": "Geometry collection",
       "description": "Ordered members, each optionally carrying its own attributes.",
       "type": "object",
       "required": [
-        "attrs",
         "members"
       ],
       "properties": {
         "members": {
+          "title": "Members",
           "type": "array",
           "items": {
             "$ref": "#/definitions/Geometry"
           }
         },
         "attrs": {
+          "title": "Per-member attributes",
           "description": "Per-member attributes parallel to `members`; empty = no member carries any. Child-scoped: not exposed as the feature's own attributes.",
           "type": "array",
           "items": {

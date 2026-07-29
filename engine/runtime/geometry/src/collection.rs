@@ -24,28 +24,36 @@ use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 /// A `Multi*` collection of 2D geometries; members may differ in coordinate frame.
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
+#[cfg_attr(feature = "schema", schemars(title = "2D collection"))]
 pub struct Collection2D {
+    #[cfg_attr(feature = "schema", schemars(title = "Members"))]
     members: Vec<Euclidean2DGeometry>,
     /// Per-member attributes, parallel to `members`; empty = no member carries
     /// any. Child-scoped.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     #[cfg_attr(
         feature = "schema",
         schemars(with = "Vec<std::collections::HashMap<String, serde_json::Value>>")
     )]
+    #[cfg_attr(feature = "schema", schemars(title = "Per-member attributes"))]
     attrs: Vec<Attributes>,
 }
 
 /// A `Multi*` collection of 3D geometries; members may differ in coordinate frame.
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Default)]
+#[cfg_attr(feature = "schema", schemars(title = "3D collection"))]
 pub struct Collection3D {
+    #[cfg_attr(feature = "schema", schemars(title = "Members"))]
     members: Vec<Euclidean3DGeometry>,
     /// Per-member attributes, parallel to `members`; empty = no member carries
     /// any. Child-scoped.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
     #[cfg_attr(
         feature = "schema",
         schemars(with = "Vec<std::collections::HashMap<String, serde_json::Value>>")
     )]
+    #[cfg_attr(feature = "schema", schemars(title = "Per-member attributes"))]
     attrs: Vec<Attributes>,
 }
 

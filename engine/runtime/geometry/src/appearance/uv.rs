@@ -70,4 +70,5 @@ pub enum UvSource {
 /// `(s, t) = (s'/q', t'/q')`.
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
+#[cfg_attr(feature = "schema", schemars(title = "World-to-texture matrix"))]
 pub struct TexMatrix(pub [[f64; 4]; 3]);

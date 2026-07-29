@@ -49,9 +49,11 @@ cargo make test-conv-new-geometry ${@:-}
 [tasks.test-rs]
 script = ['''
 #!/usr/bin/env bash -eux
-# Both geometry worlds.
+# Both geometry worlds. `schema` rides along with `new-geometry` so the
+# intermediate-data schema impls are compiled and the committed
+# schema/feature-intermediate.schema.json is checked for staleness.
 cargo test --workspace --all-targets --exclude workflow-tests ${@:-}
-cargo test --workspace --all-targets --features new-geometry \
+cargo test --workspace --all-targets --features new-geometry,schema \
   --exclude workflow-tests --exclude reearth-flow-tests ${@:-}
 ''']
 
@@ -105,11 +107,15 @@ export PLATEAU_TILES_TEST_CONCURRENCY="${PLATEAU_TILES_TEST_CONCURRENCY:-4}" # d
 cargo run -p plateau-tiles-test --bin plateau-tiles-test --features new-geometry ${@:-}
 ''']
 
+# `--all-features` is not usable here: `debug-geom-feature-write` swaps the
+# intermediate-data form for its debug counterpart and so is mutually exclusive
+# with `schema`, which describes the production one. Document the production
+# configuration.
 [tasks.doc]
 script = ['''
 #!/usr/bin/env bash -eux
 cargo clean --doc
-cargo doc --no-deps --all-features
+cargo doc --no-deps --features new-geometry,schema
 ''']
 
 [tasks.coverage]
@@ -150,11 +156,13 @@ cargo run --package reearth-flow-cli -- scaffold-i18n --dir "$PWD/schema/i18n/ac
 
 # Generates the production intermediate-data (feature) JSON schema.
 # Run after changing any geometry leaf's wire form, and commit the result.
+# `new-geometry` is the world the schema describes, so the generator is built in
+# it; `test-rs` checks the committed file against the same feature set.
 [tasks.schema-feature]
 script = [
   '''
 #!/usr/bin/env bash -eux
-cargo run --package reearth-flow-cli --features schema -- schema-feature > ./schema/feature-intermediate.schema.json
+cargo run --package reearth-flow-cli --features schema,new-geometry -- schema-feature > ./schema/feature-intermediate.schema.json
 ''',
 ]
 

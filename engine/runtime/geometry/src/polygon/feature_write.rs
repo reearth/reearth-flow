@@ -5,11 +5,9 @@
 use serde::{Deserialize, Deserializer, Serialize, Serializer};
 
 use crate::appearance::feature_write::{
-    decode_appearance, encode_appearance, AppearanceWire, FaceRings,
+    decode_appearance, encode_appearance, Appearance, FaceRings,
 };
 use crate::coordinate::CoordinateFrame;
-
-use super::{Polygon2D, Polygon3D};
 
 /// The single face a polygon presents: its exterior ring, then its interiors.
 fn polygon_layout(exterior: usize, interiors: impl Iterator<Item = usize>) -> Vec<FaceRings> {
@@ -19,30 +17,43 @@ fn polygon_layout(exterior: usize, interiors: impl Iterator<Item = usize>) -> Ve
     }]
 }
 
-/// Decoded wire form of a [`Polygon2D`].
+/// A planar polygon face in 2D space: an exterior ring plus any interior
+/// rings (holes), lying at a single optional elevation.
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize)]
-struct Polygon2DWire {
+#[cfg_attr(feature = "schema", schemars(title = "Polygon (2D)"))]
+struct Polygon2D {
+    #[cfg_attr(feature = "schema", schemars(title = "Coordinate frame"))]
     frame: CoordinateFrame,
+    #[cfg_attr(feature = "schema", schemars(title = "Exterior ring"))]
     exterior: Vec<[f64; 2]>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[cfg_attr(feature = "schema", schemars(title = "Interior rings (holes)"))]
     interiors: Vec<Vec<[f64; 2]>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "schema", schemars(title = "Elevation"))]
     z: Option<f64>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    appearance: Option<AppearanceWire>,
+    #[cfg_attr(feature = "schema", schemars(title = "Appearance"))]
+    appearance: Option<Appearance>,
 }
 
-/// Decoded wire form of a [`Polygon3D`].
+/// A planar polygon face in 3D space: an exterior ring plus any interior
+/// rings (holes).
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize)]
-struct Polygon3DWire {
+#[cfg_attr(feature = "schema", schemars(title = "Polygon (3D)"))]
+struct Polygon3D {
+    #[cfg_attr(feature = "schema", schemars(title = "Coordinate frame"))]
     frame: CoordinateFrame,
+    #[cfg_attr(feature = "schema", schemars(title = "Exterior ring"))]
     exterior: Vec<[f64; 3]>,
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[cfg_attr(feature = "schema", schemars(title = "Interior rings (holes)"))]
     interiors: Vec<Vec<[f64; 3]>>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
-    appearance: Option<AppearanceWire>,
+    #[cfg_attr(feature = "schema", schemars(title = "Appearance"))]
+    appearance: Option<Appearance>,
 }
 
 /// Concatenate the exterior and interior rings into `(coords, interior_offsets)`.
@@ -62,14 +73,14 @@ fn flatten_rings<const N: usize>(
     )
 }
 
-impl TryFrom<&Polygon2D> for Polygon2DWire {
+impl TryFrom<&super::Polygon2D> for Polygon2D {
     type Error = crate::error::Error;
 
-    fn try_from(p: &Polygon2D) -> Result<Self, Self::Error> {
+    fn try_from(p: &super::Polygon2D) -> Result<Self, Self::Error> {
         let exterior = p.exterior().to_vec();
         let interiors: Vec<Vec<[f64; 2]>> = p.interiors().map(|r| r.to_vec()).collect();
         let layout = polygon_layout(exterior.len(), interiors.iter().map(Vec::len));
-        Ok(Polygon2DWire {
+        Ok(Polygon2D {
             frame: p.frame.clone(),
             appearance: encode_appearance(&p.appearance, &layout)?,
             exterior,
@@ -79,27 +90,27 @@ impl TryFrom<&Polygon2D> for Polygon2DWire {
     }
 }
 
-impl TryFrom<Polygon2DWire> for Polygon2D {
+impl TryFrom<Polygon2D> for super::Polygon2D {
     type Error = crate::error::Error;
 
-    fn try_from(w: Polygon2DWire) -> Result<Self, Self::Error> {
+    fn try_from(w: Polygon2D) -> Result<Self, Self::Error> {
         let layout = polygon_layout(w.exterior.len(), w.interiors.iter().map(Vec::len));
         let appearance = decode_appearance(w.appearance, &layout)?;
         let (coords, interior_offsets) = flatten_rings(w.exterior, w.interiors);
-        let mut polygon = Polygon2D::from_raw_parts(w.frame, coords, interior_offsets, w.z)?;
+        let mut polygon = super::Polygon2D::from_raw_parts(w.frame, coords, interior_offsets, w.z)?;
         polygon.appearance = appearance;
         Ok(polygon)
     }
 }
 
-impl TryFrom<&Polygon3D> for Polygon3DWire {
+impl TryFrom<&super::Polygon3D> for Polygon3D {
     type Error = crate::error::Error;
 
-    fn try_from(p: &Polygon3D) -> Result<Self, Self::Error> {
+    fn try_from(p: &super::Polygon3D) -> Result<Self, Self::Error> {
         let exterior = p.exterior().to_vec();
         let interiors: Vec<Vec<[f64; 3]>> = p.interiors().map(|r| r.to_vec()).collect();
         let layout = polygon_layout(exterior.len(), interiors.iter().map(Vec::len));
-        Ok(Polygon3DWire {
+        Ok(Polygon3D {
             frame: p.frame.clone(),
             appearance: encode_appearance(&p.appearance, &layout)?,
             exterior,
@@ -108,72 +119,73 @@ impl TryFrom<&Polygon3D> for Polygon3DWire {
     }
 }
 
-impl TryFrom<Polygon3DWire> for Polygon3D {
+impl TryFrom<Polygon3D> for super::Polygon3D {
     type Error = crate::error::Error;
 
-    fn try_from(w: Polygon3DWire) -> Result<Self, Self::Error> {
+    fn try_from(w: Polygon3D) -> Result<Self, Self::Error> {
         let layout = polygon_layout(w.exterior.len(), w.interiors.iter().map(Vec::len));
         let appearance = decode_appearance(w.appearance, &layout)?;
         let (coords, interior_offsets) = flatten_rings(w.exterior, w.interiors);
-        let mut polygon = Polygon3D::from_raw_parts(w.frame, coords, interior_offsets)?;
+        let mut polygon = super::Polygon3D::from_raw_parts(w.frame, coords, interior_offsets)?;
         polygon.appearance = appearance;
         Ok(polygon)
     }
 }
 
-impl Serialize for Polygon2D {
+impl Serialize for super::Polygon2D {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        Polygon2DWire::try_from(self)
+        Polygon2D::try_from(self)
             .map_err(serde::ser::Error::custom)?
             .serialize(serializer)
     }
 }
 
-impl<'de> Deserialize<'de> for Polygon2D {
+impl<'de> Deserialize<'de> for super::Polygon2D {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        Polygon2D::try_from(Polygon2DWire::deserialize(deserializer)?)
+        super::Polygon2D::try_from(Polygon2D::deserialize(deserializer)?)
             .map_err(serde::de::Error::custom)
     }
 }
 
-impl Serialize for Polygon3D {
+impl Serialize for super::Polygon3D {
     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-        Polygon3DWire::try_from(self)
+        Polygon3D::try_from(self)
             .map_err(serde::ser::Error::custom)?
             .serialize(serializer)
     }
 }
 
-impl<'de> Deserialize<'de> for Polygon3D {
+impl<'de> Deserialize<'de> for super::Polygon3D {
     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-        Polygon3D::try_from(Polygon3DWire::deserialize(deserializer)?)
+        super::Polygon3D::try_from(Polygon3D::deserialize(deserializer)?)
             .map_err(serde::de::Error::custom)
     }
 }
 
 #[cfg(feature = "schema")]
-impl schemars::JsonSchema for Polygon2D {
+impl schemars::JsonSchema for super::Polygon2D {
     fn schema_name() -> String {
         "Polygon2D".to_string()
     }
     fn json_schema(generator: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
-        <Polygon2DWire as schemars::JsonSchema>::json_schema(generator)
+        <Polygon2D as schemars::JsonSchema>::json_schema(generator)
     }
 }
 
 #[cfg(feature = "schema")]
-impl schemars::JsonSchema for Polygon3D {
+impl schemars::JsonSchema for super::Polygon3D {
     fn schema_name() -> String {
         "Polygon3D".to_string()
     }
     fn json_schema(generator: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
-        <Polygon3DWire as schemars::JsonSchema>::json_schema(generator)
+        <Polygon3D as schemars::JsonSchema>::json_schema(generator)
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::polygon::{Polygon2D, Polygon3D};
 
     fn round_trip_2d(p: &Polygon2D) {
         let json = serde_json::to_string(p).unwrap();

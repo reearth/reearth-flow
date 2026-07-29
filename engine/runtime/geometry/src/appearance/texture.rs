@@ -33,9 +33,12 @@ pub enum Raster {
 /// Owned, encoded image payload: the original bytes plus their image format.
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "schema", schemars(title = "Raster data"))]
 pub struct RasterData {
+    #[cfg_attr(feature = "schema", schemars(title = "MIME type"))]
     pub mime_type: MimeType,
     #[cfg_attr(feature = "schema", schemars(with = "Vec<u8>"))]
+    #[cfg_attr(feature = "schema", schemars(title = "Image bytes"))]
     pub bytes: Bytes,
 }
 
@@ -44,12 +47,16 @@ pub struct RasterData {
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 pub struct Texture {
     /// Shared image; copy-on-write on edit.
+    #[cfg_attr(feature = "schema", schemars(title = "Image"))]
     pub raster: Arc<Raster>,
+    #[cfg_attr(feature = "schema", schemars(title = "Sampler"))]
     pub sampler: Sampler,
     /// Optional texture-coordinate transform (offset / rotation / scale).
+    #[cfg_attr(feature = "schema", schemars(title = "Texture transform"))]
     pub transform: Option<TextureTransform>,
     /// Which UV set within the resolved theme this map samples; 0 in the common
     /// case.
+    #[cfg_attr(feature = "schema", schemars(title = "UV channel"))]
     pub uv_channel: ChannelId,
 }
 
@@ -57,8 +64,11 @@ pub struct Texture {
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq)]
 pub struct TextureTransform {
+    #[cfg_attr(feature = "schema", schemars(title = "Offset"))]
     pub offset: [f32; 2],
+    #[cfg_attr(feature = "schema", schemars(title = "Rotation"))]
     pub rotation: f32,
+    #[cfg_attr(feature = "schema", schemars(title = "Scale"))]
     pub scale: [f32; 2],
 }
 
@@ -66,9 +76,13 @@ pub struct TextureTransform {
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Copy, Debug, PartialEq, Eq)]
 pub struct Sampler {
+    #[cfg_attr(feature = "schema", schemars(title = "Wrap mode (S)"))]
     pub wrap_s: WrapMode,
+    #[cfg_attr(feature = "schema", schemars(title = "Wrap mode (T)"))]
     pub wrap_t: WrapMode,
+    #[cfg_attr(feature = "schema", schemars(title = "Magnification filter"))]
     pub mag_filter: Filter,
+    #[cfg_attr(feature = "schema", schemars(title = "Minification filter"))]
     pub min_filter: Filter,
 }
 
