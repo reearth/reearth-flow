@@ -154,7 +154,6 @@ crate::unsupported!(
     PointCloud: Triangulate,
     Reproject,
     ConvertFrame,
-    Translate,
     ForceTwoDimension,
     RemoveAppearance
 );
