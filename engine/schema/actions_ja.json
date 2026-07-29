@@ -5452,6 +5452,8 @@
         "description": "ジオメトリタイプに基づいてフィーチャーをフィルタリングする方法を設定する",
         "oneOf": [
           {
+            "title": "No Geometry",
+            "description": "Separates the features that carry no geometry at all from the ones that do.",
             "type": "object",
             "required": [
               "filterType"
@@ -5466,6 +5468,8 @@
             }
           },
           {
+            "title": "Multiple Geometries",
+            "description": "Separates the features whose geometry is a container that can hold more than one part.",
             "type": "object",
             "required": [
               "filterType"
@@ -5480,6 +5484,8 @@
             }
           },
           {
+            "title": "Geometry Type",
+            "description": "Routes by the geometry family a feature belongs to: point, curve, surface, triangle or solid.",
             "type": "object",
             "required": [
               "filterType"
