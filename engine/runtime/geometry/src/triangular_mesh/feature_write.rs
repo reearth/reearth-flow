@@ -71,7 +71,7 @@ pub(crate) struct TriangularMesh2D {
 /// a solid's shell stores this form and takes the frame from the solid.
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize)]
-#[cfg_attr(feature = "schema", schemars(title = "Triangle mesh data (3D)"))]
+#[cfg_attr(feature = "schema", schemars(title = "Shell triangle mesh (3D)"))]
 pub(crate) struct TriangularMesh3DData {
     #[cfg_attr(feature = "schema", schemars(title = "Triangles"))]
     triangles: Vec<[[f64; 3]; 3]>,

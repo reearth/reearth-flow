@@ -177,7 +177,19 @@ impl<'de> Deserialize<'de> for super::PointCloud {
             .into_iter()
             .map(|s| {
                 let (position, stride, data, count) = decode_positions(s.positions);
-                super::Segment {
+                // A segment's columns are read by point index, so a column that
+                // disagrees with the point count is rejected here rather than
+                // left to index out of bounds on the first read.
+                for (name, column) in &s.attributes {
+                    if column.len() != count {
+                        return Err(serde::de::Error::custom(format!(
+                            "attribute column `{name}` has {} entries but the segment has \
+                             {count} points",
+                            column.len()
+                        )));
+                    }
+                }
+                Ok(super::Segment {
                     source: s.source,
                     position,
                     fields: 0,
@@ -186,9 +198,9 @@ impl<'de> Deserialize<'de> for super::PointCloud {
                     data,
                     count,
                     attributes: s.attributes,
-                }
+                })
             })
-            .collect();
+            .collect::<Result<_, D::Error>>()?;
         Ok(super::PointCloud {
             frame: wire.frame,
             segments,
@@ -294,5 +306,38 @@ mod tests {
             segments,
             kdtree: OnceLock::new(),
         });
+    }
+
+    /// Columns are read by point index, so a short one would index out of
+    /// bounds on the first read; it is rejected while decoding instead.
+    #[test]
+    fn short_attribute_column_is_rejected() {
+        let json = r#"{
+            "frame": "Euclidean",
+            "segments": [{
+                "positions": {"F64": [[0.0,0.0,0.0],[1.0,1.0,1.0],[2.0,2.0,2.0]]},
+                "attributes": {"intensity": {"UInt16": [100, 200]}}
+            }]
+        }"#;
+        let err = serde_json::from_str::<PointCloud>(json)
+            .unwrap_err()
+            .to_string();
+        assert!(
+            err.contains("attribute column `intensity` has 2 entries but the segment has 3 points"),
+            "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn matching_attribute_column_is_accepted() {
+        let json = r#"{
+            "frame": "Euclidean",
+            "segments": [{
+                "positions": {"F64": [[0.0,0.0,0.0],[1.0,1.0,1.0]]},
+                "attributes": {"intensity": {"UInt16": [100, 200]}}
+            }]
+        }"#;
+        let pc: PointCloud = serde_json::from_str(json).unwrap();
+        round_trip(&pc);
     }
 }

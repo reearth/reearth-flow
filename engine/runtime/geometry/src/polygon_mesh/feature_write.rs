@@ -216,7 +216,7 @@ pub(crate) struct PolygonMesh2D {
 /// solid's shell stores this form and takes the frame from the solid.
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize)]
-#[cfg_attr(feature = "schema", schemars(title = "Polygon mesh data (3D)"))]
+#[cfg_attr(feature = "schema", schemars(title = "Shell polygon mesh (3D)"))]
 pub(crate) struct PolygonMesh3DData {
     #[cfg_attr(feature = "schema", schemars(title = "Faces"))]
     faces: Vec<Face3D>,

@@ -85,6 +85,28 @@ enum AttributeColumn {
     /// `None` = null / not yet assigned.
     String(Vec<Option<Arc<str>>>),
 }
+
+#[cfg(not(feature = "debug-geom-feature-write"))]
+impl AttributeColumn {
+    /// Entries in this column, which every segment requires to equal its
+    /// `count`.
+    fn len(&self) -> usize {
+        match self {
+            AttributeColumn::UInt8(v) => v.len(),
+            AttributeColumn::UInt16(v) => v.len(),
+            AttributeColumn::UInt32(v) => v.len(),
+            AttributeColumn::UInt64(v) => v.len(),
+            AttributeColumn::Int8(v) => v.len(),
+            AttributeColumn::Int16(v) => v.len(),
+            AttributeColumn::Int32(v) => v.len(),
+            AttributeColumn::Int64(v) => v.len(),
+            AttributeColumn::Float32(v) => v.len(),
+            AttributeColumn::Float64(v) => v.len(),
+            AttributeColumn::String(v) => v.len(),
+        }
+    }
+}
+
 /// One acquisition source's points, carrying only the fields it actually has.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 struct Segment {

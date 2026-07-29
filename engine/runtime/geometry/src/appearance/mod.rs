@@ -215,6 +215,7 @@ pub enum Side {
 /// How a theme's faces map to the material palette.
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+#[cfg_attr(feature = "schema", schemars(title = "Face-to-material index binding"))]
 pub enum FaceBinding {
     /// One material for every face; the common case, and the only form a
     /// single-material theme or a `Polygon` ever needs. Indexes the material

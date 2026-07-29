@@ -1012,6 +1012,7 @@
       "type": "string"
     },
     "FaceBinding": {
+      "title": "Face-to-material index binding",
       "description": "How a theme's faces map to the material palette.",
       "oneOf": [
         {
@@ -2137,7 +2138,7 @@
       ]
     },
     "PolygonMesh3DData": {
-      "title": "Polygon mesh data (3D)",
+      "title": "Shell polygon mesh (3D)",
       "description": "The faces of a 3D polygon mesh, with no coordinate frame of their own: a solid's shell stores this form and takes the frame from the solid.",
       "type": "object",
       "required": [
@@ -2165,7 +2166,7 @@
       }
     },
     "TriangularMesh3DData": {
-      "title": "Triangle mesh data (3D)",
+      "title": "Shell triangle mesh (3D)",
       "description": "The triangles of a 3D triangle mesh, with no coordinate frame of their own: a solid's shell stores this form and takes the frame from the solid.",
       "type": "object",
       "required": [
