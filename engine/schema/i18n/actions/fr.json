@@ -2,7 +2,7 @@
   "actions": [
     {
       "name": "Appearance Remover",
-      "description": "Supprime les informations d'apparence (matériaux, textures) de la géométrie CityGML"
+      "description": "Supprime les matériaux, les textures et les coordonnées de texture portés par la géométrie d'une entité."
     },
     {
       "name": "Area Calculator",
@@ -1742,7 +1742,7 @@
     },
     {
       "name": "Geometry Remover",
-      "description": "Supprime la géométrie d'une entité"
+      "description": "Supprime la géométrie d'une entité en conservant ses attributs."
     },
     {
       "name": "Geometry Replacer",

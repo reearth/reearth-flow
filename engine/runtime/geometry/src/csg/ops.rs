@@ -1,5 +1,5 @@
 use super::{Csg, ThreeDimensional};
-use crate::ops::{union_results, Aabb, BoundingBox, UnsupportedOperation};
+use crate::ops::{union_results, Aabb, BoundingBox, RemoveAppearance, UnsupportedOperation};
 
 impl BoundingBox for Csg {
     fn bounding_box(&self) -> Result<Aabb, UnsupportedOperation> {
@@ -18,6 +18,24 @@ fn operand_box(operand: &ThreeDimensional) -> Result<Aabb, UnsupportedOperation>
     match operand {
         ThreeDimensional::Solid(s) => s.bounding_box(),
         ThreeDimensional::Csg(c) => c.bounding_box(),
+    }
+}
+
+impl RemoveAppearance for Csg {
+    fn remove_appearance(&mut self) {
+        let (left, right) = match self {
+            Csg::Union(a, b) | Csg::Intersection(a, b) | Csg::Difference(a, b) => (a, b),
+        };
+        remove_operand_appearance(left);
+        remove_operand_appearance(right);
+    }
+}
+
+/// Strip an operand's appearance, recursing into nested trees.
+fn remove_operand_appearance(operand: &mut ThreeDimensional) {
+    match operand {
+        ThreeDimensional::Solid(s) => s.remove_appearance(),
+        ThreeDimensional::Csg(c) => c.remove_appearance(),
     }
 }
 

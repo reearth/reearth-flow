@@ -268,6 +268,20 @@ impl TriangularMesh2D {
     }
 }
 
+use crate::ops::RemoveAppearance;
+
+impl RemoveAppearance for TriangularMesh2D {
+    fn remove_appearance(&mut self) {
+        *self.appearance_mut() = None;
+    }
+}
+
+impl RemoveAppearance for TriangularMesh3D {
+    fn remove_appearance(&mut self) {
+        *self.appearance_mut() = None;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

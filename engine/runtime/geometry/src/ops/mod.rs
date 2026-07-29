@@ -254,6 +254,20 @@ impl<T: Triangulate + ?Sized> Triangulate for Box<T> {
     }
 }
 
+/// Drop every material, binding and UV set a geometry carries, for every theme,
+/// leaving its coordinates and topology untouched. Total over the hierarchy: a
+/// type that carries no appearance inherits the no-op default.
+#[enum_dispatch::enum_dispatch]
+pub trait RemoveAppearance {
+    fn remove_appearance(&mut self) {}
+}
+
+impl<T: RemoveAppearance + ?Sized> RemoveAppearance for Box<T> {
+    fn remove_appearance(&mut self) {
+        (**self).remove_appearance()
+    }
+}
+
 /// Why a geometry could not be re-represented in a pure 2D embedding.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum ForceTwoDimensionError {

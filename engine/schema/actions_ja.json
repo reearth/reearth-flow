@@ -3,7 +3,7 @@
     {
       "name": "Appearance Remover",
       "type": "processor",
-      "description": "CityGMLジオメトリから外観情報（マテリアル、テクスチャ）を削除する",
+      "description": "地物のジオメトリが持つマテリアル、テクスチャ、テクスチャ座標を削除する",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -5566,7 +5566,7 @@
     {
       "name": "Geometry Remover",
       "type": "processor",
-      "description": "地物からジオメトリを削除する",
+      "description": "地物のジオメトリを削除し、属性はそのまま残す",
       "parameter": null,
       "builtin": true,
       "inputPorts": [

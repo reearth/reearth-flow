@@ -3,7 +3,7 @@
     {
       "name": "Appearance Remover",
       "type": "processor",
-      "description": "Supprime les informations d'apparence (matériaux, textures) de la géométrie CityGML",
+      "description": "Supprime les matériaux, les textures et les coordonnées de texture portés par la géométrie d'une entité.",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -5563,7 +5563,7 @@
     {
       "name": "Geometry Remover",
       "type": "processor",
-      "description": "Supprime la géométrie d'une entité",
+      "description": "Supprime la géométrie d'une entité en conservant ses attributs.",
       "parameter": null,
       "builtin": true,
       "inputPorts": [

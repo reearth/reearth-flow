@@ -3,7 +3,7 @@
     {
       "name": "Appearance Remover",
       "type": "processor",
-      "description": "Removes appearance information (materials, textures) from CityGML geometry",
+      "description": "Discards the materials, textures and texture coordinates carried by a feature's geometry.",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -5563,7 +5563,7 @@
     {
       "name": "Geometry Remover",
       "type": "processor",
-      "description": "Removes geometry from a feature",
+      "description": "Discards a feature's geometry, keeping its attributes.",
       "parameter": null,
       "builtin": true,
       "inputPorts": [

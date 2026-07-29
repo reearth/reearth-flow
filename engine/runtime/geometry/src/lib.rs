@@ -53,8 +53,8 @@ use serde::{Deserialize, Serialize};
 
 use ops::triangulation::Cache;
 use ops::{
-    Aabb, BoundingBox, ConvertFrame, ForceTwoDimension, ForceTwoDimensionError, Reproject,
-    ReprojectionCache, Translate, Triangulate, UnsupportedOperation,
+    Aabb, BoundingBox, ConvertFrame, ForceTwoDimension, ForceTwoDimensionError, RemoveAppearance,
+    Reproject, ReprojectionCache, Translate, Triangulate, UnsupportedOperation,
 };
 // `ValidationParams` / `ValidationType` / `ValidationReport` are named by the
 // `enum_dispatch`-generated `Validate` impls on the geometry enums, so they must
@@ -166,7 +166,8 @@ impl GeometryCollection {
         ConvertFrame,
         Translate,
         Split,
-        ForceTwoDimension
+        ForceTwoDimension,
+        RemoveAppearance
     )
 )]
 #[cfg_attr(
@@ -179,7 +180,8 @@ impl GeometryCollection {
         ConvertFrame,
         Translate,
         Split,
-        ForceTwoDimension
+        ForceTwoDimension,
+        RemoveAppearance
     )
 )]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -212,7 +214,8 @@ pub enum Euclidean2DGeometry {
         ConvertFrame,
         Translate,
         Split,
-        ForceTwoDimension
+        ForceTwoDimension,
+        RemoveAppearance
     )
 )]
 #[cfg_attr(
@@ -225,7 +228,8 @@ pub enum Euclidean2DGeometry {
         ConvertFrame,
         Translate,
         Split,
-        ForceTwoDimension
+        ForceTwoDimension,
+        RemoveAppearance
     )
 )]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -427,6 +431,25 @@ impl Translate for GeometryCollection {
             member.translate(delta)?;
         }
         Ok(())
+    }
+}
+
+impl RemoveAppearance for Geometry {
+    fn remove_appearance(&mut self) {
+        match self {
+            Geometry::None => {}
+            Geometry::Euclidean2D(g) => g.remove_appearance(),
+            Geometry::Euclidean3D(g) => g.remove_appearance(),
+            Geometry::GeometryCollection(c) => c.remove_appearance(),
+        }
+    }
+}
+
+impl RemoveAppearance for GeometryCollection {
+    fn remove_appearance(&mut self) {
+        for member in self.members_mut() {
+            member.remove_appearance();
+        }
     }
 }
 
@@ -1015,5 +1038,173 @@ mod force_2d_tests {
         ];
         let mut g = Geometry::GeometryCollection(GeometryCollection::new(members));
         assert!(g.force_2d().is_err());
+    }
+}
+
+#[cfg(test)]
+mod remove_appearance_tests {
+    use super::*;
+    use coordinate::CoordinateFrame;
+    use point::Point3D;
+    use polygon_mesh::PolygonMesh3DData;
+    use solid::{Shell, Solid};
+    use test_support::{textured, theme, uv};
+    use triangular_mesh::TriangularMesh3D;
+
+    /// A one-triangle mesh carrying a textured appearance.
+    fn textured_mesh() -> TriangularMesh3D {
+        let mut mesh = TriangularMesh3D::from_parts(
+            CoordinateFrame::Euclidean,
+            vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            [0u32, 1, 2],
+        )
+        .unwrap();
+        mesh.set_appearance(theme("rgb"), textured(), Some(uv(3)))
+            .unwrap();
+        mesh
+    }
+
+    /// A one-quad polygon-mesh shell carrying a textured appearance.
+    fn textured_shell() -> PolygonMesh3DData {
+        let mut face = polygon::Polygon3D::from_rings(
+            CoordinateFrame::Euclidean,
+            [
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [1.0, 1.0, 0.0],
+                [0.0, 0.0, 0.0],
+            ],
+            Vec::<Vec<[f64; 3]>>::new(),
+        );
+        face.set_appearance(theme("rgb"), textured(), Some(uv(4)))
+            .unwrap();
+        PolygonMesh3DData::from_polygons([&face])
+    }
+
+    /// Whether the shell's mesh carries an appearance.
+    fn shell_appearance(shell: &Shell) -> bool {
+        match shell {
+            Shell::PolygonMesh(data) => {
+                polygon_mesh::PolygonMesh3D::new(CoordinateFrame::Euclidean, data.clone())
+                    .appearance()
+                    .is_some()
+            }
+            Shell::TriangularMesh(data) => {
+                TriangularMesh3D::new(CoordinateFrame::Euclidean, data.clone())
+                    .appearance()
+                    .is_some()
+            }
+        }
+    }
+
+    #[test]
+    fn a_surface_leaf_loses_its_appearance() {
+        let mut g = Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(
+            textured_mesh(),
+        )));
+        g.remove_appearance();
+        let Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(mesh)) = g else {
+            panic!("expected a 3D triangular mesh");
+        };
+        assert!(mesh.appearance().is_none());
+        assert_eq!(mesh.num_triangles(), 1);
+        assert_eq!(mesh.vertices().len(), 3);
+    }
+
+    #[test]
+    fn every_shell_of_a_solid_loses_its_appearance() {
+        let solid = Solid::new(
+            CoordinateFrame::Euclidean,
+            textured_shell(),
+            vec![Shell::from(textured_shell())],
+        );
+        assert!(shell_appearance(solid.exterior()));
+        assert!(shell_appearance(&solid.interiors()[0]));
+
+        let mut g = Geometry::Euclidean3D(Euclidean3DGeometry::Solid(Box::new(solid)));
+        g.remove_appearance();
+        let Geometry::Euclidean3D(Euclidean3DGeometry::Solid(solid)) = g else {
+            panic!("expected a solid");
+        };
+        assert!(!shell_appearance(solid.exterior()));
+        assert!(!shell_appearance(&solid.interiors()[0]));
+    }
+
+    #[test]
+    fn a_nested_csg_tree_loses_the_appearance_of_every_operand() {
+        let solid = || Solid::from_exterior(CoordinateFrame::Euclidean, textured_shell());
+        let inner = csg::Csg::union(solid(), solid());
+        let mut g = Geometry::Euclidean3D(Euclidean3DGeometry::Csg(csg::Csg::difference(
+            inner,
+            solid(),
+        )));
+        g.remove_appearance();
+        let Geometry::Euclidean3D(Euclidean3DGeometry::Csg(csg)) = g else {
+            panic!("expected a CSG tree");
+        };
+        let mut shells = Vec::new();
+        collect_shells(&csg, &mut shells);
+        assert_eq!(shells.len(), 3);
+        assert!(shells.iter().all(|has_appearance| !has_appearance));
+    }
+
+    /// Collect, for every solid reachable from `csg`, whether it carries appearance.
+    fn collect_shells(csg: &csg::Csg, out: &mut Vec<bool>) {
+        let (left, right) = match csg {
+            csg::Csg::Union(a, b) | csg::Csg::Intersection(a, b) | csg::Csg::Difference(a, b) => {
+                (a, b)
+            }
+        };
+        for operand in [left, right] {
+            match &**operand {
+                csg::ThreeDimensional::Solid(s) => out.push(shell_appearance(s.exterior())),
+                csg::ThreeDimensional::Csg(c) => collect_shells(c, out),
+            }
+        }
+    }
+
+    #[test]
+    fn removal_reaches_through_nested_collections() {
+        let member = Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(
+            textured_mesh(),
+        )));
+        let inner = Geometry::Euclidean3D(Euclidean3DGeometry::Collection(
+            collection::Collection3D::new([Euclidean3DGeometry::TriangularMesh(Box::new(
+                textured_mesh(),
+            ))]),
+        ));
+        let mut g = Geometry::GeometryCollection(GeometryCollection::new([member, inner]));
+        g.remove_appearance();
+
+        let Geometry::GeometryCollection(outer) = g else {
+            panic!("expected a geometry collection");
+        };
+        let meshes = outer.members().iter().flat_map(|m| match m {
+            Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(mesh)) => {
+                vec![mesh.appearance().is_some()]
+            }
+            Geometry::Euclidean3D(Euclidean3DGeometry::Collection(c)) => c
+                .members()
+                .iter()
+                .map(|m| match m {
+                    Euclidean3DGeometry::TriangularMesh(mesh) => mesh.appearance().is_some(),
+                    other => panic!("unexpected member {other:?}"),
+                })
+                .collect(),
+            other => panic!("unexpected member {other:?}"),
+        });
+        assert_eq!(meshes.collect::<Vec<_>>(), vec![false, false]);
+    }
+
+    #[test]
+    fn a_geometry_that_carries_no_appearance_is_left_alone() {
+        let point = Point3D::new(CoordinateFrame::Euclidean, [1.0, 2.0, 3.0]);
+        let mut g = Geometry::Euclidean3D(Euclidean3DGeometry::Point(point.clone()));
+        g.remove_appearance();
+        assert_eq!(g, Geometry::Euclidean3D(Euclidean3DGeometry::Point(point)));
+
+        let mut none = Geometry::None;
+        none.remove_appearance();
+        assert_eq!(none, Geometry::None);
     }
 }

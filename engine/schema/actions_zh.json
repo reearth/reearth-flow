@@ -3,7 +3,7 @@
     {
       "name": "Appearance Remover",
       "type": "processor",
-      "description": "从CityGML几何体中移除外观信息（材质、纹理）",
+      "description": "移除要素几何体所携带的材质、纹理和纹理坐标",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -5563,7 +5563,7 @@
     {
       "name": "Geometry Remover",
       "type": "processor",
-      "description": "从要素中移除几何体",
+      "description": "移除要素的几何体，并保留其属性",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
