@@ -299,6 +299,24 @@ impl crate::ops::RemoveAppearance for Collection3D {
     }
 }
 
+impl crate::ops::CountHoles for Collection2D {
+    fn count_holes(&self) -> usize {
+        self.members()
+            .iter()
+            .map(Euclidean2DGeometry::count_holes)
+            .sum()
+    }
+}
+
+impl crate::ops::CountHoles for Collection3D {
+    fn count_holes(&self) -> usize {
+        self.members()
+            .iter()
+            .map(Euclidean3DGeometry::count_holes)
+            .sum()
+    }
+}
+
 impl crate::ops::Split for Collection2D {
     fn split(
         &mut self,

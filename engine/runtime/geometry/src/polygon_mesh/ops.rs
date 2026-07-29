@@ -553,7 +553,21 @@ impl PolygonMesh2D {
     }
 }
 
-use crate::ops::RemoveAppearance;
+use crate::ops::{CountHoles, RemoveAppearance};
+
+// `interior_offsets` already spans every face, so the mesh-wide count is its
+// length — no per-face walk, and no risk of counting a ring twice.
+impl CountHoles for PolygonMesh2D {
+    fn count_holes(&self) -> usize {
+        self.interior_offsets.len()
+    }
+}
+
+impl CountHoles for PolygonMesh3D {
+    fn count_holes(&self) -> usize {
+        self.data().num_holes()
+    }
+}
 
 impl RemoveAppearance for PolygonMesh2D {
     fn remove_appearance(&mut self) {

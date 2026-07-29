@@ -63,3 +63,6 @@ crate::unsupported!(Point3D: Split);
 
 crate::unsupported!(Point2D: RemoveAppearance);
 crate::unsupported!(Point3D: RemoveAppearance);
+
+crate::unsupported!(Point2D: CountHoles);
+crate::unsupported!(Point3D: CountHoles);

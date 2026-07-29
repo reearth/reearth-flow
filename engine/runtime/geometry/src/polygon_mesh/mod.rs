@@ -234,6 +234,13 @@ impl PolygonMesh3DData {
 }
 
 impl PolygonMesh3DData {
+    /// The number of hole rings across every face. Crate-internal: lets a
+    /// [`Solid`](crate::solid::Solid) shell count its own holes.
+    #[inline]
+    pub(crate) fn num_holes(&self) -> usize {
+        self.interior_offsets.len()
+    }
+
     /// Drop the appearance.
     pub(crate) fn remove_appearance(&mut self) {
         self.appearance = None;

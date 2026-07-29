@@ -1,6 +1,9 @@
 use std::collections::HashMap;
 
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::algorithm::hole::HoleCounter as HoleCounterAlgorithm;
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::ops::CountHoles;
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
@@ -8,7 +11,9 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, GeometryValue};
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_types::GeometryValue;
+use reearth_flow_types::{Attribute, AttributeValue};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -132,7 +137,26 @@ impl Processor for HoleCounter {
         Ok(())
     }
 
-    #[cfg(not(feature = "new-geometry"))]
+    /// Attach the number of interior rings the geometry's faces carry to the
+    /// feature. Counting is total: a geometry that cannot hold a hole — and an
+    /// absent one — yields zero rather than being rejected, so every feature
+    /// leaves with the attribute set.
+    #[cfg(feature = "new-geometry")]
+    fn process(
+        &mut self,
+        ctx: ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        let count = ctx.feature.geometry.count_holes();
+        let mut feature = ctx.feature.clone();
+        feature.attributes_mut().insert(
+            self.output_attribute.clone(),
+            AttributeValue::Number(count.into()),
+        );
+        fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
+        Ok(())
+    }
+
     fn finish(
         &mut self,
         _ctx: NodeContext,
@@ -143,5 +167,133 @@ impl Processor for HoleCounter {
 
     fn name(&self) -> &str {
         "Hole Counter"
+    }
+}
+
+#[cfg(all(test, feature = "new-geometry"))]
+mod tests {
+    use super::*;
+    use crate::tests::utils::create_default_execute_context;
+    use pretty_assertions::assert_eq;
+    use reearth_flow_geometry::coordinate::CoordinateFrame;
+    use reearth_flow_geometry::point::Point3D;
+    use reearth_flow_geometry::polygon::Polygon3D;
+    use reearth_flow_geometry::{Euclidean3DGeometry, Geometry};
+    use reearth_flow_runtime::forwarder::NoopChannelForwarder;
+    use reearth_flow_types::Feature;
+
+    const SQUARE: [[f64; 3]; 5] = [
+        [0.0, 0.0, 0.0],
+        [4.0, 0.0, 0.0],
+        [4.0, 4.0, 0.0],
+        [0.0, 4.0, 0.0],
+        [0.0, 0.0, 0.0],
+    ];
+
+    /// A square face carrying `n` holes.
+    fn face_with_holes(n: usize) -> Geometry {
+        let holes: Vec<_> = (0..n)
+            .map(|i| {
+                let x = 1.0 + i as f64 * 1.5;
+                vec![
+                    [x, 1.0, 0.0],
+                    [x + 1.0, 1.0, 0.0],
+                    [x + 1.0, 2.0, 0.0],
+                    [x, 2.0, 0.0],
+                    [x, 1.0, 0.0],
+                ]
+            })
+            .collect();
+        Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(
+            Polygon3D::from_rings(CoordinateFrame::Euclidean, SQUARE, holes),
+        )))
+    }
+
+    /// Run the processor over `feature`, returning the single feature it forwards.
+    fn count(feature: Feature) -> Feature {
+        let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
+        let ctx = create_default_execute_context(&feature);
+        HoleCounter {
+            output_attribute: Attribute::new("holeCount"),
+        }
+        .process(ctx, &fw)
+        .unwrap();
+
+        let ProcessorChannelForwarder::Noop(noop) = fw else {
+            unreachable!("the forwarder is the one built above");
+        };
+        let ports = noop.send_ports.lock().unwrap();
+        assert_eq!(ports.len(), 1);
+        assert_eq!(ports[0], *FEATURES_PORT);
+        let features = noop.send_features.lock().unwrap();
+        assert_eq!(features.len(), 1);
+        features[0].clone()
+    }
+
+    fn hole_count(feature: &Feature) -> Option<&AttributeValue> {
+        feature.attributes.get(&Attribute::new("holeCount"))
+    }
+
+    #[test]
+    fn a_face_with_holes_reports_their_number() {
+        let feature = count(Feature::from(face_with_holes(2)));
+        assert_eq!(
+            hole_count(&feature),
+            Some(&AttributeValue::Number(2.into()))
+        );
+    }
+
+    #[test]
+    fn a_face_without_holes_reports_zero() {
+        let feature = count(Feature::from(face_with_holes(0)));
+        assert_eq!(
+            hole_count(&feature),
+            Some(&AttributeValue::Number(0.into()))
+        );
+    }
+
+    #[test]
+    fn a_geometry_that_cannot_carry_a_hole_reports_zero() {
+        let point = Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+            CoordinateFrame::Euclidean,
+            [1.0, 2.0, 3.0],
+        )));
+        let feature = count(Feature::from(point));
+        assert_eq!(
+            hole_count(&feature),
+            Some(&AttributeValue::Number(0.into()))
+        );
+    }
+
+    /// Unlike the legacy processor, which passes a feature with no geometry
+    /// through untouched, the attribute is always set — matching FME, where every
+    /// other kind of geometry receives a hole count of zero.
+    #[test]
+    fn a_feature_without_geometry_reports_zero() {
+        let feature = count(Feature::from(Geometry::None));
+        assert_eq!(
+            hole_count(&feature),
+            Some(&AttributeValue::Number(0.into()))
+        );
+    }
+
+    #[test]
+    fn existing_attributes_and_the_feature_id_are_preserved() {
+        let mut input = Feature::from(face_with_holes(1));
+        input
+            .attributes_mut()
+            .insert(Attribute::new("gmlId"), AttributeValue::String("x".into()));
+        let id = input.id;
+
+        let feature = count(input);
+        assert_eq!(feature.id, id);
+        assert_eq!(
+            feature.attributes.get(&Attribute::new("gmlId")),
+            Some(&AttributeValue::String("x".into()))
+        );
+        assert_eq!(
+            hole_count(&feature),
+            Some(&AttributeValue::Number(1.into()))
+        );
     }
 }

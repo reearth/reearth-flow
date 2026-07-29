@@ -356,7 +356,20 @@ impl Polygon2D {
     }
 }
 
-use crate::ops::RemoveAppearance;
+use crate::ops::{CountHoles, RemoveAppearance};
+
+// One offset per interior ring, so the count is the offsets' length.
+impl CountHoles for Polygon2D {
+    fn count_holes(&self) -> usize {
+        self.interior_offsets.len()
+    }
+}
+
+impl CountHoles for Polygon3D {
+    fn count_holes(&self) -> usize {
+        self.interior_offsets.len()
+    }
+}
 
 impl RemoveAppearance for Polygon2D {
     fn remove_appearance(&mut self) {
