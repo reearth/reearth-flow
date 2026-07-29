@@ -1,3 +1,5 @@
+import type { NodeParams } from "@flow/types";
+
 const EMPTY = Symbol("emptyParamValue");
 
 type CodeValue = { type: string; value: unknown };
@@ -50,10 +52,10 @@ const normalizeValue = (value: unknown): unknown | typeof EMPTY => {
  * meaningful inside is dropped as well, so an all-blank row never reaches the
  * engine as `{}`.
  */
-export const normalizeParams = <T extends Record<string, any>>(
-  params: T | undefined,
-): T | undefined => {
-  if (!params) return params;
+export const normalizeParams = (params: unknown): NodeParams | undefined => {
+  if (params === undefined || params === null) return undefined;
+  if (typeof params !== "object" || Array.isArray(params)) return undefined;
+
   const normalized = normalizeValue(params);
-  return (normalized === EMPTY ? {} : normalized) as T;
+  return normalized === EMPTY ? {} : (normalized as NodeParams);
 };

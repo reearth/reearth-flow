@@ -7,6 +7,18 @@ describe("normalizeParams", () => {
     expect(normalizeParams(undefined)).toBeUndefined();
   });
 
+  // `EngineReadyNode.with` is `any`, and a bare `with:` in an imported YAML
+  // deserializes to null — none of these may reach `NodeData.params`, which is
+  // a keyed record.
+  it("does not leak non-record values into params", () => {
+    expect(normalizeParams(null)).toBeUndefined();
+    expect(normalizeParams("foo")).toBeUndefined();
+    expect(normalizeParams(0)).toBeUndefined();
+    expect(normalizeParams(42)).toBeUndefined();
+    expect(normalizeParams(false)).toBeUndefined();
+    expect(normalizeParams(["a", ""])).toBeUndefined();
+  });
+
   it("drops empty strings and nullish values", () => {
     expect(
       normalizeParams({
