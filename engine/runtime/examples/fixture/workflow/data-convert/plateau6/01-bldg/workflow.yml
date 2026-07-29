@@ -10,8 +10,10 @@
 #   - Feature CityGML 2 Reader (new-geometry native), not Feature CityGML Reader.
 #     Codelists resolve against the gml's own source_url, so no codelists param.
 #   - LOD handling is Geometry Splitter + per-LOD Feature Filter on the hoisted
-#     `lod` member attribute, not Feature LOD Filter. No cross-city max, no
-#     cascade fallback yet.
+#     `lod` member attribute, not Feature LOD Filter (unimplemented under the
+#     new-geometry feature). Per-building cascade fallback is replicated via
+#     Attribute Aggregator + Feature Joiner (__citygml_gml_id -> lodMask). No
+#     cross-city max yet.
 #   - No PLATEAU4.AttributeFlattener, no UDX/CityCode chain, fixed output names.
 id: 3f6d9c2a-1b7e-4a05-9c31-2d8e6f4a7b10
 name: "PLATEAU6-DataConvert-01-bldg-workflow"
@@ -71,6 +73,50 @@ graphs:
         type: action
         action: Geometry Splitter
 
+      # Collapse to one row per (gmlId, lod) pair first: a building can have
+      # multiple geometry members at the same LOD, and the lodMask sum below
+      # is only valid (sum of distinct powers of two == OR) if each distinct
+      # lod contributes exactly once.
+      - id: 6b1f2a3c-4d5e-4f6a-8b9c-0d1e2f3a4b5c
+        name: LodDistinctAggregator
+        type: action
+        action: Attribute Aggregator
+        with:
+          method: count
+          aggregateAttributes:
+            - newAttribute: __citygml_gml_id
+              attribute: __citygml_gml_id
+            - newAttribute: lod
+              attribute: lod
+          calculationAttribute: _dupCount
+          calculationValue: 1
+
+      - id: d12d66b8-834d-4d8b-95cd-b978069add10
+        name: LodMaskAggregator
+        type: action
+        action: Attribute Aggregator
+        with:
+          method: count
+          aggregateAttributes:
+            - newAttribute: __citygml_gml_id
+              attribute: __citygml_gml_id
+          calculationAttribute: lodMask
+          calculation:
+            type: flowExpr
+            value: 1 << attributes["lod"]
+
+      - id: 5af9f07c-ec06-48b5-84bd-2ee0eb700e9c
+        name: LodMaskJoiner
+        type: action
+        action: Feature Joiner
+        with:
+          joinType: left
+          requestorAttribute:
+            - __citygml_gml_id
+          supplierAttribute:
+            - __citygml_gml_id
+          conflictResolution: requestorWins
+
       # --- LOD1 branch ---
       - id: 04339391-dcfe-485a-9593-e12b0eddf864
         name: FeatureFilterLod1
@@ -110,7 +156,15 @@ graphs:
           conditions:
             - expr:
                 type: flowExpr
-                value: attributes["lod"] == 2
+                value: |
+                  mask = attributes["lodMask"];
+                  best = 0;
+                  i = 1;
+                  while i <= 2 {
+                    if (mask & (1 << i)) != 0 { best = i; }
+                    i += 1;
+                  }
+                  attributes["lod"] == best
               outputPort: features
 
       - id: e44e7208-c0a6-4bca-829c-5d2769dd49f3
@@ -140,7 +194,15 @@ graphs:
           conditions:
             - expr:
                 type: flowExpr
-                value: attributes["lod"] == 3
+                value: |
+                  mask = attributes["lodMask"];
+                  best = 0;
+                  i = 1;
+                  while i <= 3 {
+                    if (mask & (1 << i)) != 0 { best = i; }
+                    i += 1;
+                  }
+                  attributes["lod"] == best
               outputPort: features
 
       - id: a7b575b0-8a0b-44d6-a80e-1fef936058df
@@ -182,21 +244,42 @@ graphs:
         to: 16247597-565a-40df-a8d4-7445468978fd
         fromPort: features
         toPort: features
-      # split -> per-lod filters
-      - id: 48d248d2-ae8f-4f96-9f48-583031fbbbdb
+      # split -> per-gmlId LOD mask (for cascade fallback) -> joined back onto each split feature
+      - id: 83373a03-9e03-4f12-b5c2-b72200d249bf
         from: 16247597-565a-40df-a8d4-7445468978fd
+        to: 6b1f2a3c-4d5e-4f6a-8b9c-0d1e2f3a4b5c
+        fromPort: features
+        toPort: features
+      - id: 2b4c6d8e-0a1b-4c2d-8e3f-4a5b6c7d8e9f
+        from: 6b1f2a3c-4d5e-4f6a-8b9c-0d1e2f3a4b5c
+        to: d12d66b8-834d-4d8b-95cd-b978069add10
+        fromPort: features
+        toPort: features
+      - id: c9b71d8c-8e82-4a9a-81ea-8aa3dc9bd776
+        from: 16247597-565a-40df-a8d4-7445468978fd
+        to: 5af9f07c-ec06-48b5-84bd-2ee0eb700e9c
+        fromPort: features
+        toPort: requestor
+      - id: 1cf95ad1-9f49-47d8-88f6-411eb6655c8b
+        from: d12d66b8-834d-4d8b-95cd-b978069add10
+        to: 5af9f07c-ec06-48b5-84bd-2ee0eb700e9c
+        fromPort: features
+        toPort: supplier
+      # joined (lod + lodMask) -> per-lod filters
+      - id: 71f0a555-6c6d-4201-9e03-a2c8278bd5bf
+        from: 5af9f07c-ec06-48b5-84bd-2ee0eb700e9c
         to: 04339391-dcfe-485a-9593-e12b0eddf864
-        fromPort: features
+        fromPort: joined
         toPort: features
-      - id: 26b00beb-543a-4b98-804c-b5560564c692
-        from: 16247597-565a-40df-a8d4-7445468978fd
+      - id: 6d8c644d-3f72-4634-b2f5-0b62a7d9b813
+        from: 5af9f07c-ec06-48b5-84bd-2ee0eb700e9c
         to: acf7b926-7c8b-4448-9a3d-af4a1d1aa2cd
-        fromPort: features
+        fromPort: joined
         toPort: features
-      - id: 338b7613-e7ab-4362-b42a-93f38455aac6
-        from: 16247597-565a-40df-a8d4-7445468978fd
+      - id: 9ae53fa9-ed12-46ce-b628-494d610d93f3
+        from: 5af9f07c-ec06-48b5-84bd-2ee0eb700e9c
         to: acd88b8a-708a-4adf-ad6e-b471d934191d
-        fromPort: features
+        fromPort: joined
         toPort: features
       # lod1 filter -> writer
       - id: 6cf1b755-369a-4d11-a9a5-83d46118a459
