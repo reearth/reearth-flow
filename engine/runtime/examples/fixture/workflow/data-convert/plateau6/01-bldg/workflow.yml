@@ -1,20 +1,4 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
-#
-# PLATEAU6 data-convert 01-bldg (new-geometry).
-#
-# First-cut migration. Goal: a running pipeline that renders buildings, not a
-# faithful port. Deliberate departures from the PLATEAU4 workflow:
-#   - No subgraphs. File discovery is inlined: Feature File Path Extractor
-#     unpacks the citymodel archive (`extractArchive`) and emits one feature per
-#     file; a Feature Filter keeps the .gml files; the reader opens each `path`.
-#   - Feature CityGML 2 Reader (new-geometry native), not Feature CityGML Reader.
-#     Codelists resolve against the gml's own source_url, so no codelists param.
-#   - LOD handling is Geometry Splitter + per-LOD Feature Filter on the hoisted
-#     `lod` member attribute, not Feature LOD Filter (unimplemented under the
-#     new-geometry feature). Per-building cascade fallback is replicated via
-#     Attribute Aggregator + Feature Joiner (__citygml_gml_id -> lodMask). No
-#     cross-city max yet.
-#   - No PLATEAU4.AttributeFlattener, no UDX/CityCode chain, fixed output names.
 id: 3f6d9c2a-1b7e-4a05-9c31-2d8e6f4a7b10
 name: "PLATEAU6-DataConvert-01-bldg-workflow"
 entryGraphId: 8f3a94c6-bb3e-4561-a405-09b65353986c
