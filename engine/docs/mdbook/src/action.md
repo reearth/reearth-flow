@@ -5424,13 +5424,13 @@ Removes geometry from a feature
 ### Type
 * processor
 ### Description
-Replace Feature Geometry from Attribute
+Replaces a feature's geometry with the compressed geometry data stored in a named attribute.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Geometry Replacer Parameters",
-  "description": "Configure which attribute contains the geometry data to replace the feature's current geometry",
+  "description": "Configure which attribute holds the geometry that replaces the feature's current geometry.",
   "type": "object",
   "required": [
     "sourceAttribute"
@@ -5438,7 +5438,7 @@ Replace Feature Geometry from Attribute
   "properties": {
     "sourceAttribute": {
       "title": "Source Attribute",
-      "description": "Name of the attribute containing the compressed geometry data to use as the new geometry",
+      "description": "Attribute holding the compressed geometry to apply, as written by Geometry Extractor. The attribute is removed once its geometry has been applied, and a feature that does not carry it passes through unchanged.",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -5457,6 +5457,7 @@ Replace Feature Geometry from Attribute
 * features
 ### Output Ports
 * features
+* rejected
 ### Category
 * Geometry
 
@@ -5464,17 +5465,18 @@ Replace Feature Geometry from Attribute
 ### Type
 * processor
 ### Description
-Split Multi-Geometries into Individual Features
+Splits multi-part geometries into individual single-geometry features.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "GeometrySplitterParam",
-  "description": "Parameters for GeometrySplitter",
+  "title": "Geometry Splitter Parameters",
+  "description": "Configure how multi-part geometries are split into individual features.",
   "type": "object",
   "properties": {
     "splitLevel": {
-      "description": "Split level for CityGML geometry. - \"element\": Split by surface elements (RoofSurface, WallSurface, etc.) - default - \"polygon\": Split down to individual polygons within each element",
+      "title": "Split Level",
+      "description": "How far to split CityGML geometry. Applies only to CityGML; other geometry types are always split into their individual parts.",
       "default": "element",
       "allOf": [
         {
@@ -5488,14 +5490,16 @@ Split Multi-Geometries into Individual Features
       "description": "Split level for CityGML geometry",
       "oneOf": [
         {
-          "description": "Split by GmlGeometry elements (e.g., RoofSurface, WallSurface)",
+          "title": "Element",
+          "description": "Splits by surface element, such as a roof surface or a wall surface.",
           "type": "string",
           "enum": [
             "element"
           ]
         },
         {
-          "description": "Split down to individual polygons within each element",
+          "title": "Polygon",
+          "description": "Splits further, down to the individual polygons within each surface element.",
           "type": "string",
           "enum": [
             "polygon"
@@ -5517,17 +5521,18 @@ Split Multi-Geometries into Individual Features
 ### Type
 * processor
 ### Description
-Validate Feature Geometry Quality
+Validates feature geometry for issues such as duplicate points, corrupt geometry, or self-intersection.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Geometry Validator Parameters",
-  "description": "Configure which validation checks to perform on feature geometries",
+  "description": "Configure which validation checks to perform on feature geometries.",
   "type": "object",
   "properties": {
     "validationTypes": {
       "title": "Validation Types",
+      "description": "Checks to run against each feature's geometry. Empty by default, which passes every feature that has geometry.",
       "default": [],
       "type": "array",
       "items": {
@@ -5585,12 +5590,16 @@ Validate Feature Geometry Quality
     "ValidationType": {
       "oneOf": [
         {
+          "title": "Duplicate Points",
+          "description": "Flags coordinates that repeat anywhere in the geometry, using exact equality.",
           "type": "string",
           "enum": [
             "duplicatePoints"
           ]
         },
         {
+          "title": "Duplicate Consecutive Points",
+          "description": "Flags neighbouring coordinates closer together than the given tolerance.",
           "type": "object",
           "required": [
             "duplicateConsecutivePoints"
@@ -5604,7 +5613,8 @@ Validate Feature Geometry Quality
           "additionalProperties": false
         },
         {
-          "description": "Corrupt geometry check with optional tolerance for interior/exterior ring intersection.",
+          "title": "Corrupt Geometry",
+          "description": "Flags structurally invalid geometry. Takes an optional tolerance for interior/exterior ring intersection.",
           "type": "object",
           "required": [
             "corruptGeometry"
@@ -5621,7 +5631,8 @@ Validate Feature Geometry Quality
           "additionalProperties": false
         },
         {
-          "description": "Self-intersection check with optional tolerance. If tolerance is None or 0.0, exact intersection check is performed. If tolerance > 0.0, intersections within tolerance distance are ignored.",
+          "title": "Self-Intersection",
+          "description": "Flags geometry that crosses itself. Omitting the tolerance, or setting it to 0.0, checks for exact intersections; a larger value ignores intersections within that distance.",
           "type": "object",
           "required": [
             "selfIntersection"
@@ -5641,18 +5652,46 @@ Validate Feature Geometry Quality
     },
     "OptionalCheck": {
       "description": "An advisory (optional) validation check that can be individually disabled. A disabled check does not run and is treated as passing. Only checks that the geometry crate classifies as optional are listed here; core validity checks always run and cannot be disabled.",
-      "type": "string",
-      "enum": [
-        "duplicatePoints",
-        "orientable",
-        "orientation",
-        "shellOrientation"
+      "oneOf": [
+        {
+          "title": "Duplicate Points",
+          "description": "Detection of coordinates that repeat within the geometry.",
+          "type": "string",
+          "enum": [
+            "duplicatePoints"
+          ]
+        },
+        {
+          "title": "Orientable",
+          "description": "Detection of surfaces whose faces cannot be given a consistent orientation.",
+          "type": "string",
+          "enum": [
+            "orientable"
+          ]
+        },
+        {
+          "title": "Orientation",
+          "description": "Detection of rings wound in the wrong direction.",
+          "type": "string",
+          "enum": [
+            "orientation"
+          ]
+        },
+        {
+          "title": "Shell Orientation",
+          "description": "Detection of solid shells whose faces point the wrong way.",
+          "type": "string",
+          "enum": [
+            "shellOrientation"
+          ]
+        }
       ]
     },
     "PlanarityThreshold": {
       "description": "How the planarity check bounds a face's out-of-plane deviation.",
       "oneOf": [
         {
+          "title": "Ratio",
           "description": "Dimensionless ratio of the face's convex-hull minimum height to its diameter; scale-invariant.",
           "type": "object",
           "required": [
@@ -5667,6 +5706,7 @@ Validate Feature Geometry Quality
           "additionalProperties": false
         },
         {
+          "title": "Max Height",
           "description": "Absolute maximum out-of-plane height, in the coordinate unit (metres). Applied only in a linear-unit frame, where the planarity check runs.",
           "type": "object",
           "required": [
@@ -5687,19 +5727,22 @@ Validate Feature Geometry Quality
       "type": "object",
       "properties": {
         "minLength": {
-          "description": "Minimum length of a 1D geometry (line / ring edge).",
+          "title": "Minimum Length",
+          "description": "Shortest length a 1D geometry (line or ring edge) may have before it is flagged.",
           "default": 0.0,
           "type": "number",
           "format": "double"
         },
         "minArea": {
-          "description": "Minimum area of a 2D geometry (face / ring).",
+          "title": "Minimum Area",
+          "description": "Smallest area a 2D geometry (face or ring) may have before it is flagged.",
           "default": 0.0,
           "type": "number",
           "format": "double"
         },
         "minVolume": {
-          "description": "Minimum volume of a 3D geometry (solid).",
+          "title": "Minimum Volume",
+          "description": "Smallest volume a 3D geometry (solid) may have before it is flagged.",
           "default": 0.0,
           "type": "number",
           "format": "double"
@@ -5739,12 +5782,13 @@ Filter Features by Geometry Value Type
 ### Type
 * processor
 ### Description
-Divide Polygons into Regular Grid Cells
+Divides polygon geometries into a regular grid of equal-sized cells.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "GridDivider Parameters",
+  "title": "Grid Divider Parameters",
+  "description": "Configure the size of the grid cells and how features are grouped onto a shared grid.",
   "type": "object",
   "required": [
     "unitSquareSize"
@@ -5752,13 +5796,13 @@ Divide Polygons into Regular Grid Cells
   "properties": {
     "unitSquareSize": {
       "title": "Unit Square Size",
-      "description": "Side length of each grid cell (in the same units as the geometry coordinates)",
+      "description": "Side length of each grid cell, in the same units as the geometry coordinates. Must be greater than zero.",
       "type": "number",
       "format": "double"
     },
     "keepSquareOnly": {
       "title": "Keep Square Only",
-      "description": "If true, only output complete grid squares (discard edge pieces). Default: false",
+      "description": "Whether to emit only complete grid squares, discarding partial cells at the edge of a geometry. Defaults to false.",
       "type": [
         "boolean",
         "null"
@@ -5766,7 +5810,7 @@ Divide Polygons into Regular Grid Cells
     },
     "groupBy": {
       "title": "Group By Attributes",
-      "description": "Attributes used to group features - each group gets its own grid origin",
+      "description": "Attributes whose values group features together. Each group is divided on its own grid origin, derived from that group's combined bounds.",
       "type": [
         "array",
         "null"
@@ -7199,26 +7243,22 @@ Extract Polygon Holes as Separate Features
 ### Type
 * processor
 ### Description
-Reproject Geometry to Different Coordinate System
+Reprojects feature geometry from one horizontal coordinate system to another using EPSG codes.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Horizontal Reprojector Parameters",
-  "description": "Configure the source and target coordinate systems for geometry reprojection",
+  "description": "Configure the source and target coordinate systems for geometry reprojection.",
   "type": "object",
   "required": [
     "targetEpsgCode"
   ],
   "properties": {
-    "sourceEpsgCode": {
-      "title": "Source EPSG Code",
-      "description": "Source coordinate system EPSG code expression. If not provided, will use the EPSG code from the geometry. This is optional to maintain backward compatibility but recommended to be explicit. Can be a constant value (e.g., \"4326\") or an expression referencing feature attributes.",
-      "default": null,
-      "type": [
-        "object",
-        "null"
-      ],
+    "targetEpsgCode": {
+      "title": "Target EPSG Code",
+      "description": "EPSG code to reproject into, as a constant such as \"4326\" or an expression referencing feature attributes.",
+      "type": "object",
       "format": "code",
       "required": [
         "type",
@@ -7236,10 +7276,14 @@ Reproject Geometry to Different Coordinate System
         }
       }
     },
-    "targetEpsgCode": {
-      "title": "Target EPSG Code",
-      "description": "Target coordinate system EPSG code expression for the reprojection. Can be a constant value (e.g., \"4326\" for WGS84, \"2193\" for NZTM2000, \"3857\" for Web Mercator) or an expression referencing feature attributes.",
-      "type": "object",
+    "sourceEpsgCode": {
+      "title": "Source EPSG Code",
+      "description": "EPSG code to reproject from, as a constant or an expression. Defaults to the EPSG code carried on the geometry, so setting it is only necessary when the geometry has none or carries the wrong one.",
+      "default": null,
+      "type": [
+        "object",
+        "null"
+      ],
       "format": "code",
       "required": [
         "type",
@@ -10828,13 +10872,14 @@ Filter Features by Geometry Planarity
 ### Type
 * processor
 ### Description
-Extract normal vectors and other properties for polygon features
+Extracts the surface normal, signed 2D area, slope and azimuth from polygon features and stores them as attributes.
 ### Parameters
 * No parameters
 ### Input Ports
 * features
 ### Output Ports
 * features
+* rejected
 ### Category
 * Geometry
 
@@ -10933,13 +10978,13 @@ Execute Python Scripts with Geospatial Data Processing
 ### Type
 * processor
 ### Description
-Computes intersection points between rays and geometries
+Computes intersection points between rays and geometries.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "RayIntersectorParams",
-  "description": "RayIntersector Parameters",
+  "title": "Ray Intersector Parameters",
+  "description": "Configure how rays and geometries are paired and how intersection results are output.",
   "type": "object",
   "required": [
     "pairId",
@@ -10947,7 +10992,8 @@ Computes intersection points between rays and geometries
   ],
   "properties": {
     "ray": {
-      "description": "Defines how to extract ray data from feature attributes",
+      "title": "Ray",
+      "description": "Attributes on the ray features that hold the ray's origin and direction.",
       "allOf": [
         {
           "$ref": "#/definitions/RayDefinition"
@@ -10955,7 +11001,8 @@ Computes intersection points between rays and geometries
       ]
     },
     "pairId": {
-      "description": "Expression that evaluates to a pair ID (int or string) for grouping rays with geometries. Only rays and geometries with matching pairId values are tested against each other.",
+      "title": "Pair ID",
+      "description": "Expression producing the key that pairs rays with geometries. Only rays and geometries whose keys match are tested against each other.",
       "type": "object",
       "format": "code",
       "required": [
@@ -10975,31 +11022,8 @@ Computes intersection points between rays and geometries
       }
     },
     "closestIntersectionOnly": {
-      "description": "When true (default), return only the closest intersection point per ray-geometry pair. When false, return all intersection points.",
-      "default": null,
-      "type": [
-        "object",
-        "null"
-      ],
-      "format": "code",
-      "required": [
-        "type",
-        "value"
-      ],
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "flowExpr"
-          ]
-        },
-        "value": {
-          "type": "string"
-        }
-      }
-    },
-    "tolerance": {
-      "description": "Tolerance for intersection calculations (evaluates to f64). If not specified, a default tolerance is used.",
+      "title": "Closest Intersection Only",
+      "description": "Expression deciding whether to keep only the nearest hit per ray-geometry pair rather than every hit. Defaults to true.",
       "default": null,
       "type": [
         "object",
@@ -11023,7 +11047,8 @@ Computes intersection points between rays and geometries
       }
     },
     "includeRayOrigin": {
-      "description": "When true (default), include intersections at the ray origin. When false, exclude intersections where t < tolerance.",
+      "title": "Include Ray Origin",
+      "description": "Expression deciding whether hits at the ray's own origin count. When false, intersections nearer than the tolerance are discarded. Defaults to true.",
       "default": null,
       "type": [
         "object",
@@ -11047,7 +11072,8 @@ Computes intersection points between rays and geometries
       }
     },
     "outputGeometryType": {
-      "description": "Type of geometry to output for intersection results. - \"pointOfIntersection\" (default): Output a point at the intersection location - \"lineSegmentToIntersection\": Output a line segment from ray origin to intersection point",
+      "title": "Output Geometry Type",
+      "description": "Geometry to emit for each intersection.",
       "default": "pointOfIntersection",
       "allOf": [
         {
@@ -11056,7 +11082,33 @@ Computes intersection points between rays and geometries
       ]
     },
     "geomId": {
-      "description": "Expression evaluated on geometry features to extract an ID string. When set, intersection features will include a `geom_id` attribute identifying which geometry was hit.",
+      "title": "Geometry ID",
+      "description": "Expression evaluated on each geometry feature to label it. When set, every intersection carries a `geom_id` attribute naming the geometry it hit.",
+      "default": null,
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "tolerance": {
+      "title": "Tolerance",
+      "description": "Expression producing the distance below which an intersection is treated as coincident. Defaults to 1e-10.",
       "default": null,
       "type": [
         "object",
@@ -11082,7 +11134,8 @@ Computes intersection points between rays and geometries
   },
   "definitions": {
     "RayDefinition": {
-      "description": "Defines how ray data is extracted from feature attributes.",
+      "title": "Ray Definition",
+      "description": "Attributes that hold a ray's origin and direction.",
       "type": "object",
       "required": [
         "dirX",
@@ -11094,7 +11147,8 @@ Computes intersection points between rays and geometries
       ],
       "properties": {
         "posX": {
-          "description": "Attribute containing ray origin X coordinate",
+          "title": "Origin X Attribute",
+          "description": "Attribute holding the X coordinate of the ray's origin.",
           "allOf": [
             {
               "$ref": "#/definitions/Attribute"
@@ -11102,7 +11156,8 @@ Computes intersection points between rays and geometries
           ]
         },
         "posY": {
-          "description": "Attribute containing ray origin Y coordinate",
+          "title": "Origin Y Attribute",
+          "description": "Attribute holding the Y coordinate of the ray's origin.",
           "allOf": [
             {
               "$ref": "#/definitions/Attribute"
@@ -11110,7 +11165,8 @@ Computes intersection points between rays and geometries
           ]
         },
         "posZ": {
-          "description": "Attribute containing ray origin Z coordinate",
+          "title": "Origin Z Attribute",
+          "description": "Attribute holding the Z coordinate of the ray's origin.",
           "allOf": [
             {
               "$ref": "#/definitions/Attribute"
@@ -11118,7 +11174,8 @@ Computes intersection points between rays and geometries
           ]
         },
         "dirX": {
-          "description": "Attribute containing ray direction X component",
+          "title": "Direction X Attribute",
+          "description": "Attribute holding the X component of the ray's direction.",
           "allOf": [
             {
               "$ref": "#/definitions/Attribute"
@@ -11126,7 +11183,8 @@ Computes intersection points between rays and geometries
           ]
         },
         "dirY": {
-          "description": "Attribute containing ray direction Y component",
+          "title": "Direction Y Attribute",
+          "description": "Attribute holding the Y component of the ray's direction.",
           "allOf": [
             {
               "$ref": "#/definitions/Attribute"
@@ -11134,7 +11192,8 @@ Computes intersection points between rays and geometries
           ]
         },
         "dirZ": {
-          "description": "Attribute containing ray direction Z component",
+          "title": "Direction Z Attribute",
+          "description": "Attribute holding the Z component of the ray's direction.",
           "allOf": [
             {
               "$ref": "#/definitions/Attribute"
@@ -11150,14 +11209,16 @@ Computes intersection points between rays and geometries
       "description": "Output geometry type for ray intersection results",
       "oneOf": [
         {
-          "description": "Output a point at the intersection location (default behavior)",
+          "title": "Point of Intersection",
+          "description": "Emits a point at the location where the ray meets the geometry.",
           "type": "string",
           "enum": [
             "pointOfIntersection"
           ]
         },
         {
-          "description": "Output a line segment from ray origin to intersection point",
+          "title": "Line Segment to Intersection",
+          "description": "Emits a line running from the ray's origin to the intersection point.",
           "type": "string",
           "enum": [
             "lineSegmentToIntersection"
@@ -11173,7 +11234,7 @@ Computes intersection points between rays and geometries
 * geom
 ### Output Ports
 * intersection
-* no_intersection
+* no-intersection
 * rejected
 ### Category
 * Geometry
@@ -11182,14 +11243,13 @@ Computes intersection points between rays and geometries
 ### Type
 * processor
 ### Description
-Refine Complex Geometries into Simple Geometries
+Refines complex geometry types into simpler primitives.
 ### Parameters
 * No parameters
 ### Input Ports
 * features
 ### Output Ports
 * features
-* remain
 ### Category
 * Geometry
 
@@ -12144,18 +12204,18 @@ Replace Geometry with 3D Box from Attributes
 ### Type
 * processor
 ### Description
-Convert 2D Geometry to 3D by Adding Z-Coordinates
+Adds Z-coordinates to 2D geometries to produce 3D output.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ThreeDimensionForcer Parameters",
-  "description": "Configure how to convert 2D geometries to 3D by adding Z-coordinates",
+  "title": "Three Dimension Forcer Parameters",
+  "description": "Configure the elevation applied to 2D geometry and how existing Z values are treated.",
   "type": "object",
   "properties": {
     "elevation": {
       "title": "Elevation",
-      "description": "The Z-coordinate (elevation) value to add to all points. Can be a constant value or an expression. Defaults to 0.0 if not specified.",
+      "description": "Z-coordinate applied to every point, as a constant or an expression. Defaults to 0.0.",
       "type": [
         "object",
         "null"
@@ -12179,7 +12239,7 @@ Convert 2D Geometry to 3D by Adding Z-Coordinates
     },
     "preserveExistingZ": {
       "title": "Preserve Existing Z Values",
-      "description": "If true, geometries that are already 3D will pass through unchanged. If false, existing Z values will be replaced with the specified elevation. Defaults to false.",
+      "description": "Whether geometry that is already 3D passes through untouched. When false, existing Z values are replaced with the elevation. Defaults to false.",
       "default": false,
       "type": "boolean"
     }
@@ -12391,7 +12451,7 @@ Rotate 3D Geometry Around Arbitrary Axis
 ### Type
 * processor
 ### Description
-Force 3D Geometry to 2D by Removing Z-Coordinates
+Removes Z-coordinates from 3D geometries to produce 2D output.
 ### Parameters
 * No parameters
 ### Input Ports
@@ -12460,13 +12520,13 @@ Remove Redundant Vertices from Geometry
 ### Type
 * processor
 ### Description
-Reproject Vertical Coordinates Between Datums
+Reprojects the vertical coordinate of feature geometry between vertical datums.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Vertical Reprojector Parameters",
-  "description": "Configure the type of vertical datum conversion to apply",
+  "description": "Configure which vertical datum conversion to apply.",
   "type": "object",
   "required": [
     "reprojectorType"
@@ -12474,7 +12534,7 @@ Reproject Vertical Coordinates Between Datums
   "properties": {
     "reprojectorType": {
       "title": "Reprojector Type",
-      "description": "The type of vertical coordinate transformation to apply",
+      "description": "Vertical datum conversion applied to each geometry's Z coordinate.",
       "allOf": [
         {
           "$ref": "#/definitions/VerticalReprojectorType"
@@ -12484,9 +12544,15 @@ Reproject Vertical Coordinates Between Datums
   },
   "definitions": {
     "VerticalReprojectorType": {
-      "type": "string",
-      "enum": [
-        "jgd2011ToWgs84"
+      "oneOf": [
+        {
+          "title": "JGD2011 to WGS 84",
+          "description": "Converts JGD2011 orthometric heights to WGS 84 ellipsoidal heights using the Japanese geoid model.",
+          "type": "string",
+          "enum": [
+            "jgd2011ToWgs84"
+          ]
+        }
       ]
     }
   }
