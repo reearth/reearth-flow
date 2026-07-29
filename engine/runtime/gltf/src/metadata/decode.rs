@@ -139,7 +139,7 @@ pub fn read_structural_metadata(
 
     for table in property_tables {
         if let Value::Object(table_obj) = table {
-            let parsed_table = parse_property_table(table_obj, schema, buffer_data)?;
+            let parsed_table = parse_property_table(gltf, table_obj, schema, buffer_data)?;
             result.tables.push(parsed_table);
         }
     }
@@ -166,6 +166,7 @@ pub struct PropertyData {
 }
 
 fn parse_property_table(
+    gltf: &gltf::Gltf,
     table_obj: &serde_json::Map<String, Value>,
     schema: &Value,
     buffer_data: &[Vec<u8>],
@@ -200,7 +201,7 @@ fn parse_property_table(
         // Extract string properties using buffer views. A row matching the
         // schema's `noData` (compared as a string) becomes `Null` so
         // `feature_properties` can elide it, the same as numeric `noData`.
-        if let Some(string_values) = parse_string_property(prop_obj, buffer_data, count)? {
+        if let Some(string_values) = parse_string_property(gltf, prop_obj, buffer_data, count)? {
             let no_data_str = no_data.and_then(|nd| nd.as_str());
             parsed_properties.insert(
                 key.clone(),
@@ -226,7 +227,7 @@ fn parse_property_table(
             .and_then(|v| v.as_str());
 
         if property_type == Some("BOOLEAN") {
-            if let Some(values) = parse_boolean_property(prop_obj, buffer_data, count)? {
+            if let Some(values) = parse_boolean_property(gltf, prop_obj, buffer_data, count)? {
                 parsed_properties.insert(key.clone(), PropertyData { values });
                 continue;
             }
@@ -246,9 +247,14 @@ fn parse_property_table(
                     .and_then(|v| v.as_str());
 
             if let Some(component_type) = component_type {
-                if let Some(values) =
-                    parse_numeric_property(prop_obj, buffer_data, count, component_type, no_data)?
-                {
+                if let Some(values) = parse_numeric_property(
+                    gltf,
+                    prop_obj,
+                    buffer_data,
+                    count,
+                    component_type,
+                    no_data,
+                )? {
                     parsed_properties.insert(key.clone(), PropertyData { values });
                     continue;
                 }
@@ -280,10 +286,37 @@ fn schema_property_field<'a>(
     ))
 }
 
+/// Resolve an `EXT_structural_metadata` property's `values`/`stringOffsets`/
+/// `arrayOffsets` field to its raw bytes. These fields name a **bufferView**
+/// index, not a buffer index (the same convention [`extract_feature_properties`]
+/// resolves via `gltf.views()` off the blob); `buffer_data` is still indexed
+/// by *buffer*, so the view's own `buffer`/`byteOffset`/`byteLength` pick the
+/// right slice out of it.
+fn resolve_metadata_buffer_view<'a>(
+    gltf: &gltf::Gltf,
+    view_index: usize,
+    buffer_data: &'a [Vec<u8>],
+) -> Result<&'a [u8], GltfReaderError> {
+    let view = gltf
+        .views()
+        .nth(view_index)
+        .ok_or_else(|| GltfReaderError::Buffer(format!("bufferView {view_index} not found")))?;
+    let buffer = buffer_data.get(view.buffer().index()).ok_or_else(|| {
+        GltfReaderError::Buffer(format!(
+            "buffer {} (referenced by bufferView {view_index}) not found",
+            view.buffer().index()
+        ))
+    })?;
+    buffer
+        .get(view.offset()..view.offset() + view.length())
+        .ok_or_else(|| GltfReaderError::Buffer(format!("bufferView {view_index} out of bounds")))
+}
+
 /// Parse a bit-packed BOOLEAN property (one bit per row, LSB-first within
-/// each byte, per the `EXT_structural_metadata` spec) from the buffer
-/// identified by the property's `values` index into `buffer_data`.
+/// each byte, per the `EXT_structural_metadata` spec) from the bufferView
+/// identified by the property's `values` index.
 fn parse_boolean_property(
+    gltf: &gltf::Gltf,
     prop_obj: &serde_json::Map<String, Value>,
     buffer_data: &[Vec<u8>],
     count: usize,
@@ -293,9 +326,7 @@ fn parse_boolean_property(
         None => return Ok(None),
     };
 
-    let values_buffer = buffer_data.get(values_idx).ok_or_else(|| {
-        GltfReaderError::Buffer(format!("Property values buffer {} not found", values_idx))
-    })?;
+    let values_buffer = resolve_metadata_buffer_view(gltf, values_idx, buffer_data)?;
 
     let mut values = Vec::with_capacity(count);
     for i in 0..count {
@@ -308,19 +339,19 @@ fn parse_boolean_property(
 }
 
 /// Parse a numeric property (any EXT_structural_metadata numeric
-/// `componentType`) from the buffer identified by the property's `values`
-/// index into `buffer_data`. Mirrors the component-type handling in
-/// [`extract_feature_properties`], but resolves bytes from the
-/// caller-supplied `buffer_data` (buffers already resolved by index, same
-/// convention as [`parse_string_property`]) instead of the glTF binary blob
-/// plus bufferViews. Only ever called for genuine SCALAR, non-array
-/// properties (see the caller in [`parse_property_table`]): VEC2/3/4,
-/// MAT2/3/4, and fixed/variable-length arrays also carry a `componentType`
-/// but need a different, wider stride and are intentionally left unhandled.
+/// `componentType`) from the bufferView identified by the property's `values`
+/// index. Mirrors the component-type handling in [`extract_feature_properties`],
+/// resolving bytes the same way it does (via `gltf`'s bufferViews), just
+/// against the caller-supplied `buffer_data` instead of the glTF binary blob.
+/// Only ever called for genuine SCALAR, non-array properties (see the caller
+/// in [`parse_property_table`]): VEC2/3/4, MAT2/3/4, and fixed/variable-length
+/// arrays also carry a `componentType` but need a different, wider stride and
+/// are intentionally left unhandled.
 ///
 /// A row whose raw decoded value equals the schema's `noData` becomes
 /// `AttributeValue::Null`; [`feature_properties`] skips `Null` entries.
 fn parse_numeric_property(
+    gltf: &gltf::Gltf,
     prop_obj: &serde_json::Map<String, Value>,
     buffer_data: &[Vec<u8>],
     count: usize,
@@ -332,9 +363,7 @@ fn parse_numeric_property(
         None => return Ok(None),
     };
 
-    let values_buffer = buffer_data.get(values_idx).ok_or_else(|| {
-        GltfReaderError::Buffer(format!("Property values buffer {} not found", values_idx))
-    })?;
+    let values_buffer = resolve_metadata_buffer_view(gltf, values_idx, buffer_data)?;
 
     let mut values = Vec::with_capacity(count);
     for i in 0..count {
@@ -510,6 +539,7 @@ pub fn feature_properties(
 
 /// Parse string property from buffer views
 fn parse_string_property(
+    gltf: &gltf::Gltf,
     prop_obj: &serde_json::Map<String, Value>,
     buffer_data: &[Vec<u8>],
     count: usize,
@@ -525,12 +555,7 @@ fn parse_string_property(
     };
 
     // Read offsets buffer
-    let offsets_buffer = buffer_data.get(string_offsets_idx).ok_or_else(|| {
-        GltfReaderError::Buffer(format!(
-            "String offsets buffer {} not found",
-            string_offsets_idx
-        ))
-    })?;
+    let offsets_buffer = resolve_metadata_buffer_view(gltf, string_offsets_idx, buffer_data)?;
 
     let offsets: Vec<u32> = offsets_buffer
         .chunks_exact(4)
@@ -546,9 +571,7 @@ fn parse_string_property(
     }
 
     // Read values buffer
-    let values_buffer = buffer_data.get(values_idx).ok_or_else(|| {
-        GltfReaderError::Buffer(format!("String values buffer {} not found", values_idx))
-    })?;
+    let values_buffer = resolve_metadata_buffer_view(gltf, values_idx, buffer_data)?;
 
     // Extract strings
     let mut strings = Vec::new();
@@ -783,6 +806,31 @@ mod tests {
     use super::*;
     use crate::parse_gltf;
 
+    /// A bufferless-data `gltf::Gltf` whose `buffers`/`bufferViews` are an
+    /// identity mapping: bufferView `i` covers the whole of buffer `i`. Lets a
+    /// unit test's `"values"`/`"stringOffsets"` property indices keep
+    /// addressing its `buffer_data` vec directly by position (as before
+    /// `resolve_metadata_buffer_view` was introduced), while still exercising
+    /// the real bufferView-resolution path.
+    fn gltf_with_identity_buffer_views(buffer_lens: &[usize]) -> gltf::Gltf {
+        let buffers: Vec<Value> = buffer_lens
+            .iter()
+            .map(|len| serde_json::json!({"byteLength": len}))
+            .collect();
+        let buffer_views: Vec<Value> = buffer_lens
+            .iter()
+            .enumerate()
+            .map(|(i, len)| serde_json::json!({"buffer": i, "byteOffset": 0, "byteLength": len}))
+            .collect();
+        let doc = serde_json::json!({
+            "asset": {"version": "2.0"},
+            "buffers": buffers,
+            "bufferViews": buffer_views,
+        });
+        gltf::Gltf::from_slice_without_validation(&serde_json::to_vec(&doc).unwrap())
+            .expect("identity buffer-view fixture should parse")
+    }
+
     #[test]
     fn test_extract_feature_properties() {
         // Load test GLB file with EXT_structural_metadata
@@ -980,7 +1028,9 @@ mod tests {
             vec![0b0000_0001],                          // flag row 0 = true
         ];
 
-        let table = parse_property_table(&table_obj, &schema, &buffers).unwrap();
+        let gltf =
+            gltf_with_identity_buffer_views(&buffers.iter().map(|b| b.len()).collect::<Vec<_>>());
+        let table = parse_property_table(&gltf, &table_obj, &schema, &buffers).unwrap();
 
         assert_eq!(
             table.properties["i8"].values[0],
@@ -1066,7 +1116,9 @@ mod tests {
             .collect();
         let buffers = vec![height_buffer, name_values_buffer, name_offsets_buffer];
 
-        let table = parse_property_table(&table_obj, &schema, &buffers).unwrap();
+        let gltf =
+            gltf_with_identity_buffer_views(&buffers.iter().map(|b| b.len()).collect::<Vec<_>>());
+        let table = parse_property_table(&gltf, &table_obj, &schema, &buffers).unwrap();
 
         // noData rows decode to Null internally...
         assert_eq!(table.properties["height"].values[0], AttributeValue::Number(10u64.into()));
@@ -1126,7 +1178,9 @@ mod tests {
         let tags_buffer: Vec<u8> = vec![7, 8, 9];
         let buffers = vec![position_buffer, tags_buffer];
 
-        let table = parse_property_table(&table_obj, &schema, &buffers).unwrap();
+        let gltf =
+            gltf_with_identity_buffer_views(&buffers.iter().map(|b| b.len()).collect::<Vec<_>>());
+        let table = parse_property_table(&gltf, &table_obj, &schema, &buffers).unwrap();
 
         assert!(
             table.properties["position"].values.is_empty(),
@@ -1152,20 +1206,45 @@ mod tests {
     /// `EXT_structural_metadata` glTF documents without going through a real
     /// glTF exporter.
     mod fixtures {
-        /// Builds a minimal (bufferless) glTF document carrying
-        /// `EXT_structural_metadata` with two properties over two features:
+        /// Builds a minimal glTF document carrying `EXT_structural_metadata`
+        /// with two properties over two features:
         /// - "height": UINT32 = [10, 20]
         /// - "name": STRING = ["a", "b"]
         ///
-        /// Returns the parsed `gltf::Gltf` (no binary blob; buffers are
-        /// resolved separately) plus the `buffer_data` that
-        /// `read_structural_metadata` expects, indexed exactly as the
-        /// `"values"`/`"stringOffsets"` indices in the JSON below reference
-        /// them.
+        /// Declares one `bufferView` per buffer (an identity mapping, view `i`
+        /// = the whole of buffer `i`), matching the `"values"`/`"stringOffsets"`
+        /// indices below, so `read_structural_metadata`'s bufferView
+        /// resolution has real views to resolve. Returns the parsed
+        /// `gltf::Gltf` plus the `buffer_data` it expects (buffers are
+        /// resolved separately; the JSON's own `buffers` entries only carry a
+        /// `byteLength` since validation is skipped).
         pub fn metadata_glb_two_features() -> (gltf::Gltf, Vec<Vec<u8>>) {
+            // buffer 0: "height" UINT32 values, little-endian: 10, 20
+            let height_buffer: Vec<u8> = [10u32, 20u32]
+                .iter()
+                .flat_map(|v| v.to_le_bytes())
+                .collect();
+            // buffer 1: "name" STRING raw UTF-8 bytes, concatenated: "a" + "b"
+            let name_values_buffer: Vec<u8> = b"ab".to_vec();
+            // buffer 2: "name" stringOffsets, UINT32 little-endian cumulative
+            // byte offsets into buffer 1 (count + 1 entries): [0, 1, 2]
+            let name_offsets_buffer: Vec<u8> = [0u32, 1u32, 2u32]
+                .iter()
+                .flat_map(|v| v.to_le_bytes())
+                .collect();
+            let buffer_lens = [
+                height_buffer.len(),
+                name_values_buffer.len(),
+                name_offsets_buffer.len(),
+            ];
+
             let json = serde_json::json!({
                 "asset": {"version": "2.0"},
                 "extensionsUsed": ["EXT_structural_metadata"],
+                "buffers": buffer_lens.iter().map(|len| serde_json::json!({"byteLength": len})).collect::<Vec<_>>(),
+                "bufferViews": buffer_lens.iter().enumerate().map(|(i, len)| {
+                    serde_json::json!({"buffer": i, "byteOffset": 0, "byteLength": len})
+                }).collect::<Vec<_>>(),
                 "extensions": {
                     "EXT_structural_metadata": {
                         "schema": {
@@ -1195,20 +1274,6 @@ mod tests {
             let json_bytes = serde_json::to_vec(&json).expect("fixture JSON is serializable");
             let gltf = gltf::Gltf::from_slice_without_validation(&json_bytes)
                 .expect("fixture glTF JSON should parse");
-
-            // buffer 0: "height" UINT32 values, little-endian: 10, 20
-            let height_buffer: Vec<u8> = [10u32, 20u32]
-                .iter()
-                .flat_map(|v| v.to_le_bytes())
-                .collect();
-            // buffer 1: "name" STRING raw UTF-8 bytes, concatenated: "a" + "b"
-            let name_values_buffer: Vec<u8> = b"ab".to_vec();
-            // buffer 2: "name" stringOffsets, UINT32 little-endian cumulative
-            // byte offsets into buffer 1 (count + 1 entries): [0, 1, 2]
-            let name_offsets_buffer: Vec<u8> = [0u32, 1u32, 2u32]
-                .iter()
-                .flat_map(|v| v.to_le_bytes())
-                .collect();
 
             (
                 gltf,
