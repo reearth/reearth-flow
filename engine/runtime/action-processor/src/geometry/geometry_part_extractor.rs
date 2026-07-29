@@ -18,14 +18,14 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Feature, Geometry, GeometryValue};
-use schemars::JsonSchema;
-use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::errors::GeometryProcessorError;
-
+/// Each surface pulled out of a geometry, as its own feature.
 pub static EXTRACTED_PORT: Lazy<Port> = Lazy::new(|| Port::new("extracted"));
+/// The original feature with its extracted surfaces removed. Emitted only when
+/// extraction produced something.
 pub static REMAINING_PORT: Lazy<Port> = Lazy::new(|| Port::new("remaining"));
+/// Features left as they arrived, because there was nothing to extract from them.
 pub static UNTOUCHED_PORT: Lazy<Port> = Lazy::new(|| Port::new("untouched"));
 
 #[derive(Debug, Clone, Default)]
@@ -37,11 +37,11 @@ impl ProcessorFactory for GeometryPartExtractorFactory {
     }
 
     fn description(&self) -> &str {
-        "Extract geometry parts (surfaces) from 3D geometries as separate features"
+        "Extracts the individual surfaces of a geometry, emitting each as a separate feature."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-        Some(schemars::schema_for!(GeometryPartExtractorParam))
+        None
     }
 
     fn categories(&self) -> &[&'static str] {
@@ -49,7 +49,7 @@ impl ProcessorFactory for GeometryPartExtractorFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["geometry", "decompose"]
+        &["3d"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -69,63 +69,14 @@ impl ProcessorFactory for GeometryPartExtractorFactory {
         _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
-        with: Option<HashMap<String, Value>>,
+        _with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let param: GeometryPartExtractorParam = if let Some(with) = with {
-            let value: Value = serde_json::to_value(with).map_err(|e| {
-                GeometryProcessorError::GeometryPartExtractorFactory(format!(
-                    "Failed to serialize `with` parameter: {e}"
-                ))
-            })?;
-            serde_json::from_value(value).map_err(|e| {
-                GeometryProcessorError::GeometryPartExtractorFactory(format!(
-                    "Failed to deserialize `with` parameter: {e}"
-                ))
-            })?
-        } else {
-            GeometryPartExtractorParam::default()
-        };
-        Ok(Box::new(GeometryPartExtractor::new(param)))
+        Ok(Box::new(GeometryPartExtractor))
     }
-}
-
-/// # Geometry Part Extractor Parameters
-/// Configure which geometry parts to extract from 3D geometries
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-pub struct GeometryPartExtractorParam {
-    /// # Part Type
-    /// Type of geometry part to extract
-    #[serde(default, rename = "geometryPartType")]
-    part_type: GeometryPartType,
-}
-
-impl Default for GeometryPartExtractorParam {
-    fn default() -> Self {
-        Self {
-            part_type: GeometryPartType::Surface,
-        }
-    }
-}
-
-#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
-#[serde(rename_all = "camelCase")]
-pub enum GeometryPartType {
-    /// Extract surfaces as separate features
-    #[default]
-    Surface,
 }
 
 #[derive(Debug, Clone)]
-pub struct GeometryPartExtractor {
-    param: GeometryPartExtractorParam,
-}
-
-impl GeometryPartExtractor {
-    pub fn new(param: GeometryPartExtractorParam) -> Self {
-        Self { param }
-    }
-}
+pub struct GeometryPartExtractor;
 
 impl Processor for GeometryPartExtractor {
     #[cfg(not(feature = "new-geometry"))]
@@ -143,14 +94,10 @@ impl Processor for GeometryPartExtractor {
             return Ok(());
         }
 
-        match &self.param.part_type {
-            GeometryPartType::Surface => {
-                let extracted = extract_surfaces(feature, &ctx, fw)?;
-                if !extracted {
-                    // No surfaces were extracted, send to untouched port
-                    fw.send(ctx.new_with_feature_and_port(feature.clone(), UNTOUCHED_PORT.clone()));
-                }
-            }
+        let extracted = extract_surfaces(feature, &ctx, fw)?;
+        if !extracted {
+            // No surfaces were extracted, send to untouched port
+            fw.send(ctx.new_with_feature_and_port(feature.clone(), UNTOUCHED_PORT.clone()));
         }
 
         Ok(())

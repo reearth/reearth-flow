@@ -20,7 +20,7 @@ impl ProcessorFactory for GeometryRemoverFactory {
     }
 
     fn description(&self) -> &str {
-        "Removes geometry from a feature"
+        "Removes the geometry from a feature, leaving its attributes intact."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {

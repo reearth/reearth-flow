@@ -32,7 +32,7 @@ impl ProcessorFactory for FootprintReplacerFactory {
     }
 
     fn description(&self) -> &str {
-        "Projects 3D geometry to XY plane and computes the union footprint (supports solids, surfaces, and CityGML)"
+        "Replaces a feature's 3D geometry with its 2D footprint projected onto the XY plane."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {

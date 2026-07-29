@@ -24,7 +24,7 @@ impl ProcessorFactory for GeometryExtractorFactory {
     }
 
     fn description(&self) -> &str {
-        "Extract Geometry Data to Attribute"
+        "Serializes a feature's geometry to a compressed representation and stores it in an attribute."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -72,12 +72,13 @@ impl ProcessorFactory for GeometryExtractorFactory {
 }
 
 /// # Geometry Extractor Parameters
-/// Configure where to store the extracted geometry data as a compressed attribute
+/// Configure where the serialized geometry is stored.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GeometryExtractor {
     /// # Output Attribute
-    /// Name of the attribute where the extracted geometry data will be stored as compressed JSON
+    /// Attribute to store the compressed geometry in. Geometry Replacer reads
+    /// the same representation back onto a feature.
     output_attribute: Attribute,
 }
 
@@ -90,6 +91,10 @@ impl Processor for GeometryExtractor {
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
+        // Nothing to serialize is not a failure to serialize, so the feature
+        // passes through untouched rather than being rejected. Geometry Replacer,
+        // this action's counterpart, relies on that: it must tolerate a feature
+        // arriving with no stored geometry to restore.
         if geometry.is_empty() {
             fw.send(ctx.new_with_feature_and_port(feature.clone(), FEATURES_PORT.clone()));
             return Ok(());

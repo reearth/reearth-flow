@@ -20,7 +20,7 @@ impl ProcessorFactory for AppearanceRemoverFactory {
     }
 
     fn description(&self) -> &str {
-        "Removes appearance information (materials, textures) from CityGML geometry"
+        "Removes materials, textures, and UV coordinates from a feature's geometry."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
