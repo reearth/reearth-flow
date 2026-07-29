@@ -36,7 +36,7 @@ Unlike `attributes`, always bound, even when there is no current feature.
 
 ### `env[key]`
 
-Returns the value of the environment variable named `key`.  Errors if `key` is absent.
+Returns the value of the environment variable named `key`. Errors if `key` is absent.
 
 ### `env.get(key)`
 
