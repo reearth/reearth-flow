@@ -32,6 +32,7 @@ import type { YWorkflow } from "@flow/lib/yjs/types";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
 import { useCurrentProject } from "@flow/stores";
 import type { Algorithm, Direction, Edge, Node } from "@flow/types";
+import { toFinitePosition } from "@flow/utils/toFinitePosition";
 
 import useCanvasCopyPaste from "./useCanvasCopyPaste";
 import useDebugRun from "./useDebugRun";
@@ -123,6 +124,9 @@ export default ({
       Object.values(rawNodes)
         .map((node) => ({
           ...node,
+          // A non-finite position persisted in the doc would give ReactFlow a
+          // NaN viewport and crash the canvas (React #185). Sanitize on read.
+          position: toFinitePosition(node.position),
           selected:
             selectedNodeIds.includes(node.id) && !node.selected
               ? true
