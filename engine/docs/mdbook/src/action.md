@@ -4,7 +4,7 @@
 ### Type
 * processor
 ### Description
-Removes appearance information (materials, textures) from CityGML geometry
+Removes materials, textures, and UV coordinates from a feature's geometry.
 ### Parameters
 * No parameters
 ### Input Ports
@@ -18,17 +18,18 @@ Removes appearance information (materials, textures) from CityGML geometry
 ### Type
 * processor
 ### Description
-Calculates the planar or sloped area of polygon geometries and adds the results as attributes
+Calculates the planar or sloped area of a feature's geometry and stores it in an attribute.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "AreaCalculator Parameters",
-  "description": "Configuration for calculating areas of geometries.",
+  "title": "Area Calculator Parameters",
+  "description": "Configure how the area of each feature's geometry is measured and stored.",
   "type": "object",
   "properties": {
     "areaType": {
-      "description": "Type of area calculation to perform (PlaneArea or SlopedArea)",
+      "title": "Area Type",
+      "description": "Whether to measure the flat projected area or the true sloped surface area. Has no effect on a geometry with no elevation, which is always flat.",
       "default": "planeArea",
       "allOf": [
         {
@@ -37,7 +38,8 @@ Calculates the planar or sloped area of polygon geometries and adds the results 
       ]
     },
     "outputAttribute": {
-      "description": "Name of the attribute to store the calculated area (default: \"area\")",
+      "title": "Output Attribute",
+      "description": "Attribute to store the calculated area in. Defaults to `area`.",
       "default": "area",
       "allOf": [
         {
@@ -46,7 +48,8 @@ Calculates the planar or sloped area of polygon geometries and adds the results 
       ]
     },
     "multiplier": {
-      "description": "Multiplier to scale the area values (default: 1.0)",
+      "title": "Multiplier",
+      "description": "Factor applied to the calculated area, for converting to another unit. Defaults to 1.0.",
       "default": 1.0,
       "type": "number",
       "format": "double"
@@ -54,10 +57,23 @@ Calculates the planar or sloped area of polygon geometries and adds the results 
   },
   "definitions": {
     "AreaType": {
-      "type": "string",
-      "enum": [
-        "planeArea",
-        "slopedArea"
+      "oneOf": [
+        {
+          "title": "Planar Area",
+          "description": "Calculates the flat area of the geometry projected onto the XY plane.",
+          "type": "string",
+          "enum": [
+            "planeArea"
+          ]
+        },
+        {
+          "title": "Sloped Area",
+          "description": "Calculates the true surface area, accounting for the slope of each face.",
+          "type": "string",
+          "enum": [
+            "slopedArea"
+          ]
+        }
       ]
     },
     "Attribute": {
@@ -993,17 +1009,18 @@ Extracts the boundary of geometries. For solids/meshes returns bounding surfaces
 ### Type
 * processor
 ### Description
-Extract Bounding Box Coordinates from Feature Geometry
+Extracts the bounding box coordinates of a feature's geometry and stores them as named attributes.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "BoundsExtractor Parameters",
+  "title": "Bounds Extractor Parameters",
+  "description": "Configure the attribute names each bound is stored under. Every parameter is optional; a bound left unset is stored under its default name. The z bounds are written only when the geometry has an elevation.",
   "type": "object",
   "properties": {
     "xmin": {
       "title": "Minimum X Attribute",
-      "description": "Attribute name for storing the minimum X coordinate (defaults to \"xmin\")",
+      "description": "Attribute to store the minimum X coordinate in. Defaults to `xmin`.",
       "anyOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -1015,7 +1032,7 @@ Extract Bounding Box Coordinates from Feature Geometry
     },
     "xmax": {
       "title": "Maximum X Attribute",
-      "description": "Attribute name for storing the maximum X coordinate (defaults to \"xmax\")",
+      "description": "Attribute to store the maximum X coordinate in. Defaults to `xmax`.",
       "anyOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -1027,7 +1044,7 @@ Extract Bounding Box Coordinates from Feature Geometry
     },
     "ymin": {
       "title": "Minimum Y Attribute",
-      "description": "Attribute name for storing the minimum Y coordinate (defaults to \"ymin\")",
+      "description": "Attribute to store the minimum Y coordinate in. Defaults to `ymin`.",
       "anyOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -1039,7 +1056,7 @@ Extract Bounding Box Coordinates from Feature Geometry
     },
     "ymax": {
       "title": "Maximum Y Attribute",
-      "description": "Attribute name for storing the maximum Y coordinate (defaults to \"ymax\")",
+      "description": "Attribute to store the maximum Y coordinate in. Defaults to `ymax`.",
       "anyOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -1051,7 +1068,7 @@ Extract Bounding Box Coordinates from Feature Geometry
     },
     "zmin": {
       "title": "Minimum Z Attribute",
-      "description": "Attribute name for storing the minimum Z coordinate (defaults to \"zmin\")",
+      "description": "Attribute to store the minimum Z coordinate in. Defaults to `zmin`.",
       "anyOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -1063,7 +1080,7 @@ Extract Bounding Box Coordinates from Feature Geometry
     },
     "zmax": {
       "title": "Maximum Z Attribute",
-      "description": "Attribute name for storing the maximum Z coordinate (defaults to \"zmax\")",
+      "description": "Attribute to store the maximum Z coordinate in. Defaults to `zmax`.",
       "anyOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -1093,13 +1110,13 @@ Extract Bounding Box Coordinates from Feature Geometry
 ### Type
 * processor
 ### Description
-Create Buffer Around Features
+Creates a buffer polygon around each input geometry at a specified distance.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Bufferer Parameters",
-  "description": "Configure how to create buffers around input geometries",
+  "description": "Configure the shape and extent of the buffer created around each geometry.",
   "type": "object",
   "required": [
     "bufferType",
@@ -1109,7 +1126,7 @@ Create Buffer Around Features
   "properties": {
     "bufferType": {
       "title": "Buffer Type",
-      "description": "The type of buffer to create around the input geometry",
+      "description": "Shape of buffer to create around the input geometry.",
       "allOf": [
         {
           "$ref": "#/definitions/BufferType"
@@ -1118,13 +1135,13 @@ Create Buffer Around Features
     },
     "distance": {
       "title": "Distance",
-      "description": "The distance to extend the buffer from the original geometry (in coordinate units)",
+      "description": "How far the buffer extends from the original geometry, in the units of the geometry's coordinate system. A negative distance contracts it.",
       "type": "number",
       "format": "double"
     },
     "interpolationAngle": {
       "title": "Interpolation Angle",
-      "description": "The angle in degrees used for curve interpolation when creating rounded corners",
+      "description": "Angular step in degrees used to approximate the rounded corners of a buffered point or curve. A smaller angle produces a smoother outline. Buffering a polygon does not use this value.",
       "type": "number",
       "format": "double"
     }
@@ -1134,7 +1151,7 @@ Create Buffer Around Features
       "oneOf": [
         {
           "title": "2D Area Buffer",
-          "description": "Creates a 2D polygon buffer around the input geometry",
+          "description": "Creates a flat polygon buffer around the input geometry, discarding any elevation it carried.",
           "type": "string",
           "enum": [
             "area2d"
@@ -2483,7 +2500,7 @@ Writes features to CityGML 2.0 files.
 ### Type
 * processor
 ### Description
-Clip Features Using Boundary Shapes
+Clips candidate features to the boundary geometry, separating the results into inside and outside portions.
 ### Parameters
 * No parameters
 ### Input Ports
@@ -3029,13 +3046,13 @@ Echoes features to logs and discards them.
 ### Type
 * processor
 ### Description
-Extract Z-Coordinate Elevation to Attribute
+Extracts the elevation of a feature's geometry and stores it in an attribute.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Elevation Extractor Parameters",
-  "description": "Configure where to store the extracted elevation value from geometry coordinates",
+  "description": "Configure where the extracted elevation is stored.",
   "type": "object",
   "required": [
     "outputAttribute"
@@ -3043,7 +3060,7 @@ Extract Z-Coordinate Elevation to Attribute
   "properties": {
     "outputAttribute": {
       "title": "Output Attribute",
-      "description": "Name of the attribute where the extracted elevation value will be stored",
+      "description": "Attribute to store the elevation in.",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -3122,13 +3139,13 @@ Writes features to Microsoft Excel format (.xlsx files).
 ### Type
 * processor
 ### Description
-Extrude 2D Polygons into 3D Solids
+Extrudes a polygon geometry vertically by a given distance to produce a solid geometry.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Extruder Parameters",
-  "description": "Configure how to extrude 2D polygons into 3D solid geometries",
+  "description": "Configure how far each polygon is extruded.",
   "type": "object",
   "required": [
     "distance"
@@ -3136,7 +3153,7 @@ Extrude 2D Polygons into 3D Solids
   "properties": {
     "distance": {
       "title": "Distance",
-      "description": "The vertical distance (height) to extrude the polygon. Can be a constant value or an expression",
+      "description": "Height to extrude the polygon by, as a constant or an expression evaluated per feature.",
       "type": "object",
       "format": "code",
       "required": [
@@ -3162,6 +3179,7 @@ Extrude 2D Polygons into 3D Solids
 * features
 ### Output Ports
 * features
+* rejected
 ### Category
 * Geometry
 
@@ -4701,7 +4719,7 @@ Inspects the file or directory at a path held in a feature attribute and adds it
 ### Type
 * processor
 ### Description
-Projects 3D geometry to XY plane and computes the union footprint (supports solids, surfaces, and CityGML)
+Replaces a feature's 3D geometry with its 2D footprint projected onto the XY plane.
 ### Parameters
 * No parameters
 ### Input Ports
@@ -5246,13 +5264,13 @@ Coerces and converts feature geometries to specified target geometry types
 ### Type
 * processor
 ### Description
-Extract Geometry Data to Attribute
+Serializes a feature's geometry to a compressed representation and stores it in an attribute.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Geometry Extractor Parameters",
-  "description": "Configure where to store the extracted geometry data as a compressed attribute",
+  "description": "Configure where the serialized geometry is stored.",
   "type": "object",
   "required": [
     "outputAttribute"
@@ -5260,7 +5278,7 @@ Extract Geometry Data to Attribute
   "properties": {
     "outputAttribute": {
       "title": "Output Attribute",
-      "description": "Name of the attribute where the extracted geometry data will be stored as compressed JSON",
+      "description": "Attribute to store the compressed geometry in. Geometry Replacer reads the same representation back onto a feature.",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -5362,41 +5380,9 @@ Filter Features by Geometry Type
 ### Type
 * processor
 ### Description
-Extract geometry parts (surfaces) from 3D geometries as separate features
+Extracts the individual surfaces of a geometry, emitting each as a separate feature.
 ### Parameters
-```json
-{
-  "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "Geometry Part Extractor Parameters",
-  "description": "Configure which geometry parts to extract from 3D geometries",
-  "type": "object",
-  "properties": {
-    "geometryPartType": {
-      "title": "Part Type",
-      "description": "Type of geometry part to extract",
-      "default": "surface",
-      "allOf": [
-        {
-          "$ref": "#/definitions/GeometryPartType"
-        }
-      ]
-    }
-  },
-  "definitions": {
-    "GeometryPartType": {
-      "oneOf": [
-        {
-          "description": "Extract surfaces as separate features",
-          "type": "string",
-          "enum": [
-            "surface"
-          ]
-        }
-      ]
-    }
-  }
-}
-```
+* No parameters
 ### Input Ports
 * features
 ### Output Ports
@@ -5410,7 +5396,7 @@ Extract geometry parts (surfaces) from 3D geometries as separate features
 ### Type
 * processor
 ### Description
-Removes geometry from a feature
+Removes the geometry from a feature, leaving its attributes intact.
 ### Parameters
 * No parameters
 ### Input Ports
@@ -7271,17 +7257,18 @@ Reproject Geometry to Different Coordinate System
 ### Type
 * processor
 ### Description
-Convert vector geometries to raster image format
+Converts vector geometries to a raster image using configurable overlap resolution.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Image Rasterizer Parameters",
-  "description": "Configure how to convert vector geometries to raster images",
+  "description": "Configure the size of the rendered image, where it is written, and how overlapping geometries are resolved.",
   "type": "object",
   "properties": {
     "imageWidth": {
-      "description": "The width of image",
+      "title": "Image Width",
+      "description": "Width of the output image in pixels. The height follows from the extent of the input geometries, preserving their aspect ratio.",
       "default": 1000,
       "type": "integer",
       "format": "uint32",
@@ -7289,7 +7276,7 @@ Convert vector geometries to raster image format
     },
     "saveTo": {
       "title": "Save To",
-      "description": "Optional path expression to save the generated image. If not provided, uses default cache directory.",
+      "description": "Path to write the generated image to. When omitted, the image is written to the cache directory.",
       "default": null,
       "type": [
         "object",
@@ -7315,7 +7302,7 @@ Convert vector geometries to raster image format
     },
     "onOverlap": {
       "title": "On Overlap",
-      "description": "Strategy for resolving pixel overlap when multiple polygons cover the same pixel.",
+      "description": "How to colour a pixel covered by more than one geometry. When omitted, overlapping geometries are drawn in the order they arrive.",
       "default": null,
       "anyOf": [
         {
@@ -7332,13 +7319,24 @@ Convert vector geometries to raster image format
       "description": "Overlap resolution strategy for rasterized pixels",
       "oneOf": [
         {
+          "title": "Take Last",
+          "description": "Keeps the colour of the last polygon drawn over the pixel.",
           "type": "string",
           "enum": [
-            "takeLast",
+            "takeLast"
+          ]
+        },
+        {
+          "title": "Take First",
+          "description": "Keeps the colour of the first polygon drawn over the pixel.",
+          "type": "string",
+          "enum": [
             "takeFirst"
           ]
         },
         {
+          "title": "Maximum",
+          "description": "Keeps the colour of the overlapping polygon whose expression evaluates highest.",
           "type": "object",
           "required": [
             "max"
@@ -7367,6 +7365,8 @@ Convert vector geometries to raster image format
           "additionalProperties": false
         },
         {
+          "title": "Minimum",
+          "description": "Keeps the colour of the overlapping polygon whose expression evaluates lowest.",
           "type": "object",
           "required": [
             "min"
@@ -7395,7 +7395,8 @@ Convert vector geometries to raster image format
           "additionalProperties": false
         },
         {
-          "description": "Saturating-add RGB channels of all overlapping polygons.",
+          "title": "Sum",
+          "description": "Adds the RGB channels of every overlapping polygon, saturating at full intensity.",
           "type": "string",
           "enum": [
             "sum"
@@ -7408,11 +7409,12 @@ Convert vector geometries to raster image format
 ```
 ### Input Ports
 * features
-* textureCoordinates
+* texture-coordinates
 ### Output Ports
 * features
 * textured
-* textureBounds
+* texture-bounds
+* rejected
 ### Category
 * Geometry
 
