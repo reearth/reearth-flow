@@ -2276,6 +2276,14 @@
               "null"
             ]
           },
+          "arrayMapSeparator": {
+            "title": "Separador de Array/Map",
+            "description": "Separador que une un atributo de array o map anidado con su clave o índice hijo al aplanarlo en columnas de metadatos. Déjelo sin definir para eliminar por completo los atributos de array y map de la salida.",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "compressOutput": {
             "title": "Ruta de Salida Comprimida",
             "description": "Ruta opcional para la salida del archivo comprimido",

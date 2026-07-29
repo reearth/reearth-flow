@@ -70,6 +70,7 @@ impl Cesium3DTilesWriter {
         let options = MetadataOptions {
             schema_key: self.params.schema_key.as_deref(),
             skip_unexposed_attributes: self.params.skip_unexposed_attributes,
+            array_map_separator: self.params.array_map_separator.as_deref(),
         };
         let render = RenderOptions {
             draco: self.params.draco_compression,
@@ -911,6 +912,7 @@ mod tests {
         let options = MetadataOptions {
             schema_key: None,
             skip_unexposed_attributes: false,
+            array_map_separator: Some("_"),
         };
 
         // `build` streams each content glb to the callback; capture them.
