@@ -139,7 +139,7 @@ pub fn read_structural_metadata(
 
     for table in property_tables {
         if let Value::Object(table_obj) = table {
-            let parsed_table = parse_property_table(table_obj, buffer_data)?;
+            let parsed_table = parse_property_table(table_obj, schema, buffer_data)?;
             result.tables.push(parsed_table);
         }
     }
@@ -167,6 +167,7 @@ pub struct PropertyData {
 
 fn parse_property_table(
     table_obj: &serde_json::Map<String, Value>,
+    schema: &Value,
     buffer_data: &[Vec<u8>],
 ) -> Result<PropertyTable, GltfReaderError> {
     let class = table_obj
@@ -190,23 +191,53 @@ fn parse_property_table(
     let mut parsed_properties = IndexMap::new();
 
     for (key, prop_def) in properties {
-        if let Value::Object(prop_obj) = prop_def {
-            // Extract string properties using buffer views
-            if let Some(string_values) = parse_string_property(prop_obj, buffer_data, count)? {
-                parsed_properties.insert(
-                    key.clone(),
-                    PropertyData {
-                        values: string_values
-                            .into_iter()
-                            .map(AttributeValue::String)
-                            .collect(),
-                    },
-                );
-            } else {
-                // TODO: Handle other property types (numeric, etc.)
-                parsed_properties.insert(key.clone(), PropertyData { values: Vec::new() });
+        let Value::Object(prop_obj) = prop_def else {
+            continue;
+        };
+
+        // Extract string properties using buffer views
+        if let Some(string_values) = parse_string_property(prop_obj, buffer_data, count)? {
+            parsed_properties.insert(
+                key.clone(),
+                PropertyData {
+                    values: string_values
+                        .into_iter()
+                        .map(AttributeValue::String)
+                        .collect(),
+                },
+            );
+            continue;
+        }
+
+        // BOOLEAN properties have no `componentType` (their `type` IS
+        // "BOOLEAN"); everything else that reaches here is either numeric
+        // (has a `componentType`) or an unsupported shape (ENUM, VECN/MATN,
+        // arrays) that we still leave as an empty column rather than failing
+        // the whole table.
+        let property_type = schema_property_field(schema, class.as_deref(), key, "type")
+            .and_then(|v| v.as_str());
+
+        if property_type == Some("BOOLEAN") {
+            if let Some(values) = parse_boolean_property(prop_obj, buffer_data, count)? {
+                parsed_properties.insert(key.clone(), PropertyData { values });
+                continue;
             }
         }
+
+        let component_type = schema_property_field(schema, class.as_deref(), key, "componentType")
+            .and_then(|v| v.as_str());
+
+        if let Some(component_type) = component_type {
+            if let Some(values) =
+                parse_numeric_property(prop_obj, buffer_data, count, component_type)?
+            {
+                parsed_properties.insert(key.clone(), PropertyData { values });
+                continue;
+            }
+        }
+
+        // TODO: Handle other property types (ENUM, VECN/MATN, arrays, ...)
+        parsed_properties.insert(key.clone(), PropertyData { values: Vec::new() });
     }
 
     Ok(PropertyTable {
@@ -214,6 +245,169 @@ fn parse_property_table(
         count,
         properties: parsed_properties,
     })
+}
+
+/// Look up `/classes/<class>/properties/<prop_name>/<field>` in a
+/// `EXT_structural_metadata` schema (e.g. `componentType`, `type`, `noData`).
+fn schema_property_field<'a>(
+    schema: &'a Value,
+    class: Option<&str>,
+    prop_name: &str,
+    field: &str,
+) -> Option<&'a Value> {
+    schema.pointer(&format!(
+        "/classes/{}/properties/{}/{}",
+        class?, prop_name, field
+    ))
+}
+
+/// Parse a bit-packed BOOLEAN property (one bit per row, LSB-first within
+/// each byte, per the `EXT_structural_metadata` spec) from the buffer
+/// identified by the property's `values` index into `buffer_data`.
+fn parse_boolean_property(
+    prop_obj: &serde_json::Map<String, Value>,
+    buffer_data: &[Vec<u8>],
+    count: usize,
+) -> Result<Option<Vec<AttributeValue>>, GltfReaderError> {
+    let values_idx = match prop_obj.get("values").and_then(|v| v.as_u64()) {
+        Some(idx) => idx as usize,
+        None => return Ok(None),
+    };
+
+    let values_buffer = buffer_data.get(values_idx).ok_or_else(|| {
+        GltfReaderError::Buffer(format!("Property values buffer {} not found", values_idx))
+    })?;
+
+    let mut values = Vec::with_capacity(count);
+    for i in 0..count {
+        let byte = values_buffer.get(i / 8).ok_or_else(|| {
+            GltfReaderError::Buffer("Boolean property value out of bounds".to_string())
+        })?;
+        values.push(AttributeValue::Bool((byte >> (i % 8)) & 1 != 0));
+    }
+    Ok(Some(values))
+}
+
+/// Parse a numeric property (any EXT_structural_metadata numeric
+/// `componentType`) from the buffer identified by the property's `values`
+/// index into `buffer_data`. Mirrors the component-type handling in
+/// [`extract_feature_properties`], but resolves bytes from the
+/// caller-supplied `buffer_data` (buffers already resolved by index, same
+/// convention as [`parse_string_property`]) instead of the glTF binary blob
+/// plus bufferViews.
+///
+/// Note on `noData`: `PropertyData::values` is a dense `Vec`, so there is no
+/// "hole" representation for a skipped row without changing that struct's
+/// shape. Rather than over-engineering a sparse representation, every row's
+/// raw decoded value is kept as-is, including ones that equal a configured
+/// `noData` sentinel; `feature_properties` returns whatever was decoded here
+/// unfiltered. Callers that need strict `noData` semantics should compare the
+/// returned value against the schema's `noData` themselves.
+fn parse_numeric_property(
+    prop_obj: &serde_json::Map<String, Value>,
+    buffer_data: &[Vec<u8>],
+    count: usize,
+    component_type: &str,
+) -> Result<Option<Vec<AttributeValue>>, GltfReaderError> {
+    let values_idx = match prop_obj.get("values").and_then(|v| v.as_u64()) {
+        Some(idx) => idx as usize,
+        None => return Ok(None),
+    };
+
+    let values_buffer = buffer_data.get(values_idx).ok_or_else(|| {
+        GltfReaderError::Buffer(format!("Property values buffer {} not found", values_idx))
+    })?;
+
+    let mut values = Vec::with_capacity(count);
+    for i in 0..count {
+        values.push(decode_numeric_element(values_buffer, i, component_type)?);
+    }
+    Ok(Some(values))
+}
+
+/// Decode the `index`-th element of `component_type` out of `buffer`,
+/// little-endian, mapping signed types to `AttributeValue::Number` backed by
+/// `i64`, unsigned types by `u64`, and floats via `serde_json::Number::from_f64`.
+fn decode_numeric_element(
+    buffer: &[u8],
+    index: usize,
+    component_type: &str,
+) -> Result<AttributeValue, GltfReaderError> {
+    fn bytes_at(buffer: &[u8], start: usize, len: usize) -> Result<&[u8], GltfReaderError> {
+        buffer.get(start..start + len).ok_or_else(|| {
+            GltfReaderError::Buffer("Property value buffer read out of bounds".to_string())
+        })
+    }
+
+    Ok(match component_type {
+        "INT8" => AttributeValue::Number((bytes_at(buffer, index, 1)?[0] as i8 as i64).into()),
+        "UINT8" => AttributeValue::Number((bytes_at(buffer, index, 1)?[0] as u64).into()),
+        "INT16" => {
+            let b = bytes_at(buffer, index * 2, 2)?;
+            AttributeValue::Number((i16::from_le_bytes([b[0], b[1]]) as i64).into())
+        }
+        "UINT16" => {
+            let b = bytes_at(buffer, index * 2, 2)?;
+            AttributeValue::Number((u16::from_le_bytes([b[0], b[1]]) as u64).into())
+        }
+        "INT32" => {
+            let b = bytes_at(buffer, index * 4, 4)?;
+            AttributeValue::Number((i32::from_le_bytes([b[0], b[1], b[2], b[3]]) as i64).into())
+        }
+        "UINT32" => {
+            let b = bytes_at(buffer, index * 4, 4)?;
+            AttributeValue::Number((u32::from_le_bytes([b[0], b[1], b[2], b[3]]) as u64).into())
+        }
+        "INT64" => {
+            let b = bytes_at(buffer, index * 8, 8)?;
+            let v = i64::from_le_bytes(b.try_into().unwrap());
+            AttributeValue::Number(v.into())
+        }
+        "UINT64" => {
+            let b = bytes_at(buffer, index * 8, 8)?;
+            let v = u64::from_le_bytes(b.try_into().unwrap());
+            AttributeValue::Number(v.into())
+        }
+        "FLOAT32" => {
+            let b = bytes_at(buffer, index * 4, 4)?;
+            let v = f32::from_le_bytes([b[0], b[1], b[2], b[3]]) as f64;
+            AttributeValue::Number(serde_json::Number::from_f64(v).unwrap_or_else(|| 0.into()))
+        }
+        "FLOAT64" => {
+            let b = bytes_at(buffer, index * 8, 8)?;
+            let v = f64::from_le_bytes(b.try_into().unwrap());
+            AttributeValue::Number(serde_json::Number::from_f64(v).unwrap_or_else(|| 0.into()))
+        }
+        other => {
+            return Err(GltfReaderError::Parse(format!(
+                "Unsupported componentType '{}' in structural metadata property",
+                other
+            )))
+        }
+    })
+}
+
+/// Look up `feature_id`'s attributes in property table `table_index`.
+/// Returns an empty map if the table or the feature id is out of range.
+pub fn feature_properties(
+    tables: &PropertyTables,
+    table_index: usize,
+    feature_id: u32,
+) -> IndexMap<String, AttributeValue> {
+    let mut out = IndexMap::new();
+    let Some(table) = tables.tables.get(table_index) else {
+        return out;
+    };
+    let row = feature_id as usize;
+    if row >= table.count {
+        return out;
+    }
+    for (name, data) in &table.properties {
+        if let Some(v) = data.values.get(row) {
+            out.insert(name.clone(), v.clone());
+        }
+    }
+    out
 }
 
 /// Parse string property from buffer views
@@ -605,5 +799,200 @@ mod tests {
             result.is_empty(),
             "Expected empty result when EXT_structural_metadata is not present"
         );
+    }
+
+    #[test]
+    fn decodes_numeric_and_string_properties_by_feature_id() {
+        // Two features; "height" UINT32 = [10, 20], "name" string = ["a","b"].
+        let (gltf, buffers) = fixtures::metadata_glb_two_features();
+        let tables = read_structural_metadata(&gltf, &buffers).unwrap().unwrap();
+
+        let f0 = feature_properties(&tables, 0, 0);
+        assert_eq!(f0.get("height"), Some(&AttributeValue::Number(10u64.into())));
+        assert_eq!(f0.get("name"), Some(&AttributeValue::String("a".into())));
+
+        let f1 = feature_properties(&tables, 0, 1);
+        assert_eq!(f1.get("height"), Some(&AttributeValue::Number(20u64.into())));
+        assert_eq!(f1.get("name"), Some(&AttributeValue::String("b".into())));
+
+        // Out-of-range feature id -> empty, no panic.
+        assert!(feature_properties(&tables, 0, 99).is_empty());
+
+        // Out-of-range table index -> empty, no panic.
+        assert!(feature_properties(&tables, 1, 0).is_empty());
+    }
+
+    #[test]
+    fn decodes_all_numeric_component_types() {
+        // One property per supported componentType, one feature (row 0).
+        // Buffer bytes are hand-verified little-endian encodings of the
+        // values noted alongside each property below.
+        let schema = serde_json::json!({
+            "classes": {
+                "Feature": {
+                    "properties": {
+                        "i8": {"type": "SCALAR", "componentType": "INT8"},
+                        "u8": {"type": "SCALAR", "componentType": "UINT8"},
+                        "i16": {"type": "SCALAR", "componentType": "INT16"},
+                        "u16": {"type": "SCALAR", "componentType": "UINT16"},
+                        "i32": {"type": "SCALAR", "componentType": "INT32"},
+                        "u32": {"type": "SCALAR", "componentType": "UINT32"},
+                        "i64": {"type": "SCALAR", "componentType": "INT64"},
+                        "u64": {"type": "SCALAR", "componentType": "UINT64"},
+                        "f32": {"type": "SCALAR", "componentType": "FLOAT32"},
+                        "f64": {"type": "SCALAR", "componentType": "FLOAT64"},
+                        "flag": {"type": "BOOLEAN"},
+                    }
+                }
+            }
+        });
+
+        let table_obj_value = serde_json::json!({
+            "class": "Feature",
+            "count": 1,
+            "properties": {
+                "i8": {"values": 0},
+                "u8": {"values": 1},
+                "i16": {"values": 2},
+                "u16": {"values": 3},
+                "i32": {"values": 4},
+                "u32": {"values": 5},
+                "i64": {"values": 6},
+                "u64": {"values": 7},
+                "f32": {"values": 8},
+                "f64": {"values": 9},
+                "flag": {"values": 10},
+            }
+        });
+        let Value::Object(table_obj) = table_obj_value else {
+            unreachable!()
+        };
+
+        let buffers: Vec<Vec<u8>> = vec![
+            vec![(-5i8) as u8],                       // i8 = -5
+            vec![200u8],                               // u8 = 200
+            (-1000i16).to_le_bytes().to_vec(),          // i16 = -1000
+            60000u16.to_le_bytes().to_vec(),            // u16 = 60000
+            (-70000i32).to_le_bytes().to_vec(),         // i32 = -70000
+            4_000_000_000u32.to_le_bytes().to_vec(),    // u32 = 4_000_000_000
+            (-9_000_000_000_000i64).to_le_bytes().to_vec(), // i64
+            18_000_000_000_000_000_000u64.to_le_bytes().to_vec(), // u64
+            1.5f32.to_le_bytes().to_vec(),              // f32 = 1.5
+            2.25f64.to_le_bytes().to_vec(),              // f64 = 2.25
+            vec![0b0000_0001],                          // flag row 0 = true
+        ];
+
+        let table = parse_property_table(&table_obj, &schema, &buffers).unwrap();
+
+        assert_eq!(
+            table.properties["i8"].values[0],
+            AttributeValue::Number((-5i64).into())
+        );
+        assert_eq!(
+            table.properties["u8"].values[0],
+            AttributeValue::Number(200u64.into())
+        );
+        assert_eq!(
+            table.properties["i16"].values[0],
+            AttributeValue::Number((-1000i64).into())
+        );
+        assert_eq!(
+            table.properties["u16"].values[0],
+            AttributeValue::Number(60000u64.into())
+        );
+        assert_eq!(
+            table.properties["i32"].values[0],
+            AttributeValue::Number((-70000i64).into())
+        );
+        assert_eq!(
+            table.properties["u32"].values[0],
+            AttributeValue::Number(4_000_000_000u64.into())
+        );
+        assert_eq!(
+            table.properties["i64"].values[0],
+            AttributeValue::Number((-9_000_000_000_000i64).into())
+        );
+        assert_eq!(
+            table.properties["u64"].values[0],
+            AttributeValue::Number(18_000_000_000_000_000_000u64.into())
+        );
+        assert_eq!(
+            table.properties["f32"].values[0],
+            AttributeValue::Number(serde_json::Number::from_f64(1.5).unwrap())
+        );
+        assert_eq!(
+            table.properties["f64"].values[0],
+            AttributeValue::Number(serde_json::Number::from_f64(2.25).unwrap())
+        );
+        assert_eq!(table.properties["flag"].values[0], AttributeValue::Bool(true));
+    }
+
+    /// Test-only fixtures for constructing minimal, hand-verified
+    /// `EXT_structural_metadata` glTF documents without going through a real
+    /// glTF exporter.
+    mod fixtures {
+        /// Builds a minimal (bufferless) glTF document carrying
+        /// `EXT_structural_metadata` with two properties over two features:
+        /// - "height": UINT32 = [10, 20]
+        /// - "name": STRING = ["a", "b"]
+        ///
+        /// Returns the parsed `gltf::Gltf` (no binary blob; buffers are
+        /// resolved separately) plus the `buffer_data` that
+        /// `read_structural_metadata` expects, indexed exactly as the
+        /// `"values"`/`"stringOffsets"` indices in the JSON below reference
+        /// them.
+        pub fn metadata_glb_two_features() -> (gltf::Gltf, Vec<Vec<u8>>) {
+            let json = serde_json::json!({
+                "asset": {"version": "2.0"},
+                "extensionsUsed": ["EXT_structural_metadata"],
+                "extensions": {
+                    "EXT_structural_metadata": {
+                        "schema": {
+                            "id": "TestSchema",
+                            "classes": {
+                                "Feature": {
+                                    "properties": {
+                                        "height": {"type": "SCALAR", "componentType": "UINT32"},
+                                        "name": {"type": "STRING"}
+                                    }
+                                }
+                            }
+                        },
+                        "propertyTables": [
+                            {
+                                "class": "Feature",
+                                "count": 2,
+                                "properties": {
+                                    "height": {"values": 0},
+                                    "name": {"values": 1, "stringOffsets": 2}
+                                }
+                            }
+                        ]
+                    }
+                }
+            });
+            let json_bytes = serde_json::to_vec(&json).expect("fixture JSON is serializable");
+            let gltf = gltf::Gltf::from_slice_without_validation(&json_bytes)
+                .expect("fixture glTF JSON should parse");
+
+            // buffer 0: "height" UINT32 values, little-endian: 10, 20
+            let height_buffer: Vec<u8> = [10u32, 20u32]
+                .iter()
+                .flat_map(|v| v.to_le_bytes())
+                .collect();
+            // buffer 1: "name" STRING raw UTF-8 bytes, concatenated: "a" + "b"
+            let name_values_buffer: Vec<u8> = b"ab".to_vec();
+            // buffer 2: "name" stringOffsets, UINT32 little-endian cumulative
+            // byte offsets into buffer 1 (count + 1 entries): [0, 1, 2]
+            let name_offsets_buffer: Vec<u8> = [0u32, 1u32, 2u32]
+                .iter()
+                .flat_map(|v| v.to_le_bytes())
+                .collect();
+
+            (
+                gltf,
+                vec![height_buffer, name_values_buffer, name_offsets_buffer],
+            )
+        }
     }
 }
