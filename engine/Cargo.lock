@@ -771,14 +771,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "citygml2to3"
-version = "0.1.0"
-dependencies = [
- "fastxml",
- "quick-xml 0.37.5",
-]
-
-[[package]]
 name = "clang-sys"
 version = "1.8.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
