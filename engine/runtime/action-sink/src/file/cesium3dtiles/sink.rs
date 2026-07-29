@@ -115,6 +115,8 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
                 texture_codec: params.texture_codec,
                 skip_unexposed_attributes: params.skip_unexposed_attributes.unwrap_or(false),
                 schema_key: params.schema_key,
+                #[cfg(feature = "new-geometry")]
+                array_map_separator: params.array_map_separator,
             },
         };
         Ok(Box::new(sink))
@@ -218,6 +220,11 @@ pub struct Cesium3DTilesWriterParam {
     /// # Skip Unexposed Attributes
     /// Whether to skip attributes whose keys begin with a double underscore.
     pub(super) skip_unexposed_attributes: Option<bool>,
+    /// # Array/Map Separator
+    /// Separator joining a nested array or map attribute to its child key or
+    /// index when flattening it into metadata columns. Leave unset to drop array
+    /// and map attributes from the output entirely.
+    pub(super) array_map_separator: Option<String>,
     /// # Compressed Output Path
     /// Optional path where a compressed archive of the tiles is also written.
     pub(super) compress_output: Option<Code>,
@@ -244,6 +251,8 @@ pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) texture_codec: TextureCodec,
     pub(super) skip_unexposed_attributes: bool,
     pub(super) schema_key: Option<String>,
+    #[cfg(feature = "new-geometry")]
+    pub(super) array_map_separator: Option<String>,
 }
 
 impl Sink for Cesium3DTilesWriter {

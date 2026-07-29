@@ -2276,6 +2276,14 @@
               "null"
             ]
           },
+          "arrayMapSeparator": {
+            "title": "数组/映射分隔符",
+            "description": "在将嵌套的数组或映射属性展平为元数据列时，用于连接其子键或索引的分隔符。留空则在输出中完全丢弃数组和映射属性。",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "compressOutput": {
             "title": "压缩输出路径",
             "description": "压缩归档输出的可选路径",
@@ -5441,6 +5449,8 @@
         "description": "Configure how to filter features based on their geometry type",
         "oneOf": [
           {
+            "title": "No Geometry",
+            "description": "Separates the features that carry no geometry at all from the ones that do.",
             "type": "object",
             "required": [
               "filterType"
@@ -5455,6 +5465,8 @@
             }
           },
           {
+            "title": "Multiple Geometries",
+            "description": "Separates the features whose geometry is a container that can hold more than one part.",
             "type": "object",
             "required": [
               "filterType"
@@ -5469,6 +5481,8 @@
             }
           },
           {
+            "title": "Geometry Type",
+            "description": "Routes by the geometry family a feature belongs to: point, curve, surface, triangle or solid.",
             "type": "object",
             "required": [
               "filterType"

@@ -774,6 +774,10 @@
           "title": "Parámetros de Cesium3DTilesWriter",
           "description": "Configuration for writing features to Cesium 3D Tiles."
         },
+        "arrayMapSeparator": {
+          "title": "Separador de Array/Map",
+          "description": "Separador que une un atributo de array o map anidado con su clave o índice hijo al aplanarlo en columnas de metadatos. Déjelo sin definir para eliminar por completo los atributos de array y map de la salida."
+        },
         "atlasExtrusion": {
           "title": "Extrusión del Atlas",
           "description": "Anillo de píxeles dibujado alrededor de cada región de textura del atlas para evitar el sangrado bilineal entre regiones vecinas. El valor predeterminado es 0 (desactivado)."
