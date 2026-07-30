@@ -160,6 +160,41 @@ impl ConvertFrame for TriangularMesh3D {
     }
 }
 
+use crate::ops::{area_2d, emit_triangles_3d, ExtractHoles, ExtractedPart};
+
+// A triangle mesh is an aggregate of faces, so it deaggregates like a polygon
+// mesh. A triangle carries no interior ring, so every part is an outer shell.
+impl ExtractHoles for TriangularMesh2D {
+    fn extract_holes(
+        &self,
+        emit: &mut dyn FnMut(Geometry, ExtractedPart),
+    ) -> Result<(), UnsupportedOperation> {
+        let vertices = self.vertices();
+        let frame = self.frame();
+        let elevation = self.elevation();
+        for [i, j, k] in self.triangles() {
+            let ring = [
+                vertices[i as usize],
+                vertices[j as usize],
+                vertices[k as usize],
+                vertices[i as usize],
+            ];
+            emit(area_2d(frame, ring, elevation), ExtractedPart::Outershell);
+        }
+        Ok(())
+    }
+}
+
+impl ExtractHoles for TriangularMesh3D {
+    fn extract_holes(
+        &self,
+        emit: &mut dyn FnMut(Geometry, ExtractedPart),
+    ) -> Result<(), UnsupportedOperation> {
+        emit_triangles_3d(self.frame(), self.vertices(), self.triangles(), emit);
+        Ok(())
+    }
+}
+
 impl Split for TriangularMesh2D {
     fn split(
         &mut self,

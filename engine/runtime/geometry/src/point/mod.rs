@@ -63,3 +63,10 @@ crate::unsupported!(Point3D: Split);
 
 crate::unsupported!(Point2D: RemoveAppearance);
 crate::unsupported!(Point3D: RemoveAppearance);
+
+crate::unsupported!(Point2D: CountHoles);
+crate::unsupported!(Point3D: CountHoles);
+
+// A point bounds no area, so there is nothing to take apart.
+crate::unsupported!(Point2D: ExtractHoles);
+crate::unsupported!(Point3D: ExtractHoles);
