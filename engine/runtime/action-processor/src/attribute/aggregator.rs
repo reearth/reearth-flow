@@ -6,7 +6,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{Context, ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{
     Attribute, AttributeValue, Attributes, Code, CodeType, CompiledCode, Feature,
@@ -22,11 +22,11 @@ pub(super) struct AttributeAggregatorFactory;
 
 impl ProcessorFactory for AttributeAggregatorFactory {
     fn name(&self) -> &str {
-        "AttributeAggregator"
+        "Attribute Aggregator"
     }
 
     fn description(&self) -> &str {
-        "Group and Aggregate Features by Attributes"
+        "Groups features by attribute values and aggregates a computed value within each group, emitting one feature per group."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -38,15 +38,15 @@ impl ProcessorFactory for AttributeAggregatorFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["aggregate"]
+        &["aggregation"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -127,31 +127,39 @@ struct AttributeAggregator {
     buffer: HashMap<AttributeValue, i64>, // string is tab
 }
 
-/// # AttributeAggregator Parameters
-/// Configure how features are grouped and aggregated based on attribute values
+/// # Attribute Aggregator Parameters
+/// Configures how features are grouped and which value is aggregated within each group.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AttributeAggregatorParam {
-    /// # List of attributes to aggregate
-    aggregate_attributes: Vec<AggregateAttribute>,
-    /// # Calculation to perform
-    calculation: Option<Code<{ CodeType::FlowExpr as u32 }>>,
-    /// # Value to use for calculation
-    calculation_value: Option<i64>,
-    /// # Attribute to store calculation result
-    calculation_attribute: Attribute,
-    /// # Method to use for aggregation
+    /// # Aggregation Method
+    /// How to aggregate the per-feature calculation value within each group: maximum, minimum, or count.
     method: Method,
+    /// # Group-By Attributes
+    /// Attributes that define each group. Each entry reads a value from an existing attribute or an expression and writes it to a new attribute on the aggregated output feature.
+    aggregate_attributes: Vec<AggregateAttribute>,
+    /// # Result Attribute
+    /// Attribute on the aggregated feature that stores the computed result.
+    calculation_attribute: Attribute,
+    /// # Calculation Value
+    /// Constant integer used as the per-feature value. Takes precedence over the calculation expression when set.
+    calculation_value: Option<i64>,
+    /// # Calculation Expression
+    /// Expression evaluated to an integer per feature, used as the per-feature value when no calculation value is set.
+    calculation: Option<Code<{ CodeType::FlowExpr as u32 }>>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AggregateAttribute {
-    /// # New attribute to create
+    /// # Output Attribute
+    /// Name of the attribute written to the aggregated feature that holds this group value.
     new_attribute: Attribute,
-    /// # Existing attribute to use
+    /// # Source Attribute
+    /// Existing attribute to read the group value from. Ignored when a group value expression is provided.
     attribute: Option<Attribute>,
-    /// # Grouping key expression for this attribute
+    /// # Group Value Expression
+    /// Expression that computes the group value. Takes precedence over the source attribute when both are set.
     attribute_value: Option<Code<{ CodeType::FlowExpr as u32 }>>,
 }
 
@@ -164,16 +172,16 @@ struct CompliledAggregateAttribute {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 enum Method {
-    /// # Maximum Value
-    /// Find the maximum value in the group
+    /// # Maximum
+    /// Keeps the largest per-feature calculation value in the group.
     #[serde(rename = "max")]
     Max,
-    /// # Minimum Value
-    /// Find the minimum value in the group
+    /// # Minimum
+    /// Keeps the smallest per-feature calculation value in the group.
     #[serde(rename = "min")]
     Min,
-    /// # Count Items
-    /// Count the number of features in the group
+    /// # Count
+    /// Sums the per-feature calculation value across the group; counts features when the value is 1.
     #[serde(rename = "count")]
     Count,
 }
@@ -253,7 +261,7 @@ impl Processor for AttributeAggregator {
     }
 
     fn name(&self) -> &str {
-        "AttributeAggregator"
+        "Attribute Aggregator"
     }
 }
 
@@ -277,7 +285,7 @@ impl AttributeAggregator {
             fw.send(ExecutorContext::new_with_context_feature_and_port(
                 &ctx,
                 feature,
-                DEFAULT_PORT.clone(),
+                FEATURES_PORT.clone(),
             ));
         });
     }
@@ -320,7 +328,7 @@ mod tests {
         let features = noop.send_features.lock().unwrap();
         let ports = noop.send_ports.lock().unwrap();
         assert!(
-            ports.iter().all(|p| *p == *DEFAULT_PORT),
+            ports.iter().all(|p| *p == *FEATURES_PORT),
             "all emissions should go to DEFAULT port"
         );
         features

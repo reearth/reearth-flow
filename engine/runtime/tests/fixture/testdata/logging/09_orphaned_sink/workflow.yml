@@ -6,19 +6,19 @@ graphs:
   - id: 7a8b9c0d-1e2f-3456-ef12-345678900009
     name: main_graph
     nodes:
-      # Connected chain: FeatureCreator → JsonWriter
+      # Connected chain: Feature Creator → JSON Writer
       - id: a1f90a3e-61d3-48e2-a328-e7226c2ad1ae
-        name: FeatureCreator
+        name: Feature Creator
         type: action
-        action: FeatureCreator
+        action: Feature Creator
         with:
           creator:
             type: flowExpr
             value: '[{"id": 1, "name": "item_1", "value": 10}]'
       - id: c1f90a3e-61d3-48e2-a328-e7226c2ad1ae
-        name: JsonWriter
+        name: JSON Writer
         type: action
-        action: JsonWriter
+        action: JSON Writer
         with:
           output:
             type: string
@@ -26,9 +26,9 @@ graphs:
 
       # Orphaned sink: no incoming edges, no ancestor source — must be silently skipped
       - id: c2f90a3e-61d3-48e2-a328-e7226c2ad1ae
-        name: OrphanedJsonWriter
+        name: OrphanedJSON Writer
         type: action
-        action: JsonWriter
+        action: JSON Writer
         with:
           output:
             type: string
@@ -37,5 +37,5 @@ graphs:
       - id: e1f90a3e-61d3-48e2-a328-e7226c2ad1ae
         from: a1f90a3e-61d3-48e2-a328-e7226c2ad1ae
         to: c1f90a3e-61d3-48e2-a328-e7226c2ad1ae
-        fromPort: default
-        toPort: default
+        fromPort: features
+        toPort: features

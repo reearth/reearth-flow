@@ -1,9 +1,9 @@
-import { CheckCircleIcon } from "@phosphor-icons/react";
 import {
-  CrossCircledIcon,
-  InfoCircledIcon,
-  UpdateIcon,
-} from "@radix-ui/react-icons";
+  ArrowsClockwiseIcon,
+  CheckCircleIcon,
+  InfoIcon,
+  XCircleIcon,
+} from "@phosphor-icons/react";
 import {
   ColumnDef,
   ColumnFiltersState,
@@ -121,14 +121,14 @@ const LogsTable = ({
             variant={getStatusValue === "ERROR" ? "default" : "outline"}
             tooltipText={t("Error")}
             onClick={() => handleStatusChange(UserFacingLogLevel.Error)}
-            icon={<CrossCircledIcon className="text-destructive" />}
+            icon={<XCircleIcon className="text-destructive" />}
           />
           <IconButton
             size="icon"
             variant={getStatusValue === "INFO" ? "default" : "outline"}
             tooltipText={t("Info")}
             onClick={() => handleStatusChange(UserFacingLogLevel.Info)}
-            icon={<InfoCircledIcon />}
+            icon={<InfoIcon />}
           />
           <IconButton
             size="icon"
@@ -142,15 +142,17 @@ const LogsTable = ({
             variant="ghost"
             tooltipText={t("Reset Logs")}
             onClick={handleResetTable}
-            icon={<UpdateIcon />}
+            icon={<ArrowsClockwiseIcon />}
           />
           {selectColumns && (
             <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="ml-auto">
-                  {t("Columns")}
-                </Button>
-              </DropdownMenuTrigger>
+              <DropdownMenuTrigger
+                render={
+                  <Button variant="outline" size="sm" className="ml-auto">
+                    {t("Columns")}
+                  </Button>
+                }
+              />
               <DropdownMenuContent align="end">
                 {table
                   .getAllColumns()

@@ -63,10 +63,10 @@ const SharedCanvasHomeMenu: React.FC<Props> = ({
       <div className="flex h-[30px] items-center gap-1">
         <DropdownMenu>
           <DropdownMenuTrigger
-            asChild
-            className="h-6 w-8 shrink-0 cursor-pointer rounded p-0.5 hover:bg-primary">
-            <DotsThreeIcon weight="light" />
-          </DropdownMenuTrigger>
+            nativeButton={false}
+            className="h-6 w-8 shrink-0 cursor-pointer rounded p-0.5 hover:bg-primary"
+            render={<DotsThreeIcon weight="light" />}
+          />
           <DropdownMenuContent
             side="bottom"
             align="start"

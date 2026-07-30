@@ -36,21 +36,26 @@ const DebugActiveRunsPopover: React.FC<Props> = ({
       onOpenChange={(open) => {
         if (!open) onPopoverClose();
       }}>
-      <PopoverTrigger asChild>
-        <div className="relative">
-          {activeUsersDebugRuns && activeUsersDebugRuns.length >= 1 && (
-            <div className="absolute top-1.5 right-0.5 h-2 w-2 shrink-0 items-center justify-center rounded-full bg-green-400 " />
-          )}
-          <IconButton
-            className="shrink-0"
-            disabled={activeUsersDebugRuns && activeUsersDebugRuns.length === 0}
-            tooltipText={t("Active Debug Runs")}
-            tooltipOffset={6}
-            icon={<BinocularsIcon weight="thin" size={18} />}
-            onClick={onShowDebugRunsPopover}
-          />
-        </div>
-      </PopoverTrigger>
+      <PopoverTrigger
+        nativeButton={false}
+        render={
+          <div className="relative">
+            {activeUsersDebugRuns && activeUsersDebugRuns.length >= 1 && (
+              <div className="absolute top-1.5 right-0.5 h-2 w-2 shrink-0 items-center justify-center rounded-full bg-green-400 " />
+            )}
+            <IconButton
+              className="shrink-0"
+              disabled={
+                activeUsersDebugRuns && activeUsersDebugRuns.length === 0
+              }
+              tooltipText={t("Active Debug Runs")}
+              tooltipOffset={6}
+              icon={<BinocularsIcon weight="thin" size={18} />}
+              onClick={onShowDebugRunsPopover}
+            />
+          </div>
+        }
+      />
       <PopoverContent
         sideOffset={8}
         collisionPadding={5}

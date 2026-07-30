@@ -12,7 +12,7 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
+    node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
 };
 use reearth_flow_storage::storage::Storage;
 use reearth_flow_types::{AttributeValue, Code, Feature, FilePath};
@@ -28,11 +28,11 @@ pub struct FilePathExtractorFactory;
 
 impl SourceFactory for FilePathExtractorFactory {
     fn name(&self) -> &str {
-        "FilePathExtractor"
+        "File Path Extractor"
     }
 
     fn description(&self) -> &str {
-        "Extracts file paths from directories or archives, creating features for each discovered file"
+        "Extracts file paths from directories or archives, creating features for each discovered file."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -44,11 +44,11 @@ impl SourceFactory for FilePathExtractorFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["file-system"]
+        &["file"]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
     fn build(
         &self,
@@ -227,7 +227,7 @@ pub async fn extract(
     for feature in features {
         sender
             .send((
-                DEFAULT_PORT.clone(),
+                FEATURES_PORT.clone(),
                 IngestionMessage::OperationEvent { feature },
             ))
             .await
@@ -246,7 +246,7 @@ pub struct FilePathExtractor {
     /// Path or expression pointing to the source directory or archive file
     source_dataset: Code,
     /// # Extract Archive
-    /// Whether to extract files from archives (zip files, etc.) or just list them
+    /// When enabled, archive files (.zip, .7z) are extracted and a feature is emitted for each contained file; when disabled, the archive is emitted as a single file path without extraction.
     extract_archive: bool,
 }
 
@@ -255,7 +255,7 @@ impl Source for FilePathExtractorSource {
     async fn initialize(&self, _ctx: NodeContext) {}
 
     fn name(&self) -> &str {
-        "FilePathExtractor"
+        "File Path Extractor"
     }
 
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {
@@ -314,7 +314,7 @@ impl Source for FilePathExtractorSource {
                 let feature = Feature::from(attribute_value);
                 sender
                     .send((
-                        DEFAULT_PORT.clone(),
+                        FEATURES_PORT.clone(),
                         IngestionMessage::OperationEvent { feature },
                     ))
                     .await
@@ -325,7 +325,7 @@ impl Source for FilePathExtractorSource {
             let feature = Feature::from(attribute_value);
             sender
                 .send((
-                    DEFAULT_PORT.clone(),
+                    FEATURES_PORT.clone(),
                     IngestionMessage::OperationEvent { feature },
                 ))
                 .await

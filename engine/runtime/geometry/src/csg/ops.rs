@@ -1,5 +1,7 @@
 use super::{Csg, ThreeDimensional};
-use crate::ops::{union_results, Aabb, BoundingBox, UnsupportedOperation};
+use crate::ops::{
+    union_results, Aabb, BoundingBox, RemoveAppearance, Translate, UnsupportedOperation,
+};
 
 impl BoundingBox for Csg {
     fn bounding_box(&self) -> Result<Aabb, UnsupportedOperation> {
@@ -21,10 +23,47 @@ fn operand_box(operand: &ThreeDimensional) -> Result<Aabb, UnsupportedOperation>
     }
 }
 
+impl RemoveAppearance for Csg {
+    fn remove_appearance(&mut self) {
+        let (left, right) = match self {
+            Csg::Union(a, b) | Csg::Intersection(a, b) | Csg::Difference(a, b) => (a, b),
+        };
+        remove_operand_appearance(left);
+        remove_operand_appearance(right);
+    }
+}
+
+/// Strip an operand's appearance, recursing into nested trees.
+fn remove_operand_appearance(operand: &mut ThreeDimensional) {
+    match operand {
+        ThreeDimensional::Solid(s) => s.remove_appearance(),
+        ThreeDimensional::Csg(c) => c.remove_appearance(),
+    }
+}
+
+impl Translate for Csg {
+    /// Shift both operands, leaving the boolean operator untouched.
+    fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
+        let (left, right) = match self {
+            Csg::Union(a, b) | Csg::Intersection(a, b) | Csg::Difference(a, b) => (a, b),
+        };
+        translate_operand(left, delta)?;
+        translate_operand(right, delta)
+    }
+}
+
+/// Shift a CSG operand, recursing into nested trees.
+fn translate_operand(operand: &mut ThreeDimensional, delta: [f64; 3]) -> crate::error::Result<()> {
+    match operand {
+        ThreeDimensional::Solid(s) => s.translate(delta),
+        ThreeDimensional::Csg(c) => c.translate(delta),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::coordinate::Coordinate;
+    use crate::coordinate::CoordinateFrame;
     use crate::solid::Solid;
     use crate::triangular_mesh::TriangularMesh3DData;
 
@@ -35,7 +74,7 @@ mod tests {
             [0u32, 1, 2],
         )
         .unwrap();
-        Solid::from_exterior(Coordinate::Euclidean, shell)
+        Solid::from_exterior(CoordinateFrame::Euclidean, shell)
     }
 
     #[test]
@@ -60,6 +99,33 @@ mod tests {
             Aabb::D3 {
                 min: [0.0, 0.0, 0.0],
                 max: [3.0, 6.0, 1.0]
+            }
+        );
+    }
+
+    #[test]
+    fn csg_translate_shifts_both_operands() {
+        let mut csg = Csg::union(solid_at([0.0, 0.0, 0.0]), solid_at([10.0, 10.0, 10.0]));
+        csg.translate([1.0, 2.0, 3.0]).unwrap();
+        assert_eq!(
+            csg.bounding_box().unwrap(),
+            Aabb::D3 {
+                min: [1.0, 2.0, 3.0],
+                max: [12.0, 13.0, 14.0]
+            }
+        );
+    }
+
+    #[test]
+    fn csg_translate_recurses_into_nested_trees() {
+        let inner = Csg::difference(solid_at([0.0, 0.0, 0.0]), solid_at([2.0, 0.0, 0.0]));
+        let mut outer = Csg::intersection(inner, solid_at([0.0, 5.0, 0.0]));
+        outer.translate([-1.0, 0.0, 0.5]).unwrap();
+        assert_eq!(
+            outer.bounding_box().unwrap(),
+            Aabb::D3 {
+                min: [-1.0, 0.0, 0.5],
+                max: [2.0, 6.0, 1.5]
             }
         );
     }

@@ -1,26 +1,33 @@
 use std::collections::HashMap;
-use std::sync::Arc;
 
 use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
-use reearth_flow_types::Geometry;
 use serde_json::Value;
+
+#[cfg(not(feature = "new-geometry"))]
+use std::sync::Arc;
+
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_types::Geometry;
+
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::Geometry;
 
 #[derive(Debug, Clone, Default)]
 pub struct GeometryRemoverFactory;
 
 impl ProcessorFactory for GeometryRemoverFactory {
     fn name(&self) -> &str {
-        "GeometryRemover"
+        "Geometry Remover"
     }
 
     fn description(&self) -> &str {
-        "Removes geometry from a feature"
+        "Discards a feature's geometry, keeping its attributes."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -32,11 +39,11 @@ impl ProcessorFactory for GeometryRemoverFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -62,11 +69,22 @@ impl Processor for GeometryRemover {
     ) -> Result<(), BoxedError> {
         let mut feature = ctx.feature.clone();
         feature.geometry = Arc::new(Geometry::default());
-        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
         Ok(())
     }
 
-    #[cfg(not(feature = "new-geometry"))]
+    #[cfg(feature = "new-geometry")]
+    fn process(
+        &mut self,
+        ctx: ExecutorContext,
+        fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        let mut feature = ctx.feature.clone();
+        feature.set_geometry(Geometry::None);
+        fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
+        Ok(())
+    }
+
     fn finish(
         &mut self,
         _ctx: NodeContext,
@@ -76,6 +94,6 @@ impl Processor for GeometryRemover {
     }
 
     fn name(&self) -> &str {
-        "GeometryRemover"
+        "Geometry Remover"
     }
 }

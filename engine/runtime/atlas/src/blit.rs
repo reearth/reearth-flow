@@ -1,15 +1,22 @@
+#[cfg(not(feature = "new-geometry"))]
 use std::collections::HashMap;
+#[cfg(not(feature = "new-geometry"))]
 use std::path::PathBuf;
 
+#[cfg(not(feature = "new-geometry"))]
 use super::damage::TextureDamage;
 use super::Rect;
+#[cfg(not(feature = "new-geometry"))]
 use image::imageops::FilterType;
-use image::{GenericImage, Rgba, RgbaImage};
+use image::RgbaImage;
+#[cfg(not(feature = "new-geometry"))]
+use image::{GenericImage, Rgba};
 
 /// Maps texture path → per-region `(src_rect, atlas_placement)` pairs.
+#[cfg(not(feature = "new-geometry"))]
 pub(super) type TextureFrames = HashMap<String, Vec<(Rect, Rect)>>;
 
-fn fill_frame_extrusion(atlas: &mut RgbaImage, frame: Rect, extrusion: u32) {
+pub(crate) fn fill_frame_extrusion(atlas: &mut RgbaImage, frame: Rect, extrusion: u32) {
     if extrusion == 0 || frame.w == 0 || frame.h == 0 {
         return;
     }
@@ -46,6 +53,7 @@ fn fill_frame_extrusion(atlas: &mut RgbaImage, frame: Rect, extrusion: u32) {
 
 /// Blit all damage regions into an atlas using pre-computed placements from `plan_layout`.
 /// `placements[i]` is the atlas-space rect for the i-th rect in the flattened damage list.
+#[cfg(not(feature = "new-geometry"))]
 pub(super) fn blit(
     damage_list: &[(PathBuf, TextureDamage)],
     atlas_size: (u32, u32),
@@ -114,7 +122,7 @@ pub(super) fn blit(
     Ok((atlas, texture_frames))
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(feature = "new-geometry")))]
 mod tests {
     use super::*;
 

@@ -1,0 +1,36 @@
+{
+  "type": "FeatureCollection",
+  "crs": {
+    "type": "name",
+    "properties": {
+      "name": "urn:ogc:def:crs:EPSG::6675"
+    }
+  },
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [18007.41981008255, -136267.95117658994, 0.0],
+            [18007.441531853445, -136279.04372985862, 0.0],
+            [18002.864913805166, -136279.05269077883, 10.0],
+            [18007.41981008255, -136267.95117658994, 10.0],
+            [18007.41981008255, -136267.95117658994, 0.0]
+          ]
+        ]
+      },
+      "properties": {
+        "check": "LOD2以上境界面のエラー",
+        "issue": "NonPlanarSurface",
+        "filename": "49303425_bldg_6697_op.gml",
+        "featureType": "con:WallSurface",
+        "gmlId": "wall_w_3cc56ca3-af5a-48a9-beef-5cc5bed76265",
+        "parentGmlId": "bldg_3cc56ca3-af5a-48a9-beef-5cc5bed76265",
+        "rootGmlId": "bldg_3cc56ca3-af5a-48a9-beef-5cc5bed76265",
+        "lod": "2"
+      }
+    }
+  ]
+}

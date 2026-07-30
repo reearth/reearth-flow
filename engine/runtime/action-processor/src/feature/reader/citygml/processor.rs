@@ -8,7 +8,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Code, CompiledCode};
 use schemars::JsonSchema;
@@ -30,11 +30,11 @@ pub(crate) struct FeatureCityGmlReaderFactory;
 
 impl ProcessorFactory for FeatureCityGmlReaderFactory {
     fn name(&self) -> &str {
-        "FeatureCityGmlReader"
+        "Feature CityGML Reader"
     }
 
     fn description(&self) -> &str {
-        "Reads and processes features from CityGML files with optional flattening"
+        "Reads CityGML features from a file path referenced by the incoming feature, optionally extracting nested child city objects as separate features."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -50,11 +50,11 @@ impl ProcessorFactory for FeatureCityGmlReaderFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -123,7 +123,7 @@ pub struct FeatureCityGmlReader {
 
 impl std::fmt::Debug for FeatureCityGmlReader {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.debug_struct("FeatureCityGmlReader")
+        f.debug_struct("Feature CityGML Reader")
             .field("cache_paths", &self.cache_paths.len())
             .field("store_pool", &self.store_pool.len())
             .finish_non_exhaustive()
@@ -247,6 +247,6 @@ impl Processor for FeatureCityGmlReader {
     }
 
     fn name(&self) -> &str {
-        "FeatureCityGmlReader"
+        "Feature CityGML Reader"
     }
 }

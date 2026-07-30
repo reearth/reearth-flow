@@ -100,7 +100,8 @@ const AssetsDialog: React.FC<Props> = ({ onDialogClose, onAssetSelect }) => {
                 />
                 <Select
                   value={currentSortValue}
-                  onValueChange={handleSortChange}>
+                  onValueChange={(v) => v != null && handleSortChange(v)}
+                  items={sortOptions}>
                   <SelectTrigger className="h-[36px] w-[150px]">
                     <SelectValue />
                   </SelectTrigger>

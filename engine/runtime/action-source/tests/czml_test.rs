@@ -7,11 +7,11 @@ mod tests {
 
         let has_czml_reader = ACTION_FACTORY_MAPPINGS
             .keys()
-            .any(|key| key == "CzmlReader");
+            .any(|key| key == "CZML Reader");
 
         assert!(
             has_czml_reader,
-            "CzmlReader should be registered in ACTION_FACTORY_MAPPINGS"
+            "CZML Reader should be registered in ACTION_FACTORY_MAPPINGS"
         );
     }
 }

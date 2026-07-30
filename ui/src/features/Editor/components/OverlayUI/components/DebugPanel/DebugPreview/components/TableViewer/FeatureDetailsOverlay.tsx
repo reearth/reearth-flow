@@ -347,21 +347,24 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
           </div>
         ) : valueType === "object" || valueType === "array" ? (
           <Collapsible defaultOpen={true}>
-            <CollapsibleTrigger asChild className="w-full">
-              <Button
-                variant="ghost"
-                type="button"
-                className="group flex items-center justify-between border-0 bg-transparent p-0 hover:cursor-pointer hover:bg-transparent"
-                aria-expanded="true">
-                <span className="group flex items-center text-xs font-medium text-muted-foreground">
-                  <CaretDownIcon
-                    size={12}
-                    className="mr-1 transition-transform group-data-[state=open]:rotate-180"
-                  />
-                  {valueType}
-                </span>
-              </Button>
-            </CollapsibleTrigger>
+            <CollapsibleTrigger
+              className="w-full"
+              render={
+                <Button
+                  variant="ghost"
+                  type="button"
+                  className="group flex items-center justify-between border-0 bg-transparent p-0 hover:cursor-pointer hover:bg-transparent"
+                  aria-expanded="true">
+                  <span className="group flex items-center text-xs font-medium text-muted-foreground">
+                    <CaretDownIcon
+                      size={12}
+                      className="mr-1 transition-transform group-data-[panel-open]:rotate-180"
+                    />
+                    {valueType}
+                  </span>
+                </Button>
+              }
+            />
             <CollapsibleContent>
               <div className="mt-1 rounded-md bg-muted/30 p-2">
                 <pre className="text-xs break-all whitespace-pre-wrap">

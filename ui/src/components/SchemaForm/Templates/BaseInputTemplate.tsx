@@ -73,9 +73,9 @@ const BaseInputTemplate = <
     }
 
     if (hasExprSupport) {
-      // Only treat as Python script if it's specifically PythonScriptProcessor and the field is 'script'
+      // Only treat as Python script if it's specifically Python Script Processor and the field is 'script'
       isPythonField =
-        actionName === "PythonScriptProcessor" && name === "script";
+        actionName === "Python Script Processor" && name === "script";
       isExprField = !isPythonField;
     }
   }

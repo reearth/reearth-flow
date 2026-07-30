@@ -25,17 +25,15 @@ export default defineConfig({
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
   workers: 5,
-  reporter: process.env.CI
-    ? [["html", { open: "never" }], ["list"]]
-    : [["html"], ["list"]],
+  reporter: [["list"], ["allure-playwright", { resultsDir: "allure-results" }]],
   use: {
     baseURL: process.env.FLOW_DASHBOARD_E2E_BASEURL,
     storageState: process.env.SKIP_STORAGE_STATE ? undefined : STORAGE_STATE,
     actionTimeout: 25_000,
     navigationTimeout: 25_000,
-    trace: "on-first-retry",
+    trace: "retain-on-failure",
     screenshot: "only-on-failure",
-    video: "retain-on-failure",
+    video: "on",
     viewport: { width: 1920, height: 1080 },
     locale: "en-US",
   },

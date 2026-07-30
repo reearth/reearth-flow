@@ -6,7 +6,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Code, CodeType, CompiledCode};
 use schemars::JsonSchema;
@@ -23,11 +23,11 @@ pub(super) struct FeatureFilterFactory;
 
 impl ProcessorFactory for FeatureFilterFactory {
     fn name(&self) -> &str {
-        "FeatureFilter"
+        "Feature Filter"
     }
 
     fn description(&self) -> &str {
-        "Filter Features Based on Custom Conditions"
+        "Routes features to named output ports based on user-defined filter conditions."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -39,7 +39,7 @@ impl ProcessorFactory for FeatureFilterFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
@@ -116,7 +116,7 @@ impl ProcessorFactory for FeatureFilterFactory {
         // output ports are dynamically derived from `with["conditions"]` (mirrors
         // the dynamic-port derivation in `builder_dag`).
         let input = inputs
-            .get(&DEFAULT_PORT.clone())
+            .get(&FEATURES_PORT.clone())
             .cloned()
             .unwrap_or_else(AttrSchema::open);
 
@@ -159,9 +159,11 @@ struct FeatureFilterParam {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct Condition {
-    /// # Condition expression
+    /// # Condition Expression
+    /// Boolean expression evaluated against each feature; features for which it returns true are routed to this condition's output port.
     expr: Code<{ CodeType::FlowExpr as u32 }>,
-    /// # Output port
+    /// # Output Port
+    /// Name of the output port that receives features matching this condition.
     output_port: Port,
 }
 
@@ -216,7 +218,7 @@ impl Processor for FeatureFilter {
     }
 
     fn name(&self) -> &str {
-        "FeatureFilter"
+        "Feature Filter"
     }
 
     fn num_threads(&self) -> usize {
@@ -242,7 +244,7 @@ mod tests {
             AttrField::always(AttrType::Number),
         );
         let mut inputs = HashMap::new();
-        inputs.insert(DEFAULT_PORT.clone(), input.clone());
+        inputs.insert(FEATURES_PORT.clone(), input.clone());
 
         let out = FeatureFilterFactory
             .infer_output_schema(&inputs, &None)
@@ -262,7 +264,7 @@ mod tests {
             AttrField::always(AttrType::String),
         );
         let mut inputs = HashMap::new();
-        inputs.insert(DEFAULT_PORT.clone(), input.clone());
+        inputs.insert(FEATURES_PORT.clone(), input.clone());
 
         // Condition param shape: { conditions: [ { expr, outputPort } ] }.
         let with: HashMap<String, Value> = serde_json::from_value(serde_json::json!({

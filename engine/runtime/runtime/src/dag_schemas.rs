@@ -587,7 +587,7 @@ mod tests {
 
     use crate::event::EventHub;
     use crate::executor_operation::NodeContext;
-    use crate::node::{Processor, ProcessorFactory, Source, SourceFactory, DEFAULT_PORT};
+    use crate::node::{Processor, ProcessorFactory, Source, SourceFactory, FEATURES_PORT};
 
     #[derive(Debug, Clone)]
     struct StubSource;
@@ -599,7 +599,7 @@ mod tests {
             None
         }
         fn get_output_ports(&self) -> Vec<Port> {
-            vec![DEFAULT_PORT.clone()]
+            vec![FEATURES_PORT.clone()]
         }
         fn build(
             &self,
@@ -623,10 +623,10 @@ mod tests {
             None
         }
         fn get_input_ports(&self) -> Vec<Port> {
-            vec![DEFAULT_PORT.clone()]
+            vec![FEATURES_PORT.clone()]
         }
         fn get_output_ports(&self) -> Vec<Port> {
-            vec![DEFAULT_PORT.clone()]
+            vec![FEATURES_PORT.clone()]
         }
         fn build(
             &self,
@@ -686,9 +686,9 @@ mod tests {
         dag.connect_with_index(
             EdgeId::new(Uuid::new_v4().to_string()),
             from,
-            &DEFAULT_PORT,
+            &FEATURES_PORT,
             to,
-            &DEFAULT_PORT,
+            &FEATURES_PORT,
             None,
         );
     }

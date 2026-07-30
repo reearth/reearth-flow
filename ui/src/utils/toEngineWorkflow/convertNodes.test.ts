@@ -65,7 +65,7 @@ describe("convertNodes", () => {
         type: "reader",
         position: { x: 22, y: 22 },
         data: {
-          officialName: "GeoJsonReader",
+          officialName: "GeoJSON Reader",
           params: {
             dataset: { value: "https://example.com/a.geojson", type: "string" },
             inline: { value: "", type: "string" },

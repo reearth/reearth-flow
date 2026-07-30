@@ -5,7 +5,7 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
+    node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
 };
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -21,11 +21,11 @@ pub(crate) struct CsvReaderFactory;
 
 impl SourceFactory for CsvReaderFactory {
     fn name(&self) -> &str {
-        "CsvReader"
+        "CSV Reader"
     }
 
     fn description(&self) -> &str {
-        "Read Features from CSV or TSV File"
+        "Reads features from CSV and TSV files."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -41,7 +41,7 @@ impl SourceFactory for CsvReaderFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -99,26 +99,15 @@ pub(super) struct CsvReader {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct CsvReaderParam {
+    /// # File Format
+    /// Delimiter format of the input file.
+    format: CsvFormat,
     #[serde(flatten)]
     pub(super) common_property: FileReaderCommonParam,
     #[serde(flatten)]
     property: csv::CsvReaderParam,
-    /// # File Format
-    /// Choose the delimiter format for the input file
-    format: CsvFormat,
     /// # Character Encoding
-    ///
-    /// Character encoding for the CSV/TSV file.
-    /// If not specified, defaults to UTF-8.
-    ///
-    /// Supported encodings include:
-    /// - **UTF-8** - Unicode UTF-8 (default)
-    /// - **Shift-JIS** - Japanese encoding
-    /// - **EUC-JP** - Japanese encoding
-    /// - **Windows Code Pages** - Windows-1250 through Windows-1258
-    /// - **ISO-8859 family** - ISO-8859-1 through ISO-8859-16
-    ///
-    /// All encoding labels are case-insensitive.
+    /// Character encoding of the input file, such as "UTF-8" or "Shift-JIS". Defaults to UTF-8 when omitted; labels are case-insensitive.
     encoding: Option<String>,
 }
 
@@ -147,7 +136,7 @@ impl Source for CsvReader {
     async fn initialize(&self, _ctx: NodeContext) {}
 
     fn name(&self) -> &str {
-        "CsvReader"
+        "CSV Reader"
     }
 
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {

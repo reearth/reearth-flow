@@ -1,11 +1,9 @@
 use super::{Polygon2D, Polygon3D};
-use crate::coordinate::{Coordinate, EpsgCode};
+use crate::coordinate::{CoordinateFrame, EpsgCode};
 use crate::ops::reproject::{transform_coords_2d, transform_coords_3d};
-use crate::ops::triangulation::{
-    expand_appearance, retarget_uv, triangulate_2d, triangulate_3d, Cache,
-};
+use crate::ops::triangulation::{expand_appearance, triangulate_2d, triangulate_3d, Cache};
 use crate::ops::{
-    Aabb, BoundingBox, Reproject, ReprojectionCache, Triangulate, UnsupportedOperation,
+    lift_coords, Aabb, BoundingBox, Reproject, ReprojectionCache, Triangulate, UnsupportedOperation,
 };
 use crate::triangular_mesh::{TriangularMesh2D, TriangularMesh3D};
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
@@ -31,18 +29,60 @@ impl BoundingBox for Polygon3D {
     }
 }
 
+impl Polygon2D {
+    /// Move the face out, leaving an empty husk.
+    fn take(&mut self) -> Self {
+        Self {
+            frame: std::mem::take(&mut self.frame),
+            coords: std::mem::take(&mut self.coords),
+            interior_offsets: std::mem::take(&mut self.interior_offsets),
+            z: self.z.take(),
+            appearance: self.appearance.take(),
+        }
+    }
+
+    /// The leaf moved out and wrapped as a [`Geometry`].
+    fn take_geometry(&mut self) -> Geometry {
+        Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(self.take())))
+    }
+}
+
+impl Polygon3D {
+    /// Move the face out, leaving an empty husk.
+    fn take(&mut self) -> Self {
+        Self {
+            frame: std::mem::take(&mut self.frame),
+            coords: std::mem::take(&mut self.coords),
+            interior_offsets: std::mem::take(&mut self.interior_offsets),
+            appearance: self.appearance.take(),
+        }
+    }
+
+    /// The leaf moved out and wrapped as a [`Geometry`].
+    fn take_geometry(&mut self) -> Geometry {
+        Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(self.take())))
+    }
+}
+
 impl Reproject for Polygon2D {
     fn reproject(
         &mut self,
         target: EpsgCode,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
-        let from = self.coordinate.require_crs()?;
-        if from != target {
-            transform_coords_2d(cache, from, target, &mut self.coords, self.z.as_deref_mut())?;
-            self.coordinate = Coordinate::Crs(target);
+    ) -> crate::error::Result<Geometry> {
+        let from = self.frame.require_crs()?;
+        if from == target {
+            return Ok(self.take_geometry());
         }
-        Ok(())
+        if self.z.is_some() {
+            return self.take().into_3d().reproject(target, cache);
+        }
+        let mut p = self.take();
+        transform_coords_2d(cache, from, target, &mut p.coords)?;
+        p.frame = CoordinateFrame::Crs(target);
+        Ok(Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(
+            Box::new(p),
+        )))
     }
 }
 
@@ -51,13 +91,70 @@ impl Reproject for Polygon3D {
         &mut self,
         target: EpsgCode,
         cache: &mut ReprojectionCache,
-    ) -> crate::error::Result<()> {
-        let from = self.coordinate.require_crs()?;
+    ) -> crate::error::Result<Geometry> {
+        let from = self.frame.require_crs()?;
+        let mut p = self.take();
         if from != target {
-            transform_coords_3d(cache, from, target, &mut self.coords)?;
-            self.coordinate = Coordinate::Crs(target);
+            transform_coords_3d(cache, from, target, &mut p.coords)?;
+            p.frame = CoordinateFrame::Crs(target);
         }
+        Ok(Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(
+            Box::new(p),
+        )))
+    }
+}
+
+use crate::ops::{plan_frame_step, translate_2d, translate_3d, ConvertFrame, FrameStep, Translate};
+
+impl Translate for Polygon2D {
+    fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
+        translate_2d(&mut self.coords, &mut self.z, delta);
         Ok(())
+    }
+}
+
+impl Translate for Polygon3D {
+    fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
+        translate_3d(&mut self.coords, delta);
+        Ok(())
+    }
+}
+
+impl ConvertFrame for Polygon2D {
+    fn convert_frame(
+        &mut self,
+        target: &CoordinateFrame,
+        base_point: Option<[f64; 3]>,
+        cache: &mut ReprojectionCache,
+    ) -> crate::error::Result<Geometry> {
+        match plan_frame_step(&self.frame, target, base_point)? {
+            FrameStep::Noop => Ok(self.take_geometry()),
+            FrameStep::Reproject(to) => self.reproject(to, cache),
+            FrameStep::Translate(offset, frame) => {
+                self.translate(offset)?;
+                self.frame = frame;
+                Ok(self.take_geometry())
+            }
+        }
+    }
+}
+
+impl ConvertFrame for Polygon3D {
+    fn convert_frame(
+        &mut self,
+        target: &CoordinateFrame,
+        base_point: Option<[f64; 3]>,
+        cache: &mut ReprojectionCache,
+    ) -> crate::error::Result<Geometry> {
+        match plan_frame_step(&self.frame, target, base_point)? {
+            FrameStep::Noop => Ok(self.take_geometry()),
+            FrameStep::Reproject(to) => self.reproject(to, cache),
+            FrameStep::Translate(offset, frame) => {
+                self.translate(offset)?;
+                self.frame = frame;
+                Ok(self.take_geometry())
+            }
+        }
     }
 }
 
@@ -77,50 +174,31 @@ impl Triangulate for Polygon2D {
         // earcut emits triangle corner indices into the gathered ring vertices
         // (3 per triangle, each < the vertex count), so the unchecked assembly is
         // sound. The gathered `verts` is the output mesh's own pool (not scratch).
-        let mut mesh = match &self.z {
-            None => {
-                let mut verts: Vec<[f64; 2]> = Vec::with_capacity(buffers.positions.len());
-                // SAFETY: `positions` are in-range indices into `coords`.
-                verts.extend(
-                    buffers
-                        .positions
-                        .iter()
-                        .map(|&i| unsafe { *self.coords.get_unchecked(i as usize) }),
-                );
-                triangulate_2d(earcut, &verts, &buffers.holes, &mut buffers.out);
-                // SAFETY: every earcut index is `< verts.len()`; count is a multiple of 3.
-                unsafe {
-                    TriangularMesh2D::from_parts_unchecked(
-                        self.coordinate.clone(),
-                        verts,
-                        buffers.out.len() / 3,
-                        buffers.out.iter().copied(),
-                    )
-                }
-            }
-            Some(z) => {
-                let mut verts: Vec<[f64; 3]> = Vec::with_capacity(buffers.positions.len());
-                verts.extend(buffers.positions.iter().map(|&i| {
-                    let i = i as usize;
-                    // SAFETY: `positions` index `coords`, and `z` is parallel to `coords`.
-                    let [x, y] = unsafe { *self.coords.get_unchecked(i) };
-                    [x, y, unsafe { *z.get_unchecked(i) }]
-                }));
-                // Triangulate the planar (x, y) footprint; elevation rides along.
-                earcut.earcut(
-                    verts.iter().map(|&[x, y, _]| [x, y]),
-                    &buffers.holes,
-                    &mut buffers.out,
-                );
-                // SAFETY: every earcut index is `< verts.len()`; count is a multiple of 3.
-                unsafe {
-                    TriangularMesh2D::from_parts_with_elevation_unchecked(
-                        self.coordinate.clone(),
-                        verts,
-                        buffers.out.len() / 3,
-                        buffers.out.iter().copied(),
-                    )
-                }
+        let mut verts: Vec<[f64; 2]> = Vec::with_capacity(buffers.positions.len());
+        // SAFETY: `positions` are in-range indices into `coords`.
+        verts.extend(
+            buffers
+                .positions
+                .iter()
+                .map(|&i| unsafe { *self.coords.get_unchecked(i as usize) }),
+        );
+        triangulate_2d(earcut, &verts, &buffers.holes, &mut buffers.out);
+        // SAFETY: every earcut index is `< verts.len()`; count is a multiple of 3.
+        let mut mesh = unsafe {
+            match self.z {
+                None => TriangularMesh2D::from_parts_unchecked(
+                    self.frame.clone(),
+                    verts,
+                    buffers.out.len() / 3,
+                    buffers.out.iter().copied(),
+                ),
+                Some(elevation) => TriangularMesh2D::from_parts_at_elevation_unchecked(
+                    self.frame.clone(),
+                    verts,
+                    buffers.out.len() / 3,
+                    buffers.out.iter().copied(),
+                    elevation,
+                ),
             }
         };
         let src_corner: Vec<u32> = buffers
@@ -128,15 +206,12 @@ impl Triangulate for Polygon2D {
             .iter()
             .map(|&c| buffers.positions[c as usize])
             .collect();
-        let uv_sets = std::mem::take(&mut self.uv_sets)
-            .into_iter()
-            .map(|uv| retarget_uv(uv, &src_corner))
-            .collect();
         let appearance = expand_appearance(
             std::mem::take(&mut self.appearance),
             &[(buffers.out.len() / 3) as u32],
+            &src_corner,
         );
-        mesh.set_raw_appearance(uv_sets, appearance);
+        mesh.set_raw_appearance(appearance);
         Ok(Geometry::Euclidean2D(Euclidean2DGeometry::TriangularMesh(
             Box::new(mesh),
         )))
@@ -162,11 +237,11 @@ impl Triangulate for Polygon3D {
         );
         buffers.out.clear();
         buffers.out.reserve(3 * verts.len());
-        triangulate_3d(earcut, &verts, num_outer, &buffers.holes, &mut buffers.out);
+        let _ = triangulate_3d(earcut, &verts, num_outer, &buffers.holes, &mut buffers.out);
         // SAFETY: every earcut index is `< verts.len()`; count is a multiple of 3.
         let mut mesh = unsafe {
             TriangularMesh3D::from_parts_unchecked(
-                self.coordinate.clone(),
+                self.frame.clone(),
                 verts,
                 buffers.out.len() / 3,
                 buffers.out.iter().copied(),
@@ -177,15 +252,12 @@ impl Triangulate for Polygon3D {
             .iter()
             .map(|&c| buffers.positions[c as usize])
             .collect();
-        let uv_sets = std::mem::take(&mut self.uv_sets)
-            .into_iter()
-            .map(|uv| retarget_uv(uv, &src_corner))
-            .collect();
         let appearance = expand_appearance(
             std::mem::take(&mut self.appearance),
             &[(buffers.out.len() / 3) as u32],
+            &src_corner,
         );
-        mesh.set_raw_appearance(uv_sets, appearance);
+        mesh.set_raw_appearance(appearance);
         Ok(Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(
             Box::new(mesh),
         )))
@@ -235,10 +307,122 @@ fn open_ring_positions<const N: usize>(
     num_outer
 }
 
+use crate::ops::{ForceTwoDimension, ForceTwoDimensionError};
+
+impl ForceTwoDimension for Polygon2D {
+    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, ForceTwoDimensionError> {
+        let frame = self.frame.demote_to_2d()?;
+        self.z = None; // drop any 2.5D elevation; rings and appearance carry over
+        Ok(Euclidean2DGeometry::Polygon(Box::new(Polygon2D {
+            frame,
+            coords: std::mem::take(&mut self.coords),
+            interior_offsets: std::mem::take(&mut self.interior_offsets),
+            z: None,
+            appearance: self.appearance.take(),
+        })))
+    }
+}
+
+impl ForceTwoDimension for Polygon3D {
+    fn force_2d(&mut self) -> Result<Euclidean2DGeometry, ForceTwoDimensionError> {
+        // Only the coordinate embedding and the frame's dimensionality change;
+        // ring offsets and appearance (including per-corner UV, which is not
+        // indexed by Z) carry over.
+        let frame = self.frame.demote_to_2d()?;
+        let coords = std::mem::take(&mut self.coords)
+            .iter()
+            .map(|&[x, y, _]| [x, y])
+            .collect();
+        Ok(Euclidean2DGeometry::Polygon(Box::new(Polygon2D {
+            frame,
+            coords,
+            interior_offsets: std::mem::take(&mut self.interior_offsets),
+            z: None,
+            appearance: self.appearance.take(),
+        })))
+    }
+}
+
+impl Polygon2D {
+    /// The 3D counterpart of this leaf, with every coordinate placed at the
+    /// elevation the leaf lies at, or at `0.0` when it carries none.
+    pub(crate) fn into_3d(self) -> Polygon3D {
+        Polygon3D {
+            frame: self.frame,
+            coords: lift_coords(self.coords.iter(), self.z).into_boxed_slice(),
+            interior_offsets: self.interior_offsets,
+            appearance: self.appearance,
+        }
+    }
+}
+
+use crate::ops::{
+    emit_face_2d, emit_face_3d, CountHoles, ExtractHoles, ExtractedPart, RemoveAppearance,
+};
+
+// One offset per interior ring, so the count is the offsets' length.
+impl CountHoles for Polygon2D {
+    fn count_holes(&self) -> usize {
+        self.interior_offsets.len()
+    }
+}
+
+impl CountHoles for Polygon3D {
+    fn count_holes(&self) -> usize {
+        self.interior_offsets.len()
+    }
+}
+
+// A face with no exterior ring bounds no area, so it is not area geometry to
+// take apart — the one case where a polygon itself is rejected.
+impl ExtractHoles for Polygon2D {
+    fn extract_holes(
+        &self,
+        emit: &mut dyn FnMut(Geometry, ExtractedPart),
+    ) -> Result<(), UnsupportedOperation> {
+        if emit_face_2d(self, emit) {
+            Ok(())
+        } else {
+            Err(UnsupportedOperation {
+                geometry: "Polygon2D",
+                operation: "extract_holes",
+            })
+        }
+    }
+}
+
+impl ExtractHoles for Polygon3D {
+    fn extract_holes(
+        &self,
+        emit: &mut dyn FnMut(Geometry, ExtractedPart),
+    ) -> Result<(), UnsupportedOperation> {
+        if emit_face_3d(self, emit) {
+            Ok(())
+        } else {
+            Err(UnsupportedOperation {
+                geometry: "Polygon3D",
+                operation: "extract_holes",
+            })
+        }
+    }
+}
+
+impl RemoveAppearance for Polygon2D {
+    fn remove_appearance(&mut self) {
+        *self.appearance_mut() = None;
+    }
+}
+
+impl RemoveAppearance for Polygon3D {
+    fn remove_appearance(&mut self) {
+        *self.appearance_mut() = None;
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::coordinate::Coordinate;
+    use crate::coordinate::CoordinateFrame;
 
     #[test]
     fn polygon2d_box_is_the_exterior_extent() {
@@ -246,7 +430,7 @@ mod tests {
         // box is the exterior's.
         let exterior = [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]];
         let hole = vec![[1.0, 1.0], [2.0, 1.0], [2.0, 2.0], [1.0, 1.0]];
-        let p = Polygon2D::from_rings(Coordinate::Euclidean, exterior, vec![hole]);
+        let p = Polygon2D::from_rings(CoordinateFrame::Euclidean, exterior, vec![hole]);
         assert_eq!(
             p.bounding_box().unwrap(),
             Aabb::D2 {
@@ -273,8 +457,11 @@ mod tests {
     #[test]
     fn polygon2d_square_triangulates_to_two_triangles() {
         let square = [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]];
-        let mut p =
-            Polygon2D::from_rings(Coordinate::Euclidean, square, Vec::<Vec<[f64; 2]>>::new());
+        let mut p = Polygon2D::from_rings(
+            CoordinateFrame::Euclidean,
+            square,
+            Vec::<Vec<[f64; 2]>>::new(),
+        );
         let g = p.triangulate(&mut Cache::new()).unwrap();
         let m = tri_mesh_2d(&g);
         assert_eq!(m.num_triangles(), 2);
@@ -287,7 +474,7 @@ mod tests {
         // A 4-vertex square with a 4-vertex square hole: earcut yields 8 triangles.
         let exterior = [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]];
         let hole = vec![[1.0, 1.0], [3.0, 1.0], [3.0, 3.0], [1.0, 3.0], [1.0, 1.0]];
-        let mut p = Polygon2D::from_rings(Coordinate::Euclidean, exterior, vec![hole]);
+        let mut p = Polygon2D::from_rings(CoordinateFrame::Euclidean, exterior, vec![hole]);
         let g = p.triangulate(&mut Cache::new()).unwrap();
         let m = tri_mesh_2d(&g);
         assert_eq!(m.num_triangles(), 8);
@@ -295,21 +482,19 @@ mod tests {
 
     #[test]
     fn polygon2d_preserves_elevation() {
-        let g = Polygon2D::from_rings_with_elevation(
-            Coordinate::Euclidean,
-            [
-                [0.0, 0.0, 10.0],
-                [4.0, 0.0, 11.0],
-                [4.0, 4.0, 12.0],
-                [0.0, 0.0, 10.0],
-            ],
-            Vec::<Vec<[f64; 3]>>::new(),
+        let g = Polygon2D::from_rings_at_elevation(
+            CoordinateFrame::Euclidean,
+            [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 0.0]],
+            Vec::<Vec<[f64; 2]>>::new(),
+            10.0,
         )
         .triangulate(&mut Cache::new())
         .unwrap();
-        // A 2.5D polygon stays a 2D mesh (the elevation rides along in the z buffer).
+        // A 2.5D polygon stays a 2D mesh, tessellated at the same one elevation.
         assert!(matches!(g, Geometry::Euclidean2D(_)));
-        assert_eq!(tri_mesh_2d(&g).num_triangles(), 1);
+        let m = tri_mesh_2d(&g);
+        assert_eq!(m.num_triangles(), 1);
+        assert_eq!(m.elevation(), Some(10.0));
     }
 
     #[test]
@@ -322,8 +507,11 @@ mod tests {
             [0.0, 0.0, 4.0],
             [0.0, 0.0, 0.0],
         ];
-        let mut p =
-            Polygon3D::from_rings(Coordinate::Euclidean, square, Vec::<Vec<[f64; 3]>>::new());
+        let mut p = Polygon3D::from_rings(
+            CoordinateFrame::Euclidean,
+            square,
+            Vec::<Vec<[f64; 3]>>::new(),
+        );
         let g = p.triangulate(&mut Cache::new()).unwrap();
         let m = tri_mesh_3d(&g);
         assert_eq!(m.num_triangles(), 2);
@@ -337,13 +525,17 @@ mod tests {
         let mut cache = Cache::new();
         let square = [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]];
 
-        let a = Polygon2D::from_rings(Coordinate::Euclidean, square, Vec::<Vec<[f64; 2]>>::new())
-            .triangulate(&mut cache)
-            .unwrap();
+        let a = Polygon2D::from_rings(
+            CoordinateFrame::Euclidean,
+            square,
+            Vec::<Vec<[f64; 2]>>::new(),
+        )
+        .triangulate(&mut cache)
+        .unwrap();
         assert_eq!(tri_mesh_2d(&a).num_triangles(), 2);
 
         let hole = vec![[1.0, 1.0], [3.0, 1.0], [3.0, 3.0], [1.0, 3.0], [1.0, 1.0]];
-        let b = Polygon2D::from_rings(Coordinate::Euclidean, square, vec![hole])
+        let b = Polygon2D::from_rings(CoordinateFrame::Euclidean, square, vec![hole])
             .triangulate(&mut cache)
             .unwrap();
         assert_eq!(tri_mesh_2d(&b).num_triangles(), 8);
@@ -355,9 +547,13 @@ mod tests {
             [0.0, 0.0, 4.0],
             [0.0, 0.0, 0.0],
         ];
-        let c = Polygon3D::from_rings(Coordinate::Euclidean, face3d, Vec::<Vec<[f64; 3]>>::new())
-            .triangulate(&mut cache)
-            .unwrap();
+        let c = Polygon3D::from_rings(
+            CoordinateFrame::Euclidean,
+            face3d,
+            Vec::<Vec<[f64; 3]>>::new(),
+        )
+        .triangulate(&mut cache)
+        .unwrap();
         assert_eq!(tri_mesh_3d(&c).num_triangles(), 2);
     }
 
@@ -370,7 +566,11 @@ mod tests {
             [2.0, 2.0, 2.0],
             [0.0, 0.0, 0.0],
         ];
-        let mut p = Polygon3D::from_rings(Coordinate::Euclidean, line, Vec::<Vec<[f64; 3]>>::new());
+        let mut p = Polygon3D::from_rings(
+            CoordinateFrame::Euclidean,
+            line,
+            Vec::<Vec<[f64; 3]>>::new(),
+        );
         let g = p.triangulate(&mut Cache::new()).unwrap();
         assert_eq!(tri_mesh_3d(&g).num_triangles(), 0);
     }
@@ -383,8 +583,11 @@ mod tests {
         // UV is parallel to `coords` (5 entries, last = closing dup), distinct per
         // real corner so the gather is checkable.
         let square = [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]];
-        let mut p =
-            Polygon2D::from_rings(Coordinate::Euclidean, square, Vec::<Vec<[f64; 2]>>::new());
+        let mut p = Polygon2D::from_rings(
+            CoordinateFrame::Euclidean,
+            square,
+            Vec::<Vec<[f64; 2]>>::new(),
+        );
         let src_uv = UvSource::Explicit(Box::new([
             [0.0, 0.0],
             [1.0, 0.0],
@@ -400,13 +603,13 @@ mod tests {
         assert_eq!(m.num_triangles(), 2);
 
         let app = m.appearance().as_ref().expect("appearance carried over");
-        assert_eq!(app.materials.len(), 1);
-        assert_eq!(app.default_theme, theme("rgb"));
-        assert!(matches!(app.themes[0].front, FaceBinding::Uniform(_)));
+        assert_eq!(app.materials().len(), 1);
+        assert_eq!(*app.default_theme(), theme("rgb"));
+        assert!(matches!(app.themes()[0].front, FaceBinding::Uniform(_)));
 
         // Every output UV is one of the real source-corner UVs (gathered, not
         // interpolated; the closing-duplicate slot is never referenced).
-        let UvSource::Explicit(out_uv) = &m.uv_sets()[0].uv else {
+        let UvSource::Explicit(out_uv) = &app.themes()[0].uv_sets[0].uv else {
             panic!("expected an explicit output UV set");
         };
         assert_eq!(out_uv.len(), 6);
@@ -420,8 +623,11 @@ mod tests {
         use crate::test_support::{textured, theme};
 
         let square = [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]];
-        let mut p =
-            Polygon2D::from_rings(Coordinate::Euclidean, square, Vec::<Vec<[f64; 2]>>::new());
+        let mut p = Polygon2D::from_rings(
+            CoordinateFrame::Euclidean,
+            square,
+            Vec::<Vec<[f64; 2]>>::new(),
+        );
         let matrix = TexMatrix([
             [0.25, 0.0, 0.0, 0.0],
             [0.0, 0.25, 0.0, 0.0],
@@ -436,8 +642,9 @@ mod tests {
 
         let g = p.triangulate(&mut Cache::new()).unwrap();
         let m = tri_mesh_2d(&g);
+        let app = m.appearance().as_ref().unwrap();
         assert!(matches!(
-            m.uv_sets()[0].uv,
+            app.themes()[0].uv_sets[0].uv,
             UvSource::WorldToTexture(out) if out == matrix
         ));
     }
@@ -450,7 +657,11 @@ mod tests {
             [4.0, 4.0, 2.0],
             [0.0, 0.0, 1.0],
         ];
-        let p = Polygon3D::from_rings(Coordinate::Euclidean, exterior, Vec::<Vec<[f64; 3]>>::new());
+        let p = Polygon3D::from_rings(
+            CoordinateFrame::Euclidean,
+            exterior,
+            Vec::<Vec<[f64; 3]>>::new(),
+        );
         assert_eq!(
             p.bounding_box().unwrap(),
             Aabb::D3 {

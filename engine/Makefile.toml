@@ -11,23 +11,24 @@ script = ['''
 cargo fmt --all ${@:-}
 ''']
 
-# NOTE: `--all-features` is intentionally avoided. It would enable the `new-geometry`
-# migration flag, which switches `Feature.geometry` to the new type and is mutually
-# exclusive with the default geometry world. So the default world is checked plainly,
-# and `new-geometry` is built separately (lib/bin only, since un-ported actions hit
-# the loud runtime default and their tests fail by design until ported). CI builds both.
+# NOTE: the `new-geometry` migration flag switches `Feature.geometry` to the new type
+# and is mutually exclusive with the default geometry world, so no single feature set
+# covers both. Each world therefore gets its own full `--workspace --all-targets`
+# invocation, and CI runs both.
 [tasks.check]
 script = ['''
 #!/usr/bin/env bash -eux
 cargo check --workspace --all-targets
-cargo check -p reearth-flow-cli -p reearth-flow-worker --features new-geometry
+cargo check --workspace --all-targets --features new-geometry \
+  --exclude workflow-tests --exclude reearth-flow-tests
 ''']
 
 [tasks.clippy]
 script = ['''
 #!/usr/bin/env bash -eux
 cargo clippy --workspace --all-targets -- -D warnings
-cargo clippy -p reearth-flow-cli -p reearth-flow-worker --features new-geometry -- -D warnings
+cargo clippy --workspace --all-targets --features new-geometry \
+  --exclude workflow-tests --exclude reearth-flow-tests -- -D warnings
 ''']
 
 [tasks.clippy-fix]
@@ -42,14 +43,16 @@ script = ['''
 cargo make test-rs ${@:-}
 cargo make test-qc ${@:-}
 cargo make test-conv ${@:-}
+cargo make test-conv-new-geometry ${@:-}
 ''']
 
 [tasks.test-rs]
 script = ['''
 #!/usr/bin/env bash -eux
-# Default geometry world only. The `new-geometry` world cannot be tested until
-# actions are ported (un-ported actions hit the loud runtime default).
+# Both geometry worlds.
 cargo test --workspace --all-targets --exclude workflow-tests ${@:-}
+cargo test --workspace --all-targets --features new-geometry \
+  --exclude workflow-tests --exclude reearth-flow-tests ${@:-}
 ''']
 
 [tasks.test-qc]
@@ -61,13 +64,45 @@ script = ['''
 cargo test -p workflow-tests ${@:-}
 ''']
 
+[tasks.ensure-glb-decompress]
+script = ['''
+#!/usr/bin/env bash -eux
+command -v glb-decompress >/dev/null && exit 0
+# glb_decompress_draco transitively depends on `sharp`, whose postinstall
+# script downloads libvips binaries from GitHub Releases. That download
+# has flaked with 504s during peak GitHub traffic; retry up to 3 times
+# before giving up so a single transient CDN blip doesn't fail the install.
+for attempt in 1 2 3; do
+  if npm install -g github:asrcpq/glb_decompress_draco#d0dc30683ae65bb60dda96192b8c1b1d8a80a771; then
+    exit 0
+  fi
+  echo "Attempt $attempt failed; sleeping 15s before retry..."
+  sleep 15
+done
+echo "glb-decompress install failed after 3 attempts" >&2
+exit 1
+''']
+
 [tasks.test-conv]
 script = ['''
 #!/usr/bin/env bash -eux
+cargo make ensure-glb-decompress
 export RUST_LOG=warn,plateau_tiles_test=info # avoid engine info log flooding
 export PLATEAU_TILES_TEST_CLEANUP=1
 export PLATEAU_TILES_TEST_CONCURRENCY="${PLATEAU_TILES_TEST_CONCURRENCY:-4}" # default 4, caller can override
 cargo run -p plateau-tiles-test --bin plateau-tiles-test ${@:-}
+''']
+
+# Separate task since it builds a distinct binary (new-geometry feature); folds
+# into test-conv once new-geometry becomes the default and this one is removed.
+[tasks.test-conv-new-geometry]
+script = ['''
+#!/usr/bin/env bash -eux
+cargo make ensure-glb-decompress
+export RUST_LOG=warn,plateau_tiles_test=info # avoid engine info log flooding
+export PLATEAU_TILES_TEST_CLEANUP=1
+export PLATEAU_TILES_TEST_CONCURRENCY="${PLATEAU_TILES_TEST_CONCURRENCY:-4}" # default 4, caller can override
+cargo run -p plateau-tiles-test --bin plateau-tiles-test --features new-geometry ${@:-}
 ''']
 
 [tasks.doc]
@@ -119,7 +154,6 @@ cargo run --package reearth-flow-cli -- scaffold-i18n --dir "$PWD/schema/i18n/ac
 script = ['''
 #!/usr/bin/env bash -eux
 FILES=(
-  "./schema/actions_en.json"
   "./schema/actions_es.json"
   "./schema/actions_fr.json"
   "./schema/actions_ja.json"
@@ -131,7 +165,9 @@ for f in "${FILES[@]}"; do
   rm -rf "$f"
 done
 
-LANGS=(en es fr ja zh)
+# English (and unknown langs) are served from the base actions.json, so no
+# actions_en.json overlay is generated here.
+LANGS=(es fr ja zh)
 
 for lang in "${LANGS[@]}"; do
   cargo run --package reearth-flow-cli \

@@ -8,7 +8,7 @@ use reearth_flow_common::{dir, zip};
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
+use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
 use reearth_flow_types::{AttributeValue, Code};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -21,11 +21,11 @@ pub(crate) struct ZipFileWriterFactory;
 
 impl SinkFactory for ZipFileWriterFactory {
     fn name(&self) -> &str {
-        "ZipFileWriter"
+        "Zip File Writer"
     }
 
     fn description(&self) -> &str {
-        "Writes features to a zip file"
+        "Compresses files referenced by incoming features into a single ZIP archive."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -37,11 +37,11 @@ impl SinkFactory for ZipFileWriterFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["file-system", "compression"]
+        &["file", "compression"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn prepare(&self) -> Result<(), BoxedError> {
@@ -102,13 +102,14 @@ struct ZipFileWriter {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct ZipFileWriterParam {
-    /// Output path
+    /// # Output File
+    /// Output path or expression for the ZIP archive to create.
     output: Code,
 }
 
 impl Sink for ZipFileWriter {
     fn name(&self) -> &str {
-        "ZipFileWriter"
+        "Zip File Writer"
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {

@@ -11,7 +11,7 @@ use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
+use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::geometry::GeometryValue;
 use reearth_flow_types::lod::LodMask;
@@ -29,7 +29,7 @@ use writer::CityGmlXmlWriter;
 /// Write `features` as CityGML 2.0 to `output`, copying texture images alongside it.
 ///
 /// This is the single canonical implementation shared by both the `CityGmlWriter` sink and
-/// the `FeatureWriter` processor.
+/// the `Feature Writer` processor.
 #[cfg(not(feature = "new-geometry"))]
 pub fn write_citygml_to_storage(
     output: &Uri,
@@ -232,11 +232,11 @@ pub struct CityGmlWriterFactory;
 
 impl SinkFactory for CityGmlWriterFactory {
     fn name(&self) -> &str {
-        "CityGmlWriter"
+        "CityGML Writer"
     }
 
     fn description(&self) -> &str {
-        "Writes features to CityGML 2.0 files"
+        "Writes features to CityGML 2.0 files."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -252,7 +252,7 @@ impl SinkFactory for CityGmlWriterFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn prepare(&self) -> Result<(), BoxedError> {
@@ -321,20 +321,27 @@ fn build_lod_mask(lod_filter: &Option<Vec<u8>>) -> LodMask {
     }
 }
 
+/// # CityGmlWriter Parameters
+///
+/// Configuration for writing features to CityGML 2.0 files.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CityGmlWriterParam {
-    /// Output file path expression
+    /// # Output File
+    /// Output path or expression for the CityGML file to create.
     pub output: Code,
-    /// LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs.
-    #[serde(default)]
-    pub lod_filter: Option<Vec<u8>>,
-    /// EPSG code for coordinate reference system
-    #[serde(default)]
-    pub epsg_code: Option<u32>,
-    /// Whether to format output with indentation (default: true)
+    /// # Pretty Print
+    /// Whether to indent the output for readability. Defaults to true.
     #[serde(default = "default_pretty_print")]
     pub pretty_print: Option<bool>,
+    /// # LOD Filter
+    /// Levels of detail to include, such as [0, 1, 2]. If empty, all levels are included.
+    #[serde(default)]
+    pub lod_filter: Option<Vec<u8>>,
+    /// # EPSG Code
+    /// EPSG code of the coordinate reference system to declare in the output.
+    #[serde(default)]
+    pub epsg_code: Option<u32>,
 }
 
 fn default_pretty_print() -> Option<bool> {
@@ -358,7 +365,7 @@ struct CityGmlWriterSink {
 
 impl Sink for CityGmlWriterSink {
     fn name(&self) -> &str {
-        "CityGmlWriter"
+        "CityGML Writer"
     }
 
     #[cfg(not(feature = "new-geometry"))]

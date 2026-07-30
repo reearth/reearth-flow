@@ -14,7 +14,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{AttributeValue, CityGmlGeometry, Feature, Geometry, GeometryValue};
 use schemars::JsonSchema;
@@ -49,7 +49,7 @@ pub(super) struct CenterPointReplacerFactory;
 
 impl ProcessorFactory for CenterPointReplacerFactory {
     fn name(&self) -> &str {
-        "CenterPointReplacer"
+        "Center Point Replacer"
     }
 
     fn description(&self) -> &str {
@@ -65,7 +65,7 @@ impl ProcessorFactory for CenterPointReplacerFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
@@ -136,7 +136,7 @@ impl Processor for CenterPointReplacer {
     }
 
     fn name(&self) -> &str {
-        "CenterPointReplacer"
+        "Center Point Replacer"
     }
 }
 

@@ -17,6 +17,7 @@ import {
   EDITOR_HOT_KEYS,
 } from "@flow/global-constants";
 import {
+  useGraphStaleness,
   useProjectExport,
   useProjectLock,
   useProjectSave,
@@ -31,6 +32,7 @@ import type { YWorkflow } from "@flow/lib/yjs/types";
 import useWorkflowTabs from "@flow/lib/yjs/useWorkflowTabs";
 import { useCurrentProject } from "@flow/stores";
 import type { Algorithm, Direction, Edge, Node } from "@flow/types";
+import { toFinitePosition } from "@flow/utils/toFinitePosition";
 
 import useCanvasCopyPaste from "./useCanvasCopyPaste";
 import useDebugRun from "./useDebugRun";
@@ -122,6 +124,9 @@ export default ({
       Object.values(rawNodes)
         .map((node) => ({
           ...node,
+          // A non-finite position persisted in the doc would give ReactFlow a
+          // NaN viewport and crash the canvas (React #185). Sanitize on read.
+          position: toFinitePosition(node.position),
           selected:
             selectedNodeIds.includes(node.id) && !node.selected
               ? true
@@ -243,6 +248,7 @@ export default ({
     yAwareness,
   });
 
+  const { staleNodeIds } = useGraphStaleness({ yWorkflows, undoManager });
   const {
     schemaProbes,
     readerAttributeSuggestions,
@@ -267,14 +273,14 @@ export default ({
 
         for (const node of nodes) {
           const officalName = node.data.officialName;
-          if (officalName !== "InputRouter" && officalName !== "OutputRouter")
+          if (officalName !== "Input Router" && officalName !== "Output Router")
             continue;
           const isDeleting = deletingIds.has(node.id);
 
-          if (officalName === "InputRouter") {
+          if (officalName === "Input Router") {
             totalInputRouters++;
             if (!isDeleting) remainingInputRouters++;
-          } else if (officalName === "OutputRouter") {
+          } else if (officalName === "Output Router") {
             totalOutputRouters++;
             if (!isDeleting) remainingOutputRouters++;
           }
@@ -520,6 +526,7 @@ export default ({
     handleCut,
     handlePaste,
     handleProjectSnapshotSave,
+    staleNodeIds,
     handleProjectLockChange,
     isLocked,
     handleSpotlightUserSelect,

@@ -11,7 +11,7 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
+    node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
 use schemars::JsonSchema;
@@ -27,7 +27,7 @@ pub(crate) struct CzmlReaderFactory;
 
 impl SourceFactory for CzmlReaderFactory {
     fn name(&self) -> &str {
-        "CzmlReader"
+        "CZML Reader"
     }
 
     fn description(&self) -> &str {
@@ -43,7 +43,7 @@ impl SourceFactory for CzmlReaderFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -96,7 +96,7 @@ pub(super) struct CzmlReader {
     params: CzmlReaderCompiledParam,
 }
 
-/// # CzmlReader Parameters
+/// # CZML Reader Parameters
 ///
 /// Configuration for reading CZML files as geographic features.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -114,7 +114,7 @@ pub(super) struct CzmlReaderParam {
     pub(super) skip_document_packet: bool,
     /// # Time Sampling Strategy
     /// How to handle time-dynamic properties in CZML packets.
-    /// Defaults to "preserveRaw" for lossless round-trip with CzmlWriter.
+    /// Defaults to "preserveRaw" for lossless round-trip with CZML Writer.
     #[serde(default)]
     pub(super) time_sampling: TimeSamplingStrategy,
 }
@@ -138,7 +138,7 @@ pub(super) enum TimeSamplingStrategy {
     /// geometry uses the first sample, `czml.timeseries` holds all position
     /// samples as a JSON array, and all other CZML packet properties (point,
     /// path, orientation, ellipsoid, etc.) are preserved as `czml.<key>`
-    /// attributes for faithful round-trip through CzmlWriter.
+    /// attributes for faithful round-trip through CZML Writer.
     #[default]
     PreserveRaw,
 }
@@ -148,7 +148,7 @@ impl Source for CzmlReader {
     async fn initialize(&self, _ctx: NodeContext) {}
 
     fn name(&self) -> &str {
-        "CzmlReader"
+        "CZML Reader"
     }
 
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {
@@ -199,7 +199,7 @@ async fn read_czml(
         for feature in features {
             sender
                 .send((
-                    DEFAULT_PORT.clone(),
+                    FEATURES_PORT.clone(),
                     IngestionMessage::OperationEvent { feature },
                 ))
                 .await

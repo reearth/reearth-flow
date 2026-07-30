@@ -56,15 +56,23 @@ const CheckboxesWidget = <
   //     }
   //   };
 
-  const _onBlur = ({ target }: FocusEvent<HTMLButtonElement>) =>
+  const _onBlur = ({ target }: FocusEvent<HTMLElement>) =>
     onBlur(
       id,
-      enumOptionsValueForIndex<S>(target?.value, enumOptions, emptyValue),
+      enumOptionsValueForIndex<S>(
+        (target as HTMLInputElement)?.value,
+        enumOptions,
+        emptyValue,
+      ),
     );
-  const _onFocus = ({ target }: FocusEvent<HTMLButtonElement>) =>
+  const _onFocus = ({ target }: FocusEvent<HTMLElement>) =>
     onFocus(
       id,
-      enumOptionsValueForIndex<S>(target?.value, enumOptions, emptyValue),
+      enumOptionsValueForIndex<S>(
+        (target as HTMLInputElement)?.value,
+        enumOptions,
+        emptyValue,
+      ),
     );
 
   return (

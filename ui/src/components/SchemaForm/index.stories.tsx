@@ -1,9 +1,9 @@
-import { CopyIcon } from "@phosphor-icons/react";
 import {
-  ChevronDownIcon,
-  ChevronLeftIcon,
-  ChevronRightIcon,
-} from "@radix-ui/react-icons";
+  CaretDownIcon,
+  CaretLeftIcon,
+  CaretRightIcon,
+  CopyIcon,
+} from "@phosphor-icons/react";
 import { RJSFSchema } from "@rjsf/utils";
 import validator from "@rjsf/validator-ajv8";
 import type { Meta } from "@storybook/react-vite";
@@ -254,19 +254,19 @@ export const Default = () => {
             variant="outline"
             disabled={selectedIndex <= 0}
             onClick={() => setSelectedAction(actions[selectedIndex - 1].name)}>
-            <ChevronLeftIcon />
+            <CaretLeftIcon />
           </Button>
           <Button
             size="sm"
             variant="outline"
             disabled={selectedIndex >= actions.length}
             onClick={() => setSelectedAction(actions[selectedIndex + 1].name)}>
-            <ChevronRightIcon />
+            <CaretRightIcon />
           </Button>
           <DropdownMenu modal={true}>
             <DropdownMenuTrigger className="flex h-8 items-center rounded border bg-background px-1 hover:bg-accent">
               <p className="text-sm"> Select Action</p>
-              <ChevronDownIcon />
+              <CaretDownIcon />
             </DropdownMenuTrigger>
             <DropdownMenuContent className="h-96 overflow-auto" align="center">
               {actions.map(({ name }) => (

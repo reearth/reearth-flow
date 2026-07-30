@@ -6,7 +6,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue};
 use schemars::JsonSchema;
@@ -20,11 +20,11 @@ pub(super) struct FilePropertyExtractorFactory;
 
 impl ProcessorFactory for FilePropertyExtractorFactory {
     fn name(&self) -> &str {
-        "FilePropertyExtractor"
+        "File Property Extractor"
     }
 
     fn description(&self) -> &str {
-        "Extracts file system properties (type, size, timestamps) from files"
+        "Inspects the file or directory at a path held in a feature attribute and adds its type, size, and access, modification, and creation timestamps as attributes. Directory size is the total size of the files it contains, counted recursively."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -36,15 +36,15 @@ impl ProcessorFactory for FilePropertyExtractorFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["file-system"]
+        &["file", "attribute"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
+        vec![FEATURES_PORT.clone(), REJECTED_PORT.clone()]
     }
 
     fn build(
@@ -135,13 +135,15 @@ impl From<FileProperty> for HashMap<Attribute, AttributeValue> {
     }
 }
 
-/// # FilePropertyExtractor Parameters
+/// # File Property Extractor Parameters
 ///
-/// Configuration for extracting file system properties from files.
+/// Configures which attribute holds the path to inspect.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct FilePropertyExtractor {
-    /// Attribute name containing the file path to analyze for properties
+    /// # File Path Attribute
+    /// Name of the attribute holding the path of the file or directory to inspect. Paths that do
+    /// not exist, and symbolic links, are not inspected.
     file_path_attribute: String,
 }
 
@@ -182,7 +184,7 @@ impl Processor for FilePropertyExtractor {
             let mut feature = ctx.feature.clone();
             let attributes: HashMap<Attribute, AttributeValue> = file_property.into();
             feature.extend(attributes);
-            fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
         } else {
             fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
         }
@@ -198,7 +200,7 @@ impl Processor for FilePropertyExtractor {
     }
 
     fn name(&self) -> &str {
-        "FilePropertyExtractor"
+        "File Property Extractor"
     }
 }
 

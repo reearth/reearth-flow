@@ -18,7 +18,13 @@ export default ({
   nodeId: string;
 }) => {
   const { officialName, inputs: defaultInputs, outputs: defaultOutputs } = data;
-  const { currentYWorkflow, undoTrackerActionWrapper } = useEditorContext();
+  const { currentYWorkflow, undoTrackerActionWrapper, staleNodeIds } =
+    useEditorContext();
+
+  const isNodeStale = useMemo(
+    () => !!staleNodeIds?.has(nodeId),
+    [staleNodeIds, nodeId],
+  );
 
   const inputs: string[] = useMemo(() => {
     if (data.params?.conditions) {
@@ -75,6 +81,7 @@ export default ({
     borderColor,
     selectedColor,
     selectedBackgroundColor,
+    isNodeStale,
     handleCollapsedToggle,
   };
 };

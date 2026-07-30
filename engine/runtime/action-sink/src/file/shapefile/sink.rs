@@ -4,7 +4,7 @@ use std::vec;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
+use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
 use reearth_flow_types::{Attribute, AttributeValue, Code, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -19,11 +19,11 @@ pub(crate) struct ShapefileWriterFactory;
 
 impl SinkFactory for ShapefileWriterFactory {
     fn name(&self) -> &str {
-        "ShapefileWriter"
+        "Shapefile Writer"
     }
 
     fn description(&self) -> &str {
-        "Writes geographic features to ESRI Shapefile format with optional grouping"
+        "Writes features to ESRI Shapefile format, optionally grouping them into separate files."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -35,11 +35,11 @@ impl SinkFactory for ShapefileWriterFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["shapefile"]
+        &["shapefile", "vector"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn prepare(&self) -> Result<(), BoxedError> {
@@ -102,15 +102,17 @@ pub(crate) struct ShapefileWriter {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(crate) struct ShapefileWriterParam {
-    /// Output path or expression for the Shapefile to create
+    /// # Output Directory
+    /// Output directory path or expression where the generated Shapefile files are written.
     pub(super) output: Code,
-    /// Optional attributes to group features by, creating separate files for each group
+    /// # Group By
+    /// Attributes to group features by, writing a separate file for each distinct group.
     pub(super) group_by: Option<Vec<Attribute>>,
 }
 
 impl Sink for ShapefileWriter {
     fn name(&self) -> &str {
-        "ShapefileWriter"
+        "Shapefile Writer"
     }
 
     #[cfg(not(feature = "new-geometry"))]

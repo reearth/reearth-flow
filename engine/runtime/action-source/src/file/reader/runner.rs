@@ -13,7 +13,7 @@ use serde::{Deserialize, Serialize};
 #[serde(rename_all = "camelCase")]
 pub struct FileReaderCommonParam {
     /// # File Path
-    /// Expression that returns the path to the input file (e.g., "data.csv" or variable reference)
+    /// Expression that returns the path to the input file, either a literal path or a variable reference.
     pub(crate) dataset: Option<Code>,
     /// # Inline Content
     /// Expression that returns the file content as text instead of reading from a file path

@@ -38,12 +38,12 @@ pub struct CSGBuilderFactory;
 
 impl ProcessorFactory for CSGBuilderFactory {
     fn name(&self) -> &str {
-        "CSGBuilder"
+        "CSG Builder"
     }
 
     fn description(&self) -> &str {
         "Constructs a Consecutive Solid Geometry (CSG) representation from a pair (Left, Right) of solid geometries. It detects union, intersection, difference (Left - Right). \
-        It however does not compute the resulting geometry, but outputs the CSG tree structure. To evaluate the CSG tree into a solid geometry, use CSGEvaluator."
+        It however does not compute the resulting geometry, but outputs the CSG tree structure. To evaluate the CSG tree into a solid geometry, use CSG Evaluator."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -132,7 +132,7 @@ struct CSGBuilderParam {
 }
 
 /// # CSG Builder
-/// Builds a CSG tree from two solid geometries. To create a mesh from the CSG tree, use CSGEvaluator.
+/// Builds a CSG tree from two solid geometries. To create a mesh from the CSG tree, use CSG Evaluator.
 #[derive(Debug, Clone)]
 pub struct CSGBuilder {
     pair_id_attribute: Option<CompiledCode>,
@@ -230,7 +230,7 @@ impl Processor for CSGBuilder {
     }
 
     fn name(&self) -> &str {
-        "CSGBuilder"
+        "CSG Builder"
     }
 }
 

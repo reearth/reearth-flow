@@ -25,6 +25,13 @@ pub(crate) enum IndexBuffer<const N: usize> {
     U32(Vec<[u32; N]>),
 }
 
+/// An empty buffer at the narrowest width.
+impl<const N: usize> Default for IndexBuffer<N> {
+    fn default() -> Self {
+        IndexBuffer::U8(Vec::new())
+    }
+}
+
 /// Monomorphize a body over the concrete index width of an [`IndexBuffer`].
 ///
 /// The body must be a thin call into a generic function, never an inlined
@@ -172,6 +179,17 @@ impl<const N: usize> IndexBuffer<N> {
             IndexBuffer::U16(v) => v.len(),
             IndexBuffer::U32(v) => v.len(),
         }
+    }
+
+    /// Iterate the elements as `[u32; N]`, widening each stored index from its
+    /// concrete width. Lets callers read the indices without depending on the
+    /// stored width.
+    pub(crate) fn iter_u32(&self) -> impl Iterator<Item = [u32; N]> + '_ {
+        (0..self.len()).map(move |i| match self {
+            IndexBuffer::U8(v) => v[i].map(|x| x as u32),
+            IndexBuffer::U16(v) => v[i].map(|x| x as u32),
+            IndexBuffer::U32(v) => v[i],
+        })
     }
 
     /// Build from index elements, choosing the narrowest width that fits them all.

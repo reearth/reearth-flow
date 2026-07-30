@@ -123,12 +123,13 @@ impl<T: GeoFloat, Z: GeoFloat> EdgeEndKey<T, Z> {
             (Some(q1), Some(q2)) if q1 > q2 => Ordering::Greater,
             (Some(q1), Some(q2)) if q1 < q2 => Ordering::Less,
             _ => {
-                match RobustKernel::orient(
-                    other.coord_0,
-                    other.coord_1,
-                    self.coord_0,
-                    Some(self.coord_1),
-                ) {
+                // JTS `EdgeEnd::compareDirection`: same-quadrant ties break on
+                // the 2D orientation of this end's direction point against the
+                // other end's ray. Passing `Some(coord_1)` here routed through
+                // `orient3d` with `z = 0`, which is always `Collinear` for 2D
+                // input and wrongly bundled every same-quadrant pair of edge
+                // ends (e.g. the N and E edges at a shared corner).
+                match RobustKernel::orient(other.coord_0, other.coord_1, self.coord_1, None) {
                     Orientation::Clockwise => Ordering::Less,
                     Orientation::CounterClockwise => Ordering::Greater,
                     Orientation::Collinear => Ordering::Equal,

@@ -5,7 +5,7 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
+    node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Code, CodeType, Feature};
 use schemars::JsonSchema;
@@ -20,11 +20,11 @@ pub struct FeatureCreatorFactory;
 
 impl SourceFactory for FeatureCreatorFactory {
     fn name(&self) -> &str {
-        "FeatureCreator"
+        "Feature Creator"
     }
 
     fn description(&self) -> &str {
-        "Generate Custom Features Using Scripts"
+        "Creates features from a script expression that returns one or more attribute maps."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -35,8 +35,12 @@ impl SourceFactory for FeatureCreatorFactory {
         &["Input"]
     }
 
+    fn tags(&self) -> &[&'static str] {
+        &["scripting"]
+    }
+
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
     fn build(
         &self,
@@ -84,7 +88,7 @@ impl SourceFactory for FeatureCreatorFactory {
 #[serde(rename_all = "camelCase")]
 pub struct FeatureCreator {
     /// # Script Expression
-    /// Write a script expression that returns a map (single feature) or array of maps (multiple features). Each map represents feature attributes as key-value pairs.
+    /// Script expression that returns a map (single feature) or an array of maps (multiple features). Each map holds feature attributes as key-value pairs.
     creator: Code<{ CodeType::FlowExpr as u32 }>,
 }
 
@@ -103,7 +107,7 @@ impl Source for FeatureCreatorSource {
     async fn initialize(&self, _ctx: NodeContext) {}
 
     fn name(&self) -> &str {
-        "FeatureCreator"
+        "Feature Creator"
     }
 
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {
@@ -124,7 +128,7 @@ impl Source for FeatureCreatorSource {
                 let feature = Feature::from(attributes);
                 sender
                     .send((
-                        DEFAULT_PORT.clone(),
+                        FEATURES_PORT.clone(),
                         IngestionMessage::OperationEvent { feature },
                     ))
                     .await
@@ -140,7 +144,7 @@ impl Source for FeatureCreatorSource {
                         let feature = Feature::from(attributes);
                         sender
                             .send((
-                                DEFAULT_PORT.clone(),
+                                FEATURES_PORT.clone(),
                                 IngestionMessage::OperationEvent { feature },
                             ))
                             .await

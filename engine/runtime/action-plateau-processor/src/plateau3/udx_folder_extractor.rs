@@ -12,7 +12,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
 };
 use reearth_flow_storage::resolve::StorageResolver;
 
@@ -74,11 +74,11 @@ impl ProcessorFactory for UdxFolderExtractorFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
+        vec![FEATURES_PORT.clone(), REJECTED_PORT.clone()]
     }
 
     fn build(
@@ -151,7 +151,7 @@ impl Processor for UdxFolderExtractor {
             &self.schemas_path,
         )?;
         let port = if PKG_FOLDERS.contains(&res.package.as_str()) {
-            DEFAULT_PORT.clone()
+            FEATURES_PORT.clone()
         } else {
             REJECTED_PORT.clone()
         };

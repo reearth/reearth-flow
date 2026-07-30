@@ -48,8 +48,8 @@ export default ({
         }
 
         newNodes.forEach((newNode) => {
-          const isRouterInput = newNode.data.officialName === "InputRouter";
-          const isRouterOutput = newNode.data.officialName === "OutputRouter";
+          const isRouterInput = newNode.data.officialName === "Input Router";
+          const isRouterOutput = newNode.data.officialName === "Output Router";
 
           if (isRouterInput || isRouterOutput) {
             const currentWorkflowId = currentYWorkflow

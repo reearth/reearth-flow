@@ -38,8 +38,8 @@ const edge = (source: string, target: string): Edge =>
     id: `${source}-${target}`,
     source,
     target,
-    sourceHandle: "default",
-    targetHandle: "default",
+    sourceHandle: "features",
+    targetHandle: "features",
   }) as unknown as Edge;
 
 const subworkflowNode = (

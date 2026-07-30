@@ -20,7 +20,7 @@
 //!
 //! 3D constructors build the coordinate-free [`TriangularMesh3DData`] that a
 //! [`Solid`](crate::solid::Solid) shell also stores, so the frame-carrying
-//! [`TriangularMesh3D`] is a thin wrapper. All meshes are built bare (no UV, no
+//! [`TriangularMesh3D`] is a thin wrapper. All meshes are built bare (no
 //! appearance); attach an appearance afterwards via `appearance_mut`.
 
 use std::collections::{BTreeMap, BTreeSet, HashMap};
@@ -29,13 +29,22 @@ use crate::appearance::{
     append_theme, single_channel_uv, validate_uv_coupling, Appearance, ChannelId, FaceBinding,
     Material, MaterialIndex, Side, ThemeId, UvSet, UvSource,
 };
-use crate::coordinate::Coordinate;
+use crate::coordinate::CoordinateFrame;
 use crate::error::Error;
 use crate::index::{IndexBuffer, IndexWidth};
 
 use super::{TriangularMesh2D, TriangularMesh3D, TriangularMesh3DData};
 
 impl TriangularMesh3DData {
+    /// Mesh data with no vertices, no triangles and no appearance.
+    pub(crate) fn empty() -> Self {
+        Self {
+            vertices: Vec::new(),
+            indices: IndexBuffer::default(),
+            appearance: None,
+        }
+    }
+
     /// Build coordinate-free mesh data from a vertex pool and a flat `u32` index
     /// stream. Validates that the index count is a multiple of three and every
     /// index is `< vertices.len()`; the width is taken from the vertex count.
@@ -48,7 +57,6 @@ impl TriangularMesh3DData {
         Ok(Self {
             vertices,
             indices: pack_checked(width, triangles),
-            uv_sets: Vec::new(),
             appearance: None,
         })
     }
@@ -74,20 +82,14 @@ impl TriangularMesh3DData {
                 group_triples(indices),
             ),
             vertices,
-            uv_sets: Vec::new(),
             appearance: None,
         }
     }
 
-    /// Install an already-built `appearance` and `uv_sets` directly, **unvalidated**
-    /// (the caller owns the invariants). Used by tessellation, whose appearance is
-    /// consistent by construction.
-    pub(crate) fn set_raw_appearance(
-        &mut self,
-        uv_sets: Vec<UvSet>,
-        appearance: Option<Appearance>,
-    ) {
-        self.uv_sets = uv_sets;
+    /// Install an already-built `appearance` (with its per-theme UV) directly,
+    /// **unvalidated** (the caller owns the invariants). Used by tessellation, whose
+    /// appearance is consistent by construction.
+    pub(crate) fn set_raw_appearance(&mut self, appearance: Option<Appearance>) {
         self.appearance = appearance;
     }
 
@@ -98,7 +100,6 @@ impl TriangularMesh3DData {
         Self {
             vertices,
             indices,
-            uv_sets: Vec::new(),
             appearance: None,
         }
     }
@@ -122,7 +123,7 @@ impl TriangularMesh3DData {
 
     /// Add a multi-material, front-side appearance for one theme with an explicit
     /// per-triangle `binding`. `binding` indexes `materials` locally
-    /// (`0..materials.len()`); those indices are offset into the accumulated
+    /// (`0..materials().len()`); those indices are offset into the accumulated
     /// palette. A `PerFace` binding's length must equal the triangle count. `uvs`
     /// supplies one UV set per channel the bound materials' maps sample.
     /// Additive and validated like [`set_appearance`](Self::set_appearance).
@@ -136,7 +137,6 @@ impl TriangularMesh3DData {
         add_theme(
             self.indices.len(),
             &mut self.appearance,
-            &mut self.uv_sets,
             theme,
             materials,
             binding,
@@ -147,19 +147,19 @@ impl TriangularMesh3DData {
 
 impl TriangularMesh3D {
     /// Pair coordinate-free mesh data with the frame it is expressed in.
-    pub fn new(coordinate: Coordinate, data: TriangularMesh3DData) -> Self {
-        Self { coordinate, data }
+    pub fn new(frame: CoordinateFrame, data: TriangularMesh3DData) -> Self {
+        Self { frame, data }
     }
 
     /// Build from a vertex pool and a flat `u32` index stream; see
     /// [`TriangularMesh3DData::from_parts`].
     pub fn from_parts(
-        coordinate: Coordinate,
+        frame: CoordinateFrame,
         vertices: Vec<[f64; 3]>,
         indices: impl IntoIterator<Item = u32>,
     ) -> Result<Self, Error> {
         Ok(Self::new(
-            coordinate,
+            frame,
             TriangularMesh3DData::from_parts(vertices, indices)?,
         ))
     }
@@ -171,30 +171,26 @@ impl TriangularMesh3D {
     /// Same contract as [`TriangularMesh3DData::from_parts_unchecked`].
     #[allow(unused)] // TODO: remove this after the migration is complete at which point this will be used.
     pub unsafe fn from_parts_unchecked(
-        coordinate: Coordinate,
+        frame: CoordinateFrame,
         vertices: Vec<[f64; 3]>,
         triangle_count: usize,
         indices: impl IntoIterator<Item = u32>,
     ) -> Self {
         Self::new(
-            coordinate,
+            frame,
             TriangularMesh3DData::from_parts_unchecked(vertices, triangle_count, indices),
         )
     }
 
     /// Build from a triangle soup; see [`TriangularMesh3DData::from_soup`].
-    pub fn from_soup(coordinate: Coordinate, iter: impl IntoIterator<Item = [f64; 3]>) -> Self {
-        Self::new(coordinate, TriangularMesh3DData::from_soup(iter))
+    pub fn from_soup(frame: CoordinateFrame, iter: impl IntoIterator<Item = [f64; 3]>) -> Self {
+        Self::new(frame, TriangularMesh3DData::from_soup(iter))
     }
 
-    /// Install raw `appearance` / `uv_sets`; see
+    /// Install a raw `appearance`; see
     /// [`TriangularMesh3DData::set_raw_appearance`].
-    pub(crate) fn set_raw_appearance(
-        &mut self,
-        uv_sets: Vec<UvSet>,
-        appearance: Option<Appearance>,
-    ) {
-        self.data.set_raw_appearance(uv_sets, appearance);
+    pub(crate) fn set_raw_appearance(&mut self, appearance: Option<Appearance>) {
+        self.data.set_raw_appearance(appearance);
     }
 
     /// Add a single-material appearance for one theme; see
@@ -227,76 +223,60 @@ impl TriangularMesh2D {
     /// Validates the index count and range; the width is taken from the vertex
     /// count.
     pub fn from_parts(
-        coordinate: Coordinate,
+        frame: CoordinateFrame,
         vertices: Vec<[f64; 2]>,
         indices: impl IntoIterator<Item = u32>,
     ) -> Result<Self, Error> {
         let width = index_width_for(vertices.len());
         let triangles = triangles_checked(indices, vertices.len())?;
         Ok(Self {
-            coordinate,
+            frame,
             vertices,
             z: None,
             indices: pack_checked(width, triangles),
-            uv_sets: Vec::new(),
             appearance: None,
         })
     }
 
-    /// Build a 2.5D mesh from `[x, y, z]` vertices: the `(x, y)` populate the
-    /// vertex pool and the `z` the parallel elevation buffer.
-    pub fn from_parts_with_elevation(
-        coordinate: Coordinate,
-        vertices: Vec<[f64; 3]>,
+    /// Build a 2.5D mesh: an `[x, y]` vertex pool lying wholly at `elevation`.
+    pub fn from_parts_at_elevation(
+        frame: CoordinateFrame,
+        vertices: Vec<[f64; 2]>,
         indices: impl IntoIterator<Item = u32>,
+        elevation: f64,
     ) -> Result<Self, Error> {
         let width = index_width_for(vertices.len());
         let triangles = triangles_checked(indices, vertices.len())?;
-        // Split the `[x, y, z]` vertices into the 2D pool and a parallel elevation buffer.
-        let mut xy = Vec::with_capacity(vertices.len());
-        let mut z = Vec::with_capacity(vertices.len());
-        for [x, y, elevation] in vertices {
-            xy.push([x, y]);
-            z.push(elevation);
-        }
         Ok(Self {
-            coordinate,
-            vertices: xy,
-            z: Some(z.into_boxed_slice()),
+            frame,
+            vertices,
+            z: Some(elevation),
             indices: pack_checked(width, triangles),
-            uv_sets: Vec::new(),
             appearance: None,
         })
     }
 
-    /// Build a 2.5D mesh from `[x, y, z]` vertices without validating indices.
+    /// Build a 2.5D mesh at one `elevation` without validating indices.
     ///
     /// # Safety
     /// Same contract as [`TriangularMesh3DData::from_parts_unchecked`].
-    pub unsafe fn from_parts_with_elevation_unchecked(
-        coordinate: Coordinate,
-        vertices: Vec<[f64; 3]>,
+    pub unsafe fn from_parts_at_elevation_unchecked(
+        frame: CoordinateFrame,
+        vertices: Vec<[f64; 2]>,
         triangle_count: usize,
         indices: impl IntoIterator<Item = u32>,
+        elevation: f64,
     ) -> Self {
         let width = index_width_for(vertices.len());
-        // Split the `[x, y, z]` vertices into the 2D pool and a parallel elevation buffer.
-        let mut xy = Vec::with_capacity(vertices.len());
-        let mut z = Vec::with_capacity(vertices.len());
-        for [x, y, elevation] in vertices {
-            xy.push([x, y]);
-            z.push(elevation);
-        }
         Self {
-            coordinate,
+            frame,
             indices: IndexBuffer::from_exact_unchecked(
                 width,
                 triangle_count,
                 group_triples(indices),
             ),
-            vertices: xy,
-            z: Some(z.into_boxed_slice()),
-            uv_sets: Vec::new(),
+            vertices,
+            z: Some(elevation),
             appearance: None,
         }
     }
@@ -306,14 +286,14 @@ impl TriangularMesh2D {
     /// # Safety
     /// Same contract as [`TriangularMesh3DData::from_parts_unchecked`].
     pub unsafe fn from_parts_unchecked(
-        coordinate: Coordinate,
+        frame: CoordinateFrame,
         vertices: Vec<[f64; 2]>,
         triangle_count: usize,
         indices: impl IntoIterator<Item = u32>,
     ) -> Self {
         let width = index_width_for(vertices.len());
         Self {
-            coordinate,
+            frame,
             indices: IndexBuffer::from_exact_unchecked(
                 width,
                 triangle_count,
@@ -321,31 +301,24 @@ impl TriangularMesh2D {
             ),
             vertices,
             z: None,
-            uv_sets: Vec::new(),
             appearance: None,
         }
     }
 
-    /// Install raw `appearance` / `uv_sets`; see
+    /// Install a raw `appearance`; see
     /// [`TriangularMesh3DData::set_raw_appearance`].
-    pub(crate) fn set_raw_appearance(
-        &mut self,
-        uv_sets: Vec<UvSet>,
-        appearance: Option<Appearance>,
-    ) {
-        self.uv_sets = uv_sets;
+    pub(crate) fn set_raw_appearance(&mut self, appearance: Option<Appearance>) {
         self.appearance = appearance;
     }
 
     /// Build a pure-2D mesh from a triangle soup of `[x, y]` corners.
-    pub fn from_soup(coordinate: Coordinate, iter: impl IntoIterator<Item = [f64; 2]>) -> Self {
+    pub fn from_soup(frame: CoordinateFrame, iter: impl IntoIterator<Item = [f64; 2]>) -> Self {
         let (vertices, indices) = soup_buffers::<2>(iter);
         Self {
-            coordinate,
+            frame,
             vertices,
             z: None,
             indices,
-            uv_sets: Vec::new(),
             appearance: None,
         }
     }
@@ -374,7 +347,6 @@ impl TriangularMesh2D {
         add_theme(
             self.indices.len(),
             &mut self.appearance,
-            &mut self.uv_sets,
             theme,
             materials,
             binding,
@@ -383,15 +355,14 @@ impl TriangularMesh2D {
     }
 }
 
-/// Add one theme's appearance to a triangle mesh's `appearance` / `uv_sets`.
-/// `binding` indexes `materials` locally; its indices are offset into the
-/// accumulated palette. Validates the binding shape, the material/UV coupling and
-/// (for `Explicit`) the UV length against `3 * triangle_count`. On any error the
+/// Add one theme's appearance (with its front-side UV) to a triangle mesh's
+/// `appearance`. `binding` indexes `materials` locally; its indices are offset into
+/// the accumulated palette. Validates the binding shape, the material/UV coupling
+/// and (for `Explicit`) the UV length against `3 * triangle_count`. On any error the
 /// mesh is left unchanged; on success the first theme added becomes the default.
 fn add_theme(
     triangle_count: usize,
     appearance: &mut Option<Appearance>,
-    uv_sets: &mut Vec<UvSet>,
     theme: ThemeId,
     materials: Vec<Material>,
     binding: FaceBinding,
@@ -407,21 +378,12 @@ fn add_theme(
     let new_uv_sets = uvs
         .into_iter()
         .map(|(channel, uv)| UvSet {
-            theme: Some(theme.clone()),
             side: Side::Front,
             channel,
             uv,
         })
         .collect();
-    append_theme(
-        appearance,
-        uv_sets,
-        theme,
-        materials,
-        binding,
-        None,
-        new_uv_sets,
-    )
+    append_theme(appearance, theme, materials, binding, None, new_uv_sets)
 }
 
 /// Check a binding references only `0..palette_len` and, when `PerFace`, has one
@@ -566,7 +528,8 @@ mod tests {
     #[test]
     fn from_parts_builds_validated_mesh() {
         let verts = vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
-        let m = TriangularMesh3D::from_parts(Coordinate::Euclidean, verts, [0u32, 1, 2]).unwrap();
+        let m =
+            TriangularMesh3D::from_parts(CoordinateFrame::Euclidean, verts, [0u32, 1, 2]).unwrap();
         assert_eq!(m.data.vertices.len(), 3);
         assert_eq!(m.data.indices.width(), IndexWidth::U8);
         assert_eq!(triples(&m.data.indices), vec![[0, 1, 2]]);
@@ -621,13 +584,17 @@ mod tests {
     }
 
     #[test]
-    fn from_parts_with_elevation_splits_z() {
-        let verts = vec![[0.0, 0.0, 10.0], [1.0, 0.0, 11.0], [0.0, 1.0, 12.0]];
-        let m =
-            TriangularMesh2D::from_parts_with_elevation(Coordinate::Euclidean, verts, [0u32, 1, 2])
-                .unwrap();
+    fn from_parts_at_elevation_keeps_one_height() {
+        let verts = vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]];
+        let m = TriangularMesh2D::from_parts_at_elevation(
+            CoordinateFrame::Euclidean,
+            verts,
+            [0u32, 1, 2],
+            10.0,
+        )
+        .unwrap();
         assert_eq!(m.vertices, vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]]);
-        assert_eq!(m.z.as_deref(), Some(&[10.0, 11.0, 12.0][..]));
+        assert_eq!(m.elevation(), Some(10.0));
     }
 
     #[test]
@@ -670,20 +637,21 @@ mod tests {
         m.set_appearance(theme("rgb"), textured(), Some(uv(3)))
             .unwrap();
         let app = m.appearance.as_ref().unwrap();
-        assert_eq!(app.materials.len(), 1);
-        assert_eq!(app.default_theme, theme("rgb"));
-        assert!(matches!(app.themes[0].front, FaceBinding::Uniform(_)));
-        assert!(app.themes[0].back.is_none());
-        assert_eq!(m.uv_sets.len(), 1);
-        assert_eq!(m.uv_sets[0].side, Side::Front);
+        assert_eq!(app.materials().len(), 1);
+        assert_eq!(*app.default_theme(), theme("rgb"));
+        assert!(matches!(app.themes()[0].front, FaceBinding::Uniform(_)));
+        assert!(app.themes()[0].back.is_none());
+        assert_eq!(app.themes()[0].uv_sets.len(), 1);
+        assert_eq!(app.themes()[0].uv_sets[0].side, Side::Front);
     }
 
     #[test]
     fn set_appearance_uniform_bare_has_no_uv() {
         let mut m = one_triangle();
         m.set_appearance(theme("rgb"), bare(), None).unwrap();
-        assert_eq!(m.appearance.as_ref().unwrap().materials.len(), 1);
-        assert!(m.uv_sets.is_empty());
+        let app = m.appearance.as_ref().unwrap();
+        assert_eq!(app.materials().len(), 1);
+        assert!(app.themes()[0].uv_sets.is_empty());
     }
 
     #[test]
@@ -718,12 +686,12 @@ mod tests {
         )
         .unwrap();
         let app = m.appearance.as_ref().unwrap();
-        assert_eq!(app.materials.len(), 2);
-        let FaceBinding::PerFace(faces) = &app.themes[0].front else {
+        assert_eq!(app.materials().len(), 2);
+        let FaceBinding::PerFace(faces) = &app.themes()[0].front else {
             panic!("expected PerFace");
         };
         assert_eq!(faces, &[MaterialIndex::new(0), MaterialIndex::new(1)]);
-        let UvSource::Explicit(coords) = &m.uv_sets[0].uv else {
+        let UvSource::Explicit(coords) = &app.themes()[0].uv_sets[0].uv else {
             panic!("expected Explicit");
         };
         assert_eq!(coords.len(), 6);
@@ -738,8 +706,9 @@ mod tests {
             .unwrap();
 
         // One UV set per referenced channel, each tagged with its channel.
-        assert_eq!(m.uv_sets.len(), 2);
-        let mut channels: Vec<_> = m.uv_sets.iter().map(|s| s.channel).collect();
+        let app = m.appearance.as_ref().unwrap();
+        assert_eq!(app.themes()[0].uv_sets.len(), 2);
+        let mut channels: Vec<_> = app.themes()[0].uv_sets.iter().map(|s| s.channel).collect();
         channels.sort();
         assert_eq!(channels, vec![ChannelId(0), ChannelId(1)]);
     }
@@ -810,25 +779,26 @@ mod tests {
         m.set_appearance(theme("infrared"), bare(), None).unwrap();
 
         let app = m.appearance.as_ref().unwrap();
-        assert_eq!(app.themes.len(), 2);
+        assert_eq!(app.themes().len(), 2);
         assert_eq!(
-            app.default_theme,
+            *app.default_theme(),
             theme("rgb"),
             "first theme is the default"
         );
-        assert_eq!(app.materials.len(), 2);
+        assert_eq!(app.materials().len(), 2);
         // The second theme's local index 0 is offset to palette slot 1.
-        let FaceBinding::Uniform(rgb) = app.themes[0].front else {
+        let FaceBinding::Uniform(rgb) = app.themes()[0].front else {
             panic!();
         };
-        let FaceBinding::Uniform(infrared) = app.themes[1].front else {
+        let FaceBinding::Uniform(infrared) = app.themes()[1].front else {
             panic!();
         };
         assert_eq!(rgb.get(), 0);
         assert_eq!(infrared.get(), 1);
         // Only the textured theme contributes a UV set.
-        assert_eq!(m.uv_sets.len(), 1);
-        assert_eq!(m.uv_sets[0].theme.as_ref(), Some(&theme("rgb")));
+        assert_eq!(app.themes()[0].uv_sets.len(), 1);
+        assert_eq!(app.themes()[0].theme, theme("rgb"));
+        assert!(app.themes()[1].uv_sets.is_empty());
     }
 
     #[test]

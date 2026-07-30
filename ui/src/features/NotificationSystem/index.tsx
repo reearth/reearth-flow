@@ -1,36 +1,50 @@
 "use client";
 
+import { Toast as ToastPrimitive } from "@base-ui/react/toast";
+
 import {
   Toast,
   ToastClose,
   ToastDescription,
+  ToastPortal,
   ToastProvider,
   ToastTitle,
   ToastViewport,
 } from "@flow/components";
 
-import { useToast } from "./useToast";
+import { toastManager, type ToastData } from "./useToast";
 
 export function NotificationSystem() {
-  const { toasts } = useToast();
+  return (
+    <ToastProvider toastManager={toastManager} limit={3}>
+      <ToastPortal>
+        <ToastViewport>
+          <ToastList />
+        </ToastViewport>
+      </ToastPortal>
+    </ToastProvider>
+  );
+}
+
+function ToastList() {
+  const { toasts } = ToastPrimitive.useToastManager();
 
   return (
-    <ToastProvider>
-      {toasts.map(function ({ id, title, description, action, ...props }) {
-        return (
-          <Toast key={id} {...props}>
-            <div className="grid gap-1">
-              {title && <ToastTitle>{title}</ToastTitle>}
-              {description && (
-                <ToastDescription>{description}</ToastDescription>
-              )}
-            </div>
-            {action}
-            <ToastClose />
-          </Toast>
-        );
-      })}
-      <ToastViewport />
-    </ToastProvider>
+    <>
+      {toasts.map((toast) => (
+        <Toast
+          key={toast.id}
+          toast={toast}
+          variant={(toast.data as ToastData | undefined)?.variant}>
+          <div className="grid gap-1">
+            {toast.title && <ToastTitle>{toast.title}</ToastTitle>}
+            {toast.description && (
+              <ToastDescription>{toast.description}</ToastDescription>
+            )}
+          </div>
+          <ToastClose />
+        </Toast>
+      ))}
+    </>
   );
 }

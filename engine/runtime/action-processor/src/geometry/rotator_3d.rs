@@ -12,7 +12,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
 };
 use reearth_flow_types::{Code, CodeType, CompiledCode, GeometryValue};
 use schemars::JsonSchema;
@@ -26,7 +26,7 @@ pub struct Rotator3DFactory;
 
 impl ProcessorFactory for Rotator3DFactory {
     fn name(&self) -> &str {
-        "Rotator3D"
+        "Rotator 3D"
     }
 
     fn description(&self) -> &str {
@@ -42,11 +42,11 @@ impl ProcessorFactory for Rotator3DFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
+        vec![FEATURES_PORT.clone(), REJECTED_PORT.clone()]
     }
 
     fn build(
@@ -100,7 +100,7 @@ impl ProcessorFactory for Rotator3DFactory {
     }
 }
 
-/// # Rotator3D Parameters
+/// # Rotator 3D Parameters
 /// Configure the rotation for a 3D polygon
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
@@ -233,7 +233,7 @@ impl Processor for Rotator3D {
                 feature.geometry_mut().value = GeometryValue::FlowGeometry3D(
                     reearth_flow_geometry::types::geometry::Geometry3D::Polygon(rotated),
                 );
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
             }
             GeometryValue::CityGmlGeometry(city_gml) => {
                 if city_gml.gml_geometries.len() != 1
@@ -249,7 +249,7 @@ impl Processor for Rotator3D {
                 new_city_gml.gml_geometries[0].polygons[0] = rotated;
                 let mut feature = feature.clone();
                 feature.geometry_mut().value = GeometryValue::CityGmlGeometry(new_city_gml);
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
             }
             _ => {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
@@ -269,7 +269,7 @@ impl Processor for Rotator3D {
     }
 
     fn name(&self) -> &str {
-        "Rotator3D"
+        "Rotator 3D"
     }
 }
 

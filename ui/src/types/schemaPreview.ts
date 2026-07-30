@@ -29,7 +29,7 @@ export type PortReport = {
 
 export type NodeReport = {
   name: string;
-  /** Keyed by output port name (e.g. "default"). */
+  /** Keyed by output port name (e.g. "features"). */
   ports: Record<string, PortReport>;
   note?: string;
 };

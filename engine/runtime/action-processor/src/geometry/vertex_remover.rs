@@ -11,7 +11,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::Geometry;
 use reearth_flow_types::{Feature, GeometryValue};
@@ -24,7 +24,7 @@ pub struct VertexRemoverFactory;
 
 impl ProcessorFactory for VertexRemoverFactory {
     fn name(&self) -> &str {
-        "VertexRemover"
+        "Vertex Remover"
     }
 
     fn description(&self) -> &str {
@@ -40,11 +40,11 @@ impl ProcessorFactory for VertexRemoverFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
+        vec![FEATURES_PORT.clone(), REJECTED_PORT.clone()]
     }
 
     fn build(
@@ -104,7 +104,7 @@ impl Processor for VertexRemover {
     }
 
     fn name(&self) -> &str {
-        "VertexRemover"
+        "Vertex Remover"
     }
 }
 
@@ -127,7 +127,7 @@ impl VertexRemover {
                     remove_redundant_vertices(&line_string, EPSILON),
                 ));
                 feature.geometry = Arc::new(geometry);
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
             }
             Geometry2D::MultiLineString(mline_string) => {
                 let mut feature = feature.clone();
@@ -140,7 +140,7 @@ impl VertexRemover {
                         .collect(),
                 ));
                 feature.geometry = Arc::new(geometry);
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
             }
             _ => {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
@@ -166,7 +166,7 @@ impl VertexRemover {
                     remove_redundant_vertices(&line_string, EPSILON),
                 ));
                 feature.geometry = Arc::new(geometry);
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
             }
             Geometry3D::MultiLineString(mline_string) => {
                 let mut feature = feature.clone();
@@ -179,7 +179,7 @@ impl VertexRemover {
                         .collect(),
                 ));
                 feature.geometry = Arc::new(geometry);
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
             }
             _ => {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));

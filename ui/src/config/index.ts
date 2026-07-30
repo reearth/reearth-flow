@@ -21,6 +21,8 @@ export type Config = {
   api?: string;
   websocket?: string;
   websocketToken?: string;
+  tileServerBaseUrl?: string;
+  tileServerToken?: string;
 } & AuthInfo;
 
 const defaultConfig: Config = {

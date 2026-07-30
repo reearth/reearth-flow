@@ -8,15 +8,15 @@ This document describes how to read and write time-dynamic CZML data in Re:Earth
 
 Re:Earth Flow supports:
 
-- **Reading** CZML files with time-tagged position samples via `CzmlReader`
-- **Writing** time-dynamic features back to CZML via `CzmlWriter`
+- **Reading** CZML files with time-tagged position samples via `CZML Reader`
+- **Writing** time-dynamic features back to CZML via `CZML Writer`
 - **Faithful round-trip** of all CZML properties (point, label, path, orientation, etc.)
 
 ## Table of Contents
 
 - [Key Concepts](#key-concepts)
-- [CzmlReader — Time Sampling Strategies](#czmlreader--time-sampling-strategies)
-- [CzmlWriter — Output Modes](#czmlwriter--output-modes)
+- [CZML Reader — Time Sampling Strategies](#czml-reader--time-sampling-strategies)
+- [CZML Writer — Output Modes](#czml-writer--output-modes)
 - [Feature Attributes](#feature-attributes)
 - [Workflow Examples](#workflow-examples)
 - [Supported CZML Patterns](#supported-czml-patterns)
@@ -54,7 +54,7 @@ There are two approaches for representing CZML timeseries as features:
 
 ---
 
-## CzmlReader — Time Sampling Strategies
+## CZML Reader — Time Sampling Strategies
 
 The `timeSampling` parameter controls how time-dynamic positions are converted to features.
 
@@ -63,7 +63,7 @@ The `timeSampling` parameter controls how time-dynamic positions are converted t
 Produces one feature per CZML entity. The geometry uses the first position sample. All timeseries data is stored in `czml.timeseries`, and all other CZML packet properties (point, label, path, orientation, ellipsoid, etc.) are preserved as `czml.<key>` attributes for faithful round-trip.
 
 ```yaml
-action: "CzmlReader"
+action: "CZML Reader"
 with:
   dataset: "path/to/data.czml"
   # timeSampling defaults to "preserveRaw"
@@ -89,7 +89,7 @@ with:
 Expands every time-tagged sample into a separate feature. Each feature carries `czml.timestamp` and `czml.timeOffset` attributes.
 
 ```yaml
-action: "CzmlReader"
+action: "CZML Reader"
 with:
   dataset: "path/to/data.czml"
   timeSampling: "allSamples"
@@ -112,7 +112,7 @@ with:
 Extracts only the first position sample as static geometry. All other CZML properties are preserved as `czml.<key>` attributes.
 
 ```yaml
-action: "CzmlReader"
+action: "CZML Reader"
 with:
   dataset: "path/to/data.czml"
   timeSampling: "firstSampleOnly"
@@ -122,7 +122,7 @@ with:
 
 ---
 
-## CzmlWriter — Output Modes
+## CZML Writer — Output Modes
 
 The writer automatically detects the feature format and chooses the appropriate output mode.
 
@@ -137,7 +137,7 @@ When features have `czml.timeseries` attributes (from `preserveRaw` reading), th
 - Static entities (without `czml.timeseries`) get simple `cartographicDegrees`
 
 ```yaml
-action: "CzmlWriter"
+action: "CZML Writer"
 with:
   output: "env.get(\"outputFilePath\")"
 ```
@@ -149,7 +149,7 @@ No additional parameters needed — the writer reads everything from `czml.*` at
 When both `timeField` and `groupTimeseriesBy` are set, features with the same group key are merged into a single CZML entity with time-tagged position samples.
 
 ```yaml
-action: "CzmlWriter"
+action: "CZML Writer"
 with:
   output: "env.get(\"outputFilePath\")"
   timeField: "czml.timestamp"
@@ -180,7 +180,7 @@ with:
 The `preserveRaw` reader + embedded writer path preserves all CZML properties:
 
 ```
-CZML File → CzmlReader (preserveRaw) → Feature with czml.* attrs → CzmlWriter → CZML File
+CZML File → CZML Reader (preserveRaw) → Feature with czml.* attrs → CZML Writer → CZML File
 ```
 
 All packet properties (point, label, path, orientation, ellipsoid, billboard, model, polyline, polygon, etc.) are faithfully round-tripped as raw JSON without needing explicit support for each type.
@@ -207,14 +207,14 @@ Read CZML and write it back with all properties preserved:
 graphs:
   - nodes:
       - name: "Read CZML"
-        action: "CzmlReader"
+        action: "CZML Reader"
         with:
           dataset: "vehicles.czml"
           skipDocumentPacket: true
           # preserveRaw is the default
 
       - name: "Write CZML"
-        action: "CzmlWriter"
+        action: "CZML Writer"
         with:
           output: "env.get(\"outputFilePath\")"
     edges:
@@ -230,14 +230,14 @@ Expand all samples to JSON for inspection:
 graphs:
   - nodes:
       - name: "Read CZML"
-        action: "CzmlReader"
+        action: "CZML Reader"
         with:
           dataset: "vehicles.czml"
           skipDocumentPacket: true
           timeSampling: "allSamples"
 
       - name: "Write JSON"
-        action: "FeatureWriter"
+        action: "Feature Writer"
         with:
           output: "env.get(\"outputFilePath\")"
           format: "json"
@@ -254,7 +254,7 @@ Read as individual samples, process, and re-group:
 graphs:
   - nodes:
       - name: "Read CZML"
-        action: "CzmlReader"
+        action: "CZML Reader"
         with:
           dataset: "vehicles.czml"
           skipDocumentPacket: true
@@ -269,7 +269,7 @@ graphs:
               value: "Vehicle Alpha"
 
       - name: "Write CZML"
-        action: "CzmlWriter"
+        action: "CZML Writer"
         with:
           output: "env.get(\"outputFilePath\")"
           timeField: "czml.timestamp"

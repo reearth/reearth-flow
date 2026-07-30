@@ -5,7 +5,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue};
 use schemars::JsonSchema;
@@ -19,7 +19,7 @@ pub(super) struct ListConcatenatorFactory;
 
 impl ProcessorFactory for ListConcatenatorFactory {
     fn name(&self) -> &str {
-        "ListConcatenator"
+        "List Concatenator"
     }
 
     fn description(&self) -> &str {
@@ -35,11 +35,11 @@ impl ProcessorFactory for ListConcatenatorFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -70,7 +70,7 @@ impl ProcessorFactory for ListConcatenatorFactory {
     }
 }
 
-/// # ListConcatenator Parameters
+/// # List Concatenator Parameters
 ///
 /// Configuration for concatenating a specific attribute from list elements.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -97,7 +97,7 @@ impl Processor for ListConcatenator {
         // Get the list attribute
         let Some(AttributeValue::Array(list)) = feature.attributes.get(&self.list) else {
             // If list attribute doesn't exist or isn't an array, pass through unchanged
-            fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
             return Ok(());
         };
 
@@ -124,7 +124,7 @@ impl Processor for ListConcatenator {
             AttributeValue::String(concatenated),
         );
 
-        fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
         Ok(())
     }
 
@@ -137,6 +137,6 @@ impl Processor for ListConcatenator {
     }
 
     fn name(&self) -> &str {
-        "ListConcatenator"
+        "List Concatenator"
     }
 }

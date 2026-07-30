@@ -27,7 +27,7 @@ export * from "./Tabs";
 export * from "./TextArea";
 export * from "./Toast";
 export * from "./Tooltip";
-export * from "./Accordian";
+export * from "./Accordion";
 export * from "./AlertDialog";
 export * from "./RadioGroup";
 export * from "./SchemaForm";

@@ -78,7 +78,13 @@ const LayoutSubToolbar: React.FC<Props> = ({
 
   return (
     <div className="flex items-center gap-4 rounded-xl border border-primary bg-primary/50 p-1 text-popover-foreground shadow-md shadow-[black]/10 backdrop-blur dark:shadow-secondary">
-      <Select value={direction} onValueChange={handleDirectionChange}>
+      <Select
+        value={direction}
+        onValueChange={(v) => v != null && handleDirectionChange(v)}
+        items={[
+          { value: "Horizontal", label: t("Horizontal") },
+          { value: "Vertical", label: t("Vertical") },
+        ]}>
         <SelectTrigger className="h-7 w-30 text-xs">
           <SelectValue />
         </SelectTrigger>

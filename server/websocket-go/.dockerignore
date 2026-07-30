@@ -1,0 +1,22 @@
+# Keep the build context small and reproducible. Source + go.mod/go.sum are all
+# the builder needs; everything below is dev-only or output.
+.git
+.gitignore
+.dockerignore
+Dockerfile
+*.md
+docs/
+deploy/
+
+# Test / coverage / editor artifacts
+*_test.go.bak
+*.out
+*.test
+coverage.*
+.idea/
+.vscode/
+
+# Local build output
+/out
+websocket
+dist/

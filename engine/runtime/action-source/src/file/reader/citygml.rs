@@ -11,7 +11,7 @@ use nusamai_plateau::{
 };
 use quick_xml::NsReader;
 use reearth_flow_common::{str::to_hash, uri::Uri};
-use reearth_flow_runtime::node::{IngestionMessage, Port, DEFAULT_PORT};
+use reearth_flow_runtime::node::{IngestionMessage, Port, FEATURES_PORT};
 use reearth_flow_types::{
     conversion::nusamai::from_nusamai_citygml_value, geometry::Geometry, lod::LodMask, Attribute,
     AttributeValue, CitygmlFeatureExt, Feature,
@@ -27,6 +27,8 @@ use url::Url;
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CityGmlReaderParam {
+    /// # Flatten Feature Tree
+    /// When enabled, extracts nested child city objects as separate features, each tagged with `parentId` and `parentType` attributes. Defaults to false.
     pub(super) flatten: Option<bool>,
 }
 
@@ -187,7 +189,7 @@ async fn parse_tree_reader<R: BufRead>(
             feature.update_lod_mask(LodMask::from_u8(citygml_lod));
             sender
                 .send((
-                    DEFAULT_PORT.clone(),
+                    FEATURES_PORT.clone(),
                     IngestionMessage::OperationEvent { feature },
                 ))
                 .await

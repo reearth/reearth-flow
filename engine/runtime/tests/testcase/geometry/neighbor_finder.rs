@@ -1,7 +1,7 @@
-// Workflow-level integration tests for NeighborFinder processor
+// Workflow-level integration tests for Neighbor Finder processor
 // ==============================================================
 //
-// These tests verify the end-to-end behavior of the NeighborFinder processor
+// These tests verify the end-to-end behavior of the Neighbor Finder processor
 // using real geometry data loaded from GeoJSON files.
 
 use reearth_flow_action_log::factory::LoggerFactory;
@@ -19,9 +19,9 @@ use tempfile::tempdir;
 
 use crate::helper::BUILTIN_ACTION_FACTORIES;
 
-/// Test: NeighborFinder with GeoJSON input - explicit proximity matching verification
+/// Test: Neighbor Finder with GeoJSON input - explicit proximity matching verification
 ///
-/// This test verifies that the NeighborFinder processor correctly:
+/// This test verifies that the Neighbor Finder processor correctly:
 /// 1. Reads geometry from GeoJSON files
 /// 2. Calculates 2D Euclidean distances between points
 /// 3. Identifies the nearest neighbor (closest candidate to base)

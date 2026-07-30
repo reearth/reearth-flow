@@ -8,8 +8,11 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
+    node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
 };
+// Old-world feature/geometry construction lives only in the not(new-geometry)
+// `send_feature`; the new-world path builds features in `gltf_next`.
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
 
 use schemars::JsonSchema;
@@ -24,12 +27,19 @@ use crate::{
     },
 };
 
+// New-geometry conversion lives in a sibling file, declared here as a child
+// module so it can reuse this module's scene traversal, buffer loading, and
+// triangle extraction via `super::`.
+#[cfg(feature = "new-geometry")]
+#[path = "gltf_next.rs"]
+mod gltf_next;
+
 #[derive(Debug, Clone, Default)]
 pub(crate) struct GltfReaderFactory;
 
 impl SourceFactory for GltfReaderFactory {
     fn name(&self) -> &str {
-        "GltfReader"
+        "glTF Reader"
     }
 
     fn description(&self) -> &str {
@@ -45,7 +55,7 @@ impl SourceFactory for GltfReaderFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -131,7 +141,7 @@ impl Source for GltfReader {
     async fn initialize(&self, _ctx: NodeContext) {}
 
     fn name(&self) -> &str {
-        "GltfReader"
+        "glTF Reader"
     }
 
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {
@@ -148,6 +158,20 @@ impl Source for GltfReader {
         let content = get_content(&self.params.common, storage_resolver.clone()).await?;
 
         read_gltf(&ctx, storage_resolver, &content, &self.params, sender)
+            .await
+            .map_err(Into::<BoxedError>::into)
+    }
+
+    #[cfg(feature = "new-geometry")]
+    async fn start(
+        &mut self,
+        ctx: NodeContext,
+        sender: Sender<(Port, IngestionMessage)>,
+    ) -> Result<(), BoxedError> {
+        let storage_resolver = Arc::clone(&ctx.storage_resolver);
+        let content = get_content(&self.params.common, storage_resolver.clone()).await?;
+
+        gltf_next::read(&ctx, storage_resolver, &content, &self.params, &sender)
             .await
             .map_err(Into::<BoxedError>::into)
     }
@@ -355,7 +379,7 @@ async fn send_feature(
 
     sender
         .send((
-            DEFAULT_PORT.clone(),
+            FEATURES_PORT.clone(),
             IngestionMessage::OperationEvent { feature },
         ))
         .await

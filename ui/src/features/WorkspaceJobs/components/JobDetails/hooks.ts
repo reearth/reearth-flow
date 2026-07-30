@@ -81,7 +81,9 @@ export default ({ jobId }: { jobId: string }) => {
               id: "completedAt",
               name: t("Completed At"),
               value:
-                job.status === "completed"
+                job.status === "completed" ||
+                job.status === "failed" ||
+                job.status === "cancelled"
                   ? formatTimestamp(job.completedAt)
                   : t("N/A"),
             },

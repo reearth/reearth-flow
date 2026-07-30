@@ -2,7 +2,7 @@ use std::str::FromStr;
 
 use reearth_flow_common::uri::Uri;
 use reearth_flow_runtime::{
-    executor_operation::ExecutorContext, forwarder::ProcessorChannelForwarder, node::DEFAULT_PORT,
+    executor_operation::ExecutorContext, forwarder::ProcessorChannelForwarder, node::FEATURES_PORT,
 };
 use reearth_flow_types::Feature;
 
@@ -36,12 +36,12 @@ pub(crate) fn read_json(
         serde_json::Value::Array(arr) => {
             for v in arr {
                 let feature = Feature::from(v);
-                fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
             }
         }
         _ => {
             let feature = Feature::from(value);
-            fw.send(ctx.new_with_feature_and_port(feature, DEFAULT_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
         }
     }
     Ok(())

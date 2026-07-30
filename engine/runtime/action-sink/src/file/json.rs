@@ -5,7 +5,7 @@ use bytes::Bytes;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
+use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
 use reearth_flow_types::{create_batch_feature, Code, CodeType, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -19,7 +19,7 @@ pub(crate) struct JsonWriterFactory;
 
 impl SinkFactory for JsonWriterFactory {
     fn name(&self) -> &str {
-        "JsonWriter"
+        "JSON Writer"
     }
 
     fn description(&self) -> &str {
@@ -39,7 +39,7 @@ impl SinkFactory for JsonWriterFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn prepare(&self) -> Result<(), BoxedError> {
@@ -99,15 +99,17 @@ pub(super) struct JsonWriter {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct JsonWriterParam {
-    /// Output path or expression for the JSON file to create
+    /// # Output File
+    /// Output path or expression for the JSON file to create.
     pub(super) output: Code,
-    /// Optional converter expression to transform features before writing
+    /// # Converter Expression
+    /// Expression that transforms features into the JSON value to write. When omitted, features are written as an array of their attributes.
     pub(super) converter: Option<Code<{ CodeType::FlowExpr as u32 }>>,
 }
 
 impl Sink for JsonWriter {
     fn name(&self) -> &str {
-        "JsonWriter"
+        "JSON Writer"
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {

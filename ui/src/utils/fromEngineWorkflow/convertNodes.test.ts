@@ -169,7 +169,7 @@ describe("convertNodes", () => {
         id: "node1",
         name: "Action Node",
         type: "action",
-        action: "FeatureCreator",
+        action: "Feature Creator",
       },
       {
         id: "sub1",

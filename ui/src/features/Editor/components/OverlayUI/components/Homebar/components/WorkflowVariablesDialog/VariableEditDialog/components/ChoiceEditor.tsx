@@ -237,9 +237,13 @@ export const ChoiceEditor: React.FC<Props> = ({
             </Label>
             <Select
               value={choiceConfig.displayMode || "dropdown"}
-              onValueChange={(value: "dropdown" | "radio") =>
-                handleDisplayModeChange(value)
-              }>
+              onValueChange={(value) =>
+                value != null && handleDisplayModeChange(value)
+              }
+              items={[
+                { value: "dropdown", label: t("Dropdown") },
+                { value: "radio", label: t("Radio Buttons") },
+              ]}>
               <SelectTrigger>
                 <SelectValue placeholder={t("Select display mode")} />
               </SelectTrigger>

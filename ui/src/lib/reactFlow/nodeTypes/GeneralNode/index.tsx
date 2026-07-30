@@ -3,6 +3,7 @@ import {
   DiscIcon,
   GraphIcon,
   LightningIcon,
+  WarningCircleIcon,
 } from "@phosphor-icons/react";
 import { NodeProps } from "@xyflow/react";
 import { memo, useMemo } from "react";
@@ -37,6 +38,7 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
     borderColor,
     selectedColor,
     selectedBackgroundColor,
+    isNodeStale,
     handleCollapsedToggle,
   } = useHooks({ data, type, nodeId: id });
 
@@ -83,6 +85,9 @@ const GeneralNode: React.FC<GeneralNodeProps> = ({
               {data.customizations?.customName || officialName}
             </p>
           </div>
+          {isNodeStale && (
+            <WarningCircleIcon className="absolute -top-1 -right-0.5 size-3 text-warning" />
+          )}
           {/* <CaretRight weight="fill" /> */}
         </div>
         <Handles

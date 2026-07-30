@@ -1,6 +1,6 @@
 use crate::helper::execute;
 
-/// Integration test for HTTPCaller action.
+/// Integration test for HTTP Caller action.
 /// Ignored by default as it requires network access to jsonplaceholder.typicode.com.
 /// Run with: cargo test test_http_caller -- --ignored
 #[test]

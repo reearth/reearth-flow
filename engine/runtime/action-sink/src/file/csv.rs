@@ -5,7 +5,7 @@ use reearth_flow_common::csv::Delimiter;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
+use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
 use reearth_flow_types::{AttributeValue, Code, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -19,7 +19,7 @@ pub(crate) struct CsvWriterFactory;
 
 impl SinkFactory for CsvWriterFactory {
     fn name(&self) -> &str {
-        "CsvWriter"
+        "CSV Writer"
     }
 
     fn description(&self) -> &str {
@@ -39,7 +39,7 @@ impl SinkFactory for CsvWriterFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn prepare(&self) -> Result<(), BoxedError> {
@@ -93,12 +93,14 @@ pub(super) struct CsvWriter {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct CsvWriterParam {
-    /// Output path or expression for the CSV/TSV file to create
+    /// # Output File
+    /// Output path or expression for the CSV/TSV file to create.
     pub(super) output: Code,
-    /// File format: csv (comma) or tsv (tab)
+    /// # File Format
+    /// File format to write: CSV (comma-separated) or TSV (tab-separated).
     format: CsvFormat,
     /// # Geometry Configuration
-    /// Optional configuration for exporting geometry to CSV columns
+    /// Optional configuration for exporting geometry to CSV columns.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(super) geometry: Option<super::writer_geometry::GeometryExportConfig>,
 }
@@ -125,7 +127,7 @@ impl CsvFormat {
 
 impl Sink for CsvWriter {
     fn name(&self) -> &str {
-        "CsvWriter"
+        "CSV Writer"
     }
 
     #[cfg(not(feature = "new-geometry"))]

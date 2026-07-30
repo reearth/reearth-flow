@@ -92,16 +92,19 @@ const OutputDataDownload: React.FC<Props> = ({ outputData }) => {
   return (
     <>
       <DropdownMenu>
-        <DropdownMenuTrigger asChild disabled={count === 0}>
-          <Button
-            className="h-[25px] gap-1 px-2 text-xs font-light hover:bg-primary dark:font-thin"
-            variant="ghost"
-            disabled={count === 0}>
-            <FolderIcon size={14} />
-            {t("Output data")} ({count})
-            <CaretDownIcon size={10} />
-          </Button>
-        </DropdownMenuTrigger>
+        <DropdownMenuTrigger
+          disabled={count === 0}
+          render={
+            <Button
+              className="h-[25px] gap-1 px-2 text-xs font-light hover:bg-primary dark:font-thin"
+              variant="ghost"
+              disabled={count === 0}>
+              <FolderIcon size={14} />
+              {t("Output data")} ({count})
+              <CaretDownIcon size={10} />
+            </Button>
+          }
+        />
         <DropdownMenuContent align="start">
           {count > 1 && (
             <>

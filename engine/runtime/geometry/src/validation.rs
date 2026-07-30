@@ -616,6 +616,30 @@ impl<
                 }
             }
             ValidationType::CorruptGeometry(tolerance) => {
+                // L07 extension check: a polygon ring (gml:LinearRing) must have at least
+                // 4 points - a valid closed ring needs 3 distinct vertices plus the repeated
+                // closing point. Rings with fewer points are reported as TooFewPoints.
+                if utils::check_too_few_points(self.exterior(), true) {
+                    reason.push(ValidationProblemAtPosition(
+                        ValidationProblem::TooFewPoints,
+                        ValidationProblemPosition::Polygon(
+                            RingRole::Exterior,
+                            CoordinatePosition(0),
+                        ),
+                    ));
+                }
+                for (j, interior) in self.interiors().iter().enumerate() {
+                    if utils::check_too_few_points(interior, true) {
+                        reason.push(ValidationProblemAtPosition(
+                            ValidationProblem::TooFewPoints,
+                            ValidationProblemPosition::Polygon(
+                                RingRole::Interior(j as isize),
+                                CoordinatePosition(0),
+                            ),
+                        ));
+                    }
+                }
+
                 // Check if interior rings cross the exterior ring using 2D line-on-line intersection.
                 // We project to 2D (strip Z) to avoid false positives from Z bounding box checks.
                 let tolerance = tolerance.unwrap_or(0.0);

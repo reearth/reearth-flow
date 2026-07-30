@@ -76,36 +76,38 @@ const SearchPanel = ({
         header: t("Display Name"),
         cell: ({ row }) => (
           <Tooltip>
-            <TooltipTrigger asChild>
-              <div className="flex w-[300px] items-center gap-2">
-                <div
-                  className={`flex w-[24px] justify-center rounded border text-center ${row.original?.nodeType === "transformer" ? "bg-node-transformer/60" : row.original?.nodeType === "reader" ? "bg-node-reader/60" : row.original?.nodeType === "writer" ? "bg-node-writer/60" : row.original?.nodeType === "subworkflow" ? "bg-node-subworkflow/60" : "bg-popover"} p-1 align-middle`}>
-                  <p className="self-center text-xs text-zinc-200">
-                    {row.original?.nodeType === "reader" ? (
-                      <DatabaseIcon className="self-center" />
-                    ) : row.original?.nodeType === "writer" ? (
-                      <DiscIcon className="self-center" />
-                    ) : row.original?.nodeType === "subworkflow" ? (
-                      <GraphIcon className="self-center" />
-                    ) : row.original?.nodeType === "batch" ? (
-                      <RectangleDashedIcon className="self-center" />
-                    ) : row.original?.nodeType === "note" ? (
-                      <NoteIcon className="self-center" />
-                    ) : (
-                      <LightningIcon className="self-center" />
-                    )}
-                  </p>
+            <TooltipTrigger
+              render={
+                <div className="flex w-[300px] items-center gap-2">
+                  <div
+                    className={`flex w-[24px] justify-center rounded border text-center ${row.original?.nodeType === "transformer" ? "bg-node-transformer/60" : row.original?.nodeType === "reader" ? "bg-node-reader/60" : row.original?.nodeType === "writer" ? "bg-node-writer/60" : row.original?.nodeType === "subworkflow" ? "bg-node-subworkflow/60" : "bg-popover"} p-1 align-middle`}>
+                    <p className="self-center text-xs text-zinc-200">
+                      {row.original?.nodeType === "reader" ? (
+                        <DatabaseIcon className="self-center" />
+                      ) : row.original?.nodeType === "writer" ? (
+                        <DiscIcon className="self-center" />
+                      ) : row.original?.nodeType === "subworkflow" ? (
+                        <GraphIcon className="self-center" />
+                      ) : row.original?.nodeType === "batch" ? (
+                        <RectangleDashedIcon className="self-center" />
+                      ) : row.original?.nodeType === "note" ? (
+                        <NoteIcon className="self-center" />
+                      ) : (
+                        <LightningIcon className="self-center" />
+                      )}
+                    </p>
+                  </div>
+                  <div className="truncate">
+                    <span className="block truncate font-medium">
+                      {row.original?.displayName}
+                    </span>
+                    <span className="block truncate font-medium text-muted-foreground">
+                      ({row.original?.officialName})
+                    </span>
+                  </div>
                 </div>
-                <div className="truncate">
-                  <span className="block truncate font-medium">
-                    {row.original?.displayName}
-                  </span>
-                  <span className="block truncate font-medium text-muted-foreground">
-                    ({row.original?.officialName})
-                  </span>
-                </div>
-              </div>
-            </TooltipTrigger>
+              }
+            />
             <TooltipContent
               side="right"
               sideOffset={-180}
@@ -121,11 +123,13 @@ const SearchPanel = ({
         header: t("Workflow"),
         cell: ({ row }) => (
           <Tooltip>
-            <TooltipTrigger asChild>
-              <span className="block max-w-[120px] truncate font-medium text-muted-foreground">
-                {row.original?.workflowName}
-              </span>
-            </TooltipTrigger>
+            <TooltipTrigger
+              render={
+                <span className="block max-w-[120px] truncate font-medium text-muted-foreground">
+                  {row.original?.workflowName}
+                </span>
+              }
+            />
             <TooltipContent
               side="left"
               sideOffset={-100}

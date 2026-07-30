@@ -6,7 +6,7 @@ use quick_xml::writer::Writer;
 use reearth_flow_runtime::errors::BoxedError;
 use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
-use reearth_flow_runtime::node::{Port, Sink, SinkFactory, DEFAULT_PORT};
+use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
 use reearth_flow_types::{Code, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
@@ -20,7 +20,7 @@ pub(crate) struct XmlWriterFactory;
 
 impl SinkFactory for XmlWriterFactory {
     fn name(&self) -> &str {
-        "XmlWriter"
+        "XML Writer"
     }
 
     fn description(&self) -> &str {
@@ -40,7 +40,7 @@ impl SinkFactory for XmlWriterFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn prepare(&self) -> Result<(), BoxedError> {
@@ -90,13 +90,14 @@ pub(super) struct XmlWriter {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct XmlWriterParam {
-    /// Output path or expression for the XML file to create
+    /// # Output File
+    /// Output path or expression for the XML file to create.
     pub(super) output: Code,
 }
 
 impl Sink for XmlWriter {
     fn name(&self) -> &str {
-        "XmlWriter"
+        "XML Writer"
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
@@ -146,7 +147,7 @@ pub(super) fn write_xml(
         .collect::<Vec<serde_json::Value>>();
 
     let mut writer = Writer::new(Vec::new());
-    writer.write_event(Event::Decl(BytesDecl::new("1.2", None, None)))?;
+    writer.write_event(Event::Decl(BytesDecl::new("1.0", None, None)))?;
     let start = BytesStart::new("features");
     let end = start.to_end();
     writer.write_event(Event::Start(start.clone()))?;

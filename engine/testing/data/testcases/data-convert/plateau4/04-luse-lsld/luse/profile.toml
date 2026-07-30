@@ -1,11 +1,19 @@
 citygml_zip_name = "43206_tamana-shi_city_2024_citygml_2_op_luse.zip"
 
-[tests.mvt_attributes.casts]
+[filter.tree]
+"udx/luse/" = ["493033_luse_6697_op.gml"]
+
+[convs.mvt_attributes.luse]
+path = "43206_tamana-shi_city_2024_citygml_2_op_luse_mvt"
+truth_path = "luse_truth.json"
+generate_truth = true
+
+[convs.mvt_attributes.luse.casts]
 ".attributes" = "json"
 ".attributes.meshcode" = "string"
 
 [tests.mvt_polygons]
 threshold = 0.001
 
-[filter.tree]
-"udx/luse/" = ["493033_luse_6697_op.gml"]
+[tests.json_attributes_v2.luse]
+path = "luse_truth.json"

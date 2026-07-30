@@ -15,7 +15,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, DEFAULT_PORT, REJECTED_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
 };
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_storage::storage::Storage;
@@ -297,11 +297,11 @@ impl ProcessorFactory for DomainOfDefinitionValidatorFactory {
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone(), REJECTED_PORT.clone()]
+        vec![FEATURES_PORT.clone(), REJECTED_PORT.clone()]
     }
 
     fn build(
@@ -398,7 +398,7 @@ impl Processor for DomainOfDefinitionValidator {
                 fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                     &ctx,
                     result_feature,
-                    DEFAULT_PORT.clone(),
+                    FEATURES_PORT.clone(),
                 ));
             }
             dup_id += 1;
@@ -545,7 +545,7 @@ fn process_feature(
                 result_feature.insert("featureType", AttributeValue::String(feture_type.clone()));
                 result_feature.insert("gmlId", AttributeValue::String(gml_id.clone()));
                 fw.send(
-                    ctx.new_with_feature_and_port(result_feature.clone(), DEFAULT_PORT.clone()),
+                    ctx.new_with_feature_and_port(result_feature.clone(), FEATURES_PORT.clone()),
                 );
                 result.push(result_feature);
                 response.xlink_has_no_reference_num += 1;
@@ -639,7 +639,7 @@ fn process_feature(
         "invalidLodXGeometry",
         AttributeValue::Number(Number::from(response.invalid_lod_x_geometry_num)),
     );
-    fw.send(ctx.new_with_feature_and_port(result_feature.clone(), DEFAULT_PORT.clone()));
+    fw.send(ctx.new_with_feature_and_port(result_feature.clone(), FEATURES_PORT.clone()));
     result.push(result_feature);
     Ok((result, gml_ids))
 }
@@ -753,7 +753,7 @@ fn process_member_node(
         );
         result_feature.insert("tag", AttributeValue::String(tag.clone().to_string()));
         result.push(result_feature.clone());
-        fw.send(ctx.new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()));
+        fw.send(ctx.new_with_feature_and_port(result_feature, FEATURES_PORT.clone()));
         response.gml_id_not_well_formed_num += 1;
     }
     // C03: gml:id collection
@@ -857,7 +857,7 @@ fn process_member_node(
             result_feature.insert("codeSpace", AttributeValue::String(code_space));
             result_feature.insert("codeSpaceValue", AttributeValue::String(code_value));
             result.push(result_feature.clone());
-            fw.send(ctx.new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(result_feature, FEATURES_PORT.clone()));
         }
     }
     // L06: Geographical coverage verification
@@ -994,7 +994,7 @@ fn process_member_node(
                 AttributeValue::Number(Number::from_f64(max_z).unwrap()),
             );
             result.push(result_feature.clone());
-            fw.send(ctx.new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(result_feature, FEATURES_PORT.clone()));
         }
     }
     // T03: Extraction of xlink:hrefs with no referent or whose referent is not a valid geometry object
@@ -1086,7 +1086,7 @@ fn process_member_node(
                     AttributeValue::String(get_xpath(child, Some(member), None)),
                 );
                 result.push(result_feature.clone());
-                fw.send(ctx.new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(result_feature, FEATURES_PORT.clone()));
                 response.xlink_has_no_reference_num += 1;
             }
         } else if !gml_ids.contains_key(&xlink_href.chars().skip(1).collect::<String>()) {
@@ -1105,7 +1105,7 @@ fn process_member_node(
             );
             result_feature.insert("xlinkHref", AttributeValue::String(xlink_href.clone()));
             result.push(result_feature.clone());
-            fw.send(ctx.new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(result_feature, FEATURES_PORT.clone()));
             response.xlink_has_no_reference_num += 1;
         } else if let Some(gml_ids) = gml_ids.get(&xlink_href.chars().skip(1).collect::<String>()) {
             for item in gml_ids.iter().filter(|&item| {
@@ -1139,7 +1139,7 @@ fn process_member_node(
                     AttributeValue::String(item.get("xpath").cloned().unwrap_or_default()),
                 );
                 result.push(result_feature.clone());
-                fw.send(ctx.new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(result_feature, FEATURES_PORT.clone()));
                 response.xlink_invalid_object_type_num += 1;
             }
         }
@@ -1222,7 +1222,7 @@ fn process_member_node(
                 }
                 result_feature.insert("invalidGeometry", AttributeValue::String(gml_tag));
                 result.push(result_feature.clone());
-                fw.send(ctx.new_with_feature_and_port(result_feature, DEFAULT_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(result_feature, FEATURES_PORT.clone()));
                 response.invalid_lod_x_geometry_num += 1;
             }
         }

@@ -108,7 +108,7 @@ cargo run --package reearth-flow-cli -- run --workflow ./coordinates-example.yml
 
 All examples output features that can be:
 - Written to GeoJSON with `GeoJsonWriter`
-- Written back to CSV with `FeatureWriter`
+- Written back to CSV with `Feature Writer`
 - Processed with other Flow actions (filters, transformers, etc.)
 
 Features will have:

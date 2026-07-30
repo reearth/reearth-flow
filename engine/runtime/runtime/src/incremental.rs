@@ -394,8 +394,8 @@ mod tests {
             id,
             from,
             to,
-            from_port: "default".to_string(),
-            to_port: "default".to_string(),
+            from_port: "features".to_string(),
+            to_port: "features".to_string(),
         }
     }
 

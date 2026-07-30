@@ -138,12 +138,8 @@ const DebugWorkflowVariablesDialog: React.FC<Props> = ({
   );
 
   return (
-    <Dialog open onOpenChange={onDialogClose}>
-      <DialogContent
-        className="h-[50vh]"
-        size="2xl"
-        position="off-center"
-        onInteractOutside={(e) => e.preventDefault()}>
+    <Dialog open disablePointerDismissal onOpenChange={onDialogClose}>
+      <DialogContent className="h-[50vh]" size="2xl" position="off-center">
         <div className="flex h-full flex-col">
           <DialogHeader>
             <DialogTitle>

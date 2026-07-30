@@ -22,7 +22,7 @@ use reearth_flow_runtime::{
     errors::BoxedError,
     event::EventHub,
     executor_operation::NodeContext,
-    node::{IngestionMessage, Port, Source, SourceFactory, DEFAULT_PORT},
+    node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
 use schemars::JsonSchema;
@@ -96,11 +96,11 @@ pub(crate) struct ShapefileReaderFactory;
 
 impl SourceFactory for ShapefileReaderFactory {
     fn name(&self) -> &str {
-        "ShapefileReader"
+        "Shapefile Reader"
     }
 
     fn description(&self) -> &str {
-        "Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .shx files)"
+        "Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .shx files)."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -112,11 +112,11 @@ impl SourceFactory for ShapefileReaderFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["shapefile"]
+        &["shapefile", "vector"]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![DEFAULT_PORT.clone()]
+        vec![FEATURES_PORT.clone()]
     }
 
     fn build(
@@ -181,39 +181,14 @@ pub(super) struct ShapefileReaderParam {
     #[serde(flatten)]
     pub(super) common_property: FileReaderCommonParam,
     /// # Character Encoding
-    ///
-    /// Character encoding for attribute data in the DBF file.
-    /// If not specified, encoding is determined from the .cpg file (if present), otherwise defaults to UTF-8.
-    ///
-    /// Supported encodings include:
-    /// - **UTF-8** - Unicode UTF-8 (default, recommended for all new shapefiles)
-    /// - **Windows Code Pages** - Windows-1250 through Windows-1258, Windows-874
-    /// - **ISO-8859 family** - ISO-8859-1 (Latin-1) through ISO-8859-16
-    /// - **Asian encodings** - Shift-JIS, EUC-JP, EUC-KR, Big5, GBK, GB18030
-    /// - **Other legacy encodings** - KOI8-R, KOI8-U, IBM866, Macintosh
-    ///
-    /// All encoding labels are case-insensitive and support common variations
-    /// (e.g., "UTF-8", "UTF8", "utf8" all work).
-    ///
-    /// UTF-16 is not supported due to byte-level handling requirements.
-    /// If a UTF-16 shapefile is encountered, an error with conversion instructions is returned.
-    ///
-    /// Examples:
-    /// - `"UTF-8"` - Modern standard
-    /// - `"Windows-1252"` - Common for Western European legacy data
-    /// - `"ISO-8859-1"` - Latin-1, common in older shapefiles
-    /// - `"Shift-JIS"` - Japanese data
-    ///
-    /// Priority order: encoding parameter > .cpg file > UTF-8 default
+    /// Character encoding for attribute data in the DBF file, such as "UTF-8", "Shift-JIS", or "Windows-1252"; labels are case-insensitive. When omitted, the encoding is taken from the .cpg file if present, otherwise UTF-8 (UTF-16 is not supported).
     pub(super) encoding: Option<String>,
     /// # Force 2D
-    /// If true, forces all geometries to be 2D (ignoring Z values)
-    #[serde(default)]
+    /// If true, forces all geometries to be 2D (ignoring Z values).
+    #[serde(default, rename = "force2D", alias = "force2d")]
     pub(super) force_2d: bool,
     /// # Allow Null Path
-    /// If true, a dataset expression that evaluates to null produces zero features
-    /// instead of an error. This is useful for optional shapefile inputs where the path may
-    /// not be configured.
+    /// If true, a null dataset path produces zero features instead of an error, allowing optional shapefile inputs.
     #[serde(default, alias = "allowEmptyPath")]
     pub(super) allow_empty_path: bool,
 }
@@ -223,7 +198,7 @@ impl Source for ShapefileReader {
     async fn initialize(&self, _ctx: NodeContext) {}
 
     fn name(&self) -> &str {
-        "ShapefileReader"
+        "Shapefile Reader"
     }
 
     async fn serialize_state(&self) -> Result<Vec<u8>, BoxedError> {
@@ -276,7 +251,7 @@ async fn read_shapefile(
 
         sender
             .send((
-                DEFAULT_PORT.clone(),
+                FEATURES_PORT.clone(),
                 IngestionMessage::OperationEvent { feature },
             ))
             .await

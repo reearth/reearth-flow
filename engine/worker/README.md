@@ -48,9 +48,9 @@ graphs:
             ]
 
       - id: 61e89fd2-ea66-4fa1-b426-6f84484a9d38
-        name: FeatureReader
+        name: Feature Reader
         type: action
-        action: FeatureReader
+        action: Feature Reader
         with:
           format: tsv
           dataset: |
