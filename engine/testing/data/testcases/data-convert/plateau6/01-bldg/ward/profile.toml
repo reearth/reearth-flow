@@ -2,3 +2,19 @@ citygml_zip_name = "13104_shinjuku-ku_pref_2025_citygml_1_op_bldg.zip"
 
 [filter.tree]
 "udx/bldg" = ["53394517_bldg_6697_op.gml"]
+
+[convs.raster3d.lod1]
+path = "13104_shinjuku-ku_pref_2025_citygml_1_op_bldg_3dtiles_lod1"
+truth_path = "raster3d_lod1"
+generate_truth = true
+
+[convs.raster3d.lod1.cameras.cam1]
+position = [-3957004.097, 3353716.143, 3699292.404]
+look_at = [-3956942.073, 3353652.896, 3699338.934]
+up = [-0.384, 0.272, 0.882]
+fov_y_deg = 44.26
+near = 1.00
+far = 1000.61
+
+[tests.raster3d.lod1]
+threshold = 1.0
