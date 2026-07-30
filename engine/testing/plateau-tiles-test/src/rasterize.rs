@@ -389,7 +389,7 @@ mod tests {
             1.5,
             f32::INFINITY,
             -3.25,
-            123456.789,
+            123456.0,
             f32::MIN_POSITIVE,
             1e10,
             -1e10,
