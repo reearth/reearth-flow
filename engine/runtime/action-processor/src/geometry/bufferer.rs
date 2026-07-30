@@ -80,9 +80,8 @@ impl ProcessorFactory for BuffererFactory {
     }
 }
 
-// TODO: add a `solid` buffer type, matching FME's Bufferer "Solid" buffer type.
-// It needs a solid-buffering algorithm (and an edge-resolution control) that the
-// geometry crate does not have yet.
+// TODO: add a `solid` buffer type. It needs a solid-buffering algorithm, and an
+// edge-resolution control to go with it, that the geometry crate does not have yet.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 enum BufferType {
     /// # 2D Area Buffer

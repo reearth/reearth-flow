@@ -92,14 +92,14 @@ auditing it that belong elsewhere are deferred:
 
 ```
 Bufferer
-  params:  BufferType has a single `area2d` variant. FME's Bufferer offers
-             "Area (2D)" and "Solid", and the PLATEAU4 品質検査02 建築物 FMW our
-             surface_validator graph ports carries both branches
-             (Bufferer_2_2DBuffering / Bufferer_2_3DBuffering), so a second
-             variant is genuinely missing rather than hypothetical. Adding it
-             needs a solid-buffering algorithm and an edge-resolution control
-             that reearth-flow-geometry does not have, so the oneOf is kept with
-             a TODO in bufferer.rs (standard §3.4, "variants planned but not
+  params:  BufferType has a single `area2d` variant. The reference implementation
+             this action was ported from offers both a 2D-area and a solid buffer
+             type, and the PLATEAU 品質検査02 建築物 workspace our surface_validator
+             graph is based on carries both branches, so a second variant is
+             genuinely missing rather than hypothetical. Adding it needs a
+             solid-buffering algorithm and an edge-resolution control that
+             reearth-flow-geometry does not have, so the oneOf is kept with a TODO
+             in bufferer.rs (standard §3.4, "variants planned but not
              implemented"). Own PR when the algorithm lands.
            interpolationAngle is applied when buffering a point or a curve but
              not a polygon — buffer_polygon() takes only a distance. The
@@ -130,8 +130,9 @@ Image Rasterizer
   ports:   the `features` output carries two unrelated things: the features that
              arrived on `texture-coordinates`, re-emitted unchanged, or — when
              none did — a single synthetic feature holding a `png_image` path
-             attribute. FME's ImageRasterizer emits the raster on its own
-             `Raster` port. Nothing in-repo consumes our `features` output.
+             attribute. A rasterizer should emit the raster on a port of its own,
+             separate from any pass-through stream. Nothing in-repo consumes our
+             `features` output.
              Splitting it is a design change, and it is entangled with the
              save-path issue below, so both belong in one follow-up.
   impl:    save_image_with_path_option() falls back to std::env::var("HOME")
