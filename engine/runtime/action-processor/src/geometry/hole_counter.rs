@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 
 #[cfg(not(feature = "new-geometry"))]
-use reearth_flow_geometry::algorithm::hole::HoleCounter as HoleCounterAlgorithm;
+use reearth_flow_geometry::algorithm::hole::HoleCounter as _;
 #[cfg(feature = "new-geometry")]
 use reearth_flow_geometry::ops::CountHoles;
 use reearth_flow_runtime::{
