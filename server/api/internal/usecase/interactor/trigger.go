@@ -151,112 +151,116 @@ func (i *Trigger) Create(ctx context.Context, param interfaces.CreateTriggerPara
 }
 
 func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPITriggerParam) (*job.Job, error) {
-	var j *job.Job
+	trigger, err := i.triggerRepo.FindByID(ctx, p.TriggerID)
+	if err != nil {
+		return nil, err
+	}
+
+	if !trigger.Enabled() {
+		return nil, fmt.Errorf("trigger is disabled")
+	}
+
+	// API-driven triggers use their own secret token as the auth mechanism.
+	// No workspace membership is required — the token is sufficient proof of authorization.
+	if trigger.EventSource() == "API_DRIVEN" {
+		if p.AuthenticationToken != *trigger.AuthToken() {
+			return nil, fmt.Errorf("invalid auth token")
+		}
+	} else {
+		if err := i.checkPermission(ctx, rbac.ActionCreate, trigger.Workspace()); err != nil {
+			return nil, err
+		}
+	}
+
+	deployment, err := i.deploymentRepo.FindByID(ctx, trigger.Deployment())
+	if err != nil {
+		return nil, err
+	}
+
+	var projectParams map[string]variable.Variable
+	if deployment.Project() != nil {
+		pls, err := i.paramRepo.FindByProject(ctx, *deployment.Project())
+		if err != nil {
+			return nil, err
+		}
+		projectParams = projectParametersToMap(pls)
+	}
+
+	var triggerVars map[string]variable.Variable
+	if tvs := trigger.Variables(); len(tvs) > 0 {
+		triggerVars = variable.SliceToMap(tvs)
+	}
+
+	schema := map[string]variable.Variable{}
+	maps.Copy(schema, projectParams)
+	maps.Copy(schema, triggerVars)
+
+	requestVars := normalizeRequestVars(p.Variables, schema)
+
+	finalVarMap, err := resolveVariables(
+		ModeAPIDriven,
+		projectParams,
+		triggerVars,
+		requestVars,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	deploymentID1 := deployment.ID()
+
+	// Built before the transaction: a retried closure would mint a new job ID and
+	// submit a second cloud job on every attempt.
+	j, err := job.New().
+		NewID().
+		Deployment(&deploymentID1).
+		Workspace(deployment.Workspace()).
+		Status(job.StatusPending).
+		StartedAt(time.Now()).
+		Build()
+	if err != nil {
+		return nil, err
+	}
+
+	metadataURL, err := i.file.UploadMetadata(ctx, j.ID().String(), []string{})
+	if err != nil {
+		return nil, err
+	}
+	j.SetMetadataURL(metadataURL.String())
+
+	// Update last triggered time
+	trigger.SetLastTriggered(time.Now())
+
 	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
-		trigger, err := i.triggerRepo.FindByID(ctx, p.TriggerID)
-		if err != nil {
-			return err
-		}
-
-		if !trigger.Enabled() {
-			return fmt.Errorf("trigger is disabled")
-		}
-
-		// API-driven triggers use their own secret token as the auth mechanism.
-		// No workspace membership is required — the token is sufficient proof of authorization.
-		if trigger.EventSource() == "API_DRIVEN" {
-			if p.AuthenticationToken != *trigger.AuthToken() {
-				return fmt.Errorf("invalid auth token")
-			}
-		} else {
-			if err := i.checkPermission(ctx, rbac.ActionCreate, trigger.Workspace()); err != nil {
-				return err
-			}
-		}
-
-		deployment, err := i.deploymentRepo.FindByID(ctx, trigger.Deployment())
-		if err != nil {
-			return err
-		}
-
-		var projectParams map[string]variable.Variable
-		if deployment.Project() != nil {
-			pls, err := i.paramRepo.FindByProject(ctx, *deployment.Project())
-			if err != nil {
-				return err
-			}
-			projectParams = projectParametersToMap(pls)
-		}
-
-		var triggerVars map[string]variable.Variable
-		if tvs := trigger.Variables(); len(tvs) > 0 {
-			triggerVars = variable.SliceToMap(tvs)
-		}
-
-		schema := map[string]variable.Variable{}
-		maps.Copy(schema, projectParams)
-		maps.Copy(schema, triggerVars)
-
-		requestVars := normalizeRequestVars(p.Variables, schema)
-
-		finalVarMap, err := resolveVariables(
-			ModeAPIDriven,
-			projectParams,
-			triggerVars,
-			requestVars,
-		)
-		if err != nil {
-			return err
-		}
-
-		deploymentID1 := deployment.ID()
-
-		j, err = job.New().
-			NewID().
-			Deployment(&deploymentID1).
-			Workspace(deployment.Workspace()).
-			Status(job.StatusPending).
-			StartedAt(time.Now()).
-			Build()
-		if err != nil {
-			return err
-		}
-
-		metadataURL, err := i.file.UploadMetadata(ctx, j.ID().String(), []string{})
-		if err != nil {
-			return err
-		}
-		j.SetMetadataURL(metadataURL.String())
 		if err := i.jobRepo.Save(ctx, j); err != nil {
 			return err
 		}
-
-		var projectID id.ProjectID
-		if deployment.Project() != nil {
-			projectID = *deployment.Project()
-		}
-
-		gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), variable.ToWorkerMap(finalVarMap), projectID, deployment.Workspace(), nil, nil)
-		if err != nil {
-			log.Debugfc(ctx, "[Trigger] Job submission failed: %v\n", err)
-			return interfaces.ErrJobCreationFailed
-		}
-
-		j.SetGCPJobID(gcpJobID)
-		if err := i.jobRepo.Save(ctx, j); err != nil {
-			log.Errorf("Failed to save job %s with GCP ID: %v", j.ID(), err)
-			return err
-		}
-
-		// Update last triggered time
-		trigger.SetLastTriggered(time.Now())
 		if err := i.triggerRepo.Save(ctx, trigger); err != nil {
 			log.Errorf("Failed to update last triggered time for trigger %s: %v", trigger.ID(), err)
 			// Don't fail the job creation for this @pyshx
 		}
-
 		return nil
 	}); err != nil {
+		return nil, err
+	}
+
+	var projectID id.ProjectID
+	if deployment.Project() != nil {
+		projectID = *deployment.Project()
+	}
+
+	// Submitted after commit so a retry cannot double-dispatch, and a failure here
+	// leaves a job the user can see rather than an untracked cloud job.
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), variable.ToWorkerMap(finalVarMap), projectID, deployment.Workspace(), nil, nil)
+	if err != nil {
+		log.Debugfc(ctx, "[Trigger] Job submission failed: %v\n", err)
+		failJob(ctx, i.jobRepo, j)
+		return nil, interfaces.ErrJobCreationFailed
+	}
+
+	j.SetGCPJobID(gcpJobID)
+	if err := i.jobRepo.Save(ctx, j); err != nil {
+		log.Errorf("Failed to save job %s with GCP ID: %v", j.ID(), err)
 		return nil, err
 	}
 
@@ -280,105 +284,112 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 		return nil, err
 	}
 
-	var j *job.Job
+	trigger, err := i.triggerRepo.FindByID(ctx, p.TriggerID)
+	if err != nil {
+		return nil, err
+	}
+
+	if !trigger.Enabled() {
+		return nil, fmt.Errorf("trigger is disabled")
+	}
+
+	if trigger.EventSource() != "TIME_DRIVEN" {
+		return nil, fmt.Errorf("trigger is not time-driven")
+	}
+
+	deployment, err := i.deploymentRepo.FindByID(ctx, trigger.Deployment())
+	if err != nil {
+		return nil, err
+	}
+
+	var projectParams map[string]variable.Variable
+	if deployment.Project() != nil {
+		pls, err := i.paramRepo.FindByProject(ctx, *deployment.Project())
+		if err != nil {
+			return nil, err
+		}
+		projectParams = projectParametersToMap(pls)
+	}
+
+	var triggerVars map[string]variable.Variable
+	if tvs := trigger.Variables(); len(tvs) > 0 {
+		triggerVars = variable.SliceToMap(tvs)
+	}
+
+	finalVarMap, err := resolveVariables(
+		ModeTimeDriven,
+		projectParams,
+		triggerVars,
+		nil,
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	deploymentID2 := deployment.ID()
+
+	// Built before the transaction: a retried closure would mint a new job ID and
+	// submit a second cloud job on every attempt.
+	j, err := job.New().
+		NewID().
+		Deployment(&deploymentID2).
+		Workspace(deployment.Workspace()).
+		Status(job.StatusPending).
+		StartedAt(time.Now()).
+		Build()
+	if err != nil {
+		return nil, err
+	}
+
+	metadataURL, err := i.file.UploadMetadata(ctx, j.ID().String(), []string{})
+	if err != nil {
+		return nil, err
+	}
+	j.SetMetadataURL(metadataURL.String())
+
+	// Update last triggered time
+	trigger.SetLastTriggered(time.Now())
+
 	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
-		trigger, err := i.triggerRepo.FindByID(ctx, p.TriggerID)
-		if err != nil {
-			return err
-		}
-
-		if !trigger.Enabled() {
-			return fmt.Errorf("trigger is disabled")
-		}
-
-		if trigger.EventSource() != "TIME_DRIVEN" {
-			return fmt.Errorf("trigger is not time-driven")
-		}
-
-		deployment, err := i.deploymentRepo.FindByID(ctx, trigger.Deployment())
-		if err != nil {
-			return err
-		}
-
-		var projectParams map[string]variable.Variable
-		if deployment.Project() != nil {
-			pls, err := i.paramRepo.FindByProject(ctx, *deployment.Project())
-			if err != nil {
-				return err
-			}
-			projectParams = projectParametersToMap(pls)
-		}
-
-		var triggerVars map[string]variable.Variable
-		if tvs := trigger.Variables(); len(tvs) > 0 {
-			triggerVars = variable.SliceToMap(tvs)
-		}
-
-		finalVarMap, err := resolveVariables(
-			ModeTimeDriven,
-			projectParams,
-			triggerVars,
-			nil,
-		)
-		if err != nil {
-			return err
-		}
-
-		deploymentID2 := deployment.ID()
-
-		j, err = job.New().
-			NewID().
-			Deployment(&deploymentID2).
-			Workspace(deployment.Workspace()).
-			Status(job.StatusPending).
-			StartedAt(time.Now()).
-			Build()
-		if err != nil {
-			return err
-		}
-
-		metadataURL, err := i.file.UploadMetadata(ctx, j.ID().String(), []string{})
-		if err != nil {
-			return err
-		}
-		j.SetMetadataURL(metadataURL.String())
 		if err := i.jobRepo.Save(ctx, j); err != nil {
 			return err
 		}
-
-		var projectID id.ProjectID
-		if deployment.Project() != nil {
-			projectID = *deployment.Project()
-		}
-
-		gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), variable.ToWorkerMap(finalVarMap), projectID, deployment.Workspace(), nil, nil)
-		if err != nil {
-			log.Debugfc(ctx, "[Trigger] Time-driven job submission failed: %v\n", err)
-			return interfaces.ErrJobCreationFailed
-		}
-
-		j.SetGCPJobID(gcpJobID)
-		if err := i.jobRepo.Save(ctx, j); err != nil {
-			log.Errorf("Failed to save time-driven job %s with GCP ID: %v", j.ID(), err)
-			return err
-		}
-
-		// Update last triggered time
-		trigger.SetLastTriggered(time.Now())
 		if err := i.triggerRepo.Save(ctx, trigger); err != nil {
 			log.Errorf("Failed to update last triggered time for trigger %s: %v", trigger.ID(), err)
 			// Don't fail the job creation for this @pyshx
 		}
-
-		if err := i.job.StartMonitoring(ctx, j, nil); err != nil {
-			log.Errorf("Failed to start monitoring for time-driven job %s: %v", j.ID(), err)
-			return err
-		}
-
 		return nil
 	}); err != nil {
 		return nil, err
 	}
+
+	var projectID id.ProjectID
+	if deployment.Project() != nil {
+		projectID = *deployment.Project()
+	}
+
+	// Submitted after commit so a retry cannot double-dispatch, and a failure here
+	// leaves a job the user can see rather than an untracked cloud job.
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), deployment.WorkflowURL(), j.MetadataURL(), variable.ToWorkerMap(finalVarMap), projectID, deployment.Workspace(), nil, nil)
+	if err != nil {
+		log.Debugfc(ctx, "[Trigger] Time-driven job submission failed: %v\n", err)
+		failJob(ctx, i.jobRepo, j)
+		return nil, interfaces.ErrJobCreationFailed
+	}
+
+	j.SetGCPJobID(gcpJobID)
+	if err := i.jobRepo.Save(ctx, j); err != nil {
+		log.Errorf("Failed to save time-driven job %s with GCP ID: %v", j.ID(), err)
+		return nil, err
+	}
+
+	// Started outside the transaction: it spawns a monitoring goroutine, which a
+	// retried closure would launch once per attempt.
+	if err := i.job.StartMonitoring(ctx, j, nil); err != nil {
+		log.Errorf("Failed to start monitoring for time-driven job %s: %v", j.ID(), err)
+		return nil, err
+	}
+
 	return j, nil
 }
 
