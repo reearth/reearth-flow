@@ -4,14 +4,9 @@ use glam::DVec3;
 use reearth_flow_gltf::{parse_gltf, read_indices, read_positions_with_transform, traverse_scene};
 use std::path::Path;
 
-/// Loads every triangle referenced by a tileset's `tileset.json`, in world
-/// space (glTF node transforms already applied) and `f64`, matching how
-/// `align_cesium.rs`'s `GeometryCollector` reads the same files. This is the
-/// only place that knows about glTF/3D Tiles — `render3d` takes plain
-/// `[Vec3; 3]` triangles and has no format awareness at all. Kept at `f64`
-/// here (not cast down to `f32`) because this data can be ECEF-scale and the
-/// precision-safe recentering (`render3d::input::recenter_and_cast`) happens
-/// per-render, so one load can serve multiple cameras.
+/// Loads every triangle referenced by a tileset's `tileset.json`, in ECEF world
+/// space and `f64`, with Cesium's glTF axis unflip already applied. This is
+/// the only place that knows about glTF/3D Tiles.
 pub fn load_triangles(tileset_dir: &Path) -> Result<Vec<[DVec3; 3]>, String> {
     let tileset_info = load_tileset(tileset_dir)?;
     let mut triangles = Vec::new();

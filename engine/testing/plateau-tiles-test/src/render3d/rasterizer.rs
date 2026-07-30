@@ -1,16 +1,9 @@
 use crate::rasterize::Canvas;
 use glam::{Mat4, Vec3};
 
-/// Renders a depth buffer of world-space `triangles`, already camera-relative
-/// (see `input::recenter_and_cast`), as a `Canvas`. Pixel values are the actual
-/// Euclidean distance from the camera to the nearest surface, in the same
-/// units as the input geometry; background pixels are `f32::INFINITY`.
-///
-/// Distance (not normalized `[0, 1]` NDC depth) so the result carries a fixed,
-/// scale-independent meaning regardless of a scene's size, and so an absolute
-/// positioning regression (e.g. a global coordinate offset bug) still shows up
-/// as a real difference instead of being invisible under a per-scene-relative
-/// normalization.
+/// Renders a depth buffer of camera-relative `triangles` as a `Canvas`. Pixel
+/// values are the Euclidean distance from the camera to the nearest surface;
+/// background pixels are `f32::INFINITY`.
 ///
 /// Backface-culls CCW-front triangles (glTF convention). No near-plane
 /// clipping: a triangle with a vertex behind the camera is dropped whole.

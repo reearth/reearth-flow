@@ -42,10 +42,7 @@ fn main() {
     let size = max - min;
     let radius = size.length() * 0.5;
 
-    // Input is ECEF, so "up" (local zenith) is the radial direction from
-    // Earth's center, not any fixed global axis. Build a local ENU-ish frame
-    // from that so the cameras actually look straight down / obliquely at the
-    // ground instead of at some arbitrary angle relative to the ECEF axes.
+    // ECEF has no fixed "up" axis, so derive a local ENU-ish frame from the bbox center.
     let up_local = center.normalize();
     let east = up_local.cross(DVec3::Z).normalize();
     let north = east.cross(up_local).normalize();

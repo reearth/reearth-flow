@@ -116,8 +116,6 @@ impl Cesium3DTilesWriter {
                     .map_err(crate::errors::SinkError::cesium3dtiles_writer)
                 };
 
-                // glbs stream to disk here as they are built; only the small
-                // subtree/tileset outputs come back for writing below.
                 // glbs stream out as they're built; only subtree/tileset outputs come back.
                 let built = build(features, options, self.params.max_zoom, render, write_file)?;
 

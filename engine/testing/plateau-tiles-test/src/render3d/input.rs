@@ -1,11 +1,7 @@
 use glam::{DVec3, Vec3};
 
-/// Subtracts `reference` from every vertex in `f64` (precision-safe for
-/// ECEF-scale coordinates), then casts down to `f32` — the precision the
-/// rasterizer's hot loop operates in. Call this once per camera, with
-/// `reference` set to that camera's position, so precision is centered on the
-/// actual viewpoint being rendered rather than lost against the absolute
-/// coordinate origin.
+/// Subtracts `reference` in `f64` before casting to `f32`, so ECEF-scale coordinates
+/// don't lose precision. Pass the camera's own position as `reference`.
 pub fn recenter_and_cast(triangles: &[[DVec3; 3]], reference: DVec3) -> Vec<[Vec3; 3]> {
     triangles
         .iter()

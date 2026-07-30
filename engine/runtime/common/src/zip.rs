@@ -46,7 +46,7 @@ where
     Ok(())
 }
 
-/// Streams entries into a zip archive as they're produced, instead of writing plain files and re-zipping afterward.
+/// Streams entries into a zip archive as they're produced.
 pub struct StreamingZipWriter<T: Write + Seek + Send> {
     writer: Mutex<zip::ZipWriter<T>>,
 }

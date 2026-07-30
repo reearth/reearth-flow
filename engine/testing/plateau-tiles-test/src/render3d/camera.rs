@@ -1,14 +1,7 @@
 use glam::{DVec3, Mat4, Vec3};
 
-/// Camera pose and projection. Position/look_at/up are kept in `f64` because they
-/// live in the same (potentially ECEF-scale) coordinate space as the source mesh
-/// data — but the actual view/projection matrix used for rendering is built in
-/// `f32`, relative to `reference`, matching glTF's own vertex precision and the
-/// hot-path types the rasterizer uses. Callers should pass `reference` close to
-/// what's being rendered (typically the camera position itself) so the
-/// `position - reference` subtraction happens in `f64` before the precision loss
-/// of casting to `f32`, rather than losing precision on the absolute coordinates
-/// directly.
+/// Camera pose and projection, kept in `f64` since it lives in the same
+/// (potentially ECEF-scale) coordinate space as the source mesh data.
 #[derive(Debug, Clone, Copy)]
 pub struct Camera3d {
     pub position: DVec3,
@@ -21,8 +14,8 @@ pub struct Camera3d {
 
 impl Camera3d {
     /// Combined view-projection matrix in `f32`, with `reference` subtracted from
-    /// `position`/`look_at` in `f64` first. Depth range is `[0, 1]` (glam's
-    /// `perspective_rh`, near=0 far=1), matching the `Canvas` depth convention.
+    /// `position`/`look_at` in `f64` first. NDC z range is `[0, 1]` (glam's
+    /// `perspective_rh` convention), unrelated to the rasterizer's own depth output.
     pub fn view_proj_f32(&self, width: usize, height: usize, reference: DVec3) -> Mat4 {
         let position: Vec3 = (self.position - reference).as_vec3();
         let look_at: Vec3 = (self.look_at - reference).as_vec3();
