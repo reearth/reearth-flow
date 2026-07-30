@@ -13,8 +13,8 @@
 // Usage:
 //
 //	REEARTH_FLOW_DB="mongodb+srv://…"  (source Mongo)
-//	REEARTH_FLOW_DB_PG="postgres://…"  (target Postgres; schema must be migrated)
-//	go run ./cmd/dbmigrate [-db reearth-flow]
+//	REEARTH_FLOW_DB_PG="postgres://…"  (target Postgres)
+//	go run ./cmd/dbmigrate [-apply-schema] [-db reearth-flow]
 package main
 
 import (
@@ -27,6 +27,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/mongo/mongodoc"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/postgres"
+	"github.com/reearth/reearth-flow/api/internal/infrastructure/postgres/db"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearthx/pgxx"
 	"go.mongodb.org/mongo-driver/bson"
@@ -87,6 +88,7 @@ func main() {
 
 	dbName := flag.String("db", envOr("REEARTH_FLOW_DB_NAME", "reearth-flow"), "source Mongo database name")
 	verify := flag.Bool("verify", false, "read every replicated row back through the Postgres adapters (target only; no Mongo)")
+	applySchema := flag.Bool("apply-schema", false, "apply the embedded Atlas migrations to the target before replicating (fresh instance only)")
 	flag.Parse()
 
 	pgURI := os.Getenv("REEARTH_FLOW_DB_PG")
@@ -104,6 +106,14 @@ func main() {
 	if err := pool.Ping(ctx); err != nil {
 		log.Fatalf("postgres ping: %v", err)
 	}
+
+	if *applySchema {
+		log.Println("applying embedded schema to target Postgres")
+		if err := db.Apply(ctx, pool); err != nil {
+			log.Fatalf("apply schema: %v", err)
+		}
+	}
+
 	c := pgxx.NewClient(pool)
 
 	if *verify {
