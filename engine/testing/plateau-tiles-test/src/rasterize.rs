@@ -4,6 +4,7 @@ use image::ImageEncoder;
 use serde::Deserialize;
 
 pub const RASTER_SIZE: usize = 1024;
+pub const RASTER3D_SIZE: usize = 256;
 pub const DEFAULT_STROKE: f64 = 4.0;
 
 /// Canvas size config: either a single integer (square) or a `[width, height]` pair.
@@ -251,6 +252,45 @@ impl Canvas {
             .map_err(|e| format!("Failed to write PNG {:?}: {}", path, e))
     }
 
+    /// Writes each pixel's exact `f32` bits into an RGBA8 PNG (4 bytes per
+    /// pixel). Lossless, unlike `write_png`'s 8-bit quantization; used where
+    /// pixel values aren't normalized to `[0, 1]` (e.g. raw distances).
+    pub fn write_png_f32(&self, path: &std::path::Path) -> Result<(), String> {
+        let pixels: Vec<u8> = self.data.iter().flat_map(|v| v.to_le_bytes()).collect();
+        if let Some(parent) = path.parent() {
+            std::fs::create_dir_all(parent)
+                .map_err(|e| format!("Failed to create dirs {:?}: {}", parent, e))?;
+        }
+        let file = std::fs::File::create(path)
+            .map_err(|e| format!("Failed to create {:?}: {}", path, e))?;
+        PngEncoder::new_with_quality(file, CompressionType::Best, FilterType::Up)
+            .write_image(
+                &pixels,
+                self.width as u32,
+                self.height as u32,
+                image::ExtendedColorType::Rgba8,
+            )
+            .map_err(|e| format!("Failed to write PNG {:?}: {}", path, e))
+    }
+
+    /// Reads a PNG written by `write_png_f32` back into exact `f32` values.
+    pub fn read_png_f32(path: &std::path::Path) -> Result<Self, String> {
+        let img = image::open(path)
+            .map_err(|e| format!("Failed to read PNG {:?}: {}", path, e))?
+            .into_rgba8();
+        let width = img.width() as usize;
+        let height = img.height() as usize;
+        let data = img
+            .pixels()
+            .map(|p| f32::from_le_bytes(p.0))
+            .collect();
+        Ok(Self {
+            data,
+            width,
+            height,
+        })
+    }
+
     /// Reads an 8-bit grayscale PNG file into a Canvas.
     pub fn read_png(path: &std::path::Path) -> Result<Self, String> {
         let img = image::open(path)
@@ -292,12 +332,92 @@ impl Canvas {
             .sum();
         Ok((sum / self.data.len() as f64).sqrt())
     }
+
+    /// Pixelwise comparison for unbounded depth values (see `write_png_f32`).
+    /// Since the renderer has no antialiasing, a subpixel edge shift can still
+    /// flip a whole pixel between two values, so instead of comparing a pixel
+    /// against its exact counterpart, each pixel is compared against the best
+    /// match in the other canvas's 3x3 neighborhood (out-of-bounds treated as
+    /// background). `mismatch_penalty` bounds the diff when one side is
+    /// background (`INFINITY`) and the other isn't, so a real silhouette
+    /// mismatch scores finite instead of `inf`.
+    pub fn compare_depth(&self, other: &Canvas, mismatch_penalty: f32) -> Result<f64, String> {
+        if (self.width, self.height) != (other.width, other.height) {
+            return Err(format!(
+                "Canvas size mismatch: {}×{} vs {}×{}",
+                self.width, self.height, other.width, other.height
+            ));
+        }
+
+        let value_diff = |a: f32, b: f32| -> f32 {
+            match (a.is_finite(), b.is_finite()) {
+                (false, false) => 0.0,
+                (false, true) | (true, false) => mismatch_penalty,
+                (true, true) => (a - b).abs(),
+            }
+        };
+
+        let w = self.width as i32;
+        let h = self.height as i32;
+        let mut sum = 0.0f64;
+        for y in 0..h {
+            for x in 0..w {
+                let a = self.data[(y * w + x) as usize];
+                let mut min_diff = f32::INFINITY;
+                for dy in -1..=1 {
+                    for dx in -1..=1 {
+                        let (nx, ny) = (x + dx, y + dy);
+                        let b = if nx >= 0 && nx < w && ny >= 0 && ny < h {
+                            other.data[(ny * w + nx) as usize]
+                        } else {
+                            f32::INFINITY
+                        };
+                        min_diff = min_diff.min(value_diff(a, b));
+                    }
+                }
+                sum += (min_diff as f64).powi(2);
+            }
+        }
+        Ok((sum / self.data.len() as f64).sqrt())
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     const EPSILON: f64 = 1e-6;
+
+    #[test]
+    fn test_write_read_png_f32_roundtrip() {
+        let td = tempfile::TempDir::new().unwrap();
+        let path = td.path().join("depth.png");
+        let mut canvas = Canvas::new(4, 4);
+        canvas.data = vec![
+            0.0,
+            1.5,
+            f32::INFINITY,
+            -3.25,
+            123456.789,
+            f32::MIN_POSITIVE,
+            1e10,
+            -1e10,
+            0.1,
+            0.2,
+            0.3,
+            0.4,
+            0.5,
+            0.6,
+            0.7,
+            0.8,
+        ];
+
+        canvas.write_png_f32(&path).unwrap();
+        let read_back = Canvas::read_png_f32(&path).unwrap();
+
+        assert_eq!(read_back.width, 4);
+        assert_eq!(read_back.height, 4);
+        assert_eq!(read_back.data, canvas.data);
+    }
 
     // Verifies compare can detect a known difference.
     // A horizontal line from (100,100) to (200,100) at exact integer y:
@@ -317,6 +437,60 @@ mod tests {
             "Expected score ~{}, got {}",
             expected,
             score
+        );
+    }
+
+    #[test]
+    fn test_compare_depth_identical_is_zero() {
+        let mut c1 = Canvas::new(8, 8);
+        c1.data.iter_mut().enumerate().for_each(|(i, v)| *v = i as f32);
+        let c2 = Canvas {
+            data: c1.data.clone(),
+            width: 8,
+            height: 8,
+        };
+        let score = c1.compare_depth(&c2, 100.0).unwrap();
+        assert!(score < EPSILON, "identical canvases should score 0, got {}", score);
+    }
+
+    // A single foreground pixel shifted by exactly one pixel: the 3x3 window
+    // search should find the match and score 0, since the shift is within the
+    // tolerated 1-pixel radius.
+    #[test]
+    fn test_compare_depth_one_pixel_shift_is_tolerated() {
+        let mut a = Canvas::new(8, 8);
+        let mut b = Canvas::new(8, 8);
+        a.data.iter_mut().for_each(|v| *v = f32::INFINITY);
+        b.data.iter_mut().for_each(|v| *v = f32::INFINITY);
+        a.data[3 * 8 + 3] = 5.0;
+        b.data[3 * 8 + 4] = 5.0;
+        let score = a.compare_depth(&b, 100.0).unwrap();
+        assert!(score < EPSILON, "1px shift should be tolerated, got {}", score);
+    }
+
+    // A foreground pixel with no match anywhere in the other canvas's 3x3
+    // window (moved 3 pixels away): real mismatch, should score > 0.
+    #[test]
+    fn test_compare_depth_large_shift_is_real_error() {
+        let mut a = Canvas::new(8, 8);
+        let mut b = Canvas::new(8, 8);
+        a.data.iter_mut().for_each(|v| *v = f32::INFINITY);
+        b.data.iter_mut().for_each(|v| *v = f32::INFINITY);
+        a.data[3 * 8 + 3] = 5.0;
+        b.data[3 * 8 + 6] = 5.0;
+        let score = a.compare_depth(&b, 100.0).unwrap();
+        assert!(score > 1.0, "unmatched foreground pixel should score high, got {}", score);
+    }
+
+    #[test]
+    fn test_compare_depth_size_mismatch_returns_err() {
+        let c1 = Canvas::new(64, 64);
+        let c2 = Canvas::new(32, 32);
+        let err = c1.compare_depth(&c2, 1.0).unwrap_err();
+        assert!(
+            err.contains("64×64") && err.contains("32×32"),
+            "error should report both dimensions, got: {}",
+            err
         );
     }
 

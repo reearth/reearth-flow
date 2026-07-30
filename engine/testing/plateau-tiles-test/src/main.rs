@@ -1,6 +1,7 @@
 use plateau_tiles_test::conv::cesium as conv_cesium;
 use plateau_tiles_test::conv::mvt;
 use plateau_tiles_test::conv::mvt_png;
+use plateau_tiles_test::conv::raster3d as conv_raster3d;
 use plateau_tiles_test::file::{extract_dir, zip_dir};
 use plateau_tiles_test::profile_config::Convs;
 use plateau_tiles_test::runner;
@@ -13,6 +14,7 @@ use plateau_tiles_test::tester::mvt_lines::{self, MvtLinesConfig};
 use plateau_tiles_test::tester::mvt_points::{self, MvtPointsConfig};
 use plateau_tiles_test::tester::mvt_polygons::{self, MvtPolygonsConfig};
 use plateau_tiles_test::tester::raster::{self, RasterConfig};
+use plateau_tiles_test::tester::raster3d::{self, Raster3dConfig};
 use serde::Deserialize;
 use std::collections::HashMap;
 use std::env;
@@ -68,6 +70,8 @@ struct Tests {
     json_object_key_order: Option<KeyOrderConfig>,
     #[serde(default)]
     raster: Option<HashMap<String, RasterConfig>>,
+    #[serde(default)]
+    raster3d: Option<HashMap<String, Raster3dConfig>>,
 }
 
 fn pack_inputs(
@@ -313,6 +317,26 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
             });
         }
 
+        if !profile.convs.raster3d.is_empty() {
+            run_test("convs_raster3d", &relative_path_display, || {
+                for entry in profile.convs.raster3d.values() {
+                    let tileset_dir = output_dir.join("flow_extracted").join(&entry.path);
+                    let png_dir = output_dir.join("flow_extracted").join(&entry.truth_path);
+                    fs::create_dir_all(&png_dir)
+                        .map_err(|e| format!("Failed to create {:?}: {}", png_dir, e))?;
+                    let (w, h) = entry.size.dimensions();
+                    conv_raster3d::render_cameras_to_pngs(
+                        &tileset_dir,
+                        &png_dir,
+                        &entry.cameras,
+                        w,
+                        h,
+                    )?;
+                }
+                Ok(())
+            });
+        }
+
         if !profile.convs.cesium_attributes.is_empty() {
             run_test("convs_cesium_attributes", &relative_path_display, || {
                 for entry in profile.convs.cesium_attributes.values() {
@@ -383,6 +407,25 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
                 let id = id.clone();
                 run_test(&format!("raster/{}", id), &relative_path_display, || {
                     raster::test_raster(&truth_dir, &flow_png_dir, cfg)
+                });
+            }
+        }
+
+        if let Some(raster3d_tests) = &tests.raster3d {
+            for (id, cfg) in raster3d_tests {
+                let conv_entry = profile.convs.raster3d.get(id).unwrap_or_else(|| {
+                    panic!(
+                        "tests.raster3d.{} references missing convs.raster3d.{}",
+                        id, id
+                    )
+                });
+                let flow_png_dir = output_dir
+                    .join("flow_extracted")
+                    .join(&conv_entry.truth_path);
+                let truth_dir = truth_extracted_dir.join(&conv_entry.truth_path);
+                let id = id.clone();
+                run_test(&format!("raster3d/{}", id), &relative_path_display, || {
+                    raster3d::test_raster3d(&truth_dir, &flow_png_dir, cfg)
                 });
             }
         }

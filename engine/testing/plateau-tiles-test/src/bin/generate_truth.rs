@@ -2,6 +2,7 @@ use plateau_tiles_test::conv::cesium as conv_cesium;
 use plateau_tiles_test::conv::cesium_statistics;
 use plateau_tiles_test::conv::mvt;
 use plateau_tiles_test::conv::mvt_png;
+use plateau_tiles_test::conv::raster3d;
 use plateau_tiles_test::file::{extract_zip_to_tmp, zip_dir};
 use plateau_tiles_test::profile_config::Convs;
 use serde::Deserialize;
@@ -112,6 +113,40 @@ fn run(profile_path: &Path) -> Result<(), String> {
             id,
             output_path.display()
         );
+    }
+
+    for (id, entry) in &profile.convs.raster3d {
+        if !entry.generate_truth {
+            continue;
+        }
+        let stem = Path::new(&entry.path)
+            .file_name()
+            .expect("convs.raster3d path must have a file name");
+        let zip_path = truth_dir.join(stem).with_extension("zip");
+        let tmp_dir = extract_zip_to_tmp(&zip_path)?;
+
+        let tmp_png_dir =
+            std::env::temp_dir().join(format!("generate-truth-raster3d-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&tmp_png_dir);
+        fs::create_dir_all(&tmp_png_dir)
+            .map_err(|e| format!("Failed to create tmp png dir: {}", e))?;
+
+        let (w, h) = entry.size.dimensions();
+        let result =
+            raster3d::render_cameras_to_pngs(&tmp_dir, &tmp_png_dir, &entry.cameras, w, h);
+        fs::remove_dir_all(&tmp_dir).ok();
+
+        if let Err(e) = result {
+            fs::remove_dir_all(&tmp_png_dir).ok();
+            return Err(e);
+        }
+
+        let truth_zip_path = truth_dir.join(&entry.truth_path).with_extension("zip");
+        let zip_result = zip_dir(&tmp_png_dir, &truth_zip_path);
+        fs::remove_dir_all(&tmp_png_dir).ok();
+        zip_result?;
+
+        println!("wrote raster3d/{} -> {}", id, truth_zip_path.display());
     }
 
     for (id, entry) in &profile.convs.cesium_statistics {
