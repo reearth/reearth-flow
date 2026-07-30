@@ -222,11 +222,10 @@ struct MeshBuild {
     /// isn't split; otherwise the reader groups triangles by this value into
     /// one Flow `Feature` per distinct ID (see `split_features`).
     tri_feature_id: Vec<Option<u32>>,
-    /// The `propertyTable` index named by the mesh's feature-ID set (first one
-    /// found across its primitives), used to look up each split feature's
-    /// `EXT_structural_metadata` row. `None` when no primitive named one
-    /// (equivalently, no primitive carries a feature-ID set at all).
-    property_table_index: Option<usize>,
+    /// Per-triangle `EXT_structural_metadata` property-table index, taken from
+    /// the `propertyTable` of the primitive's feature-ID set. `None` when the
+    /// primitive carried no feature-ID set. Aligned 1:1 with `tri_feature_id`.
+    tri_property_table: Vec<Option<usize>>,
 }
 
 /// Read every primitive of one glTF mesh into a flat [`MeshBuild`]: positions
@@ -286,9 +285,11 @@ fn extract_mesh_build(
             reearth_flow_gltf::read_mesh_features(primitive, buffer_data).map_err(|e| {
                 SourceError::GltfReader(format!("Failed to read EXT_mesh_features: {e}"))
             })?;
-        if feature_ids.is_some() && build.property_table_index.is_none() {
-            build.property_table_index = mesh_features_property_table(primitive);
-        }
+        let prim_property_table = if feature_ids.is_some() {
+            mesh_features_property_table(primitive)
+        } else {
+            None
+        };
 
         let pos_accessor = primitive
             .get(&gltf::Semantic::Positions)
@@ -351,6 +352,7 @@ fn extract_mesh_build(
                 fa
             });
             build.tri_feature_id.push(fid);
+            build.tri_property_table.push(prim_property_table);
         }
     }
 
@@ -692,6 +694,7 @@ fn merge_builds(builds: Vec<MeshBuild>) -> MeshBuild {
         out.soup.extend(build.soup);
         out.tri_material
             .extend(build.tri_material.into_iter().map(|s| s.map(|s| s + base)));
+        out.tri_property_table.extend(build.tri_property_table);
 
         for &channel in &out.channels {
             let buf = out.corner_uv.entry(channel).or_default();
@@ -734,12 +737,17 @@ fn sub_build(build: &MeshBuild, tri_indices: &[usize]) -> MeshBuild {
         materials: build.materials.clone(),
         channels: build.channels.clone(),
         tri_feature_id: Vec::new(),
-        property_table_index: None,
+        tri_property_table: Vec::new(),
     }
 }
 
 /// Split `build` into one Flow [`Feature`] per distinct `EXT_mesh_features`
-/// feature ID (grouping its triangles by [`MeshBuild::tri_feature_id`]),
+/// feature ID (grouping its triangles by the pair of [`MeshBuild::tri_property_table`]
+/// and [`MeshBuild::tri_feature_id`], since `propertyTable` is a per-primitive
+/// declaration in the glTF spec: two primitives can share a feature ID while
+/// naming different property tables, and grouping by feature ID alone would
+/// wrongly merge their triangles into one feature and attach the wrong
+/// table's row to some of them),
 /// decorating each with `featureId` and, when `structural_metadata` resolves a
 /// property-table row for that ID, that row's properties. When
 /// `params.feature_class_attribute` names a key, the property table's class
@@ -774,21 +782,22 @@ fn split_features(
     primitive_count: usize,
     params: &GltfReaderCompiledParam,
 ) -> Vec<Feature> {
-    let mut groups: BTreeMap<Option<u32>, Vec<usize>> = BTreeMap::new();
+    let mut groups: BTreeMap<(Option<usize>, Option<u32>), Vec<usize>> = BTreeMap::new();
     for (tri, &fid) in build.tri_feature_id.iter().enumerate() {
-        groups.entry(fid).or_default().push(tri);
+        let table = build.tri_property_table.get(tri).copied().flatten();
+        groups.entry((table, fid)).or_default().push(tri);
     }
 
     groups
         .into_iter()
-        .map(|(fid, tri_indices)| {
+        .map(|((table, fid), tri_indices)| {
             let sub = sub_build(&build, &tri_indices);
             let mut extra = IndexMap::new();
 
             match fid {
                 Some(feature_id) => {
                     if let Some(tables) = structural_metadata {
-                        let table_index = build.property_table_index.unwrap_or(0);
+                        let table_index = table.unwrap_or(0);
                         match tables.tables.get(table_index) {
                             Some(table) if (feature_id as usize) < table.count => {
                                 for (name, value) in reearth_flow_gltf::feature_properties(
@@ -1670,7 +1679,7 @@ mod tests {
             soup: vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
             tri_material: vec![None],
             tri_feature_id: vec![Some(0)],
-            property_table_index: Some(0),
+            tri_property_table: vec![Some(0)],
             ..MeshBuild::default()
         };
 
@@ -1718,6 +1727,96 @@ mod tests {
         );
     }
 
+    /// Regression test for the table-latching bug: two triangles share the
+    /// same `EXT_mesh_features` feature ID (`0`) but come from primitives that
+    /// name *different* `EXT_structural_metadata` property tables. Before the
+    /// fix, `MeshBuild::property_table_index` latched onto whichever
+    /// primitive was visited first and every split feature was decoded
+    /// against that single table, silently attaching the wrong table's row
+    /// to one of the two triangles. Grouping by (table, feature ID) instead
+    /// must keep them as two distinct features, each decoded against its own
+    /// table.
+    #[test]
+    fn split_features_uses_each_triangles_own_property_table() {
+        let build = MeshBuild {
+            soup: vec![
+                [0.0, 0.0, 0.0],
+                [1.0, 0.0, 0.0],
+                [0.0, 1.0, 0.0],
+                [2.0, 0.0, 0.0],
+                [3.0, 0.0, 0.0],
+                [2.0, 1.0, 0.0],
+            ],
+            tri_material: vec![None, None],
+            tri_feature_id: vec![Some(0), Some(0)],
+            tri_property_table: vec![Some(0), Some(1)],
+            ..MeshBuild::default()
+        };
+
+        let mut properties_0 = IndexMap::new();
+        properties_0.insert(
+            "name".to_string(),
+            reearth_flow_gltf::PropertyData {
+                values: vec![AttributeValue::String("from-table-0".to_string())],
+            },
+        );
+        let mut properties_1 = IndexMap::new();
+        properties_1.insert(
+            "name".to_string(),
+            reearth_flow_gltf::PropertyData {
+                values: vec![AttributeValue::String("from-table-1".to_string())],
+            },
+        );
+        let tables = reearth_flow_gltf::PropertyTables {
+            schema: serde_json::json!({}),
+            tables: vec![
+                reearth_flow_gltf::PropertyTable {
+                    class: None,
+                    count: 1,
+                    properties: properties_0,
+                },
+                reearth_flow_gltf::PropertyTable {
+                    class: None,
+                    count: 1,
+                    properties: properties_1,
+                },
+            ],
+        };
+
+        let params = GltfReaderCompiledParam {
+            common: crate::file::reader::runner::FileReaderCompiledParam {
+                dataset: None,
+                inline: None,
+            },
+            _triangulate: true,
+            merge_meshes: false,
+            include_nodes: true,
+            feature_class_attribute: None,
+        };
+        let empty: Vec<String> = Vec::new();
+
+        let features = split_features(build, Some(&tables), &empty, &empty, 1, &params);
+        assert_eq!(
+            features.len(),
+            2,
+            "triangles sharing a feature ID but naming different property \
+             tables must not be merged into one feature"
+        );
+
+        let names: BTreeSet<String> = features
+            .iter()
+            .map(|f| match f.attributes.get(&Attribute::new("name")) {
+                Some(AttributeValue::String(s)) => s.clone(),
+                other => panic!("expected a string `name` attribute, got {other:?}"),
+            })
+            .collect();
+        assert_eq!(
+            names,
+            BTreeSet::from(["from-table-0".to_string(), "from-table-1".to_string()]),
+            "each feature must carry its own table's value, not the other's"
+        );
+    }
+
     /// Builds a single-triangle, single-feature `MeshBuild` plus a
     /// `PropertyTables` whose one table names class `"MyClass"`, for the
     /// `feature_class_attribute` opt-in tests below.
@@ -1726,7 +1825,7 @@ mod tests {
             soup: vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
             tri_material: vec![None],
             tri_feature_id: vec![Some(0)],
-            property_table_index: Some(0),
+            tri_property_table: vec![Some(0)],
             ..MeshBuild::default()
         };
         let tables = reearth_flow_gltf::PropertyTables {
