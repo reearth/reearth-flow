@@ -1243,7 +1243,7 @@ mod count_holes_tests {
     use solid::{Shell, Solid};
     use triangular_mesh::TriangularMesh3D;
 
-    /// A unit square, as an exterior ring.
+    /// A 4x4 square, as an exterior ring.
     const SQUARE: [[f64; 3]; 5] = [
         [0.0, 0.0, 0.0],
         [4.0, 0.0, 0.0],
@@ -1299,8 +1299,9 @@ mod count_holes_tests {
 
     #[test]
     fn a_mesh_counts_the_holes_of_every_face() {
-        // Two faces, one with two holes and one with none: three rings in the
-        // shared `interior_offsets`, counted once each.
+        // Two faces, one with two holes and one with none: the shared
+        // `interior_offsets` holds one entry per interior ring, so the mesh-wide
+        // count needs no per-face walk and cannot count a ring twice.
         let mesh = PolygonMesh3D::from_polygons(
             CoordinateFrame::Euclidean,
             [&face_with_holes(2), &face_with_holes(0)],
