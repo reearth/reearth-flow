@@ -108,6 +108,7 @@ fn direct_inputs(test_path: &Path, zip_stem: &str) -> HashMap<&'static str, Path
     inputs
 }
 
+#[cfg(not(feature = "new-geometry"))]
 const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau4/01-bldg/fld",
     "data-convert/plateau4/01-bldg/tako-machi",
@@ -143,6 +144,9 @@ const DEFAULT_TESTS: &[&str] = &[
     "data-convert/plateau4/11-gen/mvt",
     "examples/citygml-roundtrip/tun",
 ];
+
+#[cfg(feature = "new-geometry")]
+const DEFAULT_TESTS: &[&str] = &["data-convert/plateau6/01-bldg/ward"];
 
 fn run_test<F>(test_name: &str, relative_path: &std::path::Display, test_fn: F)
 where
