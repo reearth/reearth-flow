@@ -748,32 +748,22 @@ fn sub_build(build: &MeshBuild, tri_indices: &[usize]) -> MeshBuild {
 /// naming different property tables, and grouping by feature ID alone would
 /// wrongly merge their triangles into one feature and attach the wrong
 /// table's row to some of them),
-/// decorating each with `featureId` and, when `structural_metadata` resolves a
-/// property-table row for that ID, that row's properties. When
-/// `params.feature_class_attribute` names a key, the property table's class
-/// name (if any) is additionally inserted under that key — the user opted
-/// into it under a key of their choosing, so it is a plain insert (last
-/// write wins) rather than going through the `meta_` collision rule below.
+/// attaching, when `structural_metadata` resolves a property-table row for
+/// that group's feature ID, that row's decoded properties. The feature ID
+/// itself is only the grouping key — it is glTF-internal indexing and is not
+/// exposed as an attribute. When `params.feature_class_attribute` names a
+/// key, the property table's class name (if any) is additionally inserted
+/// under that key — the user opted into it under a key of their choosing, so
+/// it is a plain insert (last write wins) rather than going through the
+/// `meta_` collision rule in `build_feature`.
 /// Only called once the caller has confirmed `build.tri_feature_id` has at
 /// least one `Some` entry.
 ///
 /// A triangle whose primitive carried no feature-ID set (a mix within one
-/// mesh) falls into its own feature with no `featureId`, so its geometry
-/// isn't silently dropped; this shouldn't occur on well-formed PLATEAU
-/// exports, where every primitive in a mesh shares the same extension usage.
-/// If `extra` already holds `key` (a decoded structural-metadata property
-/// that happens to share a name as `split_features`'s own reserved
-/// `featureId` attribute), move it out from under `key` to `meta_<key>`
-/// first, so the reserved attribute can then be inserted under `key` without
-/// silently dropping the metadata value. Mirrors `build_feature`'s `meta_`
-/// collision rule against the base attributes, just applied here against
-/// this reader-reserved key before that later merge.
-fn reserve_extra_attr(extra: &mut IndexMap<Attribute, AttributeValue>, key: &str) {
-    if let Some(value) = extra.shift_remove(&Attribute::new(key)) {
-        extra.insert(Attribute::new(format!("meta_{key}")), value);
-    }
-}
-
+/// mesh) falls into its own feature with no decoded metadata, so its
+/// geometry isn't silently dropped; this shouldn't occur on well-formed
+/// PLATEAU exports, where every primitive in a mesh shares the same
+/// extension usage.
 fn split_features(
     build: MeshBuild,
     structural_metadata: Option<&reearth_flow_gltf::PropertyTables>,
@@ -812,8 +802,9 @@ fn split_features(
                                 {
                                     // The user chose this key explicitly, so overwriting
                                     // whatever decoded property may already be there is
-                                    // expected (no `meta_` renaming, unlike `featureId`
-                                    // below).
+                                    // expected (no `meta_` renaming here, unlike
+                                    // `build_feature`'s collision rule against the base
+                                    // attributes).
                                     extra.insert(
                                         Attribute::new(key),
                                         AttributeValue::String(class_name.clone()),
@@ -823,32 +814,24 @@ fn split_features(
                             Some(table) => tracing::warn!(
                                 "glTF: feature ID {feature_id} is out of range for \
                                  structural-metadata property table {table_index} \
-                                 ({} rows); attaching only featureId",
+                                 ({} rows); its metadata row could not be resolved, so no \
+                                 metadata properties were attached",
                                 table.count
                             ),
                             None => tracing::warn!(
                                 "glTF: EXT_mesh_features references property table \
                                  {table_index}, but EXT_structural_metadata only has \
-                                 {} table(s); attaching only featureId",
+                                 {} table(s); its metadata row could not be resolved, so no \
+                                 metadata properties were attached",
                                 tables.tables.len()
                             ),
                         }
                     }
-                    // Always set last so the reader's own numeric ID wins the
-                    // slot; a metadata property that happens to be named
-                    // `featureId` is preserved (renamed, not dropped) by the
-                    // `reserve_extra_attr` call above/below rather than being
-                    // silently overwritten.
-                    reserve_extra_attr(&mut extra, "featureId");
-                    extra.insert(
-                        Attribute::new("featureId"),
-                        AttributeValue::Number(serde_json::Number::from(feature_id)),
-                    );
                 }
                 None => tracing::warn!(
                     "glTF: mesh mixes EXT_mesh_features feature IDs with feature-ID-less \
                      primitives; the latter's triangles are emitted as one feature with \
-                     no featureId"
+                     no metadata properties"
                 ),
             }
 
@@ -907,8 +890,8 @@ fn build_geometry(build: MeshBuild) -> Geometry {
 
 /// Build a Flow [`Feature`] from `geometry` plus the reader's base attributes
 /// (`source`, `mesh`/`meshes`, `node`/`nodes`, `primitiveCount`), then merge in
-/// `extra_attributes` (e.g. `featureId` + decoded structural-metadata
-/// properties from [`split_features`]) on top. A colliding key is written
+/// `extra_attributes` (e.g. decoded structural-metadata properties from
+/// [`split_features`]) on top. A colliding key is written
 /// under `meta_<name>` instead of overwriting the base attribute, so nothing
 /// from either side is silently lost.
 fn build_feature(
@@ -1449,13 +1432,11 @@ mod tests {
             features.len()
         );
         let f = &features[0];
-        assert!(f.attributes.contains_key(&Attribute::new("featureId")));
         // at least one decoded structural-metadata property present
         assert!(
             f.attributes.keys().any(|k| {
                 let n = k.to_string();
-                n != "featureId"
-                    && n != "source"
+                n != "source"
                     && n != "mesh"
                     && n != "meshes"
                     && n != "nodes"
@@ -1466,9 +1447,9 @@ mod tests {
         );
 
         // Regression guard for the EXT_structural_metadata bufferView-offset
-        // fix: a wrong offset/buffer resolution would still leave `featureId`
-        // present and *a* property surfaced (the checks above), but with
-        // garbage values. Locate a specific feature by its stable `gml_id`
+        // fix: a wrong offset/buffer resolution would still leave *a*
+        // property surfaced (the check above), but with garbage values.
+        // Locate a specific feature by its stable `gml_id`
         // (hand-verified against this fixture, same values independently
         // confirmed via the old blob-based `extract_feature_properties` in
         // `runtime/gltf/src/metadata/decode.rs`'s own `test_extract_feature_properties`)
@@ -1647,34 +1628,37 @@ mod tests {
         let features = read_all_features_for_test(json.as_bytes());
         assert_eq!(features.len(), 2, "one feature per constant feature ID");
 
-        let by_feature_id = |id: u32| -> &Feature {
-            features
-                .iter()
-                .find(|f| {
-                    f.attributes.get(&Attribute::new("featureId"))
-                        == Some(&AttributeValue::Number(serde_json::Number::from(id)))
-                })
-                .unwrap_or_else(|| panic!("no feature with featureId {id}"))
-        };
-
+        // The reader no longer exposes the glTF-internal feature ID as an
+        // attribute, so features can't be located by it here. Instead,
+        // collect the decoded `height` values across all features into a set
+        // and assert it's exactly {111, 222} — this still exercises the
+        // regression this test guards (a numeric property at a non-zero
+        // bufferView byteOffset decoding to the right values), independent
+        // of which feature ended up with which value.
+        let heights: std::collections::BTreeSet<u64> = features
+            .iter()
+            .map(|f| match f.attributes.get(&Attribute::new("height")) {
+                Some(AttributeValue::Number(n)) => n.as_u64().expect("height fits in u64"),
+                other => panic!("expected a numeric height attribute, got {other:?}"),
+            })
+            .collect();
         assert_eq!(
-            by_feature_id(0).attributes.get(&Attribute::new("height")),
-            Some(&AttributeValue::Number(111u64.into())),
-            "numeric property at a non-zero bufferView offset decodes correctly"
-        );
-        assert_eq!(
-            by_feature_id(1).attributes.get(&Attribute::new("height")),
-            Some(&AttributeValue::Number(222u64.into()))
+            heights,
+            std::collections::BTreeSet::from([111, 222]),
+            "numeric property at a non-zero bufferView offset decodes to the right values"
         );
     }
 
-    /// Unit-level guard for Finding 2: a metadata property literally named
-    /// `featureId` must not be silently clobbered when the reader inserts its
-    /// own reserved `featureId` attribute — it should survive renamed to
-    /// `meta_featureId`, the same collision rule `build_feature` applies
-    /// against the base attributes.
+    /// The reader no longer reserves `featureId` as its own attribute (that
+    /// key is glTF-internal indexing, used only to group triangles into
+    /// features, not to decorate them). So a decoded structural-metadata
+    /// property that happens to be named `featureId` should pass through
+    /// unchanged under its own name, with no `meta_featureId` renaming —
+    /// unlike `build_feature`'s collision rule, which still applies against
+    /// the reader's *base* attributes (`source`/`mesh`/`meshes`/`node`/
+    /// `nodes`/`primitiveCount`).
     #[test]
-    fn split_features_preserves_a_metadata_property_literally_named_feature_id() {
+    fn split_features_passes_through_a_metadata_property_named_feature_id() {
         let build = MeshBuild {
             soup: vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
             tri_material: vec![None],
@@ -1717,13 +1701,14 @@ mod tests {
 
         assert_eq!(
             f.attributes.get(&Attribute::new("featureId")),
-            Some(&AttributeValue::Number(serde_json::Number::from(0u32))),
-            "the reader's own numeric featureId wins the reserved slot"
+            Some(&AttributeValue::String("colliding-value".to_string())),
+            "a metadata property named featureId passes through unchanged, since the \
+             reader no longer reserves that key"
         );
         assert_eq!(
             f.attributes.get(&Attribute::new("meta_featureId")),
-            Some(&AttributeValue::String("colliding-value".to_string())),
-            "colliding metadata property preserved under meta_ prefix, not dropped"
+            None,
+            "no meta_ renaming happens, since there is no reserved featureId to collide with"
         );
     }
 
