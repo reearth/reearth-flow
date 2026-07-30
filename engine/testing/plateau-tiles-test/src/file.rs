@@ -15,7 +15,13 @@ pub fn zip_dir(src_dir: &Path, zip_path: &Path) -> Result<(), String> {
     let mut zip = ZipWriter::new(file);
     let options = SimpleFileOptions::default().compression_method(zip::CompressionMethod::Deflated);
 
-    for entry in WalkDir::new(src_dir).into_iter().filter_map(|r| r.ok()) {
+    // Follow symlinks so a citymodel dir whose codelists/schemas are symlinked
+    // into shared fixtures is archived with their contents, not skipped.
+    for entry in WalkDir::new(src_dir)
+        .follow_links(true)
+        .into_iter()
+        .filter_map(|r| r.ok())
+    {
         let path = entry.path();
         if path.is_file() {
             let rel = path.strip_prefix(src_dir).map_err(|e| perr(path, e))?;

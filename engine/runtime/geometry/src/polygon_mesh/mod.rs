@@ -234,6 +234,11 @@ impl PolygonMesh3DData {
 }
 
 impl PolygonMesh3DData {
+    /// Drop the appearance.
+    pub(crate) fn remove_appearance(&mut self) {
+        self.appearance = None;
+    }
+
     /// Drop all back-side appearance, keeping only the front; see
     /// [`crate::appearance::make_front_only`].
     pub(crate) fn make_front_only(&mut self) {

@@ -4,7 +4,7 @@
 ### Type
 * processor
 ### Description
-Removes appearance information (materials, textures) from CityGML geometry
+Discards the materials, textures and texture coordinates carried by a feature's geometry.
 ### Parameters
 * No parameters
 ### Input Ports
@@ -2237,6 +2237,14 @@ Writes features to Cesium 3D Tiles format for 3D web visualization.
       "description": "Whether to skip attributes whose keys begin with a double underscore.",
       "type": [
         "boolean",
+        "null"
+      ]
+    },
+    "arrayMapSeparator": {
+      "title": "Array/Map Separator",
+      "description": "Separator joining a nested array or map attribute to its child key or index when flattening it into metadata columns. Leave unset to drop array and map attributes from the output entirely.",
+      "type": [
+        "string",
         "null"
       ]
     },
@@ -5295,6 +5303,8 @@ Filter Features by Geometry Type
   "description": "Configure how to filter features based on their geometry type",
   "oneOf": [
     {
+      "title": "No Geometry",
+      "description": "Separates the features that carry no geometry at all from the ones that do.",
       "type": "object",
       "required": [
         "filterType"
@@ -5309,6 +5319,8 @@ Filter Features by Geometry Type
       }
     },
     {
+      "title": "Multiple Geometries",
+      "description": "Separates the features whose geometry is a container that can hold more than one part.",
       "type": "object",
       "required": [
         "filterType"
@@ -5323,6 +5335,8 @@ Filter Features by Geometry Type
       }
     },
     {
+      "title": "Geometry Type",
+      "description": "Routes by the geometry family a feature belongs to: point, curve, surface, triangle or solid.",
       "type": "object",
       "required": [
         "filterType"
@@ -5410,7 +5424,7 @@ Extract geometry parts (surfaces) from 3D geometries as separate features
 ### Type
 * processor
 ### Description
-Removes geometry from a feature
+Discards a feature's geometry, keeping its attributes.
 ### Parameters
 * No parameters
 ### Input Ports
@@ -8710,18 +8724,18 @@ Writes 3D features to Wavefront OBJ format with optional material (MTL) files
 ### Type
 * processor
 ### Description
-Apply Coordinate Offsets to Geometry
+Shifts every geometry coordinate by a fixed amount along each axis.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Offsetter Parameters",
-  "description": "Configure the X, Y, and Z coordinate offsets to apply to all geometry coordinates",
+  "description": "Amounts added to every geometry coordinate, one per axis, in the coordinate unit of the geometry's frame.",
   "type": "object",
   "properties": {
     "offsetX": {
       "title": "X Offset",
-      "description": "Offset to add to all X coordinates (longitude)",
+      "description": "Amount added to every X coordinate, in the coordinate unit of the geometry's frame (degrees for a geographic CRS). Defaults to zero.",
       "type": [
         "number",
         "null"
@@ -8730,7 +8744,7 @@ Apply Coordinate Offsets to Geometry
     },
     "offsetY": {
       "title": "Y Offset",
-      "description": "Offset to add to all Y coordinates (latitude)",
+      "description": "Amount added to every Y coordinate, in the coordinate unit of the geometry's frame (degrees for a geographic CRS). Defaults to zero.",
       "type": [
         "number",
         "null"
@@ -8739,7 +8753,7 @@ Apply Coordinate Offsets to Geometry
     },
     "offsetZ": {
       "title": "Z Offset",
-      "description": "Offset to add to all Z coordinates (elevation)",
+      "description": "Amount added to every Z coordinate, in the coordinate unit of the geometry's frame (metres for a geographic CRS). Defaults to zero.",
       "type": [
         "number",
         "null"

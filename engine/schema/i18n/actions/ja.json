@@ -2,7 +2,7 @@
   "actions": [
     {
       "name": "Appearance Remover",
-      "description": "CityGMLジオメトリから外観情報（マテリアル、テクスチャ）を削除する"
+      "description": "地物のジオメトリが持つマテリアル、テクスチャ、テクスチャ座標を削除する"
     },
     {
       "name": "Area Calculator",
@@ -776,6 +776,10 @@
         "": {
           "title": "Cesium3DTilesWriter パラメータ",
           "description": "地物をCesium 3D Tilesに書き出す設定"
+        },
+        "arrayMapSeparator": {
+          "title": "配列/マップの区切り文字",
+          "description": "ネストされた配列またはマップ属性をメタデータの列に平坦化する際、その子キーやインデックスと連結するための区切り文字。未設定の場合、配列およびマップ属性は出力から完全に除外されます。"
         },
         "atlasExtrusion": {
           "title": "アトラスの縁取り",
@@ -1745,7 +1749,7 @@
     },
     {
       "name": "Geometry Remover",
-      "description": "地物からジオメトリを削除する"
+      "description": "地物のジオメトリを削除し、属性はそのまま残す"
     },
     {
       "name": "Geometry Replacer",
@@ -2675,23 +2679,23 @@
     },
     {
       "name": "Offsetter",
-      "description": "地物の座標にオフセットを加える",
+      "description": "ジオメトリのすべての座標を各軸ごとに一定量だけ移動する",
       "parameterI18n": {
         "": {
           "title": "Offsetter パラメータ",
-          "description": "すべてのジオメトリ座標に適用する X・Y・Z 座標オフセットを設定する"
+          "description": "すべてのジオメトリ座標に各軸ごとに加える量を、ジオメトリの座標フレームの座標単位で設定する"
         },
         "offsetX": {
           "title": "X オフセット",
-          "description": "すべての X 座標（経度）に加えるオフセット"
+          "description": "すべての X 座標に加える量。単位はジオメトリの座標フレームの座標単位（地理座標系では度）。省略時は 0"
         },
         "offsetY": {
           "title": "Y オフセット",
-          "description": "すべての Y 座標（緯度）に加えるオフセット"
+          "description": "すべての Y 座標に加える量。単位はジオメトリの座標フレームの座標単位（地理座標系では度）。省略時は 0"
         },
         "offsetZ": {
           "title": "Z オフセット",
-          "description": "すべての Z 座標（標高）に加えるオフセット"
+          "description": "すべての Z 座標に加える量。単位はジオメトリの座標フレームの座標単位（地理座標系ではメートル）。省略時は 0"
         }
       }
     },

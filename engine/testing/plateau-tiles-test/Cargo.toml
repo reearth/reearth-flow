@@ -1,7 +1,19 @@
 [package]
 name = "plateau-tiles-test"
-version = "0.2.93"
+version = "0.2.97"
 edition = "2021"
+
+[features]
+default = []
+# Temporary migration flag for the new-geometry migration.
+# TODO: Remove after migration.
+new-geometry = [
+  "reearth-flow-action-plateau-processor/new-geometry",
+  "reearth-flow-action-processor/new-geometry",
+  "reearth-flow-action-sink/new-geometry",
+  "reearth-flow-action-source/new-geometry",
+  "reearth-flow-types/new-geometry",
+]
 
 [dependencies]
 serde.workspace = true

@@ -608,6 +608,68 @@ mod tests {
         }
     }
 
+    // An OBJ-shaped PolygonMesh with a Phong material, a file-backed diffuse_map,
+    // and per-corner UVs, as produced by the new-geometry OBJ reader, must extract
+    // with its material carried through unchanged, which proves the writer needs
+    // no OBJ-specific changes. A CRS frame (EPSG:4979) is used here deliberately,
+    // since the writer skips Euclidean (model-space) meshes: the OBJ reader itself
+    // emits Euclidean geometry, but placing it on a CRS is the separate
+    // georeferencing concern, not what this test is checking.
+    #[test]
+    fn obj_shaped_polygon_mesh_with_phong_texture_is_extracted() {
+        use reearth_flow_geometry::appearance::{
+            ChannelId, Material, PhongMaterial, Raster, Sampler, Texture, ThemeId, UvSource,
+        };
+        use reearth_flow_geometry::polygon::Polygon3D;
+        use reearth_flow_geometry::polygon_mesh::PolygonMesh3D;
+        use std::str::FromStr;
+        use std::sync::Arc;
+
+        let frame = CoordinateFrame::Crs(EpsgCode::new(4979));
+        let ring = vec![
+            [35.0, 139.0, 0.0],
+            [35.0, 139.001, 0.0],
+            [35.001, 139.0, 0.0],
+        ];
+        let mut poly =
+            Polygon3D::from_rings(frame.clone(), ring, std::iter::empty::<Vec<[f64; 3]>>());
+        poly.set_appearance(
+            ThemeId(Arc::from("default")),
+            Material::Phong(PhongMaterial {
+                diffuse: [0.2, 0.4, 0.6],
+                specular: [0.0; 3],
+                emissive: [0.0; 3],
+                ambient_intensity: 0.0,
+                shininess: 0.0,
+                transparency: 0.0,
+                diffuse_map: Some(Texture {
+                    raster: Arc::new(Raster::Uri(
+                        reearth_flow_common::uri::Uri::from_str("file:///t.png").unwrap(),
+                    )),
+                    sampler: Sampler::default(),
+                    transform: None,
+                    uv_channel: ChannelId(0),
+                }),
+                emissive_map: None,
+                normal_map: None,
+            }),
+            Some(UvSource::Explicit(
+                vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]].into_boxed_slice(),
+            )),
+        )
+        .unwrap();
+        let mesh = PolygonMesh3D::from_polygons(frame, &[poly]).unwrap();
+        let geometry = Geometry::Euclidean3D(Euclidean3DGeometry::PolygonMesh(Box::new(mesh)));
+
+        let mut caches = ExtractCaches::default();
+        let extracted = extract(&geometry, &mut caches).expect("mesh extracts");
+        assert_eq!(
+            extracted.materials.len(),
+            1,
+            "OBJ-shaped Phong material flows through the writer"
+        );
+    }
+
     // A face whose canonical orientation is outward, stored in a lat-first frame
     // (EPSG:4979, orientation sign -1), must emit an ECEF normal that points away
     // from the earth's centre. Triangulating in ECEF gives this for free: the
