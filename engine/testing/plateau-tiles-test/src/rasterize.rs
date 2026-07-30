@@ -468,13 +468,15 @@ mod tests {
     }
 
     // A solid region in `a` (no background touching it) vs solid background in `b`: a real mismatch.
+    // The block must be wide enough that some pixels' 3x3 neighborhoods sit entirely inside it,
+    // since only those pixels avoid touching background and thus can't score 0 via range overlap.
     #[test]
     fn test_compare_depth_solid_region_mismatch_is_real_error() {
         let mut a = Canvas::new(8, 8);
         let b = Canvas::new(8, 8);
-        for y in 2..=4 {
-            for x in 2..=4 {
-                a.data[y * 8 + x] = 0.2;
+        for y in 1..=6 {
+            for x in 1..=6 {
+                a.data[y * 8 + x] = 0.3;
             }
         }
         let score = a.compare_depth(&b).unwrap();
