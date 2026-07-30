@@ -5,21 +5,10 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/reearth/reearth-flow/subscriber/internal/infrastructure/postgres/gen"
 	"github.com/reearth/reearth-flow/subscriber/pkg/node"
 	"github.com/reearth/reearthx/pgxx"
 )
-
-// The node execution ID is jobID:nodeID, so the primary key carries the
-// per-node uniqueness the Mongo path enforced with a jobId+nodeId filter.
-const upsertNodeExecution = `INSERT INTO node_executions (
-  id, job_id, node_id, status, started_at, completed_at
-) VALUES ($1, $2, $3, $4, $5, $6)
-ON CONFLICT (id) DO UPDATE SET
-  job_id       = EXCLUDED.job_id,
-  node_id      = EXCLUDED.node_id,
-  status       = EXCLUDED.status,
-  started_at   = EXCLUDED.started_at,
-  completed_at = EXCLUDED.completed_at`
 
 type PostgresStorage struct {
 	c *pgxx.Client
@@ -27,6 +16,10 @@ type PostgresStorage struct {
 
 func NewPostgresStorage(c *pgxx.Client) *PostgresStorage {
 	return &PostgresStorage{c: c}
+}
+
+func (p *PostgresStorage) q(ctx context.Context) *gen.Queries {
+	return gen.New(p.c.DB(ctx))
 }
 
 func (p *PostgresStorage) SaveNodeExecution(ctx context.Context, jobID string, nodeExec *node.NodeExecution) error {
@@ -38,14 +31,14 @@ func (p *PostgresStorage) SaveNodeExecution(ctx context.Context, jobID string, n
 	log.Printf("DEBUG: Saving node execution to Postgres for jobID=%s, nodeID=%s, status=%s",
 		jobID, nodeExec.NodeID, nodeExec.Status)
 
-	if _, err := p.c.DB(ctx).Exec(ctx, upsertNodeExecution,
-		nodeExec.ID,
-		jobID,
-		nodeExec.NodeID,
-		string(nodeExec.Status),
-		nodeExec.StartedAt,
-		nodeExec.CompletedAt,
-	); err != nil {
+	if err := p.q(ctx).UpsertNodeExecution(ctx, gen.UpsertNodeExecutionParams{
+		ID:          nodeExec.ID,
+		JobID:       jobID,
+		NodeID:      nodeExec.NodeID,
+		Status:      string(nodeExec.Status),
+		StartedAt:   nodeExec.StartedAt,
+		CompletedAt: nodeExec.CompletedAt,
+	}); err != nil {
 		log.Printf("ERROR: Failed to save node execution: %v", err)
 		return fmt.Errorf("failed to save node execution: %w", pgxx.WrapError(err))
 	}

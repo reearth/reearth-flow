@@ -69,6 +69,7 @@ jobs:
         with:
           files: |
             server/subscriber/**
+            server/api/internal/infrastructure/postgres/db/migrations/**
             .github/workflows/ci.yml
             .github/workflows/ci_subscriber.yml
             .github/workflows/build_deploy_subscriber.yml
