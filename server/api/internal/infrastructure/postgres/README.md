@@ -68,24 +68,60 @@ For a private-IP Cloud SQL instance, run `dbmigrate` from an ephemeral, in-VPC
 Cloud Run job on the flow-api image (which now ships the `dbmigrate` binary)
 so the job can reach the private instance without a bastion:
 
+`-verify` is a **separate mode**, not an add-on: it reads the target back and
+returns without replicating anything. Combining it with the seed in one
+invocation applies the schema, verifies an empty database and exits `0` — a
+silent no-op that looks like a successful seed. Run the three steps separately.
+
 ```sh
+# Pin the image by digest. The :nightly tag can lag the commit that added
+# dbmigrate, and an image without the binary fails only at execution time.
+IMAGE=$(gcloud artifacts docker images list \
+  us-central1-docker.pkg.dev/reearth-oss/reearth/reearth-flow-api \
+  --project reearth-oss --include-tags --filter='tags:nightly' \
+  --format='value(version)' --limit 1)
+
 gcloud run jobs create reearth-flow-dbmigrate \
   --project reearth-oss \
   --region us-central1 \
-  --image us-central1-docker.pkg.dev/reearth-oss/reearth/reearth-flow-api:nightly \
+  --image "us-central1-docker.pkg.dev/reearth-oss/reearth/reearth-flow-api@${IMAGE}" \
   --network default \
   --subnet default \
   --vpc-egress private-ranges-only \
   --service-account reearth-flow-migration@reearth-oss.iam.gserviceaccount.com \
   --set-secrets REEARTH_FLOW_DB=reearth-flow-db:latest,REEARTH_FLOW_DB_PG=reearth-flow-db-postgres:latest \
   --command /reearth-flow/dbmigrate \
-  --args=-apply-schema,-db=reearth-flow,-verify
+  --args=-apply-schema \
+  --max-retries 0 \
+  --task-timeout 3600s
 
-gcloud run jobs execute reearth-flow-dbmigrate \
-  --project reearth-oss \
-  --region us-central1 \
-  --wait
+run() {
+  gcloud run jobs execute reearth-flow-dbmigrate \
+    --project reearth-oss --region us-central1 --wait
+}
+set_args() {
+  gcloud run jobs update reearth-flow-dbmigrate \
+    --project reearth-oss --region us-central1 --args="$1"
+}
+
+# 1. schema (one-shot; see above)
+run
+
+# 2. replicate the data
+set_args -db=reearth-flow
+run
+
+# 3. read every replicated row back through the Postgres adapters
+set_args -verify
+run
 ```
+
+`--max-retries 0` matters: `-apply-schema` is one-shot, so a retried task fails
+on the already-created tables and buries the original error.
+
+Step 2 exits non-zero if any document failed to decode, while still migrating
+the rest — check the per-collection `migrated=`/`failed=` tallies in the log
+rather than the exit code alone.
 
 The service account needs `roles/secretmanager.secretAccessor` on both
 `reearth-flow-db` (source Mongo) and `reearth-flow-db-postgres` (target). Clean
