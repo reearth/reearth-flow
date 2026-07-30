@@ -13264,6 +13264,15 @@
             "default": true,
             "type": "boolean"
           },
+          "featureClassAttribute": {
+            "title": "要素类别属性",
+            "description": "用于存储每个拆分要素的 EXT_structural_metadata 类别名称的属性键。若未设置，则不会将类别名称添加为属性",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "dataset": {
             "title": "File Path",
             "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",

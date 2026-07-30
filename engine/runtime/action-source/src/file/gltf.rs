@@ -88,6 +88,7 @@ impl SourceFactory for GltfReaderFactory {
             _triangulate: params.triangulate,
             merge_meshes: params.merge_meshes,
             include_nodes: params.include_nodes,
+            feature_class_attribute: params.feature_class_attribute,
         };
         Ok(Box::new(GltfReader { params: compiled }))
     }
@@ -99,6 +100,10 @@ struct GltfReaderCompiledParam {
     _triangulate: bool,
     merge_meshes: bool,
     include_nodes: bool,
+    // Only read by the new-geometry split path (`gltf_next::split_features`);
+    // the not(new-geometry) world doesn't split by feature ID at all.
+    #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
+    feature_class_attribute: Option<String>,
 }
 
 #[derive(Debug, Clone)]
@@ -123,6 +128,10 @@ pub(super) struct GltfReaderParam {
     /// If true, includes node hierarchy information from the glTF scene graph in feature attributes
     #[serde(default = "default_true")]
     pub(super) include_nodes: bool,
+    /// # Feature Class Attribute
+    /// Attribute key to store the EXT_structural_metadata class name under, for each split feature. If unset, the class name is not added as an attribute.
+    #[serde(default)]
+    pub(super) feature_class_attribute: Option<String>,
 }
 
 fn default_true() -> bool {

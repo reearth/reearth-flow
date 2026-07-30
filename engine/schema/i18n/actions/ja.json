@@ -3782,6 +3782,10 @@
           "title": "ファイルパス",
           "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）"
         },
+        "featureClassAttribute": {
+          "title": "フィーチャークラス属性",
+          "description": "分割した各フィーチャーについて、EXT_structural_metadata のクラス名を格納する属性キー。未設定の場合、クラス名は属性として追加されない"
+        },
         "includeNodes": {
           "title": "ノードを含める",
           "description": "true の場合、glTF シーングラフのノード階層情報をフィーチャー属性に含める"

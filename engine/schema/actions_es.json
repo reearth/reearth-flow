@@ -13264,6 +13264,15 @@
             "default": true,
             "type": "boolean"
           },
+          "featureClassAttribute": {
+            "title": "Atributo de clase de entidad",
+            "description": "Clave de atributo bajo la cual almacenar el nombre de clase de EXT_structural_metadata de cada entidad dividida. Si no se establece, el nombre de la clase no se agrega como atributo.",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "dataset": {
             "title": "File Path",
             "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",

@@ -741,21 +741,25 @@ fn sub_build(build: &MeshBuild, tri_indices: &[usize]) -> MeshBuild {
 /// Split `build` into one Flow [`Feature`] per distinct `EXT_mesh_features`
 /// feature ID (grouping its triangles by [`MeshBuild::tri_feature_id`]),
 /// decorating each with `featureId` and, when `structural_metadata` resolves a
-/// property-table row for that ID, that row's properties (plus `class` when
-/// the table names one). Only called once the caller has confirmed
-/// `build.tri_feature_id` has at least one `Some` entry.
+/// property-table row for that ID, that row's properties. When
+/// `params.feature_class_attribute` names a key, the property table's class
+/// name (if any) is additionally inserted under that key — the user opted
+/// into it under a key of their choosing, so it is a plain insert (last
+/// write wins) rather than going through the `meta_` collision rule below.
+/// Only called once the caller has confirmed `build.tri_feature_id` has at
+/// least one `Some` entry.
 ///
 /// A triangle whose primitive carried no feature-ID set (a mix within one
 /// mesh) falls into its own feature with no `featureId`, so its geometry
 /// isn't silently dropped; this shouldn't occur on well-formed PLATEAU
 /// exports, where every primitive in a mesh shares the same extension usage.
 /// If `extra` already holds `key` (a decoded structural-metadata property
-/// that happens to share a name with one of `split_features`'s own reserved
-/// attributes, `featureId` or `class`), move it out from under `key` to
-/// `meta_<key>` first, so the reserved attribute can then be inserted under
-/// `key` without silently dropping the metadata value. Mirrors
-/// `build_feature`'s `meta_` collision rule against the base attributes, just
-/// applied here against these reader-reserved keys before that later merge.
+/// that happens to share a name as `split_features`'s own reserved
+/// `featureId` attribute), move it out from under `key` to `meta_<key>`
+/// first, so the reserved attribute can then be inserted under `key` without
+/// silently dropping the metadata value. Mirrors `build_feature`'s `meta_`
+/// collision rule against the base attributes, just applied here against
+/// this reader-reserved key before that later merge.
 fn reserve_extra_attr(extra: &mut IndexMap<Attribute, AttributeValue>, key: &str) {
     if let Some(value) = extra.shift_remove(&Attribute::new(key)) {
         extra.insert(Attribute::new(format!("meta_{key}")), value);
@@ -794,10 +798,15 @@ fn split_features(
                                 ) {
                                     extra.insert(Attribute::new(name), value);
                                 }
-                                if let Some(class_name) = &table.class {
-                                    reserve_extra_attr(&mut extra, "class");
+                                if let (Some(key), Some(class_name)) =
+                                    (params.feature_class_attribute.as_deref(), &table.class)
+                                {
+                                    // The user chose this key explicitly, so overwriting
+                                    // whatever decoded property may already be there is
+                                    // expected (no `meta_` renaming, unlike `featureId`
+                                    // below).
                                     extra.insert(
-                                        Attribute::new("class"),
+                                        Attribute::new(key),
                                         AttributeValue::String(class_name.clone()),
                                     );
                                 }
@@ -1380,6 +1389,16 @@ mod tests {
     /// never touches the storage resolver, letting tests use a bare default
     /// `NodeContext`/`StorageResolver` with no real I/O.
     fn read_all_features_for_test(bytes: &[u8]) -> Vec<Feature> {
+        read_all_features_for_test_with_class(bytes, None)
+    }
+
+    /// Same as [`read_all_features_for_test`], but lets the caller set
+    /// `feature_class_attribute` to exercise the opt-in class-attribute
+    /// behaviour.
+    fn read_all_features_for_test_with_class(
+        bytes: &[u8],
+        feature_class_attribute: Option<&str>,
+    ) -> Vec<Feature> {
         let params = GltfReaderCompiledParam {
             common: crate::file::reader::runner::FileReaderCompiledParam {
                 dataset: None,
@@ -1388,6 +1407,7 @@ mod tests {
             _triangulate: true,
             merge_meshes: false,
             include_nodes: true,
+            feature_class_attribute: feature_class_attribute.map(|s| s.to_string()),
         };
         let ctx = NodeContext::default();
         let storage_resolver = Arc::new(reearth_flow_storage::resolve::StorageResolver::default());
@@ -1678,6 +1698,7 @@ mod tests {
             _triangulate: true,
             merge_meshes: false,
             include_nodes: true,
+            feature_class_attribute: None,
         };
         let empty: Vec<String> = Vec::new();
 
@@ -1694,6 +1715,90 @@ mod tests {
             f.attributes.get(&Attribute::new("meta_featureId")),
             Some(&AttributeValue::String("colliding-value".to_string())),
             "colliding metadata property preserved under meta_ prefix, not dropped"
+        );
+    }
+
+    /// Builds a single-triangle, single-feature `MeshBuild` plus a
+    /// `PropertyTables` whose one table names class `"MyClass"`, for the
+    /// `feature_class_attribute` opt-in tests below.
+    fn build_and_tables_with_class() -> (MeshBuild, reearth_flow_gltf::PropertyTables) {
+        let build = MeshBuild {
+            soup: vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            tri_material: vec![None],
+            tri_feature_id: vec![Some(0)],
+            property_table_index: Some(0),
+            ..MeshBuild::default()
+        };
+        let tables = reearth_flow_gltf::PropertyTables {
+            schema: serde_json::json!({}),
+            tables: vec![reearth_flow_gltf::PropertyTable {
+                class: Some("MyClass".to_string()),
+                count: 1,
+                properties: IndexMap::new(),
+            }],
+        };
+        (build, tables)
+    }
+
+    fn params_with_feature_class_attribute(
+        feature_class_attribute: Option<&str>,
+    ) -> GltfReaderCompiledParam {
+        GltfReaderCompiledParam {
+            common: crate::file::reader::runner::FileReaderCompiledParam {
+                dataset: None,
+                inline: None,
+            },
+            _triangulate: true,
+            merge_meshes: false,
+            include_nodes: true,
+            feature_class_attribute: feature_class_attribute.map(|s| s.to_string()),
+        }
+    }
+
+    /// Default behaviour (`feature_class_attribute: None`): the property
+    /// table's class name is never surfaced as an attribute, even though the
+    /// table names one. This is the opt-in change requested in review —
+    /// previously the reader always injected a `class` attribute (and bumped
+    /// any pre-existing `class` property to `meta_class`).
+    #[test]
+    fn split_features_does_not_inject_class_by_default() {
+        let (build, tables) = build_and_tables_with_class();
+        let params = params_with_feature_class_attribute(None);
+        let empty: Vec<String> = Vec::new();
+
+        let features = split_features(build, Some(&tables), &empty, &empty, 1, &params);
+        assert_eq!(features.len(), 1);
+        let f = &features[0];
+
+        assert!(
+            f.attributes.get(&Attribute::new("class")).is_none(),
+            "class must not be injected unless feature_class_attribute is set"
+        );
+        assert!(
+            f.attributes
+                .keys()
+                .all(|k| k.to_string() != "MyClass" && !k.to_string().contains("class")),
+            "no class-derived attribute should be present at all when opted out"
+        );
+    }
+
+    /// `feature_class_attribute: Some("myClass")`: the property table's class
+    /// name is inserted under the user-chosen key, as a plain (overwriting)
+    /// insert.
+    #[test]
+    fn split_features_injects_class_under_configured_key_when_set() {
+        let (build, tables) = build_and_tables_with_class();
+        let params = params_with_feature_class_attribute(Some("myClass"));
+        let empty: Vec<String> = Vec::new();
+
+        let features = split_features(build, Some(&tables), &empty, &empty, 1, &params);
+        assert_eq!(features.len(), 1);
+        let f = &features[0];
+
+        assert_eq!(
+            f.attributes.get(&Attribute::new("myClass")),
+            Some(&AttributeValue::String("MyClass".to_string())),
+            "class name surfaced under the configured attribute key"
         );
     }
 

@@ -12913,6 +12913,15 @@ Reads 3D models from glTF 2.0 files, supporting meshes, nodes, scenes, and geome
       "default": true,
       "type": "boolean"
     },
+    "featureClassAttribute": {
+      "title": "Feature Class Attribute",
+      "description": "Attribute key to store the EXT_structural_metadata class name under, for each split feature. If unset, the class name is not added as an attribute.",
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
     "dataset": {
       "title": "File Path",
       "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",

@@ -3774,6 +3774,10 @@
           "title": "File Path",
           "description": "Expression that returns the path to the input file, either a literal path or a variable reference."
         },
+        "featureClassAttribute": {
+          "title": "Attribut de classe de l'entité",
+          "description": "Clé d'attribut sous laquelle stocker le nom de classe EXT_structural_metadata de chaque entité issue de la division. Si non défini, le nom de la classe n'est pas ajouté comme attribut."
+        },
         "includeNodes": {
           "title": "Include Nodes",
           "description": "If true, includes node hierarchy information from the glTF scene graph in feature attributes"
