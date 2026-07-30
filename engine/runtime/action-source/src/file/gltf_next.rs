@@ -279,7 +279,10 @@ fn extract_mesh_build(
     // channel's buffer stays aligned to the whole mesh's corner soup.
     // `warned_feature_id_disagreement` caps the corner-mismatch warning to once
     // per mesh (i.e. once per `extract_mesh_build` call), not once per triangle.
+    // `errored_feature_id_out_of_range` similarly caps `feature_id_at`'s
+    // corruption error to once per mesh.
     let mut warned_feature_id_disagreement = false;
+    let mut errored_feature_id_out_of_range = false;
     for primitive in primitives {
         let feature_ids =
             reearth_flow_gltf::read_mesh_features(primitive, buffer_data).map_err(|e| {
@@ -331,17 +334,9 @@ fn extract_mesh_build(
             build.tri_material.push(slot);
 
             let fid = feature_ids.as_ref().map(|ids| {
-                // A `constant` feature-ID set (see `read_mesh_features`) comes
-                // back as a single-element vec applying to every vertex; a
-                // per-vertex `attribute` set has one entry per vertex.
-                let id_at = |vertex_index: usize| -> u32 {
-                    if ids.len() == 1 {
-                        ids[0]
-                    } else {
-                        ids.get(vertex_index).copied().unwrap_or(ids[0])
-                    }
-                };
-                let (fa, fb, fc) = (id_at(a), id_at(b), id_at(c));
+                let fa = feature_id_at(ids, a, &mut errored_feature_id_out_of_range);
+                let fb = feature_id_at(ids, b, &mut errored_feature_id_out_of_range);
+                let fc = feature_id_at(ids, c, &mut errored_feature_id_out_of_range);
                 if (fa != fb || fa != fc) && !warned_feature_id_disagreement {
                     tracing::warn!(
                         "glTF: a triangle's corners disagree on their EXT_mesh_features \
@@ -359,20 +354,48 @@ fn extract_mesh_build(
     Ok(build)
 }
 
-/// The `propertyTable` index declared on a primitive's first `EXT_mesh_features`
-/// feature-ID set, defaulting to `0` when the set doesn't name one explicitly
-/// (per the extension's spec). `None` when the primitive carries no
-/// `EXT_mesh_features` feature-ID set at all.
+/// A triangle corner's `EXT_mesh_features` feature ID for `vertex_index`.
+///
+/// A `constant` feature-ID set (see `read_mesh_features`) comes back as a
+/// single-element vec applying to every vertex; a per-vertex `attribute` set
+/// has one entry per vertex. When `ids` has more than one entry but
+/// `vertex_index` falls outside it, the glTF's `EXT_mesh_features` feature-ID
+/// array is inconsistent with its vertex count, meaning the glTF is corrupt,
+/// and the first ID is substituted; that fallback is logged once per mesh via
+/// `errored` (mirroring `warned_feature_id_disagreement` above).
+fn feature_id_at(ids: &[u32], vertex_index: usize, errored: &mut bool) -> u32 {
+    if ids.len() == 1 {
+        return ids[0];
+    }
+    match ids.get(vertex_index) {
+        Some(&id) => id,
+        None => {
+            if !*errored {
+                tracing::error!(
+                    "glTF: vertex index {vertex_index} is out of range for the \
+                     EXT_mesh_features feature-ID array (length {}); the glTF's \
+                     feature-ID array is inconsistent with its vertex count, which means \
+                     the glTF is corrupt; substituting the first feature ID",
+                    ids.len()
+                );
+                *errored = true;
+            }
+            ids[0]
+        }
+    }
+}
+
+/// The `propertyTable` index declared on the primitive's first
+/// `EXT_mesh_features` feature-ID set. `None` when the primitive carries no
+/// feature-ID set, or when the set declares no `propertyTable`. Per the
+/// `EXT_mesh_features` spec, `propertyTable` is optional, and when it is
+/// absent the feature IDs carry no structural-metadata attributes at all
+/// (not "table 0").
 fn mesh_features_property_table(primitive: &gltf::Primitive) -> Option<usize> {
     let mesh_features = primitive.extension_value("EXT_mesh_features")?;
     let feature_ids = mesh_features.get("featureIds")?.as_array()?;
     let first = feature_ids.first()?.as_object()?;
-    Some(
-        first
-            .get("propertyTable")
-            .and_then(|v| v.as_u64())
-            .unwrap_or(0) as usize,
-    )
+    Some(first.get("propertyTable")?.as_u64()? as usize)
 }
 
 /// The vertex-index triples of a primitive's triangles, replicating the crate's
@@ -786,8 +809,12 @@ fn split_features(
 
             match fid {
                 Some(feature_id) => {
-                    if let Some(tables) = structural_metadata {
-                        let table_index = table.unwrap_or(0);
+                    // `table` is `None` when the feature-ID set declares no
+                    // `propertyTable` at all, which per the EXT_mesh_features spec is
+                    // valid and means the feature carries no structural-metadata
+                    // attributes (not "table 0"), so no lookup/decode/class-injection
+                    // happens in that case.
+                    if let (Some(tables), Some(table_index)) = (structural_metadata, table) {
                         match tables.tables.get(table_index) {
                             Some(table) if (feature_id as usize) < table.count => {
                                 for (name, value) in reearth_flow_gltf::feature_properties(
@@ -1799,6 +1826,61 @@ mod tests {
             names,
             BTreeSet::from(["from-table-0".to_string(), "from-table-1".to_string()]),
             "each feature must carry its own table's value, not the other's"
+        );
+    }
+
+    /// Per the `EXT_mesh_features` spec, `propertyTable` is optional on a
+    /// feature-ID set; when it's absent, the feature must be treated as
+    /// having no structural-metadata attributes at all, not as implicitly
+    /// naming table 0. This is a regression test for a bug where a missing
+    /// `propertyTable` defaulted to `0` (`mesh_features_property_table`'s
+    /// `.unwrap_or(0)` and `split_features`'s `table.unwrap_or(0)`), which
+    /// meant a feature-ID set with no declared table silently picked up
+    /// table 0's properties.
+    #[test]
+    fn split_features_attaches_no_attributes_when_property_table_is_missing() {
+        let build = MeshBuild {
+            soup: vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            tri_material: vec![None],
+            tri_feature_id: vec![Some(0)],
+            tri_property_table: vec![None],
+            ..MeshBuild::default()
+        };
+
+        let mut properties = IndexMap::new();
+        properties.insert(
+            "height".to_string(),
+            reearth_flow_gltf::PropertyData {
+                values: vec![AttributeValue::Number(serde_json::Number::from(111))],
+            },
+        );
+        let tables = reearth_flow_gltf::PropertyTables {
+            schema: serde_json::json!({}),
+            tables: vec![reearth_flow_gltf::PropertyTable {
+                class: Some("MyClass".to_string()),
+                count: 1,
+                properties,
+            }],
+        };
+
+        let params = params_with_feature_class_attribute(Some("myClass"));
+        let empty: Vec<String> = Vec::new();
+
+        let features = split_features(build, Some(&tables), &empty, &empty, 1, &params);
+        assert_eq!(features.len(), 1);
+        let f = &features[0];
+
+        assert_eq!(
+            f.attributes.get(&Attribute::new("height")),
+            None,
+            "no propertyTable declared means no attributes are attached, even though \
+             table 0 exists and has a `height` property"
+        );
+        assert_eq!(
+            f.attributes.get(&Attribute::new("myClass")),
+            None,
+            "the class attribute must not be injected either, since it comes from the \
+             (undeclared) property table"
         );
     }
 
