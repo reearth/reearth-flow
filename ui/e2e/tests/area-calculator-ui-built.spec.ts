@@ -97,27 +97,27 @@ test.describe.serial(
       expect(await editor.isInEditor()).toBe(true);
     });
 
-    test("builds GeoJsonReader → AreaCalculator → GeoJsonWriter and configures each node", async () => {
+    test("builds GeoJSON Reader → Area Calculator → GeoJSON Writer and configures each node", async () => {
       await editor.addSpecificActionNode(
         "reader",
-        "GeoJsonReader",
+        "GeoJSON Reader",
         await editor.canvasPoint(0.25, 0.4),
       );
       await editor.addSpecificActionNode(
         "transformer",
-        "AreaCalculator",
+        "Area Calculator",
         await editor.canvasPoint(0.5, 0.4),
       );
       await editor.addSpecificActionNode(
         "writer",
-        "GeoJsonWriter",
+        "GeoJSON Writer",
         await editor.canvasPoint(0.75, 0.4),
       );
       await expect(editor.nodes).toHaveCount(3);
 
-      const readerNode = editor.nodeByName("GeoJsonReader");
-      const areaNode = editor.nodeByName("AreaCalculator");
-      const writerNode = editor.nodeByName("GeoJsonWriter");
+      const readerNode = editor.nodeByName("GeoJSON Reader");
+      const areaNode = editor.nodeByName("Area Calculator");
+      const writerNode = editor.nodeByName("GeoJSON Writer");
 
       await editor.connectNodes(readerNode, areaNode);
       await editor.connectNodes(areaNode, writerNode);
@@ -137,7 +137,7 @@ test.describe.serial(
       await editor.submitParams();
 
       await editor.openNodeParamsForm(writerNode);
-      await editor.setParamCodeString("output", "park-areas.geojson");
+      await editor.setParamCodeString("Output File", "park-areas.geojson");
       await editor.submitParams();
     });
 

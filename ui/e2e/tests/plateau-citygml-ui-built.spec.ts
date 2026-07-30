@@ -64,32 +64,32 @@ test.describe.serial(
     test("builds and configures the six available nodes", async () => {
       fileExtractor = await editor.addActionNodeAndGet(
         "reader",
-        "FilePathExtractor",
+        "File Path Extractor",
         await editor.canvasPoint(0.15, 0.25),
       );
       filterGml = await editor.addActionNodeAndGet(
         "transformer",
-        "FeatureFilter",
+        "Feature Filter",
         await editor.canvasPoint(0.42, 0.22),
       );
       filterBuilding = await editor.addActionNodeAndGet(
         "transformer",
-        "FeatureFilter",
+        "Feature Filter",
         await editor.canvasPoint(0.72, 0.22),
       );
       cityGmlReader = await editor.addActionNodeAndGet(
         "transformer",
-        "FeatureCityGmlReader",
+        "Feature CityGML Reader",
         await editor.canvasPoint(0.72, 0.72),
       );
       attributeMapper = await editor.addActionNodeAndGet(
         "transformer",
-        "AttributeMapper",
+        "Attribute Mapper",
         await editor.canvasPoint(0.42, 0.72),
       );
       geoJsonWriter = await editor.addActionNodeAndGet(
         "writer",
-        "GeoJsonWriter",
+        "GeoJSON Writer",
         await editor.canvasPoint(0.15, 0.72),
       );
       await expect(editor.nodes).toHaveCount(6);
@@ -102,19 +102,19 @@ test.describe.serial(
       await editor.openNodeParamsForm(filterGml);
       await editor.addParamArrayItem();
       await editor.setParamFlowExpr(
-        "Condition expression",
+        "Condition Expression",
         'attributes["extension"] == "gml"',
       );
-      await editor.setParamText("root_conditions_0_outputPort", "default");
+      await editor.setParamText("root_conditions_0_outputPort", "features");
       await editor.submitParams();
 
       await editor.openNodeParamsForm(filterBuilding);
       await editor.addParamArrayItem();
       await editor.setParamFlowExpr(
-        "Condition expression",
+        "Condition Expression",
         'attributes["package"] == "bldg"',
       );
-      await editor.setParamText("root_conditions_0_outputPort", "default");
+      await editor.setParamText("root_conditions_0_outputPort", "features");
       await editor.submitParams();
 
       await editor.openNodeParamsForm(cityGmlReader);
@@ -131,20 +131,20 @@ test.describe.serial(
       await editor.setParamText("root_mappers_2_valueAttribute", "maxLod");
       await editor.setParamText("root_mappers_3_attribute", "meshcode");
       await editor.setParamFlowExpr(
-        "Expression to evaluate",
+        "Value Expression",
         'attributes["path"].split("/")[-1].split("_")[0]',
         3,
       );
       await editor.submitParams();
 
       await editor.openNodeParamsForm(geoJsonWriter);
-      await editor.setParamCodeString("output", "toshima-buildings.geojson");
+      await editor.setParamCodeString("Output File", "toshima-buildings.geojson");
       await editor.submitParams();
 
-      await editor.connectFromPort(fileExtractor, filterGml, "default");
-      await editor.connectFromPort(filterBuilding, cityGmlReader, "default");
-      await editor.connectFromPort(cityGmlReader, attributeMapper, "default");
-      await editor.connectFromPort(attributeMapper, geoJsonWriter, "default");
+      await editor.connectFromPort(fileExtractor, filterGml, "features");
+      await editor.connectFromPort(filterBuilding, cityGmlReader, "features");
+      await editor.connectFromPort(cityGmlReader, attributeMapper, "features");
+      await editor.connectFromPort(attributeMapper, geoJsonWriter, "features");
       await expect(editor.edges).toHaveCount(4);
     });
 
@@ -181,8 +181,8 @@ test.describe.serial(
       );
       await editor.submitParams();
 
-      await editor.connectFromPort(filterGml, udxExtractor, "default");
-      await editor.connectFromPort(udxExtractor, filterBuilding, "default");
+      await editor.connectFromPort(filterGml, udxExtractor, "features");
+      await editor.connectFromPort(udxExtractor, filterBuilding, "features");
       await expect(editor.edges).toHaveCount(6);
 
       await editor.deploy(deploymentDescription);

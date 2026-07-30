@@ -267,7 +267,7 @@ export class EditorPage {
     source: Locator,
     target: Locator,
     sourcePortId: string,
-    targetPortId = "default",
+    targetPortId = "features",
   ) {
     await this.connectAndVerify(
       source.locator(
@@ -365,7 +365,7 @@ export class EditorPage {
       .catch(() => false);
     if (hasTab) await tabTrigger.click();
 
-    const textarea = this.flowExprDialog.locator("textarea");
+    const textarea = this.flowExprDialog.locator("textarea:visible").first();
     await textarea.waitFor({ state: "visible" });
     await textarea.fill(value);
 
@@ -388,9 +388,16 @@ export class EditorPage {
   }
 
   async setParamCheckbox(fieldId: string, checked: boolean) {
-    const box = this.paramsDialog.locator(`#${fieldId}`);
+    // Base UI checkboxes put the id on a hidden native input; click the
+    // adjacent role=checkbox element instead.
+    const box = this.paramsDialog
+      .locator(`input#${fieldId}`)
+      .locator('xpath=preceding-sibling::*[@role="checkbox"][1]')
+      .first();
     await box.waitFor({ state: "visible" });
-    const isChecked = (await box.getAttribute("data-state")) === "checked";
+    const isChecked =
+      (await box.getAttribute("aria-checked")) === "true" ||
+      (await box.getAttribute("data-checked")) !== null;
     if (isChecked !== checked) await box.click();
   }
 

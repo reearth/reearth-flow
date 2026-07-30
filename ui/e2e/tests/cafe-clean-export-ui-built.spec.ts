@@ -135,27 +135,27 @@ test.describe.serial(
     test("builds and configures the five nodes", async () => {
       csvReader = await editor.addActionNodeAndGet(
         "reader",
-        "CsvReader",
+        "CSV Reader",
         await editor.canvasPoint(0.5, 0.5),
       );
       featureFilter = await editor.addActionNodeAndGet(
         "transformer",
-        "FeatureFilter",
+        "Feature Filter",
         await editor.canvasPoint(0.1, 0.18),
       );
       attributeManager = await editor.addActionNodeAndGet(
         "transformer",
-        "AttributeManager",
+        "Attribute Manager",
         await editor.canvasPoint(0.82, 0.18),
       );
       geoJsonWriter = await editor.addActionNodeAndGet(
         "writer",
-        "GeoJsonWriter",
+        "GeoJSON Writer",
         await editor.canvasPoint(0.82, 0.82),
       );
       csvWriter = await editor.addActionNodeAndGet(
         "writer",
-        "CsvWriter",
+        "CSV Writer",
         await editor.canvasPoint(0.1, 0.82),
       );
       await expect(editor.nodes).toHaveCount(5);
@@ -170,7 +170,7 @@ test.describe.serial(
       await editor.openNodeParamsForm(featureFilter);
       await editor.addParamArrayItem();
       await editor.setParamFlowExpr(
-        "Condition expression",
+        "Condition Expression",
         'attributes["is_closed"] == "False"',
       );
       await editor.setParamText("root_conditions_0_outputPort", OPEN_PORT);
@@ -178,40 +178,40 @@ test.describe.serial(
       await editor.openNodeParamsForm(attributeManager);
       await editor.addParamArrayItem();
       await editor.setParamText("root_operations_0_attribute", HIGH_RATED_ATTR);
-      await editor.setParamSelect("Operation to perform", "create");
+      await editor.setParamSelect("Method", "Create");
       await editor.setParamFlowExpr(
         "Value",
         'float(attributes["rating"]) >= 4.0',
       );
       await editor.submitParams();
       await editor.openNodeParamsForm(geoJsonWriter);
-      await editor.setParamCodeString("output", GEOJSON_OUTPUT);
+      await editor.setParamCodeString("Output File", GEOJSON_OUTPUT);
       await editor.submitParams();
 
       await editor.openNodeParamsForm(csvWriter);
-      await editor.setParamSelect("format", "CSV (Comma-Separated Values)");
+      await editor.setParamSelect("File Format", "CSV (Comma-Separated Values)");
       await editor.setCsvCoordinateGeometry("longitude", "latitude");
-      await editor.setParamCodeString("output", CSV_OUTPUT);
+      await editor.setParamCodeString("Output File", CSV_OUTPUT);
       await editor.submitParams();
 
-      await editor.connectFromPort(csvReader, featureFilter, "default");
+      await editor.connectFromPort(csvReader, featureFilter, "features");
       await editor.connectFromPort(
         featureFilter,
         attributeManager,
         OPEN_PORT,
-        "default",
+        "features",
       );
       await editor.connectFromPort(
         attributeManager,
         geoJsonWriter,
-        "default",
-        "default",
+        "features",
+        "features",
       );
       await editor.connectFromPort(
         attributeManager,
         csvWriter,
-        "default",
-        "default",
+        "features",
+        "features",
       );
       await expect(editor.edges).toHaveCount(4);
     });
