@@ -64,9 +64,29 @@ script = ['''
 cargo test -p workflow-tests ${@:-}
 ''']
 
+[tasks.ensure-glb-decompress]
+script = ['''
+#!/usr/bin/env bash -eux
+command -v glb-decompress >/dev/null && exit 0
+# glb_decompress_draco transitively depends on `sharp`, whose postinstall
+# script downloads libvips binaries from GitHub Releases. That download
+# has flaked with 504s during peak GitHub traffic; retry up to 3 times
+# before giving up so a single transient CDN blip doesn't fail the install.
+for attempt in 1 2 3; do
+  if npm install -g github:asrcpq/glb_decompress_draco#d0dc30683ae65bb60dda96192b8c1b1d8a80a771; then
+    exit 0
+  fi
+  echo "Attempt $attempt failed; sleeping 15s before retry..."
+  sleep 15
+done
+echo "glb-decompress install failed after 3 attempts" >&2
+exit 1
+''']
+
 [tasks.test-conv]
 script = ['''
 #!/usr/bin/env bash -eux
+cargo make ensure-glb-decompress
 export RUST_LOG=warn,plateau_tiles_test=info # avoid engine info log flooding
 export PLATEAU_TILES_TEST_CLEANUP=1
 export PLATEAU_TILES_TEST_CONCURRENCY="${PLATEAU_TILES_TEST_CONCURRENCY:-4}" # default 4, caller can override
@@ -78,6 +98,7 @@ cargo run -p plateau-tiles-test --bin plateau-tiles-test ${@:-}
 [tasks.test-conv-new-geometry]
 script = ['''
 #!/usr/bin/env bash -eux
+cargo make ensure-glb-decompress
 export RUST_LOG=warn,plateau_tiles_test=info # avoid engine info log flooding
 export PLATEAU_TILES_TEST_CLEANUP=1
 export PLATEAU_TILES_TEST_CONCURRENCY="${PLATEAU_TILES_TEST_CONCURRENCY:-4}" # default 4, caller can override
