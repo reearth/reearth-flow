@@ -13,8 +13,10 @@ import (
 	"time"
 
 	"cloud.google.com/go/pubsub/v2"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/redis/go-redis/v9"
 	"github.com/reearth/reearthx/mongox"
+	"github.com/reearth/reearthx/pgxx"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"go.opentelemetry.io/contrib/instrumentation/go.mongodb.org/mongo-driver/mongo/otelmongo"
@@ -22,6 +24,7 @@ import (
 	flow_pubsub "github.com/reearth/reearth-flow/subscriber/internal/adapter/pubsub"
 	"github.com/reearth/reearth-flow/subscriber/internal/infrastructure"
 	flow_mongo "github.com/reearth/reearth-flow/subscriber/internal/infrastructure/mongo"
+	flow_postgres "github.com/reearth/reearth-flow/subscriber/internal/infrastructure/postgres"
 	flow_redis "github.com/reearth/reearth-flow/subscriber/internal/infrastructure/redis"
 	"github.com/reearth/reearth-flow/subscriber/internal/telemetry"
 	"github.com/reearth/reearth-flow/subscriber/internal/usecase/gateway"
@@ -141,26 +144,41 @@ func main() {
 	var nodeStorage gateway.NodeStorage
 
 	if conf.NodeSubscriptionID != "" {
-		mongoClient, err = mongo.Connect(ctx, options.Client().ApplyURI(conf.DB).SetMonitor(otelmongo.NewMonitor()))
-		if err != nil {
-			log.Fatalf("Failed to connect to MongoDB: %v", err)
-		}
-		if err := mongoClient.Ping(ctx, nil); err != nil {
-			log.Fatalf("Failed to ping MongoDB: %v", err)
-		}
-
-		defer func() {
-			if merr := mongoClient.Disconnect(context.Background()); merr != nil {
-				log.Printf("failed to disconnet mongo client: %v", merr)
+		switch conf.DBDriver {
+		case "postgres":
+			pool, perr := pgxpool.New(ctx, conf.DBPG)
+			if perr != nil {
+				log.Fatalf("Failed to connect to Postgres: %v", perr)
 			}
-		}()
+			if perr := pool.Ping(ctx); perr != nil {
+				log.Fatalf("Failed to ping Postgres: %v", perr)
+			}
 
-		mongoStorage := flow_mongo.NewMongoStorage(
-			mongox.NewClient(databaseName, mongoClient),
-			conf.GCSBucket,
-			conf.AssetBaseURL,
-		)
-		nodeStorage = infrastructure.NewNodeStorageImpl(redisStorage, mongoStorage)
+			defer pool.Close()
+
+			nodeStorage = infrastructure.NewNodeStorageImpl(redisStorage, flow_postgres.NewPostgresStorage(pgxx.NewClient(pool)))
+		default:
+			mongoClient, err = mongo.Connect(ctx, options.Client().ApplyURI(conf.DB).SetMonitor(otelmongo.NewMonitor()))
+			if err != nil {
+				log.Fatalf("Failed to connect to MongoDB: %v", err)
+			}
+			if err := mongoClient.Ping(ctx, nil); err != nil {
+				log.Fatalf("Failed to ping MongoDB: %v", err)
+			}
+
+			defer func() {
+				if merr := mongoClient.Disconnect(context.Background()); merr != nil {
+					log.Printf("failed to disconnet mongo client: %v", merr)
+				}
+			}()
+
+			mongoStorage := flow_mongo.NewMongoStorage(
+				mongox.NewClient(databaseName, mongoClient),
+				conf.GCSBucket,
+				conf.AssetBaseURL,
+			)
+			nodeStorage = infrastructure.NewNodeStorageImpl(redisStorage, mongoStorage)
+		}
 	}
 
 	// Set up subscribers with respective subscriptions
