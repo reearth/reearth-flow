@@ -1,6 +1,6 @@
 [package]
 name = "plateau-tiles-test"
-version = "0.2.98"
+version = "0.2.99"
 edition = "2021"
 
 [features]
@@ -21,6 +21,7 @@ serde_json.workspace = true
 serde_yaml.workspace = true
 toml.workspace = true
 bytes.workspace = true
+glam.workspace = true
 gltf.workspace = true
 reearth-flow-runtime.workspace = true
 reearth-flow-gltf.workspace = true
@@ -63,3 +64,7 @@ path = "src/main.rs"
 [[bin]]
 name = "generate-truth"
 path = "src/bin/generate_truth.rs"
+
+[[bin]]
+name = "render3d-smoke"
+path = "src/bin/render3d_smoke.rs"
