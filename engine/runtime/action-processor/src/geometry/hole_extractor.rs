@@ -1,4 +1,4 @@
-use std::{collections::HashMap, vec};
+use std::collections::HashMap;
 
 #[cfg(not(feature = "new-geometry"))]
 use std::sync::Arc;
