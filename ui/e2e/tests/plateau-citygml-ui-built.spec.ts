@@ -138,7 +138,10 @@ test.describe.serial(
       await editor.submitParams();
 
       await editor.openNodeParamsForm(geoJsonWriter);
-      await editor.setParamCodeString("Output File", "toshima-buildings.geojson");
+      await editor.setParamCodeString(
+        "Output File",
+        "toshima-buildings.geojson",
+      );
       await editor.submitParams();
 
       await editor.connectFromPort(fileExtractor, filterGml, "features");

@@ -189,7 +189,10 @@ test.describe.serial(
       await editor.submitParams();
 
       await editor.openNodeParamsForm(csvWriter);
-      await editor.setParamSelect("File Format", "CSV (Comma-Separated Values)");
+      await editor.setParamSelect(
+        "File Format",
+        "CSV (Comma-Separated Values)",
+      );
       await editor.setCsvCoordinateGeometry("longitude", "latitude");
       await editor.setParamCodeString("Output File", CSV_OUTPUT);
       await editor.submitParams();
