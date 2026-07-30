@@ -8,10 +8,13 @@
 //! chains through to the concrete leaf. `GeometryCollection` and the per-frame
 //! `Collection`s recurse by hand over their children.
 
+pub mod hole;
 pub mod reproject;
 pub mod split;
 pub mod triangulation;
 
+pub(crate) use hole::{area_2d, emit_face_2d, emit_face_3d, emit_triangles_3d};
+pub use hole::{CountHoles, ExtractHoles, ExtractedPart};
 pub(crate) use reproject::{
     axis_order_sign, crs_demote_to_2d, crs_is_linear, lift_coords, TwoDimensionalCrs,
 };
@@ -265,31 +268,6 @@ pub trait RemoveAppearance {
 impl<T: RemoveAppearance + ?Sized> RemoveAppearance for Box<T> {
     fn remove_appearance(&mut self) {
         (**self).remove_appearance()
-    }
-}
-
-/// Count the interior (hole) rings a geometry's faces carry.
-///
-/// Total over the hierarchy: a type that cannot carry a hole inherits the `0`
-/// default, so counting never fails and a caller cannot tell "has no holes" from
-/// "cannot have holes". The unit counted is the ring, not the face: a face with
-/// two holes contributes two, matching the inner boundaries a donut reports.
-///
-/// A [`Solid`](crate::solid::Solid)'s void shells are not holes in this sense —
-/// they are hollow volumes, not boundaries of a face — so they are not counted;
-/// the holes in the faces of those shells are.
-#[enum_dispatch::enum_dispatch]
-pub trait CountHoles {
-    /// The number of interior rings across this geometry, recursing into
-    /// collections.
-    fn count_holes(&self) -> usize {
-        0
-    }
-}
-
-impl<T: CountHoles + ?Sized> CountHoles for Box<T> {
-    fn count_holes(&self) -> usize {
-        (**self).count_holes()
     }
 }
 

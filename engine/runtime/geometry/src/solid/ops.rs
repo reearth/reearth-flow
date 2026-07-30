@@ -143,7 +143,9 @@ impl ConvertFrame for Solid {
 // result, so it has no 2D counterpart.
 crate::unsupported!(Solid: ForceTwoDimension);
 
-use crate::ops::{CountHoles, RemoveAppearance};
+use crate::ops::{
+    emit_face_3d, emit_triangles_3d, CountHoles, ExtractHoles, ExtractedPart, RemoveAppearance,
+};
 
 impl CountHoles for Solid {
     /// The holes in the boundary faces of every shell. The void shells
@@ -158,6 +160,29 @@ impl CountHoles for Solid {
                 Shell::TriangularMesh(_) => 0,
             })
             .sum()
+    }
+}
+
+impl ExtractHoles for Solid {
+    /// Take apart the boundary faces of every shell. Matching [`CountHoles`], a
+    /// void shell is not itself a hole — it is a hollow volume — so it is not
+    /// emitted as one; its faces are taken apart like the exterior's.
+    fn extract_holes(
+        &self,
+        emit: &mut dyn FnMut(Geometry, ExtractedPart),
+    ) -> Result<(), UnsupportedOperation> {
+        let frame = self.frame();
+        for shell in std::iter::once(&self.exterior).chain(self.interiors.iter()) {
+            match shell {
+                Shell::PolygonMesh(data) => data.for_each_face_polygon(frame, |face| {
+                    emit_face_3d(&face, emit);
+                }),
+                Shell::TriangularMesh(data) => {
+                    emit_triangles_3d(frame, data.vertices(), data.triangles(), emit)
+                }
+            }
+        }
+        Ok(())
     }
 }
 

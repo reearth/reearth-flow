@@ -156,5 +156,6 @@ crate::unsupported!(
     ConvertFrame,
     ForceTwoDimension,
     RemoveAppearance,
-    CountHoles
+    CountHoles,
+    ExtractHoles
 );

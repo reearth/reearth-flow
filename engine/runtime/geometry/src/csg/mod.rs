@@ -39,5 +39,9 @@ crate::unsupported!(Csg: Triangulate, Reproject, ConvertFrame, ForceTwoDimension
 // operands would describe a surface the tree does not yet have.
 crate::unsupported!(Csg: CountHoles);
 
+// The boolean tree is unevaluated, so its operands' faces are not this geometry's
+// boundary and taking them apart would not describe it.
+crate::unsupported!(Csg: ExtractHoles);
+
 // A boolean tree is one logical solid, not a multi-part container.
 crate::unsupported!(Csg: Split);

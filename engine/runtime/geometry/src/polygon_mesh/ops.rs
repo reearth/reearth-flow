@@ -553,7 +553,9 @@ impl PolygonMesh2D {
     }
 }
 
-use crate::ops::{CountHoles, RemoveAppearance};
+use crate::ops::{
+    emit_face_2d, emit_face_3d, CountHoles, ExtractHoles, ExtractedPart, RemoveAppearance,
+};
 
 // `interior_offsets` already spans every face, so the mesh-wide count is its
 // length — no per-face walk, and no risk of counting a ring twice.
@@ -566,6 +568,32 @@ impl CountHoles for PolygonMesh2D {
 impl CountHoles for PolygonMesh3D {
     fn count_holes(&self) -> usize {
         self.data().num_holes()
+    }
+}
+
+// A mesh is an aggregate of faces, so it deaggregates: every face contributes its
+// own outer shell, and its holes come out alongside.
+impl ExtractHoles for PolygonMesh2D {
+    fn extract_holes(
+        &self,
+        emit: &mut dyn FnMut(Geometry, ExtractedPart),
+    ) -> Result<(), UnsupportedOperation> {
+        self.for_each_face_polygon(|face| {
+            emit_face_2d(&face, emit);
+        });
+        Ok(())
+    }
+}
+
+impl ExtractHoles for PolygonMesh3D {
+    fn extract_holes(
+        &self,
+        emit: &mut dyn FnMut(Geometry, ExtractedPart),
+    ) -> Result<(), UnsupportedOperation> {
+        self.for_each_face_polygon(|face| {
+            emit_face_3d(&face, emit);
+        });
+        Ok(())
     }
 }
 

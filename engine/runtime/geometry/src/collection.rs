@@ -317,6 +317,43 @@ impl crate::ops::CountHoles for Collection3D {
     }
 }
 
+// Deaggregate: a member that is not area geometry is handed back as `Rejected`
+// rather than failing the whole collection, so one curve among the surfaces does
+// not discard the surfaces.
+impl crate::ops::ExtractHoles for Collection2D {
+    fn extract_holes(
+        &self,
+        emit: &mut dyn FnMut(crate::Geometry, crate::ops::ExtractedPart),
+    ) -> Result<(), crate::ops::UnsupportedOperation> {
+        for member in self.members() {
+            if member.extract_holes(emit).is_err() {
+                emit(
+                    crate::Geometry::Euclidean2D(member.clone()),
+                    crate::ops::ExtractedPart::Rejected,
+                );
+            }
+        }
+        Ok(())
+    }
+}
+
+impl crate::ops::ExtractHoles for Collection3D {
+    fn extract_holes(
+        &self,
+        emit: &mut dyn FnMut(crate::Geometry, crate::ops::ExtractedPart),
+    ) -> Result<(), crate::ops::UnsupportedOperation> {
+        for member in self.members() {
+            if member.extract_holes(emit).is_err() {
+                emit(
+                    crate::Geometry::Euclidean3D(member.clone()),
+                    crate::ops::ExtractedPart::Rejected,
+                );
+            }
+        }
+        Ok(())
+    }
+}
+
 impl crate::ops::Split for Collection2D {
     fn split(
         &mut self,
