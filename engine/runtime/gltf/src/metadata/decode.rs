@@ -296,10 +296,11 @@ fn schema_property_field<'a>(
 
 /// Resolve an `EXT_structural_metadata` property's `values`/`stringOffsets`/
 /// `arrayOffsets` field to its raw bytes. These fields name a **bufferView**
-/// index, not a buffer index (the same convention [`extract_feature_properties`]
-/// resolves via `gltf.views()` off the blob); `buffer_data` is still indexed
-/// by *buffer*, so the view's own `buffer`/`byteOffset`/`byteLength` pick the
-/// right slice out of it.
+/// index, not a buffer index; `buffer_data` is still indexed by *buffer*, so
+/// the view's own `buffer`/`byteOffset`/`byteLength` pick the right slice out
+/// of it. [`extract_feature_properties`] hands in a single-element
+/// `buffer_data` (the GLB blob as buffer 0) so this resolves the same way for
+/// its callers.
 fn resolve_metadata_buffer_view<'a>(
     gltf: &gltf::Gltf,
     view_index: usize,
@@ -348,13 +349,10 @@ fn parse_boolean_property(
 
 /// Parse a numeric property (any EXT_structural_metadata numeric
 /// `componentType`) from the bufferView identified by the property's `values`
-/// index. Mirrors the component-type handling in [`extract_feature_properties`],
-/// resolving bytes the same way it does (via `gltf`'s bufferViews), just
-/// against the caller-supplied `buffer_data` instead of the glTF binary blob.
-/// Only ever called for genuine SCALAR, non-array properties (see the caller
-/// in [`parse_property_table`]): VEC2/3/4, MAT2/3/4, and fixed/variable-length
-/// arrays also carry a `componentType` but need a different, wider stride and
-/// are intentionally left unhandled.
+/// index. Only ever called for genuine SCALAR, non-array properties (see the
+/// caller in [`parse_property_table`]): VEC2/3/4, MAT2/3/4, and
+/// fixed/variable-length arrays also carry a `componentType` but need a
+/// different, wider stride and are intentionally left unhandled.
 ///
 /// A row whose raw decoded value equals the schema's `noData` becomes
 /// `AttributeValue::Null`; [`feature_properties`] skips `Null` entries.
@@ -402,8 +400,7 @@ fn is_no_data_f64(no_data: Option<&Value>, v: f64) -> bool {
 /// Decode the `index`-th element of `component_type` out of `buffer`,
 /// little-endian, mapping signed types to `AttributeValue::Number` backed by
 /// `i64`, unsigned types by `u64`, and floats via `serde_json::Number::from_f64`.
-/// Returns `AttributeValue::Null` when the decoded value matches `no_data`
-/// (comparison mirrors [`extract_feature_properties`]'s `is_no_data` checks).
+/// Returns `AttributeValue::Null` when the decoded value matches `no_data`.
 fn decode_numeric_element(
     buffer: &[u8],
     index: usize,
@@ -597,213 +594,48 @@ fn parse_string_property(
     Ok(Some(strings))
 }
 
-/// Extract feature properties as JSON values from a GLB file
-/// Returns a list of properties for each feature
+/// Extract feature properties as JSON values from a GLB file.
+/// Returns a list of properties for each feature.
+///
+/// Thin wrapper over [`read_structural_metadata`]/[`feature_properties`]: it
+/// only exists to preserve the pre-existing public signature (a JSON map per
+/// feature, keyed by property name) for callers that predate the typed
+/// [`PropertyTables`] decoder, e.g. `plateau-tiles-test`. All actual decoding
+/// (buffer-view resolution, per-type parsing, `noData` handling) lives in the
+/// shared decoder; this function only reshapes its output.
 pub fn extract_feature_properties(
     gltf: &gltf::Gltf,
 ) -> Result<Vec<serde_json::Map<String, Value>>, GltfReaderError> {
-    // Get EXT_structural_metadata extension
-    let metadata_value = match gltf.extension_value("EXT_structural_metadata") {
-        Some(v) => v,
+    // `gltf.blob` is the single GLB binary chunk. `read_structural_metadata`
+    // indexes `buffer_data` by *buffer* index (bufferView.buffer().index()),
+    // and a GLB's buffer 0 is always that blob, so wrapping it in a one-
+    // element vec gives the decoder everything it needs to resolve
+    // bufferViews the same way this function used to do manually.
+    let buffer_data = vec![gltf.blob.clone().unwrap_or_default()];
+
+    let tables = match read_structural_metadata(gltf, &buffer_data)? {
+        Some(tables) => tables,
         None => return Ok(Vec::new()),
     };
 
-    // Get property tables
-    let property_tables = metadata_value
-        .get("propertyTables")
-        .and_then(|v| v.as_array())
-        .ok_or_else(|| {
-            GltfReaderError::Parse("No propertyTables in EXT_structural_metadata".to_string())
-        })?;
-
-    if property_tables.is_empty() {
+    // Only the first property table was ever surfaced by this function.
+    let Some(table) = tables.tables.into_iter().next() else {
         return Ok(Vec::new());
-    }
+    };
 
-    // Process first property table
-    let prop_table = &property_tables[0];
-    let count = prop_table["count"]
-        .as_u64()
-        .ok_or_else(|| GltfReaderError::Parse("Missing count in property table".to_string()))?
-        as usize;
-
-    let properties = prop_table["properties"].as_object().ok_or_else(|| {
-        GltfReaderError::Parse("Missing properties in property table".to_string())
-    })?;
-
-    // Get buffer views and binary blob
-    let buffer_views: Vec<_> = gltf.views().collect();
-    let binary_blob = gltf
-        .blob
-        .as_ref()
-        .ok_or_else(|| GltfReaderError::Buffer("Missing binary blob".to_string()))?;
-
-    // Initialize feature properties
     let mut feature_props: Vec<serde_json::Map<String, Value>> =
-        (0..count).map(|_| serde_json::Map::new()).collect();
+        (0..table.count).map(|_| serde_json::Map::new()).collect();
 
-    // Get component type from schema for each property
-    let get_component_type = |prop_name: &str| -> Option<&str> {
-        metadata_value
-            .pointer(&format!(
-                "/schema/classes/{}/properties/{}/componentType",
-                prop_table.get("class")?.as_str()?,
-                prop_name
-            ))
-            .and_then(|v| v.as_str())
-    };
-
-    // Get noData value from schema for each property
-    let get_no_data = |prop_name: &str| -> Option<&Value> {
-        metadata_value.pointer(&format!(
-            "/schema/classes/{}/properties/{}/noData",
-            prop_table.get("class")?.as_str()?,
-            prop_name
-        ))
-    };
-
-    // Extract each property
-    for (prop_name, prop_def) in properties {
-        let values_idx = prop_def["values"].as_u64().ok_or_else(|| {
-            GltfReaderError::Parse(format!("Missing values index for property {}", prop_name))
-        })? as usize;
-
-        let values_view = &buffer_views[values_idx];
-        let data = &binary_blob[values_view.offset()..values_view.offset() + values_view.length()];
-
-        // Get noData value from schema if it exists (used by both string and numeric properties)
-        let no_data = get_no_data(prop_name);
-
-        // String property
-        if let Some(offsets_idx) = prop_def.get("stringOffsets").and_then(|v| v.as_u64()) {
-            let offsets_view = &buffer_views[offsets_idx as usize];
-            let offsets_data =
-                &binary_blob[offsets_view.offset()..offsets_view.offset() + offsets_view.length()];
-            let offsets: Vec<u32> = offsets_data
-                .chunks_exact(4)
-                .map(|c| u32::from_le_bytes([c[0], c[1], c[2], c[3]]))
-                .collect();
-
-            for i in 0..count {
-                let s = std::str::from_utf8(&data[offsets[i] as usize..offsets[i + 1] as usize])
-                    .map_err(|e| GltfReaderError::Buffer(format!("Invalid UTF-8: {}", e)))?;
-
-                // Check if this string matches noData
-                let is_no_data = no_data
-                    .and_then(|nd| nd.as_str())
-                    .map(|nd| s == nd)
-                    .unwrap_or(false);
-
-                // Only insert if not noData
-                if !is_no_data {
-                    feature_props[i].insert(prop_name.clone(), Value::String(s.to_string()));
-                }
+    for (prop_name, data) in table.properties {
+        for (i, value) in data.values.into_iter().enumerate() {
+            // `noData` rows decode to `AttributeValue::Null`; the old
+            // implementation omitted them from the map entirely rather than
+            // inserting a JSON null, so mirror that here.
+            if matches!(value, AttributeValue::Null) {
+                continue;
             }
-            continue;
-        }
-
-        // Numeric/enum properties - must have component type
-        let component_type = get_component_type(prop_name).ok_or_else(|| {
-            GltfReaderError::Parse(format!("Missing componentType for property {}", prop_name))
-        })?;
-
-        for i in 0..count {
-            let value = match component_type {
-                "INT8" => {
-                    let v = data[i] as i8;
-                    let is_no_data = no_data
-                        .and_then(|nd| nd.as_i64())
-                        .map(|nd| v as i64 == nd)
-                        .unwrap_or(false);
-                    (!is_no_data).then(|| Value::Number((v as i64).into()))
-                }
-                "UINT8" => {
-                    let v = data[i];
-                    let is_no_data = no_data
-                        .and_then(|nd| nd.as_u64())
-                        .map(|nd| v as u64 == nd)
-                        .unwrap_or(false);
-                    (!is_no_data).then(|| Value::Number((v as u64).into()))
-                }
-                "INT16" => {
-                    let v = i16::from_le_bytes(data[i * 2..i * 2 + 2].try_into().unwrap());
-                    let is_no_data = no_data
-                        .and_then(|nd| nd.as_i64())
-                        .map(|nd| v as i64 == nd)
-                        .unwrap_or(false);
-                    (!is_no_data).then(|| Value::Number((v as i64).into()))
-                }
-                "UINT16" => {
-                    let v = u16::from_le_bytes(data[i * 2..i * 2 + 2].try_into().unwrap());
-                    let is_no_data = no_data
-                        .and_then(|nd| nd.as_u64())
-                        .map(|nd| v as u64 == nd)
-                        .unwrap_or(false);
-                    (!is_no_data).then(|| Value::Number((v as u64).into()))
-                }
-                "INT32" => {
-                    let v = i32::from_le_bytes(data[i * 4..i * 4 + 4].try_into().unwrap());
-                    let is_no_data = no_data
-                        .and_then(|nd| nd.as_i64())
-                        .map(|nd| v as i64 == nd)
-                        .unwrap_or(false);
-                    (!is_no_data).then(|| Value::Number((v as i64).into()))
-                }
-                "UINT32" => {
-                    let v = u32::from_le_bytes(data[i * 4..i * 4 + 4].try_into().unwrap());
-                    let is_no_data = no_data
-                        .and_then(|nd| nd.as_u64())
-                        .map(|nd| v as u64 == nd)
-                        .unwrap_or(false);
-                    (!is_no_data).then(|| Value::Number(v.into()))
-                }
-                "INT64" => {
-                    let v = i64::from_le_bytes(data[i * 8..i * 8 + 8].try_into().unwrap());
-                    let is_no_data = no_data
-                        .and_then(|nd| nd.as_i64())
-                        .map(|nd| v == nd)
-                        .unwrap_or(false);
-                    (!is_no_data).then(|| Value::Number(v.into()))
-                }
-                "UINT64" => {
-                    let v = u64::from_le_bytes(data[i * 8..i * 8 + 8].try_into().unwrap());
-                    let is_no_data = no_data
-                        .and_then(|nd| nd.as_u64())
-                        .map(|nd| v == nd)
-                        .unwrap_or(false);
-                    (!is_no_data).then(|| Value::Number(v.into()))
-                }
-                "FLOAT32" => {
-                    let v = f32::from_le_bytes(data[i * 4..i * 4 + 4].try_into().unwrap());
-                    let is_no_data = no_data
-                        .and_then(|nd| nd.as_f64())
-                        .map(|nd| (v as f64 - nd).abs() < f64::EPSILON)
-                        .unwrap_or(false);
-                    (!is_no_data)
-                        .then(|| serde_json::Number::from_f64(v as f64))
-                        .flatten()
-                        .map(Value::Number)
-                }
-                "FLOAT64" => {
-                    let v = f64::from_le_bytes(data[i * 8..i * 8 + 8].try_into().unwrap());
-                    let is_no_data = no_data
-                        .and_then(|nd| nd.as_f64())
-                        .map(|nd| (v - nd).abs() < f64::EPSILON)
-                        .unwrap_or(false);
-                    (!is_no_data)
-                        .then(|| serde_json::Number::from_f64(v))
-                        .flatten()
-                        .map(Value::Number)
-                }
-                _ => {
-                    return Err(GltfReaderError::Parse(format!(
-                        "Unsupported componentType '{}' for property {}",
-                        component_type, prop_name
-                    )))
-                }
-            };
-            if let Some(v) = value {
-                feature_props[i].insert(prop_name.clone(), v);
+            if let Some(map) = feature_props.get_mut(i) {
+                map.insert(prop_name.clone(), value.into());
             }
         }
     }
@@ -955,6 +787,38 @@ mod tests {
             result.is_empty(),
             "Expected empty result when EXT_structural_metadata is not present"
         );
+    }
+
+    #[test]
+    fn extract_feature_properties_matches_typed_decoder_shape() {
+        // Proves the `extract_feature_properties` wrapper produces the same
+        // per-feature JSON maps as before, now that it delegates to
+        // `read_structural_metadata`/`feature_properties` internally: one
+        // `serde_json::Map` per feature, string and numeric values both
+        // present, `noData` rows omitted entirely.
+        let (gltf, blob) = fixtures::metadata_glb_two_features_single_blob();
+        let features = extract_feature_properties(&gltf).expect("wrapper should not error");
+
+        assert_eq!(features.len(), 2, "should have one map per feature");
+        assert_eq!(
+            features[0].get("height"),
+            Some(&Value::Number(10u64.into()))
+        );
+        assert_eq!(
+            features[0].get("name"),
+            Some(&Value::String("a".to_string()))
+        );
+        assert_eq!(
+            features[1].get("height"),
+            Some(&Value::Number(20u64.into()))
+        );
+        assert_eq!(
+            features[1].get("name"),
+            Some(&Value::String("b".to_string()))
+        );
+
+        // Sanity: the blob is what backs buffer 0 (a real GLB's binary chunk).
+        assert_eq!(gltf.blob.as_deref(), Some(blob.as_slice()));
     }
 
     #[test]
@@ -1386,6 +1250,82 @@ mod tests {
                 gltf,
                 vec![height_buffer, name_values_buffer, name_offsets_buffer],
             )
+        }
+
+        /// Same logical data as [`metadata_glb_two_features`] ("height"
+        /// UINT32 = [10, 20], "name" STRING = ["a", "b"]), but laid out as a
+        /// **single concatenated blob** with `bufferViews` pointing into it
+        /// via `byteOffset`, mirroring a real GLB's single binary chunk
+        /// (buffer 0). `extract_feature_properties` only ever has `gltf.blob`
+        /// to build `buffer_data` from, so it cannot address the
+        /// multi-buffer layout `metadata_glb_two_features` uses; this fixture
+        /// exercises that single-buffer path instead. Returns the parsed
+        /// `gltf::Gltf` (with `blob` set) plus the raw blob bytes.
+        pub fn metadata_glb_two_features_single_blob() -> (gltf::Gltf, Vec<u8>) {
+            // "height" UINT32 values, little-endian: 10, 20
+            let height_bytes: Vec<u8> = [10u32, 20u32]
+                .iter()
+                .flat_map(|v| v.to_le_bytes())
+                .collect();
+            // "name" STRING raw UTF-8 bytes, concatenated: "a" + "b"
+            let name_values_bytes: Vec<u8> = b"ab".to_vec();
+            // "name" stringOffsets, UINT32 little-endian cumulative byte
+            // offsets into the name-values region (count + 1 entries): [0, 1, 2]
+            let name_offsets_bytes: Vec<u8> = [0u32, 1u32, 2u32]
+                .iter()
+                .flat_map(|v| v.to_le_bytes())
+                .collect();
+
+            let height_offset = 0usize;
+            let name_values_offset = height_bytes.len();
+            let name_offsets_offset = name_values_offset + name_values_bytes.len();
+
+            let mut blob = Vec::new();
+            blob.extend_from_slice(&height_bytes);
+            blob.extend_from_slice(&name_values_bytes);
+            blob.extend_from_slice(&name_offsets_bytes);
+
+            let json = serde_json::json!({
+                "asset": {"version": "2.0"},
+                "extensionsUsed": ["EXT_structural_metadata"],
+                "buffers": [{"byteLength": blob.len()}],
+                "bufferViews": [
+                    {"buffer": 0, "byteOffset": height_offset, "byteLength": height_bytes.len()},
+                    {"buffer": 0, "byteOffset": name_values_offset, "byteLength": name_values_bytes.len()},
+                    {"buffer": 0, "byteOffset": name_offsets_offset, "byteLength": name_offsets_bytes.len()},
+                ],
+                "extensions": {
+                    "EXT_structural_metadata": {
+                        "schema": {
+                            "id": "TestSchema",
+                            "classes": {
+                                "Feature": {
+                                    "properties": {
+                                        "height": {"type": "SCALAR", "componentType": "UINT32"},
+                                        "name": {"type": "STRING"}
+                                    }
+                                }
+                            }
+                        },
+                        "propertyTables": [
+                            {
+                                "class": "Feature",
+                                "count": 2,
+                                "properties": {
+                                    "height": {"values": 0},
+                                    "name": {"values": 1, "stringOffsets": 2}
+                                }
+                            }
+                        ]
+                    }
+                }
+            });
+            let json_bytes = serde_json::to_vec(&json).expect("fixture JSON is serializable");
+            let mut gltf = gltf::Gltf::from_slice_without_validation(&json_bytes)
+                .expect("fixture glTF JSON should parse");
+            gltf.blob = Some(blob.clone());
+
+            (gltf, blob)
         }
     }
 }
