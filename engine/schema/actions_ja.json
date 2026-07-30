@@ -5609,7 +5609,7 @@
         "properties": {
           "sourceAttribute": {
             "title": "ソース属性",
-            "description": "Geometry Extractor が書き込んだ、適用する圧縮ジオメトリを保持する属性。ジオメトリの適用後にこの属性は削除され、属性を持たない地物はそのまま通過する",
+            "description": "Geometry Extractor が書き込んだ、適用する圧縮ジオメトリを保持する属性。ジオメトリの適用後にこの属性は削除され、属性を持たない地物はそのまま通過する。保持されたジオメトリをデコードできない地物は rejected ポートに送られる",
             "allOf": [
               {
                 "$ref": "#/definitions/Attribute"

@@ -91,7 +91,8 @@ pub struct GeometryReplacer {
     /// # Source Attribute
     /// Attribute holding the compressed geometry to apply, as written by Geometry
     /// Extractor. The attribute is removed once its geometry has been applied, and a
-    /// feature that does not carry it passes through unchanged.
+    /// feature that does not carry it passes through unchanged. A feature whose
+    /// stored geometry cannot be decoded is sent to the rejected port.
     source_attribute: Attribute,
 }
 
@@ -99,7 +100,9 @@ pub struct GeometryReplacer {
 impl GeometryReplacer {
     /// Replace the feature's geometry with the one encoded in the source
     /// attribute, and drop that attribute. A feature whose source attribute is
-    /// absent or does not hold a string is left untouched.
+    /// absent or does not hold a string is left untouched. An error means the
+    /// attribute held something that would not decode, which the caller routes
+    /// to the rejected port.
     fn replace(&self, feature: &mut Feature) -> Result<(), BoxedError> {
         let Some(AttributeValue::String(dump)) = feature.attributes.get(&self.source_attribute)
         else {
@@ -127,8 +130,18 @@ impl Processor for GeometryReplacer {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let mut feature = ctx.feature.clone();
-        self.replace(&mut feature)?;
-        fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
+        // Geometry that is present but will not decode is a failure of this
+        // feature, not of the run, so it is routed rather than propagated.
+        match self.replace(&mut feature) {
+            Ok(()) => fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone())),
+            Err(e) => {
+                ctx.event_hub.debug_log(
+                    Some(ctx.error_span()),
+                    format!("geometry replace rejected: {e}"),
+                );
+                fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
+            }
+        }
         Ok(())
     }
 
@@ -140,39 +153,32 @@ impl Processor for GeometryReplacer {
     ) -> Result<(), BoxedError> {
         let mut feature = ctx.feature.clone();
 
-        // A feature carrying geometry that cannot be decoded is a failure, and
-        // emitting it on `features` would pass it off as transformed. Those go to
-        // `rejected`. An absent attribute is not a failure: `Geometry Extractor`
-        // deliberately skips features with empty geometry, so its counterpart here
-        // has nothing to restore and passes them through untouched.
-        let reject = |reason: String| {
-            ctx.event_hub.debug_log(
-                Some(ctx.error_span()),
-                format!("geometry replace rejected: {reason}"),
-            );
-            fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
+        // A source attribute that is absent, or holds something other than a
+        // string, means there is no stored geometry to restore — not a failure.
+        // Geometry Extractor skips features with empty geometry, so its
+        // counterpart here is expected to receive them and pass them through.
+        let Some(AttributeValue::String(dump)) = feature.attributes.get(&self.source_attribute)
+        else {
+            fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
+            return Ok(());
         };
 
-        let Some(source) = feature.attributes.get(&self.source_attribute) else {
-            fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), FEATURES_PORT.clone()));
-            return Ok(());
-        };
-        let AttributeValue::String(dump) = source else {
-            reject(format!(
-                "attribute `{}` is not a string",
-                self.source_attribute
-            ));
-            return Ok(());
-        };
+        // Geometry that is present but will not decode is a failure of this
+        // feature, not of the run. Emitting it on `features` would pass it off as
+        // transformed, so it is routed to `rejected` instead.
         let geometry = match decode(dump).map_err(|e| e.to_string()).and_then(|dump| {
             serde_json::from_str::<Geometry>(&dump).map_err(|e: serde_json::Error| e.to_string())
         }) {
             Ok(geometry) => geometry,
             Err(e) => {
-                reject(format!(
-                    "attribute `{}` does not decode to geometry: {e}",
-                    self.source_attribute
-                ));
+                ctx.event_hub.debug_log(
+                    Some(ctx.error_span()),
+                    format!(
+                        "geometry replace rejected: attribute `{}` does not decode to geometry: {e}",
+                        self.source_attribute
+                    ),
+                );
+                fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
                 return Ok(());
             }
         };

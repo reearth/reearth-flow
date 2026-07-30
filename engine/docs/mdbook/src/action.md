@@ -5452,7 +5452,7 @@ Replaces a feature's geometry with the compressed geometry data stored in a name
   "properties": {
     "sourceAttribute": {
       "title": "Source Attribute",
-      "description": "Attribute holding the compressed geometry to apply, as written by Geometry Extractor. The attribute is removed once its geometry has been applied, and a feature that does not carry it passes through unchanged.",
+      "description": "Attribute holding the compressed geometry to apply, as written by Geometry Extractor. The attribute is removed once its geometry has been applied, and a feature that does not carry it passes through unchanged. A feature whose stored geometry cannot be decoded is sent to the rejected port.",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
