@@ -3,7 +3,7 @@
     {
       "name": "Appearance Remover",
       "type": "processor",
-      "description": "从CityGML几何体中移除外观信息（材质、纹理）",
+      "description": "移除要素几何体所携带的材质、纹理和纹理坐标",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -2287,6 +2287,14 @@
             "description": "跳过带有双下划线前缀的属性",
             "type": [
               "boolean",
+              "null"
+            ]
+          },
+          "arrayMapSeparator": {
+            "title": "数组/映射分隔符",
+            "description": "在将嵌套的数组或映射属性展平为元数据列时，用于连接其子键或索引的分隔符。留空则在输出中完全丢弃数组和映射属性。",
+            "type": [
+              "string",
               "null"
             ]
           },
@@ -5456,6 +5464,8 @@
         "description": "Configure how to filter features based on their geometry type",
         "oneOf": [
           {
+            "title": "No Geometry",
+            "description": "Separates the features that carry no geometry at all from the ones that do.",
             "type": "object",
             "required": [
               "filterType"
@@ -5470,6 +5480,8 @@
             }
           },
           {
+            "title": "Multiple Geometries",
+            "description": "Separates the features whose geometry is a container that can hold more than one part.",
             "type": "object",
             "required": [
               "filterType"
@@ -5484,6 +5496,8 @@
             }
           },
           {
+            "title": "Geometry Type",
+            "description": "Routes by the geometry family a feature belongs to: point, curve, surface, triangle or solid.",
             "type": "object",
             "required": [
               "filterType"
@@ -5547,7 +5561,7 @@
     {
       "name": "Geometry Remover",
       "type": "processor",
-      "description": "从要素中移除几何体",
+      "description": "移除要素的几何体，并保留其属性",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -8877,16 +8891,16 @@
     {
       "name": "Offsetter",
       "type": "processor",
-      "description": "为实体的坐标添加偏移",
+      "description": "沿各坐标轴将几何图形的所有坐标平移固定量",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Offsetter Parameters",
-        "description": "Configure the X, Y, and Z coordinate offsets to apply to all geometry coordinates",
+        "description": "Amounts added to every geometry coordinate, one per axis, in the coordinate unit of the geometry's frame.",
         "type": "object",
         "properties": {
           "offsetX": {
             "title": "X Offset",
-            "description": "Offset to add to all X coordinates (longitude)",
+            "description": "Amount added to every X coordinate, in the coordinate unit of the geometry's frame (degrees for a geographic CRS). Defaults to zero.",
             "type": [
               "number",
               "null"
@@ -8895,7 +8909,7 @@
           },
           "offsetY": {
             "title": "Y Offset",
-            "description": "Offset to add to all Y coordinates (latitude)",
+            "description": "Amount added to every Y coordinate, in the coordinate unit of the geometry's frame (degrees for a geographic CRS). Defaults to zero.",
             "type": [
               "number",
               "null"
@@ -8904,7 +8918,7 @@
           },
           "offsetZ": {
             "title": "Z Offset",
-            "description": "Offset to add to all Z coordinates (elevation)",
+            "description": "Amount added to every Z coordinate, in the coordinate unit of the geometry's frame (metres for a geographic CRS). Defaults to zero.",
             "type": [
               "number",
               "null"
@@ -8923,7 +8937,10 @@
       "categories": [
         "Geometry"
       ],
-      "tags": []
+      "tags": [
+        "coordinate-system",
+        "3d"
+      ]
     },
     {
       "name": "Orientation Extractor",

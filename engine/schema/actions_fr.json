@@ -3,7 +3,7 @@
     {
       "name": "Appearance Remover",
       "type": "processor",
-      "description": "Supprime les informations d'apparence (matériaux, textures) de la géométrie CityGML",
+      "description": "Supprime les matériaux, les textures et les coordonnées de texture portés par la géométrie d'une entité.",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -2287,6 +2287,14 @@
             "description": "Ignorer les attributs avec un préfixe de double trait de soulignement",
             "type": [
               "boolean",
+              "null"
+            ]
+          },
+          "arrayMapSeparator": {
+            "title": "Séparateur Array/Map",
+            "description": "Séparateur reliant un attribut array ou map imbriqué à sa clé ou son index enfant lors de son aplatissement en colonnes de métadonnées. Laissez non défini pour exclure entièrement les attributs array et map de la sortie.",
+            "type": [
+              "string",
               "null"
             ]
           },
@@ -5456,6 +5464,8 @@
         "description": "Configure how to filter features based on their geometry type",
         "oneOf": [
           {
+            "title": "No Geometry",
+            "description": "Separates the features that carry no geometry at all from the ones that do.",
             "type": "object",
             "required": [
               "filterType"
@@ -5470,6 +5480,8 @@
             }
           },
           {
+            "title": "Multiple Geometries",
+            "description": "Separates the features whose geometry is a container that can hold more than one part.",
             "type": "object",
             "required": [
               "filterType"
@@ -5484,6 +5496,8 @@
             }
           },
           {
+            "title": "Geometry Type",
+            "description": "Routes by the geometry family a feature belongs to: point, curve, surface, triangle or solid.",
             "type": "object",
             "required": [
               "filterType"
@@ -5547,7 +5561,7 @@
     {
       "name": "Geometry Remover",
       "type": "processor",
-      "description": "Supprime la géométrie d'une entité",
+      "description": "Supprime la géométrie d'une entité en conservant ses attributs.",
       "parameter": null,
       "builtin": true,
       "inputPorts": [
@@ -8877,16 +8891,16 @@
     {
       "name": "Offsetter",
       "type": "processor",
-      "description": "Apply Coordinate Offsets to Geometry",
+      "description": "Shifts every geometry coordinate by a fixed amount along each axis.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Offsetter Parameters",
-        "description": "Configure the X, Y, and Z coordinate offsets to apply to all geometry coordinates",
+        "description": "Amounts added to every geometry coordinate, one per axis, in the coordinate unit of the geometry's frame.",
         "type": "object",
         "properties": {
           "offsetX": {
             "title": "X Offset",
-            "description": "Offset to add to all X coordinates (longitude)",
+            "description": "Amount added to every X coordinate, in the coordinate unit of the geometry's frame (degrees for a geographic CRS). Defaults to zero.",
             "type": [
               "number",
               "null"
@@ -8895,7 +8909,7 @@
           },
           "offsetY": {
             "title": "Y Offset",
-            "description": "Offset to add to all Y coordinates (latitude)",
+            "description": "Amount added to every Y coordinate, in the coordinate unit of the geometry's frame (degrees for a geographic CRS). Defaults to zero.",
             "type": [
               "number",
               "null"
@@ -8904,7 +8918,7 @@
           },
           "offsetZ": {
             "title": "Z Offset",
-            "description": "Offset to add to all Z coordinates (elevation)",
+            "description": "Amount added to every Z coordinate, in the coordinate unit of the geometry's frame (metres for a geographic CRS). Defaults to zero.",
             "type": [
               "number",
               "null"
@@ -8923,7 +8937,10 @@
       "categories": [
         "Geometry"
       ],
-      "tags": []
+      "tags": [
+        "coordinate-system",
+        "3d"
+      ]
     },
     {
       "name": "Orientation Extractor",

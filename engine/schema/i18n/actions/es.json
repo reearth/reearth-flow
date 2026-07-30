@@ -2,7 +2,7 @@
   "actions": [
     {
       "name": "Appearance Remover",
-      "description": "Elimina información de apariencia (materiales, texturas) de la geometría CityGML"
+      "description": "Descarta los materiales, las texturas y las coordenadas de textura de la geometría de una entidad."
     },
     {
       "name": "Area Calculator",
@@ -789,6 +789,10 @@
         "": {
           "title": "Parámetros de Cesium3DTilesWriter",
           "description": "Configuration for writing features to Cesium 3D Tiles."
+        },
+        "arrayMapSeparator": {
+          "title": "Separador de Array/Map",
+          "description": "Separador que une un atributo de array o map anidado con su clave o índice hijo al aplanarlo en columnas de metadatos. Déjelo sin definir para eliminar por completo los atributos de array y map de la salida."
         },
         "atlasExtrusion": {
           "title": "Extrusión del Atlas",
@@ -1741,7 +1745,7 @@
     },
     {
       "name": "Geometry Remover",
-      "description": "Elimina la geometría de una entidad"
+      "description": "Descarta la geometría de una entidad y conserva sus atributos."
     },
     {
       "name": "Geometry Replacer",
@@ -2652,23 +2656,23 @@
     },
     {
       "name": "Offsetter",
-      "description": "Añade desplazamientos a las coordenadas de la entidad.",
+      "description": "Desplaza todas las coordenadas de la geometría una cantidad fija en cada eje.",
       "parameterI18n": {
         "": {
           "title": "Offsetter Parameters",
-          "description": "Configure the X, Y, and Z coordinate offsets to apply to all geometry coordinates"
+          "description": "Amounts added to every geometry coordinate, one per axis, in the coordinate unit of the geometry's frame."
         },
         "offsetX": {
           "title": "X Offset",
-          "description": "Offset to add to all X coordinates (longitude)"
+          "description": "Amount added to every X coordinate, in the coordinate unit of the geometry's frame (degrees for a geographic CRS). Defaults to zero."
         },
         "offsetY": {
           "title": "Y Offset",
-          "description": "Offset to add to all Y coordinates (latitude)"
+          "description": "Amount added to every Y coordinate, in the coordinate unit of the geometry's frame (degrees for a geographic CRS). Defaults to zero."
         },
         "offsetZ": {
           "title": "Z Offset",
-          "description": "Offset to add to all Z coordinates (elevation)"
+          "description": "Amount added to every Z coordinate, in the coordinate unit of the geometry's frame (metres for a geographic CRS). Defaults to zero."
         }
       }
     },

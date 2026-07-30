@@ -72,3 +72,6 @@ crate::unsupported!(LineString3D: Triangulate);
 
 crate::unsupported!(LineString2D: Split);
 crate::unsupported!(LineString3D: Split);
+
+crate::unsupported!(LineString2D: RemoveAppearance);
+crate::unsupported!(LineString3D: RemoveAppearance);
