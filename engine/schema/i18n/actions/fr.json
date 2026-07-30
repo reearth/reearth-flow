@@ -1741,7 +1741,25 @@
     },
     {
       "name": "Geometry Part Extractor",
-      "description": "Extrait les parties de géométrie (surfaces) des géométries 3D en tant qu'entités séparées"
+      "description": "Extrait les parties de géométrie (surfaces) des géométries 3D en tant qu'entités séparées",
+      "parameterI18n": {
+        "": {
+          "title": "Geometry Part Extractor Parameters",
+          "description": "Configure which kind of part is pulled out of each geometry."
+        },
+        "geometryPartType": {
+          "title": "Part Type",
+          "description": "Kind of part to extract from the geometry."
+        }
+      },
+      "enumI18n": {
+        "GeometryPartType": {
+          "surface": {
+            "title": "Surface",
+            "description": "Emits each surface of the geometry as a separate feature."
+          }
+        }
+      }
     },
     {
       "name": "Geometry Remover",

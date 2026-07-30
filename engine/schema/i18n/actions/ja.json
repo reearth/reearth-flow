@@ -1741,7 +1741,25 @@
     },
     {
       "name": "Geometry Part Extractor",
-      "description": "ジオメトリの各サーフェスを抽出し、個別の地物として出力する"
+      "description": "ジオメトリの各サーフェスを抽出し、個別の地物として出力する",
+      "parameterI18n": {
+        "": {
+          "title": "Geometry Part Extractor パラメータ",
+          "description": "ジオメトリから抽出するパーツの種類を設定する"
+        },
+        "geometryPartType": {
+          "title": "パーツタイプ",
+          "description": "ジオメトリから抽出するパーツの種類"
+        }
+      },
+      "enumI18n": {
+        "GeometryPartType": {
+          "surface": {
+            "title": "サーフェス",
+            "description": "ジオメトリの各サーフェスを個別の地物として出力する"
+          }
+        }
+      }
     },
     {
       "name": "Geometry Remover",

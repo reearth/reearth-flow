@@ -5541,7 +5541,38 @@
       "name": "Geometry Part Extractor",
       "type": "processor",
       "description": "将3D几何体中的几何部件（面）提取为单独的要素",
-      "parameter": null,
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Geometry Part Extractor Parameters",
+        "description": "Configure which kind of part is pulled out of each geometry.",
+        "type": "object",
+        "properties": {
+          "geometryPartType": {
+            "title": "Part Type",
+            "description": "Kind of part to extract from the geometry.",
+            "default": "surface",
+            "allOf": [
+              {
+                "$ref": "#/definitions/GeometryPartType"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "GeometryPartType": {
+            "oneOf": [
+              {
+                "title": "Surface",
+                "description": "Emits each surface of the geometry as a separate feature.",
+                "type": "string",
+                "enum": [
+                  "surface"
+                ]
+              }
+            ]
+          }
+        }
+      },
       "builtin": true,
       "inputPorts": [
         "features"

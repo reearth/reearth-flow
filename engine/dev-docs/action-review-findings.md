@@ -91,6 +91,21 @@ The Geometry A batch (12 actions) was resolved per the standard. Items found whi
 auditing it that belong elsewhere are deferred:
 
 ```
+Geometry Part Extractor
+  params:  GeometryPartType keeps its single `surface` variant, with a TODO, on the
+             same reasoning as Bufferer below (§3.4, "variants planned but not yet
+             implemented"). `edge` and `vertex` variants — emitting each edge or
+             vertex as its own feature — fit the three ports this action already
+             declares, and no other action covers them: Boundary Extractor returns
+             the boundary as one geometry on the same feature, and Coordinate
+             Extractor writes vertices into attributes. Removing the parameter was
+             considered and rejected: it would have foreclosed that space and
+             pushed us toward a separate action per part type.
+  ports:    `extracted` / `remaining` / `untouched` are distinct and correct, and
+             match the reference implementation. `remaining` is the original
+             feature with its extracted parts removed; `untouched` is a feature the
+             action did not modify. No change needed.
+
 Bufferer
   params:  BufferType has a single `area2d` variant. The reference implementation
              this action was ported from offers both a 2D-area and a solid buffer

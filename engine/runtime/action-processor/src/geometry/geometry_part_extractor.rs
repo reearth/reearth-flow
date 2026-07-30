@@ -18,7 +18,11 @@ use reearth_flow_runtime::{
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
 use reearth_flow_types::{Feature, Geometry, GeometryValue};
+use schemars::JsonSchema;
+use serde::{Deserialize, Serialize};
 use serde_json::Value;
+
+use super::errors::GeometryProcessorError;
 
 /// Each surface pulled out of a geometry, as its own feature.
 pub static EXTRACTED_PORT: Lazy<Port> = Lazy::new(|| Port::new("extracted"));
@@ -41,7 +45,7 @@ impl ProcessorFactory for GeometryPartExtractorFactory {
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-        None
+        Some(schemars::schema_for!(GeometryPartExtractorParam))
     }
 
     fn categories(&self) -> &[&'static str] {
@@ -69,14 +73,57 @@ impl ProcessorFactory for GeometryPartExtractorFactory {
         _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
-        _with: Option<HashMap<String, Value>>,
+        with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        Ok(Box::new(GeometryPartExtractor))
+        let param: GeometryPartExtractorParam = if let Some(with) = with {
+            let value: Value = serde_json::to_value(with).map_err(|e| {
+                GeometryProcessorError::GeometryPartExtractorFactory(format!(
+                    "Failed to serialize `with` parameter: {e}"
+                ))
+            })?;
+            serde_json::from_value(value).map_err(|e| {
+                GeometryProcessorError::GeometryPartExtractorFactory(format!(
+                    "Failed to deserialize `with` parameter: {e}"
+                ))
+            })?
+        } else {
+            // The only parameter is optional, so an absent `with` block is valid.
+            GeometryPartExtractorParam::default()
+        };
+        Ok(Box::new(GeometryPartExtractor { param }))
     }
 }
 
+/// # Geometry Part Extractor Parameters
+/// Configure which kind of part is pulled out of each geometry.
+#[derive(Serialize, Deserialize, Debug, Clone, Default, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct GeometryPartExtractorParam {
+    /// # Part Type
+    /// Kind of part to extract from the geometry.
+    #[serde(default, rename = "geometryPartType")]
+    part_type: GeometryPartType,
+}
+
+// TODO: add `edge` and `vertex` part types, emitting each edge or vertex of the
+// geometry as its own feature. Both fit the ports this action already declares,
+// and neither is covered elsewhere: Boundary Extractor returns the boundary as a
+// single geometry on the same feature, and Coordinate Extractor writes vertices
+// into attributes. Keeping the enum reserves that space — see standard §3.4,
+// "variants planned but not yet implemented".
+#[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
+#[serde(rename_all = "camelCase")]
+pub enum GeometryPartType {
+    /// # Surface
+    /// Emits each surface of the geometry as a separate feature.
+    #[default]
+    Surface,
+}
+
 #[derive(Debug, Clone)]
-pub struct GeometryPartExtractor;
+pub struct GeometryPartExtractor {
+    param: GeometryPartExtractorParam,
+}
 
 impl Processor for GeometryPartExtractor {
     #[cfg(not(feature = "new-geometry"))]
@@ -94,10 +141,14 @@ impl Processor for GeometryPartExtractor {
             return Ok(());
         }
 
-        let extracted = extract_surfaces(feature, &ctx, fw)?;
-        if !extracted {
-            // No surfaces were extracted, send to untouched port
-            fw.send(ctx.new_with_feature_and_port(feature.clone(), UNTOUCHED_PORT.clone()));
+        match self.param.part_type {
+            GeometryPartType::Surface => {
+                let extracted = extract_surfaces(feature, &ctx, fw)?;
+                if !extracted {
+                    // No surfaces were extracted, send to untouched port
+                    fw.send(ctx.new_with_feature_and_port(feature.clone(), UNTOUCHED_PORT.clone()));
+                }
+            }
         }
 
         Ok(())

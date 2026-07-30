@@ -5396,7 +5396,40 @@ Filter Features by Geometry Type
 ### Description
 Extracts the individual surfaces of a geometry, emitting each as a separate feature.
 ### Parameters
-* No parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Geometry Part Extractor Parameters",
+  "description": "Configure which kind of part is pulled out of each geometry.",
+  "type": "object",
+  "properties": {
+    "geometryPartType": {
+      "title": "Part Type",
+      "description": "Kind of part to extract from the geometry.",
+      "default": "surface",
+      "allOf": [
+        {
+          "$ref": "#/definitions/GeometryPartType"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "GeometryPartType": {
+      "oneOf": [
+        {
+          "title": "Surface",
+          "description": "Emits each surface of the geometry as a separate feature.",
+          "type": "string",
+          "enum": [
+            "surface"
+          ]
+        }
+      ]
+    }
+  }
+}
+```
 ### Input Ports
 * features
 ### Output Ports

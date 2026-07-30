@@ -5541,7 +5541,38 @@
       "name": "Geometry Part Extractor",
       "type": "processor",
       "description": "ジオメトリの各サーフェスを抽出し、個別の地物として出力する",
-      "parameter": null,
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Geometry Part Extractor パラメータ",
+        "description": "ジオメトリから抽出するパーツの種類を設定する",
+        "type": "object",
+        "properties": {
+          "geometryPartType": {
+            "title": "パーツタイプ",
+            "description": "ジオメトリから抽出するパーツの種類",
+            "default": "surface",
+            "allOf": [
+              {
+                "$ref": "#/definitions/GeometryPartType"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "GeometryPartType": {
+            "oneOf": [
+              {
+                "title": "サーフェス",
+                "description": "ジオメトリの各サーフェスを個別の地物として出力する",
+                "type": "string",
+                "enum": [
+                  "surface"
+                ]
+              }
+            ]
+          }
+        }
+      },
       "builtin": true,
       "inputPorts": [
         "features"
