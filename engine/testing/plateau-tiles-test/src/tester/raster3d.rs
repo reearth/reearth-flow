@@ -3,18 +3,9 @@ use serde::Deserialize;
 use std::path::Path;
 use walkdir::WalkDir;
 
-fn default_mismatch_penalty() -> f32 {
-    1000.0
-}
-
 #[derive(Debug, Deserialize)]
 pub struct Raster3dConfig {
     pub threshold: Option<f64>,
-    /// Bounds the diff when one side is background and the other isn't (see
-    /// `Canvas::compare_depth`). Scale this to the scene's own units — the
-    /// default assumes meters at roughly building/city-block scale.
-    #[serde(default = "default_mismatch_penalty")]
-    pub mismatch_penalty: f32,
 }
 
 pub fn test_raster3d(
@@ -60,7 +51,7 @@ pub fn test_raster3d(
         let truth_canvas = Canvas::read_png_f32(&truth_png)?;
 
         let score = flow_canvas
-            .compare_depth(&truth_canvas, config.mismatch_penalty)
+            .compare_depth(&truth_canvas)
             .map_err(|e| format!("{}: {}", rel, e))?;
         worst_score = f64::max(worst_score, score);
         total += 1;
@@ -140,7 +131,6 @@ mod tests {
     fn config(threshold: f64) -> Raster3dConfig {
         Raster3dConfig {
             threshold: Some(threshold),
-            mismatch_penalty: 100.0,
         }
     }
 

@@ -60,10 +60,11 @@ pub fn load_triangles(tileset_dir: &Path) -> Result<Vec<[DVec3; 3]>, String> {
                         ));
                     }
 
+                    // Cesium stores an ECEF (x, y, z) vertex as (x, z, -y); flip it back to true ECEF.
                     for chunk in indices.chunks(3) {
                         let v = |i: usize| {
                             let c = positions[i];
-                            DVec3::new(c.x, c.y, c.z)
+                            DVec3::new(c.x, -c.z, c.y)
                         };
                         triangles.push([v(chunk[0]), v(chunk[1]), v(chunk[2])]);
                     }

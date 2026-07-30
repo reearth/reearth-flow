@@ -280,10 +280,7 @@ impl Canvas {
             .into_rgba8();
         let width = img.width() as usize;
         let height = img.height() as usize;
-        let data = img
-            .pixels()
-            .map(|p| f32::from_le_bytes(p.0))
-            .collect();
+        let data = img.pixels().map(|p| f32::from_le_bytes(p.0)).collect();
         Ok(Self {
             data,
             width,
@@ -333,15 +330,9 @@ impl Canvas {
         Ok((sum / self.data.len() as f64).sqrt())
     }
 
-    /// Pixelwise comparison for unbounded depth values (see `write_png_f32`).
-    /// Since the renderer has no antialiasing, a subpixel edge shift can still
-    /// flip a whole pixel between two values, so instead of comparing a pixel
-    /// against its exact counterpart, each pixel is compared against the best
-    /// match in the other canvas's 3x3 neighborhood (out-of-bounds treated as
-    /// background). `mismatch_penalty` bounds the diff when one side is
-    /// background (`INFINITY`) and the other isn't, so a real silhouette
-    /// mismatch scores finite instead of `inf`.
-    pub fn compare_depth(&self, other: &Canvas, mismatch_penalty: f32) -> Result<f64, String> {
+    /// Pixelwise comparison for inverse-depth values (`1/distance`, background `0.0`).
+    /// Compares each pixel's 3x3 neighborhood range, not exact values, to tolerate subpixel edge shifts.
+    pub fn compare_depth(&self, other: &Canvas) -> Result<f64, String> {
         if (self.width, self.height) != (other.width, other.height) {
             return Err(format!(
                 "Canvas size mismatch: {}×{} vs {}×{}",
@@ -349,33 +340,34 @@ impl Canvas {
             ));
         }
 
-        let value_diff = |a: f32, b: f32| -> f32 {
-            match (a.is_finite(), b.is_finite()) {
-                (false, false) => 0.0,
-                (false, true) | (true, false) => mismatch_penalty,
-                (true, true) => (a - b).abs(),
-            }
-        };
-
         let w = self.width as i32;
         let h = self.height as i32;
+
+        let patch_range = |canvas: &Canvas, x: i32, y: i32| -> (f32, f32) {
+            let mut min = f32::INFINITY;
+            let mut max = f32::NEG_INFINITY;
+            for dy in -1..=1 {
+                for dx in -1..=1 {
+                    let (nx, ny) = (x + dx, y + dy);
+                    let v = if nx >= 0 && nx < w && ny >= 0 && ny < h {
+                        canvas.data[(ny * w + nx) as usize]
+                    } else {
+                        0.0
+                    };
+                    min = min.min(v);
+                    max = max.max(v);
+                }
+            }
+            (min, max)
+        };
+
         let mut sum = 0.0f64;
         for y in 0..h {
             for x in 0..w {
-                let a = self.data[(y * w + x) as usize];
-                let mut min_diff = f32::INFINITY;
-                for dy in -1..=1 {
-                    for dx in -1..=1 {
-                        let (nx, ny) = (x + dx, y + dy);
-                        let b = if nx >= 0 && nx < w && ny >= 0 && ny < h {
-                            other.data[(ny * w + nx) as usize]
-                        } else {
-                            f32::INFINITY
-                        };
-                        min_diff = min_diff.min(value_diff(a, b));
-                    }
-                }
-                sum += (min_diff as f64).powi(2);
+                let (a_min, a_max) = patch_range(self, x, y);
+                let (b_min, b_max) = patch_range(other, x, y);
+                let diff = (a_min - b_max).max(b_min - a_max).max(0.0);
+                sum += (diff as f64).powi(2);
             }
         }
         Ok((sum / self.data.len() as f64).sqrt())
@@ -443,50 +435,61 @@ mod tests {
     #[test]
     fn test_compare_depth_identical_is_zero() {
         let mut c1 = Canvas::new(8, 8);
-        c1.data.iter_mut().enumerate().for_each(|(i, v)| *v = i as f32);
+        c1.data
+            .iter_mut()
+            .enumerate()
+            .for_each(|(i, v)| *v = i as f32);
         let c2 = Canvas {
             data: c1.data.clone(),
             width: 8,
             height: 8,
         };
-        let score = c1.compare_depth(&c2, 100.0).unwrap();
-        assert!(score < EPSILON, "identical canvases should score 0, got {}", score);
+        let score = c1.compare_depth(&c2).unwrap();
+        assert!(
+            score < EPSILON,
+            "identical canvases should score 0, got {}",
+            score
+        );
     }
 
-    // A single foreground pixel shifted by exactly one pixel: the 3x3 window
-    // search should find the match and score 0, since the shift is within the
-    // tolerated 1-pixel radius.
+    // An isolated foreground pixel shifted by 1px: both patches span [0, 0.2], so this scores 0.
     #[test]
     fn test_compare_depth_one_pixel_shift_is_tolerated() {
         let mut a = Canvas::new(8, 8);
         let mut b = Canvas::new(8, 8);
-        a.data.iter_mut().for_each(|v| *v = f32::INFINITY);
-        b.data.iter_mut().for_each(|v| *v = f32::INFINITY);
-        a.data[3 * 8 + 3] = 5.0;
-        b.data[3 * 8 + 4] = 5.0;
-        let score = a.compare_depth(&b, 100.0).unwrap();
-        assert!(score < EPSILON, "1px shift should be tolerated, got {}", score);
+        a.data[3 * 8 + 3] = 0.2;
+        b.data[3 * 8 + 4] = 0.2;
+        let score = a.compare_depth(&b).unwrap();
+        assert!(
+            score < EPSILON,
+            "1px shift should be tolerated, got {}",
+            score
+        );
     }
 
-    // A foreground pixel with no match anywhere in the other canvas's 3x3
-    // window (moved 3 pixels away): real mismatch, should score > 0.
+    // A solid region in `a` (no background touching it) vs solid background in `b`: a real mismatch.
     #[test]
-    fn test_compare_depth_large_shift_is_real_error() {
+    fn test_compare_depth_solid_region_mismatch_is_real_error() {
         let mut a = Canvas::new(8, 8);
-        let mut b = Canvas::new(8, 8);
-        a.data.iter_mut().for_each(|v| *v = f32::INFINITY);
-        b.data.iter_mut().for_each(|v| *v = f32::INFINITY);
-        a.data[3 * 8 + 3] = 5.0;
-        b.data[3 * 8 + 6] = 5.0;
-        let score = a.compare_depth(&b, 100.0).unwrap();
-        assert!(score > 1.0, "unmatched foreground pixel should score high, got {}", score);
+        let b = Canvas::new(8, 8);
+        for y in 2..=4 {
+            for x in 2..=4 {
+                a.data[y * 8 + x] = 0.2;
+            }
+        }
+        let score = a.compare_depth(&b).unwrap();
+        assert!(
+            score > 0.1,
+            "unambiguous solid-region mismatch should score high, got {}",
+            score
+        );
     }
 
     #[test]
     fn test_compare_depth_size_mismatch_returns_err() {
         let c1 = Canvas::new(64, 64);
         let c2 = Canvas::new(32, 32);
-        let err = c1.compare_depth(&c2, 1.0).unwrap_err();
+        let err = c1.compare_depth(&c2).unwrap_err();
         assert!(
             err.contains("64×64") && err.contains("32×32"),
             "error should report both dimensions, got: {}",

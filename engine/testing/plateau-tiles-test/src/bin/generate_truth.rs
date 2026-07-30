@@ -125,28 +125,17 @@ fn run(profile_path: &Path) -> Result<(), String> {
         let zip_path = truth_dir.join(stem).with_extension("zip");
         let tmp_dir = extract_zip_to_tmp(&zip_path)?;
 
-        let tmp_png_dir =
-            std::env::temp_dir().join(format!("generate-truth-raster3d-{}", std::process::id()));
-        let _ = fs::remove_dir_all(&tmp_png_dir);
-        fs::create_dir_all(&tmp_png_dir)
-            .map_err(|e| format!("Failed to create tmp png dir: {}", e))?;
+        let png_dir = truth_dir.join(&entry.truth_path);
+        let _ = fs::remove_dir_all(&png_dir);
+        fs::create_dir_all(&png_dir)
+            .map_err(|e| format!("Failed to create {:?}: {}", png_dir, e))?;
 
         let (w, h) = entry.size.dimensions();
-        let result =
-            raster3d::render_cameras_to_pngs(&tmp_dir, &tmp_png_dir, &entry.cameras, w, h);
+        let result = raster3d::render_cameras_to_pngs(&tmp_dir, &png_dir, &entry.cameras, w, h);
         fs::remove_dir_all(&tmp_dir).ok();
+        result?;
 
-        if let Err(e) = result {
-            fs::remove_dir_all(&tmp_png_dir).ok();
-            return Err(e);
-        }
-
-        let truth_zip_path = truth_dir.join(&entry.truth_path).with_extension("zip");
-        let zip_result = zip_dir(&tmp_png_dir, &truth_zip_path);
-        fs::remove_dir_all(&tmp_png_dir).ok();
-        zip_result?;
-
-        println!("wrote raster3d/{} -> {}", id, truth_zip_path.display());
+        println!("wrote raster3d/{} -> {}", id, png_dir.display());
     }
 
     for (id, entry) in &profile.convs.cesium_statistics {

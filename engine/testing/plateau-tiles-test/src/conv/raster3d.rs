@@ -22,9 +22,8 @@ fn to_camera3d(cfg: &CameraConfig) -> Camera3d {
     }
 }
 
-/// Renders every named camera's depth buffer against a 3D Tiles tileset,
-/// writing one lossless-f32 PNG per camera into `out_dir` (see
-/// `Canvas::write_png_f32`).
+/// Renders every named camera's depth buffer, writing one lossless-f32 PNG per camera into `out_dir`.
+/// Stores inverse depth (`1/distance`, background `0.0`), so error matters less the farther away it is.
 pub fn render_cameras_to_pngs(
     tileset_dir: &Path,
     out_dir: &Path,
@@ -42,7 +41,10 @@ pub fn render_cameras_to_pngs(
         let reference = camera.position;
         let local_triangles = input::recenter_and_cast(&triangles, reference);
         let view_proj = camera.view_proj_f32(width, height, reference);
-        let canvas = rasterizer::render_depth(&local_triangles, view_proj, width, height);
+        let mut canvas = rasterizer::render_depth(&local_triangles, view_proj, width, height);
+        for v in canvas.data.iter_mut() {
+            *v = if v.is_finite() { 1.0 / *v } else { 0.0 };
+        }
         canvas.write_png_f32(&out_dir.join(format!("{}.png", name)))?;
     }
 

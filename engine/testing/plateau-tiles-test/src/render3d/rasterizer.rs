@@ -14,7 +14,12 @@ use glam::{Mat4, Vec3};
 ///
 /// Backface-culls CCW-front triangles (glTF convention). No near-plane
 /// clipping: a triangle with a vertex behind the camera is dropped whole.
-pub fn render_depth(triangles: &[[Vec3; 3]], view_proj: Mat4, width: usize, height: usize) -> Canvas {
+pub fn render_depth(
+    triangles: &[[Vec3; 3]],
+    view_proj: Mat4,
+    width: usize,
+    height: usize,
+) -> Canvas {
     let mut zbuffer = vec![f32::INFINITY; width * height];
 
     for tri in triangles {
@@ -175,8 +180,12 @@ mod tests {
         let near_first = render_depth(&[near_tri, far_tri], view_proj, width, height);
 
         let center_idx = (height / 2) * width + width / 2;
-        assert!((far_first.data[center_idx] - near_first.data[center_idx]).abs() < 1e-6,
-            "z-buffer result should not depend on draw order: {} vs {}", far_first.data[center_idx], near_first.data[center_idx]);
+        assert!(
+            (far_first.data[center_idx] - near_first.data[center_idx]).abs() < 1e-6,
+            "z-buffer result should not depend on draw order: {} vs {}",
+            far_first.data[center_idx],
+            near_first.data[center_idx]
+        );
     }
 
     #[test]

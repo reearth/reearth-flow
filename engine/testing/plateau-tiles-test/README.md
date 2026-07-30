@@ -32,7 +32,7 @@ cargo run -p plateau-tiles-test --bin generate-truth -- <toml_path>
 - `raster` - Pixel comparison of rasterized MVT geometry (`convs.mvt_png` renders MVT to PNG; antialiased coverage in `[0, 1]`, subpixel diffs ignored via a `0.5` dead-zone)
 - `cesium` - Attribute comparison for 3D Tiles/glTF output
 - `cesium_statistics` - Per-feature geometric fingerprint (bbox, centroid, average winding, texture presence) for 3D Tiles/glTF output — catches gross regressions but not subtle shape distortions
-- `raster3d` - Depth-buffer comparison of rendered 3D Tiles/glTF output (`convs.raster3d` renders named cameras, configured in `profile.toml` with ECEF xyz `position`/`look_at`, into lossless-f32 depth PNGs; see `render3d/` for the renderer). No antialiasing, so `Canvas::compare_depth` tolerates ~1px of positional error via a 3x3-neighborhood best-match instead
+- `raster3d` - Depth-buffer comparison of rendered 3D Tiles/glTF output (`convs.raster3d` renders named cameras, configured in `profile.toml` with ECEF xyz `position`/`look_at`, into lossless-f32 depth PNGs; see `render3d/` for the renderer and `Canvas::compare_depth` for the comparison)
 
 ## Directory structure
 
