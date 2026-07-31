@@ -1,7 +1,7 @@
 # to test:
 # - smoke bldg attributes test
 # - 政令指定都市 ward name correctly displayed in filename
-# - up_to_lod* should not produce high lod tilesets if the city has completely no data with that lod or higher
+# - up_to_lod* should not produce high lod tilesets if the city has completely no data with that lod or higher (TODO)
 
 citygml_zip_name = "27100_osaka-shi_city_2024_citygml_1_op_bldg.zip"
 
