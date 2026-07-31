@@ -144,6 +144,8 @@ pub struct BuiltTileset {
     pub tileset_json: String,
     pub subtrees: Vec<(String, Vec<u8>)>,
     pub tile_count: usize,
+    /// Features that carried renderable geometry; the rest never reach a tile.
+    pub rendered_features: usize,
 }
 
 /// Rendering knobs shared by every cell of a tileset.
@@ -258,7 +260,41 @@ pub fn build(
         tileset_json: tileset_bytes,
         subtrees,
         tile_count,
+        rendered_features: extracted.len(),
     })
+}
+
+/// Render one feature into a glb, untiled. Where [`build`] splits a whole
+/// dataset across a quadtree, this renders a single picked feature, which is
+/// what a viewer wants when a table row is clicked.
+///
+/// Positions are local to an origin chosen from the rendered geometry, carried
+/// on the scene node's translation exactly as tile content is, so the result
+/// drops into a georeferenced viewer unchanged.
+///
+/// `Ok(None)` means the feature carried no renderable geometry.
+///
+// TODO: Relocate this after GltfWriter is implemented (for the new geometry)
+pub fn build_glb(
+    feature: &Feature,
+    options: MetadataOptions,
+    render: RenderOptions,
+) -> crate::errors::Result<Option<Vec<u8>>> {
+    let mut caches = mesh::ExtractCaches::default();
+    let Some(extracted) = mesh::extract(&feature.geometry, &mut caches) else {
+        return Ok(None);
+    };
+
+    let mut textures = TextureCache::default();
+    let mut embedded = EmbeddedTextures::new()?;
+    build_cell_glb(
+        &[&(feature, extracted)],
+        options,
+        render,
+        &mut textures,
+        &mut embedded,
+    )
+    .map(Some)
 }
 
 fn empty_tileset() -> crate::errors::Result<BuiltTileset> {
@@ -279,6 +315,7 @@ fn empty_tileset() -> crate::errors::Result<BuiltTileset> {
         tileset_json: tileset_bytes,
         subtrees,
         tile_count: 0,
+        rendered_features: 0,
     })
 }
 
