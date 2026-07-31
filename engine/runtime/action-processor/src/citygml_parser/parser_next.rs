@@ -15,8 +15,24 @@ use super::resolver::GeomRegistry;
 use super::srsname;
 use super::utils::{
     gml_id_attr, local_name as utils_local_name, srs_name_attr, xlink_href_attr, NamespaceRegistry,
-    NsId, QName, XmlChild, XmlNode, EMPTY_NS_ID, GML_NS_311_ID, GML_NS_ID, XLINK_NS_ID,
+    NsId, QName, XmlChild, XmlNode, CITYGML_NS_20_ID, CITYGML_NS_30_ID, EMPTY_NS_ID,
+    GML_NS_311_ID, GML_NS_ID, XLINK_NS_ID,
 };
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CityGmlVersion {
+    V2,
+    V3,
+}
+
+impl CityGmlVersion {
+    fn core_ns_id(self) -> NsId {
+        match self {
+            CityGmlVersion::V2 => CITYGML_NS_20_ID,
+            CityGmlVersion::V3 => CITYGML_NS_30_ID,
+        }
+    }
+}
 
 pub(super) type RawNodeKey = (String, String); // (file_url, gml_id)
 
@@ -85,12 +101,7 @@ pub struct Parser {
     /// Each file's CRS, parsed from its `gml:boundedBy/gml:Envelope/@srsName`; a
     /// file with no entry declared no (or an unrecognized) srsName.
     pub(super) srs_by_file: HashMap<String, EpsgCode>,
-}
-
-impl Default for Parser {
-    fn default() -> Self {
-        Self::new()
-    }
+    version: CityGmlVersion,
 }
 
 impl std::fmt::Debug for Parser {
@@ -104,13 +115,13 @@ impl std::fmt::Debug for Parser {
 }
 
 impl Parser {
-    pub fn new() -> Self {
-        Self::with_owner_tracking(true)
+    pub fn new(version: CityGmlVersion) -> Self {
+        Self::with_owner_tracking(true, version)
     }
 
     /// A parser that records geometry owner `gml:id`s only when `track_owners` is
     /// set; leave it off unless `flatten` will hoist children.
-    pub(super) fn with_owner_tracking(track_owners: bool) -> Self {
+    pub(super) fn with_owner_tracking(track_owners: bool, version: CityGmlVersion) -> Self {
         Self {
             raw_registry: RawRegistry::new(),
             geom_registry: GeomRegistry::new(),
@@ -119,6 +130,7 @@ impl Parser {
             pending: Vec::new(),
             track_owners,
             srs_by_file: HashMap::new(),
+            version,
         }
     }
 
@@ -129,9 +141,22 @@ impl Parser {
         let mut buf = Vec::new();
         let source_url_arc = Arc::new(source_url.clone());
 
+        let core_ns_id = self.version.core_ns_id();
+
         loop {
             match next_event(&mut reader, &mut buf, &mut self.ns_registry)? {
-                OwnedEvent::Start { name, .. } if local_name(&name.0) == "CityModel" => break,
+                OwnedEvent::Start { name, .. }
+                    if local_name(&name.0) == "CityModel" && name.1 == core_ns_id =>
+                {
+                    break
+                }
+                OwnedEvent::Start { name, .. } if local_name(&name.0) == "CityModel" => {
+                    tracing::error!(
+                        tag = name.0,
+                        expected_version = ?self.version,
+                        "citygml: this file's CityModel tag doesn't match the CityGML version being parsed; skipping it"
+                    );
+                }
                 OwnedEvent::Eof => return Err(ParseError::NoCityModel),
                 _ => {}
             }
@@ -193,6 +218,10 @@ impl Parser {
                                 .insert(source_url_arc.as_str().to_string(), epsg);
                         }
                     } else {
+                        tracing::warn!(
+                            element = name.0,
+                            "citygml: unrecognized element, skipped"
+                        );
                         skip_element(&mut reader, &mut buf, &mut self.ns_registry)?;
                     }
                 }
@@ -628,7 +657,7 @@ mod tests {
     }
 
     fn parse_test(xml: &[u8]) -> Result<(), ParseError> {
-        let mut parser = Parser::new();
+        let mut parser = Parser::new(CityGmlVersion::V3);
         parser.parse(xml, &dummy_url())
     }
 
@@ -657,7 +686,7 @@ mod tests {
   </core:cityObjectMember>
 </core:CityModel>"#;
 
-        let mut parser = Parser::new();
+        let mut parser = Parser::new(CityGmlVersion::V3);
         parser.parse(xml, &dummy_url()).unwrap();
         let ParserOutput { pending, .. } = parser.finish();
 
@@ -679,7 +708,7 @@ mod tests {
   </core:cityObjectMember>
 </core:CityModel>"#;
 
-        let mut parser = Parser::new();
+        let mut parser = Parser::new(CityGmlVersion::V3);
         parser.parse(xml, &dummy_url()).unwrap();
         let ParserOutput {
             pending,
@@ -704,7 +733,7 @@ mod tests {
   </core:cityObjectMember>
 </core:CityModel>"#;
 
-        let mut parser = Parser::new();
+        let mut parser = Parser::new(CityGmlVersion::V3);
         parser.parse(xml, &dummy_url()).unwrap();
         let ParserOutput {
             raw_registry: raw_reg,
@@ -731,7 +760,7 @@ mod tests {
         let url_a = Url::parse("file:///a.gml").unwrap();
         let url_b = Url::parse("file:///b.gml").unwrap();
 
-        let mut parser = Parser::new();
+        let mut parser = Parser::new(CityGmlVersion::V3);
         parser.parse(xml, &url_a).unwrap();
         parser.parse(xml, &url_b).unwrap();
         let ParserOutput {
@@ -764,7 +793,7 @@ mod tests {
   </core:cityObjectMember>
 </core:CityModel>"#;
 
-        let mut parser = Parser::new();
+        let mut parser = Parser::new(CityGmlVersion::V3);
         parser.parse(xml, &dummy_url()).unwrap();
         let ParserOutput { pending, .. } = parser.finish();
         assert_eq!(pending.len(), 1);
@@ -785,7 +814,7 @@ mod tests {
   </core:cityObjectMember>
 </core:CityModel>"#;
 
-        let mut parser = Parser::new();
+        let mut parser = Parser::new(CityGmlVersion::V3);
         parser.parse(xml, &dummy_url()).unwrap();
         let ParserOutput { srs_by_file, .. } = parser.finish();
 
@@ -822,7 +851,7 @@ mod tests {
   </core:cityObjectMember>
 </core:CityModel>"#;
 
-        let mut parser = Parser::new();
+        let mut parser = Parser::new(CityGmlVersion::V3);
         parser.parse(xml, &dummy_url()).unwrap();
         let ParserOutput { pending, .. } = parser.finish();
         assert_eq!(pending.len(), 1);
@@ -886,7 +915,7 @@ mod tests {
   </core:cityObjectMember>
 </core:CityModel>"#;
 
-        let mut parser = Parser::new();
+        let mut parser = Parser::new(CityGmlVersion::V3);
         parser.parse(xml, &dummy_url()).unwrap();
         let ParserOutput { pending, .. } = parser.finish();
 

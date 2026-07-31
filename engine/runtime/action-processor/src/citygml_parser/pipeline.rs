@@ -11,7 +11,7 @@ use reearth_flow_types::{
 
 use super::{
     codespace, flatten, geometry,
-    parser::{self, Parser},
+    parser::{self, CityGmlVersion, Parser},
     utils::{gml_id_attr, XmlNode},
     xlink,
 };
@@ -347,7 +347,7 @@ mod build_next {
                      xmlns:gml="http://www.opengis.net/gml/3.2"
                      xmlns:xlink="http://www.w3.org/1999/xlink">{members}</core:CityModel>"#
             );
-            let mut parser = Parser::new();
+            let mut parser = Parser::new(CityGmlVersion::V3);
             parser
                 .parse(xml.as_bytes(), &Url::parse("file:///test.gml").unwrap())
                 .unwrap();

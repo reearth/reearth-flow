@@ -63,12 +63,18 @@ graphs:
               value:
                 type: flowExpr
                 value: |
-                  id_wrapper = attributes.get("uro:buildingIDAttribute");
+                  ade_of_building = attributes.get("bldg:adeOfAbstractBuilding");
+                  entries = [];
+                  if type(ade_of_building) == list {
+                    entries = ade_of_building;
+                  } else if type(ade_of_building) == dict {
+                    entries = [ade_of_building];
+                  }
                   id_map = null;
-                  if type(id_wrapper) == list {
-                    id_map = id_wrapper[0].get("uro:BuildingIDAttribute");
-                  } else if type(id_wrapper) == dict {
-                    id_map = id_wrapper.get("uro:BuildingIDAttribute");
+                  for entry in entries {
+                    if entry.get("uro:BuildingIDAttribute") {
+                      id_map = entry.get("uro:BuildingIDAttribute");
+                    }
                   }
                   gml_city_code = null;
                   if id_map {

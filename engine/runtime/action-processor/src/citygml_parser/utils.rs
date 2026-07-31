@@ -8,12 +8,16 @@ use url::Url;
 pub(super) const GML_NS_32: &str = "http://www.opengis.net/gml/3.2";
 pub(super) const GML_NS_311: &str = "http://www.opengis.net/gml";
 pub(super) const XLINK_NS: &str = "http://www.w3.org/1999/xlink";
+pub(super) const CITYGML_NS_20: &str = "http://www.opengis.net/citygml/2.0";
+pub(super) const CITYGML_NS_30: &str = "http://www.opengis.net/citygml/3.0";
 
 pub type NsId = u32;
 pub const EMPTY_NS_ID: NsId = 0;
 pub(super) const GML_NS_ID: NsId = 1;
 pub(super) const XLINK_NS_ID: NsId = 2;
 pub(super) const GML_NS_311_ID: NsId = 3;
+pub(super) const CITYGML_NS_20_ID: NsId = 4;
+pub(super) const CITYGML_NS_30_ID: NsId = 5;
 
 /// `(qname, ns-id)`
 pub type QName = (String, NsId);
@@ -57,7 +61,14 @@ impl NamespaceRegistry {
             uris: Vec::new(),
             index: HashMap::new(),
         };
-        for uri in ["", GML_NS_32, XLINK_NS, GML_NS_311] {
+        for uri in [
+            "",
+            GML_NS_32,
+            XLINK_NS,
+            GML_NS_311,
+            CITYGML_NS_20,
+            CITYGML_NS_30,
+        ] {
             let id = r.uris.len() as NsId;
             r.uris.push(uri.to_string());
             r.index.insert(uri.to_string(), id);
