@@ -85,114 +85,87 @@ XML Fragmenter
 
 ---
 
-## Geometry A (12)
+## Geometry A — deferred items only (batch resolved in PR)
 
-<!-- Session 8 — AppearanceRemover through ImageRasterizer -->
+The Geometry A batch (12 actions) was resolved per the standard. Items found while
+auditing it that belong elsewhere are deferred:
 
 ```
-Appearance Remover
-  ports:   inputPorts `default` — global note; outputPorts `default` — global note
-
-Area Calculator
-  params:  areaType — missing title (§3.3); description references "PlaneArea"/"SlopedArea" in
-             PascalCase but actual enum values are camelCase (misleading)
-           multiplier — missing title (§3.3)
-           outputAttribute — missing title (§3.3)
-           AreaType plain enum — no per-variant descriptions (§3.4); convert to oneOf or expand
-             property description to describe each variant
-  ports:   inputPorts `default`, outputPorts `default` — global note; no `rejected` — evaluate
-             whether non-polygon features need a rejected route (§4.3)
-  tags:    ["area", "measurement"] — neither in vocabulary; remove (0 tags acceptable)
-
-Bounds Extractor
-  desc:    title-case — "Extract Bounding Box Coordinates from Feature Geometry"; suggest
-             "Extracts the bounding box coordinates of a feature's geometry and stores them as
-             named attributes."
-  params:  schema-level description missing (§3.3)
-           ordering — alphabetical (xmax, xmin, ymax, ymin, zmax, zmin); suggest grouping by
-             axis: xmin, xmax, ymin, ymax, zmin, zmax (§3.5 readability)
-  ports:   inputPorts `default` — global note; outputPorts `default` + `rejected` ✓
-  tags:    [] — `geometry` duplicates category (§6); 0 tags acceptable
+Geometry Part Extractor
+  params:  GeometryPartType keeps its single `surface` variant, with a TODO, on the
+             same reasoning as Bufferer below (§3.4, "variants planned but not yet
+             implemented"). `edge` and `vertex` variants — emitting each edge or
+             vertex as its own feature — fit the three ports this action already
+             declares, and no other action covers them: Boundary Extractor returns
+             the boundary as one geometry on the same feature, and Coordinate
+             Extractor writes vertices into attributes. Removing the parameter was
+             considered and rejected: it would have foreclosed that space and
+             pushed us toward a separate action per part type.
+  ports:    `extracted` / `remaining` / `untouched` are distinct and correct, and
+             match the reference implementation. `remaining` is the original
+             feature with its extracted parts removed; `untouched` is a feature the
+             action did not modify. No change needed.
 
 Bufferer
-  desc:    title-case — "Create Buffer Around Features"; suggest "Creates a buffer polygon
-             around each input geometry at a specified distance."
-  params:  BufferType oneOf with a single `area2d` variant — incomplete design; other buffer
-             types planned but unimplemented (same structural flag as XMLFragmenter)
-  ports:   inputPorts `default` — global note; outputPorts `default` + `rejected` ✓
-  tags:    ["2d"] — not in vocabulary; replace with ["spatial"] (`geometry` duplicates category (§6))
-
-Clipper
-  desc:    title-case — "Clip Features Using Boundary Shapes"; suggest "Clips candidate
-             features to the boundary geometry, separating results into inside and outside
-             portions."
-  ports:   inputPorts `clipper`, `candidate` ✓; outputPorts `inside`, `outside`, `rejected` ✓
-  tags:    ["2d"] — not in vocabulary; replace with ["spatial"]
-
-Elevation Extractor
-  desc:    title-case — "Extract Z-Coordinate Elevation to Attribute"; suggest "Extracts the
-             Z-coordinate elevation from a feature's geometry and stores it in a named
-             attribute."
-  ports:   inputPorts `default` — global note; outputPorts `default` — global note; no
-             `rejected` — evaluate whether features lacking 3D geometry need a rejected route
-             (§4.3)
-
-Extruder
-  desc:    title-case — "Extrude 2D Polygons into 3D Solids"; suggest "Extrudes 2D polygon
-             geometries vertically by a specified distance to produce 3D solid geometries."
-  ports:   inputPorts `default` — global note; outputPorts `default` — global note; no
-             `rejected` — evaluate for non-polygon inputs (§4.3)
-
-Footprint Replacer
-  desc:    parenthetical "(supports solids, surfaces, and CityGML)" leaks implementation
-             details; compound "Projects... and computes" obscures user-visible result; suggest
-             "Replaces a feature's 3D geometry with its 2D footprint projected onto the XY
-             plane."
-  ports:   inputPorts `default` — global note; outputPorts `footprint` ✓, `rejected` ✓
-
-Geometry Extractor
-  desc:    title-case — "Extract Geometry Data to Attribute"; suggest "Serializes the feature's
-             geometry to a compressed JSON representation and stores it in a named attribute."
-  ports:   inputPorts `default` — global note; outputPorts `default` — global note; no
-             `rejected` — evaluate for features with no geometry (§4.3)
-  tags:    [] — `geometry` duplicates category (§6); 0 tags acceptable
-
-Geometry Part Extractor
-  desc:    imperative not verb-first — "Extract geometry parts (surfaces) from 3D geometries as
-             separate features"; suggest "Extracts geometry parts from 3D geometries, emitting
-             each part as a separate feature."
-  params:  GeometryPartType oneOf with a single `surface` variant — incomplete design; evaluate
-             what other part types should be added (Phase 4)
-  ports:   inputPorts `default` — global note; outputPorts `extracted`, `remaining`, `untouched`
-             — semantics of `remaining` vs `untouched` need clarification in Phase 4 (both
-             receive non-extracted features — are they distinct conditions?)
-  tags:    ["geometry", "decompose"] — `decompose` not in vocabulary; `geometry` duplicates
-             category (§6); replace with ["3d"]
-
-Geometry Remover
-  ports:   inputPorts `default`, outputPorts `default` — global note
+  params:  BufferType has a single `area2d` variant. The reference implementation
+             this action was ported from offers both a 2D-area and a solid buffer
+             type, and the PLATEAU 品質検査02 建築物 workspace our surface_validator
+             graph is based on carries both branches, so a second variant is
+             genuinely missing rather than hypothetical. Adding it needs a
+             solid-buffering algorithm and an edge-resolution control that
+             reearth-flow-geometry does not have, so the oneOf is kept with a TODO
+             in bufferer.rs (standard §3.4, "variants planned but not
+             implemented"). Own PR when the algorithm lands.
+           interpolationAngle is applied when buffering a point or a curve but
+             not a polygon — buffer_polygon() takes only a distance. The
+             description now says so. Honouring it for polygons is an algorithm
+             change, not a metadata one.
+  impl:    only points, curves and single polygons are buffered. Every other
+             type — multi-polygons above all, but also multi-points,
+             multi-curves, solids, triangles and collections — is emitted on
+             `features` unbuffered (the 3D arm projects it to 2D first). This
+             deviates from every standard implementation: JTS defines `buffer()`
+             on the base Geometry type and "the buffer operation always returns a
+             polygonal result", so no type is un-bufferable. The projection
+             itself is correct and should stay — PostGIS: "This function ignores
+             the Z dimension. It always gives a 2D result even when used on a 3D
+             geometry."
+             CONSEQUENCE: a distance tolerance is silently not applied to those
+             features. The PLATEAU surface_validator graph buffers by 0.005 as a
+             near-touching tolerance, so any feature reaching that path is
+             checked without it.
+             Fixing it means buffering the full type space (union of the members'
+             buffers) and would move quality-check results — passing the geometry
+             through unchanged instead already fails 4 plateau6 02-bldg tests, so
+             the truth data needs review by someone who can adjudicate PLATEAU
+             conformance. Own PR: "Bufferer: buffer all geometry types per
+             OGC/JTS semantics".
 
 Image Rasterizer
-  desc:    imperative not verb-first — "Convert vector geometries to raster image format";
-             suggest "Converts vector geometries to a raster image using configurable overlap
-             resolution."
-  params:  imageWidth — missing title (§3.3); description "The width of image" incomplete —
-             suggest "Width of the output image in pixels."
-           OnOverlap — `takeLast`, `takeFirst`, `max`, `min` variants missing per-variant
-             descriptions; only `sum` has one (§3.4). UI renders all variants as "option 1/2/3/4"
-             due to two compounding issues: (1) no `/// # Title` on any variant, so `schemars`
-             groups `takeLast`/`takeFirst` into a single two-value enum entry — fix by adding
-             `/// # Title\n/// description` to every variant; (2) more fundamental — the UI's
-             `consolidateOneOfToEnum` in `patchSchemaTypes.ts` bails out entirely when any `oneOf`
-             variant is an object type (`max`, `min`), handing the schema to RJSF which labels
-             variants "option N" regardless of titles. Fix (2) requires a UI-side change to handle
-             object-type variants in `oneOf` using their `title` fields as selector labels.
-  ports:   inputPorts `textureCoordinates` — camelCase violates §4.1; rename to
-             `texture-coordinates`; `default` — global note
-           outputPorts `textureBounds` — camelCase violates §4.1; rename to `texture-bounds`;
-             `default` — global note; `textured` ✓
-  tags:    ["raster", "image", "texture"] — `image` and `texture` not in vocabulary; replace
-             with ["raster"]
+  ports:   the `features` output carries two unrelated things: the features that
+             arrived on `texture-coordinates`, re-emitted unchanged, or — when
+             none did — a single synthetic feature holding a `png_image` path
+             attribute. A rasterizer should emit the raster on a port of its own,
+             separate from any pass-through stream. Nothing in-repo consumes our
+             `features` output.
+             Splitting it is a design change, and it is entangled with the
+             save-path issue below, so both belong in one follow-up.
+  impl:    save_image_with_path_option() falls back to std::env::var("HOME")
+             instead of executor_cache_subdir.
+
+  ui:      the OnOverlap variants render as "option 1/2/…" in the UI even now
+             that every variant carries a `/// # Title`. The UI's
+             consolidateOneOfToEnum (patchSchemaTypes.ts) bails out when any
+             oneOf variant is an object type (`max`, `min` carry an expression),
+             handing the schema to RJSF, which ignores the titles. Fixing it is
+             a UI-side change: handle object-type oneOf variants using their
+             `title` as the selector label.
+
+CityGML Attribute Inserter (PLATEAU, outside the base set)
+  ports:   input port `textureBounds` is camelCase (§4.1) and should become
+             `texture-bounds`. Image Rasterizer's matching output port was
+             renamed in this batch; the edge now joins two differently-named
+             ports until the PLATEAU action is reviewed.
 ```
 
 ---
@@ -261,9 +234,10 @@ Refiner
              single-segment path to segment, and merging consecutive line segments — is a
              separate task.
 
-UI (separate PR, shared with Geometry A)
-  `consolidateOneOfToEnum` in the UI's `patchSchemaTypes.ts` bails when a `oneOf` mixes
-  string and object variants, so RJSF labels the variants "option 1/2/...". Affects
-  `Geometry Validator`'s `ValidationType` and `Image Rasterizer`'s `OnOverlap`. The
-  Rust-side `/// # Title` fixes are done in the respective engine PRs; the UI fix is not.
+Geometry Validator
+  ui:      hits the same `consolidateOneOfToEnum` bug written up under Image Rasterizer in
+             the Geometry A section above — `ValidationType` mixes one unit variant
+             (`duplicatePoints`) with three that carry a tolerance, so RJSF labels them
+             all "option 1/2/…" despite every variant now carrying a `/// # Title`. One
+             UI-side fix covers both actions.
 ```

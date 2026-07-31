@@ -6,23 +6,35 @@
     },
     {
       "name": "Area Calculator",
-      "description": "ポリゴンジオメトリの平面または傾斜面積を計算し、結果を属性として追加する",
+      "description": "地物のジオメトリの平面または傾斜面積を計算し、属性として格納する",
       "parameterI18n": {
         "": {
-          "title": "AreaCalculator パラメータ",
-          "description": "ジオメトリの面積計算を設定する"
+          "title": "Area Calculator パラメータ",
+          "description": "各地物のジオメトリの面積を計算し格納する方法を設定する"
         },
         "areaType": {
           "title": "面積タイプ",
-          "description": "実行する面積計算のタイプ（平面面積または傾斜面積）"
+          "description": "平面投影面積と実際の傾斜表面積のどちらを計算するか。標高を持たないジオメトリは常に平面のため影響しない"
         },
         "multiplier": {
           "title": "乗数",
-          "description": "面積値をスケールするための乗数"
+          "description": "計算された面積に適用する係数。単位を変換する場合に使用する。デフォルトは 1.0"
         },
         "outputAttribute": {
-          "title": "出力属性名",
-          "description": "計算された面積を格納する属性の名前"
+          "title": "出力属性",
+          "description": "計算された面積を格納する属性。デフォルトは `area`"
+        }
+      },
+      "enumI18n": {
+        "AreaType": {
+          "planeArea": {
+            "title": "平面面積",
+            "description": "ジオメトリを XY 平面に投影した平坦な面積を計算する"
+          },
+          "slopedArea": {
+            "title": "傾斜面積",
+            "description": "各面の傾斜を考慮した実際の表面積を計算する"
+          }
         }
       }
     },
@@ -385,63 +397,64 @@
     },
     {
       "name": "Bounds Extractor",
-      "description": "境界を抽出する",
+      "description": "地物のジオメトリのバウンディングボックス座標を抽出し、名前付き属性として格納する",
       "parameterI18n": {
         "": {
-          "title": "BoundsExtractor パラメータ"
+          "title": "Bounds Extractor パラメータ",
+          "description": "各境界値を格納する属性名を設定する。すべてのパラメータは任意で、未設定の境界値はデフォルトの名前で格納される。Z の境界値はジオメトリが標高を持つ場合のみ書き込まれる"
         },
         "xmax": {
           "title": "X 最大値属性",
-          "description": "X 座標の最大値を格納する属性名（デフォルト: \"xmax\"）"
+          "description": "X 座標の最大値を格納する属性。デフォルトは `xmax`"
         },
         "xmin": {
           "title": "X 最小値属性",
-          "description": "X 座標の最小値を格納する属性名（デフォルト: \"xmin\"）"
+          "description": "X 座標の最小値を格納する属性。デフォルトは `xmin`"
         },
         "ymax": {
           "title": "Y 最大値属性",
-          "description": "Y 座標の最大値を格納する属性名（デフォルト: \"ymax\"）"
+          "description": "Y 座標の最大値を格納する属性。デフォルトは `ymax`"
         },
         "ymin": {
           "title": "Y 最小値属性",
-          "description": "Y 座標の最小値を格納する属性名（デフォルト: \"ymin\"）"
+          "description": "Y 座標の最小値を格納する属性。デフォルトは `ymin`"
         },
         "zmax": {
           "title": "Z 最大値属性",
-          "description": "Z 座標の最大値を格納する属性名（デフォルト: \"zmax\"）"
+          "description": "Z 座標の最大値を格納する属性。デフォルトは `zmax`"
         },
         "zmin": {
           "title": "Z 最小値属性",
-          "description": "Z 座標の最小値を格納する属性名（デフォルト: \"zmin\"）"
+          "description": "Z 座標の最小値を格納する属性。デフォルトは `zmin`"
         }
       }
     },
     {
       "name": "Bufferer",
-      "description": "ジオメトリの周囲にバッファを作成する",
+      "description": "各入力ジオメトリの周囲に、指定した距離のバッファポリゴンを作成する",
       "parameterI18n": {
         "": {
           "title": "Bufferer パラメータ",
-          "description": "入力ジオメトリの周囲にバッファを作成する方法を設定する"
+          "description": "各ジオメトリの周囲に作成するバッファの形状と範囲を設定する"
         },
         "bufferType": {
           "title": "バッファタイプ",
-          "description": "入力ジオメトリに作成するバッファの種類"
+          "description": "入力ジオメトリの周囲に作成するバッファの形状"
         },
         "distance": {
           "title": "距離",
-          "description": "元のジオメトリからバッファを拡張する距離（座標単位）"
+          "description": "元のジオメトリからバッファを広げる距離。ジオメトリの座標系の単位で指定する。負の値を指定すると縮小する"
         },
         "interpolationAngle": {
           "title": "補間角度",
-          "description": "丸角を作成する際の曲線補間に使用する角度（度）"
+          "description": "点や曲線のバッファの丸みを近似する角度の刻み幅（度）。値が小さいほど輪郭が滑らかになる。ポリゴンのバッファではこの値は使用されない"
         }
       },
       "enumI18n": {
         "BufferType": {
           "area2d": {
             "title": "2D エリアバッファ",
-            "description": "入力ジオメトリの周囲に 2D ポリゴンバッファを作成する"
+            "description": "入力ジオメトリの周囲に平坦なポリゴンバッファを作成し、標高は破棄する"
           }
         }
       }
@@ -904,7 +917,7 @@
     },
     {
       "name": "Clipper",
-      "description": "クリッパー地物を用いて候補地物を分割し、内部または外部の部分を別々に出力する"
+      "description": "候補地物を境界ジオメトリでクリップし、内側と外側の部分に分けて出力する"
     },
     {
       "name": "Closed Curve Filter",
@@ -1067,15 +1080,15 @@
     },
     {
       "name": "Elevation Extractor",
-      "description": "地物の最初のZ座標値を抽出し、属性として格納する",
+      "description": "地物のジオメトリの標高を抽出し、属性として格納する",
       "parameterI18n": {
         "": {
-          "title": "ElevationExtractor パラメータ",
-          "description": "ジオメトリ座標から抽出した標高値の格納先を設定する"
+          "title": "Elevation Extractor パラメータ",
+          "description": "抽出した標高の格納先を設定する"
         },
         "outputAttribute": {
           "title": "出力属性",
-          "description": "抽出した標高値を格納する属性名"
+          "description": "標高を格納する属性"
         }
       }
     },
@@ -1097,15 +1110,15 @@
     },
     {
       "name": "Extruder",
-      "description": "ポリゴンを一定の距離で押し出す（エクストルード）",
+      "description": "ポリゴンジオメトリを指定した距離だけ垂直に押し出し、ソリッドジオメトリを生成する",
       "parameterI18n": {
         "": {
           "title": "Extruder パラメータ",
-          "description": "2D ポリゴンを 3D ソリッドジオメトリに押し出す方法を設定する"
+          "description": "各ポリゴンを押し出す距離を設定する"
         },
         "distance": {
           "title": "距離",
-          "description": "ポリゴンを押し出す垂直距離（高さ）。定数値または式で指定可能。"
+          "description": "ポリゴンを押し出す高さ。定数、または地物ごとに評価される式で指定する"
         }
       }
     },
@@ -1509,7 +1522,7 @@
     },
     {
       "name": "Footprint Replacer",
-      "description": "3DジオメトリをXY平面に投影して結合フットプリントを計算する（ソリッド、サーフェス、CityGML対応）"
+      "description": "地物の 3D ジオメトリを、XY 平面に投影した 2D フットプリントに置き換える"
     },
     {
       "name": "GeoJSON Reader",
@@ -1704,15 +1717,15 @@
     },
     {
       "name": "Geometry Extractor",
-      "description": "地物からジオメトリを抽出し、属性として追加する",
+      "description": "地物のジオメトリを圧縮した表現にシリアライズし、属性として格納する",
       "parameterI18n": {
         "": {
-          "title": "GeometryExtractor パラメータ",
-          "description": "抽出したジオメトリデータを圧縮属性として格納する場所を設定する"
+          "title": "Geometry Extractor パラメータ",
+          "description": "シリアライズしたジオメトリの格納先を設定する"
         },
         "outputAttribute": {
           "title": "出力属性",
-          "description": "抽出したジオメトリデータを圧縮 JSON として格納する属性名"
+          "description": "圧縮したジオメトリを格納する属性。Geometry Replacer が同じ表現を読み戻す"
         }
       }
     },
@@ -1728,21 +1741,22 @@
     },
     {
       "name": "Geometry Part Extractor",
-      "description": "3Dジオメトリからジオメトリパーツ（サーフェス）を個別の地物として抽出する",
+      "description": "ジオメトリの各サーフェスを抽出し、個別の地物として出力する",
       "parameterI18n": {
         "": {
-          "title": "GeometryPartExtractor パラメータ",
-          "description": "3D ジオメトリから抽出するジオメトリパーツを設定する"
+          "title": "Geometry Part Extractor パラメータ",
+          "description": "ジオメトリから抽出するパーツの種類を設定する"
         },
         "geometryPartType": {
           "title": "パーツタイプ",
-          "description": "抽出するジオメトリパーツのタイプ"
+          "description": "ジオメトリから抽出するパーツの種類"
         }
       },
       "enumI18n": {
         "GeometryPartType": {
           "surface": {
-            "description": "サーフェスを個別のフィーチャーとして抽出する"
+            "title": "サーフェス",
+            "description": "ジオメトリの各サーフェスを個別の地物として出力する"
           }
         }
       }
@@ -2251,30 +2265,39 @@
     },
     {
       "name": "Image Rasterizer",
-      "description": "ベクターデータをラスター画像形式に変換する",
+      "description": "重複の解決方法を指定して、ベクタージオメトリをラスター画像に変換する",
       "parameterI18n": {
         "": {
-          "title": "ImageRasterizer パラメータ",
-          "description": "ベクタージオメトリをラスター画像に変換する方法を設定する"
+          "title": "Image Rasterizer パラメータ",
+          "description": "出力画像のサイズ、保存先、重なり合うジオメトリの解決方法を設定する"
         },
         "imageWidth": {
-          "description": "画像の幅"
+          "title": "画像の幅",
+          "description": "出力画像の幅（ピクセル）。高さは入力ジオメトリの範囲から縦横比を保って決まる"
         },
         "onOverlap": {
           "title": "重複時の処理",
-          "description": "複数のポリゴンが同じピクセルを覆う場合のピクセル重複解決戦略"
+          "description": "複数のジオメトリが重なるピクセルの色を決める方法。省略した場合は到着順に描画する"
         },
         "saveTo": {
           "title": "保存先",
-          "description": "生成した画像を保存するパス式（任意）。指定しない場合はデフォルトのキャッシュディレクトリを使用。"
+          "description": "生成した画像を書き出すパス。省略した場合はキャッシュディレクトリに書き出す"
         }
       },
       "enumI18n": {
         "OnOverlap": {
           "sum": {
-            "description": "重複するすべてのポリゴンの RGB チャンネルを飽和加算する。"
+            "title": "合計",
+            "description": "重なり合うすべてのジオメトリの RGB チャンネルを加算し、最大値で飽和させる"
           },
-          "takeLast": {}
+          "takeFirst": {
+            "title": "最初を採用",
+            "description": "そのピクセルに最初に描画されたジオメトリの色を採用する"
+          },
+          "takeLast": {
+            "title": "最後を採用",
+            "description": "そのピクセルに最後に描画されたジオメトリの色を採用する"
+          }
         }
       }
     },

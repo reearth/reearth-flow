@@ -2312,12 +2312,12 @@ graphs:
         fromPort: merged
         toPort: features
 
-      # AddSolarSchemaAttributes → ImageRasterizer (textureCoordinates port)
+      # AddSolarSchemaAttributes → ImageRasterizer (texture-coordinates port)
       - id: e0000001-0000-0000-0000-000000000077
         from: 00000001-0000-0000-0000-000000000073
         to: 00000001-0000-0000-0000-000000000061
         fromPort: features
-        toPort: textureCoordinates
+        toPort: texture-coordinates
 
       # ========================================
       # Section 6d: Textured 3D Tiles Output edges
@@ -2746,11 +2746,11 @@ graphs:
         fromPort: merged
         toPort: element
 
-      # ImageRasterizer → CityGmlAttributeInserter (textureBounds: UV reference frame for CityGML)
+      # ImageRasterizer → CityGmlAttributeInserter (texture-bounds: UV reference frame for CityGML)
       - id: e0000001-0000-0000-0000-0000000000e3
         from: 00000001-0000-0000-0000-000000000061
         to: 00000001-0000-0000-0000-0000000000e0
-        fromPort: textureBounds
+        fromPort: texture-bounds
         toPort: textureBounds
 
       # CityGmlAttributeInserter → CityGmlZipFileWriter
