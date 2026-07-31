@@ -1,0 +1,4 @@
+# to test:
+# - 政令指定都市 ward name correctly displayed in filename
+
+citygml_zip_name = "27100_osaka-shi_city_2024_citygml_1_op_bldg.zip"

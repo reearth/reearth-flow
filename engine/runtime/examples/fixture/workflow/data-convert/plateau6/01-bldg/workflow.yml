@@ -18,7 +18,7 @@ graphs:
             value: |
               [
                 {
-                  "cityGmlPath": env["cityGmlPath"],
+                  "city_gml_path": env["cityGmlPath"],
                 },
               ]
 
@@ -29,7 +29,7 @@ graphs:
         with:
           sourceDataset:
             type: flowExpr
-            value: attributes["cityGmlPath"]
+            value: attributes["city_gml_path"]
           extractArchive: true
 
       - id: 8269fcb7-645d-4cc2-bb7e-215357fc960d
@@ -51,6 +51,43 @@ graphs:
           dataset:
             type: flowExpr
             value: attributes["path"]
+
+      - id: 3d0e8b1f-6a2c-4e0b-9f5d-7c1a8b4e2f60
+        name: AttributeManagerForCityCode
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: city_code
+              method: create
+              value:
+                type: flowExpr
+                value: |
+                  id_wrapper = attributes.get("uro:buildingIDAttribute");
+                  id_map = null;
+                  if type(id_wrapper) == list {
+                    id_map = id_wrapper[0].get("uro:BuildingIDAttribute");
+                  } else if type(id_wrapper) == dict {
+                    id_map = id_wrapper.get("uro:BuildingIDAttribute");
+                  }
+                  gml_city_code = null;
+                  if id_map {
+                    gml_city_code = id_map.get("uro:city_code") or id_map.get("uro:city");
+                  }
+                  gml_city_code or env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5]
+
+      - id: 9f2a7c4e-3b5d-4c8f-a1e0-6d9b2f5a8c31
+        name: AttributeConversionTableForWardName
+        type: action
+        action: Attribute Conversion Table
+        with:
+          format: csv
+          inline: !include ../../../../config/admin_ward_list.csv.txt
+          rules:
+            - featureFroms: ["city_code"]
+              featureTo: "cityNameEn"
+              conversionTableKeys: ["ward_code"]
+              conversionTableTo: "ward_name_en"
 
       - id: 16247597-565a-40df-a8d4-7445468978fd
         name: GeometrySplitterByLod
@@ -101,6 +138,38 @@ graphs:
             - __citygml_gml_id
           conflictResolution: requestorWins
 
+      # City-wide highest LOD actually present, keyed by city_code. Caps which
+      # LOD branches emit at all: a branch only writes once some building in
+      # the city truly reaches that LOD, mirroring PLATEAU4's FeatureLodFilter
+      # (which groups by filterKey and only opens LOD-i once max_lod >= i),
+      # instead of always falling back and duplicating lower-LOD content into
+      # every higher-LOD tile set.
+      - id: 7c2e9a4d-5f1b-4e3a-9d6c-8a0f2b4c6e81
+        name: CityMaxLodAggregator
+        type: action
+        action: Attribute Aggregator
+        with:
+          method: max
+          aggregateAttributes:
+            - newAttribute: city_code
+              attribute: city_code
+          calculationAttribute: cityMaxLod
+          calculation:
+            type: flowExpr
+            value: attributes["lod"]
+
+      - id: 9d1e5f3a-7b2c-4d8e-a1f6-3c5d7e9a0b12
+        name: CityMaxLodJoiner
+        type: action
+        action: Feature Joiner
+        with:
+          joinType: left
+          requestorAttribute:
+            - city_code
+          supplierAttribute:
+            - city_code
+          conflictResolution: requestorWins
+
       # --- LOD1 branch ---
       - id: 04339391-dcfe-485a-9593-e12b0eddf864
         name: FeatureFilterLod1
@@ -126,7 +195,13 @@ graphs:
             type: flowExpr
             value: |
               city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
-              city_gml + "_bldg_3dtiles_lod1.zip"
+              base_city_code = env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5];
+              city_code = attributes["city_code"];
+              suffix = "";
+              if city_code != base_city_code {
+                suffix = "_" + city_code + "_" + attributes["cityNameEn"];
+              }
+              city_gml + suffix + "_bldg_3dtiles_lod1.zip"
 
       # --- LOD2 branch ---
       - id: acf7b926-7c8b-4448-9a3d-af4a1d1aa2cd
@@ -145,7 +220,7 @@ graphs:
                     if (mask & (1 << i)) != 0 { best = i; }
                     i += 1;
                   }
-                  attributes["lod"] == best
+                  attributes["cityMaxLod"] >= 2 and attributes["lod"] == best
               outputPort: features
 
       - id: e44e7208-c0a6-4bca-829c-5d2769dd49f3
@@ -161,7 +236,13 @@ graphs:
             type: flowExpr
             value: |
               city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
-              city_gml + "_bldg_3dtiles_lod2.zip"
+              base_city_code = env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5];
+              city_code = attributes["city_code"];
+              suffix = "";
+              if city_code != base_city_code {
+                suffix = "_" + city_code + "_" + attributes["cityNameEn"];
+              }
+              city_gml + suffix + "_bldg_3dtiles_lod2.zip"
 
       # --- LOD3 branch ---
       - id: acd88b8a-708a-4adf-ad6e-b471d934191d
@@ -180,7 +261,7 @@ graphs:
                     if (mask & (1 << i)) != 0 { best = i; }
                     i += 1;
                   }
-                  attributes["lod"] == best
+                  attributes["cityMaxLod"] >= 3 and attributes["lod"] == best
               outputPort: features
 
       - id: a7b575b0-8a0b-44d6-a80e-1fef936058df
@@ -196,7 +277,13 @@ graphs:
             type: flowExpr
             value: |
               city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
-              city_gml + "_bldg_3dtiles_lod3.zip"
+              base_city_code = env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5];
+              city_code = attributes["city_code"];
+              suffix = "";
+              if city_code != base_city_code {
+                suffix = "_" + city_code + "_" + attributes["cityNameEn"];
+              }
+              city_gml + suffix + "_bldg_3dtiles_lod3.zip"
 
     edges:
       - id: b312699e-9e9f-48e9-9624-512c788bdbe1
@@ -216,6 +303,16 @@ graphs:
         toPort: features
       - id: a2631c5e-f7e9-40c1-bec2-ddddee56257c
         from: 25d2c806-4c6f-47dc-bfe9-e99c2f951f0a
+        to: 3d0e8b1f-6a2c-4e0b-9f5d-7c1a8b4e2f60
+        fromPort: features
+        toPort: features
+      - id: 8b3e5c1a-2f4d-4a6b-9c8e-1d0f3a5b7c9e
+        from: 3d0e8b1f-6a2c-4e0b-9f5d-7c1a8b4e2f60
+        to: 9f2a7c4e-3b5d-4c8f-a1e0-6d9b2f5a8c31
+        fromPort: features
+        toPort: features
+      - id: 5c7d9e1f-4a6b-4c8d-9e0f-2a3b5c7d9e1a
+        from: 9f2a7c4e-3b5d-4c8f-a1e0-6d9b2f5a8c31
         to: 16247597-565a-40df-a8d4-7445468978fd
         fromPort: features
         toPort: features
@@ -240,19 +337,35 @@ graphs:
         to: 5af9f07c-ec06-48b5-84bd-2ee0eb700e9c
         fromPort: features
         toPort: supplier
-      # joined (lod + lodMask) -> per-lod filters
-      - id: 71f0a555-6c6d-4201-9e03-a2c8278bd5bf
+      # split -> per-city_code max LOD -> joined back onto each split feature
+      - id: 4e6a8c0d-2b3f-4e5a-8c1d-6f9b0a2c4e83
+        from: 16247597-565a-40df-a8d4-7445468978fd
+        to: 7c2e9a4d-5f1b-4e3a-9d6c-8a0f2b4c6e81
+        fromPort: features
+        toPort: features
+      - id: 1a3c5e7f-9b0d-4a2c-8e4f-6a8c0e2b4d95
         from: 5af9f07c-ec06-48b5-84bd-2ee0eb700e9c
+        to: 9d1e5f3a-7b2c-4d8e-a1f6-3c5d7e9a0b12
+        fromPort: joined
+        toPort: requestor
+      - id: 2b4d6f80-0c1e-4b3d-9f5a-7b9d1f3c5e06
+        from: 7c2e9a4d-5f1b-4e3a-9d6c-8a0f2b4c6e81
+        to: 9d1e5f3a-7b2c-4d8e-a1f6-3c5d7e9a0b12
+        fromPort: features
+        toPort: supplier
+      # joined (lod + lodMask + cityMaxLod) -> per-lod filters
+      - id: 71f0a555-6c6d-4201-9e03-a2c8278bd5bf
+        from: 9d1e5f3a-7b2c-4d8e-a1f6-3c5d7e9a0b12
         to: 04339391-dcfe-485a-9593-e12b0eddf864
         fromPort: joined
         toPort: features
       - id: 6d8c644d-3f72-4634-b2f5-0b62a7d9b813
-        from: 5af9f07c-ec06-48b5-84bd-2ee0eb700e9c
+        from: 9d1e5f3a-7b2c-4d8e-a1f6-3c5d7e9a0b12
         to: acf7b926-7c8b-4448-9a3d-af4a1d1aa2cd
         fromPort: joined
         toPort: features
       - id: 9ae53fa9-ed12-46ce-b628-494d610d93f3
-        from: 5af9f07c-ec06-48b5-84bd-2ee0eb700e9c
+        from: 9d1e5f3a-7b2c-4d8e-a1f6-3c5d7e9a0b12
         to: acd88b8a-708a-4adf-ad6e-b471d934191d
         fromPort: joined
         toPort: features
