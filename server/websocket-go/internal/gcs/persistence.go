@@ -595,6 +595,7 @@ func (a *Adapter) Delete(ctx context.Context, room string) error {
 		a.layout.StateVectorName(room, oid),
 		a.layout.OIDIndexName(room),
 		a.ceilingName(room),
+		a.layout.SnapNextIDName(room),
 	}
 	for _, n := range names {
 		if n == "" {
@@ -604,7 +605,9 @@ func (a *Adapter) Delete(ctx context.Context, room string) error {
 			return err
 		}
 	}
-	for _, prefix := range []string{a.layout.UpdatePrefix(room, oid), a.snapshotPrefix(room)} {
+	// Snapshot objects (SnapshotStore) and the id counter above are room data too:
+	// the documented contract is "removes all data for room".
+	for _, prefix := range []string{a.layout.UpdatePrefix(room, oid), a.snapshotPrefix(room), a.layout.SnapVersionPrefix(room)} {
 		objs, err := a.store.list(ctx, prefix)
 		if err != nil {
 			return err
@@ -637,6 +640,7 @@ func (a *Adapter) deleteLegacyRoot(ctx context.Context, room DocID) error {
 		leg.StateVectorName(room, oid),
 		leg.OIDIndexName(room),
 		legacyCeilingName(room),
+		leg.SnapNextIDName(room),
 	}
 	for _, n := range names {
 		if n == "" {
@@ -646,7 +650,7 @@ func (a *Adapter) deleteLegacyRoot(ctx context.Context, room DocID) error {
 			return err
 		}
 	}
-	for _, prefix := range []string{leg.UpdatePrefix(room, oid), legacySnapshotPrefix(room)} {
+	for _, prefix := range []string{leg.UpdatePrefix(room, oid), legacySnapshotPrefix(room), leg.SnapVersionPrefix(room)} {
 		objs, err := a.store.list(ctx, prefix)
 		if err != nil {
 			return err
