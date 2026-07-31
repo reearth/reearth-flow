@@ -12922,6 +12922,16 @@ Reads 3D models from glTF 2.0 files, supporting meshes, nodes, scenes, and geome
         "null"
       ]
     },
+    "featureGranularity": {
+      "title": "Feature Granularity",
+      "description": "What one output feature represents. `mesh` (the default) emits one feature per glTF mesh. `featureId` splits each mesh into one feature per EXT_mesh_features feature ID, attaching that object's EXT_structural_metadata properties; files without EXT_mesh_features still yield one feature per mesh.",
+      "default": "mesh",
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureGranularity"
+        }
+      ]
+    },
     "dataset": {
       "title": "File Path",
       "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
@@ -12971,6 +12981,28 @@ Reads 3D models from glTF 2.0 files, supporting meshes, nodes, scenes, and geome
           "type": "string"
         }
       }
+    }
+  },
+  "definitions": {
+    "FeatureGranularity": {
+      "title": "Feature Granularity",
+      "description": "Controls what one output feature represents.",
+      "oneOf": [
+        {
+          "description": "One feature per glTF mesh (or per node instance). Structural-metadata properties are not surfaced, because they are per object, not per mesh.",
+          "type": "string",
+          "enum": [
+            "mesh"
+          ]
+        },
+        {
+          "description": "One feature per `EXT_mesh_features` feature ID, each carrying that object's `EXT_structural_metadata` properties. Files without `EXT_mesh_features` still yield one feature per mesh.",
+          "type": "string",
+          "enum": [
+            "featureId"
+          ]
+        }
+      ]
     }
   }
 }

@@ -35,7 +35,7 @@ use tokio::sync::mpsc::Sender;
 
 use crate::{errors::SourceError, file::reader::runner::get_input_path};
 
-use super::{load_buffers, GltfReaderCompiledParam, MeshInfo};
+use super::{load_buffers, FeatureGranularity, GltfReaderCompiledParam, MeshInfo};
 
 /// New-geometry glTF read: mirrors the old-world `read_gltf` traversal, converting
 /// each extracted geometry into the new model and streaming features to `sender` as
@@ -90,17 +90,23 @@ pub(super) async fn read(
         )?;
     }
 
-    // Meshes that carry their own EXT_mesh_features feature IDs always split
-    // into one Flow feature per ID, streamed immediately, regardless of
-    // `merge_meshes` (splitting takes precedence over merging; logged once
-    // below). Meshes without feature IDs keep today's behaviour: one feature
-    // each, or accumulated here to merge into a single feature at the end.
+    // What one output feature represents is controlled entirely by
+    // `params.feature_granularity`, never by what the input file happens to
+    // contain (see `FeatureGranularity`). In `FeatureId` mode, a mesh that
+    // carries its own EXT_mesh_features feature IDs splits into one Flow
+    // feature per ID, streamed immediately, regardless of `merge_meshes`
+    // (splitting takes precedence over merging; logged once below). In `Mesh`
+    // mode, and for any mesh without feature IDs even in `FeatureId` mode,
+    // behaviour is unchanged: one feature per mesh, or accumulated here to
+    // merge into a single feature at the end.
     let mut merge_candidates = Vec::new();
     let mut merge_mesh_names: HashSet<String> = HashSet::new();
     let mut merge_node_names: HashSet<String> = HashSet::new();
     let mut merge_primitive_count = 0usize;
     let mut merge_override_logged = false;
     let mut metadata_no_features_logged = false;
+    let mut granularity_fallback_logged = false;
+    let want_feature_id_granularity = params.feature_granularity == FeatureGranularity::FeatureId;
 
     for mesh_info in mesh_infos {
         let build = extract_mesh_build(
@@ -114,21 +120,34 @@ pub(super) async fn read(
         let node_names = mesh_info.node_name.map(|n| vec![n]).unwrap_or_default();
         let primitive_count = mesh_info.primitives.len();
         let has_feature_ids = build.tri_feature_id.iter().any(Option::is_some);
+        let splitting = want_feature_id_granularity && has_feature_ids;
 
-        if !has_feature_ids && structural_metadata.is_some() && !metadata_no_features_logged {
-            tracing::warn!(
-                "glTF: EXT_structural_metadata is present but this mesh has no \
-                 EXT_mesh_features feature IDs; per-object metadata was not surfaced"
-            );
-            metadata_no_features_logged = true;
+        if want_feature_id_granularity && !has_feature_ids {
+            // The user asked to split by feature ID (Mesh mode wouldn't split
+            // regardless, so this isn't a surprise there), but this mesh has
+            // none to split by.
+            if structural_metadata.is_some() && !metadata_no_features_logged {
+                tracing::warn!(
+                    "glTF: EXT_structural_metadata is present but this mesh has no \
+                     EXT_mesh_features feature IDs; per-object metadata was not surfaced"
+                );
+                metadata_no_features_logged = true;
+            }
+            if !granularity_fallback_logged {
+                tracing::warn!(
+                    "glTF: feature_granularity is `featureId`, but this mesh has no \
+                     EXT_mesh_features feature IDs; emitting one feature per mesh instead"
+                );
+                granularity_fallback_logged = true;
+            }
         }
 
-        if has_feature_ids {
+        if splitting {
             if params.merge_meshes && !merge_override_logged {
                 tracing::warn!(
-                    "glTF: merge_meshes is set, but EXT_mesh_features feature IDs are \
-                     present; splitting by feature ID takes precedence and merge was \
-                     overridden"
+                    "glTF: merge_meshes is set, but feature_granularity is `featureId` and \
+                     EXT_mesh_features feature IDs are present; splitting by feature ID \
+                     takes precedence and merge was overridden"
                 );
                 merge_override_logged = true;
             }
@@ -1403,9 +1422,12 @@ mod tests {
     }
 
     /// Runs the full new-geometry read path (`read`) over `bytes` (an
-    /// embedded-buffer `.glb`) and collects every emitted `Feature`. Both
-    /// fixtures embed their buffer as the GLB's binary chunk, so `load_buffers`
-    /// never touches the storage resolver, letting tests use a bare default
+    /// embedded-buffer `.glb`) and collects every emitted `Feature`, with
+    /// `feature_granularity: FeatureId` (the granularity the pre-existing
+    /// tests below were written against, back when splitting was decided by
+    /// the input rather than by a parameter). Both fixtures embed their
+    /// buffer as the GLB's binary chunk, so `load_buffers` never touches the
+    /// storage resolver, letting tests use a bare default
     /// `NodeContext`/`StorageResolver` with no real I/O.
     fn read_all_features_for_test(bytes: &[u8]) -> Vec<Feature> {
         read_all_features_for_test_with_class(bytes, None)
@@ -1418,6 +1440,29 @@ mod tests {
         bytes: &[u8],
         feature_class_attribute: Option<&str>,
     ) -> Vec<Feature> {
+        read_all_features_for_test_with_class_and_granularity(
+            bytes,
+            feature_class_attribute,
+            FeatureGranularity::FeatureId,
+        )
+    }
+
+    /// Same as [`read_all_features_for_test`], but lets the caller set
+    /// `feature_granularity` explicitly. Used by the determinism test, which
+    /// proves granularity is decided by this parameter, not by whether the
+    /// input carries `EXT_mesh_features`.
+    fn read_all_features_for_test_with_granularity(
+        bytes: &[u8],
+        feature_granularity: FeatureGranularity,
+    ) -> Vec<Feature> {
+        read_all_features_for_test_with_class_and_granularity(bytes, None, feature_granularity)
+    }
+
+    fn read_all_features_for_test_with_class_and_granularity(
+        bytes: &[u8],
+        feature_class_attribute: Option<&str>,
+        feature_granularity: FeatureGranularity,
+    ) -> Vec<Feature> {
         let params = GltfReaderCompiledParam {
             common: crate::file::reader::runner::FileReaderCompiledParam {
                 dataset: None,
@@ -1427,6 +1472,7 @@ mod tests {
             merge_meshes: false,
             include_nodes: true,
             feature_class_attribute: feature_class_attribute.map(|s| s.to_string()),
+            feature_granularity,
         };
         let ctx = NodeContext::default();
         let storage_resolver = Arc::new(reearth_flow_storage::resolve::StorageResolver::default());
@@ -1526,6 +1572,31 @@ mod tests {
         assert_eq!(
             target.attributes.get(&Attribute::new("tran:function")),
             Some(&AttributeValue::String("路肩".to_string()))
+        );
+    }
+
+    /// The determinism guarantee the reviewer asked for: the SAME real
+    /// PLATEAU fixture used above (which DOES carry `EXT_mesh_features`) must
+    /// yield exactly one feature under the DEFAULT `Mesh` granularity.
+    /// Whether a file happens to carry `EXT_mesh_features` must never change
+    /// a workflow's output shape on its own; only `feature_granularity`
+    /// decides that.
+    #[test]
+    fn plateau_glb_single_feature_under_default_mesh_granularity() {
+        let bytes = include_bytes!("../../testdata/test_data_39255_tran_AuxiliaryTrafficArea.glb");
+        let features =
+            read_all_features_for_test_with_granularity(bytes, FeatureGranularity::default());
+        assert_eq!(
+            FeatureGranularity::default(),
+            FeatureGranularity::Mesh,
+            "this test exercises the default, which must be Mesh"
+        );
+        assert_eq!(
+            features.len(),
+            1,
+            "same input as plateau_glb_splits_into_features_with_metadata, but under the \
+             default Mesh granularity it must stay a single feature: {}",
+            features.len()
         );
     }
 
@@ -1719,6 +1790,7 @@ mod tests {
             merge_meshes: false,
             include_nodes: true,
             feature_class_attribute: None,
+            feature_granularity: FeatureGranularity::FeatureId,
         };
         let empty: Vec<String> = Vec::new();
 
@@ -1804,6 +1876,7 @@ mod tests {
             merge_meshes: false,
             include_nodes: true,
             feature_class_attribute: None,
+            feature_granularity: FeatureGranularity::FeatureId,
         };
         let empty: Vec<String> = Vec::new();
 
@@ -1918,6 +1991,7 @@ mod tests {
             merge_meshes: false,
             include_nodes: true,
             feature_class_attribute: feature_class_attribute.map(|s| s.to_string()),
+            feature_granularity: FeatureGranularity::FeatureId,
         }
     }
 

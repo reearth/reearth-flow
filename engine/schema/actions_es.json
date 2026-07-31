@@ -13273,6 +13273,16 @@
               "null"
             ]
           },
+          "featureGranularity": {
+            "title": "Granularidad de entidades",
+            "description": "Qué representa cada entidad de salida. `mesh` (el valor predeterminado) genera una entidad por cada malla glTF. `featureId` divide cada malla en una entidad por cada ID de entidad de EXT_mesh_features, adjuntando las propiedades EXT_structural_metadata de ese objeto; los archivos sin EXT_mesh_features siguen generando una entidad por malla.",
+            "default": "mesh",
+            "allOf": [
+              {
+                "$ref": "#/definitions/FeatureGranularity"
+              }
+            ]
+          },
           "dataset": {
             "title": "File Path",
             "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
@@ -13322,6 +13332,28 @@
                 "type": "string"
               }
             }
+          }
+        },
+        "definitions": {
+          "FeatureGranularity": {
+            "title": "Feature Granularity",
+            "description": "Controls what one output feature represents.",
+            "oneOf": [
+              {
+                "description": "Una entidad por cada malla glTF (o por instancia de nodo). Las propiedades de metadatos estructurales no se muestran, porque son por objeto, no por malla.",
+                "type": "string",
+                "enum": [
+                  "mesh"
+                ]
+              },
+              {
+                "description": "Una entidad por cada ID de entidad de `EXT_mesh_features`, cada una con las propiedades `EXT_structural_metadata` de ese objeto. Los archivos sin `EXT_mesh_features` siguen generando una entidad por malla.",
+                "type": "string",
+                "enum": [
+                  "featureId"
+                ]
+              }
+            ]
           }
         }
       },

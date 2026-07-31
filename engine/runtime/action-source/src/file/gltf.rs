@@ -89,6 +89,7 @@ impl SourceFactory for GltfReaderFactory {
             merge_meshes: params.merge_meshes,
             include_nodes: params.include_nodes,
             feature_class_attribute: params.feature_class_attribute,
+            feature_granularity: params.feature_granularity,
         };
         Ok(Box::new(GltfReader { params: compiled }))
     }
@@ -104,11 +105,30 @@ struct GltfReaderCompiledParam {
     // the not(new-geometry) world doesn't split by feature ID at all.
     #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
     feature_class_attribute: Option<String>,
+    // Only read by the new-geometry path (`gltf_next::read`), which is the
+    // only path that ever splits a mesh into multiple features.
+    #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
+    feature_granularity: FeatureGranularity,
 }
 
 #[derive(Debug, Clone)]
 pub(super) struct GltfReader {
     params: GltfReaderCompiledParam,
+}
+
+/// # Feature Granularity
+/// Controls what one output feature represents.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub(super) enum FeatureGranularity {
+    /// One feature per glTF mesh (or per node instance). Structural-metadata
+    /// properties are not surfaced, because they are per object, not per mesh.
+    #[default]
+    Mesh,
+    /// One feature per `EXT_mesh_features` feature ID, each carrying that
+    /// object's `EXT_structural_metadata` properties. Files without
+    /// `EXT_mesh_features` still yield one feature per mesh.
+    FeatureId,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -132,6 +152,10 @@ pub(super) struct GltfReaderParam {
     /// Attribute key to store the EXT_structural_metadata class name under, for each split feature. If unset, the class name is not added as an attribute.
     #[serde(default)]
     pub(super) feature_class_attribute: Option<String>,
+    /// # Feature Granularity
+    /// What one output feature represents. `mesh` (the default) emits one feature per glTF mesh. `featureId` splits each mesh into one feature per EXT_mesh_features feature ID, attaching that object's EXT_structural_metadata properties; files without EXT_mesh_features still yield one feature per mesh.
+    #[serde(default)]
+    pub(super) feature_granularity: FeatureGranularity,
 }
 
 fn default_true() -> bool {

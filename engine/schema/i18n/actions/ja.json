@@ -3786,6 +3786,10 @@
           "title": "フィーチャークラス属性",
           "description": "分割した各フィーチャーについて、EXT_structural_metadata のクラス名を格納する属性キー。未設定の場合、クラス名は属性として追加されない"
         },
+        "featureGranularity": {
+          "title": "フィーチャーの粒度",
+          "description": "1つの出力フィーチャーが何を表すかを指定する。デフォルトの `mesh` は glTF メッシュごとに1つのフィーチャーを出力する。`featureId` は各メッシュを EXT_mesh_features のフィーチャーIDごとに分割し、そのオブジェクトの EXT_structural_metadata プロパティを付与する。EXT_mesh_features を持たないファイルは、引き続きメッシュごとに1つのフィーチャーを出力する。"
+        },
         "includeNodes": {
           "title": "ノードを含める",
           "description": "true の場合、glTF シーングラフのノード階層情報をフィーチャー属性に含める"
@@ -3801,6 +3805,16 @@
         "triangulate": {
           "title": "三角形分割",
           "description": "true の場合、すべてのプリミティブを三角形に変換する（将来の使用のために予約済み。現在はすべてのプリミティブが三角形として処理される）"
+        }
+      },
+      "enumI18n": {
+        "FeatureGranularity": {
+          "featureId": {
+            "description": "`EXT_mesh_features` のフィーチャーIDごとに1つのフィーチャーを出力し、それぞれにそのオブジェクトの `EXT_structural_metadata` プロパティを付与する。`EXT_mesh_features` を持たないファイルは、引き続きメッシュごとに1つのフィーチャーを出力する。"
+          },
+          "mesh": {
+            "description": "glTF メッシュ(またはノードインスタンス)ごとに1つのフィーチャー。構造メタデータのプロパティはオブジェクト単位でありメッシュ単位ではないため、表示されない。"
+          }
         }
       }
     },
