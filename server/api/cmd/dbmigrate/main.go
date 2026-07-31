@@ -91,6 +91,19 @@ func main() {
 	applySchema := flag.Bool("apply-schema", false, "apply the embedded Atlas migrations to the target before replicating (fresh instance only)")
 	flag.Parse()
 
+	// -verify returns before the ETL, so pairing it with a seeding flag silently
+	// skips the replication and still exits 0. Reject the combination rather than
+	// leaving an empty database that looks successfully seeded.
+	if *verify {
+		passed := map[string]bool{}
+		flag.Visit(func(f *flag.Flag) { passed[f.Name] = true })
+		for _, name := range []string{"apply-schema", "db"} {
+			if passed[name] {
+				log.Fatalf("-verify only reads the target and cannot be combined with -%s; run the steps separately", name)
+			}
+		}
+	}
+
 	pgURI := os.Getenv("REEARTH_FLOW_DB_PG")
 	if pgURI == "" {
 		log.Fatal("set REEARTH_FLOW_DB_PG (target Postgres URI)")
