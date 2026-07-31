@@ -23,4 +23,4 @@ near = 1.00
 far = 1000.61
 
 [tests.raster3d.lod1]
-threshold = 1.0
+threshold = 1e-4
