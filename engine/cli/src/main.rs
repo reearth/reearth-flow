@@ -12,6 +12,7 @@ mod schema_action;
 mod schema_feature;
 mod schema_workflow;
 mod utils;
+mod view;
 
 use std::env;
 

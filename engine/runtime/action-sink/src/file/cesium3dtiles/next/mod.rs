@@ -261,6 +261,36 @@ pub fn build(
     })
 }
 
+/// Render every feature into a single glb, untiled. Where [`build`] splits a
+/// whole dataset across a quadtree, this renders a hand-picked selection whole,
+/// which is what a viewer wants for one feature or a few.
+///
+/// Positions are local to an origin chosen from the rendered geometry, carried
+/// on the scene node's translation exactly as tile content is, so the result
+/// drops into a georeferenced viewer unchanged.
+///
+/// `Ok(None)` means no feature carried renderable geometry.
+pub fn build_glb(
+    features: &[Feature],
+    options: MetadataOptions,
+    render: RenderOptions,
+) -> crate::errors::Result<Option<Vec<u8>>> {
+    let mut caches = mesh::ExtractCaches::default();
+    let extracted: Vec<(&Feature, mesh::ExtractedMesh)> = features
+        .iter()
+        .filter_map(|feature| mesh::extract(&feature.geometry, &mut caches).map(|m| (feature, m)))
+        .collect();
+
+    if extracted.is_empty() {
+        return Ok(None);
+    }
+
+    let members: Vec<&(&Feature, mesh::ExtractedMesh)> = extracted.iter().collect();
+    let mut textures = TextureCache::default();
+    let mut embedded = EmbeddedTextures::new()?;
+    build_cell_glb(&members, options, render, &mut textures, &mut embedded).map(Some)
+}
+
 fn empty_tileset() -> crate::errors::Result<BuiltTileset> {
     let root = GeoBox {
         west: 0.0,

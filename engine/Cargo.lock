@@ -5039,6 +5039,7 @@ dependencies = [
  "reearth-flow-action-sink",
  "reearth-flow-action-source",
  "reearth-flow-common",
+ "reearth-flow-feature-view",
  "reearth-flow-geometry",
  "reearth-flow-runner",
  "reearth-flow-runtime",
@@ -5140,6 +5141,22 @@ dependencies = [
  "regex",
  "serde_json",
  "thiserror 2.0.18",
+]
+
+[[package]]
+name = "reearth-flow-feature-view"
+version = "0.0.465"
+dependencies = [
+ "bytes",
+ "reearth-flow-action-sink",
+ "reearth-flow-common",
+ "reearth-flow-geometry",
+ "reearth-flow-storage",
+ "reearth-flow-types",
+ "serde_json",
+ "tempfile",
+ "thiserror 2.0.18",
+ "zstd",
 ]
 
 [[package]]
