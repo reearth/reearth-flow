@@ -13,7 +13,7 @@ import (
 )
 
 // TestAuthRequest_AtlasSchema exercises the reearthx authserver.Postgres repo
-// against flow's Atlas-migrated auth_requests table (pgtest applies db/migrations
+// against flow's Atlas-migrated auth_requests table (pgtest applies the embedded migrations
 // and never calls the library's self-managing Init). It asserts that flow's
 // schema matches what the repo expects — if the Atlas DDL and the reearthx repo
 // drift apart, this fails.

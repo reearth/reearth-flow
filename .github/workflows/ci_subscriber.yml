@@ -26,6 +26,28 @@ jobs:
           args: --timeout=10m
           working-directory: server/subscriber
 
+  ci-subscriber-codegen-drift:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
+      - name: checkout
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+      - name: set up Go
+        uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5.6.0
+        with:
+          go-version-file: 'server/subscriber/go.mod'
+          check-latest: true
+      - name: Install sqlc
+        run: go install github.com/sqlc-dev/sqlc/cmd/sqlc@v1.31.1
+      - name: sqlc generate (no drift)
+        working-directory: server/subscriber/internal/infrastructure/postgres
+        run: |
+          sqlc generate
+          git diff --exit-code gen/ || (echo "sqlc drift: run 'make sqlc' and commit gen/"; exit 1)
+
   ci-subscriber-test:
     runs-on: ubuntu-latest
     steps:

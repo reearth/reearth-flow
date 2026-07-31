@@ -27,7 +27,7 @@ impl ProcessorFactory for AppearanceRemoverFactory {
     }
 
     fn description(&self) -> &str {
-        "Discards the materials, textures and texture coordinates carried by a feature's geometry."
+        "Discards the materials, textures, and texture coordinates carried by a feature's geometry."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
