@@ -273,6 +273,8 @@ pub fn build(
 /// drops into a georeferenced viewer unchanged.
 ///
 /// `Ok(None)` means the feature carried no renderable geometry.
+///
+// TODO: Relocate this after GltfWriter is implemented (for the new geometry)
 pub fn build_glb(
     feature: &Feature,
     options: MetadataOptions,
