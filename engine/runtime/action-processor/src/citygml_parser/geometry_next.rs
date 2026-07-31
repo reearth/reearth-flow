@@ -962,7 +962,7 @@ mod tests {
              </gml:surfaceMember></gml:MultiSurface></bldg:lod2MultiSurface>
            </bldg:Building></core:cityObjectMember>
          </core:CityModel>"#;
-        let mut parser = Parser::new(CityGmlVersion::V3);
+        let mut parser = Parser::new(CityGmlVersion::V2);
         parser
             .parse(xml.as_bytes(), &Url::parse("file:///test.gml").unwrap())
             .unwrap();
