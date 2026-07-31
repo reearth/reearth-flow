@@ -8,6 +8,7 @@
 //! plus the one optional elevation the whole surface lies at, matching the 2D leaf
 //! convention.
 
+#[cfg(feature = "debug-geom-feature-write")]
 use serde::{Deserialize, Serialize};
 
 use crate::appearance::Appearance;
@@ -15,12 +16,15 @@ use crate::coordinate::CoordinateFrame;
 use crate::index::IndexBuffer;
 
 mod constructor;
+#[cfg(not(feature = "debug-geom-feature-write"))]
+mod feature_write;
 mod ops;
 #[cfg(feature = "new-geometry")]
 mod validation;
 
 /// A triangle mesh in 2D space, lying at a single optional elevation.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "debug-geom-feature-write", derive(Serialize, Deserialize))]
+#[derive(Clone, Debug, PartialEq)]
 pub struct TriangularMesh2D {
     /// Coordinate frame these vertices are expressed in.
     frame: CoordinateFrame,
@@ -46,7 +50,8 @@ pub struct TriangularMesh2D {
 /// frame from the enclosing `Solid` — so a solid and its boundaries cannot
 /// disagree on a frame. Mirrors the [`Raster`](crate::appearance::Raster) /
 /// [`RasterData`](crate::appearance::RasterData) split.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "debug-geom-feature-write", derive(Serialize, Deserialize))]
+#[derive(Clone, Debug, PartialEq)]
 pub struct TriangularMesh3DData {
     vertices: Vec<[f64; 3]>,
     /// Flat triangle index list; width from `vertices.len() - 1`. Each triangle's
@@ -60,7 +65,8 @@ pub struct TriangularMesh3DData {
 
 /// A triangle mesh in 3D space: coordinate-free mesh data plus the frame it is
 /// expressed in.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "debug-geom-feature-write", derive(Serialize, Deserialize))]
+#[derive(Clone, Debug, PartialEq)]
 pub struct TriangularMesh3D {
     /// Coordinate frame the mesh data is expressed in.
     frame: CoordinateFrame,
