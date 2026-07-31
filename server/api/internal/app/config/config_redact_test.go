@@ -17,13 +17,14 @@ func TestConfig_Print_MasksCredentials(t *testing.T) {
 	c.SignupSecret = "signupsecret"
 	c.WebsocketAPISecret = "wssecret"
 	c.CMS_Token = "cmstoken"
+	c.Redis_URL = "redis://:redispass@10.0.0.1:6379"
 	c.AssetBaseURL = "http://localhost:8080/assets"
 
 	out := c.Print()
 
 	for _, leaked := range []string{
 		"mpass", "pgpass123", "auth0secret", "hcpass",
-		"signupsecret", "wssecret", "cmstoken",
+		"signupsecret", "wssecret", "cmstoken", "redispass",
 	} {
 		if strings.Contains(out, leaked) {
 			t.Errorf("Print leaked %q", leaked)
