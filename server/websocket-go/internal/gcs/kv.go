@@ -40,6 +40,18 @@ func (s kv) put(ctx context.Context, name string, data []byte) error {
 	return w.Close()
 }
 
+// putWithMeta writes data and attaches custom object metadata, so listAttrs can
+// return a snapshot's label and uncompressed size without reading its payload.
+func (s kv) putWithMeta(ctx context.Context, name string, data []byte, meta map[string]string) error {
+	w := s.bucket.Object(name).NewWriter(ctx)
+	w.Metadata = meta
+	if _, err := w.Write(data); err != nil {
+		_ = w.Close()
+		return err
+	}
+	return w.Close()
+}
+
 func (s kv) delete(ctx context.Context, name string) error {
 	err := s.bucket.Object(name).Delete(ctx)
 	if errors.Is(err, storage.ErrObjectNotExist) {

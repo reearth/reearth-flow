@@ -1,6 +1,9 @@
 package gcs
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 // Golden object-name vectors. Getting the double-hex of doc_v2/checkpoint wrong
 // silently writes to a valid-looking but wrong object.
@@ -112,5 +115,51 @@ func TestValidateDocIDForPrefix(t *testing.T) {
 		if err := ValidateDocIDForPrefix(d); err == nil {
 			t.Errorf("ValidateDocIDForPrefix(%q) = nil, want error", d)
 		}
+	}
+}
+
+func TestSnapVersionNaming_LegacyRoot(t *testing.T) {
+	var l LegacyRootLayout
+	const room DocID = "01kykrds8s93qfnxx8g8d26hsy"
+
+	prefix := l.SnapVersionPrefix(room)
+	name := l.SnapVersionName(room, 7)
+
+	// The listing prefix must actually be a prefix of a member object, or
+	// ListSnapshots cannot enumerate. Hex encoding is per-byte, so a shared
+	// string prefix yields a shared hex prefix.
+	if !strings.HasPrefix(name, prefix) {
+		t.Fatalf("name %q does not start with prefix %q", name, prefix)
+	}
+	// The id must round-trip out of the object name.
+	got, ok := snapVersionID(name, prefix)
+	if !ok || got != 7 {
+		t.Fatalf("snapVersionID = (%d,%v), want (7,true)", got, ok)
+	}
+	// Distinct rooms must not share a prefix.
+	if strings.HasPrefix(l.SnapVersionName("other", 7), prefix) {
+		t.Fatal("a different room must not fall under this room's prefix")
+	}
+	// nextid must NOT fall under the listing prefix, or it would be listed as a snapshot.
+	if strings.HasPrefix(l.SnapNextIDName(room), prefix) {
+		t.Fatal("nextid object must not be inside the snapshot listing prefix")
+	}
+}
+
+func TestSnapVersionNaming_ProjectFolder(t *testing.T) {
+	var l ProjectFolderLayout
+	const room DocID = "01kykrds8s93qfnxx8g8d26hsy"
+
+	prefix := l.SnapVersionPrefix(room)
+	name := l.SnapVersionName(room, 42)
+	if !strings.HasPrefix(name, prefix) {
+		t.Fatalf("name %q does not start with prefix %q", name, prefix)
+	}
+	got, ok := snapVersionID(name, prefix)
+	if !ok || got != 42 {
+		t.Fatalf("snapVersionID = (%d,%v), want (42,true)", got, ok)
+	}
+	if strings.HasPrefix(l.SnapNextIDName(room), prefix) {
+		t.Fatal("nextid object must not be inside the snapshot listing prefix")
 	}
 }
