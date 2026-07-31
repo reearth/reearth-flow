@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"log/slog"
 	"net/http"
 	"strconv"
@@ -350,16 +351,46 @@ func (r *router) getSnapshots(w http.ResponseWriter, req *http.Request) {
 	writeJSON(w, http.StatusOK, items)
 }
 
+// maxSnapshotLabel bounds the user-supplied label. GCS custom object metadata
+// caps at 8 KiB per object, and the label is written there; without a bound an
+// oversized label fails deep in the storage layer as an opaque 500, after the
+// snapshot id counter has already been consumed.
+const maxSnapshotLabel = 256
+
 // postSnapshot captures the room's current state as a labelled snapshot.
 func (r *router) postSnapshot(w http.ResponseWriter, req *http.Request) {
 	id := req.PathValue("id")
 	var body SaveSnapshotRequest
-	if req.Body != nil {
-		_ = json.NewDecoder(req.Body).Decode(&body) // label is optional
+	// The label is optional, so an absent body is fine — but a MALFORMED body is
+	// not. Silently ignoring a decode error loses the label the user typed and
+	// still reports success, leaving them with an unnamed version and no error.
+	// Every other POST handler here 400s on a bad body; match them.
+	if err := json.NewDecoder(req.Body).Decode(&body); err != nil && !errors.Is(err, io.EOF) {
+		writeErr(w, http.StatusBadRequest, "invalid body")
+		return
+	}
+	if len(body.Label) > maxSnapshotLabel {
+		writeErr(w, http.StatusBadRequest, "label too long")
+		return
 	}
 	sid, err := r.store.SaveSnapshot(req.Context(), id, body.Label)
+	if errors.Is(err, persistence.ErrSnapshotsUnsupported) {
+		// A backend without snapshot support is a permanent deployment fact, not
+		// a server fault: 501, and not logged at ERROR on every click.
+		writeErr(w, http.StatusNotImplemented, "snapshots not supported by this backend")
+		return
+	}
 	if err != nil {
 		r.fail(w, "save snapshot failed", err, "doc", id)
+		return
+	}
+	// SaveSnapshot reports "nothing worth versioning" as (0, nil). Snapshot ids
+	// start at 1, so 0 names no object: returning 200 with id 0 would tell the
+	// client a snapshot exists when none does, and it would show up as a phantom
+	// version row that vanishes on refetch. Reachable by the most ordinary path
+	// there is — Save version on a project with no edits yet.
+	if sid == 0 {
+		writeErr(w, http.StatusConflict, "nothing to snapshot: document is empty")
 		return
 	}
 	writeJSON(w, http.StatusOK, SnapshotItem{ID: sid, Label: body.Label})
@@ -369,11 +400,18 @@ func (r *router) postSnapshot(w http.ResponseWriter, req *http.Request) {
 func (r *router) getSnapshotState(w http.ResponseWriter, req *http.Request) {
 	id := req.PathValue("id")
 	sid, err := strconv.ParseInt(req.PathValue("sid"), 10, 64)
-	if err != nil {
+	if err != nil || sid < 1 {
+		// Ids are allocated from 1 up, so 0 and negatives can never match; reject
+		// them here rather than reporting a misleading 404.
 		writeErr(w, http.StatusBadRequest, "invalid snapshot id")
 		return
 	}
 	state, err := r.store.GetSnapshotState(req.Context(), id, sid)
+	if errors.Is(err, persistence.ErrSnapshotsUnsupported) {
+		// Distinct from 404: the snapshot is not missing, the feature is absent.
+		writeErr(w, http.StatusNotImplemented, "snapshots not supported by this backend")
+		return
+	}
 	if errors.Is(err, persistence.ErrSnapshotNotFound) {
 		writeErr(w, http.StatusNotFound, "snapshot not found")
 		return
@@ -382,7 +420,7 @@ func (r *router) getSnapshotState(w http.ResponseWriter, req *http.Request) {
 		r.fail(w, "get snapshot state failed", err, "doc", id)
 		return
 	}
-	writeJSON(w, http.StatusOK, DocumentResponse{ID: id, Updates: state})
+	writeJSON(w, http.StatusOK, SnapshotStateResponse{ID: id, SnapshotID: sid, Updates: state})
 }
 
 func (r *router) deleteDocument(w http.ResponseWriter, req *http.Request) {

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 	"testing"
 	"time"
 )
@@ -107,12 +108,15 @@ func TestGetSnapshotState_ReturnsState(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d, body=%s", rec.Code, rec.Body.String())
 	}
-	var resp DocumentResponse
+	var resp SnapshotStateResponse
 	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
 	if string(resp.Updates) != "\x01\x02\x03" {
 		t.Fatalf("Updates = %v, want the snapshot's state bytes", []byte(resp.Updates))
+	}
+	if resp.SnapshotID != 7 {
+		t.Fatalf("SnapshotID = %d, want 7", resp.SnapshotID)
 	}
 }
 
@@ -159,5 +163,131 @@ func TestPostSnapshot_StoreErrorIs500(t *testing.T) {
 	rec := do(t, h, "POST", "/api/document/proj1/snapshots", `{"label":"x"}`)
 	if rec.Code != http.StatusInternalServerError {
 		t.Fatalf("status = %d, want 500, body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+// TestPostSnapshot_EmptyDocumentIsConflict: SaveSnapshot reports "nothing worth
+// versioning" as (0, nil). Ids start at 1, so replying 200 with id 0 would tell
+// the client a snapshot exists when no object was written — the client then
+// shows a version row that addresses nothing and disappears on refetch. This is
+// the most ordinary path there is (Save version on a project with no edits), so
+// it must be an explicit refusal.
+func TestPostSnapshot_EmptyDocumentIsConflict(t *testing.T) {
+	store := &fakeStore{saveSnapshotID: 0} // the (0, nil) no-op
+	h := newTestRouter(store)
+	rec := do(t, h, "POST", "/api/document/proj1/snapshots", `{"label":"x"}`)
+	if rec.Code != http.StatusConflict {
+		t.Fatalf("status = %d, want 409, body=%s", rec.Code, rec.Body.String())
+	}
+	// The response must not carry a snapshot id at all.
+	var resp SnapshotItem
+	if err := json.Unmarshal(rec.Body.Bytes(), &resp); err == nil && resp.ID != 0 {
+		t.Fatalf("a snapshot id leaked into the refusal: %+v", resp)
+	}
+}
+
+// TestPostSnapshot_MalformedBodyIs400: the label is optional, so an ABSENT body
+// is fine, but a malformed one is not. Silently ignoring the decode error drops
+// the label the user typed and still reports success, leaving them with an
+// unnamed version and no indication anything went wrong.
+func TestPostSnapshot_MalformedBodyIs400(t *testing.T) {
+	for _, body := range []string{`{"label":`, `{"label":123}`, `not json`} {
+		store := &fakeStore{saveSnapshotID: 7}
+		h := newTestRouter(store)
+		rec := do(t, h, "POST", "/api/document/proj1/snapshots", body)
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("body %q: status = %d, want 400, body=%s", body, rec.Code, rec.Body.String())
+		}
+		if store.savedRoom != "" {
+			t.Fatalf("body %q: SaveSnapshot was called despite a bad body", body)
+		}
+	}
+}
+
+// TestPostSnapshot_OversizedLabelIs400: the label lands in GCS custom object
+// metadata, which caps at 8 KiB per object. Without a bound at the boundary an
+// oversized label fails deep in the storage layer as an opaque 500 — after the
+// id counter has already been consumed, burning an id per attempt.
+func TestPostSnapshot_OversizedLabelIs400(t *testing.T) {
+	long := strings.Repeat("a", maxSnapshotLabel+1)
+	store := &fakeStore{saveSnapshotID: 7}
+	h := newTestRouter(store)
+	rec := do(t, h, "POST", "/api/document/proj1/snapshots", `{"label":"`+long+`"}`)
+	if rec.Code != http.StatusBadRequest {
+		t.Fatalf("status = %d, want 400, body=%s", rec.Code, rec.Body.String())
+	}
+	if store.savedRoom != "" {
+		t.Fatal("SaveSnapshot was called with an oversized label")
+	}
+	// A label exactly at the limit must still be accepted.
+	store2 := &fakeStore{saveSnapshotID: 8}
+	h2 := newTestRouter(store2)
+	rec2 := do(t, h2, "POST", "/api/document/proj1/snapshots", `{"label":"`+strings.Repeat("a", maxSnapshotLabel)+`"}`)
+	if rec2.Code != http.StatusOK {
+		t.Fatalf("label at the limit: status = %d, want 200, body=%s", rec2.Code, rec2.Body.String())
+	}
+}
+
+// TestSnapshots_UnsupportedBackendIs501: a backend without snapshot support is a
+// permanent deployment fact, not a server fault. Reporting it as 500 logs an
+// ERROR on every click and tells an operator to go looking for a broken store;
+// reporting the fetch as 404 is worse still, since it claims this particular
+// snapshot is missing and sends them hunting for a lost object.
+func TestSnapshots_UnsupportedBackendIs501(t *testing.T) {
+	st := NewStoreAdapter(StoreAdapterDeps{P: &memPersist{}}) // no SnapshotStore
+	h := newTestRouter(st)
+
+	rec := do(t, h, "POST", "/api/document/proj1/snapshots", `{"label":"x"}`)
+	if rec.Code != http.StatusNotImplemented {
+		t.Fatalf("POST status = %d, want 501, body=%s", rec.Code, rec.Body.String())
+	}
+	rec = do(t, h, "GET", "/api/document/proj1/snapshots/1", "")
+	if rec.Code != http.StatusNotImplemented {
+		t.Fatalf("GET state status = %d, want 501, body=%s", rec.Code, rec.Body.String())
+	}
+	// Listing stays lenient on purpose: the panel renders empty, not an error.
+	rec = do(t, h, "GET", "/api/document/proj1/snapshots", "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("GET list status = %d, want 200 (empty list), body=%s", rec.Code, rec.Body.String())
+	}
+}
+
+// TestGetSnapshotState_NonPositiveIDIs400: ids are allocated from 1, so 0 and
+// negatives can never match. Rejecting them here avoids a misleading 404 that
+// reads as "your snapshot was deleted".
+func TestGetSnapshotState_NonPositiveIDIs400(t *testing.T) {
+	for _, sid := range []string{"0", "-1"} {
+		store := &fakeStore{snapshotState: map[int64][]byte{1: {1, 2, 3}}}
+		h := newTestRouter(store)
+		rec := do(t, h, "GET", "/api/document/proj1/snapshots/"+sid, "")
+		if rec.Code != http.StatusBadRequest {
+			t.Fatalf("sid %s: status = %d, want 400, body=%s", sid, rec.Code, rec.Body.String())
+		}
+	}
+}
+
+// TestGetSnapshotState_ResponseCarriesNoUpdateLogVersion pins the response
+// shape. The old shape reused DocumentResponse, whose `version` means an
+// update-log clock everywhere else in this API and has no omitempty — so every
+// snapshot fetch shipped "version":0. That is not an inert placeholder: POST
+// .../rollback with version 0 prunes every update above clock 0, i.e. the entire
+// log. A future consumer wiring up snapshot preview must not find a plausible
+// `version` field sitting in this payload.
+func TestGetSnapshotState_ResponseCarriesNoUpdateLogVersion(t *testing.T) {
+	store := &fakeStore{snapshotState: map[int64][]byte{7: {1, 2, 3}}}
+	h := newTestRouter(store)
+	rec := do(t, h, "GET", "/api/document/proj1/snapshots/7", "")
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, body=%s", rec.Code, rec.Body.String())
+	}
+	var raw map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &raw); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if _, present := raw["version"]; present {
+		t.Fatalf("response must not carry a `version` field (update-log clock space): %v", raw)
+	}
+	if got := raw["snapshot_id"]; got != float64(7) {
+		t.Fatalf("snapshot_id = %v, want 7", got)
 	}
 }

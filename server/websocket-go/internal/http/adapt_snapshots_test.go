@@ -209,9 +209,15 @@ func TestStoreAdapterSaveSnapshot_EmptyRoomIsNoop(t *testing.T) {
 // TestStoreAdapterSnapshots_UnsupportedStoreFallsBackGracefully: a Persistence
 // that does not implement persistence.SnapshotStore (the plain memPersist
 // fake, matching a hypothetical non-GCS backend) must degrade gracefully:
-// ListSnapshots is an empty list (not an error, so the History panel just
-// shows nothing), GetSnapshotState is ErrSnapshotNotFound (so it 404s), and
-// SaveSnapshot reports ErrSnapshotsUnsupported.
+// ListSnapshots is an empty list (not an error, so the History panel just shows
+// nothing), while GetSnapshotState and SaveSnapshot both report
+// ErrSnapshotsUnsupported so the router can answer 501.
+//
+// GetSnapshotState deliberately does NOT report ErrSnapshotNotFound here. That
+// would render as 404 and claim this particular snapshot is missing, sending an
+// operator to look for a deleted object when the real situation is that the
+// backend has no snapshot support at all. Listing is the one lenient case, and
+// only because an empty history panel is a better outcome than an error toast.
 func TestStoreAdapterSnapshots_UnsupportedStoreFallsBackGracefully(t *testing.T) {
 	mp := newMemPersist() // does NOT implement persistence.SnapshotStore
 	st := NewStoreAdapter(StoreAdapterDeps{P: mp})
@@ -225,8 +231,8 @@ func TestStoreAdapterSnapshots_UnsupportedStoreFallsBackGracefully(t *testing.T)
 		t.Fatalf("items = %+v, want a non-nil empty slice", items)
 	}
 
-	if _, err := st.GetSnapshotState(ctx, "room1", 1); !errors.Is(err, persistence.ErrSnapshotNotFound) {
-		t.Fatalf("GetSnapshotState err = %v, want ErrSnapshotNotFound", err)
+	if _, err := st.GetSnapshotState(ctx, "room1", 1); !errors.Is(err, persistence.ErrSnapshotsUnsupported) {
+		t.Fatalf("GetSnapshotState err = %v, want ErrSnapshotsUnsupported (not ErrSnapshotNotFound: the feature is absent, the snapshot is not missing)", err)
 	}
 
 	if _, err := st.SaveSnapshot(ctx, "room1", "x"); !errors.Is(err, persistence.ErrSnapshotsUnsupported) {

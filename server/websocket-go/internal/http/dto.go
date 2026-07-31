@@ -92,3 +92,18 @@ type SnapshotItem struct {
 type SaveSnapshotRequest struct {
 	Label string `json:"label"`
 }
+
+// SnapshotStateResponse is one snapshot's stored state.
+//
+// Deliberately NOT DocumentResponse. That shape carries a `version` field which
+// everywhere else in this API means an update-log clock, and it has no
+// omitempty, so reusing it here would ship `"version":0` on every snapshot
+// fetch. Zero is not a harmless placeholder in that space: POST .../rollback
+// with version 0 prunes every update above clock 0, i.e. the whole log. Naming
+// the field snapshot_id keeps the two id spaces impossible to confuse for a
+// future consumer.
+type SnapshotStateResponse struct {
+	ID         string      `json:"id"`
+	SnapshotID int64       `json:"snapshot_id"`
+	Updates    UpdateBytes `json:"updates"`
+}

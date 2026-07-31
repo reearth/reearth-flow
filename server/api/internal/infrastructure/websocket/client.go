@@ -553,6 +553,16 @@ func (c *Client) SaveNamedSnapshot(ctx context.Context, docID, label string) (*w
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
+	// Snapshot ids are allocated from 1, so a non-positive id means the server
+	// created nothing however cheerful the status code was. Returning it as a
+	// success would hand the UI a version row addressing no stored snapshot,
+	// which then disappears on the next refetch. Defensive on purpose: the
+	// websocket server now 409s this case, but the API server must not depend on
+	// a specific server version to avoid inventing history.
+	if saved.ID <= 0 {
+		return nil, fmt.Errorf("websocket server reported snapshot id %d for doc %s: nothing was saved", saved.ID, docID)
+	}
+
 	snapshots, err := c.GetSnapshots(ctx, docID)
 	if err != nil {
 		log.Warnf("failed to enrich saved snapshot metadata: %v", err)

@@ -214,11 +214,16 @@ func (s *StoreAdapter) ListSnapshots(ctx context.Context, room string) ([]Snapsh
 	return out, nil
 }
 
-// GetSnapshotState returns one snapshot's V1 state.
+// GetSnapshotState returns one snapshot's V1 state. A store without snapshot
+// support reports ErrSnapshotsUnsupported, matching SaveSnapshot — NOT
+// ErrSnapshotNotFound, which would claim this particular snapshot is missing
+// and send an operator hunting for a lost object instead of a disabled feature.
+// (ListSnapshots stays lenient with an empty list on purpose: the history panel
+// should render as empty rather than error out.)
 func (s *StoreAdapter) GetSnapshotState(ctx context.Context, room string, id int64) ([]byte, error) {
 	ss, ok := s.p.(persistence.SnapshotStore)
 	if !ok {
-		return nil, persistence.ErrSnapshotNotFound
+		return nil, persistence.ErrSnapshotsUnsupported
 	}
 	return ss.GetSnapshotState(ctx, room, id)
 }
