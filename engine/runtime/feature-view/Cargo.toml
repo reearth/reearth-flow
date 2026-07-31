@@ -13,11 +13,6 @@ version.workspace = true
 [features]
 # Temporary migration flag for the new-geometry migration.
 # TODO: Remove after migration.
-#
-# The view builders read the geometry this flag selects, so the crate compiles
-# to nothing without it. It is forwarded rather than turned on unconditionally
-# because Cargo unifies features across a build: enabling it here would flip
-# every crate built alongside this one.
 new-geometry = [
   "reearth-flow-action-sink/new-geometry",
   "reearth-flow-geometry/new-geometry",

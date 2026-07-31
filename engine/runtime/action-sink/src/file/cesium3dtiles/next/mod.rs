@@ -264,44 +264,35 @@ pub fn build(
     })
 }
 
-/// An untiled glb and the count of features that reached it.
-pub struct BuiltGlb {
-    pub glb: Vec<u8>,
-    pub rendered_features: usize,
-}
-
-/// Render every feature into a single glb, untiled. Where [`build`] splits a
-/// whole dataset across a quadtree, this renders a hand-picked selection whole,
-/// which is what a viewer wants for one feature or a few.
+/// Render one feature into a glb, untiled. Where [`build`] splits a whole
+/// dataset across a quadtree, this renders a single picked feature, which is
+/// what a viewer wants when a table row is clicked.
 ///
 /// Positions are local to an origin chosen from the rendered geometry, carried
 /// on the scene node's translation exactly as tile content is, so the result
 /// drops into a georeferenced viewer unchanged.
 ///
-/// `Ok(None)` means no feature carried renderable geometry.
+/// `Ok(None)` means the feature carried no renderable geometry.
 pub fn build_glb(
-    features: &[Feature],
+    feature: &Feature,
     options: MetadataOptions,
     render: RenderOptions,
-) -> crate::errors::Result<Option<BuiltGlb>> {
+) -> crate::errors::Result<Option<Vec<u8>>> {
     let mut caches = mesh::ExtractCaches::default();
-    let extracted: Vec<(&Feature, mesh::ExtractedMesh)> = features
-        .iter()
-        .filter_map(|feature| mesh::extract(&feature.geometry, &mut caches).map(|m| (feature, m)))
-        .collect();
-
-    if extracted.is_empty() {
+    let Some(extracted) = mesh::extract(&feature.geometry, &mut caches) else {
         return Ok(None);
-    }
+    };
 
-    let members: Vec<&(&Feature, mesh::ExtractedMesh)> = extracted.iter().collect();
     let mut textures = TextureCache::default();
     let mut embedded = EmbeddedTextures::new()?;
-    let glb = build_cell_glb(&members, options, render, &mut textures, &mut embedded)?;
-    Ok(Some(BuiltGlb {
-        glb,
-        rendered_features: extracted.len(),
-    }))
+    build_cell_glb(
+        &[&(feature, extracted)],
+        options,
+        render,
+        &mut textures,
+        &mut embedded,
+    )
+    .map(Some)
 }
 
 fn empty_tileset() -> crate::errors::Result<BuiltTileset> {

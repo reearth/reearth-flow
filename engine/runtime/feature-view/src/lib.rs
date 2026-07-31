@@ -1,14 +1,13 @@
 //! Renders a viewable form of the features a run leaves on an edge.
 //!
-//! The input is one JSONL file. The output is either a single glb holding the
-//! whole selection, or a 3D Tiles tileset for streaming a whole edge. Rendered
-//! features carry no attributes, only [`ROW_INDEX_PROPERTY`], so a click in a
-//! viewer resolves to a row in the table the file came from.
+//! The input is one JSONL file. The output is either a glb holding one picked
+//! feature, or a 3D Tiles tileset for streaming a whole edge. Rendered features
+//! carry no attributes, only [`ROW_INDEX_PROPERTY`], so a click in a viewer
+//! resolves to a row in the table the file came from.
 
 // The whole crate is new-geometry only; see Cargo.toml.
 #![cfg(feature = "new-geometry")]
 
-use std::collections::BTreeSet;
 use std::io::{BufRead, BufReader};
 use std::sync::{Arc, Mutex, PoisonError};
 
@@ -85,25 +84,10 @@ pub enum Error {
 
 pub type Result<T> = std::result::Result<T, Error>;
 
-/// Which of the two view shapes to render.
-#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
-pub enum ViewFormat {
-    /// One glb holding the whole selection, untiled.
-    #[default]
-    Gltf,
-    /// A 3D Tiles tileset, for streaming a whole edge.
-    Cesium3DTiles {
-        /// Deepest quadtree level a feature may be placed at.
-        max_zoom: u8,
-    },
-}
-
-/// How to render, independent of which shape is being rendered.
+/// How to render, shared by both view shapes.
 #[derive(Clone, Debug)]
 pub struct ViewOptions {
-    pub format: ViewFormat,
-    /// Draco mesh compression. On by default: it costs about 2% of render time
-    /// and cuts a glb several-fold.
+    /// Draco mesh compression. On by default.
     pub draco: bool,
     /// Per-polygon flat normals, so surfaces light rather than read flat.
     pub compute_flat_normal: bool,
@@ -111,15 +95,13 @@ pub struct ViewOptions {
     pub texel_size: f64,
     pub atlas_size: u32,
     pub atlas_extrusion: u32,
-    /// JPEG by default rather than the tile writer's KTX2: a view is built on
-    /// demand, and JPEG encodes several times faster at a comparable size.
+    /// JPEG by default: a view is built on demand, so we need fast encoding.
     pub texture_codec: TextureCodec,
 }
 
 impl Default for ViewOptions {
     fn default() -> Self {
         Self {
-            format: ViewFormat::default(),
             draco: true,
             compute_flat_normal: true,
             texel_size: 0.0,
@@ -165,8 +147,9 @@ pub struct Selected {
 /// Which features a read keeps.
 pub enum Selection<'a> {
     All,
-    /// The scan stops after the highest row, and no other line is parsed.
-    Rows(&'a [usize]),
+    /// One row, for a glTF view. The scan stops there, and no later line is
+    /// read at all.
+    Row(usize),
     /// The features a Flow expression evaluates true for.
     Filter {
         expr: &'a str,
@@ -178,19 +161,16 @@ pub enum Selection<'a> {
 pub struct Loaded {
     pub selection: Vec<Selected>,
     /// Non-empty lines examined; short of the file's total under
-    /// [`Selection::Rows`], which stops early.
+    /// [`Selection::Row`], which stops early.
     pub scanned: usize,
 }
 
-/// A [`Selection`] with its per-line work done up front: the filter compiled,
-/// the rows sorted and their last one found. Holding them in the value the loop
-/// matches on leaves no separate state to keep in step with it.
+/// A [`Selection`] with its per-line work done up front: the filter compiled.
+/// Holding it in the value the loop matches on leaves no separate state to keep
+/// in step with it.
 enum Scan<'a> {
     All,
-    Rows {
-        wanted: BTreeSet<usize>,
-        last: usize,
-    },
+    Row(usize),
     Filter {
         expr: &'a str,
         code: CompiledCode,
@@ -199,56 +179,46 @@ enum Scan<'a> {
 }
 
 impl<'a> Scan<'a> {
-    /// `None` when the selection can keep nothing, so there is nothing to read.
-    fn prepare(selection: Selection<'a>) -> Result<Option<Self>> {
+    fn prepare(selection: Selection<'a>) -> Result<Self> {
         Ok(match selection {
-            Selection::All => Some(Scan::All),
-            Selection::Rows(rows) => {
-                let wanted: BTreeSet<usize> = rows.iter().copied().collect();
-                let last = wanted.iter().next_back().copied();
-                last.map(|last| Scan::Rows { wanted, last })
-            }
+            Selection::All => Scan::All,
+            Selection::Row(row) => Scan::Row(row),
             Selection::Filter { expr, env_vars } => {
                 let code = Code::<{ CodeType::FlowExpr as u32 }> {
                     ty: CodeType::FlowExpr,
                     value: expr.to_string(),
                 };
-                Some(Scan::Filter {
+                Scan::Filter {
                     code: code.compile().map_err(|source| Error::FilterCompile {
                         expr: expr.to_string(),
                         source,
                     })?,
                     expr,
                     env_vars,
-                })
+                }
             }
         })
     }
 
     /// Whether `row` is the last one this scan has any reason to read.
     fn stops_at(&self, row: usize) -> bool {
-        matches!(self, Scan::Rows { last, .. } if *last == row)
+        matches!(self, Scan::Row(wanted) if *wanted == row)
     }
 }
 
 /// Read a feature file, keeping only what `selection` asks for.
 ///
 /// Lines are decompressed and parsed one at a time and dropped unless kept, so
-/// the decompressed file is never held whole, and [`Selection::Rows`] stops at
-/// its highest row rather than decoding the rest. The compressed bytes are read
-/// whole, which is what the storage backends offer. Rows past the end are
-/// ignored, so a stale table selection yields an empty view.
+/// the decompressed file is never held whole, and [`Selection::Row`] stops at
+/// its row rather than decoding the rest. The compressed bytes are read whole,
+/// which is what the storage backends offer. A row past the end is ignored, so
+/// a stale table selection yields an empty view.
 pub fn load_selected(
     input: &Uri,
     selection: Selection<'_>,
     storage_resolver: &StorageResolver,
 ) -> Result<Loaded> {
-    let Some(scan) = Scan::prepare(selection)? else {
-        return Ok(Loaded {
-            selection: Vec::new(),
-            scanned: 0,
-        });
-    };
+    let scan = Scan::prepare(selection)?;
 
     let (uri, raw) = read_raw(input, storage_resolver)?;
     let read_error = |source: std::io::Error| Error::Read {
@@ -275,7 +245,7 @@ pub fn load_selected(
         }
         let keep = match &scan {
             Scan::All => Some(parse(line, row)?),
-            Scan::Rows { wanted, .. } => match wanted.contains(&row) {
+            Scan::Row(wanted) => match *wanted == row {
                 true => Some(parse(line, row)?),
                 false => None,
             },
@@ -417,33 +387,20 @@ pub struct RenderedView {
     pub written: Vec<Uri>,
 }
 
-/// Render the selection and write it to `destination`.
-pub fn render(
-    selection: &[Selected],
+/// Render one feature into `{prefix}.glb`, untiled: the view behind clicking a
+/// table row.
+pub fn render_feature(
+    selected: &Selected,
     options: &ViewOptions,
     destination: &Destination<'_>,
 ) -> Result<RenderedView> {
-    reject_two_dimensional(selection)?;
-    let features: Vec<Feature> = selection
-        .iter()
-        .map(|s| s.feature.with_attributes(row_index_attributes(s.row)))
-        .collect();
+    reject_two_dimensional(std::slice::from_ref(selected))?;
+    let feature = selected
+        .feature
+        .with_attributes(row_index_attributes(selected.row));
 
-    match options.format {
-        ViewFormat::Gltf => render_gltf(&features, options, destination),
-        ViewFormat::Cesium3DTiles { max_zoom } => {
-            render_tileset(&features, options, max_zoom, destination)
-        }
-    }
-}
-
-fn render_gltf(
-    features: &[Feature],
-    options: &ViewOptions,
-    destination: &Destination<'_>,
-) -> Result<RenderedView> {
     let Some(glb) = build_glb(
-        features,
+        &feature,
         options.metadata_options(),
         options.render_options(),
     )?
@@ -455,25 +412,33 @@ fn render_gltf(
         });
     };
 
-    let uri = destination.write_suffixed(".glb", glb.glb)?;
+    let uri = destination.write_suffixed(".glb", glb)?;
     Ok(RenderedView {
-        rendered_features: glb.rendered_features,
+        rendered_features: 1,
         entry_point: Some(uri.clone()),
         written: vec![uri],
     })
 }
 
-fn render_tileset(
-    features: &[Feature],
-    options: &ViewOptions,
+/// Render a whole selection into a tileset under `{prefix}/`: the view of an
+/// entire edge.
+pub fn render_tileset(
+    selection: &[Selected],
     max_zoom: u8,
+    options: &ViewOptions,
     destination: &Destination<'_>,
 ) -> Result<RenderedView> {
+    reject_two_dimensional(selection)?;
+    let features: Vec<Feature> = selection
+        .iter()
+        .map(|s| s.feature.with_attributes(row_index_attributes(s.row)))
+        .collect();
+
     // Content glbs are handed over as they are built, so peak memory stays at
     // one tile rather than the whole tileset; collect only their paths.
     let written = Mutex::new(Vec::new());
     let built = build(
-        features,
+        &features,
         options.metadata_options(),
         max_zoom,
         options.render_options(),
@@ -585,19 +550,24 @@ mod tests {
         Uri::for_test(&format!("file://{}", path.display()))
     }
 
-    fn render_to(dir: &Path, selection: &[Selected], options: &ViewOptions) -> RenderedView {
+    fn feature_to(dir: &Path, selected: &Selected, options: &ViewOptions) -> RenderedView {
         let root = Uri::for_test(&format!("file://{}", dir.display()));
         let resolver = StorageResolver::new();
-        render(
-            selection,
-            options,
-            &Destination {
-                root: &root,
-                prefix: "out",
-                storage_resolver: &resolver,
-            },
-        )
-        .expect("render")
+        render_feature(selected, options, &destination(&root, &resolver)).expect("render")
+    }
+
+    fn tileset_to(dir: &Path, selection: &[Selected], options: &ViewOptions) -> RenderedView {
+        let root = Uri::for_test(&format!("file://{}", dir.display()));
+        let resolver = StorageResolver::new();
+        render_tileset(selection, 18, options, &destination(&root, &resolver)).expect("render")
+    }
+
+    fn destination<'a>(root: &'a Uri, resolver: &'a StorageResolver) -> Destination<'a> {
+        Destination {
+            root,
+            prefix: "out",
+            storage_resolver: resolver,
+        }
     }
 
     fn glb_json(bytes: &[u8]) -> serde_json::Value {
@@ -626,7 +596,7 @@ mod tests {
             "file://{}/node.default.jsonl.zst",
             dir.path().display()
         ));
-        let loaded = load_selected(&compressed, Selection::Rows(&[1]), &resolver).expect("rows");
+        let loaded = load_selected(&compressed, Selection::Row(1), &resolver).expect("rows");
         assert_eq!(
             loaded.selection.iter().map(|s| s.row).collect::<Vec<_>>(),
             vec![1]
@@ -638,7 +608,7 @@ mod tests {
             "file://{}/node.default.jsonl",
             dir.path().display()
         ));
-        let by_plain_name = load_selected(&plain, Selection::Rows(&[1]), &resolver)
+        let by_plain_name = load_selected(&plain, Selection::Row(1), &resolver)
             .expect("the compressed file stands in for the plain name");
         assert_eq!(by_plain_name.selection[0].feature.id, features[1].id);
     }
@@ -646,7 +616,7 @@ mod tests {
     /// A feature the renderer cannot use is dropped, and the count says so
     /// rather than reporting everything selected.
     #[test]
-    fn the_count_is_of_features_that_reached_the_glb() {
+    fn the_count_is_of_features_that_reached_the_tileset() {
         let dir = tempfile::tempdir().expect("temp dir");
         let selection = [
             Selected {
@@ -658,7 +628,7 @@ mod tests {
                 feature: mesh_feature("k", 35.0),
             },
         ];
-        let view = render_to(dir.path(), &selection, &ViewOptions::default());
+        let view = tileset_to(dir.path(), &selection, &ViewOptions::default());
 
         assert_eq!(view.rendered_features, 1);
     }
@@ -669,7 +639,7 @@ mod tests {
         let dir = tempfile::tempdir().expect("temp dir");
         let root = Uri::for_test(&format!("file://{}", dir.path().display()));
         let resolver = StorageResolver::new();
-        let selection = [Selected {
+        let selected = Selected {
             row: 0,
             feature: feature(
                 "k",
@@ -678,16 +648,12 @@ mod tests {
                     [0.0, 0.0],
                 ))),
             ),
-        }];
+        };
 
-        let error = render(
-            &selection,
+        let error = render_feature(
+            &selected,
             &ViewOptions::default(),
-            &Destination {
-                root: &root,
-                prefix: "out",
-                storage_resolver: &resolver,
-            },
+            &destination(&root, &resolver),
         )
         .expect_err("2D has no view");
 
@@ -714,10 +680,10 @@ mod tests {
             vec![0, 1, 2, 3]
         );
 
-        let rows = load_selected(&input, Selection::Rows(&[3, 1]), &resolver).expect("rows");
+        let row = load_selected(&input, Selection::Row(3), &resolver).expect("row");
         assert_eq!(
-            rows.selection.iter().map(|s| s.row).collect::<Vec<_>>(),
-            vec![1, 3]
+            row.selection.iter().map(|s| s.row).collect::<Vec<_>>(),
+            vec![3]
         );
 
         let filtered = load_selected(
@@ -744,11 +710,11 @@ mod tests {
     #[test]
     fn the_view_carries_only_the_row_index() {
         let dir = tempfile::tempdir().expect("temp dir");
-        let selection = [Selected {
+        let selected = Selected {
             row: 4242,
             feature: mesh_feature("keep", 35.0),
-        }];
-        render_to(dir.path(), &selection, &ViewOptions::default());
+        };
+        feature_to(dir.path(), &selected, &ViewOptions::default());
 
         let glb = std::fs::read(dir.path().join("out.glb")).expect("the glb is written");
         let contains = |n: &str| glb.windows(n.len()).any(|w| w == n.as_bytes());
@@ -773,17 +739,17 @@ mod tests {
                 Euclidean3DGeometry::TriangularMesh(Box::new(triangle(35.0))),
                 Euclidean3DGeometry::TriangularMesh(Box::new(triangle(35.5))),
             ])));
-        let selection = [Selected {
+        let selected = Selected {
             row: 0,
             feature: feature("k", collection),
-        }];
+        };
         // Draco packs positions away from the accessor, so read the count off an
         // uncompressed render.
         let options = ViewOptions {
             draco: false,
             ..ViewOptions::default()
         };
-        render_to(dir.path(), &selection, &options);
+        feature_to(dir.path(), &selected, &options);
 
         let json = glb_json(&std::fs::read(dir.path().join("out.glb")).unwrap());
         let accessor = json["meshes"][0]["primitives"][0]["attributes"]["POSITION"]
@@ -812,11 +778,7 @@ mod tests {
                 feature: mesh_feature("k", lat),
             })
             .collect();
-        let options = ViewOptions {
-            format: ViewFormat::Cesium3DTiles { max_zoom: 18 },
-            ..ViewOptions::default()
-        };
-        let view = render_to(dir.path(), &selection, &options);
+        let view = tileset_to(dir.path(), &selection, &ViewOptions::default());
 
         assert!(dir.path().join("out/tileset.json").exists());
         assert!(view
@@ -826,13 +788,13 @@ mod tests {
     }
 
     #[test]
-    fn a_selection_without_geometry_writes_nothing() {
+    fn a_feature_without_geometry_writes_nothing() {
         let dir = tempfile::tempdir().expect("temp dir");
-        let selection = [Selected {
+        let selected = Selected {
             row: 0,
             feature: Feature::from(Attributes::new()),
-        }];
-        let view = render_to(dir.path(), &selection, &ViewOptions::default());
+        };
+        let view = feature_to(dir.path(), &selected, &ViewOptions::default());
 
         assert_eq!(view.rendered_features, 0);
         assert!(view.entry_point.is_none());

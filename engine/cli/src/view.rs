@@ -4,40 +4,38 @@ use std::sync::Arc;
 use clap::{Arg, ArgAction, ArgMatches, Command};
 use reearth_flow_common::uri::Uri;
 use reearth_flow_feature_view::{
-    default_name, load_selected, render, Destination, Selection, TextureCodec, ViewFormat,
-    ViewOptions,
+    default_name, load_selected, render_feature, render_tileset, Destination, Selection,
+    TextureCodec, ViewOptions,
 };
 use reearth_flow_storage::resolve::StorageResolver;
 
 /// The `view` subcommand.
 ///
-/// Each shape takes only the selection it can act on: rows pick features out of
-/// the table for a glb, a filter narrows a whole edge for a tileset. They are
-/// separate subcommands so the other pairing cannot be spelled at all.
+/// Each shape takes only the selection it can act on: a row picks one feature
+/// out of the table for a glb, a filter narrows a whole edge for a tileset.
 pub fn build_view_command() -> Command {
     Command::new("view")
         .about("Render intermediate data into a viewable 3D form.")
         .long_about(
             "Read the intermediate-data JSONL a run left on an edge and render its features for \
-             a 3D viewer. `gltf` renders named rows into one glb, which is what showing a single \
-             feature or a handful wants; `3dtiles` renders a whole edge into a tiled tileset for \
-             looking at all of it at once.",
+             a 3D viewer. `gltf` renders one row into a glb, which is what showing a single \
+             feature wants; `3dtiles` renders a whole edge into a tiled tileset for looking at \
+             all of it at once.",
         )
         .subcommand_required(true)
         .arg_required_else_help(true)
         .subcommand(
             shared_args(Command::new("gltf"))
-                .about("Render the named rows into a single glb.")
+                .about("Render one row into a glb.")
                 .arg(
                     Arg::new("row")
                         .long("row")
                         .help(
                             "Row to render, 0-based, as numbered in the intermediate-data table. \
-                             Repeatable. This is the path behind clicking a table row: the scan \
-                             stops at the highest row named, and no other line is parsed.",
+                             This is the path behind clicking a table row: the scan stops there, \
+                             and no later line is read.",
                         )
                         .value_parser(clap::value_parser!(usize))
-                        .action(ArgAction::Append)
                         .required(true)
                         .display_order(4),
                 )
@@ -146,7 +144,7 @@ pub struct ViewCliCommand {
 #[derive(Debug, PartialEq)]
 enum Shape {
     Gltf {
-        rows: Vec<usize>,
+        row: usize,
     },
     Cesium3DTiles {
         filter: Option<String>,
@@ -161,10 +159,9 @@ impl ViewCliCommand {
             .ok_or(crate::errors::Error::init("No view shape provided"))?;
         let shape = match shape.as_str() {
             "gltf" => Shape::Gltf {
-                rows: matches
-                    .remove_many::<usize>("row")
-                    .map(|rows| rows.collect())
-                    .unwrap_or_default(),
+                row: matches
+                    .remove_one::<usize>("row")
+                    .ok_or(crate::errors::Error::init("No row provided"))?,
             },
             "3dtiles" => Shape::Cesium3DTiles {
                 filter: matches.remove_one::<String>("filter"),
@@ -206,35 +203,12 @@ impl ViewCliCommand {
         let input = Uri::from_str(self.input.as_str()).map_err(crate::errors::Error::init)?;
         let output = Uri::from_str(self.output.as_str()).map_err(crate::errors::Error::init)?;
 
-        // One streaming read either way: naming rows decodes only as far as the
-        // last of them, a filter runs against each feature as it is parsed, and
-        // neither holds a feature the view will not render.
-        let selection = match &self.shape {
-            Shape::Gltf { rows } => Selection::Rows(rows),
-            Shape::Cesium3DTiles {
-                filter: Some(expr), ..
-            } => Selection::Filter {
-                expr,
-                env_vars: Arc::new(serde_json::Map::new()),
-            },
-            Shape::Cesium3DTiles { filter: None, .. } => Selection::All,
-        };
-        let loaded = load_selected(&input, selection, &storage_resolver)
-            .map_err(crate::errors::Error::run)?;
-
         let options = ViewOptions {
-            format: match &self.shape {
-                Shape::Gltf { .. } => ViewFormat::Gltf,
-                Shape::Cesium3DTiles { max_zoom, .. } => ViewFormat::Cesium3DTiles {
-                    max_zoom: *max_zoom,
-                },
-            },
             draco: self.draco,
             texel_size: self.texel_size,
             texture_codec: self.texture_codec,
             ..ViewOptions::default()
         };
-
         let name = self.name(&input)?;
         let destination = Destination {
             root: &output,
@@ -242,27 +216,57 @@ impl ViewCliCommand {
             storage_resolver: &storage_resolver,
         };
 
-        let selected = loaded.selection.len();
-        let view =
-            render(&loaded.selection, &options, &destination).map_err(crate::errors::Error::run)?;
-
-        // A row scan stops at the highest row asked for, so its `scanned` is not
-        // the table's length and reporting it as one would mislead.
-        let out_of = match &self.shape {
-            Shape::Gltf { rows } => format!("{} requested", rows.len()),
-            Shape::Cesium3DTiles { .. } => format!("{} scanned", loaded.scanned),
-        };
-        match view.entry_point {
-            Some(entry_point) => println!(
-                "Rendered {} of {selected} selected features ({out_of}) into {} ({} file(s))",
-                view.rendered_features,
-                entry_point.as_str(),
-                view.written.len()
-            ),
-            None => println!(
-                "None of the {selected} selected features ({out_of}) carried renderable \
-                 geometry; nothing was written"
-            ),
+        // One streaming read either way: naming a row decodes only as far as
+        // it, a filter runs against each feature as it is parsed, and neither
+        // holds a feature the view will not render.
+        match &self.shape {
+            Shape::Gltf { row } => {
+                let loaded = load_selected(&input, Selection::Row(*row), &storage_resolver)
+                    .map_err(crate::errors::Error::run)?;
+                let Some(selected) = loaded.selection.first() else {
+                    println!("Row {row} is past the end of the table; nothing was written");
+                    return Ok(());
+                };
+                let view = render_feature(selected, &options, &destination)
+                    .map_err(crate::errors::Error::run)?;
+                match view.entry_point {
+                    Some(entry_point) => {
+                        println!("Rendered row {row} into {}", entry_point.as_str())
+                    }
+                    None => {
+                        println!("Row {row} carried no renderable geometry; nothing was written")
+                    }
+                }
+            }
+            Shape::Cesium3DTiles { filter, max_zoom } => {
+                let selection = match filter {
+                    Some(expr) => Selection::Filter {
+                        expr,
+                        env_vars: Arc::new(serde_json::Map::new()),
+                    },
+                    None => Selection::All,
+                };
+                let loaded = load_selected(&input, selection, &storage_resolver)
+                    .map_err(crate::errors::Error::run)?;
+                let selected = loaded.selection.len();
+                let view = render_tileset(&loaded.selection, *max_zoom, &options, &destination)
+                    .map_err(crate::errors::Error::run)?;
+                match view.entry_point {
+                    Some(entry_point) => println!(
+                        "Rendered {} of {selected} selected features ({} scanned) into {} \
+                         ({} file(s))",
+                        view.rendered_features,
+                        loaded.scanned,
+                        entry_point.as_str(),
+                        view.written.len()
+                    ),
+                    None => println!(
+                        "None of the {selected} selected features ({} scanned) carried \
+                         renderable geometry; nothing was written",
+                        loaded.scanned
+                    ),
+                }
+            }
         }
         Ok(())
     }
@@ -302,11 +306,16 @@ mod tests {
     }
 
     #[test]
-    fn rows_and_shape_survive_parsing() {
-        let matches = parse(&["gltf", "--row", "3", "--row", "1"]).expect("parses");
+    fn the_row_and_shape_survive_parsing() {
+        let matches = parse(&["gltf", "--row", "3"]).expect("parses");
         let command = ViewCliCommand::parse_cli_args(matches).expect("parses");
 
-        assert_eq!(command.shape, Shape::Gltf { rows: vec![3, 1] });
+        assert_eq!(command.shape, Shape::Gltf { row: 3 });
         assert_eq!(command.texture_codec, TextureCodec::Jpeg);
+
+        assert!(
+            parse(&["gltf", "--row", "3", "--row", "1"]).is_err(),
+            "a glb holds one row"
+        );
     }
 }
