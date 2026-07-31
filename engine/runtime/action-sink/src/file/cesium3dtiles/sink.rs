@@ -181,8 +181,9 @@ pub struct Cesium3DTilesWriterParam {
     pub(super) max_zoom: u8,
     /// # Max Depth
     /// Hard cap on the quadtree subdivision depth; tile granularity otherwise
-    /// follows feature size. Defaults to 24.
+    /// follows feature size. Defaults to 24, from 0 to 24.
     #[cfg(feature = "new-geometry")]
+    #[schemars(range(min = 0, max = 24))]
     pub(super) max_depth: Option<u32>,
     /// # Attach Textures
     /// Whether to include texture information in the generated tiles.

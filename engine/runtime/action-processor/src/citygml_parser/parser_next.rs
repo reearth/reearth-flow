@@ -63,6 +63,11 @@ pub enum ParseError {
     Malformed(String),
     #[error("No CityModel root element found")]
     NoCityModel,
+    #[error("CityModel root element doesn't match the expected CityGML version {expected:?}: found tag {found}")]
+    VersionMismatch {
+        expected: CityGmlVersion,
+        found: String,
+    },
     #[error("Unexpected end of file inside CityModel")]
     UnexpectedEof,
 }
@@ -136,11 +141,10 @@ impl Parser {
                     break
                 }
                 OwnedEvent::Start { name, .. } if local_name(&name.0) == "CityModel" => {
-                    tracing::error!(
-                        tag = name.0,
-                        expected_version = ?self.version,
-                        "citygml: this file's CityModel tag doesn't match the CityGML version being parsed; skipping it"
-                    );
+                    return Err(ParseError::VersionMismatch {
+                        expected: self.version,
+                        found: name.0,
+                    });
                 }
                 OwnedEvent::Eof => return Err(ParseError::NoCityModel),
                 _ => {}

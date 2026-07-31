@@ -78,5 +78,5 @@ runs:
           echo "PROJ grid already cached at $grid"
         else
           echo "Fetching PROJ grid to $grid"
-          curl -fsSL -o "$grid" https://cdn.proj.org/jp_gsi_gsigeo2011.tif
+          curl -fsSL --retry 3 --retry-delay 2 --proto '=https' --tlsv1.2 -o "$grid" https://cdn.proj.org/jp_gsi_gsigeo2011.tif
         fi

@@ -73,14 +73,13 @@ pub fn write_cesium_json(
 
     let raw = load_cesium_attr(tileset_dir)?;
 
-    let mut normalized: serde_json::Map<String, Value> = raw
+    let normalized: serde_json::Map<String, Value> = raw
         .into_iter()
         .map(|(feature_key, props)| {
             let props = apply_casts_to_value(props, "", &casts);
             (feature_key, props)
         })
         .collect();
-    normalized.sort_keys();
 
     let sorted = sort_json_keys_recursive(Value::Object(normalized));
 
