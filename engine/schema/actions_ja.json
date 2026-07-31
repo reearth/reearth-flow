@@ -13293,6 +13293,25 @@
             "default": true,
             "type": "boolean"
           },
+          "featureClassAttribute": {
+            "title": "フィーチャークラス属性",
+            "description": "分割した各フィーチャーについて、EXT_structural_metadata のクラス名を格納する属性キー。未設定の場合、クラス名は属性として追加されない",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "featureGranularity": {
+            "title": "フィーチャーの粒度",
+            "description": "1つの出力フィーチャーが何を表すかを指定する。デフォルトの `mesh` は glTF メッシュごとに1つのフィーチャーを出力する。`featureId` は各メッシュを EXT_mesh_features のフィーチャーIDごとに分割し、そのオブジェクトの EXT_structural_metadata プロパティを付与する。EXT_mesh_features を持たないファイルは、引き続きメッシュごとに1つのフィーチャーを出力する。",
+            "default": "mesh",
+            "allOf": [
+              {
+                "$ref": "#/definitions/FeatureGranularity"
+              }
+            ]
+          },
           "dataset": {
             "title": "ファイルパス",
             "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）",
@@ -13342,6 +13361,28 @@
                 "type": "string"
               }
             }
+          }
+        },
+        "definitions": {
+          "FeatureGranularity": {
+            "title": "Feature Granularity",
+            "description": "Controls what one output feature represents.",
+            "oneOf": [
+              {
+                "description": "glTF メッシュ(またはノードインスタンス)ごとに1つのフィーチャー。構造メタデータのプロパティはオブジェクト単位でありメッシュ単位ではないため、表示されない。",
+                "type": "string",
+                "enum": [
+                  "mesh"
+                ]
+              },
+              {
+                "description": "`EXT_mesh_features` のフィーチャーIDごとに1つのフィーチャーを出力し、それぞれにそのオブジェクトの `EXT_structural_metadata` プロパティを付与する。`EXT_mesh_features` を持たないファイルは、引き続きメッシュごとに1つのフィーチャーを出力する。",
+                "type": "string",
+                "enum": [
+                  "featureId"
+                ]
+              }
+            ]
           }
         }
       },

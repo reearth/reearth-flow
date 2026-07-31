@@ -20,7 +20,7 @@ homepage = "https://github.com/reearth/reearth-flow"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/reearth/reearth-flow"
 rust-version = "1.93.1" # Remember to update clippy.toml as well
-version = "0.0.471"
+version = "0.0.472"
 
 [profile.dev]
 opt-level = 0
@@ -128,6 +128,8 @@ gltf = { git = "https://github.com/gltf-rs/gltf", rev = "3def30c9caf96f2dbc85238
   "EXT_texture_webp",
   "extensions",
   "extras",
+  "KHR_texture_transform",
+  "KHR_materials_emissive_strength",
 ] }
 hashbrown = { version = "0.16.1", features = ["serde"] }
 hex = "0.4.3"

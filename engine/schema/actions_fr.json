@@ -13293,6 +13293,25 @@
             "default": true,
             "type": "boolean"
           },
+          "featureClassAttribute": {
+            "title": "Attribut de classe de l'entité",
+            "description": "Clé d'attribut sous laquelle stocker le nom de classe EXT_structural_metadata de chaque entité issue de la division. Si non défini, le nom de la classe n'est pas ajouté comme attribut.",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "featureGranularity": {
+            "title": "Granularité des entités",
+            "description": "Ce que représente chaque entité de sortie. `mesh` (la valeur par défaut) produit une entité par maillage glTF. `featureId` divise chaque maillage en une entité par ID de fonctionnalité EXT_mesh_features, en y attachant les propriétés EXT_structural_metadata de cet objet ; les fichiers sans EXT_mesh_features continuent de produire une entité par maillage.",
+            "default": "mesh",
+            "allOf": [
+              {
+                "$ref": "#/definitions/FeatureGranularity"
+              }
+            ]
+          },
           "dataset": {
             "title": "File Path",
             "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
@@ -13342,6 +13361,28 @@
                 "type": "string"
               }
             }
+          }
+        },
+        "definitions": {
+          "FeatureGranularity": {
+            "title": "Feature Granularity",
+            "description": "Controls what one output feature represents.",
+            "oneOf": [
+              {
+                "description": "Une entité par maillage glTF (ou par instance de nœud). Les propriétés de métadonnées structurelles ne sont pas exposées, car elles sont définies par objet, et non par maillage.",
+                "type": "string",
+                "enum": [
+                  "mesh"
+                ]
+              },
+              {
+                "description": "Une entité par ID de fonctionnalité `EXT_mesh_features`, chacune portant les propriétés `EXT_structural_metadata` de cet objet. Les fichiers sans `EXT_mesh_features` continuent de produire une entité par maillage.",
+                "type": "string",
+                "enum": [
+                  "featureId"
+                ]
+              }
+            ]
           }
         }
       },

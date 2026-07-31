@@ -3800,6 +3800,14 @@
           "title": "File Path",
           "description": "Expression that returns the path to the input file, either a literal path or a variable reference."
         },
+        "featureClassAttribute": {
+          "title": "要素类别属性",
+          "description": "用于存储每个拆分要素的 EXT_structural_metadata 类别名称的属性键。若未设置，则不会将类别名称添加为属性"
+        },
+        "featureGranularity": {
+          "title": "要素粒度",
+          "description": "指定每个输出要素代表什么。默认值 `mesh` 会为每个 glTF 网格输出一个要素。`featureId` 会将每个网格按照 EXT_mesh_features 的要素 ID 拆分为多个要素，并附加该对象的 EXT_structural_metadata 属性；不包含 EXT_mesh_features 的文件仍然会为每个网格输出一个要素。"
+        },
         "includeNodes": {
           "title": "Include Nodes",
           "description": "If true, includes node hierarchy information from the glTF scene graph in feature attributes"
@@ -3815,6 +3823,16 @@
         "triangulate": {
           "title": "Triangulate",
           "description": "If true, converts all primitives to triangles (reserved for future use - currently all primitives are processed as triangles)"
+        }
+      },
+      "enumI18n": {
+        "FeatureGranularity": {
+          "featureId": {
+            "description": "按照 `EXT_mesh_features` 的每个要素 ID 输出一个要素，每个要素携带该对象的 `EXT_structural_metadata` 属性。不包含 `EXT_mesh_features` 的文件仍然会为每个网格输出一个要素。"
+          },
+          "mesh": {
+            "description": "每个 glTF 网格(或每个节点实例)对应一个要素。结构化元数据属性不会显示，因为它们是按对象而非按网格划分的。"
+          }
         }
       }
     },
