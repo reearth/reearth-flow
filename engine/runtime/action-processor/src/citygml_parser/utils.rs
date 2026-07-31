@@ -19,6 +19,22 @@ pub(super) const GML_NS_311_ID: NsId = 3;
 pub(super) const CITYGML_NS_20_ID: NsId = 4;
 pub(super) const CITYGML_NS_30_ID: NsId = 5;
 
+/// Which CityGML edition a `Parser` expects.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum CityGmlVersion {
+    V2,
+    V3,
+}
+
+impl CityGmlVersion {
+    pub(super) fn core_ns_id(self) -> NsId {
+        match self {
+            CityGmlVersion::V2 => CITYGML_NS_20_ID,
+            CityGmlVersion::V3 => CITYGML_NS_30_ID,
+        }
+    }
+}
+
 /// `(qname, ns-id)`
 pub type QName = (String, NsId);
 

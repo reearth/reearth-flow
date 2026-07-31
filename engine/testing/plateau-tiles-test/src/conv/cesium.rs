@@ -84,8 +84,8 @@ pub fn write_cesium_json(
 
     let sorted = sort_json_keys_recursive(Value::Object(normalized));
 
-    let json = serde_json::to_string_pretty(&sorted)
-        .map_err(|e| format!("Failed to serialize: {}", e))?;
+    let json =
+        serde_json::to_string_pretty(&sorted).map_err(|e| format!("Failed to serialize: {}", e))?;
 
     fs::write(output_path, &json)
         .map_err(|e| format!("Failed to write {}: {}", output_path.display(), e))?;
@@ -104,9 +104,7 @@ fn sort_json_keys_recursive(value: Value) -> Value {
             sorted.sort_keys();
             Value::Object(sorted)
         }
-        Value::Array(arr) => {
-            Value::Array(arr.into_iter().map(sort_json_keys_recursive).collect())
-        }
+        Value::Array(arr) => Value::Array(arr.into_iter().map(sort_json_keys_recursive).collect()),
         other => other,
     }
 }

@@ -13,26 +13,11 @@ use url::Url;
 use super::geometry;
 use super::resolver::GeomRegistry;
 use super::srsname;
+pub use super::utils::CityGmlVersion;
 use super::utils::{
     gml_id_attr, local_name as utils_local_name, srs_name_attr, xlink_href_attr, NamespaceRegistry,
-    NsId, QName, XmlChild, XmlNode, CITYGML_NS_20_ID, CITYGML_NS_30_ID, EMPTY_NS_ID,
-    GML_NS_311_ID, GML_NS_ID, XLINK_NS_ID,
+    NsId, QName, XmlChild, XmlNode, EMPTY_NS_ID, GML_NS_311_ID, GML_NS_ID, XLINK_NS_ID,
 };
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CityGmlVersion {
-    V2,
-    V3,
-}
-
-impl CityGmlVersion {
-    fn core_ns_id(self) -> NsId {
-        match self {
-            CityGmlVersion::V2 => CITYGML_NS_20_ID,
-            CityGmlVersion::V3 => CITYGML_NS_30_ID,
-        }
-    }
-}
 
 pub(super) type RawNodeKey = (String, String); // (file_url, gml_id)
 
@@ -218,10 +203,7 @@ impl Parser {
                                 .insert(source_url_arc.as_str().to_string(), epsg);
                         }
                     } else {
-                        tracing::warn!(
-                            element = name.0,
-                            "citygml: unrecognized element, skipped"
-                        );
+                        tracing::warn!(element = name.0, "citygml: unrecognized element, skipped");
                         skip_element(&mut reader, &mut buf, &mut self.ns_registry)?;
                     }
                 }

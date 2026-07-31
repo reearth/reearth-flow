@@ -11,7 +11,7 @@ use reearth_flow_types::{
 
 use super::{
     codespace, flatten, geometry,
-    parser::{self, CityGmlVersion, Parser},
+    parser::{self, Parser},
     utils::{gml_id_attr, XmlNode},
     xlink,
 };
@@ -329,6 +329,7 @@ mod build_next {
     #[cfg(test)]
     mod tests {
         use super::*;
+        use crate::citygml_parser::parser::CityGmlVersion;
         use reearth_flow_geometry::Euclidean3DGeometry;
         use reearth_flow_types::CitygmlFeatureExt;
         use url::Url;
