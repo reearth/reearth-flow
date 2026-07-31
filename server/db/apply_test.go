@@ -5,7 +5,7 @@ import (
 	"testing"
 
 	"github.com/jackc/pgx/v5/pgxpool"
-	postgresdb "github.com/reearth/reearth-flow/api/internal/infrastructure/postgres/db"
+	postgresdb "github.com/reearth/reearth-flow/db"
 	"github.com/reearth/reearthx/pgxx/pgxtest"
 	"github.com/stretchr/testify/require"
 )
