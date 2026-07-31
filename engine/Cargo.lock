@@ -5150,6 +5150,7 @@ dependencies = [
  "bytes",
  "reearth-flow-action-sink",
  "reearth-flow-common",
+ "reearth-flow-expr",
  "reearth-flow-geometry",
  "reearth-flow-storage",
  "reearth-flow-types",

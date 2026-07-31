@@ -56,9 +56,9 @@ reearth-flow-action-source = { path = "runtime/action-source" }
 reearth-flow-atlas = { path = "runtime/atlas" }
 reearth-flow-common = { path = "runtime/common" }
 reearth-flow-expr = { path = "runtime/expr" }
+reearth-flow-feature-view = { path = "runtime/feature-view" }
 reearth-flow-geometry = { path = "runtime/geometry" }
 reearth-flow-gltf = { path = "runtime/gltf" }
-reearth-flow-feature-view = { path = "runtime/feature-view" }
 reearth-flow-macros = { path = "runtime/macros" }
 reearth-flow-runner = { path = "runtime/runner" }
 reearth-flow-runtime = { path = "runtime/runtime" }

@@ -27,6 +27,7 @@ new-geometry = [
 [dependencies]
 reearth-flow-action-sink.workspace = true
 reearth-flow-common.workspace = true
+reearth-flow-expr.workspace = true
 reearth-flow-geometry.workspace = true
 reearth-flow-storage.workspace = true
 reearth-flow-types.workspace = true

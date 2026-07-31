@@ -144,6 +144,8 @@ pub struct BuiltTileset {
     pub tileset_json: String,
     pub subtrees: Vec<(String, Vec<u8>)>,
     pub tile_count: usize,
+    /// Features that carried renderable geometry; the rest never reach a tile.
+    pub rendered_features: usize,
 }
 
 /// Rendering knobs shared by every cell of a tileset.
@@ -258,7 +260,14 @@ pub fn build(
         tileset_json: tileset_bytes,
         subtrees,
         tile_count,
+        rendered_features: extracted.len(),
     })
+}
+
+/// An untiled glb and the count of features that reached it.
+pub struct BuiltGlb {
+    pub glb: Vec<u8>,
+    pub rendered_features: usize,
 }
 
 /// Render every feature into a single glb, untiled. Where [`build`] splits a
@@ -274,7 +283,7 @@ pub fn build_glb(
     features: &[Feature],
     options: MetadataOptions,
     render: RenderOptions,
-) -> crate::errors::Result<Option<Vec<u8>>> {
+) -> crate::errors::Result<Option<BuiltGlb>> {
     let mut caches = mesh::ExtractCaches::default();
     let extracted: Vec<(&Feature, mesh::ExtractedMesh)> = features
         .iter()
@@ -288,7 +297,11 @@ pub fn build_glb(
     let members: Vec<&(&Feature, mesh::ExtractedMesh)> = extracted.iter().collect();
     let mut textures = TextureCache::default();
     let mut embedded = EmbeddedTextures::new()?;
-    build_cell_glb(&members, options, render, &mut textures, &mut embedded).map(Some)
+    let glb = build_cell_glb(&members, options, render, &mut textures, &mut embedded)?;
+    Ok(Some(BuiltGlb {
+        glb,
+        rendered_features: extracted.len(),
+    }))
 }
 
 fn empty_tileset() -> crate::errors::Result<BuiltTileset> {
@@ -309,6 +322,7 @@ fn empty_tileset() -> crate::errors::Result<BuiltTileset> {
         tileset_json: tileset_bytes,
         subtrees,
         tile_count: 0,
+        rendered_features: 0,
     })
 }
 

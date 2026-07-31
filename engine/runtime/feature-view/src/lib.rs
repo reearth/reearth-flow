@@ -8,11 +8,12 @@
 // The whole crate is new-geometry only; see Cargo.toml.
 #![cfg(feature = "new-geometry")]
 
-use std::borrow::Cow;
 use std::collections::BTreeSet;
-use std::sync::Arc;
+use std::io::{BufRead, BufReader};
+use std::sync::{Arc, Mutex, PoisonError};
 
 use bytes::Bytes;
+use reearth_flow_action_sink::errors::SinkError;
 use reearth_flow_action_sink::file::cesium3dtiles::next::{
     build, build_glb, MetadataOptions, RenderOptions,
 };
@@ -20,7 +21,9 @@ use reearth_flow_action_sink::SinkOutput;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_geometry::Geometry;
 use reearth_flow_storage::resolve::StorageResolver;
-use reearth_flow_types::{Attribute, AttributeValue, Attributes, Code, CodeType, Feature};
+use reearth_flow_types::{
+    Attribute, AttributeValue, Attributes, Code, CodeType, CompiledCode, Feature,
+};
 use thiserror::Error as ThisError;
 
 pub use reearth_flow_action_sink::file::cesium3dtiles::next::TextureCodec;
@@ -33,6 +36,20 @@ const FEATURE_EXTENSIONS: [&str; 2] = [".jsonl.zst", ".jsonl"];
 /// the table its file came from.
 pub const ROW_INDEX_PROPERTY: &str = "rowIndex";
 
+/// The base name a view takes from its input: the file name with the
+/// intermediate-data extension dropped.
+pub fn default_name(input: &Uri) -> Option<String> {
+    let name = input.file_name()?.to_str()?;
+    Some(strip_feature_extension(name).to_string())
+}
+
+fn strip_feature_extension(name: &str) -> &str {
+    FEATURE_EXTENSIONS
+        .iter()
+        .find_map(|ext| name.strip_suffix(ext))
+        .unwrap_or(name)
+}
+
 #[derive(ThisError, Debug)]
 pub enum Error {
     #[error("Failed to read features from {uri}: {source}")]
@@ -41,16 +58,23 @@ pub enum Error {
         #[source]
         source: std::io::Error,
     },
-    #[error("Filter expression {expr:?} failed to compile: {message}")]
-    FilterCompile { expr: String, message: String },
-    #[error("Filter expression {expr:?} failed on feature {feature_id}: {message}")]
+    #[error("Filter expression {expr:?} failed to compile: {source}")]
+    FilterCompile {
+        expr: String,
+        #[source]
+        source: reearth_flow_expr::Error,
+    },
+    #[error("Filter expression {expr:?} failed on feature {feature_id}: {source}")]
     FilterEval {
         expr: String,
         feature_id: String,
-        message: String,
+        #[source]
+        source: reearth_flow_types::error::Error,
     },
     #[error("Failed to render the view: {0}")]
-    Render(String),
+    Render(#[from] SinkError),
+    #[error("Views of 2D geometry are not supported yet")]
+    TwoDimensional,
     #[error("Failed to write {path}: {source}")]
     Write {
         path: String,
@@ -124,50 +148,12 @@ impl ViewOptions {
         MetadataOptions {
             schema_key: None,
             skip_unexposed_attributes: false,
+            array_map_separator: None,
         }
     }
 }
 
-/// Where a view's files land: every path is `prefix` joined under `root`.
-pub struct Destination<'a> {
-    pub root: &'a Uri,
-    /// A glTF view writes `{prefix}.glb`; a tileset writes
-    /// `{prefix}/tileset.json` alongside its content and subtree files.
-    pub prefix: &'a str,
-    pub storage_resolver: &'a StorageResolver,
-}
-
-impl Destination<'_> {
-    fn write(&self, relative_path: &str, bytes: Vec<u8>) -> Result<Uri> {
-        let out =
-            SinkOutput::new(self.root, relative_path, self.storage_resolver).map_err(|source| {
-                Error::Write {
-                    path: relative_path.to_string(),
-                    source,
-                }
-            })?;
-        let uri = out.uri().clone();
-        out.write(Bytes::from(bytes))
-            .map_err(|source| Error::Write {
-                path: relative_path.to_string(),
-                source,
-            })?;
-        Ok(uri)
-    }
-}
-
-/// What a render produced.
-#[derive(Debug)]
-pub struct RenderedView {
-    pub rendered_features: usize,
-    /// The entry point a viewer opens: the glb, or the tileset's
-    /// `tileset.json`.
-    pub entry_point: Option<Uri>,
-    /// Every file written, the entry point included.
-    pub written: Vec<Uri>,
-}
-
-/// A selected feature and the line it came from.
+/// A selected feature, as it was read, and the line it came from.
 #[derive(Clone, Debug)]
 pub struct Selected {
     /// 0-based line in the file, which is the row a table shows it at. Survives
@@ -196,91 +182,125 @@ pub struct Loaded {
     pub scanned: usize,
 }
 
+/// A [`Selection`] with its per-line work done up front: the filter compiled,
+/// the rows sorted and their last one found. Holding them in the value the loop
+/// matches on leaves no separate state to keep in step with it.
+enum Scan<'a> {
+    All,
+    Rows {
+        wanted: BTreeSet<usize>,
+        last: usize,
+    },
+    Filter {
+        expr: &'a str,
+        code: CompiledCode,
+        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+    },
+}
+
+impl<'a> Scan<'a> {
+    /// `None` when the selection can keep nothing, so there is nothing to read.
+    fn prepare(selection: Selection<'a>) -> Result<Option<Self>> {
+        Ok(match selection {
+            Selection::All => Some(Scan::All),
+            Selection::Rows(rows) => {
+                let wanted: BTreeSet<usize> = rows.iter().copied().collect();
+                let last = wanted.iter().next_back().copied();
+                last.map(|last| Scan::Rows { wanted, last })
+            }
+            Selection::Filter { expr, env_vars } => {
+                let code = Code::<{ CodeType::FlowExpr as u32 }> {
+                    ty: CodeType::FlowExpr,
+                    value: expr.to_string(),
+                };
+                Some(Scan::Filter {
+                    code: code.compile().map_err(|source| Error::FilterCompile {
+                        expr: expr.to_string(),
+                        source,
+                    })?,
+                    expr,
+                    env_vars,
+                })
+            }
+        })
+    }
+
+    /// Whether `row` is the last one this scan has any reason to read.
+    fn stops_at(&self, row: usize) -> bool {
+        matches!(self, Scan::Rows { last, .. } if *last == row)
+    }
+}
+
 /// Read a feature file, keeping only what `selection` asks for.
 ///
-/// One line at a time: a line that is not kept is dropped before the next is
-/// read, and a kept one has its attributes swapped for the row index at once,
-/// so peak memory tracks surviving geometry rather than the file. Rows past the
-/// end are ignored, so a stale table selection yields an empty view.
+/// Lines are decompressed and parsed one at a time and dropped unless kept, so
+/// the decompressed file is never held whole, and [`Selection::Rows`] stops at
+/// its highest row rather than decoding the rest. The compressed bytes are read
+/// whole, which is what the storage backends offer. Rows past the end are
+/// ignored, so a stale table selection yields an empty view.
 pub fn load_selected(
     input: &Uri,
     selection: Selection<'_>,
     storage_resolver: &StorageResolver,
 ) -> Result<Loaded> {
-    let compiled = match &selection {
-        Selection::Filter { expr, .. } => {
-            let code = Code::<{ CodeType::FlowExpr as u32 }> {
-                ty: CodeType::FlowExpr,
-                value: expr.to_string(),
-            };
-            Some(code.compile().map_err(|e| Error::FilterCompile {
-                expr: expr.to_string(),
-                message: format!("{e:?}"),
-            })?)
-        }
-        _ => None,
-    };
-
-    let wanted: BTreeSet<usize> = match &selection {
-        Selection::Rows(rows) => rows.iter().copied().collect(),
-        _ => BTreeSet::new(),
-    };
-    if matches!(selection, Selection::Rows(_)) && wanted.is_empty() {
+    let Some(scan) = Scan::prepare(selection)? else {
         return Ok(Loaded {
             selection: Vec::new(),
             scanned: 0,
         });
-    }
-    let last_wanted = wanted.iter().next_back().copied();
-
-    let (uri, raw) = read_raw(input, storage_resolver)?;
-    let data = decode_auto(raw.as_ref()).map_err(|source| Error::Read {
-        uri: uri.as_str().to_string(),
-        source,
-    })?;
-
-    let parse = |line: &[u8], row: usize| -> Result<Feature> {
-        serde_json::from_slice(line).map_err(|e| Error::Read {
-            uri: uri.as_str().to_string(),
-            source: std::io::Error::other(format!("row {row}: {e}")),
-        })
     };
 
+    let (uri, raw) = read_raw(input, storage_resolver)?;
+    let read_error = |source: std::io::Error| Error::Read {
+        uri: uri.as_str().to_string(),
+        source,
+    };
+    let parse = |line: &[u8], row: usize| -> Result<Feature> {
+        serde_json::from_slice(line)
+            .map_err(|e| read_error(std::io::Error::other(format!("row {row}: {e}"))))
+    };
+
+    let mut lines = line_reader(raw.as_ref()).map_err(read_error)?;
     let mut kept = Vec::new();
     let mut row = 0usize;
-    for line in data.split(|&b| b == b'\n') {
-        let line = trim_ascii(line);
+    let mut buffer = Vec::new();
+    loop {
+        buffer.clear();
+        if lines.read_until(b'\n', &mut buffer).map_err(read_error)? == 0 {
+            break;
+        }
+        let line = buffer.trim_ascii();
         if line.is_empty() {
             continue;
         }
-        let keep = match &selection {
-            Selection::All => Some(parse(line, row)?),
-            Selection::Rows(_) => match wanted.contains(&row) {
+        let keep = match &scan {
+            Scan::All => Some(parse(line, row)?),
+            Scan::Rows { wanted, .. } => match wanted.contains(&row) {
                 true => Some(parse(line, row)?),
                 false => None,
             },
-            Selection::Filter { expr, env_vars } => {
+            Scan::Filter {
+                expr,
+                code,
+                env_vars,
+            } => {
                 let feature = parse(line, row)?;
-                let matched = compiled
-                    .as_ref()
-                    .expect("a filter selection compiled its expression")
+                let matched = code
                     .eval_bool(&feature, Arc::clone(env_vars))
-                    .map_err(|e| Error::FilterEval {
+                    .map_err(|source| Error::FilterEval {
                         expr: expr.to_string(),
                         feature_id: feature.id.to_string(),
-                        message: format!("{e:?}"),
+                        source,
                     })?;
                 matched.then_some(feature)
             }
         };
         if let Some(feature) = keep {
-            kept.push(Selected {
-                row,
-                feature: feature.with_attributes(row_index_attributes(row)),
-            });
+            kept.push(Selected { row, feature });
         }
+        let done = scan.stops_at(row);
         row += 1;
-        if Some(row - 1) == last_wanted {
+        if done {
             break;
         }
     }
@@ -293,28 +313,10 @@ pub fn load_selected(
 
 /// Read the named file, or its counterpart in the other feature-file extension.
 fn read_raw(input: &Uri, storage_resolver: &StorageResolver) -> Result<(Uri, Bytes)> {
-    let mut candidates = vec![input.clone()];
-    if let (Some(name), Some(dir)) = (
-        input
-            .file_name()
-            .and_then(|n| n.to_str().map(str::to_string)),
-        input.parent(),
-    ) {
-        let stem = FEATURE_EXTENSIONS
-            .iter()
-            .find_map(|ext| name.strip_suffix(ext))
-            .unwrap_or(name.as_str());
-        for ext in FEATURE_EXTENSIONS {
-            if let Ok(candidate) = dir.join(format!("{stem}{ext}")) {
-                if candidate.as_str() != input.as_str() {
-                    candidates.push(candidate);
-                }
-            }
-        }
-    }
-
-    let mut last: Option<std::io::Error> = None;
-    for candidate in candidates {
+    // Report the failure for the file that was actually asked for; the
+    // counterpart extension is a fallback, and its error only distracts.
+    let mut asked_for: Option<std::io::Error> = None;
+    for candidate in read_candidates(input) {
         let read = storage_resolver
             .resolve(&candidate)
             .map_err(std::io::Error::other)
@@ -325,48 +327,94 @@ fn read_raw(input: &Uri, storage_resolver: &StorageResolver) -> Result<(Uri, Byt
             });
         match read {
             Ok(bytes) => return Ok((candidate, bytes)),
-            Err(e) => last = Some(e),
+            Err(e) => asked_for = asked_for.or(Some(e)),
         }
     }
     Err(Error::Read {
         uri: input.as_str().to_string(),
-        source: last.unwrap_or_else(|| std::io::Error::other("no candidate jsonl found")),
+        source: asked_for.unwrap_or_else(|| std::io::Error::other("no candidate jsonl found")),
     })
 }
 
-/// zstd frame magic is `28 B5 2F FD`; anything else is already plain text.
-fn decode_auto(bytes: &[u8]) -> std::io::Result<Cow<'_, [u8]>> {
+/// `input` itself, then the same stem under every other feature-file extension.
+fn read_candidates(input: &Uri) -> Vec<Uri> {
+    let mut candidates = vec![input.clone()];
+    let (Some(name), Some(dir)) = (
+        input
+            .file_name()
+            .and_then(|n| n.to_str().map(str::to_string)),
+        input.parent(),
+    ) else {
+        return candidates;
+    };
+    let stem = strip_feature_extension(&name);
+    for ext in FEATURE_EXTENSIONS {
+        if let Ok(candidate) = dir.join(format!("{stem}{ext}")) {
+            if candidate.as_str() != input.as_str() {
+                candidates.push(candidate);
+            }
+        }
+    }
+    candidates
+}
+
+/// Lines of `bytes`, decompressing as it goes if they are a zstd frame (magic
+/// `28 B5 2F FD`); anything else is already plain text.
+fn line_reader(bytes: &[u8]) -> std::io::Result<Box<dyn BufRead + '_>> {
     if bytes.starts_with(&[0x28, 0xB5, 0x2F, 0xFD]) {
-        zstd::stream::decode_all(bytes).map(Cow::Owned)
+        Ok(Box::new(BufReader::new(zstd::stream::read::Decoder::new(
+            bytes,
+        )?)))
     } else {
-        Ok(Cow::Borrowed(bytes))
+        Ok(Box::new(bytes))
     }
 }
 
-fn trim_ascii(mut line: &[u8]) -> &[u8] {
-    while let [first, rest @ ..] = line {
-        if !first.is_ascii_whitespace() {
-            break;
-        }
-        line = rest;
-    }
-    while let [rest @ .., last] = line {
-        if !last.is_ascii_whitespace() {
-            break;
-        }
-        line = rest;
-    }
-    line
+/// Where a view's files land: every path is `prefix` joined under `root`.
+pub struct Destination<'a> {
+    pub root: &'a Uri,
+    /// A glTF view writes `{prefix}.glb`; a tileset writes
+    /// `{prefix}/tileset.json` alongside its content and subtree files.
+    pub prefix: &'a str,
+    pub storage_resolver: &'a StorageResolver,
 }
 
-/// The single-entry attribute set a rendered feature carries.
-fn row_index_attributes(row: usize) -> Attributes {
-    let mut attributes = Attributes::new();
-    attributes.insert(
-        Attribute::new(ROW_INDEX_PROPERTY),
-        AttributeValue::Number(row.into()),
-    );
-    attributes
+impl Destination<'_> {
+    /// Write `{prefix}{suffix}`, for a shape whose whole output is one file.
+    fn write_suffixed(&self, suffix: &str, bytes: Vec<u8>) -> Result<Uri> {
+        self.write_path(&format!("{}{suffix}", self.prefix), bytes)
+    }
+
+    /// Write `{prefix}/{relative_path}`, for a shape that writes a directory.
+    fn write_under(&self, relative_path: &str, bytes: Vec<u8>) -> Result<Uri> {
+        self.write_path(&format!("{}/{relative_path}", self.prefix), bytes)
+    }
+
+    fn write_path(&self, path: &str, bytes: Vec<u8>) -> Result<Uri> {
+        let write = || {
+            let out = SinkOutput::new(self.root, path, self.storage_resolver)?;
+            let uri = out.uri().clone();
+            out.write(Bytes::from(bytes))?;
+            Ok::<_, Box<dyn std::error::Error + Send + Sync>>(uri)
+        };
+        write().map_err(|source| Error::Write {
+            path: path.to_string(),
+            source,
+        })
+    }
+}
+
+/// What a render produced.
+#[derive(Debug)]
+pub struct RenderedView {
+    /// Selected features that carried renderable geometry; the rest are absent
+    /// from the output.
+    pub rendered_features: usize,
+    /// The entry point a viewer opens: the glb, or the tileset's
+    /// `tileset.json`.
+    pub entry_point: Option<Uri>,
+    /// Every file written, the entry point included.
+    pub written: Vec<Uri>,
 }
 
 /// Render the selection and write it to `destination`.
@@ -375,11 +423,11 @@ pub fn render(
     options: &ViewOptions,
     destination: &Destination<'_>,
 ) -> Result<RenderedView> {
+    reject_two_dimensional(selection)?;
     let features: Vec<Feature> = selection
         .iter()
         .map(|s| s.feature.with_attributes(row_index_attributes(s.row)))
         .collect();
-    reject_two_dimensional(&features);
 
     match options.format {
         ViewFormat::Gltf => render_gltf(&features, options, destination),
@@ -394,14 +442,12 @@ fn render_gltf(
     options: &ViewOptions,
     destination: &Destination<'_>,
 ) -> Result<RenderedView> {
-    let glb = build_glb(
+    let Some(glb) = build_glb(
         features,
         options.metadata_options(),
         options.render_options(),
-    )
-    .map_err(|e| Error::Render(format!("{e:?}")))?;
-
-    let Some(glb) = glb else {
+    )?
+    else {
         return Ok(RenderedView {
             rendered_features: 0,
             entry_point: None,
@@ -409,9 +455,9 @@ fn render_gltf(
         });
     };
 
-    let uri = destination.write(&format!("{}.glb", destination.prefix), glb)?;
+    let uri = destination.write_suffixed(".glb", glb.glb)?;
     Ok(RenderedView {
-        rendered_features: features.len(),
+        rendered_features: glb.rendered_features,
         entry_point: Some(uri.clone()),
         written: vec![uri],
     })
@@ -425,7 +471,7 @@ fn render_tileset(
 ) -> Result<RenderedView> {
     // Content glbs are handed over as they are built, so peak memory stays at
     // one tile rather than the whole tileset; collect only their paths.
-    let written = std::sync::Mutex::new(Vec::new());
+    let written = Mutex::new(Vec::new());
     let built = build(
         features,
         options.metadata_options(),
@@ -433,41 +479,48 @@ fn render_tileset(
         options.render_options(),
         |relative_path, bytes| {
             let uri = destination
-                .write(&format!("{}/{relative_path}", destination.prefix), bytes)
-                .map_err(|e| {
-                    reearth_flow_action_sink::errors::SinkError::Cesium3DTilesWriter(format!("{e}"))
-                })?;
+                .write_under(&relative_path, bytes)
+                .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e}")))?;
             written
                 .lock()
-                .expect("write log is never poisoned")
+                .unwrap_or_else(PoisonError::into_inner)
                 .push(uri);
             Ok(())
         },
-    )
-    .map_err(|e| Error::Render(format!("{e:?}")))?;
-
-    let mut written = written.into_inner().expect("write log is never poisoned");
-    for (relative_path, bytes) in built.subtrees {
-        written.push(destination.write(&format!("{}/{relative_path}", destination.prefix), bytes)?);
-    }
-    let entry_point = destination.write(
-        &format!("{}/tileset.json", destination.prefix),
-        built.tileset_json.into_bytes(),
     )?;
+
+    let mut written = written.into_inner().unwrap_or_else(PoisonError::into_inner);
+    for (relative_path, bytes) in built.subtrees {
+        written.push(destination.write_under(&relative_path, bytes)?);
+    }
+    let entry_point = destination.write_under("tileset.json", built.tileset_json.into_bytes())?;
     written.push(entry_point.clone());
 
     Ok(RenderedView {
-        rendered_features: features.len(),
+        rendered_features: built.rendered_features,
         entry_point: Some(entry_point),
         written,
     })
 }
 
-/// 2D has no view yet. Reaching it is a caller error rather than an empty
-/// render, so say so instead of writing a file with nothing in it.
-fn reject_two_dimensional(features: &[Feature]) {
-    if features.iter().any(|f| holds_two_dimensional(&f.geometry)) {
-        unimplemented!("feature views of 2D geometry");
+/// The single-entry attribute set a rendered feature carries.
+fn row_index_attributes(row: usize) -> Attributes {
+    let mut attributes = Attributes::new();
+    attributes.insert(
+        Attribute::new(ROW_INDEX_PROPERTY),
+        AttributeValue::Number(row.into()),
+    );
+    attributes
+}
+
+/// 2D has no view yet, so say so instead of writing a file with nothing in it.
+fn reject_two_dimensional(selection: &[Selected]) -> Result<()> {
+    match selection
+        .iter()
+        .any(|s| holds_two_dimensional(&s.feature.geometry))
+    {
+        true => Err(Error::TwoDimensional),
+        false => Ok(()),
     }
 }
 
@@ -487,8 +540,9 @@ mod tests {
 
     use reearth_flow_geometry::collection::Collection3D;
     use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
+    use reearth_flow_geometry::point::Point2D;
     use reearth_flow_geometry::triangular_mesh::TriangularMesh3D;
-    use reearth_flow_geometry::Euclidean3DGeometry;
+    use reearth_flow_geometry::{Euclidean2DGeometry, Euclidean3DGeometry};
 
     use super::*;
 
@@ -549,6 +603,95 @@ mod tests {
     fn glb_json(bytes: &[u8]) -> serde_json::Value {
         let len = u32::from_le_bytes(bytes[12..16].try_into().unwrap()) as usize;
         serde_json::from_slice(&bytes[20..20 + len]).unwrap()
+    }
+
+    /// The compressed form reads like the plain one, is found under either
+    /// extension, and a row selection decodes no further than it must.
+    #[test]
+    fn a_compressed_file_reads_by_row() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let features: Vec<Feature> = (0..4).map(|i| mesh_feature("k", 35.0 + i as f64)).collect();
+        let lines: Vec<String> = features
+            .iter()
+            .map(|f| serde_json::to_string(f).expect("a feature serializes"))
+            .collect();
+        std::fs::write(
+            dir.path().join("node.default.jsonl.zst"),
+            zstd::stream::encode_all(lines.join("\n").as_bytes(), 0).expect("compress"),
+        )
+        .expect("write features");
+        let resolver = StorageResolver::new();
+
+        let compressed = Uri::for_test(&format!(
+            "file://{}/node.default.jsonl.zst",
+            dir.path().display()
+        ));
+        let loaded = load_selected(&compressed, Selection::Rows(&[1]), &resolver).expect("rows");
+        assert_eq!(
+            loaded.selection.iter().map(|s| s.row).collect::<Vec<_>>(),
+            vec![1]
+        );
+        assert_eq!(loaded.selection[0].feature.id, features[1].id);
+        assert_eq!(loaded.scanned, 2, "the scan stops at the row it asked for");
+
+        let plain = Uri::for_test(&format!(
+            "file://{}/node.default.jsonl",
+            dir.path().display()
+        ));
+        let by_plain_name = load_selected(&plain, Selection::Rows(&[1]), &resolver)
+            .expect("the compressed file stands in for the plain name");
+        assert_eq!(by_plain_name.selection[0].feature.id, features[1].id);
+    }
+
+    /// A feature the renderer cannot use is dropped, and the count says so
+    /// rather than reporting everything selected.
+    #[test]
+    fn the_count_is_of_features_that_reached_the_glb() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let selection = [
+            Selected {
+                row: 0,
+                feature: Feature::from(Attributes::new()),
+            },
+            Selected {
+                row: 1,
+                feature: mesh_feature("k", 35.0),
+            },
+        ];
+        let view = render_to(dir.path(), &selection, &ViewOptions::default());
+
+        assert_eq!(view.rendered_features, 1);
+    }
+
+    /// 2D is not renderable yet, and saying so is an error rather than a panic.
+    #[test]
+    fn a_two_dimensional_selection_is_rejected() {
+        let dir = tempfile::tempdir().expect("temp dir");
+        let root = Uri::for_test(&format!("file://{}", dir.path().display()));
+        let resolver = StorageResolver::new();
+        let selection = [Selected {
+            row: 0,
+            feature: feature(
+                "k",
+                Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
+                    CoordinateFrame::Euclidean,
+                    [0.0, 0.0],
+                ))),
+            ),
+        }];
+
+        let error = render(
+            &selection,
+            &ViewOptions::default(),
+            &Destination {
+                root: &root,
+                prefix: "out",
+                storage_resolver: &resolver,
+            },
+        )
+        .expect_err("2D has no view");
+
+        assert!(matches!(error, Error::TwoDimensional));
     }
 
     /// Every selection mode must agree on what row N is, and a filter must not
