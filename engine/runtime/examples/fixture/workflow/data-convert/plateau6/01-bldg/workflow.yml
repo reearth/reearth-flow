@@ -75,6 +75,11 @@ graphs:
                     gml_city_code = id_map.get("uro:city_code") or id_map.get("uro:city");
                   }
                   gml_city_code or env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5]
+            - attribute: gml_id
+              method: create
+              value:
+                type: flowExpr
+                value: attributes["__citygml_gml_id"]
 
       - id: 9f2a7c4e-3b5d-4c8f-a1e0-6d9b2f5a8c31
         name: AttributeConversionTableForWardName
@@ -88,6 +93,25 @@ graphs:
               featureTo: "cityNameEn"
               conversionTableKeys: ["ward_code"]
               conversionTableTo: "ward_name_en"
+
+      - id: da64f443-6281-46a4-a82b-3b6669f80fcd
+        name: AttributeManagerForOutputName
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: _output_base
+              method: create
+              value:
+                type: flowExpr
+                value: |
+                  city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
+                  base_city_code = env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5];
+                  suffix = "";
+                  if attributes["city_code"] != base_city_code {
+                    suffix = "_" + attributes["city_code"] + "_" + attributes["cityNameEn"];
+                  }
+                  city_gml + suffix
 
       - id: 16247597-565a-40df-a8d4-7445468978fd
         name: GeometrySplitterByLod
@@ -182,26 +206,29 @@ graphs:
                 value: attributes["lod"] == 1
               outputPort: features
 
+      - id: 39f7c2d0-4f5a-4ce6-992d-17ae7b73eb50
+        name: BoundsExtractorByLod1
+        type: action
+        action: Bounds Extractor
+        with:
+          xmin: _xmin
+          ymin: _ymin
+          xmax: _xmax
+          ymax: _ymax
+          zmin: _zmin
+          zmax: _zmax
+
       - id: a4f07c6f-3972-4c4f-9e70-f93af486c78d
         name: Cesium3DTilesWriterLod1
         type: action
         action: Cesium 3D Tiles Writer
         with:
           schemaKey: __citygml_feature_type
-          minZoom: 15
-          maxZoom: 18
+          maxDepth: 18
           attachTexture: false
           output:
             type: flowExpr
-            value: |
-              city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
-              base_city_code = env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5];
-              city_code = attributes["city_code"];
-              suffix = "";
-              if city_code != base_city_code {
-                suffix = "_" + city_code + "_" + attributes["cityNameEn"];
-              }
-              city_gml + suffix + "_bldg_3dtiles_lod1.zip"
+            value: attributes["_output_base"] + "_bldg_3dtiles_lod1.zip"
 
       # --- LOD2 branch ---
       - id: acf7b926-7c8b-4448-9a3d-af4a1d1aa2cd
@@ -223,26 +250,41 @@ graphs:
                   attributes["city_max_lod"] >= 2 and attributes["lod"] == best
               outputPort: features
 
+      - id: 81393f88-cdbc-44e3-b55d-49bc838dc127
+        name: BoundsExtractorByLod2
+        type: action
+        action: Bounds Extractor
+        with:
+          xmin: _xmin
+          ymin: _ymin
+          xmax: _xmax
+          ymax: _ymax
+          zmin: _zmin
+          zmax: _zmax
+
       - id: e44e7208-c0a6-4bca-829c-5d2769dd49f3
         name: Cesium3DTilesWriterLod2
         type: action
         action: Cesium 3D Tiles Writer
         with:
           schemaKey: __citygml_feature_type
-          minZoom: 15
-          maxZoom: 18
+          maxDepth: 18
           attachTexture: true
           output:
             type: flowExpr
-            value: |
-              city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
-              base_city_code = env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5];
-              city_code = attributes["city_code"];
-              suffix = "";
-              if city_code != base_city_code {
-                suffix = "_" + city_code + "_" + attributes["cityNameEn"];
-              }
-              city_gml + suffix + "_bldg_3dtiles_lod2.zip"
+            value: attributes["_output_base"] + "_bldg_3dtiles_lod2.zip"
+
+      - id: 0beef7bf-acac-4661-b325-fb8adea8739a
+        name: Cesium3DTilesWriterLod2NoTexture
+        type: action
+        action: Cesium 3D Tiles Writer
+        with:
+          schemaKey: __citygml_feature_type
+          maxDepth: 18
+          textureCodec: Untextured
+          output:
+            type: flowExpr
+            value: attributes["_output_base"] + "_bldg_3dtiles_lod2_no_texture.zip"
 
       # --- LOD3 branch ---
       - id: acd88b8a-708a-4adf-ad6e-b471d934191d
@@ -264,26 +306,41 @@ graphs:
                   attributes["city_max_lod"] >= 3 and attributes["lod"] == best
               outputPort: features
 
+      - id: db01f1d9-e4b0-4ac1-ba89-ddd7a3103570
+        name: BoundsExtractorByLod3
+        type: action
+        action: Bounds Extractor
+        with:
+          xmin: _xmin
+          ymin: _ymin
+          xmax: _xmax
+          ymax: _ymax
+          zmin: _zmin
+          zmax: _zmax
+
       - id: a7b575b0-8a0b-44d6-a80e-1fef936058df
         name: Cesium3DTilesWriterLod3
         type: action
         action: Cesium 3D Tiles Writer
         with:
           schemaKey: __citygml_feature_type
-          minZoom: 15
-          maxZoom: 18
+          maxDepth: 18
           attachTexture: true
           output:
             type: flowExpr
-            value: |
-              city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
-              base_city_code = env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5];
-              city_code = attributes["city_code"];
-              suffix = "";
-              if city_code != base_city_code {
-                suffix = "_" + city_code + "_" + attributes["cityNameEn"];
-              }
-              city_gml + suffix + "_bldg_3dtiles_lod3.zip"
+            value: attributes["_output_base"] + "_bldg_3dtiles_lod3.zip"
+
+      - id: cfca323d-02e2-49a2-a327-d928746657a1
+        name: Cesium3DTilesWriterLod3NoTexture
+        type: action
+        action: Cesium 3D Tiles Writer
+        with:
+          schemaKey: __citygml_feature_type
+          maxDepth: 18
+          textureCodec: Untextured
+          output:
+            type: flowExpr
+            value: attributes["_output_base"] + "_bldg_3dtiles_lod3_no_texture.zip"
 
     edges:
       - id: b312699e-9e9f-48e9-9624-512c788bdbe1
@@ -313,6 +370,11 @@ graphs:
         toPort: features
       - id: 5c7d9e1f-4a6b-4c8d-9e0f-2a3b5c7d9e1a
         from: 9f2a7c4e-3b5d-4c8f-a1e0-6d9b2f5a8c31
+        to: da64f443-6281-46a4-a82b-3b6669f80fcd
+        fromPort: features
+        toPort: features
+      - id: 65e658c6-214d-4dae-b3d2-783c5392beca
+        from: da64f443-6281-46a4-a82b-3b6669f80fcd
         to: 16247597-565a-40df-a8d4-7445468978fd
         fromPort: features
         toPort: features
@@ -369,21 +431,48 @@ graphs:
         to: acd88b8a-708a-4adf-ad6e-b471d934191d
         fromPort: joined
         toPort: features
-      # lod1 filter -> writer
+      # lod1 filter -> bounds extractor -> writer
       - id: 6cf1b755-369a-4d11-a9a5-83d46118a459
         from: 04339391-dcfe-485a-9593-e12b0eddf864
+        to: 39f7c2d0-4f5a-4ce6-992d-17ae7b73eb50
+        fromPort: features
+        toPort: features
+      - id: e4c7f444-5c2c-4bd1-9d24-393e85b65d1e
+        from: 39f7c2d0-4f5a-4ce6-992d-17ae7b73eb50
         to: a4f07c6f-3972-4c4f-9e70-f93af486c78d
         fromPort: features
         toPort: features
-      # lod2 filter -> writer
+      # lod2 filter -> bounds extractor -> writer
       - id: 1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c5d
         from: acf7b926-7c8b-4448-9a3d-af4a1d1aa2cd
+        to: 81393f88-cdbc-44e3-b55d-49bc838dc127
+        fromPort: features
+        toPort: features
+      - id: 11b9c258-2623-444a-8cb6-0d9115fa2183
+        from: 81393f88-cdbc-44e3-b55d-49bc838dc127
         to: e44e7208-c0a6-4bca-829c-5d2769dd49f3
         fromPort: features
         toPort: features
-      # lod3 filter -> writer
+      # lod2 bounds extractor -> no-texture writer
+      - id: 73ebe44d-1210-46ed-ada6-f6052353d6e9
+        from: 81393f88-cdbc-44e3-b55d-49bc838dc127
+        to: 0beef7bf-acac-4661-b325-fb8adea8739a
+        fromPort: features
+        toPort: features
+      # lod3 filter -> bounds extractor -> writer
       - id: 3c4d5e6f-7a8b-4c9d-0e1f-2a3b4c5d6e7f
         from: acd88b8a-708a-4adf-ad6e-b471d934191d
+        to: db01f1d9-e4b0-4ac1-ba89-ddd7a3103570
+        fromPort: features
+        toPort: features
+      - id: db01247a-6eb9-490d-bd4b-a1117489d1d9
+        from: db01f1d9-e4b0-4ac1-ba89-ddd7a3103570
         to: a7b575b0-8a0b-44d6-a80e-1fef936058df
+        fromPort: features
+        toPort: features
+      # lod3 bounds extractor -> no-texture writer
+      - id: a8b14a8a-985e-4f04-9d8b-476491911c6d
+        from: db01f1d9-e4b0-4ac1-ba89-ddd7a3103570
+        to: cfca323d-02e2-49a2-a327-d928746657a1
         fromPort: features
         toPort: features
