@@ -83,14 +83,15 @@ graphs:
             - tran:TrafficArea
             - frn:CityFurniture
 
-      # A CityGML feature carries every LOD it defines in one geometry
-      # collection. Splitting lifts each member's `lod` onto its own feature,
-      # so a consumer of this edge can select one LOD without re-reading the
-      # collection.
+      # PLATEAU CityGML 3 coordinates are in JGD2011 geographic (lat/lon/ellipsoidal-height).
+      # Shift ellipsoidal height → WGS84 orthometric height before tile output.
+      # Horizontal reprojection is not required: JGD2011 lat/lon ≈ WGS84 lat/lon for 3D tiles.
       - id: b1c2d3e4-f5a6-7890-bcde-f12345678901
-        name: GeometrySplitter
+        name: VerticalReprojector
         type: action
-        action: Geometry Splitter
+        action: Vertical Reprojector
+        with:
+          reprojectorType: jgd2011ToWgs84
 
       - id: e5f6a7b8-c9d0-1e2f-3a4b-5c6d7e8f9a0b
         name: Cesium3DTilesWriter
