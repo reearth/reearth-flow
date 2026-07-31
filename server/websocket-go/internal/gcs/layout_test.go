@@ -2,6 +2,7 @@ package gcs
 
 import (
 	"context"
+	"net/http"
 	"strings"
 	"testing"
 )
@@ -241,5 +242,16 @@ func TestPutWithMeta(t *testing.T) {
 	}
 	if string(readData) != string(data) {
 		t.Errorf("data = %q, want %q", string(readData), string(data))
+	}
+}
+
+// TestPutWithMeta_ErrorPropagation verifies that putWithMeta propagates write errors
+// (including Close errors) rather than swallowing them. This pins that the implementation
+// correctly handles the contract that GCS write failures commonly surface on Close().
+func TestPutWithMeta_ErrorPropagation(t *testing.T) {
+	s := faultKV(t, http.StatusInternalServerError)
+	err := s.putWithMeta(context.Background(), "obj", []byte("data"), map[string]string{"k": "v"})
+	if err == nil {
+		t.Fatalf("expected putWithMeta to return an error for a 500 GCS failure, got nil")
 	}
 }
