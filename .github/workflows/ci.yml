@@ -41,6 +41,7 @@ jobs:
         with:
           files: |
             server/api/**
+            server/db/**
             engine/schema/**
             .github/workflows/ci.yml
             .github/workflows/ci_api.yml
@@ -69,7 +70,7 @@ jobs:
         with:
           files: |
             server/subscriber/**
-            server/api/internal/infrastructure/postgres/db/migrations/**
+            server/db/**
             .github/workflows/ci.yml
             .github/workflows/ci_subscriber.yml
             .github/workflows/build_deploy_subscriber.yml

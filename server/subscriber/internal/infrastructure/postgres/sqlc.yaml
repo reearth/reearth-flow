@@ -1,9 +1,7 @@
 version: "2"
 sql:
-  # The schema is owned by the API module; Atlas migrations live there and this
-  # module only reads them to generate against the same tables.
   - engine: "postgresql"
-    schema: "../../../../api/internal/infrastructure/postgres/db/migrations"
+    schema: "../../../../db/migrations"
     queries: "query"
     gen:
       go:
