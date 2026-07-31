@@ -32,6 +32,7 @@ type Layout interface {
 	SnapVersionName(d DocID, id int64) string
 	SnapVersionPrefix(d DocID) string
 	SnapNextIDName(d DocID) string
+	SnapVersionIDFromName(name string) (int64, bool) // parse id from a snapshot object name
 }
 
 func hexb(b []byte) string { return hex.EncodeToString(b) }
@@ -127,6 +128,26 @@ func (LegacyRootLayout) SnapNextIDName(d DocID) string {
 	return hexb([]byte("snapnextid:" + hexb([]byte(d))))
 }
 
+// SnapVersionIDFromName recovers the snapshot id from a hex-encoded object name.
+func (LegacyRootLayout) SnapVersionIDFromName(name string) (int64, bool) {
+	b, err := hexDecode(name)
+	if err != nil {
+		return 0, false
+	}
+	s := string(b)
+	// The name encodes "snapver:" + hex(docid) + ":" + decimal_id
+	// We only care about extracting the decimal_id at the end.
+	idx := strings.LastIndex(s, ":")
+	if idx < 0 {
+		return 0, false
+	}
+	id, err := strconv.ParseInt(s[idx+1:], 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	return id, true
+}
+
 func updatePrefixBytes(oid uint32) []byte {
 	k := make([]byte, 0, 7)
 	k = append(k, rsV1, rsKeyspaceDoc)
@@ -175,6 +196,22 @@ func (ProjectFolderLayout) SnapNextIDName(d DocID) string {
 	return ProjectPrefix(d) + "snapnextid"
 }
 
+// SnapVersionIDFromName recovers the snapshot id from a decimal-encoded object name.
+// For ProjectFolderLayout names like "{docid}/snapver/{id}", this extracts the id directly.
+func (ProjectFolderLayout) SnapVersionIDFromName(name string) (int64, bool) {
+	// The name is "{docid}/snapver/{decimal_id}"
+	// Find the last "/" and parse what comes after.
+	idx := strings.LastIndex(name, "/")
+	if idx < 0 {
+		return 0, false
+	}
+	id, err := strconv.ParseInt(name[idx+1:], 10, 64)
+	if err != nil {
+		return 0, false
+	}
+	return id, true
+}
+
 // ProjectPrefix is the {D}/ prefix scoping every list/delete to one project.
 func ProjectPrefix(d DocID) string { return string(d) + "/" }
 
@@ -207,22 +244,3 @@ func ValidateDocIDForPrefix(d DocID) error {
 	return nil
 }
 
-// snapVersionID recovers the snapshot id from a full object name given its
-// listing prefix. For the hex layout the suffix after the prefix is the hex of
-// the decimal id; for the folder layout it is the decimal id directly.
-func snapVersionID(objectName, prefix string) (int64, bool) {
-	rest, ok := strings.CutPrefix(objectName, prefix)
-	if !ok || rest == "" {
-		return 0, false
-	}
-	if b, err := hexDecode(rest); err == nil {
-		if id, perr := strconv.ParseInt(string(b), 10, 64); perr == nil {
-			return id, true
-		}
-	}
-	id, err := strconv.ParseInt(rest, 10, 64)
-	if err != nil {
-		return 0, false
-	}
-	return id, true
-}

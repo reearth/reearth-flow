@@ -1,6 +1,7 @@
 package gcs
 
 import (
+	"context"
 	"strings"
 	"testing"
 )
@@ -123,23 +124,36 @@ func TestSnapVersionNaming_LegacyRoot(t *testing.T) {
 	const room DocID = "01kykrds8s93qfnxx8g8d26hsy"
 
 	prefix := l.SnapVersionPrefix(room)
-	name := l.SnapVersionName(room, 7)
 
-	// The listing prefix must actually be a prefix of a member object, or
-	// ListSnapshots cannot enumerate. Hex encoding is per-byte, so a shared
-	// string prefix yields a shared hex prefix.
-	if !strings.HasPrefix(name, prefix) {
-		t.Fatalf("name %q does not start with prefix %q", name, prefix)
+	// Test multiple id values, including ones that would expose hex-parsing bugs.
+	testIDs := []int64{7, 30, 31, 42, 3031}
+	for _, id := range testIDs {
+		name := l.SnapVersionName(room, id)
+		// The listing prefix must actually be a prefix of a member object.
+		if !strings.HasPrefix(name, prefix) {
+			t.Fatalf("id=%d: name %q does not start with prefix %q", id, name, prefix)
+		}
+		// The id must round-trip out of the object name via the layout method.
+		got, ok := l.SnapVersionIDFromName(name)
+		if !ok || got != id {
+			t.Fatalf("id=%d: SnapVersionIDFromName = (%d,%v), want (%d,true)", id, got, ok, id)
+		}
 	}
-	// The id must round-trip out of the object name.
-	got, ok := snapVersionID(name, prefix)
-	if !ok || got != 7 {
-		t.Fatalf("snapVersionID = (%d,%v), want (7,true)", got, ok)
-	}
+
 	// Distinct rooms must not share a prefix.
 	if strings.HasPrefix(l.SnapVersionName("other", 7), prefix) {
 		t.Fatal("a different room must not fall under this room's prefix")
 	}
+
+	// Room names that are byte-prefixes of each other must not collide.
+	room1 := DocID("abc")
+	room2 := DocID("abcd")
+	prefix1 := l.SnapVersionPrefix(room1)
+	prefix2 := l.SnapVersionPrefix(room2)
+	if strings.HasPrefix(prefix2, prefix1) {
+		t.Fatalf("room %q prefix must not be a prefix of room %q prefix", room1, room2)
+	}
+
 	// nextid must NOT fall under the listing prefix, or it would be listed as a snapshot.
 	if strings.HasPrefix(l.SnapNextIDName(room), prefix) {
 		t.Fatal("nextid object must not be inside the snapshot listing prefix")
@@ -151,15 +165,81 @@ func TestSnapVersionNaming_ProjectFolder(t *testing.T) {
 	const room DocID = "01kykrds8s93qfnxx8g8d26hsy"
 
 	prefix := l.SnapVersionPrefix(room)
-	name := l.SnapVersionName(room, 42)
-	if !strings.HasPrefix(name, prefix) {
-		t.Fatalf("name %q does not start with prefix %q", name, prefix)
+
+	// Test multiple id values including ones that would be problematic for hex guessing.
+	testIDs := []int64{7, 30, 31, 42, 3031}
+	for _, id := range testIDs {
+		name := l.SnapVersionName(room, id)
+		if !strings.HasPrefix(name, prefix) {
+			t.Fatalf("id=%d: name %q does not start with prefix %q", id, name, prefix)
+		}
+		got, ok := l.SnapVersionIDFromName(name)
+		if !ok || got != id {
+			t.Fatalf("id=%d: SnapVersionIDFromName = (%d,%v), want (%d,true)", id, got, ok, id)
+		}
 	}
-	got, ok := snapVersionID(name, prefix)
-	if !ok || got != 42 {
-		t.Fatalf("snapVersionID = (%d,%v), want (42,true)", got, ok)
+
+	// Room names that are byte-prefixes of each other must not collide.
+	room1 := DocID("abc")
+	room2 := DocID("abcd")
+	prefix1 := l.SnapVersionPrefix(room1)
+	prefix2 := l.SnapVersionPrefix(room2)
+	if strings.HasPrefix(prefix2, prefix1) {
+		t.Fatalf("room %q prefix must not be a prefix of room %q prefix", room1, room2)
 	}
+
 	if strings.HasPrefix(l.SnapNextIDName(room), prefix) {
 		t.Fatal("nextid object must not be inside the snapshot listing prefix")
+	}
+}
+
+// TestPutWithMeta verifies that putWithMeta writes metadata and it round-trips through listAttrs.
+func TestPutWithMeta(t *testing.T) {
+	client, bucket := newFakeGCS(t)
+	defer func() { _ = client.Close() }()
+
+	ctx := context.Background()
+	kv := &kv{bucket: client.Bucket(bucket)}
+
+	// Write an object with metadata.
+	name := "test/snapshot/42"
+	data := []byte("snapshot data")
+	meta := map[string]string{
+		"label":             "My Snapshot",
+		"uncompressed_size": "12345",
+	}
+
+	err := kv.putWithMeta(ctx, name, data, meta)
+	if err != nil {
+		t.Fatalf("putWithMeta failed: %v", err)
+	}
+
+	// Verify the metadata round-trips through listAttrs.
+	attrs, err := kv.listAttrs(ctx, "test/snapshot/")
+	if err != nil {
+		t.Fatalf("listAttrs failed: %v", err)
+	}
+	if len(attrs) != 1 {
+		t.Fatalf("expected 1 object, got %d", len(attrs))
+	}
+
+	obj := attrs[0]
+	if obj.Name != name {
+		t.Errorf("object name = %q, want %q", obj.Name, name)
+	}
+	if obj.Metadata["label"] != "My Snapshot" {
+		t.Errorf("metadata label = %q, want %q", obj.Metadata["label"], "My Snapshot")
+	}
+	if obj.Metadata["uncompressed_size"] != "12345" {
+		t.Errorf("metadata uncompressed_size = %q, want %q", obj.Metadata["uncompressed_size"], "12345")
+	}
+
+	// Verify the data is intact.
+	readData, err := kv.get(ctx, name)
+	if err != nil {
+		t.Fatalf("get failed: %v", err)
+	}
+	if string(readData) != string(data) {
+		t.Errorf("data = %q, want %q", string(readData), string(data))
 	}
 }
