@@ -237,9 +237,14 @@ func (i *Deployment) Update(ctx context.Context, dp interfaces.UpdateDeploymentP
 					return err
 				}
 
+				// Defensive: every repo returns ErrNotFound rather than a nil head,
+				// so this cannot be nil today. incrementVersion("") is "v1", which
+				// is what Create uses for a project with no head.
+				var headVersion string
 				if currentHead != nil {
-					d.SetVersion(incrementVersion(currentHead.Version()))
+					headVersion = currentHead.Version()
 				}
+				d.SetVersion(incrementVersion(headVersion))
 				d.SetIsHead(true)
 				if currentHead != nil && currentHead.ID() != d.ID() {
 					d.SetHeadID(currentHead.ID())

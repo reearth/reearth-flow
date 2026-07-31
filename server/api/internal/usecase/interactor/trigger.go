@@ -155,6 +155,9 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	if err != nil {
 		return nil, err
 	}
+	if trigger == nil {
+		return nil, rerror.ErrNotFound
+	}
 
 	if !trigger.Enabled() {
 		return nil, fmt.Errorf("trigger is disabled")
@@ -163,7 +166,7 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	// API-driven triggers use their own secret token as the auth mechanism.
 	// No workspace membership is required — the token is sufficient proof of authorization.
 	if trigger.EventSource() == "API_DRIVEN" {
-		if p.AuthenticationToken != *trigger.AuthToken() {
+		if trigger.AuthToken() == nil || p.AuthenticationToken != *trigger.AuthToken() {
 			return nil, fmt.Errorf("invalid auth token")
 		}
 	} else {
@@ -175,6 +178,9 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	deployment, err := i.deploymentRepo.FindByID(ctx, trigger.Deployment())
 	if err != nil {
 		return nil, err
+	}
+	if deployment == nil {
+		return nil, rerror.ErrNotFound
 	}
 
 	var projectParams map[string]variable.Variable
@@ -226,7 +232,9 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 	if err != nil {
 		return nil, err
 	}
-	j.SetMetadataURL(metadataURL.String())
+	if metadataURL != nil {
+		j.SetMetadataURL(metadataURL.String())
+	}
 
 	// Update last triggered time
 	trigger.SetLastTriggered(time.Now())
@@ -273,19 +281,14 @@ func (i *Trigger) ExecuteAPITrigger(ctx context.Context, p interfaces.ExecuteAPI
 }
 
 func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.ExecuteTimeDrivenTriggerParam) (_ *job.Job, err error) {
-	trg, err := i.triggerRepo.FindByID(ctx, p.TriggerID)
-	if err != nil {
-		return nil, err
-	}
-	if trg == nil {
-		return nil, rerror.ErrNotFound
-	}
-	if err := i.checkPermission(ctx, rbac.ActionCreate, trg.Workspace()); err != nil {
-		return nil, err
-	}
-
 	trigger, err := i.triggerRepo.FindByID(ctx, p.TriggerID)
 	if err != nil {
+		return nil, err
+	}
+	if trigger == nil {
+		return nil, rerror.ErrNotFound
+	}
+	if err := i.checkPermission(ctx, rbac.ActionCreate, trigger.Workspace()); err != nil {
 		return nil, err
 	}
 
@@ -300,6 +303,9 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 	deployment, err := i.deploymentRepo.FindByID(ctx, trigger.Deployment())
 	if err != nil {
 		return nil, err
+	}
+	if deployment == nil {
+		return nil, rerror.ErrNotFound
 	}
 
 	var projectParams map[string]variable.Variable
@@ -345,7 +351,9 @@ func (i *Trigger) ExecuteTimeDrivenTrigger(ctx context.Context, p interfaces.Exe
 	if err != nil {
 		return nil, err
 	}
-	j.SetMetadataURL(metadataURL.String())
+	if metadataURL != nil {
+		j.SetMetadataURL(metadataURL.String())
+	}
 
 	// Update last triggered time
 	trigger.SetLastTriggered(time.Now())
