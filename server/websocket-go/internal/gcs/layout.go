@@ -113,9 +113,13 @@ func (LegacyRootLayout) UpdatePrefix(_ DocID, oid uint32) string {
 	return hexb(updatePrefixBytes(oid))
 }
 
-// snapver objects hold brotli(V2) state, same payload format as doc_v2, under a
-// per-room prefix so ListSnapshots is a single prefix listing. The counter lives
-// OUTSIDE that prefix so it is never mistaken for a snapshot.
+// snapver objects hold the caller's state bytes brotli-compressed and otherwise
+// untouched: the store does no CRDT decode/re-encode, so whatever goes in comes
+// back out byte-for-byte (this is deliberate — ygo's SnapshotStore contract
+// requires exact round-tripping of arbitrary, not-necessarily-CRDT bytes). This
+// is NOT the doc_v2 payload format. Objects live under a per-room prefix so
+// ListSnapshots is a single prefix listing. The counter lives OUTSIDE that
+// prefix so it is never mistaken for a snapshot.
 func (LegacyRootLayout) SnapVersionPrefix(d DocID) string {
 	return hexb([]byte("snapver:" + hexb([]byte(d)) + ":"))
 }
@@ -243,4 +247,3 @@ func ValidateDocIDForPrefix(d DocID) error {
 	}
 	return nil
 }
-
