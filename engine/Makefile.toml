@@ -51,7 +51,7 @@ script = ['''
 #!/usr/bin/env bash -eux
 # Both geometry worlds.
 cargo test --workspace --all-targets --exclude workflow-tests ${@:-}
-cargo test --workspace --all-targets --features new-geometry \
+cargo test --workspace --all-targets --features new-geometry,schema \
   --exclude workflow-tests --exclude reearth-flow-tests ${@:-}
 ''']
 
@@ -105,11 +105,15 @@ export PLATEAU_TILES_TEST_CONCURRENCY="${PLATEAU_TILES_TEST_CONCURRENCY:-4}" # d
 cargo run -p plateau-tiles-test --bin plateau-tiles-test --features new-geometry ${@:-}
 ''']
 
+# `--all-features` is not usable here: `debug-geom-feature-write` swaps the
+# intermediate-data form for its debug counterpart and so is mutually exclusive
+# with `schema`, which describes the production one. Document the production
+# configuration.
 [tasks.doc]
 script = ['''
 #!/usr/bin/env bash -eux
 cargo clean --doc
-cargo doc --no-deps --all-features
+cargo doc --no-deps --features new-geometry,schema
 ''']
 
 [tasks.coverage]
@@ -145,6 +149,20 @@ script = [
 rm -rf "./schema/actions.json"
 cargo run --package reearth-flow-cli -- schema-action > ./schema/actions.json
 cargo run --package reearth-flow-cli -- scaffold-i18n --dir "$PWD/schema/i18n/actions"
+''',
+]
+
+# Generates the production intermediate-data (feature) JSON schema.
+# Run after changing any geometry leaf's wire form, and commit the result.
+[tasks.schema-feature]
+script = [
+  '''
+#!/usr/bin/env bash -eux
+out=$(mktemp)
+trap 'rm -f "$out"' EXIT
+cargo run --package reearth-flow-cli --features schema -- schema-feature > "$out"
+mv "$out" ./schema/feature-intermediate.schema.json
+trap - EXIT
 ''',
 ]
 
@@ -186,10 +204,11 @@ script = [
 
 cargo make schema-base
 cargo make schema-translated
+cargo make schema-feature
 git add -N .
 line=$(git diff | wc -l)
 if [ "$line" -gt 0 ]; then
-  echo "Please run 'cargo make schema-base' and 'cargo make schema-translated' and commit the changes."
+  echo "Please run 'cargo make schema-base', 'cargo make schema-translated' and 'cargo make schema-feature' and commit the changes."
   git --no-pager diff
   exit 1
 fi
