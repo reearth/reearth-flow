@@ -44,12 +44,13 @@ run-db-pg:
 	docker compose -f ./docker-compose.yml up -d reearth-flow-postgres
 
 PG_DIR=internal/infrastructure/postgres
+DB_DIR=../db
 
 sqlc:
 	cd $(PG_DIR) && sqlc generate
 
 atlas-diff:
-	cd $(PG_DIR)/db && atlas migrate diff $(name) --env local
+	cd $(DB_DIR) && atlas migrate diff $(name) --env local
 
 atlas-validate:
-	cd $(PG_DIR)/db && atlas migrate validate --env local
+	cd $(DB_DIR) && atlas migrate validate --env local

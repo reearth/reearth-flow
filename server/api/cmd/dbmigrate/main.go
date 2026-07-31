@@ -27,8 +27,8 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/mongo/mongodoc"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/postgres"
-	"github.com/reearth/reearth-flow/api/internal/infrastructure/postgres/db"
 	"github.com/reearth/reearth-flow/api/pkg/id"
+	"github.com/reearth/reearth-flow/db"
 	"github.com/reearth/reearthx/pgxx"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -90,6 +90,19 @@ func main() {
 	verify := flag.Bool("verify", false, "read every replicated row back through the Postgres adapters (target only; no Mongo)")
 	applySchema := flag.Bool("apply-schema", false, "apply the embedded Atlas migrations to the target before replicating (fresh instance only)")
 	flag.Parse()
+
+	// -verify returns before the ETL, so pairing it with a seeding flag silently
+	// skips the replication and still exits 0. Reject the combination rather than
+	// leaving an empty database that looks successfully seeded.
+	if *verify {
+		passed := map[string]bool{}
+		flag.Visit(func(f *flag.Flag) { passed[f.Name] = true })
+		for _, name := range []string{"apply-schema", "db"} {
+			if passed[name] {
+				log.Fatalf("-verify only reads the target and cannot be combined with -%s; run the steps separately", name)
+			}
+		}
+	}
 
 	pgURI := os.Getenv("REEARTH_FLOW_DB_PG")
 	if pgURI == "" {

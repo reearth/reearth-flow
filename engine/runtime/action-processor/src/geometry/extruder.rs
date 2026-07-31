@@ -6,7 +6,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
 };
 use reearth_flow_types::{Code, CodeType, CompiledCode, Geometry, GeometryValue};
 use schemars::JsonSchema;
@@ -24,7 +24,7 @@ impl ProcessorFactory for ExtruderFactory {
     }
 
     fn description(&self) -> &str {
-        "Extrude 2D Polygons into 3D Solids"
+        "Extrudes a polygon geometry vertically by a given distance to produce a solid geometry."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -44,7 +44,7 @@ impl ProcessorFactory for ExtruderFactory {
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![FEATURES_PORT.clone()]
+        vec![FEATURES_PORT.clone(), REJECTED_PORT.clone()]
     }
 
     fn build(
@@ -86,12 +86,13 @@ pub struct Extruder {
 }
 
 /// # Extruder Parameters
-/// Configure how to extrude 2D polygons into 3D solid geometries
+/// Configure how far each polygon is extruded.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct ExtruderParam {
     /// # Distance
-    /// The vertical distance (height) to extrude the polygon. Can be a constant value or an expression
+    /// Height to extrude the polygon by, as a constant or an expression
+    /// evaluated per feature.
     distance: Code<{ CodeType::FlowExpr as u32 }>,
 }
 
@@ -113,16 +114,28 @@ impl Processor for Extruder {
             .map_err(|e| {
                 GeometryProcessorError::Extruder(format!("Failed to evaluate distance: {e:?}"))
             })?;
-        let geometry = &feature.geometry;
-        if geometry.is_empty() {
-            return Err(GeometryProcessorError::Extruder("Missing geometry".to_string()).into());
+
+        // A feature this action cannot extrude is routed to `rejected` rather
+        // than failing the job: one stray geometry should not stop the run.
+        // A polygon with no elevation is rejected too — extruding it would have
+        // to invent a base elevation. Use a Three Dimension Forcer upstream to
+        // set that base deliberately.
+        let reject = |reason: &str| {
+            ctx.event_hub.debug_log(
+                Some(ctx.error_span()),
+                format!("extrude rejected: {reason}"),
+            );
+            fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
         };
-        let geom_inner = (**geometry).clone();
+
+        let geom_inner = (*feature.geometry).clone();
         let GeometryValue::FlowGeometry3D(flow_geometry) = &geom_inner.value else {
-            return Err(GeometryProcessorError::Extruder("Invalid geometry".to_string()).into());
+            reject("geometry is absent or carries no elevation");
+            return Ok(());
         };
         let FlowGeometry3D::Polygon(polygon) = flow_geometry else {
-            return Err(GeometryProcessorError::Extruder("Invalid geometry".to_string()).into());
+            reject("geometry is not a polygon");
+            return Ok(());
         };
         let solid = polygon.extrude(height);
         let geometry = Geometry {

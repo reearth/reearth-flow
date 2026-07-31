@@ -6,6 +6,7 @@ require (
 	cloud.google.com/go/pubsub/v2 v2.0.0
 	github.com/GoogleCloudPlatform/opentelemetry-operations-go/exporter/trace v1.30.0
 	github.com/hellofresh/health-go/v5 v5.5.5
+	github.com/jackc/pgx/v5 v5.7.2
 	github.com/joho/godotenv v1.5.1
 	github.com/k0kubun/pp/v3 v3.5.0
 	github.com/kelseyhightower/envconfig v1.4.0
@@ -48,6 +49,9 @@ require (
 	github.com/googleapis/enterprise-certificate-proxy v0.3.7 // indirect
 	github.com/googleapis/gax-go/v2 v2.15.0 // indirect
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.27.3 // indirect
+	github.com/jackc/pgpassfile v1.0.0 // indirect
+	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
+	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/klauspost/compress v1.18.1 // indirect
 	github.com/labstack/echo/v4 v4.13.4 // indirect
 	github.com/labstack/echo/v5 v5.1.0 // indirect

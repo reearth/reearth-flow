@@ -57,15 +57,15 @@ func (u *nodeSubscriberUseCase) ProcessNodeEvent(ctx context.Context, event *nod
 		nodeExec.CompletedAt = &now
 		log.Printf("DEBUG: Setting CompletedAt=%s for node %s", now.Format(time.RFC3339), event.NodeID)
 
-		if err := u.storage.SaveToMongo(ctx, event.JobID, nodeExec); err != nil {
-			log.Printf("WARNING: Failed to save node execution to MongoDB for JobID=%s, NodeID=%s: %v",
+		if err := u.storage.SaveNodeExecution(ctx, event.JobID, nodeExec); err != nil {
+			log.Printf("WARNING: Failed to save node execution for JobID=%s, NodeID=%s: %v",
 				event.JobID, event.NodeID, err)
 		} else {
-			log.Printf("DEBUG: Successfully saved node execution to MongoDB for JobID=%s, NodeID=%s",
+			log.Printf("DEBUG: Successfully saved node execution for JobID=%s, NodeID=%s",
 				event.JobID, event.NodeID)
 		}
 	} else {
-		log.Printf("DEBUG: Skipping MongoDB save for non-terminal status %s", event.Status)
+		log.Printf("DEBUG: Skipping node execution save for non-terminal status %s", event.Status)
 	}
 
 	log.Printf("DEBUG: Successfully processed node event for JobID: %s, NodeID: %s", event.JobID, event.NodeID)
