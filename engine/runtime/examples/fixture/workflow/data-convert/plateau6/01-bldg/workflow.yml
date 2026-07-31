@@ -229,6 +229,23 @@ graphs:
           zmin: _zmin
           zmax: _zmax
 
+      - id: d22ce8c5-4e85-416c-9fe9-84396ecb7399
+        name: AttributeManagerXYByLod1
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: _x
+              method: create
+              value:
+                type: flowExpr
+                value: '(attributes["_xmin"] + attributes["_xmax"]) * 0.5'
+            - attribute: _y
+              method: create
+              value:
+                type: flowExpr
+                value: '(attributes["_ymin"] + attributes["_ymax"]) * 0.5'
+
       - id: a4f07c6f-3972-4c4f-9e70-f93af486c78d
         name: Cesium3DTilesWriterLod1
         type: action
@@ -272,6 +289,23 @@ graphs:
           ymax: _ymax
           zmin: _zmin
           zmax: _zmax
+
+      - id: e78b5d2f-a9d5-4991-aa7c-ba67dc64cadc
+        name: AttributeManagerXYByLod2
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: _x
+              method: create
+              value:
+                type: flowExpr
+                value: '(attributes["_xmin"] + attributes["_xmax"]) * 0.5'
+            - attribute: _y
+              method: create
+              value:
+                type: flowExpr
+                value: '(attributes["_ymin"] + attributes["_ymax"]) * 0.5'
 
       - id: e44e7208-c0a6-4bca-829c-5d2769dd49f3
         name: Cesium3DTilesWriterLod2
@@ -328,6 +362,23 @@ graphs:
           ymax: _ymax
           zmin: _zmin
           zmax: _zmax
+
+      - id: cd167799-4d08-4256-8203-584c66f49d9b
+        name: AttributeManagerXYByLod3
+        type: action
+        action: Attribute Manager
+        with:
+          operations:
+            - attribute: _x
+              method: create
+              value:
+                type: flowExpr
+                value: '(attributes["_xmin"] + attributes["_xmax"]) * 0.5'
+            - attribute: _y
+              method: create
+              value:
+                type: flowExpr
+                value: '(attributes["_ymin"] + attributes["_ymax"]) * 0.5'
 
       - id: a7b575b0-8a0b-44d6-a80e-1fef936058df
         name: Cesium3DTilesWriterLod3
@@ -450,6 +501,11 @@ graphs:
         toPort: features
       - id: e4c7f444-5c2c-4bd1-9d24-393e85b65d1e
         from: 39f7c2d0-4f5a-4ce6-992d-17ae7b73eb50
+        to: d22ce8c5-4e85-416c-9fe9-84396ecb7399
+        fromPort: features
+        toPort: features
+      - id: 550153be-925d-4199-9939-c021d05c2e5d
+        from: d22ce8c5-4e85-416c-9fe9-84396ecb7399
         to: a4f07c6f-3972-4c4f-9e70-f93af486c78d
         fromPort: features
         toPort: features
@@ -459,14 +515,19 @@ graphs:
         to: 81393f88-cdbc-44e3-b55d-49bc838dc127
         fromPort: features
         toPort: features
-      - id: 11b9c258-2623-444a-8cb6-0d9115fa2183
+      - id: 753ee3b2-bff4-480e-adbf-77e174f23fda
         from: 81393f88-cdbc-44e3-b55d-49bc838dc127
+        to: e78b5d2f-a9d5-4991-aa7c-ba67dc64cadc
+        fromPort: features
+        toPort: features
+      - id: 11b9c258-2623-444a-8cb6-0d9115fa2183
+        from: e78b5d2f-a9d5-4991-aa7c-ba67dc64cadc
         to: e44e7208-c0a6-4bca-829c-5d2769dd49f3
         fromPort: features
         toPort: features
       # lod2 bounds extractor -> no-texture writer
       - id: 73ebe44d-1210-46ed-ada6-f6052353d6e9
-        from: 81393f88-cdbc-44e3-b55d-49bc838dc127
+        from: e78b5d2f-a9d5-4991-aa7c-ba67dc64cadc
         to: 0beef7bf-acac-4661-b325-fb8adea8739a
         fromPort: features
         toPort: features
@@ -476,14 +537,19 @@ graphs:
         to: db01f1d9-e4b0-4ac1-ba89-ddd7a3103570
         fromPort: features
         toPort: features
-      - id: db01247a-6eb9-490d-bd4b-a1117489d1d9
+      - id: 44846f06-cb2e-4d7d-a473-9e36f5ea3a11
         from: db01f1d9-e4b0-4ac1-ba89-ddd7a3103570
+        to: cd167799-4d08-4256-8203-584c66f49d9b
+        fromPort: features
+        toPort: features
+      - id: db01247a-6eb9-490d-bd4b-a1117489d1d9
+        from: cd167799-4d08-4256-8203-584c66f49d9b
         to: a7b575b0-8a0b-44d6-a80e-1fef936058df
         fromPort: features
         toPort: features
       # lod3 bounds extractor -> no-texture writer
       - id: a8b14a8a-985e-4f04-9d8b-476491911c6d
-        from: db01f1d9-e4b0-4ac1-ba89-ddd7a3103570
+        from: cd167799-4d08-4256-8203-584c66f49d9b
         to: cfca323d-02e2-49a2-a327-d928746657a1
         fromPort: features
         toPort: features
