@@ -10,17 +10,26 @@ repository.workspace = true
 rust-version.workspace = true
 version.workspace = true
 
+[features]
+# Temporary migration flag for the new-geometry migration.
+# TODO: Remove after migration.
+#
+# The view builders read the geometry this flag selects, so the crate compiles
+# to nothing without it. It is forwarded rather than turned on unconditionally
+# because Cargo unifies features across a build: enabling it here would flip
+# every crate built alongside this one.
+new-geometry = [
+  "reearth-flow-action-sink/new-geometry",
+  "reearth-flow-geometry/new-geometry",
+  "reearth-flow-types/new-geometry",
+]
+
 [dependencies]
-# The view builders read the geometry these features select, so this crate only
-# exists in that world and turns them on rather than forwarding a flag of its
-# own. Cargo unifies features across a build, so depending on this crate pulls
-# every dependent into the same world; keep it an optional dependency of
-# anything that still builds both.
-reearth-flow-action-sink = { workspace = true, features = ["new-geometry"] }
+reearth-flow-action-sink.workspace = true
 reearth-flow-common.workspace = true
-reearth-flow-geometry = { workspace = true, features = ["new-geometry"] }
+reearth-flow-geometry.workspace = true
 reearth-flow-storage.workspace = true
-reearth-flow-types = { workspace = true, features = ["new-geometry"] }
+reearth-flow-types.workspace = true
 
 bytes.workspace = true
 serde_json.workspace = true

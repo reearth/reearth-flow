@@ -10,10 +10,11 @@ use crate::scaffold_i18n::{build_scaffold_i18n_command, ScaffoldI18nCliCommand};
 use crate::schema_action::{build_schema_action_command, SchemaActionCliCommand};
 use crate::schema_feature::{build_schema_feature_command, SchemaFeatureCliCommand};
 use crate::schema_workflow::{build_schema_workflow_command, SchemaWorkflowCliCommand};
+#[cfg(feature = "new-geometry")]
 use crate::view::{build_view_command, ViewCliCommand};
 
 pub fn build_cli() -> Command {
-    Command::new("Re:Earth Flow CLI")
+    let command = Command::new("Re:Earth Flow CLI")
         .version(env!("CARGO_PKG_VERSION"))
         .subcommand(build_run_command().display_order(1))
         .subcommand(build_dot_command().display_order(2))
@@ -22,8 +23,10 @@ pub fn build_cli() -> Command {
         .subcommand(build_doc_action_command().display_order(5))
         .subcommand(build_scaffold_i18n_command().display_order(6))
         .subcommand(build_probe_schema_command().display_order(7))
-        .subcommand(build_schema_feature_command().display_order(8))
-        .subcommand(build_view_command().display_order(9))
+        .subcommand(build_schema_feature_command().display_order(8));
+    #[cfg(feature = "new-geometry")]
+    let command = command.subcommand(build_view_command().display_order(9));
+    command
         .arg_required_else_help(true)
         .disable_help_subcommand(true)
         .subcommand_required(true)
@@ -39,6 +42,7 @@ pub enum CliCommand {
     ScaffoldI18n(ScaffoldI18nCliCommand),
     ProbeSchema(ProbeSchemaCliCommand),
     SchemaFeature(SchemaFeatureCliCommand),
+    #[cfg(feature = "new-geometry")]
     View(ViewCliCommand),
 }
 
@@ -64,6 +68,7 @@ impl CliCommand {
             "schema-feature" => Ok(CliCommand::SchemaFeature(
                 SchemaFeatureCliCommand::parse_cli_args(submatches)?,
             )),
+            #[cfg(feature = "new-geometry")]
             "view" => ViewCliCommand::parse_cli_args(submatches).map(CliCommand::View),
             _ => Err(crate::errors::Error::unknown_command(subcommand)),
         }
@@ -79,6 +84,7 @@ impl CliCommand {
             CliCommand::ScaffoldI18n(subcommand) => subcommand.execute(),
             CliCommand::ProbeSchema(subcommand) => subcommand.execute(),
             CliCommand::SchemaFeature(subcommand) => subcommand.execute(),
+            #[cfg(feature = "new-geometry")]
             CliCommand::View(subcommand) => subcommand.execute(),
         }
     }

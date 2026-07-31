@@ -12,6 +12,7 @@ mod schema_action;
 mod schema_feature;
 mod schema_workflow;
 mod utils;
+#[cfg(feature = "new-geometry")]
 mod view;
 
 use std::env;

@@ -5,6 +5,9 @@
 //! features carry no attributes, only [`ROW_INDEX_PROPERTY`], so a click in a
 //! viewer resolves to a row in the table the file came from.
 
+// The whole crate is new-geometry only; see Cargo.toml.
+#![cfg(feature = "new-geometry")]
+
 use std::borrow::Cow;
 use std::collections::BTreeSet;
 use std::sync::Arc;
