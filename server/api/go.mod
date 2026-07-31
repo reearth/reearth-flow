@@ -2,6 +2,10 @@ module github.com/reearth/reearth-flow/api
 
 go 1.26.2
 
+// The Postgres schema is shared with the subscriber, so it lives in its own
+// module rather than under api/internal.
+replace github.com/reearth/reearth-flow/db => ../db
+
 require (
 	cloud.google.com/go/profiler v0.4.3
 	cloud.google.com/go/scheduler v1.11.8
@@ -24,6 +28,7 @@ require (
 	github.com/ravilushqa/otelgqlgen v0.19.0
 	github.com/redis/go-redis/v9 v9.14.0
 	github.com/reearth/reearth-accounts/server v0.0.0-20260407103352-79eb5b61d841
+	github.com/reearth/reearth-flow/db v0.0.0-00010101000000-000000000000
 	github.com/reearth/reearth-proto v1.1.0
 	github.com/reearth/reearthx v0.0.0-20260618134917-663d9623c331
 	github.com/samber/lo v1.52.0

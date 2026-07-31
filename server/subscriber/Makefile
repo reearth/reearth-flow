@@ -6,3 +6,6 @@ run:
 
 lint:
 	golangci-lint run --fix
+
+sqlc:
+	cd internal/infrastructure/postgres && sqlc generate

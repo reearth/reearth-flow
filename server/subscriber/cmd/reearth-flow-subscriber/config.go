@@ -18,6 +18,8 @@ func init() {
 type Config struct {
 	AssetBaseURL                string `envconfig:"ASSET_BASE_URL" default:"http://localhost:8080/assets"`
 	DB                          string `default:"mongodb://localhost"`
+	DBDriver                    string `envconfig:"DB_DRIVER" default:"mongo"`
+	DBPG                        string `envconfig:"DB_PG" pp:",omitempty"`
 	Dev                         bool   `pp:",omitempty"`
 	GCPProject                  string `envconfig:"GOOGLE_CLOUD_PROJECT" pp:",omitempty"`
 	GCSBucket                   string `envconfig:"GCS_BUCKET" pp:",omitempty"`

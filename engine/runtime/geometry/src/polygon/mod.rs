@@ -9,12 +9,15 @@
 //! recording where each interior ring starts (the exterior is the prefix up to
 //! the first hole, so it carries no offset of its own).
 
+#[cfg(feature = "debug-geom-feature-write")]
 use serde::{Deserialize, Serialize};
 
 use crate::appearance::Appearance;
 use crate::coordinate::CoordinateFrame;
 
 mod constructor;
+#[cfg(not(feature = "debug-geom-feature-write"))]
+mod feature_write;
 mod ops;
 #[cfg(feature = "new-geometry")]
 mod validation;
@@ -22,7 +25,8 @@ mod validation;
 pub use constructor::{state, PolygonBuilder2D, PolygonBuilder3D, PolygonFace};
 
 /// A planar polygon face in 2D space, lying at a single optional elevation.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "debug-geom-feature-write", derive(Serialize, Deserialize))]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Polygon2D {
     /// Coordinate frame these coords are expressed in.
     frame: CoordinateFrame,
@@ -44,7 +48,8 @@ pub struct Polygon2D {
 }
 
 /// A planar polygon face in 3D space.
-#[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "debug-geom-feature-write", derive(Serialize, Deserialize))]
+#[derive(Clone, Debug, PartialEq)]
 pub struct Polygon3D {
     /// Coordinate frame these coords are expressed in.
     frame: CoordinateFrame,
