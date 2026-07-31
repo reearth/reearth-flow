@@ -75,3 +75,10 @@ crate::unsupported!(LineString3D: Split);
 
 crate::unsupported!(LineString2D: RemoveAppearance);
 crate::unsupported!(LineString3D: RemoveAppearance);
+
+crate::unsupported!(LineString2D: CountHoles);
+crate::unsupported!(LineString3D: CountHoles);
+
+// A curve bounds no area, so there is nothing to take apart.
+crate::unsupported!(LineString2D: ExtractHoles);
+crate::unsupported!(LineString3D: ExtractHoles);

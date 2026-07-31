@@ -1,9 +1,4 @@
-use std::{
-    collections::HashMap,
-    io::{BufWriter, Cursor},
-    sync::Arc,
-    time, vec,
-};
+use std::{collections::HashMap, io::Cursor, sync::Arc, time, vec};
 
 use nusamai_citygml::schema::{Schema, TypeDef};
 use once_cell::sync::Lazy;
@@ -83,6 +78,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
             .output
             .compile()
             .map_err(|e| SinkError::Cesium3DTilesWriterFactory(format!("{e:?}")))?;
+        #[cfg(not(feature = "new-geometry"))]
         let compress_output = params
             .compress_output
             .as_ref()
@@ -101,6 +97,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
                 max_zoom: params.max_zoom,
                 #[cfg(not(feature = "new-geometry"))]
                 attach_texture: params.attach_texture,
+                #[cfg(not(feature = "new-geometry"))]
                 compress_output,
                 draco_compression: params.draco_compression,
                 #[cfg(feature = "new-geometry")]
@@ -227,6 +224,7 @@ pub struct Cesium3DTilesWriterParam {
     pub(super) array_map_separator: Option<String>,
     /// # Compressed Output Path
     /// Optional path where a compressed archive of the tiles is also written.
+    #[cfg(not(feature = "new-geometry"))]
     pub(super) compress_output: Option<Code>,
 }
 
@@ -237,6 +235,7 @@ pub struct Cesium3DTilesWriterCompiledParam {
     pub(super) max_zoom: u8,
     #[cfg(not(feature = "new-geometry"))]
     pub(super) attach_texture: Option<bool>,
+    #[cfg(not(feature = "new-geometry"))]
     pub(super) compress_output: Option<CompiledCode>,
     pub(super) draco_compression: bool,
     #[cfg(feature = "new-geometry")]
@@ -509,6 +508,12 @@ impl Cesium3DTilesWriter {
                 let ctx = ctx.clone();
                 let schema = schema.clone();
                 let output_uri_inner = output_uri.clone();
+                // When compress_output is set, tiles stream into an in-memory zip instead of output_uri_inner.
+                let zip_sink = compress_output.as_ref().map(|_| {
+                    Arc::new(reearth_flow_common::zip::StreamingZipWriter::new(
+                        Cursor::new(Vec::new()),
+                    ))
+                });
                 s.spawn(move || {
                     let pool = rayon::ThreadPoolBuilder::new()
                         .use_current_thread()
@@ -523,6 +528,7 @@ impl Cesium3DTilesWriter {
                             tile_id_conv,
                             &schema,
                             self.params.draco_compression,
+                            zip_sink.clone(),
                         );
                         if let Err(e) = &result {
                             let ctx = ctx.clone();
@@ -552,20 +558,21 @@ impl Cesium3DTilesWriter {
                             ) {
                                 Ok(compress_sink_out) => {
                                     let now = time::Instant::now();
-                                    let buffer = Vec::new();
-                                    let mut cursor = Cursor::new(buffer);
-                                    let writer = BufWriter::new(&mut cursor);
-                                    let zip_result = reearth_flow_common::zip::write(
-                                        writer,
-                                        output_uri_inner.path().as_path(),
-                                    )
-                                    .map_err(|e| {
-                                        crate::errors::SinkError::cesium3dtiles_writer(
-                                            e.to_string(),
-                                        )
-                                    });
+                                    let zip_result = Arc::try_unwrap(zip_sink.unwrap())
+                                        .unwrap_or_else(|_| {
+                                            panic!(
+                                                "zip_sink still has other referents after \
+                                                 tile_writing_stage returned"
+                                            )
+                                        })
+                                        .finish()
+                                        .map_err(|e| {
+                                            crate::errors::SinkError::cesium3dtiles_writer(
+                                                e.to_string(),
+                                            )
+                                        });
                                     match zip_result {
-                                        Ok(_) => {
+                                        Ok(cursor) => {
                                             match compress_sink_out
                                                 .write(bytes::Bytes::from(cursor.into_inner()))
                                                 .map_err(|e| {
@@ -574,21 +581,7 @@ impl Cesium3DTilesWriter {
                                                     )
                                                 })
                                             {
-                                                Ok(_) => {
-                                                    match std::fs::remove_dir_all(
-                                                        output_uri_inner.path().as_path(),
-                                                    ) {
-                                                        Ok(_) => {}
-                                                        Err(e) => {
-                                                            ctx.event_hub.error_log(
-                                                                None,
-                                                                format!(
-                                                        "Failed to remove directory with error = {e:?}"
-                                                    ),
-                                                            );
-                                                        }
-                                                    }
-                                                }
+                                                Ok(_) => {}
                                                 Err(e) => {
                                                     ctx.event_hub.error_log(
                                                         None,

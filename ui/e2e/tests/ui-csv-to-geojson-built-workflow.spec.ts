@@ -57,27 +57,27 @@ test.describe.serial(
       expect(await editor.isInEditor()).toBe(true);
     });
 
-    test("builds CsvReader → AttributeManager → GeoJsonWriter and configures each node", async () => {
+    test("builds CSV Reader → Attribute Manager → GeoJSON Writer and configures each node", async () => {
       await editor.addSpecificActionNode(
         "reader",
-        "CsvReader",
+        "CSV Reader",
         await editor.canvasPoint(0.25, 0.4),
       );
       await editor.addSpecificActionNode(
         "transformer",
-        "AttributeManager",
+        "Attribute Manager",
         await editor.canvasPoint(0.5, 0.4),
       );
       await editor.addSpecificActionNode(
         "writer",
-        "GeoJsonWriter",
+        "GeoJSON Writer",
         await editor.canvasPoint(0.75, 0.4),
       );
       await expect(editor.nodes).toHaveCount(3);
 
-      const readerNode = editor.nodeByName("CsvReader");
-      const managerNode = editor.nodeByName("AttributeManager");
-      const writerNode = editor.nodeByName("GeoJsonWriter");
+      const readerNode = editor.nodeByName("CSV Reader");
+      const managerNode = editor.nodeByName("Attribute Manager");
+      const writerNode = editor.nodeByName("GeoJSON Writer");
 
       await editor.connectNodes(readerNode, managerNode);
       await editor.connectNodes(managerNode, writerNode);
@@ -95,11 +95,11 @@ test.describe.serial(
       await editor.openNodeParamsForm(managerNode);
       await editor.addParamArrayItem();
       await editor.setParamText("root_operations_0_attribute", "dailyRiders");
-      await editor.setParamSelect("Operation to perform", "create");
+      await editor.setParamSelect("Method", "Create");
       await editor.setParamFlowExpr("Value", 'int(attributes["daily_riders"])');
       await editor.submitParams();
       await editor.openNodeParamsForm(writerNode);
-      await editor.setParamCodeString("output", "stations.geojson");
+      await editor.setParamCodeString("Output File", "stations.geojson");
       await editor.submitParams();
     });
 

@@ -19,6 +19,7 @@ COPY server/api/pkg/ /reearth-flow/pkg/
 COPY server/api/internal/ /reearth-flow/internal/
 
 RUN go build -tags "${TAG}" "-ldflags=-X main.version=${VERSION} -s -w -buildid=" -trimpath ./cmd/reearth-flow
+RUN go build -tags "${TAG}" "-ldflags=-X main.version=${VERSION} -s -w -buildid=" -trimpath ./cmd/dbmigrate
 
 FROM alpine:latest
 
@@ -28,6 +29,7 @@ RUN apk add --no-cache \
 
 COPY --from=build /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
 COPY --from=build /reearth-flow/reearth-flow /reearth-flow/reearth-flow
+COPY --from=build /reearth-flow/dbmigrate /reearth-flow/dbmigrate
 COPY ui* /reearth-flow/ui/
 
 WORKDIR /reearth-flow

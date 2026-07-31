@@ -212,6 +212,10 @@ impl TriangularMesh3DData {
 crate::unsupported!(TriangularMesh2D: Triangulate);
 crate::unsupported!(TriangularMesh3D: Triangulate);
 
+// Triangles carry no interior rings, so the hole count is always zero.
+crate::unsupported!(TriangularMesh2D: CountHoles);
+crate::unsupported!(TriangularMesh3D: CountHoles);
+
 #[cfg(test)]
 mod tests {
     use std::sync::Arc;

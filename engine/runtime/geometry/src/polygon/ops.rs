@@ -356,7 +356,56 @@ impl Polygon2D {
     }
 }
 
-use crate::ops::RemoveAppearance;
+use crate::ops::{
+    emit_face_2d, emit_face_3d, CountHoles, ExtractHoles, ExtractedPart, RemoveAppearance,
+};
+
+// One offset per interior ring, so the count is the offsets' length.
+impl CountHoles for Polygon2D {
+    fn count_holes(&self) -> usize {
+        self.interior_offsets.len()
+    }
+}
+
+impl CountHoles for Polygon3D {
+    fn count_holes(&self) -> usize {
+        self.interior_offsets.len()
+    }
+}
+
+// A face with no exterior ring bounds no area, so it is not area geometry to
+// take apart — the one case where a polygon itself is rejected.
+impl ExtractHoles for Polygon2D {
+    fn extract_holes(
+        &self,
+        emit: &mut dyn FnMut(Geometry, ExtractedPart),
+    ) -> Result<(), UnsupportedOperation> {
+        if emit_face_2d(self, emit) {
+            Ok(())
+        } else {
+            Err(UnsupportedOperation {
+                geometry: "Polygon2D",
+                operation: "extract_holes",
+            })
+        }
+    }
+}
+
+impl ExtractHoles for Polygon3D {
+    fn extract_holes(
+        &self,
+        emit: &mut dyn FnMut(Geometry, ExtractedPart),
+    ) -> Result<(), UnsupportedOperation> {
+        if emit_face_3d(self, emit) {
+            Ok(())
+        } else {
+            Err(UnsupportedOperation {
+                geometry: "Polygon3D",
+                operation: "extract_holes",
+            })
+        }
+    }
+}
 
 impl RemoveAppearance for Polygon2D {
     fn remove_appearance(&mut self) {

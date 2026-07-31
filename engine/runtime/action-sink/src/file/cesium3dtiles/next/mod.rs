@@ -84,31 +84,53 @@ impl Cesium3DTilesWriter {
             texture_codec: self.params.texture_codec,
         };
         for ((output, _, _), features) in &self.buffer {
-            let write_file = |relative_path: String, bytes: Vec<u8>| {
+            if output.ends_with(".zip") {
+                let zip = reearth_flow_common::zip::StreamingZipWriter::new(std::io::Cursor::new(
+                    Vec::new(),
+                ));
+                let write_file = |relative_path: String, bytes: Vec<u8>| {
+                    zip.write_entry(&relative_path, &bytes)
+                        .map_err(crate::errors::SinkError::cesium3dtiles_writer)
+                };
+
+                let built = build(features, options, self.params.max_zoom, render, write_file)?;
+                for (relative_path, bytes) in built.subtrees {
+                    write_file(relative_path, bytes)?;
+                }
+                write_file("tileset.json".to_string(), built.tileset_json.into_bytes())?;
+
+                let cursor = zip
+                    .finish()
+                    .map_err(|e| crate::errors::SinkError::cesium3dtiles_writer(e.to_string()))?;
+                crate::SinkOutput::new(&ctx.sandbox_root, output, &ctx.storage_resolver)
+                    .and_then(|out| out.write(bytes::Bytes::from(cursor.into_inner())))
+                    .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
+            } else {
+                let write_file = |relative_path: String, bytes: Vec<u8>| {
+                    crate::SinkOutput::new(
+                        &ctx.sandbox_root,
+                        &format!("{output}/{relative_path}"),
+                        &ctx.storage_resolver,
+                    )
+                    .and_then(|out| out.write(bytes::Bytes::from(bytes)))
+                    .map_err(crate::errors::SinkError::cesium3dtiles_writer)
+                };
+
+                // glbs stream out as they're built; only subtree/tileset outputs come back.
+                let built = build(features, options, self.params.max_zoom, render, write_file)?;
+
+                for (relative_path, bytes) in built.subtrees {
+                    write_file(relative_path, bytes)?;
+                }
+
                 crate::SinkOutput::new(
                     &ctx.sandbox_root,
-                    &format!("{output}/{relative_path}"),
+                    &format!("{output}/tileset.json"),
                     &ctx.storage_resolver,
                 )
-                .and_then(|out| out.write(bytes::Bytes::from(bytes)))
-                .map_err(crate::errors::SinkError::cesium3dtiles_writer)
-            };
-
-            // glbs stream to disk here as they are built; only the small
-            // subtree/tileset outputs come back for writing below.
-            let built = build(features, options, self.params.max_zoom, render, write_file)?;
-
-            for (relative_path, bytes) in built.subtrees {
-                write_file(relative_path, bytes)?;
+                .and_then(|out| out.write(bytes::Bytes::from(built.tileset_json)))
+                .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
             }
-
-            crate::SinkOutput::new(
-                &ctx.sandbox_root,
-                &format!("{output}/tileset.json"),
-                &ctx.storage_resolver,
-            )
-            .and_then(|out| out.write(bytes::Bytes::from(built.tileset_json)))
-            .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
         }
         Ok(())
     }

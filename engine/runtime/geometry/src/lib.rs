@@ -53,8 +53,9 @@ use serde::{Deserialize, Serialize};
 
 use ops::triangulation::Cache;
 use ops::{
-    Aabb, BoundingBox, ConvertFrame, ForceTwoDimension, ForceTwoDimensionError, RemoveAppearance,
-    Reproject, ReprojectionCache, Translate, Triangulate, UnsupportedOperation,
+    Aabb, BoundingBox, ConvertFrame, CountHoles, ExtractHoles, ExtractedPart, ForceTwoDimension,
+    ForceTwoDimensionError, RemoveAppearance, Reproject, ReprojectionCache, Translate, Triangulate,
+    UnsupportedOperation,
 };
 // `ValidationParams` / `ValidationType` / `ValidationReport` are named by the
 // `enum_dispatch`-generated `Validate` impls on the geometry enums, so they must
@@ -167,7 +168,9 @@ impl GeometryCollection {
         Translate,
         Split,
         ForceTwoDimension,
-        RemoveAppearance
+        RemoveAppearance,
+        CountHoles,
+        ExtractHoles
     )
 )]
 #[cfg_attr(
@@ -181,7 +184,9 @@ impl GeometryCollection {
         Translate,
         Split,
         ForceTwoDimension,
-        RemoveAppearance
+        RemoveAppearance,
+        CountHoles,
+        ExtractHoles
     )
 )]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -215,7 +220,9 @@ pub enum Euclidean2DGeometry {
         Translate,
         Split,
         ForceTwoDimension,
-        RemoveAppearance
+        RemoveAppearance,
+        CountHoles,
+        ExtractHoles
     )
 )]
 #[cfg_attr(
@@ -229,7 +236,9 @@ pub enum Euclidean2DGeometry {
         Translate,
         Split,
         ForceTwoDimension,
-        RemoveAppearance
+        RemoveAppearance,
+        CountHoles,
+        ExtractHoles
     )
 )]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -450,6 +459,59 @@ impl RemoveAppearance for GeometryCollection {
         for member in self.members_mut() {
             member.remove_appearance();
         }
+    }
+}
+
+impl CountHoles for Geometry {
+    fn count_holes(&self) -> usize {
+        match self {
+            // An absent geometry has no faces, so no holes.
+            Geometry::None => 0,
+            Geometry::Euclidean2D(g) => g.count_holes(),
+            Geometry::Euclidean3D(g) => g.count_holes(),
+            Geometry::GeometryCollection(c) => c.count_holes(),
+        }
+    }
+}
+
+impl CountHoles for GeometryCollection {
+    fn count_holes(&self) -> usize {
+        self.members.iter().map(Geometry::count_holes).sum()
+    }
+}
+
+impl ExtractHoles for Geometry {
+    fn extract_holes(
+        &self,
+        emit: &mut dyn FnMut(Geometry, ExtractedPart),
+    ) -> Result<(), UnsupportedOperation> {
+        match self {
+            // An absent geometry has no faces to take apart.
+            Geometry::None => Err(UnsupportedOperation {
+                geometry: "Geometry::None",
+                operation: "extract_holes",
+            }),
+            Geometry::Euclidean2D(g) => g.extract_holes(emit),
+            Geometry::Euclidean3D(g) => g.extract_holes(emit),
+            Geometry::GeometryCollection(c) => c.extract_holes(emit),
+        }
+    }
+}
+
+impl ExtractHoles for GeometryCollection {
+    /// Deaggregate: each member is taken apart on its own, and one that is not
+    /// area geometry is emitted as [`ExtractedPart::Rejected`] rather than failing
+    /// the whole collection.
+    fn extract_holes(
+        &self,
+        emit: &mut dyn FnMut(Geometry, ExtractedPart),
+    ) -> Result<(), UnsupportedOperation> {
+        for member in &self.members {
+            if member.extract_holes(emit).is_err() {
+                emit(member.clone(), ExtractedPart::Rejected);
+            }
+        }
+        Ok(())
     }
 }
 

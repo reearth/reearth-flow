@@ -1,5 +1,5 @@
 use crate::cast_config::CastConfigValue;
-use crate::rasterize::{RasterSize, DEFAULT_STROKE};
+use crate::rasterize::{RasterSize, DEFAULT_STROKE, RASTER3D_SIZE};
 use serde::Deserialize;
 use std::collections::HashMap;
 
@@ -52,6 +52,37 @@ pub struct ConvCesiumEntry {
 }
 
 #[derive(Debug, Deserialize)]
+pub struct CameraConfig {
+    /// ECEF xyz, meters.
+    pub position: [f64; 3],
+    /// ECEF xyz, meters.
+    pub look_at: [f64; 3],
+    /// ECEF xyz direction. Defaults to the local zenith (`position` normalized)
+    /// if omitted.
+    #[serde(default)]
+    pub up: Option<[f64; 3]>,
+    pub fov_y_deg: f64,
+    pub near: f64,
+    pub far: f64,
+}
+
+fn default_raster3d_size() -> RasterSize {
+    RasterSize::Square(RASTER3D_SIZE)
+}
+
+#[derive(Debug, Deserialize)]
+pub struct ConvRaster3dEntry {
+    /// Path to 3D Tiles directory, relative to flow_extracted/truth_extracted.
+    pub path: String,
+    /// Path to rendered-depth-PNG output directory, relative to flow_extracted/truth.
+    pub truth_path: String,
+    pub generate_truth: bool,
+    #[serde(default = "default_raster3d_size")]
+    pub size: RasterSize,
+    pub cameras: HashMap<String, CameraConfig>,
+}
+
+#[derive(Debug, Deserialize)]
 pub struct ConvCesiumStatisticsEntry {
     /// Path to 3DTiles directory, relative to output_dir
     pub path: String,
@@ -72,4 +103,6 @@ pub struct Convs {
     pub cesium_attributes: HashMap<String, ConvCesiumEntry>,
     #[serde(default)]
     pub cesium_statistics: HashMap<String, ConvCesiumStatisticsEntry>,
+    #[serde(default)]
+    pub raster3d: HashMap<String, ConvRaster3dEntry>,
 }

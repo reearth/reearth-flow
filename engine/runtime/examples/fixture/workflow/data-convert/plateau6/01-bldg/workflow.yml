@@ -124,9 +124,6 @@ graphs:
           attachTexture: false
           output:
             type: flowExpr
-            value: '"bldg_lod1"'
-          compressOutput:
-            type: flowExpr
             value: |
               city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
               city_gml + "_bldg_3dtiles_lod1.zip"
@@ -162,9 +159,6 @@ graphs:
           attachTexture: true
           output:
             type: flowExpr
-            value: '"bldg_lod2"'
-          compressOutput:
-            type: flowExpr
             value: |
               city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
               city_gml + "_bldg_3dtiles_lod2.zip"
@@ -199,9 +193,6 @@ graphs:
           maxZoom: 18
           attachTexture: true
           output:
-            type: flowExpr
-            value: '"bldg_lod3"'
-          compressOutput:
             type: flowExpr
             value: |
               city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
