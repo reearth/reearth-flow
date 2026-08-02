@@ -9,16 +9,6 @@ use std::{
 use indexmap::IndexMap;
 use once_cell::sync::Lazy;
 use rayon::iter::{IntoParallelRefIterator, ParallelIterator};
-use reearth_flow_geometry::algorithm::line_intersection::LineIntersection;
-use reearth_flow_geometry::algorithm::line_string_ops::{
-    LineStringOps, LineStringSplitResult, LineStringWithTree2D,
-};
-use reearth_flow_geometry::algorithm::GeoFloat;
-use reearth_flow_geometry::types::coordinate::Coordinate2D;
-use reearth_flow_geometry::types::geometry::Geometry2D;
-use reearth_flow_geometry::types::line_string::LineString2D;
-use reearth_flow_geometry::types::no_value::NoValue;
-use reearth_flow_geometry::types::point::{Point, Point2D};
 use reearth_flow_runtime::{
     cache::executor_cache_subdir,
     errors::BoxedError,
@@ -27,11 +17,34 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
 };
-use reearth_flow_types::{Attribute, AttributeValue, Attributes, Feature, Geometry, GeometryValue};
+use reearth_flow_types::{Attribute, AttributeValue, Attributes, Feature};
 use rstar::{RTree, RTreeObject, AABB};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::{Number, Value};
+
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_geometry::{
+    algorithm::line_intersection::LineIntersection,
+    algorithm::line_string_ops::{LineStringOps, LineStringSplitResult, LineStringWithTree2D},
+    types::coordinate::Coordinate2D,
+    types::geometry::Geometry2D,
+    types::line_string::LineString2D,
+    types::no_value::NoValue,
+    types::point::{Point, Point2D},
+};
+#[cfg(not(feature = "new-geometry"))]
+use reearth_flow_types::{Geometry, GeometryValue};
+
+#[cfg(feature = "new-geometry")]
+use reearth_flow_geometry::{
+    coordinate::CoordinateFrame,
+    line_string::LineString2D,
+    point::Point2D,
+    predicates::kernel::{segment_intersection, SegmentIntersection},
+    predicates::view::{flatten_2d, Leaf2D},
+    Euclidean2DGeometry, Geometry,
+};
 
 use super::errors::GeometryProcessorError;
 use crate::ACCUMULATOR_BUFFER_BYTE_THRESHOLD;
@@ -98,6 +111,8 @@ impl ProcessorFactory for LineOnLineOverlayerFactory {
                 .overlaid_lists_attr_name
                 .unwrap_or_else(|| "overlaidLists".to_string()),
             group_map: HashMap::new(),
+            #[cfg(feature = "new-geometry")]
+            group_frame: HashMap::new(),
             group_count: 0,
             temp_dir: None,
             buffer: HashMap::new(),
@@ -125,6 +140,10 @@ pub struct LineOnLineOverlayer {
     overlaid_lists_attr_name: String,
     // Disk-backed state
     group_map: HashMap<AttributeValue, usize>,
+    /// The coordinate frame every member of a group must share, fixed by the
+    /// group's first feature.
+    #[cfg(feature = "new-geometry")]
+    group_frame: HashMap<usize, CoordinateFrame>,
     group_count: usize,
     temp_dir: Option<PathBuf>,
     /// group_idx -> Vec<(aabbs_json_for_feature, feature_json)>.
@@ -151,6 +170,8 @@ impl Clone for LineOnLineOverlayer {
             tolerance: self.tolerance,
             overlaid_lists_attr_name: self.overlaid_lists_attr_name.clone(),
             group_map: HashMap::new(),
+            #[cfg(feature = "new-geometry")]
+            group_frame: HashMap::new(),
             group_count: 0,
             temp_dir: None,
             buffer: HashMap::new(),
@@ -232,6 +253,20 @@ impl LineOnLineOverlayer {
         self.buffer_bytes = 0;
         Ok(())
     }
+
+    /// Whether `frame` matches the group's coordinate frame, which the first
+    /// feature of the group fixes. Overlay operands must share one frame.
+    #[cfg(feature = "new-geometry")]
+    fn admit_frame(&mut self, group_idx: usize, frame: &CoordinateFrame) -> bool {
+        use std::collections::hash_map::Entry;
+        match self.group_frame.entry(group_idx) {
+            Entry::Occupied(entry) => entry.get() == frame,
+            Entry::Vacant(entry) => {
+                entry.insert(frame.clone());
+                true
+            }
+        }
+    }
 }
 
 impl Drop for LineOnLineOverlayer {
@@ -247,7 +282,6 @@ impl Processor for LineOnLineOverlayer {
         true
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -258,51 +292,46 @@ impl Processor for LineOnLineOverlayer {
         }
 
         let feature = &ctx.feature;
-        let geometry = &feature.geometry;
-        if geometry.is_empty() {
-            fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
+        let Some(payload) = intake(feature.geometry.as_ref()) else {
+            fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+            return Ok(());
+        };
+        #[cfg(not(feature = "new-geometry"))]
+        let aabbs = payload;
+        #[cfg(feature = "new-geometry")]
+        let (aabbs, frame) = payload;
+
+        let key = if let Some(group_by) = &self.group_by {
+            AttributeValue::Array(
+                group_by
+                    .iter()
+                    .filter_map(|attr| feature.attributes.get(attr).cloned())
+                    .collect(),
+            )
+        } else {
+            AttributeValue::Null
+        };
+        let group_idx = if let Some(&idx) = self.group_map.get(&key) {
+            idx
+        } else {
+            let idx = self.group_count;
+            self.group_map.insert(key, idx);
+            self.group_count += 1;
+            idx
+        };
+
+        #[cfg(feature = "new-geometry")]
+        if !self.admit_frame(group_idx, &frame) {
+            fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
             return Ok(());
         }
-        match &geometry.value {
-            GeometryValue::FlowGeometry2D(geom_2d) => {
-                let line_strings = extract_line_strings(geom_2d);
-                if line_strings.is_empty() {
-                    fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
-                    return Ok(());
-                }
 
-                let key = if let Some(group_by) = &self.group_by {
-                    AttributeValue::Array(
-                        group_by
-                            .iter()
-                            .filter_map(|attr| feature.attributes.get(attr).cloned())
-                            .collect(),
-                    )
-                } else {
-                    AttributeValue::Null
-                };
-                let group_idx = if let Some(&idx) = self.group_map.get(&key) {
-                    idx
-                } else {
-                    let idx = self.group_count;
-                    self.group_map.insert(key, idx);
-                    self.group_count += 1;
-                    idx
-                };
-
-                let aabbs: Vec<[f64; 4]> = line_strings.iter().map(aabb_of_line_string).collect();
-                let aabbs_json = serde_json::to_string(&aabbs)?;
-                let feature_json = serde_json::to_string(&ctx.feature)?;
-                self.append_to_group(group_idx, aabbs_json, feature_json)?;
-            }
-            _ => {
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
-            }
-        }
+        let aabbs_json = serde_json::to_string(&aabbs)?;
+        let feature_json = serde_json::to_string(&ctx.feature)?;
+        self.append_to_group(group_idx, aabbs_json, feature_json)?;
         Ok(())
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         ctx: NodeContext,
@@ -363,6 +392,82 @@ impl Processor for LineOnLineOverlayer {
     }
 }
 
+// --- world-specific geometry kernel -----------------------------------------
+
+/// The polyline value carried through the overlay.
+#[cfg(not(feature = "new-geometry"))]
+type SourceLine = LineString2D<f64>;
+
+/// The polyline value carried through the overlay: its coordinates, frame, and
+/// the elevation it lies at.
+#[cfg(feature = "new-geometry")]
+type SourceLine = Polyline;
+
+/// An intersection point produced by the overlay.
+#[cfg(not(feature = "new-geometry"))]
+type SplitPoint = Coordinate2D<f64>;
+
+/// An intersection point produced by the overlay, in the coordinate frame of
+/// the polyline it split.
+#[cfg(feature = "new-geometry")]
+#[derive(Debug, Clone)]
+struct SplitPoint {
+    frame: CoordinateFrame,
+    coord: [f64; 2],
+}
+
+/// One polyline participating in the overlay.
+#[cfg(feature = "new-geometry")]
+#[derive(Debug, Clone)]
+struct Polyline {
+    /// Coordinate frame the coordinates are expressed in.
+    frame: CoordinateFrame,
+    /// The vertices, at least two.
+    coords: Vec<[f64; 2]>,
+    /// The elevation the whole polyline lies at. `None` = pure 2D.
+    elevation: Option<f64>,
+}
+
+/// Accept an incoming geometry into the overlay: any 2D geometry with at
+/// least one line string. Returns the bounding box of each line string, or
+/// `None` when the feature must be rejected.
+#[cfg(not(feature = "new-geometry"))]
+fn intake(geometry: &Geometry) -> Option<Vec<[f64; 4]>> {
+    if geometry.is_empty() {
+        return None;
+    }
+    let GeometryValue::FlowGeometry2D(geom_2d) = &geometry.value else {
+        return None;
+    };
+    let line_strings = extract_line_strings(geom_2d);
+    if line_strings.is_empty() {
+        return None;
+    }
+    Some(line_strings.iter().map(aabb_of_line_string).collect())
+}
+
+/// Accept an incoming geometry into the overlay: a 2D geometry whose line
+/// strings and polygon exteriors yield at least one polyline, all in one
+/// coordinate frame. Returns the bounding box of each polyline and the frame,
+/// or `None` when the feature must be rejected.
+#[cfg(feature = "new-geometry")]
+fn intake(geometry: &Geometry) -> Option<(Vec<[f64; 4]>, CoordinateFrame)> {
+    let Geometry::Euclidean2D(geom_2d) = geometry else {
+        return None;
+    };
+    let polylines = source_lines_2d(geom_2d);
+    let frame = polylines.first()?.frame.clone();
+    if polylines.iter().any(|pl| pl.frame != frame) {
+        return None;
+    }
+    let aabbs = polylines
+        .iter()
+        .map(|pl| polyline_bbox(&pl.coords))
+        .collect();
+    Some((aabbs, frame))
+}
+
+#[cfg(not(feature = "new-geometry"))]
 fn extract_line_strings(geom: &Geometry2D<f64>) -> Vec<LineString2D<f64>> {
     match geom {
         Geometry2D::LineString(line) => vec![line.clone()],
@@ -373,6 +478,89 @@ fn extract_line_strings(geom: &Geometry2D<f64>) -> Vec<LineString2D<f64>> {
     }
 }
 
+/// The polylines of a 2D geometry: line strings verbatim and polygon exterior
+/// rings; other leaves contribute nothing.
+#[cfg(feature = "new-geometry")]
+fn source_lines_2d(geom: &Euclidean2DGeometry) -> Vec<Polyline> {
+    let mut leaves = Vec::new();
+    flatten_2d(geom, &mut leaves);
+    leaves
+        .iter()
+        .filter_map(|leaf| match leaf {
+            Leaf2D::Line(line) if line.coords().len() >= 2 => Some(Polyline {
+                frame: line.frame().clone(),
+                coords: line.coords().to_vec(),
+                elevation: line.elevation(),
+            }),
+            Leaf2D::Polygon(polygon) if polygon.exterior().len() >= 2 => Some(Polyline {
+                frame: polygon.frame().clone(),
+                coords: polygon.exterior().to_vec(),
+                elevation: polygon.elevation(),
+            }),
+            _ => None,
+        })
+        .collect()
+}
+
+/// The stored feature's polylines, empty when it has no 2D geometry.
+#[cfg(not(feature = "new-geometry"))]
+fn feature_source_lines(feature: &Feature) -> Vec<SourceLine> {
+    match &feature.geometry.value {
+        GeometryValue::FlowGeometry2D(g2) => extract_line_strings(g2),
+        _ => Vec::new(),
+    }
+}
+
+/// The stored feature's polylines, empty when it has no 2D geometry.
+#[cfg(feature = "new-geometry")]
+fn feature_source_lines(feature: &Feature) -> Vec<SourceLine> {
+    match feature.geometry.as_ref() {
+        Geometry::Euclidean2D(geom_2d) => source_lines_2d(geom_2d),
+        _ => Vec::new(),
+    }
+}
+
+/// A split line as an output feature's geometry.
+#[cfg(not(feature = "new-geometry"))]
+fn line_output_geometry(line: &SourceLine) -> Geometry {
+    Geometry {
+        value: GeometryValue::FlowGeometry2D(Geometry2D::LineString(line.clone())),
+        ..Default::default()
+    }
+}
+
+/// A split line as an output feature's geometry, in its source's frame and at
+/// its source's elevation.
+#[cfg(feature = "new-geometry")]
+fn line_output_geometry(line: &SourceLine) -> Geometry {
+    let coords = line.coords.iter().copied();
+    let ls = match line.elevation {
+        Some(z) => LineString2D::from_coords_at_elevation(line.frame.clone(), coords, z),
+        None => LineString2D::from_coords(line.frame.clone(), coords),
+    };
+    Geometry::Euclidean2D(Euclidean2DGeometry::LineString(ls))
+}
+
+/// An intersection point as an output feature's geometry.
+#[cfg(not(feature = "new-geometry"))]
+fn point_output_geometry(point: &SplitPoint) -> Geometry {
+    Geometry {
+        value: GeometryValue::FlowGeometry2D(Geometry2D::Point(Point(*point))),
+        ..Default::default()
+    }
+}
+
+/// An intersection point as an output feature's geometry, in the frame of the
+/// polyline it split.
+#[cfg(feature = "new-geometry")]
+fn point_output_geometry(point: &SplitPoint) -> Geometry {
+    Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
+        point.frame.clone(),
+        point.coord,
+    )))
+}
+
+#[cfg(not(feature = "new-geometry"))]
 fn aabb_of_line_string(ls: &LineString2D<f64>) -> [f64; 4] {
     let env = ls.envelope();
     let lo = env.lower();
@@ -380,11 +568,26 @@ fn aabb_of_line_string(ls: &LineString2D<f64>) -> [f64; 4] {
     [lo.x(), lo.y(), hi.x(), hi.y()]
 }
 
-fn aabb_to_rstar(aabb: [f64; 4]) -> AABB<Point2D<f64>> {
-    AABB::from_corners(
-        Point2D::new_(aabb[0], aabb[1], NoValue),
-        Point2D::new_(aabb[2], aabb[3], NoValue),
-    )
+/// The `[min_x, min_y, max_x, max_y]` bounding box of a non-empty polyline.
+#[cfg(feature = "new-geometry")]
+fn polyline_bbox(coords: &[[f64; 2]]) -> [f64; 4] {
+    let mut bbox = [
+        f64::INFINITY,
+        f64::INFINITY,
+        f64::NEG_INFINITY,
+        f64::NEG_INFINITY,
+    ];
+    for c in coords {
+        bbox[0] = bbox[0].min(c[0]);
+        bbox[1] = bbox[1].min(c[1]);
+        bbox[2] = bbox[2].max(c[0]);
+        bbox[3] = bbox[3].max(c[1]);
+    }
+    bbox
+}
+
+fn aabb_to_rstar(aabb: [f64; 4]) -> AABB<[f64; 2]> {
+    AABB::from_corners([aabb[0], aabb[1]], [aabb[2], aabb[3]])
 }
 
 struct DiskBackedFeatures {
@@ -446,18 +649,17 @@ impl DiskBackedFeatures {
 struct AabbEntry {
     feature_idx: usize,
     ls_local_idx: usize,
-    aabb: AABB<Point2D<f64>>,
+    aabb: AABB<[f64; 2]>,
 }
 
 impl RTreeObject for AabbEntry {
-    type Envelope = AABB<Point2D<f64>>;
+    type Envelope = AABB<[f64; 2]>;
 
     fn envelope(&self) -> Self::Envelope {
         self.aabb
     }
 }
 
-#[cfg(not(feature = "new-geometry"))]
 fn process_group<W: Write>(
     group_dir: &Path,
     tolerance: f64,
@@ -514,13 +716,10 @@ fn process_group<W: Write>(
         ));
     }
     let mut attributes_by_feature: Vec<Arc<Attributes>> = Vec::with_capacity(disk_feats.len());
-    let mut lss_per_feature: Vec<Vec<LineString2D<f64>>> = Vec::with_capacity(disk_feats.len());
+    let mut lss_per_feature: Vec<Vec<SourceLine>> = Vec::with_capacity(disk_feats.len());
     for i in 0..disk_feats.len() {
         let feat = disk_feats.read_feature(i)?;
-        let lss = match &feat.geometry.value {
-            GeometryValue::FlowGeometry2D(g2) => extract_line_strings(g2),
-            _ => Vec::new(),
-        };
+        let lss = feature_source_lines(&feat);
         attributes_by_feature.push(feat.attributes);
         lss_per_feature.push(lss);
     }
@@ -568,10 +767,7 @@ fn process_group<W: Write>(
             }
         }
 
-        let geometry = Geometry {
-            value: GeometryValue::FlowGeometry2D(Geometry2D::LineString(meta.line_string.clone())),
-            ..Default::default()
-        };
+        let geometry = line_output_geometry(&meta.line_string);
         let out = Feature::new_with_attributes_and_geometry(attributes, geometry);
         serde_json::to_writer(&mut *line_writer, &out)?;
         line_writer.write_all(b"\n")?;
@@ -598,10 +794,7 @@ fn process_group<W: Write>(
             } else {
                 IndexMap::new()
             };
-        let geometry = Geometry {
-            value: GeometryValue::FlowGeometry2D(Geometry2D::Point(Point(*coord))),
-            ..Default::default()
-        };
+        let geometry = point_output_geometry(coord);
         let out = Feature::new_with_attributes_and_geometry(attributes, geometry);
         serde_json::to_writer(&mut *point_writer, &out)?;
         point_writer.write_all(b"\n")?;
@@ -611,9 +804,10 @@ fn process_group<W: Write>(
     Ok((line_count, point_count))
 }
 
+/// A split line and the source features whose lines coincide with it.
 #[derive(Debug, Clone)]
-struct LineString2DWithMetadata<T: GeoFloat> {
-    line_string: LineString2D<T>,
+struct LineStringWithMetadata {
+    line_string: SourceLine,
     /// feature_idx of each source feature that contributed to this segment.
     /// Deduplicated — each feature appears at most once.
     source_feature_idxs: Vec<usize>,
@@ -621,10 +815,11 @@ struct LineString2DWithMetadata<T: GeoFloat> {
 
 #[derive(Debug, Clone)]
 struct OverlayResult {
-    line_strings_with_metadata: Vec<LineString2DWithMetadata<f64>>,
-    split_coords: Vec<Coordinate2D<f64>>,
+    line_strings_with_metadata: Vec<LineStringWithMetadata>,
+    split_coords: Vec<SplitPoint>,
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn overlay_entries(
     entries: Vec<AabbEntry>,
     lss_per_feature: &[Vec<LineString2D<f64>>],
@@ -709,7 +904,7 @@ fn overlay_entries(
     );
 
     let mut processed = vec![false; segments.len()];
-    let mut line_strings_with_metadata: Vec<LineString2DWithMetadata<f64>> = Vec::new();
+    let mut line_strings_with_metadata: Vec<LineStringWithMetadata> = Vec::new();
     for i in 0..segments.len() {
         if processed[i] {
             continue;
@@ -738,7 +933,7 @@ fn overlay_entries(
             }
         }
 
-        line_strings_with_metadata.push(LineString2DWithMetadata {
+        line_strings_with_metadata.push(LineStringWithMetadata {
             line_string: ls1,
             source_feature_idxs,
         });
@@ -801,10 +996,198 @@ fn overlay_entries(
     }
 }
 
+#[cfg(feature = "new-geometry")]
+fn overlay_entries(
+    entries: Vec<AabbEntry>,
+    lss_per_feature: &[Vec<Polyline>],
+    tolerance: f64,
+) -> OverlayResult {
+    let rtree: RTree<AabbEntry> = RTree::bulk_load(entries);
+    let rtree_items: Vec<&AabbEntry> = rtree.iter().collect();
+
+    type PerEntryResult = (Vec<(usize, Polyline)>, Vec<SplitPoint>);
+    let per_entry_results: Vec<PerEntryResult> = rtree_items
+        .par_iter()
+        .map(|&entry_i| {
+            let self_pl = &lss_per_feature[entry_i.feature_idx][entry_i.ls_local_idx];
+
+            // Lazy iteration over R-tree candidates; never materialises the pair list.
+            let mut intersection_coords: Vec<[f64; 2]> = Vec::new();
+            for entry_j in rtree.locate_in_envelope_intersecting(&entry_i.aabb) {
+                if entry_j.feature_idx == entry_i.feature_idx {
+                    continue;
+                }
+                let other = &lss_per_feature[entry_j.feature_idx][entry_j.ls_local_idx];
+                polyline_intersections(&self_pl.coords, &other.coords, &mut intersection_coords);
+            }
+
+            let (split_lines, split_coords) =
+                split_polyline(&self_pl.coords, &intersection_coords, tolerance);
+
+            let segs: Vec<(usize, Polyline)> = split_lines
+                .into_iter()
+                .map(|coords| {
+                    (
+                        entry_i.feature_idx,
+                        Polyline {
+                            frame: self_pl.frame.clone(),
+                            coords,
+                            elevation: self_pl.elevation,
+                        },
+                    )
+                })
+                .collect();
+            let points: Vec<SplitPoint> = split_coords
+                .into_iter()
+                .map(|coord| SplitPoint {
+                    frame: self_pl.frame.clone(),
+                    coord,
+                })
+                .collect();
+
+            (segs, points)
+        })
+        .collect();
+
+    let mut segments: Vec<(usize, Polyline)> = Vec::new();
+    let mut split_points_flat: Vec<SplitPoint> = Vec::new();
+    for (segs, points) in per_entry_results {
+        segments.extend(segs);
+        split_points_flat.extend(points);
+    }
+
+    // Drop sub-tolerance segments — zero-length stubs and near-coincident endpoint slivers
+    // aren't meaningful overlays and previously dominated the line-port output.
+    segments.retain(|(_, pl)| polyline_length(&pl.coords) >= tolerance);
+
+    // Two source entries that overlapped geometrically produce identical split segments from
+    // different per-entry tasks; we cluster them here.
+    let seg_aabbs: Vec<AABB<[f64; 2]>> = segments
+        .iter()
+        .map(|(_, pl)| aabb_to_rstar(polyline_bbox(&pl.coords)))
+        .collect();
+
+    #[derive(Clone, Copy)]
+    struct SegEntry {
+        idx: usize,
+        aabb: AABB<[f64; 2]>,
+    }
+    impl RTreeObject for SegEntry {
+        type Envelope = AABB<[f64; 2]>;
+        fn envelope(&self) -> Self::Envelope {
+            self.aabb
+        }
+    }
+    let seg_rtree: RTree<SegEntry> = RTree::bulk_load(
+        seg_aabbs
+            .iter()
+            .enumerate()
+            .map(|(idx, aabb)| SegEntry { idx, aabb: *aabb })
+            .collect(),
+    );
+
+    let mut processed = vec![false; segments.len()];
+    let mut line_strings_with_metadata: Vec<LineStringWithMetadata> = Vec::new();
+    for i in 0..segments.len() {
+        if processed[i] {
+            continue;
+        }
+        let (feat_i, mut rep) = segments[i].clone();
+        // A single feature may contribute multiple matching segments (e.g. a closed ring
+        // whose split produces several arcs that all coincide with the rep segment). Count
+        // each feature at most once; extra matching segments dedupe silently.
+        let mut source_feature_idxs = vec![feat_i];
+        let mut included_feats: std::collections::HashSet<usize> =
+            std::collections::HashSet::from([feat_i]);
+
+        for cand in seg_rtree.locate_in_envelope_intersecting(&seg_aabbs[i]) {
+            let j = cand.idx;
+            if j <= i || processed[j] {
+                continue;
+            }
+            let (feat_j, pl_j) = (segments[j].0, &segments[j].1);
+            if coords_match(&rep.coords, &pl_j.coords, tolerance) {
+                // Coinciding sources at differing elevations leave the output planar.
+                if pl_j.elevation != rep.elevation {
+                    rep.elevation = None;
+                }
+                if !included_feats.insert(feat_j) {
+                    processed[j] = true;
+                    continue;
+                }
+                source_feature_idxs.push(feat_j);
+                processed[j] = true;
+            }
+        }
+
+        line_strings_with_metadata.push(LineStringWithMetadata {
+            line_string: rep,
+            source_feature_idxs,
+        });
+    }
+
+    // Each physical intersection is discovered by both sides of the crossing plus extras
+    // from 3+-way near-coincidences, so dedup by tolerance-expanded envelope.
+    #[derive(Clone, Copy)]
+    struct PointEntry {
+        idx: usize,
+        point: [f64; 2],
+    }
+    impl RTreeObject for PointEntry {
+        type Envelope = AABB<[f64; 2]>;
+        fn envelope(&self) -> Self::Envelope {
+            AABB::from_point(self.point)
+        }
+    }
+
+    let point_rtree: RTree<PointEntry> = RTree::bulk_load(
+        split_points_flat
+            .iter()
+            .enumerate()
+            .map(|(idx, p)| PointEntry {
+                idx,
+                point: p.coord,
+            })
+            .collect(),
+    );
+
+    let mut processed_pts = vec![false; split_points_flat.len()];
+    let mut unique_points: Vec<SplitPoint> = Vec::new();
+    for i in 0..split_points_flat.len() {
+        if processed_pts[i] {
+            continue;
+        }
+        processed_pts[i] = true;
+        let p_i = split_points_flat[i].clone();
+
+        let search_env = AABB::from_corners(
+            [p_i.coord[0] - tolerance, p_i.coord[1] - tolerance],
+            [p_i.coord[0] + tolerance, p_i.coord[1] + tolerance],
+        );
+        for cand in point_rtree.locate_in_envelope_intersecting(&search_env) {
+            let j = cand.idx;
+            if j <= i || processed_pts[j] {
+                continue;
+            }
+            if dist(p_i.coord, split_points_flat[j].coord) < tolerance {
+                processed_pts[j] = true;
+            }
+        }
+        unique_points.push(p_i);
+    }
+
+    OverlayResult {
+        line_strings_with_metadata,
+        split_coords: unique_points,
+    }
+}
+
+#[cfg(not(feature = "new-geometry"))]
 fn line_string_length_2d(ls: &LineString2D<f64>) -> f64 {
     ls.0.windows(2).map(|w| (w[1] - w[0]).norm()).sum()
 }
 
+#[cfg(not(feature = "new-geometry"))]
 fn segments_match(a: &LineString2D<f64>, b: &LineString2D<f64>, tolerance: f64) -> bool {
     if a.0.len() != b.0.len() {
         return false;
@@ -822,7 +1205,142 @@ fn segments_match(a: &LineString2D<f64>, b: &LineString2D<f64>, tolerance: f64) 
         .all(|(&c1, &c2)| (c1 - c2).norm() < tolerance)
 }
 
-#[cfg(test)]
+/// The distance between two 2D coordinates.
+#[cfg(feature = "new-geometry")]
+fn dist(a: [f64; 2], b: [f64; 2]) -> f64 {
+    (a[0] - b[0]).hypot(a[1] - b[1])
+}
+
+/// The length of a polyline.
+#[cfg(feature = "new-geometry")]
+fn polyline_length(coords: &[[f64; 2]]) -> f64 {
+    coords.windows(2).map(|w| dist(w[0], w[1])).sum()
+}
+
+/// Whether two polylines coincide vertex by vertex within `tolerance`, in
+/// either direction.
+#[cfg(feature = "new-geometry")]
+fn coords_match(a: &[[f64; 2]], b: &[[f64; 2]], tolerance: f64) -> bool {
+    if a.len() != b.len() {
+        return false;
+    }
+    let forward = a
+        .iter()
+        .zip(b.iter())
+        .all(|(&c1, &c2)| dist(c1, c2) < tolerance);
+    if forward {
+        return true;
+    }
+    a.iter()
+        .rev()
+        .zip(b.iter())
+        .all(|(&c1, &c2)| dist(c1, c2) < tolerance)
+}
+
+/// Every pairwise segment intersection of two polylines, appended to `out`:
+/// crossing points, endpoint touches, and both ends of collinear overlaps.
+#[cfg(feature = "new-geometry")]
+fn polyline_intersections(a: &[[f64; 2]], b: &[[f64; 2]], out: &mut Vec<[f64; 2]>) {
+    for sa in a.windows(2) {
+        for sb in b.windows(2) {
+            match segment_intersection(sa[0], sa[1], sb[0], sb[1]) {
+                Some(SegmentIntersection::SinglePoint { intersection, .. }) => {
+                    out.push(intersection);
+                }
+                Some(SegmentIntersection::Collinear { start, end }) => {
+                    out.push(start);
+                    out.push(end);
+                }
+                None => {}
+            }
+        }
+    }
+}
+
+/// Split a polyline at the candidate points. A candidate splits a segment when
+/// it lies on it within `tolerance` and is not within `tolerance` of either
+/// endpoint; a candidate that fails but coincides with an interior vertex
+/// splits the polyline at that vertex instead. Returns the sub-polylines and
+/// the coordinates where splits occurred.
+#[cfg(feature = "new-geometry")]
+fn split_polyline(
+    coords: &[[f64; 2]],
+    candidates: &[[f64; 2]],
+    tolerance: f64,
+) -> (Vec<Vec<[f64; 2]>>, Vec<[f64; 2]>) {
+    if coords.len() < 2 {
+        return (Vec::new(), Vec::new());
+    }
+
+    let mut split_coords: Vec<[f64; 2]> = Vec::new();
+    let mut ignored: Vec<[f64; 2]> = Vec::new();
+    let mut lines: Vec<Vec<[f64; 2]>> = Vec::new();
+    let mut current: Vec<[f64; 2]> = vec![coords[0]];
+
+    for w in coords.windows(2) {
+        let (start, end) = (w[0], w[1]);
+        let lo = [
+            start[0].min(end[0]) - tolerance,
+            start[1].min(end[1]) - tolerance,
+        ];
+        let hi = [
+            start[0].max(end[0]) + tolerance,
+            start[1].max(end[1]) + tolerance,
+        ];
+
+        // Split this segment iteratively by every nearby candidate; pieces stay
+        // ordered along the segment.
+        let mut pieces: Vec<([f64; 2], [f64; 2])> = vec![(start, end)];
+        for &cand in candidates {
+            if cand[0] < lo[0] || cand[0] > hi[0] || cand[1] < lo[1] || cand[1] > hi[1] {
+                continue;
+            }
+            let mut next = Vec::with_capacity(pieces.len() + 1);
+            for piece in pieces {
+                let on_line = (dist(piece.0, cand) + dist(cand, piece.1) - dist(piece.0, piece.1))
+                    .abs()
+                    < tolerance;
+                if on_line && dist(cand, piece.0) >= tolerance && dist(cand, piece.1) >= tolerance {
+                    next.push((piece.0, cand));
+                    next.push((cand, piece.1));
+                    split_coords.push(cand);
+                } else {
+                    next.push(piece);
+                    ignored.push(cand);
+                }
+            }
+            pieces = next;
+        }
+
+        for piece in &pieces[..pieces.len() - 1] {
+            current.push(piece.1);
+            lines.push(std::mem::replace(&mut current, vec![piece.1]));
+        }
+        current.push(pieces[pieces.len() - 1].1);
+    }
+    lines.push(current);
+
+    // Split further at interior vertices that coincide with candidates that
+    // failed to split a segment (T-junctions at existing vertices).
+    let mut final_lines = Vec::new();
+    for line in lines {
+        let split_idxs: Vec<usize> = (1..line.len().saturating_sub(1))
+            .filter(|&i| ignored.iter().any(|&c| dist(c, line[i]) < tolerance))
+            .collect();
+        let mut curr = line;
+        for &i in split_idxs.iter().rev() {
+            split_coords.push(curr[i]);
+            let second = curr[i..].to_vec();
+            curr.truncate(i + 1);
+            final_lines.push(second);
+        }
+        final_lines.push(curr);
+    }
+
+    (final_lines, split_coords)
+}
+
+#[cfg(all(test, not(feature = "new-geometry")))]
 fn line_string_intersection_2d(
     line_strings: &[LineString2D<f64>],
     tolerance: f64,
@@ -835,13 +1353,13 @@ fn line_string_intersection_2d(
         .map(|(i, ls)| AabbEntry {
             feature_idx: i,
             ls_local_idx: 0,
-            aabb: ls.envelope(),
+            aabb: aabb_to_rstar(aabb_of_line_string(ls)),
         })
         .collect();
     overlay_entries(entries, &lss_per_feature, tolerance)
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(feature = "new-geometry")))]
 mod tests {
     use super::*;
 
@@ -1036,17 +1554,17 @@ mod tests {
             AabbEntry {
                 feature_idx: 0,
                 ls_local_idx: 0,
-                aabb: f0_a.envelope(),
+                aabb: aabb_to_rstar(aabb_of_line_string(&f0_a)),
             },
             AabbEntry {
                 feature_idx: 0,
                 ls_local_idx: 1,
-                aabb: f0_b.envelope(),
+                aabb: aabb_to_rstar(aabb_of_line_string(&f0_b)),
             },
             AabbEntry {
                 feature_idx: 1,
                 ls_local_idx: 0,
-                aabb: f1.envelope(),
+                aabb: aabb_to_rstar(aabb_of_line_string(&f1)),
             },
         ];
 
@@ -1093,17 +1611,17 @@ mod tests {
             AabbEntry {
                 feature_idx: 0,
                 ls_local_idx: 0,
-                aabb: f0.envelope(),
+                aabb: aabb_to_rstar(aabb_of_line_string(&f0)),
             },
             AabbEntry {
                 feature_idx: 1,
                 ls_local_idx: 0,
-                aabb: f1_a.envelope(),
+                aabb: aabb_to_rstar(aabb_of_line_string(&f1_a)),
             },
             AabbEntry {
                 feature_idx: 1,
                 ls_local_idx: 1,
-                aabb: f1_b.envelope(),
+                aabb: aabb_to_rstar(aabb_of_line_string(&f1_b)),
             },
         ];
 
@@ -1128,7 +1646,6 @@ mod tests {
         }
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     #[test]
     fn test_process_group_two_crossing_lines() {
         let dir =
@@ -1168,6 +1685,161 @@ mod tests {
             let mut w = BufWriter::new(File::create(group_dir.join("features.jsonl")).unwrap());
             writeln!(w, "{}", serde_json::to_string(&f1).unwrap()).unwrap();
             writeln!(w, "{}", serde_json::to_string(&f2).unwrap()).unwrap();
+            w.flush().unwrap();
+        }
+
+        let mut line_buf: Vec<u8> = Vec::new();
+        let mut point_buf: Vec<u8> = Vec::new();
+        let (lc, pc) = process_group(
+            &group_dir,
+            0.01,
+            None,
+            "overlaidLists",
+            &mut line_buf,
+            &mut point_buf,
+        )
+        .unwrap();
+        assert_eq!(lc, 4);
+        assert_eq!(pc, 1);
+
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+}
+
+#[cfg(all(test, feature = "new-geometry"))]
+mod tests {
+    use pretty_assertions::assert_eq;
+    use reearth_flow_geometry::polygon::Polygon2D;
+
+    use super::*;
+
+    fn line(coords: Vec<[f64; 2]>) -> Geometry {
+        Geometry::Euclidean2D(Euclidean2DGeometry::LineString(LineString2D::from_coords(
+            CoordinateFrame::Euclidean,
+            coords,
+        )))
+    }
+
+    fn overlay_lines(lines: Vec<Vec<[f64; 2]>>, tolerance: f64) -> OverlayResult {
+        let lss_per_feature: Vec<Vec<Polyline>> = lines
+            .into_iter()
+            .map(|coords| {
+                vec![Polyline {
+                    frame: CoordinateFrame::Euclidean,
+                    coords,
+                    elevation: None,
+                }]
+            })
+            .collect();
+        let entries: Vec<AabbEntry> = lss_per_feature
+            .iter()
+            .enumerate()
+            .map(|(i, pls)| AabbEntry {
+                feature_idx: i,
+                ls_local_idx: 0,
+                aabb: aabb_to_rstar(polyline_bbox(&pls[0].coords)),
+            })
+            .collect();
+        overlay_entries(entries, &lss_per_feature, tolerance)
+    }
+
+    #[test]
+    fn crossing_lines_split_into_four_segments_and_one_point() {
+        let result = overlay_lines(
+            vec![vec![[0.0, 0.0], [5.0, 5.0]], vec![[0.0, 5.0], [5.0, 0.0]]],
+            0.1,
+        );
+        assert_eq!(result.line_strings_with_metadata.len(), 4);
+        assert_eq!(result.split_coords.len(), 1);
+        let point = &result.split_coords[0];
+        assert!((point.coord[0] - 2.5).abs() < 1e-6);
+        assert!((point.coord[1] - 2.5).abs() < 1e-6);
+    }
+
+    #[test]
+    fn collinear_overlaps_count_each_source_once() {
+        let result = overlay_lines(
+            vec![
+                vec![[0.0, 0.0], [4.0, 4.0]],
+                vec![[1.0, 1.0], [4.0, 4.0]],
+                vec![[2.0, 2.0], [3.0, 3.0]],
+            ],
+            0.1,
+        );
+        assert_eq!(result.line_strings_with_metadata.len(), 4);
+        let mut overlay_counts = result
+            .line_strings_with_metadata
+            .iter()
+            .map(|ls| ls.source_feature_idxs.len())
+            .collect::<Vec<_>>();
+        overlay_counts.sort();
+        assert_eq!(overlay_counts, vec![1, 2, 2, 3]);
+        assert_eq!(result.split_coords.len(), 3);
+    }
+
+    #[test]
+    fn a_polygon_exterior_participates_and_keeps_its_elevation() {
+        let polygon = Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
+            Polygon2D::from_rings_at_elevation(
+                CoordinateFrame::Euclidean,
+                vec![[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]],
+                Vec::<Vec<[f64; 2]>>::new(),
+                5.0,
+            ),
+        )));
+        let ring = feature_source_lines(&Feature::from(polygon));
+        assert_eq!(ring.len(), 1);
+        assert_eq!(ring[0].elevation, Some(5.0));
+
+        let crossing = feature_source_lines(&Feature::from(line(vec![[-1.0, 2.0], [5.0, 2.0]])));
+        let lss_per_feature = vec![ring, crossing];
+        let entries: Vec<AabbEntry> = lss_per_feature
+            .iter()
+            .enumerate()
+            .map(|(i, pls)| AabbEntry {
+                feature_idx: i,
+                ls_local_idx: 0,
+                aabb: aabb_to_rstar(polyline_bbox(&pls[0].coords)),
+            })
+            .collect();
+        let result = overlay_entries(entries, &lss_per_feature, 0.1);
+
+        // The crossing line pierces the ring's left and right edges.
+        assert_eq!(result.split_coords.len(), 2);
+        for meta in &result.line_strings_with_metadata {
+            let expected = match meta.source_feature_idxs[0] {
+                0 => Some(5.0),
+                _ => None,
+            };
+            assert_eq!(meta.line_string.elevation, expected);
+        }
+    }
+
+    #[test]
+    fn process_group_emits_split_lines_and_intersection_points() {
+        let dir =
+            engine_cache_dir(uuid::Uuid::nil()).join(format!("test-lol-{}", uuid::Uuid::new_v4()));
+        let group_dir = dir.join("group_000000");
+        std::fs::create_dir_all(&group_dir).unwrap();
+
+        let features = [
+            Feature::from(line(vec![[0.0, 0.0], [5.0, 5.0]])),
+            Feature::from(line(vec![[0.0, 5.0], [5.0, 0.0]])),
+        ];
+
+        {
+            let mut w = BufWriter::new(File::create(group_dir.join("aabbs.jsonl")).unwrap());
+            for f in &features {
+                let (aabbs, _) = intake(f.geometry.as_ref()).unwrap();
+                writeln!(w, "{}", serde_json::to_string(&aabbs).unwrap()).unwrap();
+            }
+            w.flush().unwrap();
+        }
+        {
+            let mut w = BufWriter::new(File::create(group_dir.join("features.jsonl")).unwrap());
+            for f in &features {
+                writeln!(w, "{}", serde_json::to_string(f).unwrap()).unwrap();
+            }
             w.flush().unwrap();
         }
 
