@@ -101,6 +101,21 @@ impl Polygon2D {
         self.z
     }
 
+    /// This face placed wholly at `elevation`, replacing any previous one.
+    pub fn at_elevation(mut self, elevation: f64) -> Self {
+        self.z = Some(elevation);
+        self
+    }
+
+    /// The unsigned planar area of the face: the exterior ring's area minus the
+    /// area of the holes. Ring winding does not affect the result; elevation
+    /// does not contribute.
+    pub fn area(&self) -> f64 {
+        let exterior = ring_area(self.exterior());
+        let holes: f64 = self.interiors().map(ring_area).sum();
+        (exterior - holes).max(0.0)
+    }
+
     /// Borrow the appearance, if any.
     #[inline]
     pub fn appearance(&self) -> &Option<Appearance> {
@@ -112,6 +127,15 @@ impl Polygon2D {
     pub fn appearance_mut(&mut self) -> &mut Option<Appearance> {
         &mut self.appearance
     }
+}
+
+/// The unsigned shoelace area of one closed ring.
+fn ring_area(ring: &[[f64; 2]]) -> f64 {
+    let sum: f64 = ring
+        .windows(2)
+        .map(|w| w[0][0] * w[1][1] - w[1][0] * w[0][1])
+        .sum();
+    sum.abs() / 2.0
 }
 
 impl Polygon3D {
