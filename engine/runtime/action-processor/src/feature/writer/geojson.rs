@@ -16,10 +16,10 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::errors::FeatureProcessorError;
+use crate::feature::errors::FeatureProcessorError;
 
 #[derive(Debug, Clone, Default)]
-pub(super) struct FeatureGeoJsonWriterFactory;
+pub(crate) struct FeatureGeoJsonWriterFactory;
 
 impl ProcessorFactory for FeatureGeoJsonWriterFactory {
     fn name(&self) -> &str {
