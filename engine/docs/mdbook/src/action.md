@@ -93,7 +93,7 @@ Calculates the planar or sloped area of a feature's geometry and stores it in an
 ### Type
 * processor
 ### Description
-Perform Area Overlay Analysis
+Subdivides overlapping areas into non-overlapping pieces and records how many input features cover each piece. Inputs must be flat 2D geometries sharing one coordinate frame; place a Two Dimension Forcer or a Coordinate Frame Reprojector upstream to flatten or unify them.
 ### Parameters
 ```json
 {
@@ -7802,7 +7802,7 @@ Writes features to JSON files.
 ### Type
 * processor
 ### Description
-Intersection points are turned into point features that can contain the merged list of attributes of the original intersected lines.
+Splits lines where they cross and turns each intersection into a point feature carrying the merged attributes of the lines that meet there. Inputs must be flat 2D geometries sharing one coordinate frame; place a Two Dimension Forcer or a Coordinate Frame Reprojector upstream to flatten or unify them.
 ### Parameters
 ```json
 {
