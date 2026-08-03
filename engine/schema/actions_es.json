@@ -5984,18 +5984,18 @@
         "description": "Configure the size of the grid cells and how features are grouped onto a shared grid.",
         "type": "object",
         "required": [
-          "unitSquareSize"
+          "cellSize"
         ],
         "properties": {
-          "unitSquareSize": {
-            "title": "Unit Square Size",
+          "cellSize": {
+            "title": "Cell Size",
             "description": "Side length of each grid cell, in the same units as the geometry coordinates. Must be greater than zero.",
             "type": "number",
             "format": "double"
           },
-          "keepSquareOnly": {
-            "title": "Keep Square Only",
-            "description": "Whether to emit only complete grid squares, discarding partial cells at the edge of a geometry. Defaults to false.",
+          "completeCellsOnly": {
+            "title": "Complete Cells Only",
+            "description": "Whether to emit only cells that are whole, discarding the partial cells left where the grid meets the edge of a geometry. Defaults to false.",
             "type": [
               "boolean",
               "null"
@@ -11317,7 +11317,6 @@
         "description": "Configure how rays and geometries are paired and how intersection results are output.",
         "type": "object",
         "required": [
-          "pairId",
           "ray"
         ],
         "properties": {
@@ -11332,8 +11331,12 @@
           },
           "pairId": {
             "title": "Pair ID",
-            "description": "Expression producing the key that pairs rays with geometries. Only rays and geometries whose keys match are tested against each other.",
-            "type": "object",
+            "description": "Expression producing the key that pairs rays with geometries, so that only rays and geometries whose keys match are tested against each other. Omit it to test every ray against every geometry.",
+            "default": null,
+            "type": [
+              "object",
+              "null"
+            ],
             "format": "code",
             "required": [
               "type",
@@ -11353,53 +11356,15 @@
           },
           "closestIntersectionOnly": {
             "title": "Closest Intersection Only",
-            "description": "Expression deciding whether to keep only the nearest hit per ray-geometry pair rather than every hit. Defaults to true.",
-            "default": null,
-            "type": [
-              "object",
-              "null"
-            ],
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
+            "description": "Whether to keep only the nearest hit per ray rather than every hit along it. Defaults to true.",
+            "default": true,
+            "type": "boolean"
           },
           "includeRayOrigin": {
             "title": "Include Ray Origin",
-            "description": "Expression deciding whether hits at the ray's own origin count. When false, intersections nearer than the tolerance are discarded. Defaults to true.",
-            "default": null,
-            "type": [
-              "object",
-              "null"
-            ],
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
+            "description": "Whether an intersection at the ray's own origin counts as a hit. When false, intersections nearer than the tolerance are discarded. Defaults to true.",
+            "default": true,
+            "type": "boolean"
           },
           "outputGeometryType": {
             "title": "Output Geometry Type",
@@ -11438,28 +11403,10 @@
           },
           "tolerance": {
             "title": "Tolerance",
-            "description": "Expression producing the distance below which an intersection is treated as coincident. Defaults to 1e-10.",
-            "default": null,
-            "type": [
-              "object",
-              "null"
-            ],
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
+            "description": "Distance below which an intersection is treated as coincident with the ray's origin. Defaults to 1e-10.",
+            "default": 1e-10,
+            "type": "number",
+            "format": "double"
           }
         },
         "definitions": {
@@ -12596,8 +12543,8 @@
           },
           "preserveExistingZ": {
             "title": "Preserve Existing Z Values",
-            "description": "Whether geometry that is already 3D passes through untouched. When false, existing Z values are replaced with the elevation. Defaults to false.",
-            "default": false,
+            "description": "Whether geometry that is already 3D passes through untouched. Defaults to true, so existing Z is kept. Set it to false to overwrite every Z value with the elevation.",
+            "default": true,
             "type": "boolean"
           }
         }

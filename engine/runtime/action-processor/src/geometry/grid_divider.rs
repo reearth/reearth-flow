@@ -88,19 +88,19 @@ impl ProcessorFactory for GridDividerFactory {
             .into());
         };
 
-        let unit_square_size = param.unit_square_size;
+        let cell_size = param.cell_size;
 
-        if unit_square_size <= 0.0 {
+        if cell_size <= 0.0 {
             return Err(GeometryProcessorError::GridDividerFactory(format!(
-                "unit_square_size must be positive, got: {}",
-                unit_square_size
+                "cell_size must be positive, got: {}",
+                cell_size
             ))
             .into());
         }
 
         let processor = GridDivider {
-            unit_square_size,
-            keep_square_only: param.keep_square_only.unwrap_or(false),
+            cell_size,
+            complete_cells_only: param.complete_cells_only.unwrap_or(false),
             group_by: param.group_by,
             bounds_per_group: HashMap::new(),
             group_map: HashMap::new(),
@@ -121,14 +121,14 @@ impl ProcessorFactory for GridDividerFactory {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GridDividerParam {
-    /// # Unit Square Size
+    /// # Cell Size
     /// Side length of each grid cell, in the same units as the geometry coordinates.
     /// Must be greater than zero.
-    pub unit_square_size: f64,
-    /// # Keep Square Only
-    /// Whether to emit only complete grid squares, discarding partial cells at the
-    /// edge of a geometry. Defaults to false.
-    pub keep_square_only: Option<bool>,
+    pub cell_size: f64,
+    /// # Complete Cells Only
+    /// Whether to emit only cells that are whole, discarding the partial cells left
+    /// where the grid meets the edge of a geometry. Defaults to false.
+    pub complete_cells_only: Option<bool>,
     /// # Group By Attributes
     /// Attributes whose values group features together. Each group is divided on
     /// its own grid origin, derived from that group's combined bounds.
@@ -136,8 +136,8 @@ pub struct GridDividerParam {
 }
 
 pub struct GridDivider {
-    unit_square_size: f64,
-    keep_square_only: bool,
+    cell_size: f64,
+    complete_cells_only: bool,
     group_by: Option<Vec<Attribute>>,
 
     // Disk-backed state
@@ -155,7 +155,7 @@ pub struct GridDivider {
 impl fmt::Debug for GridDivider {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Grid Divider")
-            .field("unit_square_size", &self.unit_square_size)
+            .field("cell_size", &self.cell_size)
             .field("group_count", &self.group_count)
             .field("buffer_bytes", &self.buffer_bytes)
             .field("temp_dir", &self.temp_dir)
@@ -166,8 +166,8 @@ impl fmt::Debug for GridDivider {
 impl Clone for GridDivider {
     fn clone(&self) -> Self {
         Self {
-            unit_square_size: self.unit_square_size,
-            keep_square_only: self.keep_square_only,
+            cell_size: self.cell_size,
+            complete_cells_only: self.complete_cells_only,
             group_by: self.group_by.clone(),
             bounds_per_group: HashMap::new(),
             group_map: HashMap::new(),
@@ -394,8 +394,8 @@ impl Processor for GridDivider {
                     break;
                 }
 
-                let unit_size = self.unit_square_size;
-                let keep_square_only = self.keep_square_only;
+                let unit_size = self.cell_size;
+                let complete_cells_only = self.complete_cells_only;
                 let group_by = &self.group_by;
 
                 // Process chunk in parallel
@@ -437,7 +437,7 @@ impl Processor for GridDivider {
                                 for clip_result in
                                     clip_geometry_by_cell(&feature.geometry.value, &cell)
                                 {
-                                    if keep_square_only && !clip_result.is_complete_square {
+                                    if complete_cells_only && !clip_result.is_complete_square {
                                         continue;
                                     }
                                     results.push(create_output_feature(

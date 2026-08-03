@@ -234,6 +234,42 @@ Refiner
              single-segment path to segment, and merging consecutive line segments — is a
              separate task.
 
+Design pass (2026-08-03) — items raised by a usability review of the whole batch, deferred
+here because each is larger than a metadata fix:
+
+Refiner vs Geometry Splitter
+  design:  their descriptions are not distinguishable by a user — both take a container and
+             emit its members on `features` — and Refiner has no workflow using it. It should
+             fold into Geometry Splitter. NOT done here: legacy Splitter handles MultiPolygon
+             and MultiLineString but falls through GeometryCollection to pass-through, which is
+             the only case Refiner actually implements, so folding means ADDING collection
+             support to the legacy path — new capability the new-geometry world discards
+             anyway, since its generic `Split` op already covers collections, meshes and point
+             clouds. Do this at the new-geometry flip: delete refiner.rs, drop it from
+             geometry/mapping.rs and from base_actions.go.
+
+Polygon Normal Extractor
+  design:  the only Extractor with no output-naming parameter. It writes six fixed attribute
+             names (normalX/Y/Z, signedArea2D, slope, azimuth), so a user cannot avoid
+             collisions or ask for just one property, and the azimuth convention (0 deg =
+             South) is invisible from the schema. For a multi-polygon it also smears results
+             across numbered suffixes (normalX_0, normalX_1, …) rather than emitting one
+             feature per polygon, which is what the data model wants. Entangled with the
+             action's unresolved On-hold status, so it belongs in one follow-up.
+
+Geometry Validator
+  design:  the two parameter models are opposites. `validationTypes` is opt-IN (list the checks
+             you want, tolerance inline); the new-geometry set is opt-OUT (all checks run,
+             `disabledOptionalChecks` removes some, tolerances are separate params). The
+             opt-out model is the right one — it matches the OGC model, where validity is a
+             property of the geometry and a separate detail call reports which rule failed, not
+             a menu chosen up front. Converging costs something real though: 26 Validator nodes
+             in this repo each run exactly ONE check, so `failed` currently means "failed that
+             check". Under the new model `failed` means "failed anything" and each of those
+             nodes needs a downstream filter on `validationResult.checks`, changing which port
+             a feature leaves by. Cost this before the flip, and check whether FlowExpr can
+             even address a nested attribute like `validationResult.checks.selfIntersection`.
+
 Geometry Validator
   ui:      hits the same `consolidateOneOfToEnum` bug written up under Image Rasterizer in
              the Geometry A section above — `ValidationType` mixes one unit variant

@@ -1889,17 +1889,17 @@
           "title": "Grid Divider Parameters",
           "description": "Configure the size of the grid cells and how features are grouped onto a shared grid."
         },
+        "cellSize": {
+          "title": "Cell Size",
+          "description": "Side length of each grid cell, in the same units as the geometry coordinates. Must be greater than zero."
+        },
+        "completeCellsOnly": {
+          "title": "Complete Cells Only",
+          "description": "Whether to emit only cells that are whole, discarding the partial cells left where the grid meets the edge of a geometry. Defaults to false."
+        },
         "groupBy": {
           "title": "Group By Attributes",
           "description": "Attributes whose values group features together. Each group is divided on its own grid origin, derived from that group's combined bounds."
-        },
-        "keepSquareOnly": {
-          "title": "Keep Square Only",
-          "description": "Whether to emit only complete grid squares, discarding partial cells at the edge of a geometry. Defaults to false."
-        },
-        "unitSquareSize": {
-          "title": "Unit Square Size",
-          "description": "Side length of each grid cell, in the same units as the geometry coordinates. Must be greater than zero."
         }
       }
     },
@@ -3327,7 +3327,7 @@
         },
         "closestIntersectionOnly": {
           "title": "Closest Intersection Only",
-          "description": "Expression deciding whether to keep only the nearest hit per ray-geometry pair rather than every hit. Defaults to true."
+          "description": "Whether to keep only the nearest hit per ray rather than every hit along it. Defaults to true."
         },
         "geomId": {
           "title": "Geometry ID",
@@ -3335,7 +3335,7 @@
         },
         "includeRayOrigin": {
           "title": "Include Ray Origin",
-          "description": "Expression deciding whether hits at the ray's own origin count. When false, intersections nearer than the tolerance are discarded. Defaults to true."
+          "description": "Whether an intersection at the ray's own origin counts as a hit. When false, intersections nearer than the tolerance are discarded. Defaults to true."
         },
         "outputGeometryType": {
           "title": "Output Geometry Type",
@@ -3343,7 +3343,7 @@
         },
         "pairId": {
           "title": "Pair ID",
-          "description": "Expression producing the key that pairs rays with geometries. Only rays and geometries whose keys match are tested against each other."
+          "description": "Expression producing the key that pairs rays with geometries, so that only rays and geometries whose keys match are tested against each other. Omit it to test every ray against every geometry."
         },
         "ray": {
           "title": "Ray",
@@ -3351,7 +3351,7 @@
         },
         "tolerance": {
           "title": "Tolerance",
-          "description": "Expression producing the distance below which an intersection is treated as coincident. Defaults to 1e-10."
+          "description": "Distance below which an intersection is treated as coincident with the ray's origin. Defaults to 1e-10."
         }
       },
       "definitionI18n": {
@@ -3664,7 +3664,7 @@
         },
         "preserveExistingZ": {
           "title": "Preserve Existing Z Values",
-          "description": "Whether geometry that is already 3D passes through untouched. When false, existing Z values are replaced with the elevation. Defaults to false."
+          "description": "Whether geometry that is already 3D passes through untouched. Defaults to true, so existing Z is kept. Set it to false to overwrite every Z value with the elevation."
         }
       }
     },

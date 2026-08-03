@@ -90,11 +90,17 @@ impl ProcessorFactory for ThreeDimensionForcerFactory {
     }
 }
 
+/// Geometry that already carries Z is left alone unless the user opts in to
+/// replacing it. This matches the standard behaviour of a force-3D operation,
+/// where adding a dimension never discards coordinates that are already there.
+fn preserve_existing_z_default() -> bool {
+    true
+}
+
 /// # Three Dimension Forcer Parameters
 /// Configure the elevation applied to 2D geometry and how existing Z values are treated.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-#[derive(Default)]
 pub struct ThreeDimensionForcerParam {
     /// # Elevation
     /// Z-coordinate applied to every point, as a constant or an expression.
@@ -102,10 +108,20 @@ pub struct ThreeDimensionForcerParam {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub elevation: Option<Code<{ CodeType::FlowExpr as u32 }>>,
     /// # Preserve Existing Z Values
-    /// Whether geometry that is already 3D passes through untouched. When false,
-    /// existing Z values are replaced with the elevation. Defaults to false.
-    #[serde(default)]
+    /// Whether geometry that is already 3D passes through untouched. Defaults to
+    /// true, so existing Z is kept. Set it to false to overwrite every Z value
+    /// with the elevation.
+    #[serde(default = "preserve_existing_z_default")]
     pub preserve_existing_z: bool,
+}
+
+impl Default for ThreeDimensionForcerParam {
+    fn default() -> Self {
+        Self {
+            elevation: None,
+            preserve_existing_z: preserve_existing_z_default(),
+        }
+    }
 }
 
 #[derive(Debug, Clone)]

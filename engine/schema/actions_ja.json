@@ -5984,18 +5984,18 @@
         "description": "グリッドセルのサイズと、地物を共通のグリッドにグループ化する方法を設定する",
         "type": "object",
         "required": [
-          "unitSquareSize"
+          "cellSize"
         ],
         "properties": {
-          "unitSquareSize": {
-            "title": "グリッドセルサイズ",
+          "cellSize": {
+            "title": "セルサイズ",
             "description": "各グリッドセルの辺の長さ。ジオメトリ座標と同じ単位で指定する。ゼロより大きい値が必要",
             "type": "number",
             "format": "double"
           },
-          "keepSquareOnly": {
-            "title": "完全なセルのみ保持",
-            "description": "ジオメトリの端にある不完全なセルを破棄し、完全なグリッドセルのみを出力するかどうか。デフォルトは false",
+          "completeCellsOnly": {
+            "title": "完全なセルのみ",
+            "description": "グリッドがジオメトリの端に達したときに生じる不完全なセルを破棄し、完全なセルのみを出力するかどうか。デフォルトは false",
             "type": [
               "boolean",
               "null"
@@ -11317,7 +11317,6 @@
         "description": "レイとジオメトリを対応付ける方法と、交差結果の出力方法を設定する",
         "type": "object",
         "required": [
-          "pairId",
           "ray"
         ],
         "properties": {
@@ -11332,8 +11331,12 @@
           },
           "pairId": {
             "title": "ペア ID",
-            "description": "レイとジオメトリを対応付けるキーを生成する式。キーが一致するレイとジオメトリのみが互いに判定される",
-            "type": "object",
+            "description": "レイとジオメトリを対応付けるキーを生成する式。キーが一致するレイとジオメトリのみが互いに判定される。省略した場合、すべてのレイがすべてのジオメトリと判定される",
+            "default": null,
+            "type": [
+              "object",
+              "null"
+            ],
             "format": "code",
             "required": [
               "type",
@@ -11353,53 +11356,15 @@
           },
           "closestIntersectionOnly": {
             "title": "最近傍の交差のみ",
-            "description": "レイとジオメトリの組ごとに、すべての交差ではなく最も近い交差のみを残すかどうかを決める式。デフォルトは true",
-            "default": null,
-            "type": [
-              "object",
-              "null"
-            ],
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
+            "description": "レイ上のすべての交差ではなく、最も近い交差のみを残すかどうか。デフォルトは true",
+            "default": true,
+            "type": "boolean"
           },
           "includeRayOrigin": {
             "title": "レイ原点を含める",
-            "description": "レイの原点上の交差を有効とするかどうかを決める式。false の場合、許容誤差より近い交差は破棄される。デフォルトは true",
-            "default": null,
-            "type": [
-              "object",
-              "null"
-            ],
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
+            "description": "レイの原点上の交差を有効な交差とみなすかどうか。false の場合、許容誤差より近い交差は破棄される。デフォルトは true",
+            "default": true,
+            "type": "boolean"
           },
           "outputGeometryType": {
             "title": "出力ジオメトリタイプ",
@@ -11438,28 +11403,10 @@
           },
           "tolerance": {
             "title": "許容誤差",
-            "description": "交差が一致しているとみなす距離を生成する式。デフォルトは 1e-10",
-            "default": null,
-            "type": [
-              "object",
-              "null"
-            ],
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
+            "description": "交差がレイの原点と一致しているとみなす距離。デフォルトは 1e-10",
+            "default": 1e-10,
+            "type": "number",
+            "format": "double"
           }
         },
         "definitions": {
@@ -12596,8 +12543,8 @@
           },
           "preserveExistingZ": {
             "title": "既存の Z 値を保持",
-            "description": "すでに 3D のジオメトリをそのまま通過させるかどうか。false の場合、既存の Z 値は標高で置き換えられる。デフォルトは false",
-            "default": false,
+            "description": "すでに 3D のジオメトリをそのまま通過させるかどうか。デフォルトは true で、既存の Z 値は保持される。false にすると、すべての Z 値が標高で上書きされる",
+            "default": true,
             "type": "boolean"
           }
         }
