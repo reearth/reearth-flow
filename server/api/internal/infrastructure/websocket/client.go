@@ -489,10 +489,15 @@ func (c *Client) GetSnapshots(ctx context.Context, docID string) ([]*websocket.S
 
 	snapshots := make([]*websocket.SnapshotMetadata, len(snapshotsResp))
 	for i, item := range snapshotsResp {
+		// Deliberately NOT falling back to time.Now(): the panel sorts rows by
+		// timestamp and uses it as the row label when a snapshot is unlabelled, so
+		// a fabricated "now" would sort an old snapshot above genuinely newer ones
+		// and mislabel it. The websocket server always writes RFC3339, so a parse
+		// failure is a protocol mismatch worth surfacing — leave the zero value,
+		// which sorts last rather than first.
 		timestamp, err := time.Parse(time.RFC3339, item.Timestamp)
 		if err != nil {
-			log.Warnf("failed to parse timestamp: %v, using current time", err)
-			timestamp = time.Now()
+			log.Warnf("snapshot %d of doc %s has an unparseable timestamp %q: %v", item.ID, docID, item.Timestamp, err)
 		}
 
 		snapshots[i] = &websocket.SnapshotMetadata{

@@ -38,6 +38,32 @@ func TestClient_GetSnapshots_DecodesList(t *testing.T) {
 	assert.False(t, got[1].Timestamp.IsZero())
 }
 
+// An unparseable timestamp must leave the zero value rather than substituting
+// time.Now(). The Version panel sorts rows by timestamp and, for an unlabelled
+// snapshot, renders the timestamp AS the row label — so a fabricated "now" would
+// float a stale snapshot above genuinely newer ones and label it with today's
+// date. The zero value sorts last and reads as obviously wrong, which is the
+// honest failure mode. The row itself is still returned: one bad timestamp must
+// not drop a snapshot the user can otherwise see and restore.
+func TestClient_GetSnapshots_UnparseableTimestampStaysZero(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = w.Write([]byte(`[{"id":1,"label":"broken","timestamp":"not-a-timestamp","size":7}]`))
+	}))
+	defer server.Close()
+
+	client, err := NewClient(Config{ServerURL: server.URL})
+	assert.NoError(t, err)
+
+	got, err := client.GetSnapshots(context.Background(), "proj1")
+	assert.NoError(t, err)
+	assert.Len(t, got, 1)
+	assert.Equal(t, int64(1), got[0].ID)
+	assert.Equal(t, "broken", got[0].Label)
+	assert.Equal(t, int64(7), got[0].Size)
+	assert.True(t, got[0].Timestamp.IsZero(), "timestamp must stay zero, not be fabricated from time.Now()")
+}
+
 func TestClient_GetSnapshots_SetsAPISecretHeader(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "my-secret", r.Header.Get("X-API-Secret"))
