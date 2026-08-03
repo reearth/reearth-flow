@@ -98,7 +98,7 @@ impl SinkFactory for Cesium3DTilesSinkFactory {
                 #[cfg(not(feature = "new-geometry"))]
                 max_zoom: params.max_zoom,
                 #[cfg(feature = "new-geometry")]
-                max_depth: params.max_depth,
+                target_tile_size: params.target_tile_size,
                 #[cfg(not(feature = "new-geometry"))]
                 attach_texture: params.attach_texture,
                 #[cfg(not(feature = "new-geometry"))]
@@ -179,12 +179,13 @@ pub struct Cesium3DTilesWriterParam {
     /// Highest zoom level to generate tiles for, from 0 to 24.
     #[cfg(not(feature = "new-geometry"))]
     pub(super) max_zoom: u8,
-    /// # Max Depth
-    /// Hard cap on the quadtree subdivision depth; tile granularity otherwise
-    /// follows feature size. Defaults to 24, from 0 to 24.
+    /// # Target Tile Size
+    /// Target content size per tile, in bytes. Tiles are split when they'd
+    /// exceed it and merged with neighbours when they'd otherwise be smaller;
+    /// a single feature that alone exceeds it is kept whole (features are
+    /// never clipped). Defaults to 1,048,576 (1 MiB).
     #[cfg(feature = "new-geometry")]
-    #[schemars(range(min = 0, max = 24))]
-    pub(super) max_depth: Option<u32>,
+    pub(super) target_tile_size: Option<u64>,
     /// # Attach Textures
     /// Whether to include texture information in the generated tiles.
     #[cfg(not(feature = "new-geometry"))]
@@ -248,7 +249,7 @@ pub struct Cesium3DTilesWriterCompiledParam {
     #[cfg(not(feature = "new-geometry"))]
     pub(super) max_zoom: u8,
     #[cfg(feature = "new-geometry")]
-    pub(super) max_depth: Option<u32>,
+    pub(super) target_tile_size: Option<u64>,
     #[cfg(not(feature = "new-geometry"))]
     pub(super) attach_texture: Option<bool>,
     #[cfg(not(feature = "new-geometry"))]

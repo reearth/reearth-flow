@@ -10,6 +10,7 @@
 //! `atlas_size` and overflow spills onto further pages.
 
 mod appearance;
+mod cost;
 mod mesh;
 mod primitive;
 mod quadtree;
@@ -93,8 +94,11 @@ impl Cesium3DTilesWriter {
                         .map_err(crate::errors::SinkError::cesium3dtiles_writer)
                 };
 
-                let max_depth = self.params.max_depth.unwrap_or(DEFAULT_MAX_DEPTH);
-                let built = build(features, options, max_depth, render, write_file)?;
+                let target_tile_size = self
+                    .params
+                    .target_tile_size
+                    .unwrap_or(DEFAULT_TARGET_TILE_SIZE);
+                let built = build(features, options, target_tile_size, render, write_file)?;
                 for (relative_path, bytes) in built.subtrees {
                     write_file(relative_path, bytes)?;
                 }
@@ -118,8 +122,11 @@ impl Cesium3DTilesWriter {
                 };
 
                 // glbs stream out as they're built; only subtree/tileset outputs come back.
-                let max_depth = self.params.max_depth.unwrap_or(DEFAULT_MAX_DEPTH);
-                let built = build(features, options, max_depth, render, write_file)?;
+                let target_tile_size = self
+                    .params
+                    .target_tile_size
+                    .unwrap_or(DEFAULT_TARGET_TILE_SIZE);
+                let built = build(features, options, target_tile_size, render, write_file)?;
 
                 for (relative_path, bytes) in built.subtrees {
                     write_file(relative_path, bytes)?;
@@ -180,22 +187,23 @@ const DEFAULT_ATLAS_SIZE: u32 = 2048;
 /// default. Raise it to blit a bleed-guard ring around each packed region.
 const DEFAULT_ATLAS_EXTRUSION: u32 = 0;
 
-/// Default quadtree depth cap when `max_depth` is unset.
-const DEFAULT_MAX_DEPTH: u32 = 24;
+/// Hard safety cap on quadtree depth, well beyond any depth `target_tile_size`
+/// would realistically drive placement to; guards against pathological inputs
+/// (e.g. many coincident features) rather than acting as a tuning knob.
+const SAFETY_MAX_DEPTH: u32 = 24;
 
-/// Extract and reproject every feature's mesh, place each into the deepest
-/// quadtree cell (bounded by `max_depth`) that fully contains it, and render
-/// the result to a [`BuiltTileset`]. A free function so `gml_to_3dtiles` can
-/// drive it directly from parsed CityGML, without a `Cesium3DTilesWriter`.
-///
-/// Each content glb is handed to `write_tile` (relative path, bytes) the moment
-/// it is built and is not retained, so peak memory does not grow with the tile
-/// count. The returned [`BuiltTileset`] carries only the small `tileset.json`
-/// and subtree outputs, which the caller writes after `build` returns.
+/// Default per-tile content-size target (bytes) when `target_tile_size` is
+/// unset.
+const DEFAULT_TARGET_TILE_SIZE: u64 = 1_048_576;
+
+/// A free function so `gml_to_3dtiles` can drive it directly from parsed
+/// CityGML, without a `Cesium3DTilesWriter`. Content glbs stream through
+/// `write_tile` as built rather than being retained, so peak memory stays at
+/// one glb regardless of tile count.
 pub fn build(
     features: &[Feature],
     options: MetadataOptions,
-    max_depth: u32,
+    target_tile_size: u64,
     render: RenderOptions,
     write_tile: impl Fn(String, Vec<u8>) -> crate::errors::Result<()> + Sync,
 ) -> crate::errors::Result<BuiltTileset> {
@@ -219,14 +227,19 @@ pub fn build(
         .reduce(GeoBox::union)
         .expect("extracted is non-empty, and mesh::extract never returns an empty vertex buffer");
 
+    let mut cost_caches = cost::CostCaches::default();
     let mut by_cell: HashMap<Cell, Vec<usize>> = HashMap::new();
-    for (i, (_, m)) in extracted.iter().enumerate() {
+    let mut cell_cost: HashMap<Cell, u64> = HashMap::new();
+    for (i, (feature, m)) in extracted.iter().enumerate() {
         let Some(feature_box) = GeoBox::of(&m.geographic_vertices) else {
             continue;
         };
-        let cell = quadtree::place(&root, &feature_box, max_depth);
+        let cell = quadtree::place(&root, &feature_box, SAFETY_MAX_DEPTH);
         by_cell.entry(cell).or_default().push(i);
+        *cell_cost.entry(cell).or_default() += cost::estimate(feature, m, &mut cost_caches);
     }
+
+    merge_small_cells(&mut by_cell, &mut cell_cost, target_tile_size);
 
     let occupied: BTreeSet<Cell> = by_cell.keys().copied().collect();
     let available_levels = occupied.iter().map(|c| c.level).max().unwrap_or(0) + 1;
@@ -267,6 +280,39 @@ pub fn build(
         tile_count,
         rendered_features: extracted.len(),
     })
+}
+
+/// Fold small sibling cells upward into their parent while staying within
+/// `target_tile_size`, deepest level first so a fold can cascade to the root.
+fn merge_small_cells(
+    by_cell: &mut HashMap<Cell, Vec<usize>>,
+    cell_cost: &mut HashMap<Cell, u64>,
+    target_tile_size: u64,
+) {
+    let max_level = by_cell.keys().map(|c| c.level).max().unwrap_or(0);
+    for level in (1..=max_level).rev() {
+        let mut by_parent: HashMap<Cell, Vec<Cell>> = HashMap::new();
+        for cell in by_cell.keys().filter(|c| c.level == level) {
+            if let Some(parent) = cell.parent() {
+                by_parent.entry(parent).or_default().push(*cell);
+            }
+        }
+        for (parent, mut children) in by_parent {
+            children.sort_by_key(|c| cell_cost[c]);
+            let mut parent_cost = cell_cost.get(&parent).copied().unwrap_or(0);
+            for child in children {
+                let child_cost = cell_cost[&child];
+                if parent_cost + child_cost > target_tile_size {
+                    continue;
+                }
+                let features = by_cell.remove(&child).unwrap();
+                by_cell.entry(parent).or_default().extend(features);
+                cell_cost.remove(&child);
+                parent_cost += child_cost;
+                cell_cost.insert(parent, parent_cost);
+            }
+        }
+    }
 }
 
 /// Render one feature into a glb, untiled. Where [`build`] splits a whole
@@ -981,10 +1027,16 @@ mod tests {
 
         // `build` streams each content glb to the callback; capture them.
         let tiles = Mutex::new(Vec::new());
-        let built = build(&[feature], options, 18, render, |_path, glb| {
-            tiles.lock().unwrap().push(glb);
-            Ok(())
-        })
+        let built = build(
+            &[feature],
+            options,
+            DEFAULT_TARGET_TILE_SIZE,
+            render,
+            |_path, glb| {
+                tiles.lock().unwrap().push(glb);
+                Ok(())
+            },
+        )
         .expect("build tileset");
 
         assert_eq!(built.tile_count, 1, "textured mesh produced a content glb");
