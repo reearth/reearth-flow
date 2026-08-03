@@ -3866,10 +3866,16 @@ type ProjectSnapshotMetadata {
 # A labelled, named snapshot in a project's version history (distinct from
 # ProjectSnapshot, which is a raw update-vector snapshot keyed by version).
 type NamedSnapshot {
+  # A backend-assigned, per-room snapshot counter. NOT interchangeable with
+  # ProjectSnapshotMetadata.version, which is a CRDT update-log clock: passing
+  # this id to rollbackProject or previewSnapshot would prune at an unrelated
+  # clock and destroy history. See reearth-flow#2332.
   id: Int!
   label: String!
   timestamp: DateTime!
-  size: Int!
+  # FileSize (int64), matching Asset.size — the uncompressed document byte count
+  # comes off the wire as an int64 and GraphQL Int is only 32-bit by spec.
+  size: FileSize!
 }
 
 # Mutation
@@ -12292,7 +12298,7 @@ func (ec *executionContext) _NamedSnapshot_size(ctx context.Context, field graph
 			return obj.Size, nil
 		},
 		nil,
-		ec.marshalNInt2int,
+		ec.marshalNFileSize2int64,
 		true,
 		true,
 	)
@@ -12305,7 +12311,7 @@ func (ec *executionContext) fieldContext_NamedSnapshot_size(_ context.Context, f
 		IsMethod:   false,
 		IsResolver: false,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
-			return nil, errors.New("field of type Int does not have child fields")
+			return nil, errors.New("field of type FileSize does not have child fields")
 		},
 	}
 	return fc, nil

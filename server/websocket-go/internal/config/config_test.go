@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"strings"
 	"testing"
+	"time"
 )
 
 // TestDefaultOriginsHaveNoDeadGlobs guards against shipping a default origin that
@@ -334,6 +335,66 @@ func TestValidateAcceptsValidAndEmpty(t *testing.T) {
 	}
 }
 
+// TestAutoVersioningDefaultsAndOverrides pins the two auto-versioning knobs.
+// Neither was covered, so nothing held the 15m/50 defaults or proved the env
+// names parse at all — a typo in either key would have silently reverted the
+// feature to its default while looking configured.
+func TestAutoVersioningDefaultsAndOverrides(t *testing.T) {
+	clearEnv(t)
+	c := Load()
+	if c.AutoVersionEvery != defaultAutoVersionEvery {
+		t.Errorf("AutoVersionEvery = %v, want %v", c.AutoVersionEvery, defaultAutoVersionEvery)
+	}
+	if c.KeepSnapshots != defaultKeepSnapshots {
+		t.Errorf("KeepSnapshots = %d, want %d", c.KeepSnapshots, defaultKeepSnapshots)
+	}
+
+	clearEnv(t)
+	t.Setenv("REEARTH_FLOW_AUTO_VERSION_EVERY", "45s")
+	t.Setenv("REEARTH_FLOW_KEEP_SNAPSHOTS", "7")
+	c = Load()
+	if c.AutoVersionEvery != 45*time.Second {
+		t.Errorf("AutoVersionEvery = %v, want 45s", c.AutoVersionEvery)
+	}
+	if c.KeepSnapshots != 7 {
+		t.Errorf("KeepSnapshots = %d, want 7", c.KeepSnapshots)
+	}
+
+	// "0" is the documented way to disable auto-versioning and must survive Load.
+	clearEnv(t)
+	t.Setenv("REEARTH_FLOW_AUTO_VERSION_EVERY", "0")
+	if got := Load().AutoVersionEvery; got != 0 {
+		t.Errorf("AutoVersionEvery with \"0\" = %v, want 0 (disabled)", got)
+	}
+}
+
+// TestValidateRejectsBadAutoVersionEvery: auto-versioning is ON by default, so
+// this var is the kill switch an operator reaches for during an incident.
+// envDuration falls back to the 15m default on anything it cannot parse, which
+// would leave the feature RUNNING while looking disabled — the same fail-open
+// trap Validate already guards for WS_PROTECTED. A negative duration is rejected
+// too: ygo happens to treat <= 0 as disabled, so it would work, but only by
+// coincidence and silently, and "-1" is far likelier a typo than an intent.
+func TestValidateRejectsBadAutoVersionEvery(t *testing.T) {
+	for _, v := range []string{"maybe", "off", "disabled", "15", "-1m", "-1"} {
+		clearEnv(t)
+		t.Setenv("REEARTH_FLOW_AUTO_VERSION_EVERY", v)
+		if err := Load().Validate(); err == nil {
+			t.Errorf("Validate() with AUTO_VERSION_EVERY=%q = nil, want an error", v)
+		}
+	}
+	// Valid values, including the documented "0" to disable, must pass.
+	for _, v := range []string{"", "0", "0s", "30s", "15m", "1h"} {
+		clearEnv(t)
+		if v != "" {
+			t.Setenv("REEARTH_FLOW_AUTO_VERSION_EVERY", v)
+		}
+		if err := Load().Validate(); err != nil {
+			t.Errorf("Validate() with AUTO_VERSION_EVERY=%q = %v, want nil", v, err)
+		}
+	}
+}
+
 // clearEnv unsets every env var Load reads so a test starts from a clean slate.
 func clearEnv(t *testing.T) {
 	t.Helper()
@@ -362,6 +423,8 @@ func clearEnv(t *testing.T) {
 		"REEARTH_FLOW_OTEL_MAX_QUEUE_SIZE",
 		"REEARTH_FLOW_WS_PROTECTED",
 		"REEARTH_FLOW_SLOW_PEER_RESYNC",
+		"REEARTH_FLOW_AUTO_VERSION_EVERY",
+		"REEARTH_FLOW_KEEP_SNAPSHOTS",
 	} {
 		t.Setenv(k, "")
 	}

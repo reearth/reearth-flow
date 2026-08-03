@@ -179,8 +179,17 @@ func (c *Config) Validate() error {
 	// leave the feature running while looking like they turned it off. Use "0"
 	// to disable.
 	if raw := os.Getenv("REEARTH_FLOW_AUTO_VERSION_EVERY"); strings.TrimSpace(raw) != "" {
-		if _, err := time.ParseDuration(strings.TrimSpace(raw)); err != nil {
+		d, err := time.ParseDuration(strings.TrimSpace(raw))
+		if err != nil {
 			return fmt.Errorf("REEARTH_FLOW_AUTO_VERSION_EVERY=%q is not a valid Go duration (e.g. 15m, 30s; use 0 to disable auto-versioning); refusing to start rather than silently keeping auto-versioning enabled", raw)
+		}
+		// A negative duration parses fine and ygo treats <= 0 as "disabled", so it
+		// would work — but silently, and only by coincidence. "0" is the documented
+		// way to disable, so anything else non-positive is more likely a typo (a
+		// stray minus, a copied "-1") than an intent, and this var's whole purpose
+		// is that an operator's intent is never guessed at.
+		if d < 0 {
+			return fmt.Errorf("REEARTH_FLOW_AUTO_VERSION_EVERY=%q is negative; use exactly 0 to disable auto-versioning, or a positive duration such as 15m", raw)
 		}
 	}
 	return nil
