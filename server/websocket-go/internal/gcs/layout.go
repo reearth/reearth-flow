@@ -132,20 +132,28 @@ func (LegacyRootLayout) SnapNextIDName(d DocID) string {
 	return hexb([]byte("snapnextid:" + hexb([]byte(d))))
 }
 
-// SnapVersionIDFromName recovers the snapshot id from a hex-encoded object name.
+// SnapVersionIDFromName recovers the snapshot id from a hex-encoded object name,
+// and reports false for anything that is not a snapshot record.
+//
+// The marker check is load-bearing, not defensive dressing. Without it, taking
+// "everything after the last colon" makes any all-decimal tail parse as an id —
+// so a room whose name hex-encodes to digits has its own COUNTER object read as
+// a snapshot (room "0" yielded (30, true), room "12345" yielded (3132333435,
+// true)). Today's only caller pre-filters by SnapVersionPrefix, but that makes
+// correctness depend on caller discipline for a method on the Layout interface,
+// and a caller listing a broader prefix would silently mint phantom ids.
 func (LegacyRootLayout) SnapVersionIDFromName(name string) (int64, bool) {
 	b, err := hexDecode(name)
 	if err != nil {
 		return 0, false
 	}
-	s := string(b)
-	// The name encodes "snapver:" + hex(docid) + ":" + decimal_id
-	// We only care about extracting the decimal_id at the end.
-	idx := strings.LastIndex(s, ":")
-	if idx < 0 {
+	// The name encodes "snapver:" + hex(docid) + ":" + decimal_id. hex(docid) can
+	// never contain a colon, so exactly three fields is the valid shape.
+	parts := strings.Split(string(b), ":")
+	if len(parts) != 3 || parts[0] != "snapver" {
 		return 0, false
 	}
-	id, err := strconv.ParseInt(s[idx+1:], 10, 64)
+	id, err := strconv.ParseInt(parts[2], 10, 64)
 	if err != nil {
 		return 0, false
 	}
@@ -200,20 +208,38 @@ func (ProjectFolderLayout) SnapNextIDName(d DocID) string {
 	return ProjectPrefix(d) + "snapnextid"
 }
 
-// SnapVersionIDFromName recovers the snapshot id from a decimal-encoded object name.
-// For ProjectFolderLayout names like "{docid}/snapver/{id}", this extracts the id directly.
+// SnapVersionIDFromName recovers the snapshot id from a "{docid}/snapver/{id}"
+// object name, and reports false for anything else.
+//
+// The "snapver" segment is checked rather than just taking the tail after the
+// last "/", for the same reason as the LegacyRoot parser: otherwise any path
+// ending in digits parses as a snapshot id ("proj/anything/77" yielded
+// (77, true)), so a caller listing a broader prefix would mint phantom ids
+// pointing at unrelated objects.
 func (ProjectFolderLayout) SnapVersionIDFromName(name string) (int64, bool) {
-	// The name is "{docid}/snapver/{decimal_id}"
-	// Find the last "/" and parse what comes after.
-	idx := strings.LastIndex(name, "/")
-	if idx < 0 {
+	rest, idStr, ok := cutLast(name, "/")
+	if !ok {
 		return 0, false
 	}
-	id, err := strconv.ParseInt(name[idx+1:], 10, 64)
+	// The segment immediately before the id must be exactly "snapver".
+	if _, dir, ok := cutLast(rest, "/"); !ok || dir != "snapver" {
+		return 0, false
+	}
+	id, err := strconv.ParseInt(idStr, 10, 64)
 	if err != nil {
 		return 0, false
 	}
 	return id, true
+}
+
+// cutLast splits s around the last occurrence of sep, returning the part before
+// and after it. Reports false when sep is absent.
+func cutLast(s, sep string) (before, after string, found bool) {
+	i := strings.LastIndex(s, sep)
+	if i < 0 {
+		return "", "", false
+	}
+	return s[:i], s[i+len(sep):], true
 }
 
 // ProjectPrefix is the {D}/ prefix scoping every list/delete to one project.

@@ -3,9 +3,11 @@ package gcs
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sort"
 	"strconv"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/reearth/ygo/persistence"
 )
@@ -33,6 +35,9 @@ func (a *Adapter) SaveSnapshot(ctx context.Context, room, label string, state []
 	}
 	if len(state) == 0 {
 		return 0, persistence.ErrEmptySnapshot
+	}
+	if err := validateSnapshotLabel(label); err != nil {
+		return 0, err
 	}
 	d := DocID(room)
 	compressed := compressBrotli(state)
@@ -86,6 +91,34 @@ func (a *Adapter) SaveSnapshot(ctx context.Context, room, label string, state []
 // out to be taken. Each retry re-derives the floor from stored objects, so more
 // than a couple of rounds means something is badly wrong rather than racing.
 const maxSnapshotIDAttempts = 3
+
+// maxLabelBytes bounds the label written into GCS custom object metadata. Real
+// GCS caps total custom metadata at 8 KiB per object; this leaves ample room for
+// the size key alongside it. The HTTP layer also bounds the label, but this is
+// the guard that matters: SaveSnapshot has more than one caller (ygo
+// auto-versioning is the other), and the storage layer is where the constraint
+// actually lives.
+const maxLabelBytes = 1024
+
+// ErrInvalidSnapshotLabel reports a label that cannot be stored in object
+// metadata.
+var ErrInvalidSnapshotLabel = errors.New("gcs: invalid snapshot label")
+
+// validateSnapshotLabel rejects labels GCS cannot round-trip.
+//
+// Both failures are silent without this check. An oversized label surfaces as an
+// opaque GCS 400 *after* the id counter has been consumed, so each attempt burns
+// an id and the user just sees "save failed". Invalid UTF-8 is worse: it is
+// accepted and mangled, so the label read back is not the label written.
+func validateSnapshotLabel(label string) error {
+	if len(label) > maxLabelBytes {
+		return fmt.Errorf("%w: %d bytes exceeds the %d-byte limit", ErrInvalidSnapshotLabel, len(label), maxLabelBytes)
+	}
+	if !utf8.ValidString(label) {
+		return fmt.Errorf("%w: not valid UTF-8", ErrInvalidSnapshotLabel)
+	}
+	return nil
+}
 
 // nextSnapID returns the next snapshot id for the room.
 //

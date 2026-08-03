@@ -3,6 +3,7 @@ package gcs
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/reearth/ygo/persistence"
@@ -364,5 +365,147 @@ func TestGCSSnapshot_Phase2ReadsLegacyRootSnapshots(t *testing.T) {
 		if string(state) != w {
 			t.Fatalf("legacy snapshot %d = %q, want %q: the phase-2 save clobbered it", id, state, w)
 		}
+	}
+}
+
+// TestSnapVersionIDFromName_RejectsNonSnapshotNames: the parser must validate,
+// not just extract. Without a marker check, "everything after the last
+// separator" makes any all-decimal tail look like a snapshot id — so a room
+// whose name hex-encodes to digits has its own id COUNTER read as a snapshot,
+// and any unrelated path ending in a number does the same.
+//
+// It is currently safe only because the one caller pre-filters by prefix. That
+// makes correctness depend on caller discipline for a method on the Layout
+// interface, and ListRooms already establishes the habit of scanning broader
+// prefixes, so the next loose caller would mint phantom ids.
+func TestSnapVersionIDFromName_RejectsNonSnapshotNames(t *testing.T) {
+	legacy := LegacyRootLayout{}
+	folder := ProjectFolderLayout{}
+
+	// The room names that used to make a counter object parse as a snapshot.
+	for _, room := range []string{"0", "9", "12345", "room1"} {
+		d := DocID(room)
+		if id, ok := legacy.SnapVersionIDFromName(legacy.SnapNextIDName(d)); ok {
+			t.Errorf("legacy: counter object for room %q parsed as snapshot id %d", room, id)
+		}
+		if id, ok := folder.SnapVersionIDFromName(folder.SnapNextIDName(d)); ok {
+			t.Errorf("folder: counter object for room %q parsed as snapshot id %d", room, id)
+		}
+		// A real snapshot name must still round-trip.
+		if got, ok := legacy.SnapVersionIDFromName(legacy.SnapVersionName(d, 42)); !ok || got != 42 {
+			t.Errorf("legacy: SnapVersionName(%q,42) -> (%d,%v), want (42,true)", room, got, ok)
+		}
+		if got, ok := folder.SnapVersionIDFromName(folder.SnapVersionName(d, 42)); !ok || got != 42 {
+			t.Errorf("folder: SnapVersionName(%q,42) -> (%d,%v), want (42,true)", room, got, ok)
+		}
+	}
+
+	// An unrelated path whose tail happens to be numeric.
+	if id, ok := folder.SnapVersionIDFromName("proj/anything/77"); ok {
+		t.Errorf("folder: %q parsed as snapshot id %d, want rejected", "proj/anything/77", id)
+	}
+	// An update-log object must not look like a snapshot either.
+	if id, ok := legacy.SnapVersionIDFromName(legacy.UpdateName(DocID("room1"), 1, 5)); ok {
+		t.Errorf("legacy: update-log name parsed as snapshot id %d, want rejected", id)
+	}
+	if id, ok := folder.SnapVersionIDFromName(folder.UpdateName(DocID("room1"), FolderOID, 5)); ok {
+		t.Errorf("folder: update-log name parsed as snapshot id %d, want rejected", id)
+	}
+}
+
+// TestGCSSnapshot_RejectsUnstorableLabel: the label goes into GCS custom object
+// metadata, which caps at 8 KiB and silently mangles invalid UTF-8. Both
+// failures are invisible without a guard — an oversized label surfaces as an
+// opaque 400 AFTER the id counter has been consumed (so every retry burns an
+// id), and bad UTF-8 is accepted and comes back different. Guarded in the
+// adapter rather than only at the HTTP boundary because auto-versioning is a
+// second caller.
+func TestGCSSnapshot_RejectsUnstorableLabel(t *testing.T) {
+	ctx := context.Background()
+	client, bucket := newFakeGCS(t)
+	a, err := New(Options{Client: client, Bucket: bucket, Locker: NewNoLock()})
+	if err != nil {
+		t.Fatalf("gcs.New: %v", err)
+	}
+
+	for _, tc := range []struct {
+		name  string
+		label string
+	}{
+		{"oversized", strings.Repeat("a", maxLabelBytes+1)},
+		{"invalid utf-8", string([]byte{0xff, 0xfe, 0x00})},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if _, err := a.SaveSnapshot(ctx, "room1", tc.label, []byte("s")); !errors.Is(err, ErrInvalidSnapshotLabel) {
+				t.Fatalf("SaveSnapshot err = %v, want ErrInvalidSnapshotLabel", err)
+			}
+			// The rejection must happen before an id is consumed.
+			if snaps, err := a.ListSnapshots(ctx, "room1"); err != nil {
+				t.Fatalf("ListSnapshots: %v", err)
+			} else if len(snaps) != 0 {
+				t.Fatalf("a snapshot was recorded despite the bad label: %+v", snaps)
+			}
+		})
+	}
+
+	// A label exactly at the limit, and a multi-byte one, must both be accepted.
+	if _, err := a.SaveSnapshot(ctx, "room1", strings.Repeat("a", maxLabelBytes), []byte("s")); err != nil {
+		t.Fatalf("label at the limit was rejected: %v", err)
+	}
+	if _, err := a.SaveSnapshot(ctx, "room1", "リリース前", []byte("s")); err != nil {
+		t.Fatalf("multi-byte UTF-8 label was rejected: %v", err)
+	}
+}
+
+// TestGCSDelete_RemovesLegacyRootSnapshots_Phase2 covers the legacy-root
+// snapshot cleanup in deleteLegacyRoot, which no test reached: removing either
+// of its two snapshot lines left the whole suite passing.
+// TestDeleteRemovesNamedSnapshots_Phase2 looks like it covers this and does not,
+// because its SaveSnapshot writes through the PHASE-2 layout, so the legacy
+// branch never runs. Here the snapshots are written by a Phase-1 adapter first.
+//
+// If it regresses, a deleted project's full document state survives in the
+// bucket indefinitely — a snapshot is a complete copy — which is both a storage
+// cost and a data-deletion-guarantee problem.
+func TestGCSDelete_RemovesLegacyRootSnapshots_Phase2(t *testing.T) {
+	ctx := context.Background()
+	client, bucket := newFakeGCS(t)
+	const room = "550e8400-e29b-41d4-a716-446655440099"
+
+	p1, err := New(Options{Client: client, Bucket: bucket, Locker: NewNoLock()})
+	if err != nil {
+		t.Fatalf("gcs.New phase1: %v", err)
+	}
+	for i := 0; i < 3; i++ {
+		if _, err := p1.SaveSnapshot(ctx, room, "legacy", []byte("state")); err != nil {
+			t.Fatalf("phase1 SaveSnapshot: %v", err)
+		}
+	}
+
+	p2, err := New(Options{Client: client, Bucket: bucket, Locker: NewNoLock(), Phase2: true})
+	if err != nil {
+		t.Fatalf("gcs.New phase2: %v", err)
+	}
+	if _, err := p2.SaveSnapshot(ctx, room, "primary", []byte("state")); err != nil {
+		t.Fatalf("phase2 SaveSnapshot: %v", err)
+	}
+	if err := p2.Delete(ctx, room); err != nil {
+		t.Fatalf("phase2 Delete: %v", err)
+	}
+
+	// Assert at the OBJECT level: a ListSnapshots check could pass while objects
+	// linger, which is exactly the failure being guarded against.
+	leg := LegacyRootLayout{}
+	for _, prefix := range []string{leg.SnapVersionPrefix(DocID(room)), legacySnapshotPrefix(DocID(room))} {
+		objs, err := p2.store.list(ctx, prefix)
+		if err != nil {
+			t.Fatalf("list %q: %v", prefix, err)
+		}
+		if len(objs) != 0 {
+			t.Fatalf("legacy-root objects survived Delete under %q: %v", prefix, objs)
+		}
+	}
+	if _, err := p2.store.get(ctx, leg.SnapNextIDName(DocID(room))); err != errNotFound {
+		t.Fatalf("legacy id counter survived Delete (err=%v)", err)
 	}
 }
