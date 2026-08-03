@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/reearth/ygo/persistence"
 
@@ -30,5 +31,23 @@ func TestNewWithPersistenceReplicatesDoSCaps(t *testing.T) {
 	}
 	if len(s.ws.AllowedOrigins) != 1 || s.ws.AllowedOrigins[0] != "https://example.test" {
 		t.Errorf("AllowedOrigins = %v, want [https://example.test]", s.ws.AllowedOrigins)
+	}
+}
+
+func TestNewWithPersistence_WiresAutoVersioning(t *testing.T) {
+	cfg := &config.Config{
+		AutoVersionEvery: 15 * time.Minute,
+		KeepSnapshots:    50,
+	}
+	s := NewWithPersistence(context.Background(), cfg, persistence.NewMemoryPersistence())
+	if got := s.ws.AutoVersionEvery; got != 15*time.Minute {
+		t.Fatalf("AutoVersionEvery = %v, want 15m", got)
+	}
+}
+
+func TestNewWithPersistence_AutoVersioningOffByDefault(t *testing.T) {
+	s := NewWithPersistence(context.Background(), &config.Config{}, persistence.NewMemoryPersistence())
+	if got := s.ws.AutoVersionEvery; got != 0 {
+		t.Fatalf("AutoVersionEvery = %v, want 0 (off)", got)
 	}
 }

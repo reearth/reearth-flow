@@ -51,6 +51,15 @@ type Config struct {
 	// queue overflow instead of disconnecting. Default ON; env REEARTH_FLOW_SLOW_PEER_RESYNC.
 	SlowPeerResync bool
 
+	// AutoVersionEvery, when > 0, asks ygo to capture a labelled snapshot of a
+	// room at most this often and only when the room changed, giving the Project
+	// History panel meaningful entries instead of one per CRDT update.
+	// 0 disables auto-versioning.
+	AutoVersionEvery time.Duration
+
+	// KeepSnapshots bounds retained snapshots per room (0 = keep all).
+	KeepSnapshots int
+
 	// OTLP tracing config.
 	OTLPEnabled            bool
 	OTLPEndpoint           string
@@ -75,6 +84,9 @@ const (
 	defaultMaxConnections  = 10000
 	defaultMaxPeersPerRoom = 256
 	defaultMaxRooms        = 50000
+
+	defaultAutoVersionEvery = 15 * time.Minute
+	defaultKeepSnapshots    = 50
 
 	defaultOTLPExporterType       = "otlp"
 	defaultOTLPServiceName        = "reearth-flow-websocket"
@@ -119,6 +131,9 @@ func Load() *Config {
 		WSAuthEnabled: envBool("REEARTH_FLOW_WS_PROTECTED", false),
 
 		SlowPeerResync: envBool("REEARTH_FLOW_SLOW_PEER_RESYNC", true),
+
+		AutoVersionEvery: envDuration("REEARTH_FLOW_AUTO_VERSION_EVERY", defaultAutoVersionEvery),
+		KeepSnapshots:    envPositive("REEARTH_FLOW_KEEP_SNAPSHOTS", defaultKeepSnapshots),
 
 		OTLPEnabled:            envBool("REEARTH_FLOW_ENABLE_OTLP", false),
 		OTLPEndpoint:           os.Getenv("REEARTH_FLOW_OTLP_ENDPOINT"),
