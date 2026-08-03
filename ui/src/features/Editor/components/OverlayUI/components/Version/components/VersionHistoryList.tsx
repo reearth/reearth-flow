@@ -6,15 +6,16 @@ import { formatDate } from "@flow/utils";
 type Props = {
   latestProjectSnapshotVersion?: ProjectDocument;
   snapshots?: NamedSnapshot[];
-  onSnapshotSelect: (id: number) => void;
-  selectedProjectSnapshotVersion?: number | null;
 };
 
+// Read-only: NamedSnapshot.id is a different, backend-assigned ID space
+// than the raw update-log `version` that preview/revert are built on (see
+// the comment in ../hooks.ts). There is no correct client-side mapping, so
+// rows here are informational only — no click-through to preview, no
+// revert affordance.
 const VersionHistoryList: React.FC<Props> = ({
   latestProjectSnapshotVersion,
   snapshots,
-  selectedProjectSnapshotVersion,
-  onSnapshotSelect,
 }) => {
   const t = useT();
   // Snapshots are already distinct from the live head (unlike the raw update
@@ -52,10 +53,7 @@ const VersionHistoryList: React.FC<Props> = ({
           {sortedSnapshots.map((snapshot) => (
             <div key={snapshot.id}>
               <div
-                role="button"
-                tabIndex={0}
-                className={`flex cursor-pointer justify-between gap-2 px-2 py-2 select-none ${snapshot.id === selectedProjectSnapshotVersion ? "bg-border/40 dark:bg-primary" : "hover:bg-border/40 dark:hover:bg-primary"}`}
-                onClick={() => onSnapshotSelect(snapshot.id)}
+                className="flex justify-between gap-2 px-2 py-2 select-none"
                 style={{ height: "100%" }}>
                 <p className="flex-2 self-center text-xs font-light dark:font-thin">
                   {snapshot.label || formatDate(snapshot.timestamp)}

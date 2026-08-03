@@ -30,6 +30,7 @@ query GetProjectSnapshots($projectId: ID!) {
     size
   }
 }
+
 mutation PreviewSnapshot($projectId: ID!, $version: Int!) {
   previewSnapshot(projectId: $projectId, version: $version) {
     id
