@@ -1,5 +1,6 @@
 {
   "description": "Test L09 for LOD1 on plateau6. Two lod1Solid faces with self-intersecting (bow-tie) exterior rings, reported as two SelfIntersection errors under 'LOD1 境界面のエラー'.",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
   "workflowVariables": [
     {

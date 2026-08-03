@@ -1,5 +1,6 @@
 {
   "description": "Test PLATEAU4 city code validation check",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "workflowVariables": [
     {

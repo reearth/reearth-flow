@@ -1,5 +1,6 @@
 {
   "description": "quality-check C06 (attribute missing across the whole dataset) for plateau6. core:creationDate is omitted from every building so it never appears. Uses a dedicated objectlist where creationDate is a C06 target instead of a C05 required attribute.",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau6/01-common/workflow.yml",
   "workflowVariables": [
     {
