@@ -7,6 +7,13 @@ import (
 	ws "github.com/reearth/reearth-flow/api/pkg/websocket"
 )
 
+// TODO(2026-09): delete this file. Websocket is dead code — NewWebsocket has no
+// callers, and interfaces.Container.Websocket is typed WebsocketClient, so the
+// GraphQL resolvers talk to the client directly (note they call CopyDocument /
+// ImportDocument, which do not even exist on this type; the CopyProject /
+// ImportProject wrappers below are unreachable). Kept for one release in case
+// something out-of-tree constructs it; remove once that is ruled out. Do not add
+// new methods here — add them to interfaces.WebsocketClient instead.
 type Websocket struct {
 	client interfaces.WebsocketClient
 }
@@ -29,14 +36,6 @@ func (i *Websocket) GetHistoryByVersion(ctx context.Context, id string, version 
 
 func (i *Websocket) GetHistoryMetadata(ctx context.Context, id string) ([]*ws.HistoryMetadata, error) {
 	return i.client.GetHistoryMetadata(ctx, id)
-}
-
-func (i *Websocket) GetSnapshots(ctx context.Context, id string) ([]*ws.SnapshotMetadata, error) {
-	return i.client.GetSnapshots(ctx, id)
-}
-
-func (i *Websocket) SaveNamedSnapshot(ctx context.Context, id, label string) (*ws.SnapshotMetadata, error) {
-	return i.client.SaveNamedSnapshot(ctx, id, label)
 }
 
 func (i *Websocket) Rollback(ctx context.Context, id string, version int) (*ws.Document, error) {
