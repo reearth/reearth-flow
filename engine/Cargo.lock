@@ -5168,6 +5168,7 @@ dependencies = [
  "bvh",
  "bytes",
  "clipper-sys",
+ "directories",
  "earcut",
  "enum_dispatch",
  "flatgeom",
@@ -5194,6 +5195,7 @@ dependencies = [
  "smallvec",
  "spade",
  "strum_macros",
+ "tempfile",
  "thiserror 2.0.18",
 ]
 
