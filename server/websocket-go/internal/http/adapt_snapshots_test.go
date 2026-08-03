@@ -150,6 +150,44 @@ func TestStoreAdapterSaveSnapshot_FlushesBeforeCapturing(t *testing.T) {
 	}
 }
 
+// TestStoreAdapterSaveSnapshot_FlushErrorFailsClosed: when the flush fails,
+// SaveSnapshot must propagate the error and record NOTHING. Falling through to
+// capture the pre-flush state would be the dangerous outcome: the user asked to
+// version what is on their canvas, and they would silently get a snapshot
+// missing their most recent edits, with no indication anything went wrong. A
+// visible failure they can retry is strictly better than a quietly stale
+// version, so this asserts both halves — the error surfaces AND no snapshot is
+// written.
+func TestStoreAdapterSaveSnapshot_FlushErrorFailsClosed(t *testing.T) {
+	mss := newMemSnapshotStore()
+	flushErr := errors.New("gcs flush unavailable")
+	st := NewStoreAdapter(StoreAdapterDeps{
+		P: mss,
+		FlushFn: func(ctx context.Context, room string) error {
+			return flushErr
+		},
+	})
+	ctx := context.Background()
+
+	// Give the room durable state, so a fall-through would successfully capture
+	// the stale bytes rather than tripping the empty-room no-op. Without this the
+	// test would pass for the wrong reason.
+	if _, err := mss.AppendUpdate(ctx, "room1", []byte{1, 2, 3}); err != nil {
+		t.Fatalf("seed AppendUpdate: %v", err)
+	}
+
+	id, err := st.SaveSnapshot(ctx, "room1", "label")
+	if !errors.Is(err, flushErr) {
+		t.Fatalf("SaveSnapshot err = %v, want %v", err, flushErr)
+	}
+	if id != 0 {
+		t.Fatalf("id = %d, want 0 on a failed flush", id)
+	}
+	if len(mss.byRoom["room1"]) != 0 {
+		t.Fatalf("a stale pre-flush snapshot was recorded: %+v", mss.byRoom["room1"])
+	}
+}
+
 // TestStoreAdapterSaveSnapshot_EmptyRoomIsNoop: an unknown/empty room has no
 // state worth versioning; SaveSnapshot must not error and must not call the
 // underlying SnapshotStore (which would itself reject empty state).
