@@ -14,17 +14,12 @@ type Props = {
   project?: Project;
   yDoc: Y.Doc | null;
   onDialogClose: () => void;
-  // Accepted for backward compatibility with the project-corruption error
-  // boundary (see workspaces.$workspaceId_.projects_.$projectId.lazy.tsx),
-  // which renders this dialog with a "Revert to a previous version" call
-  // to action. It is intentionally unused here: Revert is disabled for
-  // snapshot-backed rows (see ./hooks.ts), so there is currently no
-  // in-dialog action that would need to reset that boundary. Recovering a
-  // corrupted project via this dialog will not work again until snapshot
-  // preview/restore is wired up.
-  onErrorReset?: () => void;
 };
 
+// Normal mode: user-meaningful named versions. This is read-only —
+// snapshot rows have no preview/revert action (see ./hooks.ts for why).
+// The project-corruption recovery flow needs a working Revert against the
+// raw update log and uses a separate component for that: ./RecoveryDialog.tsx.
 const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
   const t = useT();
   const dialogRef = useRef<HTMLDivElement>(null);
