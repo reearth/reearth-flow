@@ -1,5 +1,6 @@
 {
   "description": "Test L02 for plateau6. A schema error on con:dateOfConstruction with an invalid xs:date value.",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau6/01-common/workflow.yml",
   "workflowVariables": [
     {

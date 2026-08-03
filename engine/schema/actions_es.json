@@ -99,7 +99,7 @@
     {
       "name": "Area On Area Overlayer",
       "type": "processor",
-      "description": "Superpone un área sobre otra área",
+      "description": "Subdivide las áreas superpuestas en fragmentos disjuntos y registra cuántas entidades de entrada cubren cada fragmento. Las entradas deben ser geometrías 2D planas, sin elevación, que compartan un mismo marco de coordenadas; coloque un Two Dimension Forcer o un Coordinate Frame Reprojector antes para aplanarlas o unificarlas.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Area On Area Overlayer Parameters",
@@ -7991,7 +7991,7 @@
     {
       "name": "Line On Line Overlayer",
       "type": "processor",
-      "description": "Los puntos de intersección se convierten en entidades de puntos que pueden contener la lista combinada de atributos de las líneas originales intersectadas.",
+      "description": "Divide las líneas en sus intersecciones y convierte cada intersección en una entidad de punto que lleva los atributos combinados de las líneas que se cruzan allí. Las entradas deben ser geometrías 2D planas, sin elevación, que compartan un mismo marco de coordenadas; coloque un Two Dimension Forcer o un Coordinate Frame Reprojector antes para aplanarlas o unificarlas.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Line On Line Overlayer Parameters",

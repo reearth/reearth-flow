@@ -99,7 +99,7 @@
     {
       "name": "Area On Area Overlayer",
       "type": "processor",
-      "description": "在一个区域上叠加另一个区域",
+      "description": "将重叠区域细分为互不重叠的碎片，并记录覆盖每个碎片的输入实体数量。输入必须是不带高程的平面2D几何且共享同一坐标框架，请在上游放置Two Dimension Forcer或Coordinate Frame Reprojector进行展平或统一",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Area On Area Overlayer Parameters",
@@ -7991,7 +7991,7 @@
     {
       "name": "Line On Line Overlayer",
       "type": "processor",
-      "description": "交点转换为点实体，并可包含原始相交线段组合的属性列表",
+      "description": "在相交处分割线，并将每个交点转换为携带相交各线合并属性的点实体。输入必须是不带高程的平面2D几何且共享同一坐标框架，请在上游放置Two Dimension Forcer或Coordinate Frame Reprojector进行展平或统一",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Line On Line Overlayer Parameters",
