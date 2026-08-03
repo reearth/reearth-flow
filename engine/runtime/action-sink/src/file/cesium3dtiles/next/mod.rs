@@ -230,19 +230,40 @@ pub fn build(
     let mut cost_caches = cost::CostCaches::default();
     let mut by_cell: HashMap<Cell, Vec<usize>> = HashMap::new();
     let mut cell_cost: HashMap<Cell, u64> = HashMap::new();
+    let mut feature_cost: Vec<u64> = vec![0; extracted.len()];
     for (i, (feature, m)) in extracted.iter().enumerate() {
         let Some(feature_box) = GeoBox::of(&m.geographic_vertices) else {
             continue;
         };
         let cell = quadtree::place(&root, &feature_box, SAFETY_MAX_DEPTH);
+        let cost = cost::estimate(feature, m, &mut cost_caches);
         by_cell.entry(cell).or_default().push(i);
-        *cell_cost.entry(cell).or_default() += cost::estimate(feature, m, &mut cost_caches);
+        *cell_cost.entry(cell).or_default() += cost;
+        feature_cost[i] = cost;
     }
 
     merge_small_cells(&mut by_cell, &mut cell_cost, target_tile_size);
 
     let occupied: BTreeSet<Cell> = by_cell.keys().copied().collect();
     let available_levels = occupied.iter().map(|c| c.level).max().unwrap_or(0) + 1;
+
+    // A cell over `target_tile_size` splits into several same-tile contents
+    // (3D Tiles 1.1 multiple contents) rather than growing an oversized glb;
+    // this only aids fetch parallelism, since the union of contents holds
+    // exactly the cell's features either way.
+    let cell_contents: Vec<(Cell, Vec<Vec<usize>>)> = by_cell
+        .into_iter()
+        .map(|(cell, indices)| (cell, split_by_cost(&indices, &feature_cost, target_tile_size)))
+        .collect();
+    let content_counts: HashMap<Cell, usize> = cell_contents
+        .iter()
+        .map(|(cell, chunks)| (*cell, chunks.len()))
+        .collect();
+    // The content URI template and the subtree `contentAvailability` array are
+    // both declared once for the whole tileset, so every cell shares the same
+    // slot count even where only one cell actually splits.
+    let max_contents = content_counts.values().copied().max().unwrap_or(1);
+    let tile_count: usize = cell_contents.iter().map(|(_, chunks)| chunks.len()).sum();
 
     // A decode cache per cell, dropped once the cell's glb is built. PLATEAU
     // textures are per-surface, so a source image is referenced by only one
@@ -251,25 +272,26 @@ pub fn build(
     // memory stays at one glb rather than the whole tileset. The glb bytes feed
     // neither `tileset.json` nor the subtrees (those need only the cell keys,
     // already captured in `occupied`), so nothing downstream needs them retained.
-    // Cells are independent (own texture cache, own glb, unique output path), so
-    // render them across the rayon pool. Each glb still streams straight to
+    // Cells are independent (own texture cache, own glb(s), unique output path),
+    // so render them across the rayon pool. Each glb still streams straight to
     // `write_tile` as it is built, so peak memory stays at one glb per worker.
-    let cells: Vec<(Cell, Vec<usize>)> = by_cell.into_iter().collect();
-    let tile_count = cells.len();
-    cells
+    cell_contents
         .par_iter()
-        .try_for_each(|(cell, indices)| -> crate::errors::Result<()> {
-            let cell_members: Vec<&(&Feature, mesh::ExtractedMesh)> =
-                indices.iter().map(|&i| &extracted[i]).collect();
-            let mut textures = TextureCache::default();
-            let mut embedded = EmbeddedTextures::new()?;
-            let glb = build_cell_glb(&cell_members, options, render, &mut textures, &mut embedded)?;
-            write_tile(content_path(*cell), glb)?;
+        .try_for_each(|(cell, chunks)| -> crate::errors::Result<()> {
+            for (n, indices) in chunks.iter().enumerate() {
+                let cell_members: Vec<&(&Feature, mesh::ExtractedMesh)> =
+                    indices.iter().map(|&i| &extracted[i]).collect();
+                let mut textures = TextureCache::default();
+                let mut embedded = EmbeddedTextures::new()?;
+                let glb =
+                    build_cell_glb(&cell_members, options, render, &mut textures, &mut embedded)?;
+                write_tile(content_path(*cell, n, max_contents > 1), glb)?;
+            }
             Ok(())
         })?;
 
-    let tileset_bytes = render_tileset_json(&root, available_levels)?;
-    let subtrees = subtree::build_all(&occupied)
+    let tileset_bytes = render_tileset_json(&root, available_levels, max_contents)?;
+    let subtrees = subtree::build_all(&occupied, &content_counts, max_contents)
         .into_iter()
         .map(|(cell, bytes)| (subtree_path(cell), bytes))
         .collect();
@@ -280,6 +302,32 @@ pub fn build(
         tile_count,
         rendered_features: extracted.len(),
     })
+}
+
+/// Partition a cell's features into fetch-parallel content chunks, each kept
+/// under `target_tile_size` where possible; a single feature already over the
+/// target is kept whole in its own chunk (features are never split).
+fn split_by_cost(
+    indices: &[usize],
+    feature_cost: &[u64],
+    target_tile_size: u64,
+) -> Vec<Vec<usize>> {
+    let mut chunks: Vec<Vec<usize>> = Vec::new();
+    let mut current: Vec<usize> = Vec::new();
+    let mut current_cost = 0u64;
+    for &i in indices {
+        let cost = feature_cost[i];
+        if !current.is_empty() && current_cost + cost > target_tile_size {
+            chunks.push(std::mem::take(&mut current));
+            current_cost = 0;
+        }
+        current.push(i);
+        current_cost += cost;
+    }
+    if !current.is_empty() {
+        chunks.push(current);
+    }
+    chunks
 }
 
 /// Fold small sibling cells upward into their parent while staying within
@@ -357,8 +405,8 @@ fn empty_tileset() -> crate::errors::Result<BuiltTileset> {
         min_height: 0.0,
         max_height: 0.0,
     };
-    let tileset_bytes = render_tileset_json(&root, 1)?;
-    let subtrees = subtree::build_all(&BTreeSet::new())
+    let tileset_bytes = render_tileset_json(&root, 1, 1)?;
+    let subtrees = subtree::build_all(&BTreeSet::new(), &HashMap::new(), 1)
         .into_iter()
         .map(|(cell, bytes)| (subtree_path(cell), bytes))
         .collect();
@@ -370,14 +418,26 @@ fn empty_tileset() -> crate::errors::Result<BuiltTileset> {
     })
 }
 
-fn render_tileset_json(root: &GeoBox, available_levels: u32) -> crate::errors::Result<String> {
-    let tileset_json = tileset::build(root, available_levels);
+fn render_tileset_json(
+    root: &GeoBox,
+    available_levels: u32,
+    max_contents: usize,
+) -> crate::errors::Result<String> {
+    let tileset_json = tileset::build(root, available_levels, max_contents);
     serde_json::to_string_pretty(&tileset_json)
         .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))
 }
 
-fn content_path(cell: Cell) -> String {
-    format!("content/{}/{}/{}.glb", cell.level, cell.x, cell.y)
+/// `multi` picks the naming scheme: plain `{y}.glb` when every cell in the
+/// dataset has a single content (the common case, unchanged from before
+/// same-tile splitting existed), else `{y}_{n}.glb` for every cell, since the
+/// content URI template is declared once for the whole tileset.
+fn content_path(cell: Cell, n: usize, multi: bool) -> String {
+    if multi {
+        format!("content/{}/{}/{}_{}.glb", cell.level, cell.x, cell.y, n)
+    } else {
+        format!("content/{}/{}/{}.glb", cell.level, cell.x, cell.y)
+    }
 }
 
 fn subtree_path(cell: Cell) -> String {
@@ -1032,7 +1092,7 @@ mod tests {
             options,
             DEFAULT_TARGET_TILE_SIZE,
             render,
-            |_path, glb| {
+            |_path: String, glb| {
                 tiles.lock().unwrap().push(glb);
                 Ok(())
             },
