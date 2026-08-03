@@ -458,6 +458,112 @@ func (c *Client) DeleteDocument(ctx context.Context, docID string) error {
 	return nil
 }
 
+func (c *Client) GetSnapshots(ctx context.Context, docID string) ([]*websocket.SnapshotMetadata, error) {
+	url := fmt.Sprintf("%s/api/document/%s/snapshots", c.config.ServerURL, docID)
+	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	c.setCommonHeaders(req)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get document snapshots: %w", err)
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Warnf("failed to close response body: %v", err)
+		}
+	}(resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("server returned non-200 status: %d %s", resp.StatusCode, body)
+	}
+
+	var snapshotsResp []snapshotItemResponse
+	if err := json.NewDecoder(resp.Body).Decode(&snapshotsResp); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	snapshots := make([]*websocket.SnapshotMetadata, len(snapshotsResp))
+	for i, item := range snapshotsResp {
+		timestamp, err := time.Parse(time.RFC3339, item.Timestamp)
+		if err != nil {
+			log.Warnf("failed to parse timestamp: %v, using current time", err)
+			timestamp = time.Now()
+		}
+
+		snapshots[i] = &websocket.SnapshotMetadata{
+			ID:        item.ID,
+			Label:     item.Label,
+			Timestamp: timestamp,
+			Size:      item.Size,
+		}
+	}
+
+	return snapshots, nil
+}
+
+// SaveNamedSnapshot captures the document's current state as a new labelled
+// snapshot. The underlying store's SaveSnapshot only returns (int64, error),
+// so the save endpoint's response carries just {id, label}; Timestamp and
+// Size are the zero value there. We enrich the result from GetSnapshots here
+// so callers (and ultimately the GraphQL client) get complete metadata
+// without needing a second round trip of their own.
+func (c *Client) SaveNamedSnapshot(ctx context.Context, docID, label string) (*websocket.SnapshotMetadata, error) {
+	url := fmt.Sprintf("%s/api/document/%s/snapshots", c.config.ServerURL, docID)
+
+	reqBody, err := json.Marshal(saveSnapshotRequest{Label: label})
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", url, io.NopCloser(bytes.NewReader(reqBody)))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	c.setCommonHeaders(req)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to save named snapshot: %w", err)
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Warnf("failed to close response body: %v", err)
+		}
+	}(resp.Body)
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("server returned non-200 status: %d %s", resp.StatusCode, body)
+	}
+
+	var saved snapshotItemResponse
+	if err := json.NewDecoder(resp.Body).Decode(&saved); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	snapshots, err := c.GetSnapshots(ctx, docID)
+	if err != nil {
+		log.Warnf("failed to enrich saved snapshot metadata: %v", err)
+		return &websocket.SnapshotMetadata{ID: saved.ID, Label: saved.Label}, nil
+	}
+
+	for _, s := range snapshots {
+		if s.ID == saved.ID {
+			return s, nil
+		}
+	}
+
+	log.Warnf("saved snapshot %d not found in snapshot list; returning thin metadata", saved.ID)
+	return &websocket.SnapshotMetadata{ID: saved.ID, Label: saved.Label}, nil
+}
+
 func (c *Client) ImportDocument(ctx context.Context, docID string, data []byte) error {
 	url := fmt.Sprintf("%s/api/document/%s/import", c.config.ServerURL, docID)
 

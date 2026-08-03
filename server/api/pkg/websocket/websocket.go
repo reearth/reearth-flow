@@ -19,3 +19,11 @@ type HistoryMetadata struct {
 	Timestamp time.Time
 	Version   int
 }
+
+// SnapshotMetadata is one labelled snapshot in a project's version history.
+type SnapshotMetadata struct {
+	Timestamp time.Time
+	Label     string
+	ID        int64
+	Size      int64
+}

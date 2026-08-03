@@ -50,6 +50,25 @@ func (r *queryResolver) ProjectHistory(ctx context.Context, projectId gqlmodel.I
 	return nodes, nil
 }
 
+func (r *queryResolver) ProjectSnapshots(ctx context.Context, projectId gqlmodel.ID) ([]*gqlmodel.NamedSnapshot, error) {
+	snaps, err := usecases(ctx).Websocket.GetSnapshots(ctx, string(projectId))
+	if err != nil {
+		return nil, err
+	}
+
+	nodes := make([]*gqlmodel.NamedSnapshot, len(snaps))
+	for i, s := range snaps {
+		nodes[i] = &gqlmodel.NamedSnapshot{
+			ID:        int(s.ID),
+			Label:     s.Label,
+			Timestamp: s.Timestamp,
+			Size:      int(s.Size),
+		}
+	}
+
+	return nodes, nil
+}
+
 func (r *mutationResolver) RollbackProject(ctx context.Context, projectId gqlmodel.ID, version int) (*gqlmodel.ProjectDocument, error) {
 	doc, err := usecases(ctx).Websocket.Rollback(ctx, string(projectId), version)
 	if err != nil {
@@ -106,6 +125,20 @@ func (r *mutationResolver) ImportProject(ctx context.Context, projectId gqlmodel
 		return false, err
 	}
 	return true, nil
+}
+
+func (r *mutationResolver) SaveNamedSnapshot(ctx context.Context, projectId gqlmodel.ID, label string) (*gqlmodel.NamedSnapshot, error) {
+	s, err := usecases(ctx).Websocket.SaveNamedSnapshot(ctx, string(projectId), label)
+	if err != nil {
+		return nil, err
+	}
+
+	return &gqlmodel.NamedSnapshot{
+		ID:        int(s.ID),
+		Label:     s.Label,
+		Timestamp: s.Timestamp,
+		Size:      int(s.Size),
+	}, nil
 }
 
 type projectDocumentResolver struct{ *Resolver }

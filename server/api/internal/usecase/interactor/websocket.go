@@ -31,6 +31,14 @@ func (i *Websocket) GetHistoryMetadata(ctx context.Context, id string) ([]*ws.Hi
 	return i.client.GetHistoryMetadata(ctx, id)
 }
 
+func (i *Websocket) GetSnapshots(ctx context.Context, id string) ([]*ws.SnapshotMetadata, error) {
+	return i.client.GetSnapshots(ctx, id)
+}
+
+func (i *Websocket) SaveNamedSnapshot(ctx context.Context, id, label string) (*ws.SnapshotMetadata, error) {
+	return i.client.SaveNamedSnapshot(ctx, id, label)
+}
+
 func (i *Websocket) Rollback(ctx context.Context, id string, version int) (*ws.Document, error) {
 	return i.client.Rollback(ctx, id, version)
 }

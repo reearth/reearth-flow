@@ -35,3 +35,17 @@ type snapshotResponse struct {
 type importDocumentRequest struct {
 	Data []int `json:"data"`
 }
+
+// snapshotItemResponse is the wire shape for one labelled snapshot, returned
+// both by GET .../snapshots (fully populated) and POST .../snapshots (only ID
+// and Label populated; Timestamp/Size are the zero value there).
+type snapshotItemResponse struct {
+	Label     string `json:"label"`
+	Timestamp string `json:"timestamp"`
+	ID        int64  `json:"id"`
+	Size      int64  `json:"size"`
+}
+
+type saveSnapshotRequest struct {
+	Label string `json:"label"`
+}
