@@ -57,7 +57,11 @@ type Config struct {
 	// 0 disables auto-versioning.
 	AutoVersionEvery time.Duration
 
-	// KeepSnapshots bounds retained snapshots per room (0 = keep all).
+	// KeepSnapshots bounds retained snapshots per room. Programmatically, the
+	// zero value means keep all (see LegacyAdapter.KeepSnapshots). The env
+	// loader uses envPositive, though, which rejects values below 1 and falls
+	// back to the default instead — so REEARTH_FLOW_KEEP_SNAPSHOTS=0 can never
+	// select keep-all; set it to a large number instead if that is the intent.
 	KeepSnapshots int
 
 	// OTLP tracing config.
