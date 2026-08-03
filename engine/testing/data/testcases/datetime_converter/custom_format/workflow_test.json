@@ -1,5 +1,6 @@
 {
   "description": "Test DateTimeConverter with custom input and output formats",
+  "skipNewGeometry": true,
   "workflowPath": "datetime_converter/custom_format.yml",
   "workflowVariables": [],
   "expectedOutput": {

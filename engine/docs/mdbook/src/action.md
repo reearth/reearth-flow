@@ -93,7 +93,7 @@ Calculates the planar or sloped area of a feature's geometry and stores it in an
 ### Type
 * processor
 ### Description
-Perform Area Overlay Analysis
+Subdivides overlapping areas into non-overlapping pieces and records how many input features cover each piece. Inputs must be flat 2D geometries sharing one coordinate frame; place a Two Dimension Forcer or a Coordinate Frame Reprojector upstream to flatten or unify them.
 ### Parameters
 ```json
 {
@@ -7802,7 +7802,7 @@ Writes features to JSON files.
 ### Type
 * processor
 ### Description
-Intersection points are turned into point features that can contain the merged list of attributes of the original intersected lines.
+Splits lines where they cross and turns each intersection into a point feature carrying the merged attributes of the lines that meet there. Inputs must be flat 2D geometries sharing one coordinate frame; place a Two Dimension Forcer or a Coordinate Frame Reprojector upstream to flatten or unify them.
 ### Parameters
 ```json
 {
@@ -12948,6 +12948,25 @@ Reads 3D models from glTF 2.0 files, supporting meshes, nodes, scenes, and geome
       "default": true,
       "type": "boolean"
     },
+    "featureClassAttribute": {
+      "title": "Feature Class Attribute",
+      "description": "Attribute key to store the EXT_structural_metadata class name under, for each split feature. If unset, the class name is not added as an attribute.",
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "featureGranularity": {
+      "title": "Feature Granularity",
+      "description": "What one output feature represents. `mesh` (the default) emits one feature per glTF mesh. `featureId` splits each mesh into one feature per EXT_mesh_features feature ID, attaching that object's EXT_structural_metadata properties; files without EXT_mesh_features still yield one feature per mesh.",
+      "default": "mesh",
+      "allOf": [
+        {
+          "$ref": "#/definitions/FeatureGranularity"
+        }
+      ]
+    },
     "dataset": {
       "title": "File Path",
       "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
@@ -12997,6 +13016,28 @@ Reads 3D models from glTF 2.0 files, supporting meshes, nodes, scenes, and geome
           "type": "string"
         }
       }
+    }
+  },
+  "definitions": {
+    "FeatureGranularity": {
+      "title": "Feature Granularity",
+      "description": "Controls what one output feature represents.",
+      "oneOf": [
+        {
+          "description": "One feature per glTF mesh (or per node instance). Structural-metadata properties are not surfaced, because they are per object, not per mesh.",
+          "type": "string",
+          "enum": [
+            "mesh"
+          ]
+        },
+        {
+          "description": "One feature per `EXT_mesh_features` feature ID, each carrying that object's `EXT_structural_metadata` properties. Files without `EXT_mesh_features` still yield one feature per mesh.",
+          "type": "string",
+          "enum": [
+            "featureId"
+          ]
+        }
+      ]
     }
   }
 }

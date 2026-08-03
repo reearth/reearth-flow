@@ -99,7 +99,7 @@
     {
       "name": "Area On Area Overlayer",
       "type": "processor",
-      "description": "Perform Area Overlay Analysis",
+      "description": "Subdivise les zones qui se chevauchent en fragments disjoints et enregistre le nombre d'entités d'entrée couvrant chaque fragment. Les entrées doivent être des géométries 2D planes, sans altitude, partageant un même référentiel de coordonnées ; placez un Two Dimension Forcer ou un Coordinate Frame Reprojector en amont pour les aplatir ou les unifier.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Area On Area Overlayer Parameters",
@@ -7991,7 +7991,7 @@
     {
       "name": "Line On Line Overlayer",
       "type": "processor",
-      "description": "Intersection points are turned into point features that can contain the merged list of attributes of the original intersected lines.",
+      "description": "Découpe les lignes à leurs intersections et transforme chaque intersection en une entité ponctuelle portant les attributs fusionnés des lignes qui s'y rencontrent. Les entrées doivent être des géométries 2D planes, sans altitude, partageant un même référentiel de coordonnées ; placez un Two Dimension Forcer ou un Coordinate Frame Reprojector en amont pour les aplatir ou les unifier.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Line On Line Overlayer Parameters",
@@ -13293,6 +13293,25 @@
             "default": true,
             "type": "boolean"
           },
+          "featureClassAttribute": {
+            "title": "Attribut de classe de l'entité",
+            "description": "Clé d'attribut sous laquelle stocker le nom de classe EXT_structural_metadata de chaque entité issue de la division. Si non défini, le nom de la classe n'est pas ajouté comme attribut.",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "featureGranularity": {
+            "title": "Granularité des entités",
+            "description": "Ce que représente chaque entité de sortie. `mesh` (la valeur par défaut) produit une entité par maillage glTF. `featureId` divise chaque maillage en une entité par ID de fonctionnalité EXT_mesh_features, en y attachant les propriétés EXT_structural_metadata de cet objet ; les fichiers sans EXT_mesh_features continuent de produire une entité par maillage.",
+            "default": "mesh",
+            "allOf": [
+              {
+                "$ref": "#/definitions/FeatureGranularity"
+              }
+            ]
+          },
           "dataset": {
             "title": "File Path",
             "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
@@ -13342,6 +13361,28 @@
                 "type": "string"
               }
             }
+          }
+        },
+        "definitions": {
+          "FeatureGranularity": {
+            "title": "Feature Granularity",
+            "description": "Controls what one output feature represents.",
+            "oneOf": [
+              {
+                "description": "Une entité par maillage glTF (ou par instance de nœud). Les propriétés de métadonnées structurelles ne sont pas exposées, car elles sont définies par objet, et non par maillage.",
+                "type": "string",
+                "enum": [
+                  "mesh"
+                ]
+              },
+              {
+                "description": "Une entité par ID de fonctionnalité `EXT_mesh_features`, chacune portant les propriétés `EXT_structural_metadata` de cet objet. Les fichiers sans `EXT_mesh_features` continuent de produire une entité par maillage.",
+                "type": "string",
+                "enum": [
+                  "featureId"
+                ]
+              }
+            ]
           }
         }
       },

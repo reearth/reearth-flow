@@ -2,6 +2,7 @@ package main
 
 import (
 	"os"
+	"strings"
 
 	"github.com/joho/godotenv"
 	"github.com/k0kubun/pp/v3"
@@ -58,5 +59,17 @@ func ReadConfig(debug bool) (*Config, error) {
 
 func (c *Config) Print() string {
 	s := pp.Sprint(c)
+	for _, secret := range c.secrets() {
+		if secret == "" {
+			continue
+		}
+		s = strings.ReplaceAll(s, secret, "***")
+	}
 	return s
+}
+
+// secrets lists the values Print must not emit. pp dumps every field, so a
+// credential-bearing field added without being listed here is logged verbatim.
+func (c *Config) secrets() []string {
+	return []string{c.DB, c.DBPG, c.RedisURL, c.HealthCheckPassword}
 }

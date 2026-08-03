@@ -99,7 +99,7 @@
     {
       "name": "Area On Area Overlayer",
       "type": "processor",
-      "description": "あるエリアの上に別のエリアを重ね合わせる",
+      "description": "重なり合うエリアを重複のない断片に分割し、各断片を覆う入力地物の数を記録する。入力は標高を持たない平面の2Dジオメトリで、かつ同一の座標フレームである必要があるため、前段にTwo Dimension ForcerやCoordinate Frame Reprojectorを配置して平面化・統一する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Area On Area Overlayer パラメータ",
@@ -7991,7 +7991,7 @@
     {
       "name": "Line On Line Overlayer",
       "type": "processor",
-      "description": "交点を点地物に変換し、元の交差したラインの属性リストを結合して含めることができる",
+      "description": "交差する位置でラインを分割し、各交点を、そこで交わるラインの属性を結合して持つ点地物に変換する。入力は標高を持たない平面の2Dジオメトリで、かつ同一の座標フレームである必要があるため、前段にTwo Dimension ForcerやCoordinate Frame Reprojectorを配置して平面化・統一する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Line On Line Overlayer パラメータ",
@@ -13293,6 +13293,25 @@
             "default": true,
             "type": "boolean"
           },
+          "featureClassAttribute": {
+            "title": "フィーチャークラス属性",
+            "description": "分割した各フィーチャーについて、EXT_structural_metadata のクラス名を格納する属性キー。未設定の場合、クラス名は属性として追加されない",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "featureGranularity": {
+            "title": "フィーチャーの粒度",
+            "description": "1つの出力フィーチャーが何を表すかを指定する。デフォルトの `mesh` は glTF メッシュごとに1つのフィーチャーを出力する。`featureId` は各メッシュを EXT_mesh_features のフィーチャーIDごとに分割し、そのオブジェクトの EXT_structural_metadata プロパティを付与する。EXT_mesh_features を持たないファイルは、引き続きメッシュごとに1つのフィーチャーを出力する。",
+            "default": "mesh",
+            "allOf": [
+              {
+                "$ref": "#/definitions/FeatureGranularity"
+              }
+            ]
+          },
           "dataset": {
             "title": "ファイルパス",
             "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）",
@@ -13342,6 +13361,28 @@
                 "type": "string"
               }
             }
+          }
+        },
+        "definitions": {
+          "FeatureGranularity": {
+            "title": "Feature Granularity",
+            "description": "Controls what one output feature represents.",
+            "oneOf": [
+              {
+                "description": "glTF メッシュ(またはノードインスタンス)ごとに1つのフィーチャー。構造メタデータのプロパティはオブジェクト単位でありメッシュ単位ではないため、表示されない。",
+                "type": "string",
+                "enum": [
+                  "mesh"
+                ]
+              },
+              {
+                "description": "`EXT_mesh_features` のフィーチャーIDごとに1つのフィーチャーを出力し、それぞれにそのオブジェクトの `EXT_structural_metadata` プロパティを付与する。`EXT_mesh_features` を持たないファイルは、引き続きメッシュごとに1つのフィーチャーを出力する。",
+                "type": "string",
+                "enum": [
+                  "featureId"
+                ]
+              }
+            ]
           }
         }
       },

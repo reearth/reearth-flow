@@ -40,7 +40,7 @@
     },
     {
       "name": "Area On Area Overlayer",
-      "description": "Perform Area Overlay Analysis",
+      "description": "Subdivise les zones qui se chevauchent en fragments disjoints et enregistre le nombre d'entités d'entrée couvrant chaque fragment. Les entrées doivent être des géométries 2D planes, sans altitude, partageant un même référentiel de coordonnées ; placez un Two Dimension Forcer ou un Coordinate Frame Reprojector en amont pour les aplatir ou les unifier.",
       "parameterI18n": {
         "": {
           "title": "Area On Area Overlayer Parameters",
@@ -2339,7 +2339,7 @@
     },
     {
       "name": "Line On Line Overlayer",
-      "description": "Intersection points are turned into point features that can contain the merged list of attributes of the original intersected lines.",
+      "description": "Découpe les lignes à leurs intersections et transforme chaque intersection en une entité ponctuelle portant les attributs fusionnés des lignes qui s'y rencontrent. Les entrées doivent être des géométries 2D planes, sans altitude, partageant un même référentiel de coordonnées ; placez un Two Dimension Forcer ou un Coordinate Frame Reprojector en amont pour les aplatir ou les unifier.",
       "parameterI18n": {
         "": {
           "title": "Line On Line Overlayer Parameters",
@@ -3800,6 +3800,14 @@
           "title": "File Path",
           "description": "Expression that returns the path to the input file, either a literal path or a variable reference."
         },
+        "featureClassAttribute": {
+          "title": "Attribut de classe de l'entité",
+          "description": "Clé d'attribut sous laquelle stocker le nom de classe EXT_structural_metadata de chaque entité issue de la division. Si non défini, le nom de la classe n'est pas ajouté comme attribut."
+        },
+        "featureGranularity": {
+          "title": "Granularité des entités",
+          "description": "Ce que représente chaque entité de sortie. `mesh` (la valeur par défaut) produit une entité par maillage glTF. `featureId` divise chaque maillage en une entité par ID de fonctionnalité EXT_mesh_features, en y attachant les propriétés EXT_structural_metadata de cet objet ; les fichiers sans EXT_mesh_features continuent de produire une entité par maillage."
+        },
         "includeNodes": {
           "title": "Include Nodes",
           "description": "If true, includes node hierarchy information from the glTF scene graph in feature attributes"
@@ -3815,6 +3823,16 @@
         "triangulate": {
           "title": "Triangulate",
           "description": "If true, converts all primitives to triangles (reserved for future use - currently all primitives are processed as triangles)"
+        }
+      },
+      "enumI18n": {
+        "FeatureGranularity": {
+          "featureId": {
+            "description": "Une entité par ID de fonctionnalité `EXT_mesh_features`, chacune portant les propriétés `EXT_structural_metadata` de cet objet. Les fichiers sans `EXT_mesh_features` continuent de produire une entité par maillage."
+          },
+          "mesh": {
+            "description": "Une entité par maillage glTF (ou par instance de nœud). Les propriétés de métadonnées structurelles ne sont pas exposées, car elles sont définies par objet, et non par maillage."
+          }
         }
       }
     },

@@ -99,7 +99,7 @@
     {
       "name": "Area On Area Overlayer",
       "type": "processor",
-      "description": "Superpone un área sobre otra área",
+      "description": "Subdivide las áreas superpuestas en fragmentos disjuntos y registra cuántas entidades de entrada cubren cada fragmento. Las entradas deben ser geometrías 2D planas, sin elevación, que compartan un mismo marco de coordenadas; coloque un Two Dimension Forcer o un Coordinate Frame Reprojector antes para aplanarlas o unificarlas.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Area On Area Overlayer Parameters",
@@ -7991,7 +7991,7 @@
     {
       "name": "Line On Line Overlayer",
       "type": "processor",
-      "description": "Los puntos de intersección se convierten en entidades de puntos que pueden contener la lista combinada de atributos de las líneas originales intersectadas.",
+      "description": "Divide las líneas en sus intersecciones y convierte cada intersección en una entidad de punto que lleva los atributos combinados de las líneas que se cruzan allí. Las entradas deben ser geometrías 2D planas, sin elevación, que compartan un mismo marco de coordenadas; coloque un Two Dimension Forcer o un Coordinate Frame Reprojector antes para aplanarlas o unificarlas.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Line On Line Overlayer Parameters",
@@ -13293,6 +13293,25 @@
             "default": true,
             "type": "boolean"
           },
+          "featureClassAttribute": {
+            "title": "Atributo de clase de entidad",
+            "description": "Clave de atributo bajo la cual almacenar el nombre de clase de EXT_structural_metadata de cada entidad dividida. Si no se establece, el nombre de la clase no se agrega como atributo.",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "featureGranularity": {
+            "title": "Granularidad de entidades",
+            "description": "Qué representa cada entidad de salida. `mesh` (el valor predeterminado) genera una entidad por cada malla glTF. `featureId` divide cada malla en una entidad por cada ID de entidad de EXT_mesh_features, adjuntando las propiedades EXT_structural_metadata de ese objeto; los archivos sin EXT_mesh_features siguen generando una entidad por malla.",
+            "default": "mesh",
+            "allOf": [
+              {
+                "$ref": "#/definitions/FeatureGranularity"
+              }
+            ]
+          },
           "dataset": {
             "title": "File Path",
             "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
@@ -13342,6 +13361,28 @@
                 "type": "string"
               }
             }
+          }
+        },
+        "definitions": {
+          "FeatureGranularity": {
+            "title": "Feature Granularity",
+            "description": "Controls what one output feature represents.",
+            "oneOf": [
+              {
+                "description": "Una entidad por cada malla glTF (o por instancia de nodo). Las propiedades de metadatos estructurales no se muestran, porque son por objeto, no por malla.",
+                "type": "string",
+                "enum": [
+                  "mesh"
+                ]
+              },
+              {
+                "description": "Una entidad por cada ID de entidad de `EXT_mesh_features`, cada una con las propiedades `EXT_structural_metadata` de ese objeto. Los archivos sin `EXT_mesh_features` siguen generando una entidad por malla.",
+                "type": "string",
+                "enum": [
+                  "featureId"
+                ]
+              }
+            ]
           }
         }
       },
