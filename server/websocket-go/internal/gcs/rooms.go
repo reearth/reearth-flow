@@ -1,0 +1,81 @@
+package gcs
+
+import (
+	"context"
+	"strings"
+
+	"github.com/reearth/ygo/persistence"
+)
+
+// ListRooms enumerates every room the bucket holds data for.
+//
+// Phase 2 is a straight prefix listing. Phase 1 has no folder structure: object
+// names are hex-encoded structured keys, so rooms are recovered from the OID
+// index objects (one per room, name = hex(V1‖KEYSPACE_OID‖utf8(room)‖0x00)) plus
+// the snapshot-counter objects, which cover a room that has snapshots but no
+// update log.
+func (a *Adapter) ListRooms(ctx context.Context) ([]string, error) {
+	if a.phase2 {
+		prefixes, err := a.store.listPrefixes(ctx, "")
+		if err != nil {
+			return nil, err
+		}
+		out := make([]string, 0, len(prefixes))
+		for _, p := range prefixes {
+			out = append(out, strings.TrimSuffix(p, "/"))
+		}
+		return out, nil
+	}
+
+	seen := map[string]struct{}{}
+
+	// Rooms with an update log: the OID index object encodes the room name.
+	oidPrefix := hexb([]byte{rsV1, rsKeyspaceOID})
+	names, err := a.store.list(ctx, oidPrefix)
+	if err != nil {
+		return nil, err
+	}
+	for _, n := range names {
+		raw, derr := hexDecode(n)
+		if derr != nil || len(raw) < 4 {
+			continue
+		}
+		// V1 ‖ KEYSPACE_OID ‖ utf8(room) ‖ 0x00
+		body := raw[2 : len(raw)-1]
+		if len(body) > 0 {
+			seen[string(body)] = struct{}{}
+		}
+	}
+
+	// Rooms that have only snapshots still own a counter object.
+	counters, err := a.store.list(ctx, hexb([]byte("snapnextid:")))
+	if err != nil {
+		return nil, err
+	}
+	for _, n := range counters {
+		raw, derr := hexDecode(n)
+		if derr != nil {
+			continue
+		}
+		hexRoom, ok := strings.CutPrefix(string(raw), "snapnextid:")
+		if !ok {
+			continue
+		}
+		roomBytes, derr := hexDecode(hexRoom)
+		if derr != nil {
+			continue
+		}
+		seen[string(roomBytes)] = struct{}{}
+	}
+
+	out := make([]string, 0, len(seen))
+	for r := range seen {
+		out = append(out, r)
+	}
+	return out, nil
+}
+
+var (
+	_ persistence.RoomLister                   = (*Adapter)(nil)
+	_ persistence.SnapshotVersionedPersistence = (*Adapter)(nil)
+)
