@@ -3,6 +3,7 @@ package gcs
 import (
 	"context"
 	"strings"
+	"unicode/utf8"
 
 	"github.com/reearth/ygo/persistence"
 )
@@ -40,9 +41,15 @@ func (a *Adapter) ListRooms(ctx context.Context) ([]string, error) {
 		if derr != nil || len(raw) < 4 {
 			continue
 		}
+		// Defensive guard against unrelated keyspaces (unreachable under the
+		// "0000" scan prefix today, but kept in case the prefix is ever
+		// widened) — mirrors listAllDocsPhase1's identical check.
+		if raw[0] != rsV1 || raw[1] != rsKeyspaceOID {
+			continue
+		}
 		// V1 ‖ KEYSPACE_OID ‖ utf8(room) ‖ 0x00
 		body := raw[2 : len(raw)-1]
-		if len(body) > 0 {
+		if len(body) > 0 && utf8.Valid(body) {
 			seen[string(body)] = struct{}{}
 		}
 	}
