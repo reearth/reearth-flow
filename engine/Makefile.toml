@@ -42,7 +42,6 @@ script = ['''
 #!/usr/bin/env bash -eux
 cargo make test-rs ${@:-}
 cargo make test-qc ${@:-}
-cargo make test-qc-new-geometry ${@:-}
 cargo make test-conv ${@:-}
 cargo make test-conv-new-geometry ${@:-}
 ''']
@@ -56,22 +55,15 @@ cargo test --workspace --all-targets --features new-geometry,schema \
   --exclude workflow-tests --exclude reearth-flow-tests ${@:-}
 ''']
 
+# Runs in the new-geometry world. Every test case whose `workflow_test.json`
+# still has `skipNewGeometry` set is `#[ignore]`d, so today this only builds the
+# suite; cases are enabled as their workflows are migrated.
 [tasks.test-qc]
 script = ['''
 #!/usr/bin/env bash -eux
 # Defaults to cargo's normal thread count (= N_CPUs). CI overrides via
 # `cargo make test-qc -- --test-threads=16` so local development is not
 # forced to a CI-specific value.
-cargo test -p workflow-tests ${@:-}
-''']
-
-# Runs the same suite in the new-geometry world. Every test case whose
-# `workflow_test.json` still has `skipNewGeometry` set is `#[ignore]`d here, so
-# today this only builds the suite; cases are enabled as their workflows are
-# migrated. Folds into test-qc once new-geometry becomes the default.
-[tasks.test-qc-new-geometry]
-script = ['''
-#!/usr/bin/env bash -eux
 cargo test -p workflow-tests --features new-geometry ${@:-}
 ''']
 

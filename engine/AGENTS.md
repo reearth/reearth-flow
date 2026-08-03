@@ -66,19 +66,17 @@ Use the `add-action` skill for a full step-by-step guide including i18n workflow
 
 ## Testing
 
-These test suites run via `cargo make test`:
+Three test suites run via `cargo make test`:
 
 ```bash
-cargo make test-rs                 # Unit tests (workspace-wide, excludes workflow-tests)
-cargo make test-qc                 # Workflow integration tests (quality-check)
-cargo make test-qc-new-geometry    # Same suite under `new-geometry` (unmigrated cases are ignored)
-cargo make test-conv               # Tile output validation tests (3D Tiles, MVT, raster comparison)
-cargo make test-conv-new-geometry  # Tile output validation under `new-geometry`
+cargo make test-rs    # Unit tests (workspace-wide, excludes workflow-tests)
+cargo make test-qc    # Workflow integration tests (quality-check)
+cargo make test-conv  # Tile output validation tests (3D Tiles, MVT, raster comparison)
 ```
 
 - **Unit tests** — alongside implementation files, use `pretty_assertions`
 - **`runtime/tests/`** — small integration tests with YAML workflow fixtures
-- **`testing/workflow-tests/`** — end-to-end workflow tests. Test cases defined in `testing/data/testcases/` as `workflow_test.json`. `build.rs` auto-generates test functions from these files. A case runs under `new-geometry` only once `skipNewGeometry` is dropped from its profile
+- **`testing/workflow-tests/`** — end-to-end workflow tests. Test cases defined in `testing/data/testcases/` as `workflow_test.json`. `build.rs` auto-generates test functions from these files
 - **`testing/plateau-tiles-test/`** — tile output comparison tests. Configured via `profile.toml`, compares flow output against truth data
 - **`testing/data/fixtures/`** — shared PLATEAU CityGML test data used across test suites
 
