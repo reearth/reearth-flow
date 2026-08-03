@@ -2,6 +2,7 @@ package gcs
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/reearth/ygo/persistence"
@@ -96,5 +97,272 @@ func TestGCSDelete_RemovesSnapshots_Phase2(t *testing.T) {
 	}
 	if len(got) != 0 {
 		t.Fatalf("after Delete(room) snapshots = %+v, want none", got)
+	}
+}
+
+// TestGCSSnapshot_LostCounterDoesNotOverwriteSnapshots: the id counter is a fast
+// path, not the source of truth. If it is trusted alone, a room that loses its
+// counter restarts allocation at id 1 and silently overwrites live snapshot 1 —
+// destroying its payload, label and timestamp with no error to anyone.
+//
+// This is routinely reachable rather than theoretical: Delete removes objects one
+// at a time and unlocked, so a cancelled request can take the counter while
+// snapshots survive. With auto-versioning on (the default, every 15m) the room's
+// history is then eaten one snapshot at a time.
+func TestGCSSnapshot_LostCounterDoesNotOverwriteSnapshots(t *testing.T) {
+	ctx := context.Background()
+	client, bucket := newFakeGCS(t)
+	a, err := New(Options{Client: client, Bucket: bucket, Locker: NewNoLock()})
+	if err != nil {
+		t.Fatalf("gcs.New: %v", err)
+	}
+	const room = "room1"
+
+	for _, s := range []string{"state-1", "state-2", "state-3"} {
+		if _, err := a.SaveSnapshot(ctx, room, s, []byte(s)); err != nil {
+			t.Fatalf("SaveSnapshot(%s): %v", s, err)
+		}
+	}
+
+	// Simulate the interrupted-Delete outcome: counter gone, snapshots intact.
+	if err := a.store.delete(ctx, a.layout.SnapNextIDName(DocID(room))); err != nil {
+		t.Fatalf("delete counter: %v", err)
+	}
+
+	id, err := a.SaveSnapshot(ctx, room, "after-counter-loss", []byte("NEW"))
+	if err != nil {
+		t.Fatalf("SaveSnapshot after counter loss: %v", err)
+	}
+	if id <= 3 {
+		t.Fatalf("new snapshot got id %d, want > 3: a reused id overwrites an existing snapshot", id)
+	}
+
+	// The originals must all still be readable, byte-for-byte.
+	for i, want := range []string{"state-1", "state-2", "state-3"} {
+		got, err := a.GetSnapshotState(ctx, room, int64(i+1))
+		if err != nil {
+			t.Fatalf("GetSnapshotState(%d): %v", i+1, err)
+		}
+		if string(got) != want {
+			t.Fatalf("snapshot %d = %q, want %q (it was overwritten)", i+1, got, want)
+		}
+	}
+	if snaps, err := a.ListSnapshots(ctx, room); err != nil {
+		t.Fatalf("ListSnapshots: %v", err)
+	} else if len(snaps) != 4 {
+		t.Fatalf("len(snapshots) = %d, want 4", len(snaps))
+	}
+}
+
+// TestGCSSnapshot_CorruptCounterDoesNotOverwrite: same hazard via a different
+// route. A counter that fails to parse must not be silently treated as "start
+// over at 1"; it must fall back to the ids that actually exist.
+func TestGCSSnapshot_CorruptCounterDoesNotOverwrite(t *testing.T) {
+	ctx := context.Background()
+	client, bucket := newFakeGCS(t)
+	a, err := New(Options{Client: client, Bucket: bucket, Locker: NewNoLock()})
+	if err != nil {
+		t.Fatalf("gcs.New: %v", err)
+	}
+	const room = "room1"
+	if _, err := a.SaveSnapshot(ctx, room, "first", []byte("state-1")); err != nil {
+		t.Fatalf("SaveSnapshot: %v", err)
+	}
+	if err := a.store.put(ctx, a.layout.SnapNextIDName(DocID(room)), []byte("not-a-number")); err != nil {
+		t.Fatalf("corrupt counter: %v", err)
+	}
+
+	id, err := a.SaveSnapshot(ctx, room, "second", []byte("state-2"))
+	if err != nil {
+		t.Fatalf("SaveSnapshot with corrupt counter: %v", err)
+	}
+	if id == 1 {
+		t.Fatal("reused id 1, overwriting the existing snapshot")
+	}
+	got, err := a.GetSnapshotState(ctx, room, 1)
+	if err != nil {
+		t.Fatalf("GetSnapshotState(1): %v", err)
+	}
+	if string(got) != "state-1" {
+		t.Fatalf("snapshot 1 = %q, want state-1", got)
+	}
+}
+
+// TestGCSSnapshot_WriteIsCreateOnly asserts the storage-level guarantee the two
+// tests above depend on. Snapshot records are write-once (ids are never reused
+// within a room), so the write must REFUSE an existing name rather than
+// overwrite it. Without this precondition an id collision from any cause — a
+// stale counter, an expired lock lease — destroys bytes instead of erroring.
+func TestGCSSnapshot_WriteIsCreateOnly(t *testing.T) {
+	ctx := context.Background()
+	client, bucket := newFakeGCS(t)
+	a, err := New(Options{Client: client, Bucket: bucket, Locker: NewNoLock()})
+	if err != nil {
+		t.Fatalf("gcs.New: %v", err)
+	}
+	name := a.layout.SnapVersionName(DocID("room1"), 1)
+	if err := a.store.putWithMetaIfAbsent(ctx, name, []byte("original"), nil); err != nil {
+		t.Fatalf("first write: %v", err)
+	}
+	err = a.store.putWithMetaIfAbsent(ctx, name, []byte("clobber"), nil)
+	if !errors.Is(err, errObjectExists) {
+		t.Fatalf("second write err = %v, want errObjectExists", err)
+	}
+	got, err := a.store.get(ctx, name)
+	if err != nil {
+		t.Fatalf("get: %v", err)
+	}
+	if string(got) != "original" {
+		t.Fatalf("object = %q, want %q: the refused write still overwrote it", got, "original")
+	}
+}
+
+// TestGCSDelete_RemovesIDCounter pins the counter's lifecycle directly. It was
+// previously only covered as a side effect of a RoomLister conformance case, and
+// the counter's removal is exactly what makes id reuse possible, so it deserves
+// its own assertion in both layouts.
+func TestGCSDelete_RemovesIDCounter(t *testing.T) {
+	for _, phase2 := range []bool{false, true} {
+		ctx := context.Background()
+		client, bucket := newFakeGCS(t)
+		a, err := New(Options{Client: client, Bucket: bucket, Locker: NewNoLock(), Phase2: phase2})
+		if err != nil {
+			t.Fatalf("phase2=%v gcs.New: %v", phase2, err)
+		}
+		const room = "room1"
+		if _, err := a.SaveSnapshot(ctx, room, "x", []byte("s")); err != nil {
+			t.Fatalf("phase2=%v SaveSnapshot: %v", phase2, err)
+		}
+		if err := a.Delete(ctx, room); err != nil {
+			t.Fatalf("phase2=%v Delete: %v", phase2, err)
+		}
+		if _, err := a.store.get(ctx, a.layout.SnapNextIDName(DocID(room))); err != errNotFound {
+			t.Fatalf("phase2=%v: id counter survived Delete (err=%v)", phase2, err)
+		}
+	}
+}
+
+// TestGCSSnapshot_NextIDDerivesFromObjectsWhenCounterUnusable pins nextSnapID
+// itself, because the end-to-end tests above cannot: the create-only write plus
+// retry masks a bad allocation, so they still pass even if the counter is trusted
+// blindly. That layering is deliberate (the precondition is what prevents data
+// loss), but it means the derive-from-reality behaviour needs its own assertion
+// or it could be removed silently, leaving every post-counter-loss save to burn a
+// failed write and a retry.
+func TestGCSSnapshot_NextIDDerivesFromObjectsWhenCounterUnusable(t *testing.T) {
+	ctx := context.Background()
+	client, bucket := newFakeGCS(t)
+	a, err := New(Options{Client: client, Bucket: bucket, Locker: NewNoLock()})
+	if err != nil {
+		t.Fatalf("gcs.New: %v", err)
+	}
+	const room = "room1"
+	d := DocID(room)
+	for i := 0; i < 3; i++ {
+		if _, err := a.SaveSnapshot(ctx, room, "x", []byte("s")); err != nil {
+			t.Fatalf("SaveSnapshot: %v", err)
+		}
+	}
+
+	for _, tc := range []struct {
+		name  string
+		setup func()
+	}{
+		{"counter missing", func() { _ = a.store.delete(ctx, a.layout.SnapNextIDName(d)) }},
+		{"counter unparseable", func() { _ = a.store.put(ctx, a.layout.SnapNextIDName(d), []byte("xyz")) }},
+		{"counter below reality", func() { _ = a.store.put(ctx, a.layout.SnapNextIDName(d), []byte("0")) }},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			tc.setup()
+			got, err := a.nextSnapID(ctx, d)
+			if err != nil {
+				t.Fatalf("nextSnapID: %v", err)
+			}
+			if got != 4 {
+				t.Fatalf("nextSnapID = %d, want 4 (max stored id 3 + 1); returning a live id would target an existing snapshot", got)
+			}
+		})
+	}
+}
+
+// TestGCSSnapshot_Phase2ReadsLegacyRootSnapshots: flipping
+// REEARTH_FLOW_GCS_PHASE2 must not hide the version history of rooms written
+// before the cutover.
+//
+// This is the nastiest shape of failure this subsystem can produce: document
+// state keeps loading correctly via the existing dual-read, so the flag flip
+// looks clean, while every existing room's history panel silently empties. No
+// error, nothing in the logs, and to a user indistinguishable from having lost
+// their versions. Every other layout-scoped read here already falls back to the
+// legacy root, and Delete already sweeps it — the read path was the gap.
+func TestGCSSnapshot_Phase2ReadsLegacyRootSnapshots(t *testing.T) {
+	ctx := context.Background()
+	client, bucket := newFakeGCS(t)
+
+	// Pre-cutover: a Phase-1 adapter writes the room's snapshots.
+	p1, err := New(Options{Client: client, Bucket: bucket, Locker: NewNoLock()})
+	if err != nil {
+		t.Fatalf("gcs.New phase1: %v", err)
+	}
+	const room = "550e8400-e29b-41d4-a716-446655440099"
+	want := map[int64]string{}
+	for _, s := range []string{"legacy-1", "legacy-2", "legacy-3"} {
+		id, err := p1.SaveSnapshot(ctx, room, s, []byte(s))
+		if err != nil {
+			t.Fatalf("phase1 SaveSnapshot(%s): %v", s, err)
+		}
+		want[id] = s
+	}
+
+	// Post-cutover: the same bucket, read through a Phase-2 adapter.
+	p2, err := New(Options{Client: client, Bucket: bucket, Locker: NewNoLock(), Phase2: true})
+	if err != nil {
+		t.Fatalf("gcs.New phase2: %v", err)
+	}
+
+	got, err := p2.ListSnapshots(ctx, room)
+	if err != nil {
+		t.Fatalf("phase2 ListSnapshots: %v", err)
+	}
+	if len(got) != len(want) {
+		t.Fatalf("phase2 ListSnapshots returned %d snapshots, want %d: the flag flip hid the room's history", len(got), len(want))
+	}
+	for _, sn := range got {
+		state, err := p2.GetSnapshotState(ctx, room, sn.ID)
+		if err != nil {
+			t.Fatalf("phase2 GetSnapshotState(%d): %v", sn.ID, err)
+		}
+		if string(state) != want[sn.ID] {
+			t.Fatalf("phase2 snapshot %d = %q, want %q", sn.ID, state, want[sn.ID])
+		}
+		if sn.Label != want[sn.ID] {
+			t.Fatalf("phase2 snapshot %d label = %q, want %q", sn.ID, sn.Label, want[sn.ID])
+		}
+	}
+
+	// A Phase-2 save must not collide with a legacy id the merged list exposes.
+	newID, err := p2.SaveSnapshot(ctx, room, "post-cutover", []byte("new"))
+	if err != nil {
+		t.Fatalf("phase2 SaveSnapshot: %v", err)
+	}
+	if _, clash := want[newID]; clash {
+		t.Fatalf("phase2 allocated id %d, which a legacy snapshot already uses", newID)
+	}
+	merged, err := p2.ListSnapshots(ctx, room)
+	if err != nil {
+		t.Fatalf("phase2 ListSnapshots after save: %v", err)
+	}
+	if len(merged) != len(want)+1 {
+		t.Fatalf("merged list has %d entries, want %d", len(merged), len(want)+1)
+	}
+	// The legacy payloads must survive the new write untouched.
+	for id, w := range want {
+		state, err := p2.GetSnapshotState(ctx, room, id)
+		if err != nil {
+			t.Fatalf("legacy snapshot %d after phase2 save: %v", id, err)
+		}
+		if string(state) != w {
+			t.Fatalf("legacy snapshot %d = %q, want %q: the phase-2 save clobbered it", id, state, w)
+		}
 	}
 }

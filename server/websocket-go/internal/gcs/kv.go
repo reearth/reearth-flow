@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"io"
+	"net/http"
 
 	"cloud.google.com/go/storage"
+	"google.golang.org/api/googleapi"
 	"google.golang.org/api/iterator"
 )
 
@@ -50,6 +52,37 @@ func (s kv) putWithMeta(ctx context.Context, name string, data []byte, meta map[
 		return err
 	}
 	return w.Close()
+}
+
+// errObjectExists reports that a create-only write lost to an existing object.
+var errObjectExists = errors.New("gcs: object already exists")
+
+// putWithMetaIfAbsent is putWithMeta that REFUSES to overwrite, returning
+// errObjectExists instead. Snapshot records are write-once by contract (ids are
+// never reused within a room), and a plain put makes an id collision destroy the
+// previous snapshot's payload, label and timestamp with no error anywhere. The
+// precondition converts that silent data loss into a caller-visible failure.
+func (s kv) putWithMetaIfAbsent(ctx context.Context, name string, data []byte, meta map[string]string) error {
+	w := s.bucket.Object(name).If(storage.Conditions{DoesNotExist: true}).NewWriter(ctx)
+	w.Metadata = meta
+	if _, err := w.Write(data); err != nil {
+		_ = w.Close()
+		return asObjectExists(err)
+	}
+	return asObjectExists(w.Close())
+}
+
+// asObjectExists maps a failed DoesNotExist precondition (HTTP 412) onto
+// errObjectExists, leaving every other error untouched.
+func asObjectExists(err error) error {
+	if err == nil {
+		return nil
+	}
+	var gerr *googleapi.Error
+	if errors.As(err, &gerr) && gerr.Code == http.StatusPreconditionFailed {
+		return errObjectExists
+	}
+	return err
 }
 
 func (s kv) delete(ctx context.Context, name string) error {
