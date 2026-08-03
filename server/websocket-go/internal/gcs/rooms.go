@@ -15,9 +15,9 @@ import (
 // cleanup route currently enumerates only the *live* in-memory rooms
 // (cmd/websocket/main.go passes srv.WSProvider().Rooms), which is close to
 // useless for retention since the rooms needing cleanup are the idle ones. That
-// swap is a behaviour change and is tracked separately rather than widened into
-// the snapshot work. Kept and conformance-tested so the swap is a one-line
-// change when it happens.
+// swap is a behaviour change and is tracked in reearth/reearth-flow#2333 rather
+// than widened into the snapshot work. Kept and conformance-tested so the swap
+// is a one-line change when it happens.
 //
 // Phase 2 is a straight prefix listing. Phase 1 has no folder structure: object
 // names are hex-encoded structured keys, so rooms are recovered from the OID

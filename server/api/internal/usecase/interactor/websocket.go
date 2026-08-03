@@ -7,7 +7,8 @@ import (
 	ws "github.com/reearth/reearth-flow/api/pkg/websocket"
 )
 
-// TODO(2026-09): delete this file. Websocket is dead code — NewWebsocket has no
+// TODO(2026-09): delete this file — tracked in reearth/reearth-flow#2334.
+// Websocket is dead code — NewWebsocket has no
 // callers, and interfaces.Container.Websocket is typed WebsocketClient, so the
 // GraphQL resolvers talk to the client directly (note they call CopyDocument /
 // ImportDocument, which do not even exist on this type; the CopyProject /
