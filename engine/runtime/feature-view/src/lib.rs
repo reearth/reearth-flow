@@ -559,8 +559,13 @@ mod tests {
     fn tileset_to(dir: &Path, selection: &[Selected], options: &ViewOptions) -> RenderedView {
         let root = Uri::for_test(&format!("file://{}", dir.display()));
         let resolver = StorageResolver::new();
-        render_tileset(selection, 1_048_576, options, &destination(&root, &resolver))
-            .expect("render")
+        render_tileset(
+            selection,
+            1_048_576,
+            options,
+            &destination(&root, &resolver),
+        )
+        .expect("render")
     }
 
     fn destination<'a>(root: &'a Uri, resolver: &'a StorageResolver) -> Destination<'a> {

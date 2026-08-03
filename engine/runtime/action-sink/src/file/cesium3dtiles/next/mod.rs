@@ -253,7 +253,12 @@ pub fn build(
     // exactly the cell's features either way.
     let cell_contents: Vec<(Cell, Vec<Vec<usize>>)> = by_cell
         .into_iter()
-        .map(|(cell, indices)| (cell, split_by_cost(&indices, &feature_cost, target_tile_size)))
+        .map(|(cell, indices)| {
+            (
+                cell,
+                split_by_cost(&indices, &feature_cost, target_tile_size),
+            )
+        })
         .collect();
     let content_counts: HashMap<Cell, usize> = cell_contents
         .iter()

@@ -49,8 +49,9 @@ fn build_one(
     let boundary_level = root.level + SUBTREE_LEVELS - 1;
     let total_tiles = level_offset(SUBTREE_LEVELS) as usize;
     let mut tile_availability = BitSet::new(total_tiles);
-    let mut content_availability: Vec<BitSet> =
-        (0..max_contents).map(|_| BitSet::new(total_tiles)).collect();
+    let mut content_availability: Vec<BitSet> = (0..max_contents)
+        .map(|_| BitSet::new(total_tiles))
+        .collect();
     let mut chained: BTreeSet<Cell> = BTreeSet::new();
 
     for cell in occupied
@@ -85,8 +86,10 @@ fn build_one(
     }
 
     let tile_available_count = tile_availability.count_ones();
-    let content_available_counts: Vec<usize> =
-        content_availability.iter().map(|b| b.count_ones()).collect();
+    let content_available_counts: Vec<usize> = content_availability
+        .iter()
+        .map(|b| b.count_ones())
+        .collect();
     let mut buffers = vec![tile_availability.into_bytes()];
     buffers.extend(content_availability.into_iter().map(BitSet::into_bytes));
 
