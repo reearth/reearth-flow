@@ -22,6 +22,10 @@ func NewWithPersistence(ctx context.Context, cfg *config.Config, p persistence.V
 		cfg: cfg,
 		ws:  ygws.NewServerWithPersistence(adapter),
 		log: slog.Default(),
+		// Retained so the retention wiring is assertable: ygo keeps the adapter in
+		// an unexported field with no getter, so without this a test cannot tell
+		// KeepSnapshots was ever applied.
+		adapter: adapter,
 	}
 	s.ws.AllowedOrigins = cfg.Origins
 	s.ws.Logger = s.log

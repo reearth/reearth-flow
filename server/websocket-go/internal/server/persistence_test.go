@@ -45,9 +45,19 @@ func TestNewWithPersistence_WiresAutoVersioning(t *testing.T) {
 	if got := s.ws.AutoVersionEvery; got != 15*time.Minute {
 		t.Fatalf("AutoVersionEvery = %v, want 15m", got)
 	}
+	// Assert the retention bound too. Without this, deleting the
+	// `adapter.KeepSnapshots = cfg.KeepSnapshots` line leaves every test passing
+	// while retention silently reverts to keep-all — the config would advertise a
+	// bound that nothing enforces.
+	if s.adapter == nil {
+		t.Fatal("adapter reference not retained; cannot verify retention wiring")
+	}
+	if got := s.adapter.KeepSnapshots; got != 50 {
+		t.Fatalf("adapter.KeepSnapshots = %d, want 50 (config value must reach the adapter)", got)
+	}
 }
 
-func TestNewWithPersistence_AutoVersioningOffByDefault(t *testing.T) {
+func TestNewWithPersistence_ZeroConfigDisablesAutoVersioning(t *testing.T) {
 	s := NewWithPersistence(context.Background(), &config.Config{}, persistence.NewMemoryPersistence())
 	if got := s.ws.AutoVersionEvery; got != 0 {
 		t.Fatalf("AutoVersionEvery = %v, want 0 (off)", got)
@@ -81,11 +91,10 @@ func applyOneChange(t *testing.T, s *Server, room string) {
 // only closes after running its forced final maybeVersion, so no sleeping or
 // fake clock is needed to observe the result.
 //
-// The "disabled" subcase is the one with teeth for a future regression: if
-// s.ws.AutoVersionEvery is ever left unwired (e.g. the assignment in
-// NewWithPersistence is dropped), this subcase's assertion of zero snapshots
-// would instead observe the "enabled" subcase's behavior leaking through, so
-// running both together catches the wiring being silently lost.
+// What each subcase actually guards: "enabled" is what fails if
+// s.ws.AutoVersionEvery is left unwired (drop the assignment and it sees 0, so
+// no snapshot is written). "disabled" guards the opposite mistake — a hardcoded
+// non-zero default that would version rooms an operator asked to leave alone.
 func TestNewWithPersistence_AutoVersionSavesSnapshotOnClose(t *testing.T) {
 	const room = "550e8400-e29b-41d4-a716-446655440099"
 	ctx := context.Background()

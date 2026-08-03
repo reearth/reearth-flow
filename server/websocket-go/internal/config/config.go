@@ -62,6 +62,17 @@ type Config struct {
 	// loader uses envPositive, though, which rejects values below 1 and falls
 	// back to the default instead — so REEARTH_FLOW_KEEP_SNAPSHOTS=0 can never
 	// select keep-all; set it to a large number instead if that is the intent.
+	//
+	// Two limits worth knowing, both from ygo's LegacyAdapter.trimSnapshots:
+	//
+	//  1. It runs only on the AUTO path (SaveVersion). Snapshots created through
+	//     POST /api/document/{id}/snapshots call the store directly and are not
+	//     trimmed, so with auto-versioning disabled the manual route can grow a
+	//     room's snapshots without bound (there is no DELETE endpoint either).
+	//  2. The trim keeps the newest N for the room REGARDLESS of label, so a
+	//     user's deliberately named snapshot is evicted once N newer ones exist.
+	//     At 15m/50 that is roughly half a day of continuous editing. Label-aware
+	//     retention needs an upstream change: reearth/ygo#212.
 	KeepSnapshots int
 
 	// OTLP tracing config.
@@ -159,6 +170,17 @@ func (c *Config) Validate() error {
 	if raw := os.Getenv("REEARTH_FLOW_WS_PROTECTED"); strings.TrimSpace(raw) != "" {
 		if _, ok := parseBool(raw); !ok {
 			return fmt.Errorf("REEARTH_FLOW_WS_PROTECTED=%q is not a valid boolean (use true/false, on/off, yes/no); refusing to start with an ambiguous WS auth setting", raw)
+		}
+	}
+	// Same fail-loud reasoning as above, for a different reason: auto-versioning
+	// is ON by default, so this var is the kill switch an operator reaches for
+	// during an incident. envDuration falls back to the 15m default on anything
+	// it cannot parse, which means "-1", "off", "disabled" and "15" (no unit) all
+	// leave the feature running while looking like they turned it off. Use "0"
+	// to disable.
+	if raw := os.Getenv("REEARTH_FLOW_AUTO_VERSION_EVERY"); strings.TrimSpace(raw) != "" {
+		if _, err := time.ParseDuration(strings.TrimSpace(raw)); err != nil {
+			return fmt.Errorf("REEARTH_FLOW_AUTO_VERSION_EVERY=%q is not a valid Go duration (e.g. 15m, 30s; use 0 to disable auto-versioning); refusing to start rather than silently keeping auto-versioning enabled", raw)
 		}
 	}
 	return nil
