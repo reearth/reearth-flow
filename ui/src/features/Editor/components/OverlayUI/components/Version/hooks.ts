@@ -17,12 +17,15 @@ export default ({
   onDialogClose: () => void;
 }) => {
   const {
-    useGetProjectHistory,
+    useGetProjectSnapshots,
     useGetLatestProjectSnapshot,
     useRollbackProject,
     useGetPreviewProjectSnapshot,
   } = useDocument();
-  const { history, isFetching } = useGetProjectHistory(projectId);
+  // Version history is snapshot-backed. The raw CRDT update log is a
+  // durability concern and is deliberately not shown: it has one entry per
+  // flush.
+  const { snapshots, isFetching } = useGetProjectSnapshots(projectId);
   const { projectDocument } = useGetLatestProjectSnapshot(projectId);
   const [selectedProjectSnapshotVersion, setSelectedProjectSnapshotVersion] =
     useState<number | null>(null);
@@ -144,6 +147,16 @@ export default ({
     return snapshotDoc;
   }
 
+  // NOTE: `version` here is a NamedSnapshot.id from the snapshot list, not
+  // the raw update-log version number that previewSnapshot/rollbackProject
+  // were originally built for. The two are different, backend-assigned ID
+  // spaces (see server/websocket-go/internal/gcs/snapshots.go, SnapNextIDName)
+  // and there is currently no GraphQL field to preview or restore a
+  // NamedSnapshot's own content by id. Until that's added, selecting a
+  // snapshot row can preview/rollback to the wrong update-log entry if the
+  // numbers happen to collide. Tracked as a follow-up alongside the
+  // documented "restore semantics" gap; do not rely on Preview/Revert being
+  // correct for snapshot-backed history until this is resolved.
   const handleVersionSelection = useCallback(
     async (version: number) => {
       if (isCorruptedVersion && version !== lastErroredVersionRef.current) {
@@ -225,7 +238,7 @@ export default ({
   ]);
 
   return {
-    history,
+    snapshots,
     latestProjectSnapshotVersion,
     previewDocRef,
     previewDocYWorkflows,

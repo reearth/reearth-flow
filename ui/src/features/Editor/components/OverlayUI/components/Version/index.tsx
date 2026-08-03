@@ -29,7 +29,7 @@ const VersionDialog: React.FC<Props> = ({
   const dialogRef = useRef<HTMLDivElement>(null);
   const [animate, setAnimate] = useState<boolean>(false);
   const {
-    history,
+    snapshots,
     latestProjectSnapshotVersion,
     previewDocRef,
     previewDocYWorkflows,
@@ -138,11 +138,11 @@ const VersionDialog: React.FC<Props> = ({
               ) : (
                 <VersionHistoryList
                   latestProjectSnapshotVersion={latestProjectSnapshotVersion}
-                  history={history}
+                  snapshots={snapshots}
                   selectedProjectSnapshotVersion={
                     selectedProjectSnapshotVersion
                   }
-                  onVersionSelection={onVersionSelection}
+                  onSnapshotSelect={onVersionSelection}
                 />
               )}
             </div>

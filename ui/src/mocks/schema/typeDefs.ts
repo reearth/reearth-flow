@@ -276,6 +276,13 @@ export const typeDefs = `
     createdAt: DateTime!
   }
 
+  type NamedSnapshot {
+    id: Int!
+    label: String!
+    timestamp: DateTime!
+    size: Int!
+  }
+
   # Trigger Types
   type Trigger implements Node {
     id: ID!
@@ -714,6 +721,7 @@ export const typeDefs = `
     latestProjectSnapshot(projectId: ID!): ProjectDocument
     projectSnapshot(projectId: ID!, version: String!): ProjectSnapshot!
     projectHistory(projectId: ID!, pagination: PageBasedPagination!): [ProjectSnapshotMetadata!]!
+    projectSnapshots(projectId: ID!): [NamedSnapshot!]!
 
     # Trigger queries
     triggers(workspaceId: ID!, pagination: PageBasedPagination!): TriggerConnection!

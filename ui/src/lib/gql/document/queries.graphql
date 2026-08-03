@@ -21,6 +21,15 @@ query GetProjectHistory($projectId: ID!) {
     version
   }
 }
+
+query GetProjectSnapshots($projectId: ID!) {
+  projectSnapshots(projectId: $projectId) {
+    id
+    label
+    timestamp
+    size
+  }
+}
 mutation PreviewSnapshot($projectId: ID!, $version: Int!) {
   previewSnapshot(projectId: $projectId, version: $version) {
     id

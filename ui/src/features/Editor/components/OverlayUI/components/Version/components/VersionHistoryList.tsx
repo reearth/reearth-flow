@@ -1,25 +1,31 @@
 import { ScrollArea } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import type { ProjectDocument, ProjectSnapshotMeta } from "@flow/types";
+import type { NamedSnapshot, ProjectDocument } from "@flow/types";
 import { formatDate } from "@flow/utils";
 
 type Props = {
   latestProjectSnapshotVersion?: ProjectDocument;
-  history?: ProjectSnapshotMeta[];
-  onVersionSelection: (version: number) => void;
-  selectedProjectSnapshotVersion: number | null;
+  snapshots?: NamedSnapshot[];
+  onSnapshotSelect: (id: number) => void;
+  selectedProjectSnapshotVersion?: number | null;
 };
 
 const VersionHistoryList: React.FC<Props> = ({
   latestProjectSnapshotVersion,
-  history,
+  snapshots,
   selectedProjectSnapshotVersion,
-  onVersionSelection,
+  onSnapshotSelect,
 }) => {
   const t = useT();
-  const previousVersions = history?.filter(
-    (version) => version.version !== latestProjectSnapshotVersion?.version,
-  );
+  // Snapshots are already distinct from the live head (unlike the raw update
+  // log this list used to render), so there is no head entry to filter out
+  // here. Sort defensively since the backend does not guarantee ordering.
+  const sortedSnapshots = snapshots
+    ? [...snapshots].sort(
+        (a, b) =>
+          new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime(),
+      )
+    : snapshots;
 
   return (
     <ScrollArea className="h-full w-full overflow-y-auto">
@@ -41,23 +47,24 @@ const VersionHistoryList: React.FC<Props> = ({
         </div>
       )}
 
-      {previousVersions && previousVersions.length > 0 ? (
+      {sortedSnapshots && sortedSnapshots.length > 0 ? (
         <div className="flex flex-col overflow-auto">
-          {previousVersions?.map((version) => (
-            <div>
+          {sortedSnapshots.map((snapshot) => (
+            <div key={snapshot.id}>
               <div
-                className={`flex cursor-pointer justify-between gap-2 px-2 py-2 select-none ${version.version === selectedProjectSnapshotVersion ? "bg-border/40 dark:bg-primary" : "hover:bg-border/40 dark:hover:bg-primary"}`}
-                onClick={() => onVersionSelection(version.version)}
+                role="button"
+                tabIndex={0}
+                className={`flex cursor-pointer justify-between gap-2 px-2 py-2 select-none ${snapshot.id === selectedProjectSnapshotVersion ? "bg-border/40 dark:bg-primary" : "hover:bg-border/40 dark:hover:bg-primary"}`}
+                onClick={() => onSnapshotSelect(snapshot.id)}
                 style={{ height: "100%" }}>
                 <p className="flex-2 self-center text-xs font-light dark:font-thin">
-                  {formatDate(version.timestamp)}
+                  {snapshot.label || formatDate(snapshot.timestamp)}
                 </p>
                 <div className="flex justify-end">
                   <p className="rounded border bg-border/15 p-1 text-xs font-thin dark:bg-primary/30">
                     <span className="font-light">
                       {" "}
-                      {t("Version ")}
-                      {version.version}
+                      {formatDate(snapshot.timestamp)}
                     </span>
                   </p>
                 </div>
@@ -66,7 +73,11 @@ const VersionHistoryList: React.FC<Props> = ({
             </div>
           ))}
         </div>
-      ) : null}
+      ) : (
+        <p className="p-2 text-xs font-light select-none">
+          {t("No versions yet")}
+        </p>
+      )}
     </ScrollArea>
   );
 };

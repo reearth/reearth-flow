@@ -540,6 +540,31 @@ export const resolvers = {
       return paginateResults(history, args.pagination).nodes;
     },
 
+    projectSnapshots: (_: any, _args: { projectId: string }) => {
+      // Several distinct, labelled snapshots so local dev reflects real
+      // behaviour: auto-versioning keeps appending entries, not just one.
+      return [
+        {
+          id: 3,
+          label: "before migration",
+          timestamp: "2024-01-28T12:00:00Z",
+          size: 4096,
+        },
+        {
+          id: 2,
+          label: "auto",
+          timestamp: "2024-01-15T09:30:00Z",
+          size: 3072,
+        },
+        {
+          id: 1,
+          label: "initial import",
+          timestamp: "2024-01-01T10:00:00Z",
+          size: 2048,
+        },
+      ];
+    },
+
     triggers: (_: any, args: { workspaceId: string; pagination: any }) => {
       // No triggers in mock data yet
       return paginateResults([], args.pagination);

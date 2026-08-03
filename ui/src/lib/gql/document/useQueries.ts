@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import type { ProjectSnapshotMeta } from "@flow/types";
+import type { NamedSnapshot, ProjectSnapshotMeta } from "@flow/types";
 import { isDefined } from "@flow/utils";
 
 import {
@@ -14,6 +14,7 @@ export enum DocumentQueryKeys {
   GetLatestProjectSnapshot = "getLatestProjectSnapshot",
   GetProjectSnapshot = "getProjectSnapshot",
   GetProjectHistory = "getProjectHistory",
+  GetProjectSnapshots = "getProjectSnapshots",
 }
 
 export const useQueries = () => {
@@ -67,6 +68,22 @@ export const useQueries = () => {
       refetchOnMount: false,
       refetchOnWindowFocus: false,
     });
+
+  // Version history is snapshot-backed. The raw CRDT update log (projectHistory
+  // above) is a durability concern and is deliberately not surfaced in the
+  // panel: it has one entry per flush.
+  const useProjectSnapshotsQuery = (projectId?: string) => {
+    const { data, ...rest } = useQuery({
+      queryKey: [DocumentQueryKeys.GetProjectSnapshots, projectId],
+      queryFn: async (): Promise<NamedSnapshot[]> => {
+        if (!projectId) return [];
+        const data = await graphQLContext?.GetProjectSnapshots({ projectId });
+        return data?.projectSnapshots ?? [];
+      },
+      enabled: !!projectId,
+    });
+    return { snapshots: data ?? [], ...rest };
+  };
 
   const usePreviewSnapshot = useMutation({
     mutationFn: async ({
@@ -135,6 +152,7 @@ export const useQueries = () => {
     useLatestProjectSnapshotQuery,
     useProjectSnapshotQuery,
     useProjectHistoryQuery,
+    useProjectSnapshotsQuery,
     usePreviewSnapshot,
     rollbackProjectMutation,
     snapshotSaveMutation,

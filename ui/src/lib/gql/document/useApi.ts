@@ -9,6 +9,7 @@ export const useDocument = () => {
     useLatestProjectSnapshotQuery,
     useProjectSnapshotQuery,
     useProjectHistoryQuery,
+    useProjectSnapshotsQuery,
     rollbackProjectMutation,
     snapshotSaveMutation,
     usePreviewSnapshot,
@@ -37,6 +38,14 @@ export const useDocument = () => {
     const { data, ...rest } = useProjectHistoryQuery(projectId);
     return {
       history: data,
+      ...rest,
+    };
+  };
+
+  const useGetProjectSnapshots = (projectId: string) => {
+    const { snapshots, ...rest } = useProjectSnapshotsQuery(projectId);
+    return {
+      snapshots,
       ...rest,
     };
   };
@@ -118,6 +127,7 @@ export const useDocument = () => {
     useGetLatestProjectSnapshot,
     useGetProjectSnapshot,
     useGetProjectHistory,
+    useGetProjectSnapshots,
     useGetPreviewProjectSnapshot,
     useRollbackProject,
     useSaveSnapshot,
