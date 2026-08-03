@@ -20,7 +20,7 @@ script = ['''
 #!/usr/bin/env bash -eux
 cargo check --workspace --all-targets
 cargo check --workspace --all-targets --features new-geometry \
-  --exclude workflow-tests --exclude reearth-flow-tests
+  --exclude reearth-flow-tests
 ''']
 
 [tasks.clippy]
@@ -28,7 +28,7 @@ script = ['''
 #!/usr/bin/env bash -eux
 cargo clippy --workspace --all-targets -- -D warnings
 cargo clippy --workspace --all-targets --features new-geometry \
-  --exclude workflow-tests --exclude reearth-flow-tests -- -D warnings
+  --exclude reearth-flow-tests -- -D warnings
 ''']
 
 [tasks.clippy-fix]
@@ -42,6 +42,7 @@ script = ['''
 #!/usr/bin/env bash -eux
 cargo make test-rs ${@:-}
 cargo make test-qc ${@:-}
+cargo make test-qc-new-geometry ${@:-}
 cargo make test-conv ${@:-}
 cargo make test-conv-new-geometry ${@:-}
 ''']
@@ -62,6 +63,16 @@ script = ['''
 # `cargo make test-qc -- --test-threads=16` so local development is not
 # forced to a CI-specific value.
 cargo test -p workflow-tests ${@:-}
+''']
+
+# Runs the same suite in the new-geometry world. Every test case whose
+# `workflow_test.json` still has `skipNewGeometry` set is `#[ignore]`d here, so
+# today this only builds the suite; cases are enabled as their workflows are
+# migrated. Folds into test-qc once new-geometry becomes the default.
+[tasks.test-qc-new-geometry]
+script = ['''
+#!/usr/bin/env bash -eux
+cargo test -p workflow-tests --features new-geometry ${@:-}
 ''']
 
 [tasks.ensure-glb-decompress]

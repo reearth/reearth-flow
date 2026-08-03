@@ -1,5 +1,6 @@
 {
   "description": "Test L-bldg-02 for plateau6: single isolated LOD2 BuildingPart (status='alone')",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
   "workflowVariables": [
     {

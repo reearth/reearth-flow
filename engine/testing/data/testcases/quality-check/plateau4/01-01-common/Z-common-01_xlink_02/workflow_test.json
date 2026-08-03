@@ -1,5 +1,6 @@
 {
   "description": "CityObjectGroup xlink to non-existent gml:id should be detected as XLink_NoReference (checked against file-wide gml:ids)",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/01-common/workflow.yml",
   "workflowVariables": [
     {

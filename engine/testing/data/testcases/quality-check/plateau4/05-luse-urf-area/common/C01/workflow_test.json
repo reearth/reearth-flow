@@ -1,5 +1,6 @@
 {
   "description": "Test quality check for C01",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/05-luse-urf-area/workflow.yml",
   "workflowVariables": [
     {

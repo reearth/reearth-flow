@@ -158,6 +158,27 @@ jobs:
         # test-qc` defaults to N_CPUs for local development.
         run: cargo make test-qc -- --test-threads=16
 
+  test-qc-new-geometry:
+    name: test-qc-new-geometry (workflow integration tests, new-geometry)
+    runs-on: blacksmith-4vcpu-ubuntu-2204
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
+        with:
+          egress-policy: audit
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+      - uses: ./.github/actions/setup-engine-ci
+      # This build enables `new-geometry`, whose `ktx2-rw` dep compiles
+      # KTX-Software from source.
+      - uses: ./.github/actions/install-ktx-toolchain
+      # NOTE: no XSD schema cache here. Every test case is still `#[ignore]`d
+      # under new-geometry, so nothing fetches a remote schema. Add the same
+      # cache step test-qc uses once migrated cases start running.
+      - name: test-qc-new-geometry
+        run: cargo make test-qc-new-geometry -- --test-threads=16
+
   test-conv:
     name: test-conv (tile output validation)
     runs-on: blacksmith-4vcpu-ubuntu-2204

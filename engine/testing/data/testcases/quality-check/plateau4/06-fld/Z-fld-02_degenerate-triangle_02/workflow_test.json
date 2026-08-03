@@ -1,5 +1,6 @@
 {
   "description": "Test quality check for degenerate triangles (pref/river_b)",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/06-fld/workflow.yml",
   "workflowVariables": [
     {

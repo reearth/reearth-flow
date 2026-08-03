@@ -1,5 +1,6 @@
 {
   "description": "Test feature writing through nested subgraphs (entry -> outer -> inner, 3 levels deep)",
+  "skipNewGeometry": true,
   "workflowPath": "executor-testing/feature-write/nested-subgraph.yml",
   "expectedOutput": {
     "expectedFile": "output.csv"

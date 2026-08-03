@@ -1,5 +1,6 @@
 {
   "description": "Test quality check for C01. L-TRAN-02 隣接面重複 is excluded from the summary because the input files are duplicates (with different names).",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/03-tran/workflow.yml",
   "workflowVariables": [
     {
