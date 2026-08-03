@@ -60,7 +60,10 @@ impl ProcessorFactory for AreaOnAreaOverlayerFactory {
     }
 
     fn description(&self) -> &str {
-        "Perform Area Overlay Analysis"
+        "Subdivides overlapping areas into non-overlapping pieces and records how many input \
+         features cover each piece. Inputs must be flat 2D geometries sharing one coordinate \
+         frame; place a Two Dimension Forcer or a Coordinate Frame Reprojector upstream to \
+         flatten or unify them."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -480,7 +483,7 @@ impl Processor for AreaOnAreaOverlayer {
                     .and_then(GroupEpsg::resolve),
             };
             #[cfg(feature = "new-geometry")]
-            let shaper = OutputShaper::new(&disk_feats);
+            let shaper = OutputShaper;
             let (ac, rc) = from_midpolygons_disk(
                 &midpolygons_path,
                 &disk_feats,
@@ -644,10 +647,13 @@ fn intake(geometry: &Geometry) -> Option<([f64; 4], Option<EpsgCode>)> {
     Some((aabb, geometry.epsg))
 }
 
-/// Accept an incoming geometry into the overlay: a 2D areal geometry
+/// Accept an incoming geometry into the overlay: a planar areal geometry
 /// (polygons, meshes, or closed line strings) whose leaves share one
 /// coordinate frame. Returns its bounding box and frame, or `None` when the
 /// feature must be rejected.
+///
+/// The overlay reasons about the plane alone, so a leaf placed at an elevation
+/// is refused rather than silently overlaid with one at a different height.
 #[cfg(feature = "new-geometry")]
 fn intake(geometry: &Geometry) -> Option<([f64; 4], &CoordinateFrame)> {
     let Geometry::Euclidean2D(geom_2d) = geometry else {
@@ -657,7 +663,7 @@ fn intake(geometry: &Geometry) -> Option<([f64; 4], &CoordinateFrame)> {
     flatten_2d(geom_2d, &mut leaves);
     let frame = leaves.first()?.frame();
     for leaf in &leaves {
-        if leaf.frame() != frame {
+        if leaf.frame() != frame || leaf_elevation(leaf).is_some() {
             return None;
         }
         match leaf {
@@ -721,16 +727,14 @@ fn normalize_area(geom: &Euclidean2DGeometry) -> Euclidean2DGeometry {
     }
 }
 
-/// The polygon face a closed line string traces, at the line's elevation.
+/// The polygon face a closed line string traces.
 #[cfg(feature = "new-geometry")]
 fn ring_face(line: &LineString2D) -> Polygon2D {
-    let frame = line.frame().clone();
-    let ring = line.coords().iter().copied();
-    let no_holes = Vec::<Vec<[f64; 2]>>::new();
-    match line.elevation() {
-        Some(z) => Polygon2D::from_rings_at_elevation(frame, ring, no_holes, z),
-        None => Polygon2D::from_rings(frame, ring, no_holes),
-    }
+    Polygon2D::from_rings(
+        line.frame().clone(),
+        line.coords().iter().copied(),
+        Vec::<Vec<[f64; 2]>>::new(),
+    )
 }
 
 /// Constructed polygons as one working area.
@@ -826,83 +830,25 @@ struct OutputShaper {
 #[cfg(not(feature = "new-geometry"))]
 impl OutputShaper {
     /// Install `area` as `feature`'s geometry.
-    fn apply(&mut self, feature: &mut Feature, area: WorkingArea, _parents: &[usize]) {
+    fn apply(&mut self, feature: &mut Feature, area: WorkingArea) {
         feature.geometry_mut().value = GeometryValue::FlowGeometry2D(area.into());
         feature.geometry_mut().epsg = self.epsg;
     }
 }
 
-/// Shapes each subdivision piece into an output feature's geometry, carrying a
-/// shared source elevation onto constructed faces.
+/// Shapes each subdivision piece into an output feature's geometry.
 #[cfg(feature = "new-geometry")]
-struct OutputShaper<'a> {
-    disk_feats: &'a DiskBackedFeatures,
-    /// Cached uniform elevation per source feature: `Some(z)` when every leaf
-    /// of the feature's geometry lies at `z`.
-    elevations: HashMap<usize, Option<f64>>,
-}
+struct OutputShaper;
 
 #[cfg(feature = "new-geometry")]
-impl<'a> OutputShaper<'a> {
-    fn new(disk_feats: &'a DiskBackedFeatures) -> Self {
-        Self {
-            disk_feats,
-            elevations: HashMap::new(),
-        }
-    }
-
-    /// Install `area` as `feature`'s geometry. When every parent lies at one
-    /// shared elevation, elevation-less faces of the piece are placed there.
-    fn apply(&mut self, feature: &mut Feature, area: WorkingArea, parents: &[usize]) {
-        let area = match self.shared_elevation(parents) {
-            Some(z) => stamp_elevation(area, z),
-            None => area,
-        };
+impl OutputShaper {
+    /// Install `area` as `feature`'s geometry.
+    fn apply(&mut self, feature: &mut Feature, area: WorkingArea) {
         *feature.geometry_mut() = Geometry::Euclidean2D(area);
     }
-
-    /// The one elevation all `parents` lie at, or `None`.
-    fn shared_elevation(&mut self, parents: &[usize]) -> Option<f64> {
-        let mut shared = None;
-        for (i, &parent) in parents.iter().enumerate() {
-            let disk_feats = self.disk_feats;
-            let z = (*self
-                .elevations
-                .entry(parent)
-                .or_insert_with(|| feature_elevation(disk_feats, parent)))?;
-            if i == 0 {
-                shared = Some(z);
-            } else if shared != Some(z) {
-                return None;
-            }
-        }
-        shared
-    }
 }
 
-/// The one elevation every leaf of the stored feature `i`'s geometry lies at,
-/// or `None`.
-#[cfg(feature = "new-geometry")]
-fn feature_elevation(disk_feats: &DiskBackedFeatures, i: usize) -> Option<f64> {
-    let geometry = disk_feats.read_feature(i).geometry;
-    let Geometry::Euclidean2D(geom_2d) = geometry.as_ref() else {
-        return None;
-    };
-    let mut leaves = Vec::new();
-    flatten_2d(geom_2d, &mut leaves);
-    let mut shared = None;
-    for (i, leaf) in leaves.iter().enumerate() {
-        let z = leaf_elevation(leaf)?;
-        if i == 0 {
-            shared = Some(z);
-        } else if shared != Some(z) {
-            return None;
-        }
-    }
-    shared
-}
-
-/// The elevation a 2D leaf lies at, or `None` when it is pure 2D.
+/// The elevation a 2D leaf lies at, or `None` when it is planar.
 #[cfg(feature = "new-geometry")]
 fn leaf_elevation(leaf: &Leaf2D<'_>) -> Option<f64> {
     match leaf {
@@ -913,32 +859,6 @@ fn leaf_elevation(leaf: &Leaf2D<'_>) -> Option<f64> {
         Leaf2D::Point(_) => None,
     }
 }
-
-/// `area` with every elevation-less polygon face placed at `z`.
-#[cfg(feature = "new-geometry")]
-fn stamp_elevation(area: WorkingArea, z: f64) -> WorkingArea {
-    match area {
-        Euclidean2DGeometry::Polygon(p) if p.elevation().is_none() => {
-            Euclidean2DGeometry::Polygon(Box::new(p.at_elevation(z)))
-        }
-        Euclidean2DGeometry::Collection(collection) => {
-            let members: Vec<_> = collection
-                .members()
-                .iter()
-                .cloned()
-                .map(|m| stamp_elevation(m, z))
-                .collect();
-            let attrs = collection.member_attributes().to_vec();
-            Euclidean2DGeometry::Collection(
-                Collection2D::with_attributes(members, attrs)
-                    .expect("member count is unchanged by elevation stamping"),
-            )
-        }
-        other => other,
-    }
-}
-
-// --- shared subdivision ------------------------------------------------------
 
 /// An AABB entry for the RTree built from pre-computed bounding boxes stored on disk.
 #[derive(Clone)]
@@ -1164,7 +1084,7 @@ fn from_midpolygons_disk<W: Write>(
                     );
                 }
 
-                shaper.apply(&mut feature, subpolygon.polygon, &parents);
+                shaper.apply(&mut feature, subpolygon.polygon);
                 serde_json::to_writer(&mut *area_writer, &feature)?;
                 area_writer.write_all(b"\n")?;
                 area_count += 1;
@@ -1203,7 +1123,7 @@ fn from_midpolygons_disk<W: Write>(
                     );
                 }
 
-                shaper.apply(&mut feature, subpolygon.polygon, &[parent]);
+                shaper.apply(&mut feature, subpolygon.polygon);
                 serde_json::to_writer(&mut *remnants_writer, &feature)?;
                 remnants_writer.write_all(b"\n")?;
                 remnants_count += 1;
@@ -1584,46 +1504,76 @@ mod tests {
     }
 
     #[test]
-    fn pieces_of_parents_at_one_shared_elevation_lie_there() {
-        let features = vec![
-            Feature::from(square_at([0.0, 0.0], [2.0, 2.0], 5.0)),
-            Feature::from(square_at([1.0, 1.0], [3.0, 3.0], 5.0)),
-        ];
-        let (dir, disk_feats) = setup_group(&features);
-        let mut shaper = OutputShaper::new(&disk_feats);
-
-        let area_0 = read_working_area(&disk_feats, 0).unwrap();
-        let area_1 = read_working_area(&disk_feats, 1).unwrap();
-        let piece = area_intersection(&area_0, &area_1).unwrap();
-
-        let mut feature = Feature::new_with_attributes(IndexMap::new());
-        shaper.apply(&mut feature, piece, &[0, 1]);
-        let Geometry::Euclidean2D(geom) = feature.geometry.as_ref() else {
-            panic!("expected a 2D geometry");
+    fn a_group_admits_only_the_frame_its_first_feature_fixes() {
+        let mut overlayer = AreaOnAreaOverlayer {
+            group_by: None,
+            output_attribute: None,
+            generate_list: None,
+            accumulation_mode: AccumulationMode::default(),
+            tolerance: 0.0,
+            group_map: HashMap::new(),
+            group_crs: HashMap::new(),
+            group_count: 0,
+            temp_dir: None,
+            buffer: HashMap::new(),
+            buffer_bytes: 0,
+            executor_id: None,
         };
-        let mut leaves = Vec::new();
-        flatten_2d(geom, &mut leaves);
-        assert!(!leaves.is_empty());
-        assert!(leaves.iter().all(|l| leaf_elevation(l) == Some(5.0)));
+        let euclidean = CoordinateFrame::Euclidean;
+        let crs = CoordinateFrame::Crs(reearth_flow_geometry::coordinate::EpsgCode::new(6677));
 
-        let _ = std::fs::remove_dir_all(&dir);
+        assert!(overlayer.admit_crs(0, &euclidean));
+        assert!(overlayer.admit_crs(0, &euclidean));
+        assert!(!overlayer.admit_crs(0, &crs));
+        // A different group is free to fix a different frame.
+        assert!(overlayer.admit_crs(1, &crs));
     }
 
     #[test]
-    fn pieces_of_parents_at_differing_elevations_stay_planar() {
+    fn intake_rejects_an_elevated_polygon() {
+        assert!(intake(&square_at([0.0, 0.0], [2.0, 2.0], 5.0)).is_none());
+    }
+
+    #[test]
+    fn intake_rejects_a_geometry_whose_members_are_partly_elevated() {
+        let Geometry::Euclidean2D(planar) = square([0.0, 0.0], [1.0, 1.0]) else {
+            unreachable!();
+        };
+        let Geometry::Euclidean2D(elevated) = square_at([2.0, 2.0], [3.0, 3.0], 5.0) else {
+            unreachable!();
+        };
+        let geometry = Geometry::Euclidean2D(Euclidean2DGeometry::Collection(Collection2D::new([
+            planar, elevated,
+        ])));
+        assert!(intake(&geometry).is_none());
+    }
+
+    #[test]
+    fn intake_rejects_an_elevated_closed_line_string() {
+        let line = LineString2D::from_coords_at_elevation(
+            CoordinateFrame::Euclidean,
+            square_ring([0.0, 0.0], [2.0, 2.0]),
+            5.0,
+        );
+        let geometry = Geometry::Euclidean2D(Euclidean2DGeometry::LineString(line));
+        assert!(intake(&geometry).is_none());
+    }
+
+    #[test]
+    fn pieces_of_planar_parents_stay_planar() {
         let features = vec![
-            Feature::from(square_at([0.0, 0.0], [2.0, 2.0], 5.0)),
-            Feature::from(square_at([1.0, 1.0], [3.0, 3.0], 7.0)),
+            Feature::from(square([0.0, 0.0], [2.0, 2.0])),
+            Feature::from(square([1.0, 1.0], [3.0, 3.0])),
         ];
         let (dir, disk_feats) = setup_group(&features);
-        let mut shaper = OutputShaper::new(&disk_feats);
+        let mut shaper = OutputShaper;
 
         let area_0 = read_working_area(&disk_feats, 0).unwrap();
         let area_1 = read_working_area(&disk_feats, 1).unwrap();
         let piece = area_intersection(&area_0, &area_1).unwrap();
 
         let mut feature = Feature::new_with_attributes(IndexMap::new());
-        shaper.apply(&mut feature, piece, &[0, 1]);
+        shaper.apply(&mut feature, piece);
         let Geometry::Euclidean2D(geom) = feature.geometry.as_ref() else {
             panic!("expected a 2D geometry");
         };

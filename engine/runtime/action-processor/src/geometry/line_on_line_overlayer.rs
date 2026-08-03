@@ -61,7 +61,10 @@ impl ProcessorFactory for LineOnLineOverlayerFactory {
     }
 
     fn description(&self) -> &str {
-        "Intersection points are turned into point features that can contain the merged list of attributes of the original intersected lines."
+        "Splits lines where they cross and turns each intersection into a point feature carrying \
+         the merged attributes of the lines that meet there. Inputs must be flat 2D geometries \
+         sharing one coordinate frame; place a Two Dimension Forcer or a Coordinate Frame \
+         Reprojector upstream to flatten or unify them."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -398,8 +401,7 @@ impl Processor for LineOnLineOverlayer {
 #[cfg(not(feature = "new-geometry"))]
 type SourceLine = LineString2D<f64>;
 
-/// The polyline value carried through the overlay: its coordinates, frame, and
-/// the elevation it lies at.
+/// The polyline value carried through the overlay: its coordinates and frame.
 #[cfg(feature = "new-geometry")]
 type SourceLine = Polyline;
 
@@ -424,8 +426,6 @@ struct Polyline {
     frame: CoordinateFrame,
     /// The vertices, at least two.
     coords: Vec<[f64; 2]>,
-    /// The elevation the whole polyline lies at. `None` = pure 2D.
-    elevation: Option<f64>,
 }
 
 /// Accept an incoming geometry into the overlay: any 2D geometry with at
@@ -446,15 +446,21 @@ fn intake(geometry: &Geometry) -> Option<Vec<[f64; 4]>> {
     Some(line_strings.iter().map(aabb_of_line_string).collect())
 }
 
-/// Accept an incoming geometry into the overlay: a 2D geometry whose line
+/// Accept an incoming geometry into the overlay: a planar geometry whose line
 /// strings and polygon exteriors yield at least one polyline, all in one
 /// coordinate frame. Returns the bounding box of each polyline and the frame,
 /// or `None` when the feature must be rejected.
+///
+/// The overlay reasons about the plane alone, so a leaf placed at an elevation
+/// is refused rather than crossed with one at a different height.
 #[cfg(feature = "new-geometry")]
 fn intake(geometry: &Geometry) -> Option<(Vec<[f64; 4]>, CoordinateFrame)> {
     let Geometry::Euclidean2D(geom_2d) = geometry else {
         return None;
     };
+    if carries_elevation(geom_2d) {
+        return None;
+    }
     let polylines = source_lines_2d(geom_2d);
     let frame = polylines.first()?.frame.clone();
     if polylines.iter().any(|pl| pl.frame != frame) {
@@ -490,16 +496,28 @@ fn source_lines_2d(geom: &Euclidean2DGeometry) -> Vec<Polyline> {
             Leaf2D::Line(line) if line.coords().len() >= 2 => Some(Polyline {
                 frame: line.frame().clone(),
                 coords: line.coords().to_vec(),
-                elevation: line.elevation(),
             }),
             Leaf2D::Polygon(polygon) if polygon.exterior().len() >= 2 => Some(Polyline {
                 frame: polygon.frame().clone(),
                 coords: polygon.exterior().to_vec(),
-                elevation: polygon.elevation(),
             }),
             _ => None,
         })
         .collect()
+}
+
+/// Whether any leaf of the geometry is placed at an elevation.
+#[cfg(feature = "new-geometry")]
+fn carries_elevation(geom: &Euclidean2DGeometry) -> bool {
+    let mut leaves = Vec::new();
+    flatten_2d(geom, &mut leaves);
+    leaves.iter().any(|leaf| match leaf {
+        Leaf2D::Polygon(p) => p.elevation().is_some(),
+        Leaf2D::PolygonMesh(m) => m.elevation().is_some(),
+        Leaf2D::TriangularMesh(m) => m.elevation().is_some(),
+        Leaf2D::Line(l) => l.elevation().is_some(),
+        Leaf2D::Point(_) => false,
+    })
 }
 
 /// The stored feature's polylines, empty when it has no 2D geometry.
@@ -529,16 +547,13 @@ fn line_output_geometry(line: &SourceLine) -> Geometry {
     }
 }
 
-/// A split line as an output feature's geometry, in its source's frame and at
-/// its source's elevation.
+/// A split line as an output feature's geometry, in its source's frame.
 #[cfg(feature = "new-geometry")]
 fn line_output_geometry(line: &SourceLine) -> Geometry {
-    let coords = line.coords.iter().copied();
-    let ls = match line.elevation {
-        Some(z) => LineString2D::from_coords_at_elevation(line.frame.clone(), coords, z),
-        None => LineString2D::from_coords(line.frame.clone(), coords),
-    };
-    Geometry::Euclidean2D(Euclidean2DGeometry::LineString(ls))
+    Geometry::Euclidean2D(Euclidean2DGeometry::LineString(LineString2D::from_coords(
+        line.frame.clone(),
+        line.coords.iter().copied(),
+    )))
 }
 
 /// An intersection point as an output feature's geometry.
@@ -1032,7 +1047,6 @@ fn overlay_entries(
                         Polyline {
                             frame: self_pl.frame.clone(),
                             coords,
-                            elevation: self_pl.elevation,
                         },
                     )
                 })
@@ -1092,7 +1106,7 @@ fn overlay_entries(
         if processed[i] {
             continue;
         }
-        let (feat_i, mut rep) = segments[i].clone();
+        let (feat_i, rep) = segments[i].clone();
         // A single feature may contribute multiple matching segments (e.g. a closed ring
         // whose split produces several arcs that all coincide with the rep segment). Count
         // each feature at most once; extra matching segments dedupe silently.
@@ -1107,10 +1121,6 @@ fn overlay_entries(
             }
             let (feat_j, pl_j) = (segments[j].0, &segments[j].1);
             if coords_match(&rep.coords, &pl_j.coords, tolerance) {
-                // Coinciding sources at differing elevations leave the output planar.
-                if pl_j.elevation != rep.elevation {
-                    rep.elevation = None;
-                }
                 if !included_feats.insert(feat_j) {
                     processed[j] = true;
                     continue;
@@ -1296,6 +1306,9 @@ fn split_polyline(
                 continue;
             }
             let mut next = Vec::with_capacity(pieces.len() + 1);
+            // A candidate that misses any piece is remembered once, not once per
+            // piece: the second pass only asks whether it is there at all.
+            let mut missed_a_piece = false;
             for piece in pieces {
                 let on_line = (dist(piece.0, cand) + dist(cand, piece.1) - dist(piece.0, piece.1))
                     .abs()
@@ -1306,8 +1319,11 @@ fn split_polyline(
                     split_coords.push(cand);
                 } else {
                     next.push(piece);
-                    ignored.push(cand);
+                    missed_a_piece = true;
                 }
+            }
+            if missed_a_piece {
+                ignored.push(cand);
             }
             pieces = next;
         }
@@ -1720,6 +1736,47 @@ mod tests {
         )))
     }
 
+    #[test]
+    fn a_group_admits_only_the_frame_its_first_feature_fixes() {
+        let mut overlayer = LineOnLineOverlayer {
+            group_by: None,
+            tolerance: 0.0,
+            overlaid_lists_attr_name: "overlaidLists".to_string(),
+            group_map: HashMap::new(),
+            group_frame: HashMap::new(),
+            group_count: 0,
+            temp_dir: None,
+            buffer: HashMap::new(),
+            buffer_bytes: 0,
+            executor_id: None,
+        };
+        let euclidean = CoordinateFrame::Euclidean;
+        let crs = CoordinateFrame::Crs(reearth_flow_geometry::coordinate::EpsgCode::new(6677));
+
+        assert!(overlayer.admit_frame(0, &euclidean));
+        assert!(overlayer.admit_frame(0, &euclidean));
+        assert!(!overlayer.admit_frame(0, &crs));
+        // A different group is free to fix a different frame.
+        assert!(overlayer.admit_frame(1, &crs));
+    }
+
+    #[test]
+    fn intake_rejects_a_feature_whose_members_are_in_different_frames() {
+        let in_euclidean =
+            LineString2D::from_coords(CoordinateFrame::Euclidean, [[0.0, 0.0], [1.0, 1.0]]);
+        let in_crs = LineString2D::from_coords(
+            CoordinateFrame::Crs(reearth_flow_geometry::coordinate::EpsgCode::new(6677)),
+            [[0.0, 0.0], [1.0, 1.0]],
+        );
+        let geometry = Geometry::Euclidean2D(Euclidean2DGeometry::Collection(
+            reearth_flow_geometry::collection::Collection2D::new([
+                Euclidean2DGeometry::LineString(in_euclidean),
+                Euclidean2DGeometry::LineString(in_crs),
+            ]),
+        ));
+        assert!(intake(&geometry).is_none());
+    }
+
     fn overlay_lines(lines: Vec<Vec<[f64; 2]>>, tolerance: f64) -> OverlayResult {
         let lss_per_feature: Vec<Vec<Polyline>> = lines
             .into_iter()
@@ -1727,7 +1784,6 @@ mod tests {
                 vec![Polyline {
                     frame: CoordinateFrame::Euclidean,
                     coords,
-                    elevation: None,
                 }]
             })
             .collect();
@@ -1778,8 +1834,19 @@ mod tests {
     }
 
     #[test]
-    fn a_polygon_exterior_participates_and_keeps_its_elevation() {
-        let polygon = Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
+    fn intake_rejects_an_elevated_line_string() {
+        let elevated = LineString2D::from_coords_at_elevation(
+            CoordinateFrame::Euclidean,
+            [[0.0, 0.0], [1.0, 1.0]],
+            5.0,
+        );
+        let geometry = Geometry::Euclidean2D(Euclidean2DGeometry::LineString(elevated));
+        assert!(intake(&geometry).is_none());
+    }
+
+    #[test]
+    fn intake_rejects_an_elevated_polygon_exterior() {
+        let geometry = Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
             Polygon2D::from_rings_at_elevation(
                 CoordinateFrame::Euclidean,
                 vec![[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]],
@@ -1787,9 +1854,20 @@ mod tests {
                 5.0,
             ),
         )));
+        assert!(intake(&geometry).is_none());
+    }
+
+    #[test]
+    fn a_polygon_exterior_participates_in_the_overlay() {
+        let polygon = Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
+            Polygon2D::from_rings(
+                CoordinateFrame::Euclidean,
+                vec![[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]],
+                Vec::<Vec<[f64; 2]>>::new(),
+            ),
+        )));
         let ring = feature_source_lines(&Feature::from(polygon));
         assert_eq!(ring.len(), 1);
-        assert_eq!(ring[0].elevation, Some(5.0));
 
         let crossing = feature_source_lines(&Feature::from(line(vec![[-1.0, 2.0], [5.0, 2.0]])));
         let lss_per_feature = vec![ring, crossing];
@@ -1806,13 +1884,6 @@ mod tests {
 
         // The crossing line pierces the ring's left and right edges.
         assert_eq!(result.split_coords.len(), 2);
-        for meta in &result.line_strings_with_metadata {
-            let expected = match meta.source_feature_idxs[0] {
-                0 => Some(5.0),
-                _ => None,
-            };
-            assert_eq!(meta.line_string.elevation, expected);
-        }
     }
 
     #[test]
