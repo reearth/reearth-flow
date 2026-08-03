@@ -1,6 +1,11 @@
 import { useQuery, useQueryClient, QueryClient } from "@tanstack/react-query";
 import { useEffect, useMemo, useRef, useState } from "react";
 
+import {
+  describeGeometry,
+  isNextFormat,
+  releaseOwner,
+} from "@flow/lib/intermediateData";
 import { streamDecompressZstdJsonl } from "@flow/utils/compression";
 import { intermediateDataTransform } from "@flow/utils/jsonl/transformIntermediateData";
 import { streamJsonl } from "@flow/utils/streaming";
@@ -14,12 +19,7 @@ function isCompressedUrl(url: string): boolean {
   return lowerUrl.endsWith(".zst");
 }
 
-type GeometryType =
-  | "FlowGeometry2D"
-  | "FlowGeometry3D"
-  | "CityGmlGeometry"
-  | "Unknown"
-  | null;
+type GeometryType = string | null;
 
 type VisualizerType = "2d-map" | "3d-map" | "3d-model" | null;
 
@@ -33,6 +33,14 @@ type UseStreamingDebugRunQueryOptions = {
 };
 
 function detectGeometryType(feature: any): GeometryType {
+  // New format: the geometry's own key is its type, so there is nothing to
+  // infer — read the label the engine's schema gives it.
+  if (isNextFormat(feature)) {
+    const described = describeGeometry(feature.geometry);
+    if (described.kind === "none") return null;
+    return described.label || described.variant || "Unknown";
+  }
+
   const geometryValue = feature?.geometry?.value;
 
   if (!geometryValue) return null;
@@ -52,6 +60,20 @@ function detectGeometryType(feature: any): GeometryType {
   return "Unknown";
 }
 
+/**
+ * Which viewer, if any, can draw new-format geometry.
+ *
+ * Only 2D, and only the 2D map: the transform turns 2D into GeoJSON, while 3D
+ * becomes a summary because the engine renders 3D itself into a glb or a
+ * tileset. Claiming a 3D viewer here would open an empty globe.
+ */
+function nextVisualizerType(features: any[]): VisualizerType {
+  const twoDimensional = features.some(
+    (feature) => describeGeometry(feature?.geometry).kind === "2d",
+  );
+  return twoDimensional ? "2d-map" : null;
+}
+
 function analyzeDataType(features: any[]): {
   geometryType: GeometryType;
   visualizerType: VisualizerType;
@@ -61,6 +83,16 @@ function analyzeDataType(features: any[]): {
 
   // Check first few features to determine predominant type
   const sampleSize = Math.min(10, features.length);
+  const sample = features.slice(0, sampleSize);
+
+  if (sample.some(isNextFormat)) {
+    const labels = sample.map(detectGeometryType).filter(Boolean);
+    return {
+      geometryType: labels.length ? (labels[0] as GeometryType) : null,
+      visualizerType: nextVisualizerType(sample),
+    };
+  }
+
   const typeCounts: Record<string, number> = {};
   let hasObjGltfSource = false;
 
@@ -141,6 +173,10 @@ function manageCacheSize(queryClient: QueryClient) {
 
     queriesToRemove.forEach(({ query }) => {
       console.log("Removing old streaming cache for:", query.queryKey[1]);
+      // The features go with the query, but their images are held outside the
+      // React tree and have to be released explicitly.
+      const dataUrl = query.queryKey[1];
+      if (typeof dataUrl === "string") releaseOwner(dataUrl);
       queryClient.removeQueries({ queryKey: query.queryKey });
     });
   }
@@ -250,9 +286,16 @@ export const useStreamingDebugRunQuery = (
               const remainingToAdd = displayLimit - streamData.length;
               const dataToAdd = result.data.slice(0, remainingToAdd);
 
-              const transformedData = dataToAdd.map((feature) => {
+              // `streamData.length` is the feature's own line number: features
+              // are appended in file order and nothing before the display
+              // limit is skipped.
+              const firstRow = streamData.length;
+              const transformedData = dataToAdd.map((feature, offset) => {
                 try {
-                  return intermediateDataTransform(feature);
+                  return intermediateDataTransform(feature, {
+                    owner: dataUrl,
+                    rowIndex: firstRow + offset,
+                  });
                 } catch (error) {
                   console.warn("Failed to transform feature:", error, feature);
                   return feature;
@@ -312,9 +355,13 @@ export const useStreamingDebugRunQuery = (
               const remainingToAdd = displayLimit - streamData.length;
               const dataToAdd = result.data.slice(0, remainingToAdd);
 
-              const transformedData = dataToAdd.map((feature) => {
+              const firstRow = streamData.length;
+              const transformedData = dataToAdd.map((feature, offset) => {
                 try {
-                  return intermediateDataTransform(feature);
+                  return intermediateDataTransform(feature, {
+                    owner: dataUrl,
+                    rowIndex: firstRow + offset,
+                  });
                 } catch (error) {
                   console.warn(
                     "Failed to transform streaming feature:",

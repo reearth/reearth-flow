@@ -2,14 +2,7 @@ import { ColumnDef } from "@tanstack/react-table";
 import { useCallback, useEffect, useState } from "react";
 
 import { SupportedDataTypes } from "@flow/hooks/useStreamingDebugRunQuery";
-
-// Fully serialize a value to a string for use as the accessor value.
-// Keeping the full string ensures global filtering can match any part of the data.
-function serializeValue(value: any): string {
-  if (value === undefined) return "-";
-  if (value === null) return "null";
-  return JSON.stringify(value);
-}
+import { safeSerialize } from "@flow/utils/valueSummary";
 
 // Truncate a pre-serialized string for display only, to prevent large payloads
 // from degrading render performance.
@@ -85,20 +78,27 @@ export default ({
           ),
         ];
 
-        // Store fully serialized strings as accessor values so global filtering
-        // can match any part of the data. Truncation happens only in the cell renderer.
+        // Store serialized strings as accessor values so global filtering can
+        // match any part of the data; values too large to serialize are stored
+        // as a summary instead. Truncation happens only in the cell renderer.
         const tableData = features.map((feature: any, index: number) => ({
           id: JSON.stringify(feature.id || index),
+          // Underscored keys are carried for the details panel, which filters
+          // them out of the fields it lists. `_rowIndex` is the line this row
+          // came from, which is how the engine's view renderer selects a
+          // feature (`Selection::Row`).
+          _rowIndex: feature.rowIndex ?? index,
+          _appearance: feature.appearance,
           ...Object.fromEntries(
             Array.from(allGeometry).map((geometry) => [
               `geometry${geometry}`,
-              serializeValue(feature.geometry?.[geometry] ?? null),
+              safeSerialize(feature.geometry?.[geometry] ?? null),
             ]),
           ),
           ...Object.fromEntries(
             Array.from(allProps).map((prop) => [
               `attributes${prop}`,
-              serializeValue(feature.properties?.[prop] ?? null),
+              safeSerialize(feature.properties?.[prop] ?? null),
             ]),
           ),
         }));

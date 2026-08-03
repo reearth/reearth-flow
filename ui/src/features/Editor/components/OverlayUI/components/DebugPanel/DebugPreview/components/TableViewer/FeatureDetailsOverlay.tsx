@@ -22,7 +22,14 @@ import {
   Input,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
+import type { AppearanceSummary } from "@flow/lib/intermediateData";
+import {
+  isLargeValue,
+  summarizeValue,
+  toSearchableString,
+} from "@flow/utils/valueSummary";
 
+import AppearanceSection from "./AppearanceSection";
 import RawJsonViewer from "./RawJsonViewer";
 
 type Props = {
@@ -32,124 +39,6 @@ type Props = {
   detectedGeometryType?: string | null;
 };
 
-/** Threshold for considering a value "large" — avoids JSON.stringify on huge objects */
-const LARGE_VALUE_THRESHOLD = 100;
-
-/** How many array items to show in the inline preview */
-const ARRAY_PREVIEW_ITEMS = 1;
-
-/** Maximum nesting depth for stringifyItem before truncating */
-const MAX_STRINGIFY_DEPTH = 3;
-
-/** Maximum array items to render at any depth in stringifyItem */
-const MAX_ARRAY_ITEMS = 3;
-
-/** Resolve a value that might be a JSON string into its parsed form */
-function resolveValue(value: unknown): unknown {
-  if (typeof value === "string") {
-    try {
-      const parsed = JSON.parse(value);
-      if (typeof parsed === "object" && parsed !== null) return parsed;
-    } catch {
-      // Not valid JSON
-    }
-  }
-  return value;
-}
-
-/** Estimate the number of leaf nodes in a value without serializing it */
-function estimateSize(value: unknown): number {
-  const resolved = resolveValue(value);
-  if (resolved == null || typeof resolved !== "object") return 1;
-  if (Array.isArray(resolved)) {
-    // For large arrays, just use length — don't recurse into every element
-    if (resolved.length > LARGE_VALUE_THRESHOLD) return resolved.length;
-    let sum = 0;
-    for (const item of resolved) {
-      sum += estimateSize(item);
-      if (sum > LARGE_VALUE_THRESHOLD) return sum;
-    }
-    return sum;
-  }
-  const entries = Object.entries(resolved);
-  if (entries.length > LARGE_VALUE_THRESHOLD) return entries.length;
-  let sum = 0;
-  for (const [, v] of entries) {
-    sum += estimateSize(v);
-    if (sum > LARGE_VALUE_THRESHOLD) return sum;
-  }
-  return sum;
-}
-
-/** Stringify a value with depth limiting (used for representative items in previews).
- *  Beyond maxDepth, nested structures are shown as `Array(N)` / `Object(N keys)`. */
-function stringifyItem(item: unknown, indent: string, depth = 0): string {
-  if (item == null) return "null";
-  if (typeof item !== "object") {
-    return typeof item === "string" ? JSON.stringify(item) : String(item);
-  }
-  if (Array.isArray(item)) {
-    if (item.length === 0) return "[]";
-    if (depth >= MAX_STRINGIFY_DEPTH) return `Array(${item.length})`;
-    const shown = item.slice(0, MAX_ARRAY_ITEMS);
-    const inner = shown
-      .map((el) => `${indent}  ${stringifyItem(el, indent + "  ", depth + 1)}`)
-      .join(",\n");
-    const remaining = item.length - MAX_ARRAY_ITEMS;
-    const suffix = remaining > 0 ? `,\n${indent}  ... (${remaining} more)` : "";
-    return `[\n${inner}${suffix}\n${indent}]`;
-  }
-  const entries = Object.entries(item);
-  if (entries.length === 0) return "{}";
-  if (depth >= MAX_STRINGIFY_DEPTH) return `Object(${entries.length} keys)`;
-  const inner = entries
-    .map(
-      ([k, v]) =>
-        `${indent}  ${k}: ${stringifyItem(v, indent + "  ", depth + 1)}`,
-    )
-    .join(",\n");
-  return `{\n${inner}\n${indent}}`;
-}
-
-function toSearchableString(value: unknown): string {
-  if (typeof value !== "object" || value === null) return String(value);
-  if (estimateSize(value) > LARGE_VALUE_THRESHOLD) return summarizeValue(value);
-  try {
-    return JSON.stringify(value);
-  } catch {
-    return String(value);
-  }
-}
-
-/** Build a lightweight summary string for a large value without JSON.stringify */
-function summarizeValue(value: unknown): string {
-  const resolved = resolveValue(value);
-  if (Array.isArray(resolved)) {
-    const len = resolved.length;
-    if (len === 0) return "[] (empty array)";
-    // Show first item fully expanded so the user sees the complete schema
-    const preview = resolved
-      .slice(0, ARRAY_PREVIEW_ITEMS)
-      .map((item) => stringifyItem(item, "  "))
-      .join(",\n  ");
-    const remaining = len - ARRAY_PREVIEW_ITEMS;
-    const suffix = remaining > 0 ? `,\n  ... (${remaining} more items)` : "";
-    return `Array(${len}) [\n  ${preview}${suffix}\n]`;
-  }
-  if (typeof resolved === "object" && resolved !== null) {
-    const entries = Object.entries(resolved);
-    if (entries.length === 0) return "{} (empty object)";
-    const preview = entries
-      .slice(0, 8)
-      .map(([k, v]) => `  ${k}: ${stringifyItem(v, "  ")}`)
-      .join(",\n");
-    const remaining = entries.length - 8;
-    const suffix = remaining > 0 ? `,\n  ... (${remaining} more keys)` : "";
-    return `Object(${entries.length} keys) {\n${preview}${suffix}\n}`;
-  }
-  return String(resolved);
-}
-
 const FeatureDetailsOverlay: React.FC<Props> = ({
   feature,
   onClose,
@@ -157,6 +46,10 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
 }) => {
   const t = useT();
   const [searchTerm, setSearchTerm] = useState<string>("");
+
+  // Carried on the row under an underscored key, so it is not listed among the
+  // feature's own fields; see useDataColumnizer.
+  const appearance: AppearanceSummary | undefined = feature?._appearance;
 
   // Process feature properties for display
   const processedFeature = useMemo(() => {
@@ -311,9 +204,6 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
 
     return null;
   };
-
-  const isLargeValue = (value: unknown): boolean =>
-    estimateSize(value) > LARGE_VALUE_THRESHOLD;
 
   const renderEntry = (
     label: string,
@@ -472,6 +362,10 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
                 })}
               </div>
             </div>
+          )}
+          {/* Appearance */}
+          {appearance && !searchTerm && (
+            <AppearanceSection appearance={appearance} />
           )}
           {/* Attributes */}
           {Object.keys(filteredFeature?.attributes || {}).length > 0 && (
