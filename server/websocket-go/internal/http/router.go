@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"strconv"
 	"time"
+
+	"github.com/reearth/ygo/persistence"
 )
 
 // keepUpdates is the update-object retention count for the cleanup routes.
@@ -55,6 +57,13 @@ type DocStore interface {
 	Delete(ctx context.Context, room string) error
 	// CleanupAll runs Compact(keep) across every known document.
 	CleanupAll(ctx context.Context, keep int) (int, error)
+	// ListSnapshots returns the room's labelled snapshots newest-first. A store
+	// without snapshot support returns an empty slice, not an error.
+	ListSnapshots(ctx context.Context, room string) ([]SnapshotItem, error)
+	// GetSnapshotState returns one snapshot's V1 state. persistence.ErrSnapshotNotFound ⇒ 404.
+	GetSnapshotState(ctx context.Context, room string, id int64) ([]byte, error)
+	// SaveSnapshot captures the room's current state as a new labelled snapshot.
+	SaveSnapshot(ctx context.Context, room, label string) (int64, error)
 }
 
 // Signaler toggles metadata.rollbackInProgress on a live room so UI clients hide
@@ -94,6 +103,9 @@ func NewRouter(d Deps) http.Handler {
 	mux.HandleFunc("POST /api/document/{id}/{source}/copy", r.copyDocument)
 	mux.HandleFunc("POST /api/document/{id}/import", r.importDocument)
 	mux.HandleFunc("POST /api/document/{id}/cleanup", r.cleanupUpdates)
+	mux.HandleFunc("GET /api/document/{id}/snapshots", r.getSnapshots)
+	mux.HandleFunc("POST /api/document/{id}/snapshots", r.postSnapshot)
+	mux.HandleFunc("GET /api/document/{id}/snapshots/{sid}", r.getSnapshotState)
 	mux.HandleFunc("DELETE /api/document/{id}", r.deleteDocument)
 	mux.HandleFunc("POST /api/admin/cleanup", r.adminCleanup)
 	return mux
@@ -319,6 +331,58 @@ func (r *router) cleanupUpdates(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, map[string]any{"status": "ok", "deleted": deleted})
+}
+
+// getSnapshots lists the room's labelled snapshots, newest first. An unknown
+// or empty room yields an empty JSON array, not an error.
+func (r *router) getSnapshots(w http.ResponseWriter, req *http.Request) {
+	id := req.PathValue("id")
+	items, err := r.store.ListSnapshots(req.Context(), id)
+	if err != nil {
+		r.fail(w, "list snapshots failed", err, "doc", id)
+		return
+	}
+	if items == nil {
+		// Guard the wire contract regardless of the DocStore impl: an unknown
+		// or snapshot-less room must render as `[]`, never JSON null.
+		items = []SnapshotItem{}
+	}
+	writeJSON(w, http.StatusOK, items)
+}
+
+// postSnapshot captures the room's current state as a labelled snapshot.
+func (r *router) postSnapshot(w http.ResponseWriter, req *http.Request) {
+	id := req.PathValue("id")
+	var body SaveSnapshotRequest
+	if req.Body != nil {
+		_ = json.NewDecoder(req.Body).Decode(&body) // label is optional
+	}
+	sid, err := r.store.SaveSnapshot(req.Context(), id, body.Label)
+	if err != nil {
+		r.fail(w, "save snapshot failed", err, "doc", id)
+		return
+	}
+	writeJSON(w, http.StatusOK, SnapshotItem{ID: sid, Label: body.Label})
+}
+
+// getSnapshotState returns one snapshot's V1 state for preview or restore.
+func (r *router) getSnapshotState(w http.ResponseWriter, req *http.Request) {
+	id := req.PathValue("id")
+	sid, err := strconv.ParseInt(req.PathValue("sid"), 10, 64)
+	if err != nil {
+		writeErr(w, http.StatusBadRequest, "invalid snapshot id")
+		return
+	}
+	state, err := r.store.GetSnapshotState(req.Context(), id, sid)
+	if errors.Is(err, persistence.ErrSnapshotNotFound) {
+		writeErr(w, http.StatusNotFound, "snapshot not found")
+		return
+	}
+	if err != nil {
+		r.fail(w, "get snapshot state failed", err, "doc", id)
+		return
+	}
+	writeJSON(w, http.StatusOK, DocumentResponse{ID: id, Updates: state})
 }
 
 func (r *router) deleteDocument(w http.ResponseWriter, req *http.Request) {

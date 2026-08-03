@@ -12,6 +12,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/reearth/ygo/persistence"
 )
 
 // fakeStore implements DocStore for router tests, recording calls.
@@ -34,6 +36,18 @@ type fakeStore struct {
 	notFound              bool
 	loadErr               error
 	onPrune               func()
+	// snapshots is returned verbatim by ListSnapshots.
+	snapshots []SnapshotItem
+	// snapshotErr, if set, is returned by ListSnapshots.
+	snapshotErr error
+	// snapshotState maps snapshot id -> state; a missing id yields ErrSnapshotNotFound.
+	snapshotState map[int64][]byte
+	// saveSnapshotID/saveSnapshotErr control SaveSnapshot's return value.
+	saveSnapshotID  int64
+	saveSnapshotErr error
+	// savedRoom/savedLabel record the last SaveSnapshot call's arguments.
+	savedRoom  string
+	savedLabel string
 }
 
 func (f *fakeStore) Load(ctx context.Context, room string) (LoadResult, error) {
@@ -84,6 +98,24 @@ func (f *fakeStore) CleanupAll(ctx context.Context, keep int) (int, error) {
 	f.cleanupAll = true
 	f.cleanupKeep = keep
 	return 0, nil
+}
+func (f *fakeStore) ListSnapshots(ctx context.Context, room string) ([]SnapshotItem, error) {
+	if f.snapshotErr != nil {
+		return nil, f.snapshotErr
+	}
+	return f.snapshots, nil
+}
+func (f *fakeStore) GetSnapshotState(ctx context.Context, room string, id int64) ([]byte, error) {
+	b, ok := f.snapshotState[id]
+	if !ok {
+		return nil, persistence.ErrSnapshotNotFound
+	}
+	return b, nil
+}
+func (f *fakeStore) SaveSnapshot(ctx context.Context, room, label string) (int64, error) {
+	f.savedRoom = room
+	f.savedLabel = label
+	return f.saveSnapshotID, f.saveSnapshotErr
 }
 
 func newTestRouter(store DocStore) http.Handler {

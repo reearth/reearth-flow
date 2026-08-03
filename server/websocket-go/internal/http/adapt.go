@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"log/slog"
+	"time"
 
 	"github.com/reearth/ygo/persistence"
 )
@@ -187,4 +188,60 @@ func (s *StoreAdapter) cleanupRooms(ctx context.Context) ([]string, error) {
 		return nil, nil
 	}
 	return s.listRooms(), nil
+}
+
+// ListSnapshots maps ygo SnapshotInfo onto the wire DTO. A store that does not
+// implement persistence.SnapshotStore yields an empty list rather than an
+// error, so callers can render an empty history instead of failing.
+func (s *StoreAdapter) ListSnapshots(ctx context.Context, room string) ([]SnapshotItem, error) {
+	ss, ok := s.p.(persistence.SnapshotStore)
+	if !ok {
+		return []SnapshotItem{}, nil
+	}
+	snaps, err := ss.ListSnapshots(ctx, room)
+	if err != nil {
+		return nil, err
+	}
+	out := make([]SnapshotItem, 0, len(snaps))
+	for _, sn := range snaps {
+		out = append(out, SnapshotItem{
+			ID:        sn.ID,
+			Label:     sn.Label,
+			Timestamp: sn.CreatedAt.Format(time.RFC3339),
+			Size:      sn.Size,
+		})
+	}
+	return out, nil
+}
+
+// GetSnapshotState returns one snapshot's V1 state.
+func (s *StoreAdapter) GetSnapshotState(ctx context.Context, room string, id int64) ([]byte, error) {
+	ss, ok := s.p.(persistence.SnapshotStore)
+	if !ok {
+		return nil, persistence.ErrSnapshotNotFound
+	}
+	return ss.GetSnapshotState(ctx, room, id)
+}
+
+// SaveSnapshot captures the room's current state as a labelled snapshot. It
+// flushes the live room first (when a flushFn is configured) so the snapshot
+// reflects in-memory edits, not just what was last durably persisted.
+func (s *StoreAdapter) SaveSnapshot(ctx context.Context, room, label string) (int64, error) {
+	ss, ok := s.p.(persistence.SnapshotStore)
+	if !ok {
+		return 0, persistence.ErrSnapshotsUnsupported
+	}
+	if s.flushFn != nil {
+		if err := s.flushFn(ctx, room); err != nil {
+			return 0, err
+		}
+	}
+	lr, err := s.p.Load(ctx, room)
+	if err != nil {
+		return 0, err
+	}
+	if len(lr.Update) == 0 {
+		return 0, nil
+	}
+	return ss.SaveSnapshot(ctx, room, label, lr.Update)
 }

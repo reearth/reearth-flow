@@ -79,3 +79,16 @@ type ImportRequest struct {
 type errorResponse struct {
 	Error string `json:"error"`
 }
+
+// SnapshotItem is one labelled snapshot in the version history.
+type SnapshotItem struct {
+	ID        int64  `json:"id"`
+	Label     string `json:"label"`
+	Timestamp string `json:"timestamp"`
+	Size      int64  `json:"size"`
+}
+
+// SaveSnapshotRequest is the POST body for creating a named snapshot.
+type SaveSnapshotRequest struct {
+	Label string `json:"label"`
+}
