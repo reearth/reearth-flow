@@ -58,74 +58,23 @@ func startDocumentPermissionServer(t *testing.T, allowPermission bool) (*httpexp
 	return exp, repos.Project
 }
 
-// documentOps is every operation document.graphql exposes: three queries
-// (latestProjectSnapshot, projectHistory, projectSnapshot) and five mutations
-// (rollbackProject, saveSnapshot, previewSnapshot, importProject, copyProject).
-// Table-driven so a new operation added without authorization shows up as a
-// missing row rather than passing unnoticed.
-var documentOps = []struct {
-	// vars first: keeping the pointer-bearing field at the front shortens the
-	// range the GC has to scan (govet fieldalignment).
-	//
-	// It takes a second project id so copyProject, the one operation addressing
-	// two projects, can be covered by the same table rather than sitting outside
-	// it where a coverage gap is easy to miss.
-	vars  func(projectID, otherProjectID string) map[string]any
-	name  string
-	query string
-}{
-	{
-		name:  "latestProjectSnapshot",
-		query: `query($projectId: ID!) { latestProjectSnapshot(projectId: $projectId) { version } }`,
-		vars:  func(p, _ string) map[string]any { return map[string]any{"projectId": p} },
-	},
-	{
-		name:  "projectHistory",
-		query: `query($projectId: ID!) { projectHistory(projectId: $projectId) { version } }`,
-		vars:  func(p, _ string) map[string]any { return map[string]any{"projectId": p} },
-	},
-	{
-		name:  "projectSnapshot",
-		query: `query($projectId: ID!, $version: Int!) { projectSnapshot(projectId: $projectId, version: $version) { version } }`,
-		vars: func(p, _ string) map[string]any {
-			return map[string]any{"projectId": p, "version": 1}
-		},
-	},
-	{
-		name:  "rollbackProject",
-		query: `mutation($projectId: ID!, $version: Int!) { rollbackProject(projectId: $projectId, version: $version) { version } }`,
-		vars: func(p, _ string) map[string]any {
-			return map[string]any{"projectId": p, "version": 1}
-		},
-	},
-	{
-		name:  "saveSnapshot",
-		query: `mutation($projectId: ID!) { saveSnapshot(projectId: $projectId) }`,
-		vars:  func(p, _ string) map[string]any { return map[string]any{"projectId": p} },
-	},
-	{
-		name:  "previewSnapshot",
-		query: `mutation($projectId: ID!, $version: Int!) { previewSnapshot(projectId: $projectId, version: $version) { version } }`,
-		vars: func(p, _ string) map[string]any {
-			return map[string]any{"projectId": p, "version": 1}
-		},
-	},
-	{
-		name:  "importProject",
-		query: `mutation($projectId: ID!, $data: Bytes!) { importProject(projectId: $projectId, data: $data) }`,
-		vars: func(p, _ string) map[string]any {
-			// Bytes is a number array (Uint8Array), NOT base64: a string here fails
-			// scalar coercion before the resolver runs, so the row would assert nothing.
-			return map[string]any{"projectId": p, "data": []int{1, 2, 3}}
-		},
-	},
-	{
-		name:  "copyProject",
-		query: `mutation($projectId: ID!, $source: ID!) { copyProject(projectId: $projectId, source: $source) }`,
-		vars: func(p, other string) map[string]any {
-			return map[string]any{"projectId": p, "source": other}
-		},
-	},
+// assertDenied posts one operation and requires the SPECIFIC authorization
+// error. "an error occurred" is not enough: with the bare client wired in the
+// request reaches a websocket server that is not running and fails with
+// `server returned non-200 status: 404`, which passes that weaker check.
+func assertDenied(t *testing.T, e *httpexpect.Expect, name, query string, vars map[string]any) {
+	t.Helper()
+	res := e.POST("/api/graphql").
+		WithHeader("Origin", "https://example.com").
+		WithHeader("authorization", "Bearer test").
+		WithHeader("Content-Type", "application/json").
+		WithJSON(map[string]any{"query": query, "variables": vars}).
+		Expect().Status(http.StatusOK).JSON().Object()
+
+	res.ContainsKey("errors")
+	msg := res.Value("errors").Array().Value(0).Object().Value("message").String()
+	msg.Contains("operation denied")
+	msg.NotContains("server returned")
 }
 
 // TestDocumentOperations_DeniedWithoutPermission: with the permission checker
@@ -137,39 +86,40 @@ var documentOps = []struct {
 func TestDocumentOperations_DeniedWithoutPermission(t *testing.T) {
 	e, projectRepo := startDocumentPermissionServer(t, false)
 
-	// Two projects in DIFFERENT workspaces: copyProject addresses both, and using
-	// one project for each end would let a destination-only check look correct.
+	// Two projects in DIFFERENT workspaces: copyProject addresses both, and one
+	// project for each end would let a destination-only check look correct.
 	prj := project.New().NewID().Workspace(project.NewWorkspaceID()).MustBuild()
 	require.NoError(t, projectRepo.Save(context.Background(), prj))
 	other := project.New().NewID().Workspace(project.NewWorkspaceID()).MustBuild()
 	require.NoError(t, projectRepo.Save(context.Background(), other))
+	p, o := prj.ID().String(), other.ID().String()
 
-	for _, op := range documentOps {
-		t.Run(op.name, func(t *testing.T) {
-			res := e.POST("/api/graphql").
-				WithHeader("Origin", "https://example.com").
-				WithHeader("authorization", "Bearer test").
-				WithHeader("Content-Type", "application/json").
-				WithJSON(map[string]any{
-					"query":     op.query,
-					"variables": op.vars(prj.ID().String(), other.ID().String()),
-				}).
-				Expect().
-				Status(http.StatusOK).
-				JSON().Object()
-
-			// Assert the SPECIFIC error. "an error occurred" is not enough: with the
-			// bare client wired in, the request reaches a websocket server that is not
-			// running and fails with `server returned non-200 status: 404`, so a test
-			// that only checks for the presence of errors passes under the very bypass
-			// it is meant to catch. (Verified: it does.) Only the message distinguishes
-			// authorization from a transport failure.
-			res.ContainsKey("errors")
-			msg := res.Value("errors").Array().Value(0).Object().Value("message").String()
-			msg.Contains("operation denied")
-			msg.NotContains("server returned")
-		})
-	}
+	assertDenied(t, e, "latestProjectSnapshot",
+		`query($projectId: ID!) { latestProjectSnapshot(projectId: $projectId) { version } }`,
+		map[string]any{"projectId": p})
+	assertDenied(t, e, "projectHistory",
+		`query($projectId: ID!) { projectHistory(projectId: $projectId) { version } }`,
+		map[string]any{"projectId": p})
+	assertDenied(t, e, "projectSnapshot",
+		`query($projectId: ID!, $version: Int!) { projectSnapshot(projectId: $projectId, version: $version) { version } }`,
+		map[string]any{"projectId": p, "version": 1})
+	assertDenied(t, e, "rollbackProject",
+		`mutation($projectId: ID!, $version: Int!) { rollbackProject(projectId: $projectId, version: $version) { version } }`,
+		map[string]any{"projectId": p, "version": 1})
+	assertDenied(t, e, "saveSnapshot",
+		`mutation($projectId: ID!) { saveSnapshot(projectId: $projectId) }`,
+		map[string]any{"projectId": p})
+	assertDenied(t, e, "previewSnapshot",
+		`mutation($projectId: ID!, $version: Int!) { previewSnapshot(projectId: $projectId, version: $version) { version } }`,
+		map[string]any{"projectId": p, "version": 1})
+	// Bytes is a number array (Uint8Array), not base64: a string fails scalar
+	// coercion before the resolver runs, so the case would assert nothing.
+	assertDenied(t, e, "importProject",
+		`mutation($projectId: ID!, $data: Bytes!) { importProject(projectId: $projectId, data: $data) }`,
+		map[string]any{"projectId": p, "data": []int{1, 2, 3}})
+	assertDenied(t, e, "copyProject",
+		`mutation($projectId: ID!, $source: ID!) { copyProject(projectId: $projectId, source: $source) }`,
+		map[string]any{"projectId": p, "source": o})
 }
 
 // TestDocumentOperations_UnknownProjectIsDenied: authorization resolves the

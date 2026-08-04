@@ -12,12 +12,22 @@ import (
 	"github.com/reearth/reearthx/rerror"
 )
 
+<<<<<<< HEAD
+=======
+// Websocket authorizes the document operations against the owning workspace of
+// the project they address, then delegates to the client. Internal callers stay
+// on the raw client: ProjectDeleter already checks ActionDelete.
+>>>>>>> 8061c0ea6 (refactor(api): trim comments, replace table-driven tests with explicit calls)
 type Websocket struct {
 	client            interfaces.WebsocketClient
 	projectRepo       repo.Project
 	permissionChecker gateway.PermissionChecker
 }
 
+<<<<<<< HEAD
+=======
+// NewWebsocket wraps client with workspace authorization.
+>>>>>>> 8061c0ea6 (refactor(api): trim comments, replace table-driven tests with explicit calls)
 func NewWebsocket(client interfaces.WebsocketClient, projectRepo repo.Project, permissionChecker gateway.PermissionChecker) *Websocket {
 	return &Websocket{
 		client:            client,
@@ -26,6 +36,11 @@ func NewWebsocket(client interfaces.WebsocketClient, projectRepo repo.Project, p
 	}
 }
 
+<<<<<<< HEAD
+=======
+// authorize checks action against the workspace owning docID's project. Fails
+// closed at every step, so a malformed id cannot skip the check.
+>>>>>>> 8061c0ea6 (refactor(api): trim comments, replace table-driven tests with explicit calls)
 func (i *Websocket) authorize(ctx context.Context, docID string, action string) error {
 	pid, err := id.ProjectIDFrom(docID)
 	if err != nil {
@@ -69,6 +84,7 @@ func (i *Websocket) GetHistoryMetadata(ctx context.Context, docID string) ([]*ws
 	return i.client.GetHistoryMetadata(ctx, docID)
 }
 
+<<<<<<< HEAD
 func (i *Websocket) GetNamedSnapshots(ctx context.Context, docID string) ([]*ws.SnapshotMetadata, error) {
 	if err := i.authorize(ctx, docID, rbac.ActionRead); err != nil {
 		return nil, err
@@ -84,6 +100,10 @@ func (i *Websocket) SaveNamedSnapshot(ctx context.Context, docID, label string) 
 }
 
 // Rollback prunes every update above the target clock.
+=======
+// Rollback prunes every update above the target clock, so an unauthorized call
+// would permanently truncate history.
+>>>>>>> 8061c0ea6 (refactor(api): trim comments, replace table-driven tests with explicit calls)
 func (i *Websocket) Rollback(ctx context.Context, docID string, version int) (*ws.Document, error) {
 	if err := i.authorize(ctx, docID, rbac.ActionEdit); err != nil {
 		return nil, err
@@ -98,7 +118,12 @@ func (i *Websocket) FlushToGCS(ctx context.Context, docID string) error {
 	return i.client.FlushToGCS(ctx, docID)
 }
 
+<<<<<<< HEAD
 // CreateSnapshot backs previewSnapshot and does not write, so ActionRead is correct.
+=======
+// CreateSnapshot backs previewSnapshot and does not write despite the name, so
+// ActionRead is correct.
+>>>>>>> 8061c0ea6 (refactor(api): trim comments, replace table-driven tests with explicit calls)
 func (i *Websocket) CreateSnapshot(ctx context.Context, docID string, version int, name string) (*ws.Document, error) {
 	if err := i.authorize(ctx, docID, rbac.ActionRead); err != nil {
 		return nil, err
@@ -106,7 +131,12 @@ func (i *Websocket) CreateSnapshot(ctx context.Context, docID string, version in
 	return i.client.CreateSnapshot(ctx, docID, version, name)
 }
 
+<<<<<<< HEAD
 // CopyDocument needs edit on the destination and read on the source.
+=======
+// CopyDocument needs edit on the destination AND read on the source, or a caller
+// could pull another workspace's document into a project they own.
+>>>>>>> 8061c0ea6 (refactor(api): trim comments, replace table-driven tests with explicit calls)
 func (i *Websocket) CopyDocument(ctx context.Context, docID string, source string) error {
 	if err := i.authorize(ctx, docID, rbac.ActionEdit); err != nil {
 		return err
@@ -131,6 +161,10 @@ func (i *Websocket) DeleteDocument(ctx context.Context, docID string) error {
 	return i.client.DeleteDocument(ctx, docID)
 }
 
+<<<<<<< HEAD
+=======
+// Close is connection lifecycle, so it carries no permission check.
+>>>>>>> 8061c0ea6 (refactor(api): trim comments, replace table-driven tests with explicit calls)
 func (i *Websocket) Close() error {
 	return i.client.Close()
 }

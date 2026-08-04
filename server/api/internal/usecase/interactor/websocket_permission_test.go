@@ -73,95 +73,93 @@ func wsFixture(t *testing.T, allow bool) (*Websocket, *countingWSClient, *record
 	return NewWebsocket(client, projectRepo, rc), client, rc, prj.ID().String(), accountsid.WorkspaceID(wsID)
 }
 
-// wsOps covers every SINGLE-PROJECT operation, with the action each must demand.
-// Table-driven so a newly added method without a permission check shows up as a
-// missing row rather than passing silently.
-//
-// Two methods are deliberately outside the table, and both have their own test
-// below — do NOT read this list as the full interface:
-//
-//   - CopyDocument addresses two projects, so it does not fit this signature, and
-//     it authorizes twice (edit on the destination, read on the source). Since
-//     recordingChecker keeps only the last call, a row here would assert
-//     ActionRead and quietly stop checking the destination.
-//     See TestWebsocket_CopyDocumentChecksBothProjects.
-//   - Close is connection lifecycle, not a document operation, and carries no
-//     permission check at all. See TestWebsocket_CloseNeedsNoPermission.
-var wsOps = []struct {
-	// call first: keeping the pointer-bearing fields adjacent shortens the range
-	// the GC has to scan (govet fieldalignment).
-	call   func(context.Context, *Websocket, string) error
-	name   string
-	action string
-}{
-	{name: "GetLatest", action: rbac.ActionRead, call: func(ctx context.Context, i *Websocket, d string) error {
-		_, err := i.GetLatest(ctx, d)
-		return err
-	}},
-	{name: "GetHistory", action: rbac.ActionRead, call: func(ctx context.Context, i *Websocket, d string) error {
-		_, err := i.GetHistory(ctx, d)
-		return err
-	}},
-	{name: "GetHistoryByVersion", action: rbac.ActionRead, call: func(ctx context.Context, i *Websocket, d string) error {
-		_, err := i.GetHistoryByVersion(ctx, d, 1)
-		return err
-	}},
-	{name: "GetHistoryMetadata", action: rbac.ActionRead, call: func(ctx context.Context, i *Websocket, d string) error {
-		_, err := i.GetHistoryMetadata(ctx, d)
-		return err
-	}},
-	{name: "CreateSnapshot", action: rbac.ActionRead, call: func(ctx context.Context, i *Websocket, d string) error {
-		_, err := i.CreateSnapshot(ctx, d, 1, "n")
-		return err
-	}},
-	{name: "Rollback", action: rbac.ActionEdit, call: func(ctx context.Context, i *Websocket, d string) error {
-		_, err := i.Rollback(ctx, d, 1)
-		return err
-	}},
-	{name: "FlushToGCS", action: rbac.ActionEdit, call: func(ctx context.Context, i *Websocket, d string) error {
-		return i.FlushToGCS(ctx, d)
-	}},
-	{name: "ImportDocument", action: rbac.ActionEdit, call: func(ctx context.Context, i *Websocket, d string) error {
-		return i.ImportDocument(ctx, d, []byte("x"))
-	}},
-	{name: "DeleteDocument", action: rbac.ActionDelete, call: func(ctx context.Context, i *Websocket, d string) error {
-		return i.DeleteDocument(ctx, d)
-	}},
+// assertDenied: a denied operation must error AND never reach the client. The
+// call count is the assertion that matters, since an error that still calls
+// through has denied nothing.
+func assertDenied(t *testing.T, name string, call func(context.Context, *Websocket, string) error) {
+	t.Helper()
+	i, client, _, docID, _ := wsFixture(t, false)
+	err := call(context.Background(), i, docID)
+	assert.ErrorIs(t, err, interfaces.ErrOperationDenied, name)
+	assert.Zero(t, client.calls, "denied %s still called the client", name)
 }
 
-// TestWebsocket_DeniedOperationsNeverReachTheClient is the security assertion.
-// Before this interactor existed, Container.Websocket held the bare HTTP client,
-// so any authenticated user could act on any project in any workspace. The worst
-// of those was Rollback: it prunes every update above the target clock, making it
-// a destructive cross-tenant operation.
+// assertChecks: the check must be scoped to the workspace owning the addressed
+// project, with the right action. Without the workspace the checker could
+// approve on membership of any workspace, which is the cross-tenant hole.
+func assertChecks(t *testing.T, name, action string, call func(context.Context, *Websocket, string) error) {
+	t.Helper()
+	i, client, rc, docID, wsID := wsFixture(t, true)
+	require.NoError(t, call(context.Background(), i, docID), name)
+	assert.Equal(t, rbac.ResourceProject, rc.gotResource, name)
+	assert.Equal(t, action, rc.gotAction, "%s action", name)
+	require.Len(t, rc.gotWorkspace, 1, "%s workspace", name)
+	assert.Equal(t, wsID, rc.gotWorkspace[0], "%s checked the wrong workspace", name)
+	assert.Equal(t, 1, client.calls, "%s should reach the client once", name)
+}
+
+func getLatest(ctx context.Context, i *Websocket, d string) error {
+	_, err := i.GetLatest(ctx, d)
+	return err
+}
+func getHistory(ctx context.Context, i *Websocket, d string) error {
+	_, err := i.GetHistory(ctx, d)
+	return err
+}
+func getHistoryByVersion(ctx context.Context, i *Websocket, d string) error {
+	_, err := i.GetHistoryByVersion(ctx, d, 1)
+	return err
+}
+func getHistoryMetadata(ctx context.Context, i *Websocket, d string) error {
+	_, err := i.GetHistoryMetadata(ctx, d)
+	return err
+}
+func createSnapshot(ctx context.Context, i *Websocket, d string) error {
+	_, err := i.CreateSnapshot(ctx, d, 1, "n")
+	return err
+}
+func rollback(ctx context.Context, i *Websocket, d string) error {
+	_, err := i.Rollback(ctx, d, 1)
+	return err
+}
+func flushToGCS(ctx context.Context, i *Websocket, d string) error { return i.FlushToGCS(ctx, d) }
+func importDocument(ctx context.Context, i *Websocket, d string) error {
+	return i.ImportDocument(ctx, d, []byte("x"))
+}
+func deleteDocument(ctx context.Context, i *Websocket, d string) error {
+	return i.DeleteDocument(ctx, d)
+}
+
+// TestWebsocket_DeniedOperationsNeverReachTheClient is the security assertion:
+// before this interactor, any authenticated user could act on any project.
+//
+// CopyDocument and Close are covered separately below. CopyDocument authorizes
+// twice and recordingChecker keeps only the last call, so listing it here would
+// assert ActionRead and stop checking the destination.
 func TestWebsocket_DeniedOperationsNeverReachTheClient(t *testing.T) {
-	for _, op := range wsOps {
-		t.Run(op.name, func(t *testing.T) {
-			i, client, _, docID, _ := wsFixture(t, false) // permission denied
-			err := op.call(context.Background(), i, docID)
-			assert.ErrorIs(t, err, interfaces.ErrOperationDenied)
-			assert.Zero(t, client.calls, "denied %s still called through to the websocket client", op.name)
-		})
-	}
+	assertDenied(t, "GetLatest", getLatest)
+	assertDenied(t, "GetHistory", getHistory)
+	assertDenied(t, "GetHistoryByVersion", getHistoryByVersion)
+	assertDenied(t, "GetHistoryMetadata", getHistoryMetadata)
+	assertDenied(t, "CreateSnapshot", createSnapshot)
+	assertDenied(t, "Rollback", rollback)
+	assertDenied(t, "FlushToGCS", flushToGCS)
+	assertDenied(t, "ImportDocument", importDocument)
+	assertDenied(t, "DeleteDocument", deleteDocument)
 }
 
-// TestWebsocket_ChecksTargetProjectWorkspace: the check must be evaluated against
-// the workspace that owns the addressed project, not the caller's own. Passing no
-// workspace would let the checker approve based on membership of any workspace,
-// which is the cross-tenant hole this fixes.
+// TestWebsocket_ChecksTargetProjectWorkspace pins the action each operation
+// demands, and that it is evaluated against the addressed project's workspace.
 func TestWebsocket_ChecksTargetProjectWorkspace(t *testing.T) {
-	for _, op := range wsOps {
-		t.Run(op.name, func(t *testing.T) {
-			i, client, rc, docID, wsID := wsFixture(t, true)
-			require.NoError(t, op.call(context.Background(), i, docID))
-
-			assert.Equal(t, rbac.ResourceProject, rc.gotResource)
-			assert.Equal(t, op.action, rc.gotAction, "%s must demand %q", op.name, op.action)
-			require.Len(t, rc.gotWorkspace, 1, "%s must scope the check to one workspace", op.name)
-			assert.Equal(t, wsID, rc.gotWorkspace[0], "%s checked the wrong workspace", op.name)
-			assert.Equal(t, 1, client.calls, "%s should reach the client once when allowed", op.name)
-		})
-	}
+	assertChecks(t, "GetLatest", rbac.ActionRead, getLatest)
+	assertChecks(t, "GetHistory", rbac.ActionRead, getHistory)
+	assertChecks(t, "GetHistoryByVersion", rbac.ActionRead, getHistoryByVersion)
+	assertChecks(t, "GetHistoryMetadata", rbac.ActionRead, getHistoryMetadata)
+	assertChecks(t, "CreateSnapshot", rbac.ActionRead, createSnapshot)
+	assertChecks(t, "Rollback", rbac.ActionEdit, rollback)
+	assertChecks(t, "FlushToGCS", rbac.ActionEdit, flushToGCS)
+	assertChecks(t, "ImportDocument", rbac.ActionEdit, importDocument)
+	assertChecks(t, "DeleteDocument", rbac.ActionDelete, deleteDocument)
 }
 
 // TestWebsocket_UnresolvableProjectIsDenied: authorization depends on resolving
