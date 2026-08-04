@@ -1,39 +1,18 @@
-//! Boolean evaluation of a [`Csg`] tree.
+//! Boolean evaluation of a [`Csg`] tree into a [`Solid`] bounded by one
+//! triangulated exterior shell.
 //!
-//! Evaluation resolves the unevaluated boolean tree into the concrete volume
-//! it denotes, as a solid bounded by one triangulated exterior shell.
+//! Each boolean indexes both boundary surfaces ([`TriangleSet::rtree`]),
+//! splits only the polygons near the other surface by the planes of the
+//! nearby triangles (see [`split_against`]), and classifies each fragment by
+//! its centroid's exact ray-crossing parity (see [`classify`]); the operation
+//! keeps the matching fragments.
 //!
-//! The boolean over two boundary surfaces runs in three indexed stages
-//! instead of clipping every polygon through a BSP of the whole other
-//! surface:
-//!
-//! 1. **Index.** Each side's triangles are bulk-loaded into an rstar tree of
-//!    per-triangle boxes ([`TriangleSet::rtree`]), the same acceleration
-//!    structure the 3D predicates share.
-//! 2. **Split.** Only the polygons whose (tolerance-inflated) box meets a
-//!    triangle box of the other side are split, and only by the planes of
-//!    those nearby triangles. Everything else passes through whole: a polygon
-//!    whose box meets no triangle of the other surface cannot cross it.
-//! 3. **Classify.** Each fragment now lies entirely on one side of the other
-//!    surface, so its centroid decides it: inside, outside, or on the other
-//!    boundary (with the surface normals agreeing or opposing), via the exact
-//!    ray-crossing parity of [`position3d`](crate::predicates::position3d)
-//!    pruned through the same tree. The operation keeps the matching
-//!    fragments (difference keeps the second operand's inside fragments
-//!    flipped) and boundary-on-boundary fragments are kept once, from the
-//!    first operand, when their orientation matches the result.
-//!
-//! Operand constraints:
-//!
-//! - Every operand solid must be expressed in the same coordinate frame;
-//!   mixed frames are an error.
-//! - Every operand boundary must be closed and consistently oriented, with
-//!   triangle winding counter-clockwise seen from outside the enclosed
-//!   material (interior void shells therefore wind toward the void). An open
-//!   or mis-wound boundary produces an arbitrary volume, not an error.
-//! - Operand appearance does not propagate to the result.
+//! Operands must share one coordinate frame (mixed frames are an error) and
+//! be closed, consistently outward-wound boundaries; an open or mis-wound
+//! boundary produces an arbitrary volume, not an error. Appearance does not
+//! propagate to the result.
 
-use std::collections::HashSet;
+use std::collections::{HashMap, HashSet};
 
 use rstar::{RTree, AABB};
 
@@ -67,8 +46,113 @@ impl Csg {
         if mesh.num_triangles() == 0 {
             return Ok(None);
         }
-        Ok(Some(Solid::from_exterior(frame, mesh)))
+        let (exterior, voids) = partition_shells(mesh, &frame)?;
+        Ok(Some(Solid::new(
+            frame,
+            exterior,
+            voids.into_iter().map(Shell::from).collect(),
+        )))
     }
+}
+
+/// Separate the evaluated boundary into the exterior mesh and interior void
+/// shells: an edge-connected component that is closed and encloses a
+/// canonically negative volume is a void; everything else stays exterior.
+fn partition_shells(
+    mesh: TriangularMesh3DData,
+    frame: &CoordinateFrame,
+) -> Result<(TriangularMesh3DData, Vec<TriangularMesh3DData>), Error> {
+    let triangles: Vec<[u32; 3]> = mesh.triangles().collect();
+    let vertices = mesh.vertices();
+
+    fn find(parent: &mut [u32], mut i: u32) -> u32 {
+        while parent[i as usize] != i {
+            parent[i as usize] = parent[parent[i as usize] as usize];
+            i = parent[i as usize];
+        }
+        i
+    }
+    let mut parent: Vec<u32> = (0..triangles.len() as u32).collect();
+    let mut first_on_edge: HashMap<(u32, u32), u32> = HashMap::new();
+    for (i, t) in triangles.iter().enumerate() {
+        for key in triangle_edges(t) {
+            if let Some(&first) = first_on_edge.get(&key) {
+                let (a, b) = (find(&mut parent, first), find(&mut parent, i as u32));
+                if a != b {
+                    parent[a as usize] = b;
+                }
+            } else {
+                first_on_edge.insert(key, i as u32);
+            }
+        }
+    }
+
+    let mut components: HashMap<u32, Vec<usize>> = HashMap::new();
+    for i in 0..triangles.len() {
+        components
+            .entry(find(&mut parent, i as u32))
+            .or_default()
+            .push(i);
+    }
+    if components.len() <= 1 {
+        return Ok((mesh, Vec::new()));
+    }
+
+    let sign = f64::from(frame.orientation_sign()?);
+    let mut voids: Vec<Vec<usize>> = Vec::new();
+    let mut exterior: Vec<usize> = Vec::new();
+    for component in components.into_values() {
+        if is_closed(&component, &triangles)
+            && signed_volume(&component, &triangles, vertices) * sign < 0.0
+        {
+            voids.push(component);
+        } else {
+            exterior.extend(component);
+        }
+    }
+    if voids.is_empty() {
+        return Ok((mesh, Vec::new()));
+    }
+    exterior.sort_unstable();
+    let rebuild = |component: &[usize]| {
+        TriangularMesh3DData::from_soup(
+            component
+                .iter()
+                .flat_map(|&i| triangles[i].map(|v| vertices[v as usize])),
+        )
+    };
+    Ok((
+        rebuild(&exterior),
+        voids.iter().map(|component| rebuild(component)).collect(),
+    ))
+}
+
+/// The triangle's undirected edges, each keyed low index first.
+fn triangle_edges(t: &[u32; 3]) -> [(u32, u32); 3] {
+    [(t[0], t[1]), (t[1], t[2]), (t[2], t[0])].map(|(a, b)| (a.min(b), a.max(b)))
+}
+
+/// Whether every edge of the component lies on exactly two of its triangles.
+fn is_closed(component: &[usize], triangles: &[[u32; 3]]) -> bool {
+    let mut counts: HashMap<(u32, u32), u32> = HashMap::new();
+    for &i in component {
+        for key in triangle_edges(&triangles[i]) {
+            *counts.entry(key).or_insert(0) += 1;
+        }
+    }
+    counts.values().all(|&c| c == 2)
+}
+
+/// The component's right-hand-rule signed volume (divergence theorem over
+/// signed tetrahedra).
+fn signed_volume(component: &[usize], triangles: &[[u32; 3]], vertices: &[[f64; 3]]) -> f64 {
+    component
+        .iter()
+        .map(|&i| {
+            let [a, b, c] = triangles[i].map(|v| vertices[v as usize]);
+            dot3(a, cross3(b, c)) / 6.0
+        })
+        .sum()
 }
 
 /// Evaluate a tree node into its boundary polygons and their frame.
@@ -531,10 +615,10 @@ mod tests {
         Solid::from_exterior(CoordinateFrame::Euclidean, cube_shell(min, max))
     }
 
-    /// The signed volume enclosed by the solid's exterior shell (divergence
-    /// theorem over signed tetrahedra); positive iff the winding is outward.
-    fn volume(solid: &Solid) -> f64 {
-        let Shell::TriangularMesh(mesh) = solid.exterior() else {
+    /// One shell's signed volume (divergence theorem over signed tetrahedra);
+    /// positive iff the winding is outward, so a void shell comes out negative.
+    fn shell_volume(shell: &Shell) -> f64 {
+        let Shell::TriangularMesh(mesh) = shell else {
             panic!("expected a triangulated shell");
         };
         let vertices = mesh.vertices();
@@ -548,6 +632,11 @@ mod tests {
                 dot3(a, cross3(b, c)) / 6.0
             })
             .sum()
+    }
+
+    /// The volume the solid encloses: the exterior shell's minus its voids'.
+    fn volume(solid: &Solid) -> f64 {
+        shell_volume(solid.exterior()) + solid.interiors().iter().map(shell_volume).sum::<f64>()
     }
 
     #[test]
@@ -592,6 +681,27 @@ mod tests {
     }
 
     #[test]
+    fn a_difference_with_a_contained_operand_hollows_the_result() {
+        let a = cube([0.0; 3], [3.0; 3]);
+        let b = cube([1.0; 3], [2.0; 3]);
+        let result = Csg::difference(a, b).evaluate(1e-9).unwrap().unwrap();
+        assert_eq!(result.interiors().len(), 1, "the removed cube is a void");
+        assert!((shell_volume(result.exterior()) - 27.0).abs() < 1e-9);
+        assert!(
+            (shell_volume(&result.interiors()[0]) + 1.0).abs() < 1e-9,
+            "the void shell winds toward the cavity"
+        );
+        assert!((volume(&result) - 26.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn a_difference_inside_the_right_operand_encloses_no_volume() {
+        let a = cube([1.0; 3], [2.0; 3]);
+        let b = cube([0.0; 3], [3.0; 3]);
+        assert!(Csg::difference(a, b).evaluate(1e-9).unwrap().is_none());
+    }
+
+    #[test]
     fn a_difference_of_identical_cubes_encloses_no_volume() {
         let a = cube([0.0, 0.0, 0.0], [1.0, 1.0, 1.0]);
         let b = cube([0.0, 0.0, 0.0], [1.0, 1.0, 1.0]);
@@ -627,3 +737,4 @@ mod tests {
         assert!(Csg::union(a, b).evaluate(1e-9).is_err());
     }
 }
+
