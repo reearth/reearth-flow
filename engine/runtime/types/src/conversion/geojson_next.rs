@@ -27,6 +27,8 @@ use crate::{
     Attribute, Attributes, Feature,
 };
 
+pub use super::geojson_shared::{CrsCoverage, WrittenFeature};
+
 // WGS84 geographic CRS codes, defined here so this new-geometry module carries no
 // dependency on nusamai-projection (which is slated for removal after the migration).
 const EPSG_WGS84_GEOGRAPHIC_2D: u16 = 4326;
@@ -208,8 +210,9 @@ fn polygon_3d(rings: &[Vec<Vec<f64>>]) -> Polygon3D {
 // Feature -> GeoJSON
 // ---------------------------------------------------------------------------
 //
-// Writing is one recursive map, `&Geometry -> Result<Written, Unwritable>`: a
-// geometry either writes to a `Written` or names the reason it cannot be written.
+// Writing is one recursive map, `&Geometry -> Result<WrittenGeometry, Unwritable>`:
+// a geometry either writes to a `WrittenGeometry` or names the reason it cannot be
+// written.
 
 impl TryFrom<Feature> for Vec<geojson::Feature> {
     type Error = Error;
@@ -217,17 +220,6 @@ impl TryFrom<Feature> for Vec<geojson::Feature> {
     fn try_from(feature: Feature) -> Result<Self> {
         write_feature(&feature).map(|written| written.features)
     }
-}
-
-/// What a feature writes to: the GeoJSON features it becomes, and the coordinate
-/// frames their positions came from.
-///
-/// The frames come out of the same pass as the features, so a caller that has to
-/// declare the CRS of what it wrote reads it off here instead of writing every
-/// geometry a second time to recover it.
-pub struct WrittenFeature {
-    pub features: Vec<geojson::Feature>,
-    pub frames: WrittenFrames,
 }
 
 /// What `feature` writes to as GeoJSON.
@@ -238,7 +230,7 @@ pub fn write_feature(feature: &Feature) -> Result<WrittenFeature> {
         // stating nothing about the CRS.
         Geometry::None => Ok(WrittenFeature {
             features: vec![geojson_feature(feature.id, None, properties)],
-            frames: WrittenFrames::default(),
+            crs: CrsCoverage::NoCoordinates,
         }),
         // A cross-dimensional, cross-frame collection has no single GeoJSON
         // geometry, so each member becomes a feature of its own — as the old
@@ -250,7 +242,7 @@ pub fn write_feature(feature: &Feature) -> Result<WrittenFeature> {
                 Unwritable::EmptyCollection,
             )?;
             warn_omitted(&parts.omitted);
-            let mut frames = Frames::default();
+            let mut frames = Frames::Nothing;
             let mut features = Vec::with_capacity(parts.written.len());
             for member in parts.written {
                 frames = frames.and(member.frames);
@@ -262,7 +254,7 @@ pub fn write_feature(feature: &Feature) -> Result<WrittenFeature> {
             }
             Ok(WrittenFeature {
                 features,
-                frames: WrittenFrames(frames),
+                crs: frames.coverage(),
             })
         }
         geometry => {
@@ -270,7 +262,7 @@ pub fn write_feature(feature: &Feature) -> Result<WrittenFeature> {
             warn_omitted(&written.omitted);
             Ok(WrittenFeature {
                 features: vec![geojson_feature(feature.id, Some(written.value), properties)],
-                frames: WrittenFrames(written.frames),
+                crs: written.frames.coverage(),
             })
         }
     }
@@ -329,7 +321,6 @@ enum Unwritable {
     Unsplittable(#[from] UnsupportedOperation),
 }
 
-/// A reason becomes a message here, where the writer's error reaches its caller.
 impl From<Unwritable> for Error {
     fn from(reason: Unwritable) -> Self {
         Error::unsupported_feature(reason)
@@ -351,13 +342,13 @@ fn warn_omitted(omitted: &[Unwritable]) {
 /// to re-walk the geometry to recover them. Carrying the reasons rather than
 /// logging them where a part is dropped also keeps the recursion a pure map, the
 /// whole geometry's omissions being reported once it is written.
-struct Written {
+struct WrittenGeometry {
     value: geojson::Value,
     frames: Frames,
     omitted: Vec<Unwritable>,
 }
 
-impl Written {
+impl WrittenGeometry {
     /// What a leaf writes to: one value, in one frame, leaving nothing out.
     fn leaf(frame: &CoordinateFrame, value: geojson::Value) -> Self {
         Self {
@@ -369,7 +360,7 @@ impl Written {
 }
 
 /// What `geometry` writes to, or the reason it cannot be written.
-fn write_geometry(geometry: &Geometry) -> Result<Written, Unwritable> {
+fn write_geometry(geometry: &Geometry) -> Result<WrittenGeometry, Unwritable> {
     match geometry {
         Geometry::None => Err(Unwritable::AbsentGeometry),
         Geometry::Euclidean2D(g) => write_2d(g),
@@ -384,32 +375,32 @@ fn write_geometry(geometry: &Geometry) -> Result<Written, Unwritable> {
     }
 }
 
-fn write_2d(geometry: &Euclidean2DGeometry) -> Result<Written, Unwritable> {
-    use Euclidean2DGeometry as G;
+fn write_2d(geometry: &Euclidean2DGeometry) -> Result<WrittenGeometry, Unwritable> {
+    use Euclidean2DGeometry::*;
     match geometry {
-        G::Point(p) => Ok(point(p.frame(), p.position())),
-        G::LineString(l) => Ok(curve(l.frame(), l.coords())),
-        G::Polygon(p) => Ok(area(p.frame(), p.exterior(), p.interiors())),
-        G::PolygonMesh(m) => write_faces((**m).clone()),
-        G::TriangularMesh(m) => write_faces((**m).clone()),
-        G::Collection(c) => Parts::of(c.members(), write_2d, Unwritable::EmptyCollection)
+        Point(p) => Ok(point(p.frame(), p.position())),
+        LineString(l) => Ok(curve(l.frame(), l.coords())),
+        Polygon(p) => Ok(area(p.frame(), p.exterior(), p.interiors())),
+        PolygonMesh(m) => write_faces((**m).clone()),
+        TriangularMesh(m) => write_faces((**m).clone()),
+        Collection(c) => Parts::of(c.members(), write_2d, Unwritable::EmptyCollection)
             .map(Parts::into_one_geometry),
     }
 }
 
-fn write_3d(geometry: &Euclidean3DGeometry) -> Result<Written, Unwritable> {
-    use Euclidean3DGeometry as G;
+fn write_3d(geometry: &Euclidean3DGeometry) -> Result<WrittenGeometry, Unwritable> {
+    use Euclidean3DGeometry::*;
     match geometry {
-        G::Point(p) => Ok(point(p.frame(), p.position())),
-        G::LineString(l) => Ok(curve(l.frame(), l.coords())),
-        G::Polygon(p) => Ok(area(p.frame(), p.exterior(), p.interiors())),
-        G::PolygonMesh(m) => write_faces((**m).clone()),
-        G::TriangularMesh(m) => write_faces((**m).clone()),
-        G::Collection(c) => Parts::of(c.members(), write_3d, Unwritable::EmptyCollection)
+        Point(p) => Ok(point(p.frame(), p.position())),
+        LineString(l) => Ok(curve(l.frame(), l.coords())),
+        Polygon(p) => Ok(area(p.frame(), p.exterior(), p.interiors())),
+        PolygonMesh(m) => write_faces((**m).clone()),
+        TriangularMesh(m) => write_faces((**m).clone()),
+        Collection(c) => Parts::of(c.members(), write_3d, Unwritable::EmptyCollection)
             .map(Parts::into_one_geometry),
-        G::Solid(_) => Err(Unwritable::Solid),
-        G::Csg(_) => Err(Unwritable::Csg),
-        G::PointCloud(_) => Err(Unwritable::PointCloud),
+        Solid(_) => Err(Unwritable::Solid),
+        Csg(_) => Err(Unwritable::Csg),
+        PointCloud(_) => Err(Unwritable::PointCloud),
     }
 }
 
@@ -419,7 +410,7 @@ fn write_3d(geometry: &Euclidean3DGeometry) -> Result<Written, Unwritable> {
 /// The `Split` op that yields the faces takes `&mut self`, hence the mesh is passed
 /// by value; splitting reads it rather than emptying it, so the geometry it came
 /// from is left intact.
-fn write_faces(mut mesh: impl Split) -> Result<Written, Unwritable> {
+fn write_faces(mut mesh: impl Split) -> Result<WrittenGeometry, Unwritable> {
     let mut faces = Vec::new();
     mesh.split(&mut |face, _| faces.push(face))?;
     Parts::of(&faces, write_geometry, Unwritable::EmptyMesh).map(Parts::into_one_geometry)
@@ -430,7 +421,7 @@ fn write_faces(mut mesh: impl Split) -> Result<Written, Unwritable> {
 struct Parts {
     /// Non-empty: a container with no writable part cannot be written either,
     /// which [`Parts::of`] reports as an error instead.
-    written: Vec<Written>,
+    written: Vec<WrittenGeometry>,
     omitted: Vec<Unwritable>,
 }
 
@@ -446,10 +437,10 @@ impl Parts {
     /// be written once at the top, or `empty` when there were no parts to drop.
     fn of<T>(
         parts: &[T],
-        write: impl Fn(&T) -> Result<Written, Unwritable>,
+        write: impl Fn(&T) -> Result<WrittenGeometry, Unwritable>,
         empty: Unwritable,
     ) -> Result<Self, Unwritable> {
-        let (mut written, mut omitted): (Vec<Written>, Vec<Unwritable>) =
+        let (mut written, mut omitted): (Vec<WrittenGeometry>, Vec<Unwritable>) =
             parts.iter().map(write).partition_result();
         if written.is_empty() {
             return Err(omitted.first().copied().unwrap_or(empty));
@@ -468,7 +459,7 @@ impl Parts {
     /// Parts that differ in frame are not folded: that would put coordinates from
     /// different reference systems in one geometry, which no single `crs` member
     /// describes.
-    fn into_one_geometry(self) -> Written {
+    fn into_one_geometry(self) -> WrittenGeometry {
         self.present(|values, frames| match ValueKind::uniform(&values) {
             Some(kind) if frames.uniform() => kind.fold(values),
             _ => geometry_collection(values),
@@ -476,7 +467,7 @@ impl Parts {
     }
 
     /// The parts as one GeoJSON `GeometryCollection`, whatever they are.
-    fn into_geometry_collection(self) -> Written {
+    fn into_geometry_collection(self) -> WrittenGeometry {
         self.present(|values, _| geometry_collection(values))
     }
 
@@ -485,14 +476,14 @@ impl Parts {
     fn present(
         self,
         present: impl FnOnce(Vec<geojson::Value>, &Frames) -> geojson::Value,
-    ) -> Written {
+    ) -> WrittenGeometry {
         let (values, frames): (Vec<_>, Vec<_>) = self
             .written
             .into_iter()
             .map(|part| (part.value, part.frames))
             .unzip();
-        let frames = frames.into_iter().fold(Frames::default(), Frames::and);
-        Written {
+        let frames = frames.into_iter().fold(Frames::Nothing, Frames::and);
+        WrittenGeometry {
             value: present(values, &frames),
             frames,
             omitted: self.omitted,
@@ -580,16 +571,16 @@ impl ValueKind {
 // The 2D and 3D leaves differ only in how long a position is, so what turns one
 // into GeoJSON is written once, over `N`-element positions.
 
-fn point<const N: usize>(frame: &CoordinateFrame, position: [f64; N]) -> Written {
-    Written::leaf(
+fn point<const N: usize>(frame: &CoordinateFrame, position: [f64; N]) -> WrittenGeometry {
+    WrittenGeometry::leaf(
         frame,
         geojson::Value::Point(coordinates(swaps_axes(frame), position)),
     )
 }
 
-fn curve<const N: usize>(frame: &CoordinateFrame, coords: &[[f64; N]]) -> Written {
+fn curve<const N: usize>(frame: &CoordinateFrame, coords: &[[f64; N]]) -> WrittenGeometry {
     let swap = swaps_axes(frame);
-    Written::leaf(
+    WrittenGeometry::leaf(
         frame,
         geojson::Value::LineString(coords.iter().map(|&c| coordinates(swap, c)).collect()),
     )
@@ -600,9 +591,9 @@ fn area<'a, const N: usize>(
     frame: &CoordinateFrame,
     exterior: &'a [[f64; N]],
     interiors: impl Iterator<Item = &'a [[f64; N]]>,
-) -> Written {
+) -> WrittenGeometry {
     let swap = swaps_axes(frame);
-    Written::leaf(
+    WrittenGeometry::leaf(
         frame,
         geojson::Value::Polygon(
             std::iter::once(exterior)
@@ -688,110 +679,71 @@ fn warn_unresolved_axis_order(code: EpsgCode, error: impl std::fmt::Display) {
 /// The coordinate frames the positions written for a geometry came from: the
 /// first one, and the first one after it that differs.
 ///
-/// Decides whether written parts may fold into a `Multi*`, and is what
-/// [`WrittenFrames`] carries out to the caller of a write.
-#[derive(Clone, Debug, Default, PartialEq)]
-struct Frames {
-    /// `None` only for the frames of nothing at all: the identity of
-    /// [`Frames::and`].
-    first: Option<CoordinateFrame>,
-    differing: Option<CoordinateFrame>,
+/// Decides whether written parts may fold into a `Multi*` — which needs frame
+/// identity, two `Euclidean` parts folding even though neither names a CRS — and
+/// answers what the write was expressed in as a [`CrsCoverage`].
+#[derive(Clone, Debug, PartialEq)]
+enum Frames {
+    /// Nothing carrying coordinates was written: the identity of [`Frames::and`].
+    Nothing,
+    One(CoordinateFrame),
+    Mixed {
+        first: CoordinateFrame,
+        other: CoordinateFrame,
+    },
 }
 
 impl Frames {
     /// The frames of a leaf: one.
     fn of(frame: &CoordinateFrame) -> Self {
-        Self {
-            first: Some(frame.clone()),
-            differing: None,
-        }
+        Self::One(frame.clone())
     }
 
-    /// The frames of two written parts, together.
+    /// The frames of two written parts, together. Keeps the first frame written
+    /// and the first one after it that differs; further frames add nothing, two
+    /// already ruling out both folding and a single CRS.
     fn and(self, other: Self) -> Self {
-        let Some(first) = self.first else {
-            return other;
-        };
-        let Self {
-            first: other_first,
-            differing: other_differing,
-        } = other;
-        Self {
-            differing: self
-                .differing
-                .or_else(|| other_first.filter(|frame| *frame != first))
-                .or(other_differing),
-            first: Some(first),
+        match (self, other) {
+            (Self::Nothing, frames) | (frames, Self::Nothing) => frames,
+            (mixed @ Self::Mixed { .. }, _) => mixed,
+            (Self::One(first), Self::Mixed { first: a, other: b }) => {
+                let other = if first == a { b } else { a };
+                Self::Mixed { first, other }
+            }
+            (Self::One(first), Self::One(other)) if first != other => Self::Mixed { first, other },
+            (one @ Self::One(_), Self::One(_)) => one,
         }
     }
 
     /// Whether one frame covers every written position.
     fn uniform(&self) -> bool {
-        self.first.is_some() && self.differing.is_none()
+        matches!(self, Self::One(_))
     }
 
-    /// Which CRS the written positions are expressed in.
-    fn crs(&self) -> WrittenCrs {
-        let Some(first) = self.first.as_ref().and_then(epsg_code) else {
-            return WrittenCrs::Unknown;
-        };
-        match self.differing.as_ref() {
-            None => WrittenCrs::Single(first),
-            // Coordinates outside any CRS leave the CRS unstated rather than
-            // mixed: the code the others carry does not cover them either.
-            Some(other) => epsg_code(other).map_or(WrittenCrs::Unknown, |other| {
-                WrittenCrs::Mixed { first, other }
-            }),
+    /// How far one CRS covers the written positions.
+    fn coverage(&self) -> CrsCoverage {
+        match self {
+            Self::Nothing => CrsCoverage::NoCoordinates,
+            Self::One(frame) => match epsg_code(frame) {
+                Some(code) => CrsCoverage::Single(code),
+                None => CrsCoverage::OutsideAnyCrs,
+            },
+            Self::Mixed { first, other } => match (epsg_code(first), epsg_code(other)) {
+                (Some(first), Some(other)) => CrsCoverage::Mixed { first, other },
+                // A frame naming no CRS is not covered by the code the other
+                // carries, so no code covers the pair.
+                _ => CrsCoverage::OutsideAnyCrs,
+            },
         }
     }
 }
 
-/// The EPSG code a frame names, if it names one.
+/// The EPSG code a frame names, if it names one. `Euclidean` names none, and a
+/// `Tangent` plane's in-plane coordinates are not its base CRS's.
 fn epsg_code(frame: &CoordinateFrame) -> Option<EpsgCode> {
     match frame {
         CoordinateFrame::Crs(code) => Some(*code),
         CoordinateFrame::Euclidean | CoordinateFrame::Tangent(_) => None,
-    }
-}
-
-/// Which coordinate reference system the coordinates written for a set of
-/// features share. Reported by [`WrittenFrames::crs`].
-#[derive(Clone, Debug, PartialEq, Eq)]
-pub enum WrittenCrs {
-    /// Every written coordinate is expressed in this one CRS.
-    Single(EpsgCode),
-    /// Written coordinates are expressed in more than one CRS.
-    Mixed { first: EpsgCode, other: EpsgCode },
-    /// No single CRS covers what is written: some frame is not a CRS at all
-    /// (`Euclidean`, or a `Tangent` plane whose in-plane coordinates are not its
-    /// base CRS's), or nothing carrying coordinates is written.
-    Unknown,
-}
-
-/// What the coordinates written for one or more features are expressed in, as a
-/// caller writing them accumulates it.
-///
-/// Opaque: a caller combines what each write hands back with [`and`](Self::and)
-/// and asks the result for its CRS, so the rule deciding whether one CRS covers a
-/// set of coordinates stays in one place. Since it is read off what the writer
-/// produces, the answer describes exactly the coordinates in the file — a dropped
-/// `Solid` contributes no CRS.
-///
-/// [`default`](Default::default) is what nothing written says: the identity of
-/// `and`, distinct from a written coordinate whose frame names no CRS even though
-/// both report [`WrittenCrs::Unknown`].
-#[derive(Clone, Debug, Default, PartialEq)]
-pub struct WrittenFrames(Frames);
-
-impl WrittenFrames {
-    /// What two writes, together, were expressed in.
-    pub fn and(self, other: Self) -> Self {
-        Self(self.0.and(other.0))
-    }
-
-    /// The CRS covering every coordinate accumulated so far.
-    pub fn crs(&self) -> WrittenCrs {
-        self.0.crs()
     }
 }
 
@@ -1722,44 +1674,43 @@ mod tests {
 
     // --- the CRS of what gets written ---
 
-    /// What the coordinates written for `features` are expressed in, accumulated
-    /// as a caller writing them all does it. A feature that writes nothing states
-    /// nothing about the CRS.
-    fn written_crs(features: &[Feature]) -> WrittenCrs {
+    /// How far one CRS covers the coordinates written for `features`, accumulated
+    /// as a caller writing them all does it. A feature that writes nothing
+    /// contributes no coordinates.
+    fn coverage(features: &[Feature]) -> CrsCoverage {
         features
             .iter()
             .map(|feature| {
                 write_feature(feature)
-                    .map(|written| written.frames)
+                    .map(|written| written.crs)
                     .unwrap_or_default()
             })
-            .fold(WrittenFrames::default(), WrittenFrames::and)
-            .crs()
+            .fold(CrsCoverage::default(), CrsCoverage::and)
     }
 
     #[test]
-    fn written_crs_reports_the_shared_epsg_code() {
+    fn coverage_reports_the_shared_epsg_code() {
         let features = [
             feature_with(point_2d_in(crs(6675), [0.0; 2])),
             feature_with(point_2d_in(crs(6675), [1.0; 2])),
         ];
 
         assert_eq!(
-            written_crs(&features),
-            WrittenCrs::Single(EpsgCode::new(6675))
+            coverage(&features),
+            CrsCoverage::Single(EpsgCode::new(6675))
         );
     }
 
     #[test]
-    fn written_crs_reports_differing_epsg_codes() {
+    fn coverage_reports_differing_epsg_codes() {
         let features = [
             feature_with(point_2d_in(crs(6675), [0.0; 2])),
             feature_with(point_2d_in(crs(6669), [1.0; 2])),
         ];
 
         assert_eq!(
-            written_crs(&features),
-            WrittenCrs::Mixed {
+            coverage(&features),
+            CrsCoverage::Mixed {
                 first: EpsgCode::new(6675),
                 other: EpsgCode::new(6669),
             }
@@ -1769,30 +1720,30 @@ mod tests {
     // Neither code covers what the `Euclidean` frame carries, so naming both would
     // describe the file no better than naming none.
     #[test]
-    fn written_crs_is_unknown_when_a_frame_names_no_crs_among_two_that_do() {
+    fn coverage_breaks_when_a_frame_names_no_crs_among_two_that_do() {
         let features = [
             feature_with(point_2d_in(crs(6675), [0.0; 2])),
             feature_with(point_2d_in(CoordinateFrame::Euclidean, [1.0; 2])),
             feature_with(point_2d_in(crs(6669), [2.0; 2])),
         ];
 
-        assert_eq!(written_crs(&features), WrittenCrs::Unknown);
+        assert_eq!(coverage(&features), CrsCoverage::OutsideAnyCrs);
     }
 
     #[test]
-    fn written_crs_is_unknown_without_a_crs_frame() {
+    fn coverage_breaks_without_a_crs_frame() {
         let features = [
             feature_with(point_2d_in(CoordinateFrame::Euclidean, [0.0; 2])),
             feature_with(Geometry::None),
         ];
 
-        assert_eq!(written_crs(&features), WrittenCrs::Unknown);
+        assert_eq!(coverage(&features), CrsCoverage::OutsideAnyCrs);
     }
 
-    // A leaf that is dropped names no CRS, the answer describing exactly the
-    // coordinates in the file.
+    // A geometry that is dropped contributes no coordinates, the answer describing
+    // exactly what is in the file — here nothing, rather than a CRS-less write.
     #[test]
-    fn written_crs_ignores_geometry_that_is_not_written() {
+    fn coverage_ignores_geometry_that_is_not_written() {
         let features = [feature_with(Geometry::Euclidean3D(
             Euclidean3DGeometry::Solid(Box::new(Solid::from_exterior(
                 CoordinateFrame::Crs(EpsgCode::new(6675)),
@@ -1800,7 +1751,22 @@ mod tests {
             ))),
         ))];
 
-        assert_eq!(written_crs(&features), WrittenCrs::Unknown);
+        assert_eq!(coverage(&features), CrsCoverage::NoCoordinates);
+    }
+
+    // A feature with attributes but no geometry writes a row, which says nothing
+    // about the CRS rather than breaking the coverage of its neighbours.
+    #[test]
+    fn coverage_survives_a_feature_without_geometry() {
+        let features = [
+            feature_with(point_2d_in(crs(6675), [0.0; 2])),
+            feature_with(Geometry::None),
+        ];
+
+        assert_eq!(
+            coverage(&features),
+            CrsCoverage::Single(EpsgCode::new(6675))
+        );
     }
 
     // --- round trips ---
@@ -1890,8 +1856,8 @@ mod tests {
         )));
 
         assert_eq!(
-            written_crs(std::slice::from_ref(&feature)),
-            WrittenCrs::Single(EpsgCode::new(6675))
+            coverage(std::slice::from_ref(&feature)),
+            CrsCoverage::Single(EpsgCode::new(6675))
         );
         assert_eq!(
             written_value((*feature.geometry).clone()),
