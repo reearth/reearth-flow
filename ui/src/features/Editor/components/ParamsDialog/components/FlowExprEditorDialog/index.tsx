@@ -104,22 +104,18 @@ const FlowExprEditorDialog: React.FC<Props> = ({
 
   const handleAssetSelect = useCallback(
     (asset: Asset) => {
-      // In FlowExpr, wrap asset URLs with Url(...) in expression mode
-      const snippet =
-        codeType === "flowExpr" ? `Url("${asset.url}")` : asset.url;
-      insertAtCursor(snippet);
+      insertAtCursor(asset.url);
       setShowDialog(undefined);
     },
-    [codeType, insertAtCursor],
+    [insertAtCursor],
   );
 
   const handleCmsItemValue = useCallback(
     (url: string) => {
-      const snippet = codeType === "flowExpr" ? `Url("${url}")` : url;
-      insertAtCursor(snippet);
+      insertAtCursor(url);
       setShowDialog(undefined);
     },
-    [codeType, insertAtCursor],
+    [insertAtCursor],
   );
 
   const handleVariableSelect = useCallback(
