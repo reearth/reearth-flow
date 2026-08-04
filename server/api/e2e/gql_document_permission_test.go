@@ -62,9 +62,11 @@ func startDocumentPermissionServer(t *testing.T, allowPermission bool) (*httpexp
 // operation added without authorization shows up as a missing row rather than
 // passing unnoticed.
 var documentOps = []struct {
+	// vars first: keeping the pointer-bearing field at the front shortens the
+	// range the GC has to scan (govet fieldalignment).
+	vars  func(projectID string) map[string]any
 	name  string
 	query string
-	vars  func(projectID string) map[string]any
 }{
 	{
 		name:  "latestProjectSnapshot",
