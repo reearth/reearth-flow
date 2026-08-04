@@ -14,7 +14,7 @@ use super::mesh::ExtractedMesh;
 const BYTES_PER_TRIANGLE: u64 = 100;
 
 /// Flat, deliberately rough per-texture-pixel byte estimate; refine later.
-const BYTES_PER_TEXTURE_PIXEL: f64 = 1.0;
+const BYTES_PER_TEXTURE_PIXEL: f64 = 0.2;
 
 /// Cache key for a texture's native pixel dimensions.
 #[derive(PartialEq, Eq, Hash)]

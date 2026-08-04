@@ -99,6 +99,8 @@ graphs:
         name: GeometrySplitterByLod
         type: action
         action: Geometry Splitter
+        with:
+          groupBy: "lod"
 
       # Collapse to one row per (gmlId, lod) pair first: a building can have
       # multiple geometry members at the same LOD, and the lodMask sum below
