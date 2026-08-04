@@ -58,59 +58,72 @@ func startDocumentPermissionServer(t *testing.T, allowPermission bool) (*httpexp
 	return exp, repos.Project
 }
 
-// documentOps is every operation the schema exposes. Table-driven so a new
-// operation added without authorization shows up as a missing row rather than
-// passing unnoticed.
+// documentOps is every operation document.graphql exposes: three queries
+// (latestProjectSnapshot, projectHistory, projectSnapshot) and five mutations
+// (rollbackProject, saveSnapshot, previewSnapshot, importProject, copyProject).
+// Table-driven so a new operation added without authorization shows up as a
+// missing row rather than passing unnoticed.
 var documentOps = []struct {
 	// vars first: keeping the pointer-bearing field at the front shortens the
 	// range the GC has to scan (govet fieldalignment).
-	vars  func(projectID string) map[string]any
+	//
+	// It takes a second project id so copyProject, the one operation addressing
+	// two projects, can be covered by the same table rather than sitting outside
+	// it where a coverage gap is easy to miss.
+	vars  func(projectID, otherProjectID string) map[string]any
 	name  string
 	query string
 }{
 	{
 		name:  "latestProjectSnapshot",
 		query: `query($projectId: ID!) { latestProjectSnapshot(projectId: $projectId) { version } }`,
-		vars:  func(p string) map[string]any { return map[string]any{"projectId": p} },
+		vars:  func(p, _ string) map[string]any { return map[string]any{"projectId": p} },
 	},
 	{
 		name:  "projectHistory",
 		query: `query($projectId: ID!) { projectHistory(projectId: $projectId) { version } }`,
-		vars:  func(p string) map[string]any { return map[string]any{"projectId": p} },
+		vars:  func(p, _ string) map[string]any { return map[string]any{"projectId": p} },
 	},
 	{
 		name:  "projectSnapshot",
 		query: `query($projectId: ID!, $version: Int!) { projectSnapshot(projectId: $projectId, version: $version) { version } }`,
-		vars: func(p string) map[string]any {
+		vars: func(p, _ string) map[string]any {
 			return map[string]any{"projectId": p, "version": 1}
 		},
 	},
 	{
 		name:  "rollbackProject",
 		query: `mutation($projectId: ID!, $version: Int!) { rollbackProject(projectId: $projectId, version: $version) { version } }`,
-		vars: func(p string) map[string]any {
+		vars: func(p, _ string) map[string]any {
 			return map[string]any{"projectId": p, "version": 1}
 		},
 	},
 	{
 		name:  "saveSnapshot",
 		query: `mutation($projectId: ID!) { saveSnapshot(projectId: $projectId) }`,
-		vars:  func(p string) map[string]any { return map[string]any{"projectId": p} },
+		vars:  func(p, _ string) map[string]any { return map[string]any{"projectId": p} },
 	},
 	{
 		name:  "previewSnapshot",
 		query: `mutation($projectId: ID!, $version: Int!) { previewSnapshot(projectId: $projectId, version: $version) { version } }`,
-		vars: func(p string) map[string]any {
+		vars: func(p, _ string) map[string]any {
 			return map[string]any{"projectId": p, "version": 1}
 		},
 	},
 	{
 		name:  "importProject",
 		query: `mutation($projectId: ID!, $data: Bytes!) { importProject(projectId: $projectId, data: $data) }`,
-		vars: func(p string) map[string]any {
+		vars: func(p, _ string) map[string]any {
 			// Bytes is a number array (Uint8Array), NOT base64: a string here fails
 			// scalar coercion before the resolver runs, so the row would assert nothing.
 			return map[string]any{"projectId": p, "data": []int{1, 2, 3}}
+		},
+	},
+	{
+		name:  "copyProject",
+		query: `mutation($projectId: ID!, $source: ID!) { copyProject(projectId: $projectId, source: $source) }`,
+		vars: func(p, other string) map[string]any {
+			return map[string]any{"projectId": p, "source": other}
 		},
 	},
 }
@@ -124,8 +137,12 @@ var documentOps = []struct {
 func TestDocumentOperations_DeniedWithoutPermission(t *testing.T) {
 	e, projectRepo := startDocumentPermissionServer(t, false)
 
+	// Two projects in DIFFERENT workspaces: copyProject addresses both, and using
+	// one project for each end would let a destination-only check look correct.
 	prj := project.New().NewID().Workspace(project.NewWorkspaceID()).MustBuild()
 	require.NoError(t, projectRepo.Save(context.Background(), prj))
+	other := project.New().NewID().Workspace(project.NewWorkspaceID()).MustBuild()
+	require.NoError(t, projectRepo.Save(context.Background(), other))
 
 	for _, op := range documentOps {
 		t.Run(op.name, func(t *testing.T) {
@@ -135,7 +152,7 @@ func TestDocumentOperations_DeniedWithoutPermission(t *testing.T) {
 				WithHeader("Content-Type", "application/json").
 				WithJSON(map[string]any{
 					"query":     op.query,
-					"variables": op.vars(prj.ID().String()),
+					"variables": op.vars(prj.ID().String(), other.ID().String()),
 				}).
 				Expect().
 				Status(http.StatusOK).

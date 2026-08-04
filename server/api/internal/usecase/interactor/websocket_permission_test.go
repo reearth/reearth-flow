@@ -73,9 +73,20 @@ func wsFixture(t *testing.T, allow bool) (*Websocket, *countingWSClient, *record
 	return NewWebsocket(client, projectRepo, rc), client, rc, prj.ID().String(), accountsid.WorkspaceID(wsID)
 }
 
-// wsOps is every operation on the surface, with the action each must demand.
+// wsOps covers every SINGLE-PROJECT operation, with the action each must demand.
 // Table-driven so a newly added method without a permission check shows up as a
 // missing row rather than passing silently.
+//
+// Two methods are deliberately outside the table, and both have their own test
+// below — do NOT read this list as the full interface:
+//
+//   - CopyDocument addresses two projects, so it does not fit this signature, and
+//     it authorizes twice (edit on the destination, read on the source). Since
+//     recordingChecker keeps only the last call, a row here would assert
+//     ActionRead and quietly stop checking the destination.
+//     See TestWebsocket_CopyDocumentChecksBothProjects.
+//   - Close is connection lifecycle, not a document operation, and carries no
+//     permission check at all. See TestWebsocket_CloseNeedsNoPermission.
 var wsOps = []struct {
 	// call first: keeping the pointer-bearing fields adjacent shortens the range
 	// the GC has to scan (govet fieldalignment).
