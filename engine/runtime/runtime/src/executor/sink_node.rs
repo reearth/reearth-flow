@@ -222,9 +222,21 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
 
         loop {
             let index = sel.ready();
-            let op = receivers[index]
-                .recv()
-                .map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{e:?}")))?;
+            let op = match receivers[index].recv() {
+                Ok(op) => op,
+                Err(e) => {
+                    // Upstream dropped its sender without a Terminate (e.g. it
+                    // failed) — on_terminate() below is never reached, so flush
+                    // accumulated summaries and reject rows here or they're lost.
+                    let summaries =
+                        crate::diagnostics::emit_summaries(&self.event_hub, &self.diagnostics);
+                    *self.summaries_sink.lock() = summaries;
+                    if let Some((rows, overflow)) = self.diagnostics.drain_reject_rows() {
+                        let _ = self.flush_reject_shard(rows, overflow);
+                    }
+                    return Err(ExecutionError::CannotReceiveFromChannel(format!("{e:?}")));
+                }
+            };
             match op {
                 ExecutorOperation::Op { ctx } => {
                     if !self.incremental_mode {

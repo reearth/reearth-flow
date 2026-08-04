@@ -199,6 +199,14 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             std::thread::yield_now();
         }
     }
+
+    // on_terminate() is only reached via the Terminate arm below — an early
+    // return (upstream failed, spilled file corrupted, ...) must still flush
+    // accumulated summaries here or they're silently dropped from RunSummary.
+    fn flush_summaries_on_abort(&self) {
+        let summaries = crate::diagnostics::emit_summaries(&self.event_hub, &self.diagnostics);
+        *self.summaries_sink.lock() = summaries;
+    }
 }
 
 impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
@@ -393,9 +401,13 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                 continue;
             }
             let index = sel.ready();
-            let op = receivers[index]
-                .recv()
-                .map_err(|e| ExecutionError::CannotReceiveFromChannel(format!("{e:?}")))?;
+            let op = match receivers[index].recv() {
+                Ok(op) => op,
+                Err(e) => {
+                    self.flush_summaries_on_abort();
+                    return Err(ExecutionError::CannotReceiveFromChannel(format!("{e:?}")));
+                }
+            };
             match op {
                 ExecutorOperation::Op { ctx } => {
                     if !self.incremental_mode {
@@ -416,27 +428,39 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                     port,
                     context,
                 } => {
-                    let reader = crate::forwarder::open_jsonl_reader(&path).map_err(|e| {
-                        ExecutionError::CannotReceiveFromChannel(format!(
-                            "Failed to open file-backed op file {}: {e}",
-                            path.display()
-                        ))
-                    })?;
+                    let reader = match crate::forwarder::open_jsonl_reader(&path) {
+                        Ok(r) => r,
+                        Err(e) => {
+                            self.flush_summaries_on_abort();
+                            return Err(ExecutionError::CannotReceiveFromChannel(format!(
+                                "Failed to open file-backed op file {}: {e}",
+                                path.display()
+                            )));
+                        }
+                    };
                     for line in reader.lines() {
-                        let line = line.map_err(|e| {
-                            ExecutionError::CannotReceiveFromChannel(format!(
-                                "Failed to read line from file-backed op: {e}"
-                            ))
-                        })?;
+                        let line = match line {
+                            Ok(l) => l,
+                            Err(e) => {
+                                self.flush_summaries_on_abort();
+                                return Err(ExecutionError::CannotReceiveFromChannel(format!(
+                                    "Failed to read line from file-backed op: {e}"
+                                )));
+                            }
+                        };
                         if line.is_empty() {
                             continue;
                         }
-                        let feature: reearth_flow_types::Feature = serde_json::from_str(&line)
-                            .map_err(|e| {
-                                ExecutionError::CannotReceiveFromChannel(format!(
+                        let feature: reearth_flow_types::Feature = match serde_json::from_str(&line)
+                        {
+                            Ok(f) => f,
+                            Err(e) => {
+                                self.flush_summaries_on_abort();
+                                return Err(ExecutionError::CannotReceiveFromChannel(format!(
                                     "Failed to deserialize feature from file-backed op: {e}"
-                                ))
-                            })?;
+                                )));
+                            }
+                        };
                         let ctx = ExecutorContext::new_with_context_feature_and_port(
                             &context,
                             feature,
