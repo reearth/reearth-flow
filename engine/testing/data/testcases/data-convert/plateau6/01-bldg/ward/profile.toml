@@ -1,3 +1,8 @@
+# to test:
+# - bldg geometry smoke test
+# - gml containing other districts should be properly filtered (non-政令指定都市 case) (TODO)
+# - empty string in value is preserved (not filtered by NODATA) (TODO)
+
 citygml_zip_name = "13104_shinjuku-ku_pref_2025_citygml_1_op_bldg.zip"
 
 [filter.tree]
@@ -17,4 +22,4 @@ near = 1.00
 far = 1000.61
 
 [tests.raster3d.lod1]
-threshold = 1.0
+threshold = 1e-4
