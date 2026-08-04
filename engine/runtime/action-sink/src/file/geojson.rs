@@ -182,15 +182,12 @@ pub fn write_geojson_to_storage(
     write_crs: bool,
 ) -> Result<(), SinkError> {
     let mut geojson_features: Vec<geojson::Feature> = Vec::with_capacity(features.len());
-    let mut emitted: Vec<Feature> = Vec::with_capacity(features.len());
+    let mut emitted = EmittedCrs::default();
     let mut failed = 0usize;
 
     for feature in features {
-        match TryInto::<Vec<geojson::Feature>>::try_into(feature.clone()) {
-            Ok(mut converted) => {
-                geojson_features.append(&mut converted);
-                emitted.push(feature.clone());
-            }
+        match convert_feature(feature, &mut emitted) {
+            Ok(mut converted) => geojson_features.append(&mut converted),
             Err(e) => {
                 failed += 1;
                 tracing::warn!(feature_id = %feature.id, error = %e, "failed to convert feature to GeoJSON; omitting it");
@@ -201,7 +198,7 @@ pub fn write_geojson_to_storage(
     let feature_collection = geojson::FeatureCollection {
         bbox: None,
         features: geojson_features,
-        foreign_members: crs_foreign_members(write_crs, &emitted, output.uri()),
+        foreign_members: write_crs.then(|| crs_foreign_members(&emitted, output.uri())),
     };
     let buffer = serde_json::to_vec(&feature_collection)
         .map_err(|e| SinkError::GeoJsonWriter(format!("{e}")))?;
@@ -219,31 +216,72 @@ pub fn write_geojson_to_storage(
     Ok(())
 }
 
-/// Build the `crs` foreign member for a `FeatureCollection` from the EPSG codes
-/// of the coordinates actually emitted to the output, or nothing when
-/// `write_crs` is false.
-///
-/// Used by quality-check error detail files. Quality checks run on a non-WGS84
-/// CRS and output the source coordinates as-is, so the CRS must be recorded via
-/// this legacy GeoJSON 2008 `crs` member (non-standard under RFC 7946, which
-/// fixes coordinates to WGS84). It is opt-in for that reason: a reader that
-/// follows RFC 7946 has no use for it.
-///
-/// When asked for, it is a named CRS when one EPSG code covers every emitted
-/// coordinate, and an explicit `null` otherwise. `null` rather than an absent
-/// member because under GeoJSON 2008 an absent `crs` means WGS84 longitude /
-/// latitude, which coordinates in an unknown or mixed reference system are not;
-/// `null` says the CRS is unknown. Emitted once per output file, so the warning
-/// is too.
-fn crs_foreign_members(
-    write_crs: bool,
-    features: &[Feature],
-    output: &Uri,
-) -> Option<geojson::JsonObject> {
-    if !write_crs {
-        return None;
+/// What the coordinates emitted so far are expressed in: the first EPSG code seen,
+/// and the first one after it that differs.
+#[cfg(not(feature = "new-geometry"))]
+#[derive(Default)]
+struct EmittedCrs {
+    first: Option<u16>,
+    differing: Option<u16>,
+}
+
+#[cfg(not(feature = "new-geometry"))]
+impl EmittedCrs {
+    /// Record what one emitted feature's coordinates are expressed in. A feature
+    /// carrying no EPSG code says nothing about them rather than placing them
+    /// outside the code its neighbours name.
+    fn observe(&mut self, epsg: Option<u16>) {
+        let Some(code) = epsg else {
+            return;
+        };
+        match self.first {
+            None => self.first = Some(code),
+            Some(first) if first != code => self.differing = self.differing.or(Some(code)),
+            Some(_) => {}
+        }
     }
-    let crs = match emitted_epsg(features) {
+}
+
+/// As above, as the coordinate frames of the leaves that reached the output: in
+/// the new geometry a feature has no single EPSG code.
+#[cfg(feature = "new-geometry")]
+type EmittedCrs = reearth_flow_types::conversion::geojson::WrittenFrames;
+
+/// Convert one feature, recording in `emitted` what the coordinates it writes are
+/// expressed in. Only a feature that converts is recorded, so what is dropped
+/// names no CRS for coordinates the file does not carry.
+#[cfg(not(feature = "new-geometry"))]
+fn convert_feature(
+    feature: &Feature,
+    emitted: &mut EmittedCrs,
+) -> Result<Vec<geojson::Feature>, reearth_flow_types::error::Error> {
+    let converted: Vec<geojson::Feature> = feature.clone().try_into()?;
+    emitted.observe(feature.geometry.epsg);
+    Ok(converted)
+}
+
+/// As above, taking the frames the conversion hands back rather than asking the
+/// feature: the write is what establishes which coordinates reach the file, so
+/// nothing has to walk the geometry a second time to recover their frames.
+#[cfg(feature = "new-geometry")]
+fn convert_feature(
+    feature: &Feature,
+    emitted: &mut EmittedCrs,
+) -> Result<Vec<geojson::Feature>, reearth_flow_types::error::Error> {
+    let written = reearth_flow_types::conversion::geojson::write_feature(feature)?;
+    *emitted = std::mem::take(emitted).and(written.frames);
+    Ok(written.features)
+}
+
+/// Build the legacy GeoJSON 2008 `crs` member, for outputs whose coordinates are
+/// not in WGS84 longitude / latitude. RFC 7946 has no such member, so callers
+/// write it only when a consumer needs it.
+///
+/// A named CRS when one EPSG code covers every emitted coordinate, `null`
+/// otherwise — an absent member would instead claim the GeoJSON 2008 default,
+/// WGS84 longitude / latitude.
+fn crs_foreign_members(emitted: &EmittedCrs, output: &Uri) -> geojson::JsonObject {
+    let crs = match emitted_epsg(emitted) {
         Ok(epsg) => {
             let mut properties = geojson::JsonObject::new();
             properties.insert(
@@ -268,39 +306,29 @@ fn crs_foreign_members(
 
     let mut foreign_members = geojson::JsonObject::new();
     foreign_members.insert("crs".to_string(), crs);
-    Some(foreign_members)
+    foreign_members
 }
 
 /// The one EPSG code every emitted coordinate is expressed in, or the reason
 /// there is no such code.
 #[cfg(not(feature = "new-geometry"))]
-fn emitted_epsg(features: &[Feature]) -> Result<u16, String> {
-    let mut epsg: Option<u16> = None;
-    for feature in features {
-        let Some(code) = feature.geometry.epsg else {
-            continue;
-        };
-        match epsg {
-            None => epsg = Some(code),
-            Some(existing) if existing != code => {
-                return Err(format!(
-                    "features carry both EPSG:{existing} and EPSG:{code}"
-                ))
-            }
-            Some(_) => {}
+fn emitted_epsg(emitted: &EmittedCrs) -> Result<u16, String> {
+    match (emitted.first, emitted.differing) {
+        (Some(first), Some(other)) => {
+            Err(format!("features carry both EPSG:{first} and EPSG:{other}"))
         }
+        (Some(first), None) => Ok(first),
+        _ => Err("no feature carries an EPSG code".to_string()),
     }
-    epsg.ok_or_else(|| "no feature carries an EPSG code".to_string())
 }
 
-/// As above, reading the frame of every leaf that reaches the output: in the new
-/// geometry a feature has no single EPSG code, and a `Euclidean` or `Tangent`
-/// frame names no CRS at all.
+/// As above, from the frames of the leaves that reached the output: a `Euclidean`
+/// or `Tangent` frame names no CRS at all.
 #[cfg(feature = "new-geometry")]
-fn emitted_epsg(features: &[Feature]) -> Result<u16, String> {
-    use reearth_flow_types::conversion::geojson::{written_crs, WrittenCrs};
+fn emitted_epsg(emitted: &EmittedCrs) -> Result<u16, String> {
+    use reearth_flow_types::conversion::geojson::WrittenCrs;
 
-    match written_crs(features) {
+    match emitted.crs() {
         WrittenCrs::Single(code) => Ok(code.get()),
         WrittenCrs::Mixed { first, other } => {
             Err(format!("features carry both EPSG:{first} and EPSG:{other}"))
@@ -319,24 +347,29 @@ mod tests {
     /// same `crs` assertions read the same in both geometry worlds.
     #[cfg(not(feature = "new-geometry"))]
     mod fixture {
+        use reearth_flow_geometry::types::{
+            geometry::Geometry2D, no_value::NoValue, point::Point2D,
+        };
         use reearth_flow_types::{Feature, Geometry, GeometryValue};
 
-        fn feature(epsg: Option<u16>) -> Feature {
+        fn point_in(epsg: Option<u16>) -> Feature {
             Feature::new_with_attributes_and_geometry(
                 indexmap::IndexMap::new(),
                 Geometry {
                     epsg,
-                    value: GeometryValue::None,
+                    value: GeometryValue::FlowGeometry2D(Geometry2D::Point(Point2D::new(
+                        0.0, 0.0, NoValue,
+                    ))),
                 },
             )
         }
 
         pub(super) fn in_epsg(code: u16) -> Feature {
-            feature(Some(code))
+            point_in(Some(code))
         }
 
         pub(super) fn without_crs() -> Feature {
-            feature(None)
+            point_in(None)
         }
     }
 
@@ -384,10 +417,19 @@ mod tests {
         Uri::from_str("file:///tmp/out.geojson").unwrap()
     }
 
+    /// What converting `features` for the output records about their CRS, as the
+    /// write itself accumulates it.
+    fn emitted(features: &[Feature]) -> EmittedCrs {
+        let mut emitted = EmittedCrs::default();
+        for feature in features {
+            convert_feature(feature, &mut emitted).expect("feature expected to convert");
+        }
+        emitted
+    }
+
     /// The `crs` member written for `features` when one is asked for.
     fn crs_of(features: &[Feature]) -> Value {
-        crs_foreign_members(true, features, &output()).expect("a crs member was asked for")["crs"]
-            .clone()
+        crs_foreign_members(&emitted(features), &output())["crs"].clone()
     }
 
     #[test]
@@ -421,10 +463,6 @@ mod tests {
     // asked for — not even as `null`, which would still be an extension member.
     #[test]
     fn no_crs_member_unless_it_is_asked_for() {
-        assert_eq!(
-            crs_foreign_members(false, &[fixture::in_epsg(6675)], &output()),
-            None
-        );
         let json = serialized(false, &[fixture::in_epsg(6675)]);
         assert!(!json.contains("crs"), "got: {json}");
     }
@@ -435,7 +473,7 @@ mod tests {
         let collection = geojson::FeatureCollection {
             bbox: None,
             features: Vec::new(),
-            foreign_members: crs_foreign_members(write_crs, features, &output()),
+            foreign_members: write_crs.then(|| crs_foreign_members(&emitted(features), &output())),
         };
         serde_json::to_string(&collection).unwrap()
     }
@@ -459,5 +497,24 @@ mod tests {
     fn null_crs_when_only_some_coordinates_carry_one() {
         let crs = crs_of(&[fixture::in_epsg(6675), fixture::without_crs()]);
         assert_eq!(crs, Value::Null);
+    }
+
+    // What leaves the CRS unstated differs by geometry. Here a feature can carry
+    // coordinates without an EPSG code, which says nothing about them rather than
+    // placing them outside the code its neighbours name.
+    #[cfg(not(feature = "new-geometry"))]
+    #[test]
+    fn named_crs_survives_a_feature_without_an_epsg() {
+        let crs = crs_of(&[fixture::in_epsg(6675), fixture::without_crs()]);
+        assert_eq!(crs["properties"]["name"], "urn:ogc:def:crs:EPSG::6675");
+    }
+
+    // Here every leaf states its frame, so the only feature saying nothing about
+    // the CRS is one that writes no coordinates at all.
+    #[cfg(feature = "new-geometry")]
+    #[test]
+    fn named_crs_survives_a_feature_without_coordinates() {
+        let crs = crs_of(&[fixture::in_epsg(6675), fixture::without_geometry()]);
+        assert_eq!(crs["properties"]["name"], "urn:ogc:def:crs:EPSG::6675");
     }
 }

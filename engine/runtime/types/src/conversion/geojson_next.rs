@@ -7,14 +7,16 @@
 //! while a CRS frame stores its axes in the order the CRS authority declares, so
 //! reading swaps the horizontal pair and writing swaps it back.
 
-use std::sync::Arc;
+use std::collections::HashSet;
+use std::sync::{Arc, Mutex, OnceLock};
 
+use itertools::Itertools;
 use reearth_flow_geometry::types::conversion::{is_2d_geojson_value, is_3d_geojson_value};
 use reearth_flow_geometry::{
     collection::{Collection2D, Collection3D},
     coordinate::{CoordinateFrame, EpsgCode},
     line_string::{LineString2D, LineString3D},
-    ops::Split,
+    ops::{Split, UnsupportedOperation},
     point::{Point2D, Point3D},
     polygon::{Polygon2D, Polygon3D},
     Euclidean2DGeometry, Euclidean3DGeometry, Geometry, GeometryCollection,
@@ -205,33 +207,72 @@ fn polygon_3d(rings: &[Vec<Vec<f64>>]) -> Polygon3D {
 // ---------------------------------------------------------------------------
 // Feature -> GeoJSON
 // ---------------------------------------------------------------------------
+//
+// Writing is one recursive map, `&Geometry -> Result<Written, Unwritable>`: a
+// geometry either writes to a `Written` or names the reason it cannot be written.
 
 impl TryFrom<Feature> for Vec<geojson::Feature> {
     type Error = Error;
 
     fn try_from(feature: Feature) -> Result<Self> {
-        let properties = attributes_to_geojson_object(&feature.attributes);
-        let features = match &*feature.geometry {
-            // A feature carrying attributes but no geometry still produces a row.
-            Geometry::None => vec![geojson_feature(feature.id, None, properties)],
-            // A cross-dimensional, cross-frame collection has no single GeoJSON
-            // geometry, so each member becomes a feature of its own — as the old
-            // CityGML geometry did. The members share the feature's properties;
-            // per-member attributes stay on the member.
-            Geometry::GeometryCollection(collection) => collection
-                .members()
-                .iter()
-                .filter_map(geometry_to_value)
-                .map(|value| geojson_feature(uuid::Uuid::new_v4(), Some(value), properties.clone()))
-                .collect(),
-            geometry => {
-                let value = geometry_to_value(geometry).ok_or_else(|| {
-                    Error::unsupported_feature("geometry has no GeoJSON counterpart")
-                })?;
-                vec![geojson_feature(feature.id, Some(value), properties)]
+        write_feature(&feature).map(|written| written.features)
+    }
+}
+
+/// What a feature writes to: the GeoJSON features it becomes, and the coordinate
+/// frames their positions came from.
+///
+/// The frames come out of the same pass as the features, so a caller that has to
+/// declare the CRS of what it wrote reads it off here instead of writing every
+/// geometry a second time to recover it.
+pub struct WrittenFeature {
+    pub features: Vec<geojson::Feature>,
+    pub frames: WrittenFrames,
+}
+
+/// What `feature` writes to as GeoJSON.
+pub fn write_feature(feature: &Feature) -> Result<WrittenFeature> {
+    let properties = attributes_to_geojson_object(&feature.attributes);
+    match &*feature.geometry {
+        // A feature carrying attributes but no geometry still produces a row,
+        // stating nothing about the CRS.
+        Geometry::None => Ok(WrittenFeature {
+            features: vec![geojson_feature(feature.id, None, properties)],
+            frames: WrittenFrames::default(),
+        }),
+        // A cross-dimensional, cross-frame collection has no single GeoJSON
+        // geometry, so each member becomes a feature of its own — as the old
+        // CityGML geometry did — sharing the feature's properties.
+        Geometry::GeometryCollection(collection) => {
+            let parts = Parts::of(
+                collection.members(),
+                write_geometry,
+                Unwritable::EmptyCollection,
+            )?;
+            warn_omitted(&parts.omitted);
+            let mut frames = Frames::default();
+            let mut features = Vec::with_capacity(parts.written.len());
+            for member in parts.written {
+                frames = frames.and(member.frames);
+                features.push(geojson_feature(
+                    uuid::Uuid::new_v4(),
+                    Some(member.value),
+                    properties.clone(),
+                ));
             }
-        };
-        Ok(features)
+            Ok(WrittenFeature {
+                features,
+                frames: WrittenFrames(frames),
+            })
+        }
+        geometry => {
+            let written = write_geometry(geometry)?;
+            warn_omitted(&written.omitted);
+            Ok(WrittenFeature {
+                features: vec![geojson_feature(feature.id, Some(written.value), properties)],
+                frames: WrittenFrames(written.frames),
+            })
+        }
     }
 }
 
@@ -256,126 +297,206 @@ fn attributes_to_geojson_object(attributes: &Attributes) -> geojson::JsonObject 
         .collect()
 }
 
-/// The GeoJSON counterpart of `geometry`, or `None` when it has none.
+/// Why a geometry cannot be written as GeoJSON — the `Err` half of what
+/// [`write_geometry`] returns.
 ///
-/// A leaf GeoJSON cannot express (`Solid`, `Csg`, `PointCloud`) is dropped where
-/// it appears rather than failing the geometry around it, so one such member does
-/// not discard its siblings.
-fn geometry_to_value(geometry: &Geometry) -> Option<geojson::Value> {
-    match geometry {
-        Geometry::None => None,
-        Geometry::Euclidean2D(g) => value_2d(g),
-        Geometry::Euclidean3D(g) => value_3d(g),
-        // Nested: only the outermost collection expands into separate features.
-        Geometry::GeometryCollection(c) => Some(geometry_collection(
-            c.members().iter().filter_map(geometry_to_value).collect(),
-        )),
+/// Kept out of [`Error`] while a geometry is being written: within the writer a
+/// reason is a value to compare, collect and warn about, and it turns into a
+/// message only where it crosses the conversion's boundary.
+#[derive(thiserror::Error, Clone, Copy, Debug, PartialEq, Eq)]
+enum Unwritable {
+    /// A geometry asked for where the feature has none. The feature still writes
+    /// a row, with a null geometry.
+    #[error("an absent geometry has no GeoJSON counterpart")]
+    AbsentGeometry,
+    /// GeoJSON has no volume, nor the boolean tree built from volumes.
+    #[error("a Solid has no GeoJSON counterpart")]
+    Solid,
+    #[error("a Csg tree has no GeoJSON counterpart")]
+    Csg,
+    /// A `MultiPoint` could hold one, but that would emit a position per sample.
+    #[error("a PointCloud has no GeoJSON counterpart")]
+    PointCloud,
+    /// A collection with nothing writable under it. Writing it would emit an
+    /// empty geometry that states nothing about the feature.
+    #[error("an empty collection has no GeoJSON counterpart")]
+    EmptyCollection,
+    /// As above, for a mesh, which writes as its faces.
+    #[error("a mesh with no face has no GeoJSON counterpart")]
+    EmptyMesh,
+    /// A mesh whose faces could not be read.
+    #[error(transparent)]
+    Unsplittable(#[from] UnsupportedOperation),
+}
+
+/// A reason becomes a message here, where the writer's error reaches its caller.
+impl From<Unwritable> for Error {
+    fn from(reason: Unwritable) -> Self {
+        Error::unsupported_feature(reason)
     }
 }
 
-fn value_2d(geometry: &Euclidean2DGeometry) -> Option<geojson::Value> {
-    match geometry {
-        Euclidean2DGeometry::Point(p) => Some(geojson::Value::Point(xy(
-            swaps_axes(p.frame()),
-            p.position(),
-        ))),
-        Euclidean2DGeometry::LineString(l) => {
-            let swap = swaps_axes(l.frame());
-            Some(geojson::Value::LineString(
-                l.coords().iter().map(|&c| xy(swap, c)).collect(),
-            ))
-        }
-        Euclidean2DGeometry::Polygon(p) => {
-            let swap = swaps_axes(p.frame());
-            Some(geojson::Value::Polygon(
-                std::iter::once(p.exterior())
-                    .chain(p.interiors())
-                    .map(|ring| closed_ring(ring.iter().map(|&c| xy(swap, c))))
-                    .collect(),
-            ))
-        }
-        Euclidean2DGeometry::PolygonMesh(m) => faces_to_multi_polygon((**m).clone()),
-        Euclidean2DGeometry::TriangularMesh(m) => faces_to_multi_polygon((**m).clone()),
-        Euclidean2DGeometry::Collection(c) => Some(combine(
-            c.members().iter().filter_map(value_2d).collect(),
-            one_frame(c.members(), visit_frames_2d),
-        )),
+/// Report what the writer left out. An omission does not fail the geometry around
+/// it, so this warning is the only trace of it.
+fn warn_omitted(omitted: &[Unwritable]) {
+    for reason in omitted {
+        tracing::warn!(%reason, "omitting a geometry member from the GeoJSON output");
     }
 }
 
-fn value_3d(geometry: &Euclidean3DGeometry) -> Option<geojson::Value> {
-    match geometry {
-        Euclidean3DGeometry::Point(p) => Some(geojson::Value::Point(xyz(
-            swaps_axes(p.frame()),
-            p.position(),
-        ))),
-        Euclidean3DGeometry::LineString(l) => {
-            let swap = swaps_axes(l.frame());
-            Some(geojson::Value::LineString(
-                l.coords().iter().map(|&c| xyz(swap, c)).collect(),
-            ))
-        }
-        Euclidean3DGeometry::Polygon(p) => {
-            let swap = swaps_axes(p.frame());
-            Some(geojson::Value::Polygon(
-                std::iter::once(p.exterior())
-                    .chain(p.interiors())
-                    .map(|ring| closed_ring(ring.iter().map(|&c| xyz(swap, c))))
-                    .collect(),
-            ))
-        }
-        Euclidean3DGeometry::PolygonMesh(m) => faces_to_multi_polygon((**m).clone()),
-        Euclidean3DGeometry::TriangularMesh(m) => faces_to_multi_polygon((**m).clone()),
-        Euclidean3DGeometry::Collection(c) => Some(combine(
-            c.members().iter().filter_map(value_3d).collect(),
-            one_frame(c.members(), visit_frames_3d),
-        )),
-        // A volume has no GeoJSON counterpart, and neither has the boolean tree
-        // built from volumes. A point cloud has one, but expanding it would emit
-        // a position per sample.
-        Euclidean3DGeometry::Solid(_) => unsupported_leaf("Solid"),
-        Euclidean3DGeometry::Csg(_) => unsupported_leaf("Csg"),
-        Euclidean3DGeometry::PointCloud(_) => unsupported_leaf("PointCloud"),
-    }
-}
-
-fn unsupported_leaf(kind: &'static str) -> Option<geojson::Value> {
-    tracing::warn!(
-        geometry = kind,
-        "geometry has no GeoJSON counterpart; omitting it"
-    );
-    None
-}
-
-/// One GeoJSON polygon per mesh face, via the public `Split` op. `Split` takes
-/// `&mut self`, hence the mesh is passed by value; splitting a mesh reads it
-/// rather than emptying it.
-fn faces_to_multi_polygon(mut mesh: impl Split) -> Option<geojson::Value> {
-    let mut polygons = Vec::new();
-    mesh.split(&mut |face, _| {
-        if let Some(geojson::Value::Polygon(rings)) = geometry_to_value(&face) {
-            polygons.push(rings);
-        }
-    })
-    .ok()?;
-    Some(geojson::Value::MultiPolygon(polygons))
-}
-
-/// Present a collection's members as one GeoJSON geometry: a `Multi*` when they
-/// are all of one kind and share a coordinate frame, a `GeometryCollection`
-/// otherwise.
+/// What a geometry writes to: the GeoJSON geometry, the coordinate frames its
+/// positions came from, and the reasons parts of it were left out.
 ///
-/// `Collection2D` / `Collection3D` are the new geometry's `Multi*`, so folding is
-/// the inverse of the `MultiPolygon -> Collection` mapping on the read side.
-/// Folding members that differ in frame would put coordinates from different
-/// reference systems in one geometry, which no single `crs` member can describe.
-fn combine(values: Vec<geojson::Value>, uniform_frame: bool) -> geojson::Value {
-    if !uniform_frame {
-        return geometry_collection(values);
+/// The frames and reasons come out of the same pass as the value, so nothing has
+/// to re-walk the geometry to recover them. Carrying the reasons rather than
+/// logging them where a part is dropped also keeps the recursion a pure map, the
+/// whole geometry's omissions being reported once it is written.
+struct Written {
+    value: geojson::Value,
+    frames: Frames,
+    omitted: Vec<Unwritable>,
+}
+
+impl Written {
+    /// What a leaf writes to: one value, in one frame, leaving nothing out.
+    fn leaf(frame: &CoordinateFrame, value: geojson::Value) -> Self {
+        Self {
+            value,
+            frames: Frames::of(frame),
+            omitted: Vec::new(),
+        }
     }
-    match fold_into_multi(values) {
-        Ok(folded) => folded,
-        Err(values) => geometry_collection(values),
+}
+
+/// What `geometry` writes to, or the reason it cannot be written.
+fn write_geometry(geometry: &Geometry) -> Result<Written, Unwritable> {
+    match geometry {
+        Geometry::None => Err(Unwritable::AbsentGeometry),
+        Geometry::Euclidean2D(g) => write_2d(g),
+        Geometry::Euclidean3D(g) => write_3d(g),
+        // Only the outermost collection expands into separate features; a nested
+        // one stays a GeoJSON `GeometryCollection` whatever its members are, being
+        // the cross-dimensional, cross-frame container no `Multi*` describes.
+        Geometry::GeometryCollection(c) => {
+            Parts::of(c.members(), write_geometry, Unwritable::EmptyCollection)
+                .map(Parts::into_geometry_collection)
+        }
+    }
+}
+
+fn write_2d(geometry: &Euclidean2DGeometry) -> Result<Written, Unwritable> {
+    use Euclidean2DGeometry as G;
+    match geometry {
+        G::Point(p) => Ok(point(p.frame(), p.position())),
+        G::LineString(l) => Ok(curve(l.frame(), l.coords())),
+        G::Polygon(p) => Ok(area(p.frame(), p.exterior(), p.interiors())),
+        G::PolygonMesh(m) => write_faces((**m).clone()),
+        G::TriangularMesh(m) => write_faces((**m).clone()),
+        G::Collection(c) => Parts::of(c.members(), write_2d, Unwritable::EmptyCollection)
+            .map(Parts::into_one_geometry),
+    }
+}
+
+fn write_3d(geometry: &Euclidean3DGeometry) -> Result<Written, Unwritable> {
+    use Euclidean3DGeometry as G;
+    match geometry {
+        G::Point(p) => Ok(point(p.frame(), p.position())),
+        G::LineString(l) => Ok(curve(l.frame(), l.coords())),
+        G::Polygon(p) => Ok(area(p.frame(), p.exterior(), p.interiors())),
+        G::PolygonMesh(m) => write_faces((**m).clone()),
+        G::TriangularMesh(m) => write_faces((**m).clone()),
+        G::Collection(c) => Parts::of(c.members(), write_3d, Unwritable::EmptyCollection)
+            .map(Parts::into_one_geometry),
+        G::Solid(_) => Err(Unwritable::Solid),
+        G::Csg(_) => Err(Unwritable::Csg),
+        G::PointCloud(_) => Err(Unwritable::PointCloud),
+    }
+}
+
+/// A mesh writes as its faces, folding into a `MultiPolygon` the way a collection
+/// writes as its members.
+///
+/// The `Split` op that yields the faces takes `&mut self`, hence the mesh is passed
+/// by value; splitting reads it rather than emptying it, so the geometry it came
+/// from is left intact.
+fn write_faces(mut mesh: impl Split) -> Result<Written, Unwritable> {
+    let mut faces = Vec::new();
+    mesh.split(&mut |face, _| faces.push(face))?;
+    Parts::of(&faces, write_geometry, Unwritable::EmptyMesh).map(Parts::into_one_geometry)
+}
+
+/// The writable parts of a container, and every reason the writer left something
+/// out.
+struct Parts {
+    /// Non-empty: a container with no writable part cannot be written either,
+    /// which [`Parts::of`] reports as an error instead.
+    written: Vec<Written>,
+    omitted: Vec<Unwritable>,
+}
+
+impl Parts {
+    /// Write every part, keeping the writable ones: a part GeoJSON cannot express
+    /// is dropped where it appears rather than failing the geometry around it, so
+    /// it does not discard its siblings. The reasons come out together — the
+    /// dropped parts' and those the survivors collected themselves — so the whole
+    /// geometry's omissions are reported in one place.
+    ///
+    /// `Err` once nothing is left, a container reduced to nothing being unwritable
+    /// too. That error carries out a dropped part's reason, naming what could not
+    /// be written once at the top, or `empty` when there were no parts to drop.
+    fn of<T>(
+        parts: &[T],
+        write: impl Fn(&T) -> Result<Written, Unwritable>,
+        empty: Unwritable,
+    ) -> Result<Self, Unwritable> {
+        let (mut written, mut omitted): (Vec<Written>, Vec<Unwritable>) =
+            parts.iter().map(write).partition_result();
+        if written.is_empty() {
+            return Err(omitted.first().copied().unwrap_or(empty));
+        }
+        for part in &mut written {
+            omitted.append(&mut part.omitted);
+        }
+        Ok(Self { written, omitted })
+    }
+
+    /// The parts as one GeoJSON geometry: a `Multi*` when they are all of one
+    /// kind and share a coordinate frame, a `GeometryCollection` otherwise.
+    ///
+    /// `Collection2D` / `Collection3D` are the new geometry's `Multi*`, so folding
+    /// is the inverse of the read side's `MultiPolygon -> Collection` mapping.
+    /// Parts that differ in frame are not folded: that would put coordinates from
+    /// different reference systems in one geometry, which no single `crs` member
+    /// describes.
+    fn into_one_geometry(self) -> Written {
+        self.present(|values, frames| match ValueKind::uniform(&values) {
+            Some(kind) if frames.uniform() => kind.fold(values),
+            _ => geometry_collection(values),
+        })
+    }
+
+    /// The parts as one GeoJSON `GeometryCollection`, whatever they are.
+    fn into_geometry_collection(self) -> Written {
+        self.present(|values, _| geometry_collection(values))
+    }
+
+    /// The parts as the one geometry `present` builds from their values, carrying
+    /// the frames they were written in and what the writer left out.
+    fn present(
+        self,
+        present: impl FnOnce(Vec<geojson::Value>, &Frames) -> geojson::Value,
+    ) -> Written {
+        let (values, frames): (Vec<_>, Vec<_>) = self
+            .written
+            .into_iter()
+            .map(|part| (part.value, part.frames))
+            .unzip();
+        let frames = frames.into_iter().fold(Frames::default(), Frames::and);
+        Written {
+            value: present(values, &frames),
+            frames,
+            omitted: self.omitted,
+        }
     }
 }
 
@@ -383,52 +504,8 @@ fn geometry_collection(values: Vec<geojson::Value>) -> geojson::Value {
     geojson::Value::GeometryCollection(values.into_iter().map(geojson::Geometry::new).collect())
 }
 
-/// Fold values that are all points, all curves, or all areas into the matching
-/// `Multi*`, handing them back untouched when they are of more than one kind.
-/// A member that is already a `Multi*` is flattened into the result.
-fn fold_into_multi(values: Vec<geojson::Value>) -> Result<geojson::Value, Vec<geojson::Value>> {
-    let Some(kind) = values.first().and_then(value_kind) else {
-        return Err(values);
-    };
-    if !values.iter().all(|v| value_kind(v) == Some(kind)) {
-        return Err(values);
-    }
-    Ok(match kind {
-        ValueKind::Point => geojson::Value::MultiPoint(
-            values
-                .into_iter()
-                .flat_map(|v| match v {
-                    geojson::Value::Point(p) => vec![p],
-                    geojson::Value::MultiPoint(ps) => ps,
-                    _ => Vec::new(),
-                })
-                .collect(),
-        ),
-        ValueKind::Curve => geojson::Value::MultiLineString(
-            values
-                .into_iter()
-                .flat_map(|v| match v {
-                    geojson::Value::LineString(l) => vec![l],
-                    geojson::Value::MultiLineString(ls) => ls,
-                    _ => Vec::new(),
-                })
-                .collect(),
-        ),
-        ValueKind::Area => geojson::Value::MultiPolygon(
-            values
-                .into_iter()
-                .flat_map(|v| match v {
-                    geojson::Value::Polygon(p) => vec![p],
-                    geojson::Value::MultiPolygon(ps) => ps,
-                    _ => Vec::new(),
-                })
-                .collect(),
-        ),
-    })
-}
-
-/// The `Multi*` family a value belongs to; `None` for a `GeometryCollection`,
-/// which has no `Multi*` form to fold into.
+/// The `Multi*` family a GeoJSON geometry belongs to; a `GeometryCollection`
+/// belongs to none, having no `Multi*` form to fold into.
 #[derive(Clone, Copy, PartialEq, Eq)]
 enum ValueKind {
     Point,
@@ -436,67 +513,249 @@ enum ValueKind {
     Area,
 }
 
-fn value_kind(value: &geojson::Value) -> Option<ValueKind> {
-    match value {
-        geojson::Value::Point(_) | geojson::Value::MultiPoint(_) => Some(ValueKind::Point),
-        geojson::Value::LineString(_) | geojson::Value::MultiLineString(_) => {
-            Some(ValueKind::Curve)
+impl ValueKind {
+    fn of(value: &geojson::Value) -> Option<Self> {
+        match value {
+            geojson::Value::Point(_) | geojson::Value::MultiPoint(_) => Some(Self::Point),
+            geojson::Value::LineString(_) | geojson::Value::MultiLineString(_) => Some(Self::Curve),
+            geojson::Value::Polygon(_) | geojson::Value::MultiPolygon(_) => Some(Self::Area),
+            geojson::Value::GeometryCollection(_) => None,
         }
-        geojson::Value::Polygon(_) | geojson::Value::MultiPolygon(_) => Some(ValueKind::Area),
-        geojson::Value::GeometryCollection(_) => None,
     }
+
+    /// The one family every value belongs to, or `None` when they belong to more
+    /// than one, one of them belongs to none, or there are none at all.
+    fn uniform(values: &[geojson::Value]) -> Option<Self> {
+        let kind = Self::of(values.first()?)?;
+        values
+            .iter()
+            .all(|value| Self::of(value) == Some(kind))
+            .then_some(kind)
+    }
+
+    /// Values that all belong to this family, folded into the matching `Multi*`.
+    /// A value that is already a `Multi*` is flattened into the result; one of
+    /// another family cannot occur, [`ValueKind::uniform`] having established a
+    /// single family.
+    fn fold(self, values: Vec<geojson::Value>) -> geojson::Value {
+        match self {
+            Self::Point => geojson::Value::MultiPoint(
+                values
+                    .into_iter()
+                    .flat_map(|value| match value {
+                        geojson::Value::Point(p) => vec![p],
+                        geojson::Value::MultiPoint(ps) => ps,
+                        _ => Vec::new(),
+                    })
+                    .collect(),
+            ),
+            Self::Curve => geojson::Value::MultiLineString(
+                values
+                    .into_iter()
+                    .flat_map(|value| match value {
+                        geojson::Value::LineString(l) => vec![l],
+                        geojson::Value::MultiLineString(ls) => ls,
+                        _ => Vec::new(),
+                    })
+                    .collect(),
+            ),
+            Self::Area => geojson::Value::MultiPolygon(
+                values
+                    .into_iter()
+                    .flat_map(|value| match value {
+                        geojson::Value::Polygon(p) => vec![p],
+                        geojson::Value::MultiPolygon(ps) => ps,
+                        _ => Vec::new(),
+                    })
+                    .collect(),
+            ),
+        }
+    }
+}
+
+// ---------------------------------------------------------------------------
+// Leaves
+// ---------------------------------------------------------------------------
+//
+// The 2D and 3D leaves differ only in how long a position is, so what turns one
+// into GeoJSON is written once, over `N`-element positions.
+
+fn point<const N: usize>(frame: &CoordinateFrame, position: [f64; N]) -> Written {
+    Written::leaf(
+        frame,
+        geojson::Value::Point(coordinates(swaps_axes(frame), position)),
+    )
+}
+
+fn curve<const N: usize>(frame: &CoordinateFrame, coords: &[[f64; N]]) -> Written {
+    let swap = swaps_axes(frame);
+    Written::leaf(
+        frame,
+        geojson::Value::LineString(coords.iter().map(|&c| coordinates(swap, c)).collect()),
+    )
+}
+
+/// What an area writes to: its exterior ring, then its holes.
+fn area<'a, const N: usize>(
+    frame: &CoordinateFrame,
+    exterior: &'a [[f64; N]],
+    interiors: impl Iterator<Item = &'a [[f64; N]]>,
+) -> Written {
+    let swap = swaps_axes(frame);
+    Written::leaf(
+        frame,
+        geojson::Value::Polygon(
+            std::iter::once(exterior)
+                .chain(interiors)
+                .map(|ring| closed_ring(swap, ring))
+                .collect(),
+        ),
+    )
 }
 
 // GeoJSON positions are `(easting/longitude, northing/latitude[, height])`
 // whatever the CRS declares: RFC 7946 section 3.1.1 fixes that order even for the
-// alternative reference systems its section 4 allows by prior arrangement, and
-// GeoJSON 2008 — the dialect the `crs` member this writer emits comes from —
-// states that a CRS shall not change coordinate ordering.
+// alternative reference systems its section 4 allows, and GeoJSON 2008 — where the
+// `crs` member comes from — states that a CRS shall not change coordinate ordering.
 
-/// Whether a frame stores its horizontal axes reflected from canonical
-/// `(East, North)` order, so that they must be swapped on the way out. A frame
-/// whose order cannot be established is written as stored.
-fn swaps_axes(frame: &CoordinateFrame) -> bool {
-    frame.orientation_sign().is_ok_and(|sign| sign < 0)
-}
-
-fn xy(swap: bool, [x, y]: [f64; 2]) -> Vec<f64> {
+/// A stored coordinate as a GeoJSON position. Only the horizontal pair is
+/// reordered; a height stays where it is.
+fn coordinates<const N: usize>(swap: bool, mut coordinate: [f64; N]) -> Vec<f64> {
     if swap {
-        vec![y, x]
-    } else {
-        vec![x, y]
+        coordinate.swap(0, 1);
     }
-}
-
-fn xyz(swap: bool, [x, y, z]: [f64; 3]) -> Vec<f64> {
-    if swap {
-        vec![y, x, z]
-    } else {
-        vec![x, y, z]
-    }
+    coordinate.to_vec()
 }
 
 /// GeoJSON requires a ring's first and last positions to be equal. The stored
 /// rings carry no such guarantee, so an open one is closed on the way out.
-fn closed_ring(positions: impl Iterator<Item = Vec<f64>>) -> Vec<Vec<f64>> {
-    let mut ring: Vec<Vec<f64>> = positions.collect();
-    let open = match (ring.first(), ring.last()) {
-        (Some(first), Some(last)) => first != last,
-        _ => false,
-    };
-    if open {
-        let first = ring[0].clone();
-        ring.push(first);
+fn closed_ring<const N: usize>(swap: bool, ring: &[[f64; N]]) -> Vec<Vec<f64>> {
+    let mut positions: Vec<Vec<f64>> = ring.iter().map(|&c| coordinates(swap, c)).collect();
+    if positions.first() != positions.last() {
+        let first = positions[0].clone();
+        positions.push(first);
     }
-    ring
+    positions
+}
+
+/// Whether a frame stores its horizontal axes reflected from canonical
+/// `(East, North)` order, so that they must be swapped on the way out.
+///
+/// Only a CRS declares an axis order to swap back to. `Euclidean` coordinates are
+/// east-first by construction, and a `Tangent` frame's are offsets along its own
+/// in-plane axes rather than its base CRS's, so neither is reordered — as
+/// [`epsg_code`] names no CRS for them either.
+///
+/// A CRS whose order cannot be established is written as stored, which reverses
+/// its coordinates if it turns out to declare `(North, East)`, hence the warning.
+fn swaps_axes(frame: &CoordinateFrame) -> bool {
+    let Some(code) = epsg_code(frame) else {
+        return false;
+    };
+    match frame.orientation_sign() {
+        Ok(sign) => sign < 0,
+        Err(error) => {
+            warn_unresolved_axis_order(code, error);
+            false
+        }
+    }
+}
+
+/// Warn about a CRS whose axis order could not be established, once per code: an
+/// axis order is a fixed property of a CRS, so warning per coordinate would repeat
+/// the same line for every feature in the file.
+fn warn_unresolved_axis_order(code: EpsgCode, error: impl std::fmt::Display) {
+    static WARNED: OnceLock<Mutex<HashSet<EpsgCode>>> = OnceLock::new();
+
+    let mut warned = WARNED
+        .get_or_init(Mutex::default)
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    if warned.insert(code) {
+        tracing::warn!(
+            %error,
+            "cannot establish the axis order of EPSG:{code}; writing its \
+             coordinates in the order they are stored, which reverses them if \
+             the CRS declares (northing, easting)"
+        );
+    }
 }
 
 // ---------------------------------------------------------------------------
 // Coordinate frames of what gets written
 // ---------------------------------------------------------------------------
 
+/// The coordinate frames the positions written for a geometry came from: the
+/// first one, and the first one after it that differs.
+///
+/// Decides whether written parts may fold into a `Multi*`, and is what
+/// [`WrittenFrames`] carries out to the caller of a write.
+#[derive(Clone, Debug, Default, PartialEq)]
+struct Frames {
+    /// `None` only for the frames of nothing at all: the identity of
+    /// [`Frames::and`].
+    first: Option<CoordinateFrame>,
+    differing: Option<CoordinateFrame>,
+}
+
+impl Frames {
+    /// The frames of a leaf: one.
+    fn of(frame: &CoordinateFrame) -> Self {
+        Self {
+            first: Some(frame.clone()),
+            differing: None,
+        }
+    }
+
+    /// The frames of two written parts, together.
+    fn and(self, other: Self) -> Self {
+        let Some(first) = self.first else {
+            return other;
+        };
+        let Self {
+            first: other_first,
+            differing: other_differing,
+        } = other;
+        Self {
+            differing: self
+                .differing
+                .or_else(|| other_first.filter(|frame| *frame != first))
+                .or(other_differing),
+            first: Some(first),
+        }
+    }
+
+    /// Whether one frame covers every written position.
+    fn uniform(&self) -> bool {
+        self.first.is_some() && self.differing.is_none()
+    }
+
+    /// Which CRS the written positions are expressed in.
+    fn crs(&self) -> WrittenCrs {
+        let Some(first) = self.first.as_ref().and_then(epsg_code) else {
+            return WrittenCrs::Unknown;
+        };
+        match self.differing.as_ref() {
+            None => WrittenCrs::Single(first),
+            // Coordinates outside any CRS leave the CRS unstated rather than
+            // mixed: the code the others carry does not cover them either.
+            Some(other) => epsg_code(other).map_or(WrittenCrs::Unknown, |other| {
+                WrittenCrs::Mixed { first, other }
+            }),
+        }
+    }
+}
+
+/// The EPSG code a frame names, if it names one.
+fn epsg_code(frame: &CoordinateFrame) -> Option<EpsgCode> {
+    match frame {
+        CoordinateFrame::Crs(code) => Some(*code),
+        CoordinateFrame::Euclidean | CoordinateFrame::Tangent(_) => None,
+    }
+}
+
 /// Which coordinate reference system the coordinates written for a set of
-/// features share. Reported by [`written_crs`].
+/// features share. Reported by [`WrittenFrames::crs`].
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub enum WrittenCrs {
     /// Every written coordinate is expressed in this one CRS.
@@ -509,111 +768,38 @@ pub enum WrittenCrs {
     Unknown,
 }
 
-/// The CRS the coordinates written for `features` are expressed in.
+/// What the coordinates written for one or more features are expressed in, as a
+/// caller writing them accumulates it.
 ///
-/// Only leaves that reach the output are counted, so the answer describes exactly
-/// the coordinates in the file — a `Solid` that is dropped contributes no CRS.
-pub fn written_crs(features: &[Feature]) -> WrittenCrs {
-    let mut single: Option<EpsgCode> = None;
-    let mut mixed: Option<(EpsgCode, EpsgCode)> = None;
-    let mut non_crs = false;
+/// Opaque: a caller combines what each write hands back with [`and`](Self::and)
+/// and asks the result for its CRS, so the rule deciding whether one CRS covers a
+/// set of coordinates stays in one place. Since it is read off what the writer
+/// produces, the answer describes exactly the coordinates in the file — a dropped
+/// `Solid` contributes no CRS.
+///
+/// [`default`](Default::default) is what nothing written says: the identity of
+/// `and`, distinct from a written coordinate whose frame names no CRS even though
+/// both report [`WrittenCrs::Unknown`].
+#[derive(Clone, Debug, Default, PartialEq)]
+pub struct WrittenFrames(Frames);
 
-    for feature in features {
-        visit_frames(&feature.geometry, &mut |frame| {
-            let CoordinateFrame::Crs(code) = frame else {
-                non_crs = true;
-                return;
-            };
-            match single {
-                None => single = Some(*code),
-                Some(seen) if seen != *code => {
-                    mixed.get_or_insert((seen, *code));
-                }
-                Some(_) => {}
-            }
-        });
+impl WrittenFrames {
+    /// What two writes, together, were expressed in.
+    pub fn and(self, other: Self) -> Self {
+        Self(self.0.and(other.0))
     }
 
-    match (mixed, single) {
-        (Some((first, other)), _) => WrittenCrs::Mixed { first, other },
-        (None, Some(code)) if !non_crs => WrittenCrs::Single(code),
-        _ => WrittenCrs::Unknown,
+    /// The CRS covering every coordinate accumulated so far.
+    pub fn crs(&self) -> WrittenCrs {
+        self.0.crs()
     }
-}
-
-/// Visit the coordinate frame of every leaf that reaches the GeoJSON output, in
-/// order. Leaves with no GeoJSON counterpart contribute nothing, matching what
-/// [`geometry_to_value`] writes.
-fn visit_frames<'a>(geometry: &'a Geometry, visit: &mut dyn FnMut(&'a CoordinateFrame)) {
-    match geometry {
-        Geometry::None => {}
-        Geometry::Euclidean2D(g) => visit_frames_2d(g, visit),
-        Geometry::Euclidean3D(g) => visit_frames_3d(g, visit),
-        Geometry::GeometryCollection(c) => {
-            for member in c.members() {
-                visit_frames(member, visit);
-            }
-        }
-    }
-}
-
-fn visit_frames_2d<'a>(
-    geometry: &'a Euclidean2DGeometry,
-    visit: &mut dyn FnMut(&'a CoordinateFrame),
-) {
-    match geometry {
-        Euclidean2DGeometry::Point(p) => visit(p.frame()),
-        Euclidean2DGeometry::LineString(l) => visit(l.frame()),
-        Euclidean2DGeometry::Polygon(p) => visit(p.frame()),
-        Euclidean2DGeometry::PolygonMesh(m) => visit(m.frame()),
-        Euclidean2DGeometry::TriangularMesh(m) => visit(m.frame()),
-        Euclidean2DGeometry::Collection(c) => {
-            for member in c.members() {
-                visit_frames_2d(member, visit);
-            }
-        }
-    }
-}
-
-fn visit_frames_3d<'a>(
-    geometry: &'a Euclidean3DGeometry,
-    visit: &mut dyn FnMut(&'a CoordinateFrame),
-) {
-    match geometry {
-        Euclidean3DGeometry::Point(p) => visit(p.frame()),
-        Euclidean3DGeometry::LineString(l) => visit(l.frame()),
-        Euclidean3DGeometry::Polygon(p) => visit(p.frame()),
-        Euclidean3DGeometry::PolygonMesh(m) => visit(m.frame()),
-        Euclidean3DGeometry::TriangularMesh(m) => visit(m.frame()),
-        Euclidean3DGeometry::Collection(c) => {
-            for member in c.members() {
-                visit_frames_3d(member, visit);
-            }
-        }
-        // Nothing of these reaches the output, so they name no frame.
-        Euclidean3DGeometry::Solid(_)
-        | Euclidean3DGeometry::Csg(_)
-        | Euclidean3DGeometry::PointCloud(_) => {}
-    }
-}
-
-/// Whether every written leaf under `members` shares one coordinate frame.
-fn one_frame<'a, T>(
-    members: &'a [T],
-    visit_frames: fn(&'a T, &mut dyn FnMut(&'a CoordinateFrame)),
-) -> bool {
-    let mut frames: Vec<&CoordinateFrame> = Vec::new();
-    for member in members {
-        visit_frames(member, &mut |frame| frames.push(frame));
-    }
-    frames.windows(2).all(|pair| pair[0] == pair[1])
 }
 
 #[cfg(test)]
 mod tests {
     use reearth_flow_geometry::{
         collection::{Collection2D, Collection3D},
-        coordinate::{CoordinateFrame, EpsgCode},
+        coordinate::{BaseFrame, CoordinateFrame, EpsgCode, TangentPlane},
         line_string::{LineString2D, LineString3D},
         point::{Point2D, Point3D},
         polygon::{Polygon2D, Polygon3D},
@@ -1087,6 +1273,23 @@ mod tests {
         assert_eq!(value, geojson::Value::Point(vec![1.0, 2.0]));
     }
 
+    // A Tangent frame's coordinates are offsets along its own in-plane axes, not
+    // its base CRS's, so they are written as stored even though that base CRS
+    // (EPSG:6675) declares (northing, easting).
+    #[test]
+    fn tangent_frame_is_written_as_stored() {
+        let frame = CoordinateFrame::Tangent(Box::new(TangentPlane {
+            base: BaseFrame::Crs(EpsgCode::new(6675)),
+            origin: [0.0, 0.0, 0.0],
+            u: [1.0, 0.0, 0.0],
+            v: [0.0, 1.0, 0.0],
+        }));
+
+        let value = written_value(point_2d_in(frame, [1.0, 2.0]));
+
+        assert_eq!(value, geojson::Value::Point(vec![1.0, 2.0]));
+    }
+
     // z is carried through unchanged; only the horizontal pair is reordered.
     #[test]
     fn a_3d_point_keeps_its_height() {
@@ -1097,8 +1300,8 @@ mod tests {
         assert_eq!(value, geojson::Value::Point(vec![139.7, 35.6, 12.5]));
     }
 
-    // A 2.5D leaf's single elevation is not written: the old world's 2D geometry
-    // was two-element too.
+    // A 2.5D leaf's single elevation is not written; its positions stay
+    // two-element, as the old world's 2D geometry was.
     #[test]
     fn a_2d_line_string_at_an_elevation_is_written_without_it() {
         let value = written_value(Geometry::Euclidean2D(Euclidean2DGeometry::LineString(
@@ -1254,8 +1457,7 @@ mod tests {
         );
     }
 
-    // A cross-dimensional collection has no single GeoJSON geometry, so its
-    // members become features of their own, sharing the feature's properties.
+    // Members become features of their own, sharing the feature's properties.
     #[test]
     fn a_geometry_collection_expands_into_one_feature_per_member() {
         let mut attributes = Attributes::new();
@@ -1312,7 +1514,7 @@ mod tests {
 
     // --- meshes ---
 
-    // A mesh has no GeoJSON counterpart of its own, so its faces are written.
+    // A mesh writes as its faces, having no GeoJSON geometry of its own.
     #[test]
     fn a_polygon_mesh_writes_one_polygon_per_face() {
         let mesh = PolygonMesh3D::new(CoordinateFrame::Euclidean, quad_mesh_data());
@@ -1370,30 +1572,56 @@ mod tests {
 
     // --- geometries with no GeoJSON counterpart ---
 
-    #[test]
-    fn a_solid_is_rejected_rather_than_panicking() {
-        let solid = Solid::from_exterior(CoordinateFrame::Euclidean, quad_mesh_data());
-        let feature = feature_with(Geometry::Euclidean3D(Euclidean3DGeometry::Solid(Box::new(
-            solid,
-        ))));
+    fn solid_in(frame: CoordinateFrame) -> Euclidean3DGeometry {
+        Euclidean3DGeometry::Solid(Box::new(Solid::from_exterior(frame, quad_mesh_data())))
+    }
 
-        let result: Result<Vec<geojson::Feature>> = feature.try_into();
-
-        assert!(result.is_err());
+    /// The reason `geometry` cannot be written.
+    fn rejection(geometry: Geometry) -> Unwritable {
+        write_geometry(&geometry)
+            .err()
+            .expect("expected an unwritable geometry")
     }
 
     #[test]
+    fn a_solid_is_rejected_rather_than_panicking() {
+        assert_eq!(
+            rejection(Geometry::Euclidean3D(solid_in(CoordinateFrame::Euclidean))),
+            Unwritable::Solid
+        );
+    }
+
+    // The reason names the leaf, so the writer's warning says what it omitted.
+    #[test]
     fn a_csg_tree_and_a_point_cloud_are_rejected_rather_than_panicking() {
         let solid = || Solid::from_exterior(CoordinateFrame::Euclidean, quad_mesh_data());
-        for geometry in [
-            Geometry::Euclidean3D(Euclidean3DGeometry::Csg(Csg::union(solid(), solid()))),
-            Geometry::Euclidean3D(Euclidean3DGeometry::PointCloud(Box::new(
-                PointCloud::from_positions(CoordinateFrame::Euclidean, [[0.0, 0.0, 0.0]]),
-            ))),
+        for (geometry, reason) in [
+            (
+                Geometry::Euclidean3D(Euclidean3DGeometry::Csg(Csg::union(solid(), solid()))),
+                Unwritable::Csg,
+            ),
+            (
+                Geometry::Euclidean3D(Euclidean3DGeometry::PointCloud(Box::new(
+                    PointCloud::from_positions(CoordinateFrame::Euclidean, [[0.0, 0.0, 0.0]]),
+                ))),
+                Unwritable::PointCloud,
+            ),
         ] {
-            let result: Result<Vec<geojson::Feature>> = feature_with(geometry).try_into();
-            assert!(result.is_err());
+            assert_eq!(rejection(geometry), reason);
         }
+    }
+
+    // A reason becomes a message where it leaves the conversion.
+    #[test]
+    fn a_reason_reaches_the_caller_as_an_error() {
+        let feature = feature_with(Geometry::Euclidean3D(solid_in(CoordinateFrame::Euclidean)));
+
+        let result: Result<Vec<geojson::Feature>> = feature.try_into();
+
+        assert_eq!(
+            result.unwrap_err().to_string(),
+            "Unsupported feature: a Solid has no GeoJSON counterpart"
+        );
     }
 
     // One member with no counterpart does not discard its siblings.
@@ -1426,9 +1654,44 @@ mod tests {
         );
     }
 
+    // Dropping every member leaves nothing to write, reported as the leaf case is —
+    // carrying the member's reason out — rather than passing with no features.
+    #[test]
+    fn a_collection_of_only_unwritable_members_is_rejected() {
+        for geometry in [
+            Geometry::Euclidean3D(Euclidean3DGeometry::Collection(Collection3D::new([
+                solid_in(CoordinateFrame::Euclidean),
+            ]))),
+            Geometry::GeometryCollection(GeometryCollection::new([Geometry::Euclidean3D(
+                solid_in(CoordinateFrame::Euclidean),
+            )])),
+        ] {
+            assert_eq!(rejection(geometry), Unwritable::Solid);
+        }
+    }
+
+    // An unwritable member writes no empty geometry of its own, and does not take
+    // its siblings with it.
+    #[test]
+    fn an_unwritable_member_of_a_geometry_collection_is_dropped() {
+        let geometry = Geometry::GeometryCollection(GeometryCollection::new([
+            Geometry::Euclidean3D(Euclidean3DGeometry::Collection(Collection3D::new([
+                solid_in(CoordinateFrame::Euclidean),
+            ]))),
+            point_2d_in(CoordinateFrame::Euclidean, [0.0, 0.0]),
+        ]));
+
+        let features = written(geometry);
+
+        assert_eq!(features.len(), 1);
+        assert_eq!(
+            features[0].geometry.as_ref().map(|g| &g.value),
+            Some(&geojson::Value::Point(vec![0.0, 0.0]))
+        );
+    }
+
     // --- features without geometry ---
 
-    // An attribute-only row survives as a feature with a null geometry.
     #[test]
     fn a_feature_without_geometry_writes_a_null_geometry() {
         let features = written(Geometry::None);
@@ -1459,6 +1722,21 @@ mod tests {
 
     // --- the CRS of what gets written ---
 
+    /// What the coordinates written for `features` are expressed in, accumulated
+    /// as a caller writing them all does it. A feature that writes nothing states
+    /// nothing about the CRS.
+    fn written_crs(features: &[Feature]) -> WrittenCrs {
+        features
+            .iter()
+            .map(|feature| {
+                write_feature(feature)
+                    .map(|written| written.frames)
+                    .unwrap_or_default()
+            })
+            .fold(WrittenFrames::default(), WrittenFrames::and)
+            .crs()
+    }
+
     #[test]
     fn written_crs_reports_the_shared_epsg_code() {
         let features = [
@@ -1488,6 +1766,19 @@ mod tests {
         );
     }
 
+    // Neither code covers what the `Euclidean` frame carries, so naming both would
+    // describe the file no better than naming none.
+    #[test]
+    fn written_crs_is_unknown_when_a_frame_names_no_crs_among_two_that_do() {
+        let features = [
+            feature_with(point_2d_in(crs(6675), [0.0; 2])),
+            feature_with(point_2d_in(CoordinateFrame::Euclidean, [1.0; 2])),
+            feature_with(point_2d_in(crs(6669), [2.0; 2])),
+        ];
+
+        assert_eq!(written_crs(&features), WrittenCrs::Unknown);
+    }
+
     #[test]
     fn written_crs_is_unknown_without_a_crs_frame() {
         let features = [
@@ -1498,7 +1789,7 @@ mod tests {
         assert_eq!(written_crs(&features), WrittenCrs::Unknown);
     }
 
-    // A leaf that is dropped names no CRS, so the answer describes exactly the
+    // A leaf that is dropped names no CRS, the answer describing exactly the
     // coordinates in the file.
     #[test]
     fn written_crs_ignores_geometry_that_is_not_written() {
