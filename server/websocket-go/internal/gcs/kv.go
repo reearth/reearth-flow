@@ -57,11 +57,8 @@ func (s kv) putWithMeta(ctx context.Context, name string, data []byte, meta map[
 // errObjectExists reports that a create-only write lost to an existing object.
 var errObjectExists = errors.New("gcs: object already exists")
 
-// putWithMetaIfAbsent is putWithMeta that REFUSES to overwrite, returning
-// errObjectExists instead. Snapshot records are write-once by contract (ids are
-// never reused within a room), and a plain put makes an id collision destroy the
-// previous snapshot's payload, label and timestamp with no error anywhere. The
-// precondition converts that silent data loss into a caller-visible failure.
+// putWithMetaIfAbsent refuses to overwrite, returning errObjectExists. Snapshot
+// records are write-once, so a collision must error rather than destroy data.
 func (s kv) putWithMetaIfAbsent(ctx context.Context, name string, data []byte, meta map[string]string) error {
 	w := s.bucket.Object(name).If(storage.Conditions{DoesNotExist: true}).NewWriter(ctx)
 	w.Metadata = meta
@@ -72,8 +69,7 @@ func (s kv) putWithMetaIfAbsent(ctx context.Context, name string, data []byte, m
 	return asObjectExists(w.Close())
 }
 
-// asObjectExists maps a failed DoesNotExist precondition (HTTP 412) onto
-// errObjectExists, leaving every other error untouched.
+// asObjectExists maps a failed DoesNotExist precondition (412) to errObjectExists.
 func asObjectExists(err error) error {
 	if err == nil {
 		return nil

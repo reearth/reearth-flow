@@ -132,16 +132,9 @@ func (LegacyRootLayout) SnapNextIDName(d DocID) string {
 	return hexb([]byte("snapnextid:" + hexb([]byte(d))))
 }
 
-// SnapVersionIDFromName recovers the snapshot id from a hex-encoded object name,
-// and reports false for anything that is not a snapshot record.
-//
-// The marker check is load-bearing, not defensive dressing. Without it, taking
-// "everything after the last colon" makes any all-decimal tail parse as an id —
-// so a room whose name hex-encodes to digits has its own COUNTER object read as
-// a snapshot (room "0" yielded (30, true), room "12345" yielded (3132333435,
-// true)). Today's only caller pre-filters by SnapVersionPrefix, but that makes
-// correctness depend on caller discipline for a method on the Layout interface,
-// and a caller listing a broader prefix would silently mint phantom ids.
+// SnapVersionIDFromName recovers the snapshot id, reporting false for anything
+// that is not a snapshot record. The marker check matters: without it any
+// all-decimal tail parses as an id, so a room's own counter object would too.
 func (LegacyRootLayout) SnapVersionIDFromName(name string) (int64, bool) {
 	b, err := hexDecode(name)
 	if err != nil {
@@ -208,14 +201,9 @@ func (ProjectFolderLayout) SnapNextIDName(d DocID) string {
 	return ProjectPrefix(d) + "snapnextid"
 }
 
-// SnapVersionIDFromName recovers the snapshot id from a "{docid}/snapver/{id}"
-// object name, and reports false for anything else.
-//
-// The "snapver" segment is checked rather than just taking the tail after the
-// last "/", for the same reason as the LegacyRoot parser: otherwise any path
-// ending in digits parses as a snapshot id ("proj/anything/77" yielded
-// (77, true)), so a caller listing a broader prefix would mint phantom ids
-// pointing at unrelated objects.
+// SnapVersionIDFromName recovers the snapshot id from "{docid}/snapver/{id}",
+// reporting false for anything else. The segment check stops any path ending in
+// digits parsing as an id.
 func (ProjectFolderLayout) SnapVersionIDFromName(name string) (int64, bool) {
 	rest, idStr, ok := cutLast(name, "/")
 	if !ok {
@@ -232,8 +220,7 @@ func (ProjectFolderLayout) SnapVersionIDFromName(name string) (int64, bool) {
 	return id, true
 }
 
-// cutLast splits s around the last occurrence of sep, returning the part before
-// and after it. Reports false when sep is absent.
+// cutLast splits s around the last sep; false when sep is absent.
 func cutLast(s, sep string) (before, after string, found bool) {
 	i := strings.LastIndex(s, sep)
 	if i < 0 {

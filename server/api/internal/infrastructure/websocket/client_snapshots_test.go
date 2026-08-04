@@ -38,13 +38,8 @@ func TestClient_GetSnapshots_DecodesList(t *testing.T) {
 	assert.False(t, got[1].Timestamp.IsZero())
 }
 
-// An unparseable timestamp must leave the zero value rather than substituting
-// time.Now(). The Version panel sorts rows by timestamp and, for an unlabelled
-// snapshot, renders the timestamp AS the row label — so a fabricated "now" would
-// float a stale snapshot above genuinely newer ones and label it with today's
-// date. The zero value sorts last and reads as obviously wrong, which is the
-// honest failure mode. The row itself is still returned: one bad timestamp must
-// not drop a snapshot the user can otherwise see and restore.
+// An unparseable timestamp must stay zero rather than becoming time.Now(), which
+// would misorder and mislabel history. The row is still returned.
 func TestClient_GetSnapshots_UnparseableTimestampStaysZero(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
@@ -93,10 +88,8 @@ func TestClient_GetSnapshots_NonOKStatus(t *testing.T) {
 	assert.Error(t, err)
 }
 
-// TestClient_SaveNamedSnapshot_EnrichesFromList exercises the enrichment path:
-// the save endpoint only returns {id, label} (Timestamp/Size zero-valued,
-// mirroring the underlying store's SaveSnapshot signature), so the client
-// must call the snapshot list to fill in Timestamp and Size before returning.
+// TestClient_SaveNamedSnapshot_EnrichesFromList: save returns only {id, label},
+// so the client must fill Timestamp and Size from the list.
 func TestClient_SaveNamedSnapshot_EnrichesFromList(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "/api/document/proj1/snapshots", r.URL.Path)

@@ -12,23 +12,16 @@ import (
 	"github.com/reearth/ygo/persistence"
 )
 
-// Custom-metadata keys on a snapver object. Label and the exact state length are
-// stored here so ListSnapshots is a single listAttrs call that never reads a
-// payload. attrs.Size is the brotli-COMPRESSED size and is deliberately unused
-// for SnapshotInfo.Size.
+// Snapver object metadata. Stored so ListSnapshots never reads a payload; the
+// size is the UNCOMPRESSED length, unlike attrs.Size.
 const (
 	snapMetaLabel = "ygo-label"
 	snapMetaSize  = "ygo-size"
 )
 
 // SaveSnapshot stores state as a new labelled snapshot and returns its id.
-//
-// state is treated as an opaque, self-contained blob — exactly like the ygo
-// memory and file backends treat it — and is never decoded as a CRDT update. It
-// is only brotli-compressed for storage; GetSnapshotState decompresses and
-// returns it byte-for-byte. This matters because SnapshotStore's contract (and
-// its conformance suite) allows any non-empty byte string as state, not only a
-// valid Yjs update.
+// state is an opaque blob, only compressed, never decoded as a CRDT update:
+// SnapshotStore's contract allows any non-empty bytes.
 func (a *Adapter) SaveSnapshot(ctx context.Context, room, label string, state []byte) (int64, error) {
 	if err := a.validate(room); err != nil {
 		return 0, err
@@ -67,11 +60,8 @@ func (a *Adapter) SaveSnapshot(ctx context.Context, room, label string, state []
 			if !errors.Is(perr, errObjectExists) || attempt >= maxSnapshotIDAttempts {
 				return perr
 			}
-			// The id was already taken, so the counter was behind the objects that
-			// actually exist — a lock lease that expired mid-allocation, or a counter
-			// restored from an older state. Re-derive the floor from reality rather
-			// than trusting the counter again, and retry. The write-once precondition
-			// is what makes this safe: the losing writer never destroys the winner.
+			// Id taken, so the counter is behind reality: re-derive the floor and retry.
+			// Safe because the write is create-only, so the loser destroys nothing.
 			a.log.Warn("snapshot id already taken, re-deriving from stored objects",
 				"room", string(d), "id", next, "attempt", attempt)
 			maxID, ferr := a.maxSnapIDFromObjects(ctx, d)
@@ -87,29 +77,18 @@ func (a *Adapter) SaveSnapshot(ctx context.Context, room, label string, state []
 	return id, nil
 }
 
-// maxSnapshotIDAttempts bounds SaveSnapshot's retry when an allocated id turns
-// out to be taken. Each retry re-derives the floor from stored objects, so more
-// than a couple of rounds means something is badly wrong rather than racing.
+// maxSnapshotIDAttempts bounds the retry when an allocated id is already taken.
 const maxSnapshotIDAttempts = 3
 
-// maxLabelBytes bounds the label written into GCS custom object metadata. Real
-// GCS caps total custom metadata at 8 KiB per object; this leaves ample room for
-// the size key alongside it. The HTTP layer also bounds the label, but this is
-// the guard that matters: SaveSnapshot has more than one caller (ygo
-// auto-versioning is the other), and the storage layer is where the constraint
-// actually lives.
+// maxLabelBytes bounds the label; GCS caps custom metadata at 8 KiB per object.
 const maxLabelBytes = 1024
 
 // ErrInvalidSnapshotLabel reports a label that cannot be stored in object
 // metadata.
 var ErrInvalidSnapshotLabel = errors.New("gcs: invalid snapshot label")
 
-// validateSnapshotLabel rejects labels GCS cannot round-trip.
-//
-// Both failures are silent without this check. An oversized label surfaces as an
-// opaque GCS 400 *after* the id counter has been consumed, so each attempt burns
-// an id and the user just sees "save failed". Invalid UTF-8 is worse: it is
-// accepted and mangled, so the label read back is not the label written.
+// validateSnapshotLabel rejects labels GCS cannot round-trip. Without it an
+// oversized label 400s only after an id is consumed, and bad UTF-8 is mangled.
 func validateSnapshotLabel(label string) error {
 	if len(label) > maxLabelBytes {
 		return fmt.Errorf("%w: %d bytes exceeds the %d-byte limit", ErrInvalidSnapshotLabel, len(label), maxLabelBytes)
@@ -120,17 +99,10 @@ func validateSnapshotLabel(label string) error {
 	return nil
 }
 
-// nextSnapID returns the next snapshot id for the room.
-//
-// The counter object is a fast path, NOT the source of truth. When it is missing
-// or unparseable this falls back to deriving the floor from the snapshot objects
-// that exist. Trusting the counter alone is a data-loss bug: SaveSnapshot would
-// restart at id 1 and overwrite live snapshot 1, destroying its payload, label
-// and timestamp. That is routinely reachable, because Delete removes objects one
-// at a time and a cancelled request can take the counter while snapshots remain.
-//
-// Caller holds gcsDocLockKey(d), so this read-modify-write is race-free against
-// concurrent SaveSnapshot calls for the same room.
+// nextSnapID returns the room's next snapshot id. The counter object is a fast
+// path, NOT the source of truth: trusting it alone means a lost counter restarts
+// at 1 and overwrites live snapshots, so an unusable counter falls back to the
+// ids that exist. Caller holds gcsDocLockKey(d).
 func (a *Adapter) nextSnapID(ctx context.Context, d DocID) (int64, error) {
 	b, err := a.store.get(ctx, a.layout.SnapNextIDName(d))
 	if err != nil && err != errNotFound {
@@ -150,10 +122,8 @@ func (a *Adapter) nextSnapID(ctx context.Context, d DocID) (int64, error) {
 	return maxID + 1, nil
 }
 
-// maxSnapIDFromObjects returns the highest snapshot id actually present for the
-// room, or 0 when there are none. Both layouts are scanned when a fallback is
-// configured (Phase 2), so a Phase-2 allocation can never collide with a
-// legacy-root id that ListSnapshots still surfaces.
+// maxSnapIDFromObjects returns the highest stored snapshot id, or 0 if none.
+// Scans both layouts so a Phase-2 id cannot collide with a legacy-root one.
 func (a *Adapter) maxSnapIDFromObjects(ctx context.Context, d DocID) (int64, error) {
 	var maxID int64
 	for _, l := range a.snapshotLayouts() {
@@ -170,9 +140,8 @@ func (a *Adapter) maxSnapIDFromObjects(ctx context.Context, d DocID) (int64, err
 	return maxID, nil
 }
 
-// snapshotLayouts returns the layouts whose snapshot objects are readable: the
-// primary, plus the legacy root when running Phase 2 so pre-cutover snapshots
-// stay visible. Order matters — the primary comes first so it wins de-duplication.
+// snapshotLayouts returns the readable layouts, primary first so it wins
+// de-duplication. The legacy root is included under Phase 2.
 func (a *Adapter) snapshotLayouts() []Layout {
 	if a.fallback == nil {
 		return []Layout{a.layout}
@@ -180,15 +149,9 @@ func (a *Adapter) snapshotLayouts() []Layout {
 	return []Layout{a.layout, a.fallback}
 }
 
-// ListSnapshots returns snapshot metadata newest-first. It reads only object
-// attributes (name + custom metadata), never a state blob.
-//
-// Under Phase 2 this merges the primary prefix with the legacy root, because a
-// room written before the cutover keeps its snapshots there. Without the merge,
-// flipping REEARTH_FLOW_GCS_PHASE2 would empty the version history of every
-// existing room while document state kept loading fine via dual-read — silent,
-// error-free, and indistinguishable from data loss to a user. Every other
-// layout-scoped read here already has a legacy fallback; so does Delete.
+// ListSnapshots returns snapshot metadata newest-first, reading only object
+// attributes. Merges the legacy root under Phase 2, without which flipping
+// REEARTH_FLOW_GCS_PHASE2 would silently empty every existing room's history.
 func (a *Adapter) ListSnapshots(ctx context.Context, room string) ([]persistence.SnapshotInfo, error) {
 	if err := a.validate(room); err != nil {
 		return nil, err
@@ -228,9 +191,8 @@ func (a *Adapter) ListSnapshots(ctx context.Context, room string) ([]persistence
 	return out, nil
 }
 
-// GetSnapshotState returns the snapshot's state exactly as it was saved. Falls
-// back to the legacy root under Phase 2 so pre-cutover snapshots stay readable —
-// otherwise every id ListSnapshots reports would 404.
+// GetSnapshotState returns the state as saved, falling back to the legacy root
+// under Phase 2 so every id ListSnapshots reports stays readable.
 func (a *Adapter) GetSnapshotState(ctx context.Context, room string, id int64) ([]byte, error) {
 	if err := a.validate(room); err != nil {
 		return nil, err
@@ -248,9 +210,8 @@ func (a *Adapter) GetSnapshotState(ctx context.Context, room string, id int64) (
 	return nil, persistence.ErrSnapshotNotFound
 }
 
-// DeleteSnapshot removes one snapshot. Deleting an unknown snapshot is a no-op.
-// Both layouts are swept under Phase 2, so deleting a snapshot the merged list
-// reported cannot leave a legacy copy behind that reappears on the next list.
+// DeleteSnapshot removes one snapshot; unknown ids are a no-op. Sweeps both
+// layouts so a legacy copy cannot reappear on the next list.
 func (a *Adapter) DeleteSnapshot(ctx context.Context, room string, id int64) error {
 	if err := a.validate(room); err != nil {
 		return err
@@ -263,5 +224,3 @@ func (a *Adapter) DeleteSnapshot(ctx context.Context, room string, id int64) err
 	}
 	return nil
 }
-
-var _ persistence.SnapshotStore = (*Adapter)(nil)

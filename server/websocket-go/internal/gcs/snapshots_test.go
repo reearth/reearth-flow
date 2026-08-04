@@ -9,6 +9,17 @@ import (
 	"github.com/reearth/ygo/persistence"
 )
 
+// Compile-time interface assertions live here, not in the production files, so
+// those carry no declarations that exist only for the type checker.
+var (
+	_ persistence.VersionedPersistence         = (*Adapter)(nil)
+	_ persistence.SnapshotStore                = (*Adapter)(nil)
+	_ persistence.SnapshotVersionedPersistence = (*Adapter)(nil)
+	_ persistence.RoomLister                   = (*Adapter)(nil)
+	_ persistence.CrashInjector                = (*Adapter)(nil)
+	_ persistence.Reopener                     = (*Adapter)(nil)
+)
+
 // The ygo conformance suite is the contract. Passing it means Flow's adapter
 // behaves exactly like the three in-tree backends.
 func TestSnapshotStoreConformance_GCS(t *testing.T) {
@@ -101,15 +112,9 @@ func TestGCSDelete_RemovesSnapshots_Phase2(t *testing.T) {
 	}
 }
 
-// TestGCSSnapshot_LostCounterDoesNotOverwriteSnapshots: the id counter is a fast
-// path, not the source of truth. If it is trusted alone, a room that loses its
-// counter restarts allocation at id 1 and silently overwrites live snapshot 1 —
-// destroying its payload, label and timestamp with no error to anyone.
-//
-// This is routinely reachable rather than theoretical: Delete removes objects one
-// at a time and unlocked, so a cancelled request can take the counter while
-// snapshots survive. With auto-versioning on (the default, every 15m) the room's
-// history is then eaten one snapshot at a time.
+// TestGCSSnapshot_LostCounterDoesNotOverwriteSnapshots: a room that loses its
+// counter must not restart at id 1 and overwrite live snapshots. Reachable via a
+// cancelled Delete, which removes objects one at a time.
 func TestGCSSnapshot_LostCounterDoesNotOverwriteSnapshots(t *testing.T) {
 	ctx := context.Background()
 	client, bucket := newFakeGCS(t)
@@ -189,11 +194,8 @@ func TestGCSSnapshot_CorruptCounterDoesNotOverwrite(t *testing.T) {
 	}
 }
 
-// TestGCSSnapshot_WriteIsCreateOnly asserts the storage-level guarantee the two
-// tests above depend on. Snapshot records are write-once (ids are never reused
-// within a room), so the write must REFUSE an existing name rather than
-// overwrite it. Without this precondition an id collision from any cause — a
-// stale counter, an expired lock lease — destroys bytes instead of erroring.
+// TestGCSSnapshot_WriteIsCreateOnly: snapshot records are write-once, so a
+// colliding write must fail rather than destroy the existing payload.
 func TestGCSSnapshot_WriteIsCreateOnly(t *testing.T) {
 	ctx := context.Background()
 	client, bucket := newFakeGCS(t)
@@ -244,12 +246,8 @@ func TestGCSDelete_RemovesIDCounter(t *testing.T) {
 }
 
 // TestGCSSnapshot_NextIDDerivesFromObjectsWhenCounterUnusable pins nextSnapID
-// itself, because the end-to-end tests above cannot: the create-only write plus
-// retry masks a bad allocation, so they still pass even if the counter is trusted
-// blindly. That layering is deliberate (the precondition is what prevents data
-// loss), but it means the derive-from-reality behaviour needs its own assertion
-// or it could be removed silently, leaving every post-counter-loss save to burn a
-// failed write and a retry.
+// directly: the end-to-end tests pass even if the counter is trusted blindly,
+// because the create-only write and retry mask a bad allocation.
 func TestGCSSnapshot_NextIDDerivesFromObjectsWhenCounterUnusable(t *testing.T) {
 	ctx := context.Background()
 	client, bucket := newFakeGCS(t)
@@ -286,16 +284,9 @@ func TestGCSSnapshot_NextIDDerivesFromObjectsWhenCounterUnusable(t *testing.T) {
 	}
 }
 
-// TestGCSSnapshot_Phase2ReadsLegacyRootSnapshots: flipping
-// REEARTH_FLOW_GCS_PHASE2 must not hide the version history of rooms written
-// before the cutover.
-//
-// This is the nastiest shape of failure this subsystem can produce: document
-// state keeps loading correctly via the existing dual-read, so the flag flip
-// looks clean, while every existing room's history panel silently empties. No
-// error, nothing in the logs, and to a user indistinguishable from having lost
-// their versions. Every other layout-scoped read here already falls back to the
-// legacy root, and Delete already sweeps it — the read path was the gap.
+// TestGCSSnapshot_Phase2ReadsLegacyRootSnapshots: flipping the Phase-2 flag must
+// not hide pre-cutover history. Document state keeps loading either way, so the
+// breakage would be silent.
 func TestGCSSnapshot_Phase2ReadsLegacyRootSnapshots(t *testing.T) {
 	ctx := context.Background()
 	client, bucket := newFakeGCS(t)
@@ -369,15 +360,7 @@ func TestGCSSnapshot_Phase2ReadsLegacyRootSnapshots(t *testing.T) {
 }
 
 // TestSnapVersionIDFromName_RejectsNonSnapshotNames: the parser must validate,
-// not just extract. Without a marker check, "everything after the last
-// separator" makes any all-decimal tail look like a snapshot id — so a room
-// whose name hex-encodes to digits has its own id COUNTER read as a snapshot,
-// and any unrelated path ending in a number does the same.
-//
-// It is currently safe only because the one caller pre-filters by prefix. That
-// makes correctness depend on caller discipline for a method on the Layout
-// interface, and ListRooms already establishes the habit of scanning broader
-// prefixes, so the next loose caller would mint phantom ids.
+// not just extract, or a room's own counter object parses as a snapshot id.
 func TestSnapVersionIDFromName_RejectsNonSnapshotNames(t *testing.T) {
 	legacy := LegacyRootLayout{}
 	folder := ProjectFolderLayout{}
@@ -413,13 +396,8 @@ func TestSnapVersionIDFromName_RejectsNonSnapshotNames(t *testing.T) {
 	}
 }
 
-// TestGCSSnapshot_RejectsUnstorableLabel: the label goes into GCS custom object
-// metadata, which caps at 8 KiB and silently mangles invalid UTF-8. Both
-// failures are invisible without a guard — an oversized label surfaces as an
-// opaque 400 AFTER the id counter has been consumed (so every retry burns an
-// id), and bad UTF-8 is accepted and comes back different. Guarded in the
-// adapter rather than only at the HTTP boundary because auto-versioning is a
-// second caller.
+// TestGCSSnapshot_RejectsUnstorableLabel: GCS metadata caps at 8 KiB and mangles
+// invalid UTF-8, and an oversized label would 400 only after an id is consumed.
 func TestGCSSnapshot_RejectsUnstorableLabel(t *testing.T) {
 	ctx := context.Background()
 	client, bucket := newFakeGCS(t)
@@ -457,16 +435,9 @@ func TestGCSSnapshot_RejectsUnstorableLabel(t *testing.T) {
 	}
 }
 
-// TestGCSDelete_RemovesLegacyRootSnapshots_Phase2 covers the legacy-root
-// snapshot cleanup in deleteLegacyRoot, which no test reached: removing either
-// of its two snapshot lines left the whole suite passing.
-// TestDeleteRemovesNamedSnapshots_Phase2 looks like it covers this and does not,
-// because its SaveSnapshot writes through the PHASE-2 layout, so the legacy
-// branch never runs. Here the snapshots are written by a Phase-1 adapter first.
-//
-// If it regresses, a deleted project's full document state survives in the
-// bucket indefinitely — a snapshot is a complete copy — which is both a storage
-// cost and a data-deletion-guarantee problem.
+// TestGCSDelete_RemovesLegacyRootSnapshots_Phase2 covers deleteLegacyRoot, which
+// no test reached. Asserts at object level, since a full document copy surviving
+// a delete is both a cost and a data-deletion problem.
 func TestGCSDelete_RemovesLegacyRootSnapshots_Phase2(t *testing.T) {
 	ctx := context.Background()
 	client, bucket := newFakeGCS(t)

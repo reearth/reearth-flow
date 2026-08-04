@@ -190,9 +190,8 @@ func (s *StoreAdapter) cleanupRooms(ctx context.Context) ([]string, error) {
 	return s.listRooms(), nil
 }
 
-// ListSnapshots maps ygo SnapshotInfo onto the wire DTO. A store that does not
-// implement persistence.SnapshotStore yields an empty list rather than an
-// error, so callers can render an empty history instead of failing.
+// ListSnapshots maps ygo SnapshotInfo onto the wire DTO; an unsupported store
+// yields an empty list so callers render an empty history rather than failing.
 func (s *StoreAdapter) ListSnapshots(ctx context.Context, room string) ([]SnapshotItem, error) {
 	ss, ok := s.p.(persistence.SnapshotStore)
 	if !ok {
@@ -214,12 +213,9 @@ func (s *StoreAdapter) ListSnapshots(ctx context.Context, room string) ([]Snapsh
 	return out, nil
 }
 
-// GetSnapshotState returns one snapshot's V1 state. A store without snapshot
-// support reports ErrSnapshotsUnsupported, matching SaveSnapshot — NOT
-// ErrSnapshotNotFound, which would claim this particular snapshot is missing
-// and send an operator hunting for a lost object instead of a disabled feature.
-// (ListSnapshots stays lenient with an empty list on purpose: the history panel
-// should render as empty rather than error out.)
+// GetSnapshotState returns one snapshot's V1 state. Reports
+// ErrSnapshotsUnsupported, not ErrSnapshotNotFound, so a disabled feature is not
+// mistaken for a missing snapshot. ListSnapshots stays lenient (empty list).
 func (s *StoreAdapter) GetSnapshotState(ctx context.Context, room string, id int64) ([]byte, error) {
 	ss, ok := s.p.(persistence.SnapshotStore)
 	if !ok {
@@ -228,9 +224,8 @@ func (s *StoreAdapter) GetSnapshotState(ctx context.Context, room string, id int
 	return ss.GetSnapshotState(ctx, room, id)
 }
 
-// SaveSnapshot captures the room's current state as a labelled snapshot. It
-// flushes the live room first (when a flushFn is configured) so the snapshot
-// reflects in-memory edits, not just what was last durably persisted.
+// SaveSnapshot captures the room's state, flushing the live room first (when a
+// flushFn is set) so in-memory edits are included. Single-instance only.
 func (s *StoreAdapter) SaveSnapshot(ctx context.Context, room, label string) (int64, error) {
 	ss, ok := s.p.(persistence.SnapshotStore)
 	if !ok {

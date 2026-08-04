@@ -8,12 +8,6 @@ import (
 	"github.com/reearth/ygo/persistence"
 )
 
-var (
-	_ persistence.VersionedPersistence = (*Adapter)(nil)
-	_ persistence.CrashInjector        = (*Adapter)(nil)
-	_ persistence.Reopener             = (*Adapter)(nil)
-)
-
 // ceilingName is the durable rollback ceiling. PruneAfter writes it (= target)
 // before deleting future updates, so a crash mid-prune still hides any update >
 // target from ListVersions/GetUpdate/Load. AppendUpdate clears it.

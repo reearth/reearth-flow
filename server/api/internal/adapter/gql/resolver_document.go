@@ -59,10 +59,7 @@ func (r *queryResolver) ProjectSnapshots(ctx context.Context, projectId gqlmodel
 	nodes := make([]*gqlmodel.NamedSnapshot, len(snaps))
 	for i, s := range snaps {
 		nodes[i] = &gqlmodel.NamedSnapshot{
-			// Size stays int64 (FileSize scalar). ID narrows to int, which is safe:
-			// it is a per-room snapshot counter, so exhausting 32 bits would take
-			// billions of snapshots in a single room.
-			ID:        int(s.ID),
+			ID:        int(s.ID), // per-room counter; 32 bits is ample
 			Label:     s.Label,
 			Timestamp: s.Timestamp,
 			Size:      s.Size,
@@ -137,7 +134,7 @@ func (r *mutationResolver) SaveNamedSnapshot(ctx context.Context, projectId gqlm
 	}
 
 	return &gqlmodel.NamedSnapshot{
-		ID:        int(s.ID), // per-room counter; see ProjectSnapshots
+		ID:        int(s.ID),
 		Label:     s.Label,
 		Timestamp: s.Timestamp,
 		Size:      s.Size,

@@ -81,20 +81,8 @@ func applyOneChange(t *testing.T, s *Server, room string) {
 	}
 }
 
-// TestNewWithPersistence_AutoVersionSavesSnapshotOnClose proves the wiring is
-// not just plumbing: with a real SnapshotVersionedPersistence
-// (MemoryPersistence, which implements SaveSnapshot/ListSnapshots per
-// persistence/snapshots.go's compile-time assertion) behind NewWithPersistence,
-// a real CRDT change followed by a forced CloseRoom must produce exactly one
-// labelled snapshot carrying ygws.AutoVersionLabel. CloseRoom(room, true)
-// closes persistStop and blocks on persistDone, which the persistence worker
-// only closes after running its forced final maybeVersion, so no sleeping or
-// fake clock is needed to observe the result.
-//
-// What each subcase actually guards: "enabled" is what fails if
-// s.ws.AutoVersionEvery is left unwired (drop the assignment and it sees 0, so
-// no snapshot is written). "disabled" guards the opposite mistake — a hardcoded
-// non-zero default that would version rooms an operator asked to leave alone.
+// TestNewWithPersistence_AutoVersionSavesSnapshotOnClose proves the wiring works:
+// a real change plus a forced CloseRoom must yield one auto-labelled snapshot.
 func TestNewWithPersistence_AutoVersionSavesSnapshotOnClose(t *testing.T) {
 	const room = "550e8400-e29b-41d4-a716-446655440099"
 	ctx := context.Background()

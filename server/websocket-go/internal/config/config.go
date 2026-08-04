@@ -51,28 +51,11 @@ type Config struct {
 	// queue overflow instead of disconnecting. Default ON; env REEARTH_FLOW_SLOW_PEER_RESYNC.
 	SlowPeerResync bool
 
-	// AutoVersionEvery, when > 0, asks ygo to capture a labelled snapshot of a
-	// room at most this often and only when the room changed, giving the Project
-	// History panel meaningful entries instead of one per CRDT update.
-	// 0 disables auto-versioning.
+	// AutoVersionEvery caps how often ygo snapshots a changed room. 0 disables.
 	AutoVersionEvery time.Duration
 
-	// KeepSnapshots bounds retained snapshots per room. Programmatically, the
-	// zero value means keep all (see LegacyAdapter.KeepSnapshots). The env
-	// loader uses envPositive, though, which rejects values below 1 and falls
-	// back to the default instead — so REEARTH_FLOW_KEEP_SNAPSHOTS=0 can never
-	// select keep-all; set it to a large number instead if that is the intent.
-	//
-	// Two limits worth knowing, both from ygo's LegacyAdapter.trimSnapshots:
-	//
-	//  1. It runs only on the AUTO path (SaveVersion). Snapshots created through
-	//     POST /api/document/{id}/snapshots call the store directly and are not
-	//     trimmed, so with auto-versioning disabled the manual route can grow a
-	//     room's snapshots without bound (there is no DELETE endpoint either).
-	//  2. The trim keeps the newest N for the room REGARDLESS of label, so a
-	//     user's deliberately named snapshot is evicted once N newer ones exist.
-	//     At 15m/50 that is roughly half a day of continuous editing. Label-aware
-	//     retention needs an upstream change: reearth/ygo#212.
+	// KeepSnapshots bounds retained snapshots per room. Applies on the auto path
+	// only and ignores labels, so named snapshots are also evicted: reearth/ygo#212.
 	KeepSnapshots int
 
 	// OTLP tracing config.
@@ -172,22 +155,15 @@ func (c *Config) Validate() error {
 			return fmt.Errorf("REEARTH_FLOW_WS_PROTECTED=%q is not a valid boolean (use true/false, on/off, yes/no); refusing to start with an ambiguous WS auth setting", raw)
 		}
 	}
-	// Same fail-loud reasoning as above, for a different reason: auto-versioning
-	// is ON by default, so this var is the kill switch an operator reaches for
-	// during an incident. envDuration falls back to the 15m default on anything
-	// it cannot parse, which means "-1", "off", "disabled" and "15" (no unit) all
-	// leave the feature running while looking like they turned it off. Use "0"
-	// to disable.
+	// Auto-versioning is ON by default and envDuration silently falls back, so an
+	// unparseable kill switch would leave it running. Use "0" to disable.
 	if raw := os.Getenv("REEARTH_FLOW_AUTO_VERSION_EVERY"); strings.TrimSpace(raw) != "" {
 		d, err := time.ParseDuration(strings.TrimSpace(raw))
 		if err != nil {
 			return fmt.Errorf("REEARTH_FLOW_AUTO_VERSION_EVERY=%q is not a valid Go duration (e.g. 15m, 30s; use 0 to disable auto-versioning); refusing to start rather than silently keeping auto-versioning enabled", raw)
 		}
-		// A negative duration parses fine and ygo treats <= 0 as "disabled", so it
-		// would work — but silently, and only by coincidence. "0" is the documented
-		// way to disable, so anything else non-positive is more likely a typo (a
-		// stray minus, a copied "-1") than an intent, and this var's whole purpose
-		// is that an operator's intent is never guessed at.
+		// ygo treats <= 0 as disabled, but "0" is the documented spelling, so a
+		// negative value is more likely a typo than an intent.
 		if d < 0 {
 			return fmt.Errorf("REEARTH_FLOW_AUTO_VERSION_EVERY=%q is negative; use exactly 0 to disable auto-versioning, or a positive duration such as 15m", raw)
 		}

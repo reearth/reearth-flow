@@ -335,10 +335,8 @@ func TestValidateAcceptsValidAndEmpty(t *testing.T) {
 	}
 }
 
-// TestAutoVersioningDefaultsAndOverrides pins the two auto-versioning knobs.
-// Neither was covered, so nothing held the 15m/50 defaults or proved the env
-// names parse at all — a typo in either key would have silently reverted the
-// feature to its default while looking configured.
+// TestAutoVersioningDefaultsAndOverrides pins the 15m/50 defaults and the env
+// names, so a typo in either key cannot silently revert to the default.
 func TestAutoVersioningDefaultsAndOverrides(t *testing.T) {
 	clearEnv(t)
 	c := Load()
@@ -368,13 +366,8 @@ func TestAutoVersioningDefaultsAndOverrides(t *testing.T) {
 	}
 }
 
-// TestValidateRejectsBadAutoVersionEvery: auto-versioning is ON by default, so
-// this var is the kill switch an operator reaches for during an incident.
-// envDuration falls back to the 15m default on anything it cannot parse, which
-// would leave the feature RUNNING while looking disabled — the same fail-open
-// trap Validate already guards for WS_PROTECTED. A negative duration is rejected
-// too: ygo happens to treat <= 0 as disabled, so it would work, but only by
-// coincidence and silently, and "-1" is far likelier a typo than an intent.
+// TestValidateRejectsBadAutoVersionEvery: an unparseable or negative kill switch
+// must fail startup rather than silently leave auto-versioning running.
 func TestValidateRejectsBadAutoVersionEvery(t *testing.T) {
 	for _, v := range []string{"maybe", "off", "disabled", "15", "-1m", "-1"} {
 		clearEnv(t)

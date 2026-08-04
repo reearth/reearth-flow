@@ -4,26 +4,15 @@ import (
 	"context"
 	"strings"
 	"unicode/utf8"
-
-	"github.com/reearth/ygo/persistence"
 )
 
 // ListRooms enumerates every room the bucket holds data for.
 //
-// NOTE: intentionally not wired to a caller yet. It satisfies
-// persistence.RoomLister so ygo can drive store-wide sweeps, but the admin
-// cleanup route currently enumerates only the *live* in-memory rooms
-// (cmd/websocket/main.go passes srv.WSProvider().Rooms), which is close to
-// useless for retention since the rooms needing cleanup are the idle ones. That
-// swap is a behaviour change and is tracked in reearth/reearth-flow#2333 rather
-// than widened into the snapshot work. Kept and conformance-tested so the swap
-// is a one-line change when it happens.
+// NOTE: not wired yet; admin cleanup still enumerates live rooms only. See
+// reearth/reearth-flow#2333, which also lists two bugs to fix before wiring.
 //
-// Phase 2 is a straight prefix listing. Phase 1 has no folder structure: object
-// names are hex-encoded structured keys, so rooms are recovered from the OID
-// index objects (one per room, name = hex(V1‖KEYSPACE_OID‖utf8(room)‖0x00)) plus
-// the snapshot-counter objects, which cover a room that has snapshots but no
-// update log.
+// Phase 2 is a prefix listing. Phase 1 recovers rooms from the OID index objects
+// plus the snapshot counters, which cover snapshot-only rooms.
 func (a *Adapter) ListRooms(ctx context.Context) ([]string, error) {
 	if a.phase2 {
 		prefixes, err := a.store.listPrefixes(ctx, "")
@@ -90,8 +79,3 @@ func (a *Adapter) ListRooms(ctx context.Context) ([]string, error) {
 	}
 	return out, nil
 }
-
-var (
-	_ persistence.RoomLister                   = (*Adapter)(nil)
-	_ persistence.SnapshotVersionedPersistence = (*Adapter)(nil)
-)

@@ -9,13 +9,8 @@ import (
 	"github.com/reearth/ygo/persistence"
 )
 
-// memSnapshotStore is a hand-rolled, in-memory persistence.SnapshotStore that
-// mirrors the real contract (ID monotonically increasing per room, newest
-// first on list, ErrSnapshotNotFound for an unknown pair). It embeds
-// *memPersist (from adapt_test.go) so it also satisfies the local Persistence
-// interface, letting these tests exercise StoreAdapter's real bridging logic
-// end to end without pulling in genuine Yjs-encoded update bytes (Task 3's
-// GCS-adapter tests already cover the production SnapshotStore backend).
+// memSnapshotStore is an in-memory persistence.SnapshotStore mirroring the real
+// contract: ids increase per room, newest first, ErrSnapshotNotFound when absent.
 type memSnapshotStore struct {
 	*memPersist
 	byRoom map[string][]persistence.SnapshotInfo
@@ -150,14 +145,8 @@ func TestStoreAdapterSaveSnapshot_FlushesBeforeCapturing(t *testing.T) {
 	}
 }
 
-// TestStoreAdapterSaveSnapshot_FlushErrorFailsClosed: when the flush fails,
-// SaveSnapshot must propagate the error and record NOTHING. Falling through to
-// capture the pre-flush state would be the dangerous outcome: the user asked to
-// version what is on their canvas, and they would silently get a snapshot
-// missing their most recent edits, with no indication anything went wrong. A
-// visible failure they can retry is strictly better than a quietly stale
-// version, so this asserts both halves — the error surfaces AND no snapshot is
-// written.
+// TestStoreAdapterSaveSnapshot_FlushErrorFailsClosed: a failed flush must error
+// and record nothing, rather than quietly capturing pre-flush state.
 func TestStoreAdapterSaveSnapshot_FlushErrorFailsClosed(t *testing.T) {
 	mss := newMemSnapshotStore()
 	flushErr := errors.New("gcs flush unavailable")
@@ -206,18 +195,8 @@ func TestStoreAdapterSaveSnapshot_EmptyRoomIsNoop(t *testing.T) {
 	}
 }
 
-// TestStoreAdapterSnapshots_UnsupportedStoreFallsBackGracefully: a Persistence
-// that does not implement persistence.SnapshotStore (the plain memPersist
-// fake, matching a hypothetical non-GCS backend) must degrade gracefully:
-// ListSnapshots is an empty list (not an error, so the History panel just shows
-// nothing), while GetSnapshotState and SaveSnapshot both report
-// ErrSnapshotsUnsupported so the router can answer 501.
-//
-// GetSnapshotState deliberately does NOT report ErrSnapshotNotFound here. That
-// would render as 404 and claim this particular snapshot is missing, sending an
-// operator to look for a deleted object when the real situation is that the
-// backend has no snapshot support at all. Listing is the one lenient case, and
-// only because an empty history panel is a better outcome than an error toast.
+// TestStoreAdapterSnapshots_UnsupportedStoreFallsBackGracefully: list degrades to
+// empty, while get and save report ErrSnapshotsUnsupported so the router can 501.
 func TestStoreAdapterSnapshots_UnsupportedStoreFallsBackGracefully(t *testing.T) {
 	mp := newMemPersist() // does NOT implement persistence.SnapshotStore
 	st := NewStoreAdapter(StoreAdapterDeps{P: mp})

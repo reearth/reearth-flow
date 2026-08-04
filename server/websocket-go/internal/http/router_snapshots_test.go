@@ -166,12 +166,9 @@ func TestPostSnapshot_StoreErrorIs500(t *testing.T) {
 	}
 }
 
-// TestPostSnapshot_EmptyDocumentIsConflict: SaveSnapshot reports "nothing worth
-// versioning" as (0, nil). Ids start at 1, so replying 200 with id 0 would tell
-// the client a snapshot exists when no object was written — the client then
-// shows a version row that addresses nothing and disappears on refetch. This is
-// the most ordinary path there is (Save version on a project with no edits), so
-// it must be an explicit refusal.
+// TestPostSnapshot_EmptyDocumentIsConflict: SaveSnapshot reports "nothing to
+// version" as (0, nil), and ids start at 1, so a 200 with id 0 would advertise a
+// snapshot that does not exist. Reachable by saving a version on a fresh project.
 func TestPostSnapshot_EmptyDocumentIsConflict(t *testing.T) {
 	store := &fakeStore{saveSnapshotID: 0} // the (0, nil) no-op
 	h := newTestRouter(store)
@@ -228,11 +225,8 @@ func TestPostSnapshot_OversizedLabelIs400(t *testing.T) {
 	}
 }
 
-// TestSnapshots_UnsupportedBackendIs501: a backend without snapshot support is a
-// permanent deployment fact, not a server fault. Reporting it as 500 logs an
-// ERROR on every click and tells an operator to go looking for a broken store;
-// reporting the fetch as 404 is worse still, since it claims this particular
-// snapshot is missing and sends them hunting for a lost object.
+// TestSnapshots_UnsupportedBackendIs501: an unsupported backend is a deployment
+// fact, not a server fault, so it must not be a 500 or a misleading 404.
 func TestSnapshots_UnsupportedBackendIs501(t *testing.T) {
 	st := NewStoreAdapter(StoreAdapterDeps{P: &memPersist{}}) // no SnapshotStore
 	h := newTestRouter(st)
@@ -266,13 +260,8 @@ func TestGetSnapshotState_NonPositiveIDIs400(t *testing.T) {
 	}
 }
 
-// TestGetSnapshotState_ResponseCarriesNoUpdateLogVersion pins the response
-// shape. The old shape reused DocumentResponse, whose `version` means an
-// update-log clock everywhere else in this API and has no omitempty — so every
-// snapshot fetch shipped "version":0. That is not an inert placeholder: POST
-// .../rollback with version 0 prunes every update above clock 0, i.e. the entire
-// log. A future consumer wiring up snapshot preview must not find a plausible
-// `version` field sitting in this payload.
+// TestGetSnapshotState_ResponseCarriesNoUpdateLogVersion pins the response shape.
+// The old one shipped `"version":0`, and rollback with 0 prunes the whole log.
 func TestGetSnapshotState_ResponseCarriesNoUpdateLogVersion(t *testing.T) {
 	store := &fakeStore{snapshotState: map[int64][]byte{7: {1, 2, 3}}}
 	h := newTestRouter(store)

@@ -19,13 +19,10 @@ func NewWithPersistence(ctx context.Context, cfg *config.Config, p persistence.V
 	// save; it is a different axis from KeepVersions (the update log).
 	adapter.KeepSnapshots = cfg.KeepSnapshots
 	s := &Server{
-		cfg: cfg,
-		ws:  ygws.NewServerWithPersistence(adapter),
-		log: slog.Default(),
-		// Retained so the retention wiring is assertable: ygo keeps the adapter in
-		// an unexported field with no getter, so without this a test cannot tell
-		// KeepSnapshots was ever applied.
-		adapter: adapter,
+		cfg:     cfg,
+		ws:      ygws.NewServerWithPersistence(adapter),
+		log:     slog.Default(),
+		adapter: adapter, // retained so tests can assert the retention wiring
 	}
 	s.ws.AllowedOrigins = cfg.Origins
 	s.ws.Logger = s.log

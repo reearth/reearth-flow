@@ -7,14 +7,7 @@ import (
 	ws "github.com/reearth/reearth-flow/api/pkg/websocket"
 )
 
-// TODO(2026-09): delete this file — tracked in reearth/reearth-flow#2334.
-// Websocket is dead code — NewWebsocket has no
-// callers, and interfaces.Container.Websocket is typed WebsocketClient, so the
-// GraphQL resolvers talk to the client directly (note they call CopyDocument /
-// ImportDocument, which do not even exist on this type; the CopyProject /
-// ImportProject wrappers below are unreachable). Kept for one release in case
-// something out-of-tree constructs it; remove once that is ruled out. Do not add
-// new methods here — add them to interfaces.WebsocketClient instead.
+// TODO(2026-09): delete this file, it is unreachable. See reearth-flow#2334.
 type Websocket struct {
 	client interfaces.WebsocketClient
 }

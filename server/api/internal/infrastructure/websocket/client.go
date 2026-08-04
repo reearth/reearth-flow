@@ -489,12 +489,8 @@ func (c *Client) GetSnapshots(ctx context.Context, docID string) ([]*websocket.S
 
 	snapshots := make([]*websocket.SnapshotMetadata, len(snapshotsResp))
 	for i, item := range snapshotsResp {
-		// Deliberately NOT falling back to time.Now(): the panel sorts rows by
-		// timestamp and uses it as the row label when a snapshot is unlabelled, so
-		// a fabricated "now" would sort an old snapshot above genuinely newer ones
-		// and mislabel it. The websocket server always writes RFC3339, so a parse
-		// failure is a protocol mismatch worth surfacing — leave the zero value,
-		// which sorts last rather than first.
+		// No time.Now() fallback: the panel sorts by timestamp and labels rows with
+		// it, so a fabricated "now" would misorder and mislabel history.
 		timestamp, err := time.Parse(time.RFC3339, item.Timestamp)
 		if err != nil {
 			log.Warnf("snapshot %d of doc %s has an unparseable timestamp %q: %v", item.ID, docID, item.Timestamp, err)
@@ -511,12 +507,8 @@ func (c *Client) GetSnapshots(ctx context.Context, docID string) ([]*websocket.S
 	return snapshots, nil
 }
 
-// SaveNamedSnapshot captures the document's current state as a new labelled
-// snapshot. The underlying store's SaveSnapshot only returns (int64, error),
-// so the save endpoint's response carries just {id, label}; Timestamp and
-// Size are the zero value there. We enrich the result from GetSnapshots here
-// so callers (and ultimately the GraphQL client) get complete metadata
-// without needing a second round trip of their own.
+// SaveNamedSnapshot saves a labelled snapshot. The save endpoint returns only
+// {id, label}, so the rest is enriched from GetSnapshots.
 func (c *Client) SaveNamedSnapshot(ctx context.Context, docID, label string) (*websocket.SnapshotMetadata, error) {
 	url := fmt.Sprintf("%s/api/document/%s/snapshots", c.config.ServerURL, docID)
 
@@ -553,12 +545,8 @@ func (c *Client) SaveNamedSnapshot(ctx context.Context, docID, label string) (*w
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
 
-	// Snapshot ids are allocated from 1, so a non-positive id means the server
-	// created nothing however cheerful the status code was. Returning it as a
-	// success would hand the UI a version row addressing no stored snapshot,
-	// which then disappears on the next refetch. Defensive on purpose: the
-	// websocket server now 409s this case, but the API server must not depend on
-	// a specific server version to avoid inventing history.
+	// Ids start at 1, so a non-positive id means nothing was saved: reporting
+	// success would show a version row addressing no snapshot.
 	if saved.ID <= 0 {
 		return nil, fmt.Errorf("websocket server reported snapshot id %d for doc %s: nothing was saved", saved.ID, docID)
 	}
