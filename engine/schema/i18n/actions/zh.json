@@ -811,8 +811,8 @@
           "description": "使用 Draco 压缩。默认为 true。"
         },
         "maxDepth": {
-          "title": "最大深度",
-          "description": "四叉树细分深度的硬性上限；其余情况下瓦片粒度取决于要素大小。默认为 24，取值范围 0 到 24。"
+          "title": "Max Depth",
+          "description": "Hard cap on the quadtree subdivision depth; tile granularity otherwise follows feature size. Defaults to 24, from 0 to 24."
         },
         "output": {
           "title": "输出路径",
@@ -943,7 +943,6 @@
     },
     {
       "name": "Coordinate Frame Reprojector",
-      "description": "在坐标参照系之间重投影几何，并在坐标参照系与欧几里得坐标系之间转换",
       "parameterI18n": {
         "": {
           "title": "Coordinate Frame Reprojector Parameters",

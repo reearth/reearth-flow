@@ -2198,8 +2198,8 @@
             }
           },
           "maxDepth": {
-            "title": "Profondeur Maximale",
-            "description": "Limite stricte de la profondeur de subdivision du quadtree ; sinon, la granularité des tuiles suit la taille des entités. Par défaut 24, de 0 à 24.",
+            "title": "Max Depth",
+            "description": "Hard cap on the quadtree subdivision depth; tile granularity otherwise follows feature size. Defaults to 24, from 0 to 24.",
             "type": [
               "integer",
               "null"
@@ -2727,7 +2727,7 @@
     {
       "name": "Coordinate Frame Reprojector",
       "type": "processor",
-      "description": "Reprojette la géométrie entre systèmes de coordonnées de référence et convertit entre un SCR et un repère euclidien",
+      "description": "Reprojects geometry between coordinate reference systems and converts between a CRS and a Euclidean frame.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Coordinate Frame Reprojector Parameters",

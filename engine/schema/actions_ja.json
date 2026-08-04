@@ -2198,8 +2198,8 @@
             }
           },
           "maxDepth": {
-            "title": "最大深度",
-            "description": "四分木の分割深度の上限。これを超えない範囲でタイルの粒度は地物のサイズに従う。デフォルトは 24、範囲は 0〜24。",
+            "title": "Max Depth",
+            "description": "Hard cap on the quadtree subdivision depth; tile granularity otherwise follows feature size. Defaults to 24, from 0 to 24.",
             "type": [
               "integer",
               "null"
@@ -2727,19 +2727,19 @@
     {
       "name": "Coordinate Frame Reprojector",
       "type": "processor",
-      "description": "ジオメトリを座標参照系間で再投影し、座標参照系とユークリッド座標系の間で変換する",
+      "description": "Reprojects geometry between coordinate reference systems and converts between a CRS and a Euclidean frame.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "CoordinateFrameReprojector パラメータ",
-        "description": "ジオメトリを座標参照系間で再投影し、座標参照系とユークリッド座標系の間で変換する。ユークリッド座標系と座標参照系の境界をまたぐ変換では座標値をそのまま解釈するため、値とリングの回転方向は変更されず、向きは変換先の座標系の軸順序に従う。\n\n座標参照系間の再投影では、単一の標高上にある 2D ジオメトリは 3D になる。",
+        "title": "Coordinate Frame Reprojector Parameters",
+        "description": "Reproject geometry across coordinate reference systems and convert between a CRS and a Euclidean frame. Converting across the Euclidean/CRS boundary reinterprets coordinates as-is: values and ring winding are left unchanged, so orientation follows the destination frame's axis order.\n\nReprojecting across coordinate reference systems takes 2D geometry lying at a single elevation into 3D.",
         "type": "object",
         "required": [
           "destinationFrame"
         ],
         "properties": {
           "destinationFrame": {
-            "title": "変換先の座標系",
-            "description": "ジオメトリの変換先となる座標系。",
+            "title": "Destination Frame",
+            "description": "Coordinate frame to convert geometry into.",
             "allOf": [
               {
                 "$ref": "#/definitions/DestinationFrame"
@@ -2747,8 +2747,8 @@
             ]
           },
           "epsgCode": {
-            "title": "EPSG コード",
-            "description": "変換先の座標参照系の EPSG コード。変換先が座標参照系の場合は必須。",
+            "title": "EPSG Code",
+            "description": "EPSG code of the destination CRS. Required when the destination frame is a CRS.",
             "default": null,
             "type": [
               "integer",
@@ -2758,8 +2758,8 @@
             "minimum": 0.0
           },
           "basePointSource": {
-            "title": "基準点",
-            "description": "ユークリッド座標系と座標参照系の境界をまたぐ際に座標を対応付ける方法。",
+            "title": "Base Point",
+            "description": "How coordinates bridge the Euclidean/CRS boundary.",
             "default": {
               "type": "asIs"
             },
@@ -2775,16 +2775,16 @@
             "description": "The destination coordinate frame kind.",
             "oneOf": [
               {
-                "title": "座標参照系",
-                "description": "EPSG コードで指定した座標参照系に再投影する。",
+                "title": "CRS",
+                "description": "Reproject to a coordinate reference system identified by an EPSG code.",
                 "type": "string",
                 "enum": [
                   "crs"
                 ]
               },
               {
-                "title": "ユークリッド座標系",
-                "description": "地理参照を持たないユークリッド座標系に変換する。",
+                "title": "Euclidean",
+                "description": "Convert to a non-georeferenced Euclidean frame.",
                 "type": "string",
                 "enum": [
                   "euclidean"

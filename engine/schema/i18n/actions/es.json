@@ -811,8 +811,8 @@
           "description": "Usar compresión Draco. Verdadero por defecto."
         },
         "maxDepth": {
-          "title": "Profundidad Máxima",
-          "description": "Límite máximo de la profundidad de subdivisión del quadtree; por lo demás, la granularidad de los mosaicos sigue el tamaño de las entidades. Por defecto 24, de 0 a 24."
+          "title": "Max Depth",
+          "description": "Hard cap on the quadtree subdivision depth; tile granularity otherwise follows feature size. Defaults to 24, from 0 to 24."
         },
         "output": {
           "title": "Ruta de Salida",
@@ -943,7 +943,6 @@
     },
     {
       "name": "Coordinate Frame Reprojector",
-      "description": "Reproyecta la geometría entre sistemas de referencia de coordenadas y convierte entre un SRC y un marco euclídeo",
       "parameterI18n": {
         "": {
           "title": "Coordinate Frame Reprojector Parameters",
