@@ -11,6 +11,7 @@ rust-version.workspace = true
 version.workspace = true
 
 [features]
+default = ["new-geometry"]
 # Temporary migration flag for the new-geometry migration.
 # TODO: Remove after migration.
 new-geometry = [

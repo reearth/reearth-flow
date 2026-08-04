@@ -68,7 +68,8 @@ reearth-flow-state = { path = "runtime/state" }
 reearth-flow-storage = { path = "runtime/storage" }
 reearth-flow-telemetry = { path = "runtime/telemetry" }
 reearth-flow-types = { path = "runtime/types" }
-reearth-flow-worker = { path = "worker" }
+# Keeps `reearth-flow-tests` off the worker's `new-geometry` default.
+reearth-flow-worker = { path = "worker", default-features = false }
 
 nusamai-citygml = { git = "https://github.com/reearth/plateau-gis-converter", features = [
   "serde",

@@ -15,7 +15,7 @@ name = "reearth-flow"
 path = "src/main.rs"
 
 [features]
-default = []
+default = ["new-geometry"]
 memory-stats = [
   "reearth-flow-action-plateau-processor/memory-stats",
   "reearth-flow-action-processor/memory-stats",
