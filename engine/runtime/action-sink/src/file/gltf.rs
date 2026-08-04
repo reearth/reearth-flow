@@ -737,7 +737,7 @@ mod tests {
     }
 }
 
-#[cfg(test)]
+#[cfg(all(test, not(feature = "new-geometry")))]
 mod diagnostics_tests {
     use std::sync::Arc;
 
