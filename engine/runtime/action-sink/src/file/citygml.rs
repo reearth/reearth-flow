@@ -498,13 +498,9 @@ mod diagnostics_tests {
             .contains("citygml.non_citygml_geometry"));
     }
 
-    /// Final-review fix round, Item 1: a `citygml.empty_geometry` drop
-    /// promoted to `reject` by an `errorPolicy` override must reach the
-    /// side-file capture too, not just the aggregation bucket — previously
-    /// this finish()-time `report_drop` call site counted the rejection but
-    /// wrote no shard row at all. This exercises the real production call
-    /// site (this function's second `report_drop`, the "source geometry
-    /// exists but converts empty" lane) end to end via
+    /// A `citygml.empty_geometry` drop promoted to `reject` by an
+    /// `errorPolicy` override must also write a side-file shard row, not
+    /// just the aggregation bucket — exercised end to end via
     /// `write_citygml_to_storage`, not just the isolated
     /// `NodeDiagnosticsHandle` API.
     #[test]
@@ -573,7 +569,7 @@ mod diagnostics_tests {
 
         let (rows, overflow) = handle
             .drain_reject_rows()
-            .expect("a reject row should have been captured -- Item 1 regression");
+            .expect("a reject row should have been captured");
         assert_eq!(overflow, 0);
         assert_eq!(
             rows.len() as u64,

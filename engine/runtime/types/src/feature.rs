@@ -317,14 +317,9 @@ impl Feature {
     }
 
     /// Whether this feature carries geometry, independent of which geometry
-    /// world (`new-geometry` feature) is active. Callers outside this crate
-    /// (e.g. the D7 reject side-file's `hasGeometry` row field, Task 5)
-    /// don't carry the `new-geometry` feature themselves, so the two
-    /// worlds' differently-shaped "absent geometry" states — the
-    /// pre-migration `Geometry`'s inner `GeometryValue::None`
-    /// (`Geometry::is_empty()`) vs. the new `Geometry` enum's own top-level
-    /// `None` variant — are branched once, here, where the feature is
-    /// actually owned.
+    /// world (`new-geometry` feature) is active — callers outside this crate
+    /// don't carry that feature flag themselves, so the two worlds'
+    /// differently-shaped "absent geometry" states are branched once, here.
     #[cfg(not(feature = "new-geometry"))]
     pub fn has_geometry(&self) -> bool {
         !self.geometry.is_empty()

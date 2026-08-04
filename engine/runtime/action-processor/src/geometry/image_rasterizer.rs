@@ -480,20 +480,10 @@ impl Processor for ImageRasterizer {
                 }
             }
             Err(_e) => {
-                // finish()-time drop with no single feature to attribute it to
-                // (the whole rasterized image failed to save) — the
-                // `report()`/`ctx.warn()` API lives on `ExecutorContext`, not
-                // the feature-less `NodeContext` this function holds, so this
-                // uses `NodeDiagnosticsHandle::report_drop` directly, same as
-                // `citygml.rs`'s finish()-time drops. That call has no
-                // message-override parameter (only the registry default
-                // message is recorded), so the `e` detail isn't carried
-                // through — consistent with those existing report_drop call
-                // sites, none of which preserve per-call detail either. The
-                // run and the node's `finish()` both still return `Ok`.
-                // `has_geometry: None` — this drop isn't about any single
-                // feature's geometry at all (a whole-image save failure), so
-                // there's nothing honest to report either way.
+                // finish()-time drop with no single feature to attribute it to,
+                // so this goes through report_drop directly (report()/warn()
+                // need the per-feature ExecutorContext, not this NodeContext).
+                // has_geometry: None since no single feature's geometry applies.
                 if let Some(diagnostics) = ctx.diagnostics.as_deref() {
                     diagnostics.report_drop(ErrorCode::RasterImageSaveFailed, None, None);
                 }
