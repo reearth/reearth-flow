@@ -28,10 +28,10 @@ type ProjectSnapshotMetadata {
   version: Int!
 }
 
-# A labelled snapshot in a project's version history. id is a per-room snapshot
-# counter, not an update-log version: see reearth-flow#2344.
+# A labelled snapshot in a project's version history. snapshotNumber counts saved
+# snapshots per room; it is not an update-log version. See reearth-flow#2344.
 type NamedSnapshot {
-  id: Int!
+  snapshotNumber: Int!
   label: String!
   timestamp: DateTime!
   size: FileSize!

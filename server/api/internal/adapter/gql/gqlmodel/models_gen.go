@@ -359,10 +359,10 @@ type Mutation struct {
 }
 
 type NamedSnapshot struct {
-	ID        int       `json:"id"`
-	Label     string    `json:"label"`
-	Timestamp time.Time `json:"timestamp"`
-	Size      int64     `json:"size"`
+	SnapshotNumber int       `json:"snapshotNumber"`
+	Label          string    `json:"label"`
+	Timestamp      time.Time `json:"timestamp"`
+	Size           int64     `json:"size"`
 }
 
 type NodeExecution struct {

@@ -330,10 +330,10 @@ type ComplexityRoot struct {
 	}
 
 	NamedSnapshot struct {
-		ID        func(childComplexity int) int
-		Label     func(childComplexity int) int
-		Size      func(childComplexity int) int
-		Timestamp func(childComplexity int) int
+		Label          func(childComplexity int) int
+		Size           func(childComplexity int) int
+		SnapshotNumber func(childComplexity int) int
+		Timestamp      func(childComplexity int) int
 	}
 
 	NodeExecution struct {
@@ -2047,12 +2047,6 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 
 		return e.complexity.Mutation.UpdateWorkspace(childComplexity, args["input"].(gqlmodel.UpdateWorkspaceInput)), true
 
-	case "NamedSnapshot.id":
-		if e.complexity.NamedSnapshot.ID == nil {
-			break
-		}
-
-		return e.complexity.NamedSnapshot.ID(childComplexity), true
 	case "NamedSnapshot.label":
 		if e.complexity.NamedSnapshot.Label == nil {
 			break
@@ -2065,6 +2059,12 @@ func (e *executableSchema) Complexity(ctx context.Context, typeName, field strin
 		}
 
 		return e.complexity.NamedSnapshot.Size(childComplexity), true
+	case "NamedSnapshot.snapshotNumber":
+		if e.complexity.NamedSnapshot.SnapshotNumber == nil {
+			break
+		}
+
+		return e.complexity.NamedSnapshot.SnapshotNumber(childComplexity), true
 	case "NamedSnapshot.timestamp":
 		if e.complexity.NamedSnapshot.Timestamp == nil {
 			break
@@ -3863,10 +3863,10 @@ type ProjectSnapshotMetadata {
   version: Int!
 }
 
-# A labelled snapshot in a project's version history. id is a per-room snapshot
-# counter, not an update-log version: see reearth-flow#2344.
+# A labelled snapshot in a project's version history. snapshotNumber counts saved
+# snapshots per room; it is not an update-log version. See reearth-flow#2344.
 type NamedSnapshot {
-  id: Int!
+  snapshotNumber: Int!
   label: String!
   timestamp: DateTime!
   size: FileSize!
@@ -10754,8 +10754,8 @@ func (ec *executionContext) fieldContext_Mutation_saveNamedSnapshot(ctx context.
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_NamedSnapshot_id(ctx, field)
+			case "snapshotNumber":
+				return ec.fieldContext_NamedSnapshot_snapshotNumber(ctx, field)
 			case "label":
 				return ec.fieldContext_NamedSnapshot_label(ctx, field)
 			case "timestamp":
@@ -12195,14 +12195,14 @@ func (ec *executionContext) fieldContext_Mutation_updateMemberOfWorkspace(ctx co
 	return fc, nil
 }
 
-func (ec *executionContext) _NamedSnapshot_id(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.NamedSnapshot) (ret graphql.Marshaler) {
+func (ec *executionContext) _NamedSnapshot_snapshotNumber(ctx context.Context, field graphql.CollectedField, obj *gqlmodel.NamedSnapshot) (ret graphql.Marshaler) {
 	return graphql.ResolveField(
 		ctx,
 		ec.OperationContext,
 		field,
-		ec.fieldContext_NamedSnapshot_id,
+		ec.fieldContext_NamedSnapshot_snapshotNumber,
 		func(ctx context.Context) (any, error) {
-			return obj.ID, nil
+			return obj.SnapshotNumber, nil
 		},
 		nil,
 		ec.marshalNInt2int,
@@ -12211,7 +12211,7 @@ func (ec *executionContext) _NamedSnapshot_id(ctx context.Context, field graphql
 	)
 }
 
-func (ec *executionContext) fieldContext_NamedSnapshot_id(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
+func (ec *executionContext) fieldContext_NamedSnapshot_snapshotNumber(_ context.Context, field graphql.CollectedField) (fc *graphql.FieldContext, err error) {
 	fc = &graphql.FieldContext{
 		Object:     "NamedSnapshot",
 		Field:      field,
@@ -15164,8 +15164,8 @@ func (ec *executionContext) fieldContext_Query_projectSnapshots(ctx context.Cont
 		IsResolver: true,
 		Child: func(ctx context.Context, field graphql.CollectedField) (*graphql.FieldContext, error) {
 			switch field.Name {
-			case "id":
-				return ec.fieldContext_NamedSnapshot_id(ctx, field)
+			case "snapshotNumber":
+				return ec.fieldContext_NamedSnapshot_snapshotNumber(ctx, field)
 			case "label":
 				return ec.fieldContext_NamedSnapshot_label(ctx, field)
 			case "timestamp":
@@ -24070,8 +24070,8 @@ func (ec *executionContext) _NamedSnapshot(ctx context.Context, sel ast.Selectio
 		switch field.Name {
 		case "__typename":
 			out.Values[i] = graphql.MarshalString("NamedSnapshot")
-		case "id":
-			out.Values[i] = ec._NamedSnapshot_id(ctx, field, obj)
+		case "snapshotNumber":
+			out.Values[i] = ec._NamedSnapshot_snapshotNumber(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				out.Invalids++
 			}
