@@ -71,8 +71,6 @@ export const getFlowExprAutocompleteSuggestions = (
   t: (key: string) => string,
 ): AutocompleteSuggestion[] => [
   // Keywords
-  // Block keywords park the caret on the first body line, inside the opening
-  // brace, rather than in the condition slot.
   {
     label: "if",
     insertText: "if {{cursor}} {\n  \n} else {\n  \n}",

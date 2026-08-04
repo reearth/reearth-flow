@@ -255,18 +255,21 @@ describe("FlowExprCodeEditor autocomplete", () => {
   });
 
   test.each([
-    ["if", "if {\n  \n} else {\n  \n}"],
-    ["while", "while {\n  \n}"],
-  ])("%s parks the caret on the first body line", (keyword, expected) => {
-    render(<Harness />);
-    const textarea = editor();
-    type(textarea, keyword);
+    ["if", "if  {\n  \n} else {\n  \n}", 3],
+    ["while", "while  {\n  \n}", 6],
+  ])(
+    "%s parks the caret in the condition slot",
+    (keyword, expected, caretAt) => {
+      render(<Harness />);
+      const textarea = editor();
+      type(textarea, keyword);
 
-    fireEvent.keyDown(textarea, { key: "Enter" });
-    expect(textarea.value).toBe(expected);
-    // Inside the opening brace, past the indent, before the closing brace.
-    expect(textarea.selectionStart).toBe(expected.indexOf("{") + 4);
-  });
+      fireEvent.keyDown(textarea, { key: "Enter" });
+      expect(textarea.value).toBe(expected);
+      // Between the keyword and the opening brace, ready for the condition.
+      expect(textarea.selectionStart).toBe(caretAt);
+    },
+  );
 
   test("chains straight into the attribute list after accepting the accessor", () => {
     render(<Harness />);
