@@ -119,7 +119,7 @@ test.describe.serial(
     test("builds and configures the five nodes", async () => {
       shapefileReader = await editor.addActionNodeAndGet(
         "reader",
-        "ShapefileReader",
+        "Shapefile Reader",
         await editor.canvasPoint(0.12, 0.25),
       );
       bufferer = await editor.addActionNodeAndGet(
@@ -129,17 +129,17 @@ test.describe.serial(
       );
       geoJsonReader = await editor.addActionNodeAndGet(
         "reader",
-        "GeoJsonReader",
+        "GeoJSON Reader",
         await editor.canvasPoint(0.12, 0.7),
       );
       spatialFilter = await editor.addActionNodeAndGet(
         "transformer",
-        "SpatialFilter",
+        "Spatial Filter",
         await editor.canvasPoint(0.62, 0.48),
       );
       geoJsonWriter = await editor.addActionNodeAndGet(
         "writer",
-        "GeoJsonWriter",
+        "GeoJSON Writer",
         await editor.canvasPoint(0.86, 0.48),
       );
       await expect(editor.nodes).toHaveCount(5);
@@ -172,27 +172,27 @@ test.describe.serial(
       // Sink outputs must be relative paths; the engine resolves them against
       // the job's artifact sandbox.
       await editor.openNodeParamsForm(geoJsonWriter);
-      await editor.setParamCodeString("output", OUTPUT_FILE);
+      await editor.setParamCodeString("Output File", OUTPUT_FILE);
       await editor.submitParams();
 
-      await editor.connectFromPort(shapefileReader, bufferer, "default");
+      await editor.connectFromPort(shapefileReader, bufferer, "features");
       await editor.connectFromPort(
         bufferer,
         spatialFilter,
-        "default",
+        "features",
         "filter",
       );
       await editor.connectFromPort(
         geoJsonReader,
         spatialFilter,
-        "default",
+        "features",
         "candidate",
       );
       await editor.connectFromPort(
         spatialFilter,
         geoJsonWriter,
         "passed",
-        "default",
+        "features",
       );
       await expect(editor.edges).toHaveCount(4);
     });

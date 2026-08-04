@@ -8,9 +8,8 @@
 //! builder deduplicates once instead of the caller expanding then re-collapsing.
 
 use std::collections::HashMap;
-use std::path::PathBuf;
 
-use super::appearance::ResolvedMaterial;
+use super::appearance::{ResolvedMaterial, TextureSource};
 use super::mesh::ExtractedMesh;
 use reearth_flow_types::Feature;
 
@@ -92,7 +91,7 @@ pub(super) struct ColorPrimitive {
 /// `geom.polygon_tris`) for the atlas pass.
 pub(super) struct TexturedPrimitive {
     pub(super) geom: Geom,
-    pub(super) polygon_texture: Vec<PathBuf>,
+    pub(super) polygon_texture: Vec<TextureSource>,
 }
 
 /// A cell's polygons partitioned into one primitive per colour-only material
@@ -151,7 +150,7 @@ impl GeomBuilder {
 pub(super) fn collect(cell_members: &[&(&Feature, ExtractedMesh)]) -> CellPrimitives {
     let mut color: HashMap<[u32; 6], (MaterialFactors, GeomBuilder)> = HashMap::new();
     let mut textured = GeomBuilder::default();
-    let mut polygon_texture: Vec<PathBuf> = Vec::new();
+    let mut polygon_texture: Vec<TextureSource> = Vec::new();
 
     for (member, (_, m)) in cell_members.iter().enumerate() {
         let mut tri_off = 0usize;
@@ -172,7 +171,7 @@ pub(super) fn collect(cell_members: &[&(&Feature, ExtractedMesh)]) -> CellPrimit
             match texture {
                 Some(source) => {
                     textured.add_polygon(member, m, p, tris, true);
-                    polygon_texture.push(source.path.clone());
+                    polygon_texture.push(source.clone());
                 }
                 None => {
                     let factors = MaterialFactors::of(material);
@@ -213,6 +212,7 @@ mod tests {
     use super::*;
     use crate::file::cesium3dtiles::next::appearance::TextureSource;
     use reearth_flow_types::{Attributes, Feature};
+    use std::path::PathBuf;
 
     #[test]
     fn collect_keeps_textured_and_color_faces_separate() {
@@ -233,9 +233,7 @@ mod tests {
                     base_color_factor: [1.0, 1.0, 1.0, 1.0],
                     metallic_factor: 0.0,
                     roughness_factor: 1.0,
-                    base_texture: Some(TextureSource {
-                        path: PathBuf::from("texture.png"),
-                    }),
+                    base_texture: Some(TextureSource::File(PathBuf::from("texture.png"))),
                 },
                 ResolvedMaterial {
                     base_color_factor: [1.0, 0.0, 0.0, 1.0],
@@ -264,7 +262,9 @@ mod tests {
             textured.geom.corner_uv,
             vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]]
         );
-        assert_eq!(textured.polygon_texture, vec![PathBuf::from("texture.png")]);
+        assert!(
+            matches!(&textured.polygon_texture[..], [TextureSource::File(p)] if p == std::path::Path::new("texture.png"))
+        );
 
         let color = primitives
             .color

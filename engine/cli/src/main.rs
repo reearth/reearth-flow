@@ -10,8 +10,11 @@ mod run;
 mod scaffold_i18n;
 mod schema_action;
 mod schema_error_codes;
+mod schema_feature;
 mod schema_workflow;
 mod utils;
+#[cfg(feature = "new-geometry")]
+mod view;
 
 use std::env;
 

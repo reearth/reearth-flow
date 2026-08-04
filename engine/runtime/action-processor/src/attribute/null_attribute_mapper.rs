@@ -14,41 +14,51 @@ use serde_json::Value;
 
 use super::errors::AttributeProcessorError;
 
-static HAS_NULL_PORT: &str = "hasNull";
+static HAS_NULL_PORT: &str = "has-null";
 static REJECTED_PORT: &str = "rejected";
 
-/// Defines what states count as "null"
+/// # Null Definition
+/// States that are treated as null-like.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, PartialEq, Default)]
 #[serde(rename_all = "camelCase")]
 pub enum NullKind {
-    /// AttributeValue::Null
+    /// # Null Value
+    /// An attribute present on the feature but holding an explicit null value.
     #[default]
     Null,
-    /// Attribute key absent from the feature
+    /// # Missing Attribute
+    /// An attribute that is absent from the feature.
     Missing,
-    /// AttributeValue::String("")
+    /// # Empty String
+    /// An attribute holding a text value with no characters.
     EmptyString,
 }
 
-/// Scope of attributes to inspect
+/// # Scope
+/// Which attributes the action inspects.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 #[serde(rename_all = "camelCase")]
 pub enum Scope {
-    /// Only check attributes named in mappings
+    /// # Listed Attributes
+    /// Inspects only the attributes named in the mappings list.
     #[default]
     Listed,
-    /// Check all attributes on the feature
+    /// # All Attributes
+    /// Inspects every attribute on the feature.
     All,
 }
 
-/// What to do when attribute is missing but not in nullDefinition
+/// # On Missing
+/// Behavior when an inspected attribute is absent from the feature.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema, Default)]
 #[serde(rename_all = "camelCase")]
 pub enum OnMissing {
-    /// Leave unchanged
+    /// # Skip
+    /// Leaves the feature unchanged.
     #[default]
     Skip,
-    /// Write replacement value, creating the attribute
+    /// # Create
+    /// Adds the attribute using the mapping's replacement value.
     Create,
 }
 
@@ -56,35 +66,43 @@ pub enum OnMissing {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct AttributeMapping {
-    /// Name of the attribute to inspect
+    /// # Attribute
+    /// Name of the attribute to inspect.
     pub attribute: String,
-    /// Value to write when attribute is null-like
-    /// null means remove the attribute
+    /// # Replacement
+    /// Value written when the attribute is null-like. A null value removes the attribute instead.
     pub replacement: Option<Value>,
-    /// What to do when attribute is missing but not in nullDefinition
+    /// # On Missing
+    /// Behavior when the attribute is absent and not treated as null-like by the null definition.
     #[serde(default)]
     pub on_missing: OnMissing,
 }
 
-/// NullAttributeMapper parameters
+/// # Null Attribute Mapper Parameters
+/// Detects null-like attribute values and replaces them, removes them, or routes affected features according to per-attribute rules.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct NullAttributeMapperParams {
-    /// Per-attribute replacement rules
-    #[serde(default)]
-    pub mappings: Vec<AttributeMapping>,
-    /// Fallback replacement for attributes not in mappings (when scope = "all")
-    #[serde(default)]
-    pub default_replacement: Option<Value>,
-    /// Which states count as "null"
-    #[serde(default = "default_null_definition")]
-    pub null_definition: Vec<NullKind>,
-    /// Emit original features with nulls to hasNull port
-    #[serde(default)]
-    pub route_null_features: bool,
-    /// Which attributes to inspect
+    /// # Scope
+    /// Which attributes to inspect: only those named in the mappings, or every attribute on the feature.
     #[serde(default)]
     pub scope: Scope,
+    /// # Attribute Mappings
+    /// Per-attribute rules describing how each null-like attribute is replaced, removed, or created.
+    #[serde(default)]
+    pub mappings: Vec<AttributeMapping>,
+    /// # Default Replacement
+    /// Value used to replace null-like attributes that have no entry in the mappings. Applies only when the scope inspects all attributes.
+    #[serde(default)]
+    pub default_replacement: Option<Value>,
+    /// # Null Definition
+    /// States treated as null-like: an explicit null value, a missing attribute, or an empty string. Defaults to null values and missing attributes.
+    #[serde(default = "default_null_definition")]
+    pub null_definition: Vec<NullKind>,
+    /// # Route Null Features
+    /// When enabled, a copy of each feature that had at least one null-like value is emitted unchanged to a separate output for inspection.
+    #[serde(default)]
+    pub route_null_features: bool,
 }
 
 fn default_null_definition() -> Vec<NullKind> {
@@ -112,7 +130,7 @@ impl ProcessorFactory for NullAttributeMapperFactory {
     }
 
     fn description(&self) -> &str {
-        "Replace null-like attribute values with configured defaults"
+        "Replaces null-like attribute values with configured replacement values, optionally removing or routing affected features."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -133,8 +151,8 @@ impl ProcessorFactory for NullAttributeMapperFactory {
 
     fn get_output_ports(&self) -> Vec<Port> {
         vec![
-            FEATURES_PORT.clone(),    // mapped
-            Port::new(HAS_NULL_PORT), // hasNull
+            FEATURES_PORT.clone(),    // mapped features
+            Port::new(HAS_NULL_PORT), // has-null
             Port::new(REJECTED_PORT), // rejected
         ]
     }
@@ -282,7 +300,7 @@ impl Processor for NullAttributeMapper {
             geometry: feature.geometry.clone(),
         };
 
-        // Emit to hasNull port if routeNullFeatures is true and feature had nulls
+        // Emit to has-null port if routeNullFeatures is true and feature had nulls
         if had_null && self.params.route_null_features {
             fw.send(ctx.new_with_feature_and_port(feature, Port::new(HAS_NULL_PORT)));
         }

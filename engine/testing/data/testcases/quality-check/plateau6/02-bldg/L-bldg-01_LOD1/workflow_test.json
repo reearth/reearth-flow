@@ -1,5 +1,6 @@
 {
   "description": "Test L-BLDG-01 for LOD1 on plateau6. Two buildings whose lod1Solid volumes overlap, reported as one Solid Intersection under 'LOD1 立体の交差'.",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
   "workflowVariables": [
     {

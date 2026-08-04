@@ -105,6 +105,22 @@ impl Processor for VerticalReprojector {
         2
     }
 
+    // TODO(new-geometry): remove this action once the legacy geometry model is
+    // gone. Superseded by the Coordinate Frame Reprojector.
+    #[cfg(feature = "new-geometry")]
+    fn process(
+        &mut self,
+        _ctx: ExecutorContext,
+        _fw: &ProcessorChannelForwarder,
+    ) -> Result<(), BoxedError> {
+        Err(GeometryProcessorError::VerticalReprojector(
+            "Vertical Reprojector is not available under the new geometry model; use \
+             Coordinate Frame Reprojector instead."
+                .to_string(),
+        )
+        .into())
+    }
+
     #[cfg(not(feature = "new-geometry"))]
     fn process(
         &mut self,

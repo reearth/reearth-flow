@@ -21,6 +21,8 @@ use smallvec::SmallVec;
 use crate::coordinate::CoordinateFrame;
 
 mod constructor;
+#[cfg(not(feature = "debug-geom-feature-write"))]
+mod feature_write;
 mod ops;
 #[cfg(feature = "new-geometry")]
 mod validation;
@@ -67,6 +69,7 @@ type FieldOffsets = [u16; 9];
 /// extra dims, etc.). Schema-based: every column has exactly `Segment::count`
 /// entries. SoA layout: one `Vec<T>` per attribute, accessed one column at a
 /// time.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 enum AttributeColumn {
     UInt8(Vec<u8>),
@@ -82,6 +85,28 @@ enum AttributeColumn {
     /// `None` = null / not yet assigned.
     String(Vec<Option<Arc<str>>>),
 }
+
+#[cfg(not(feature = "debug-geom-feature-write"))]
+impl AttributeColumn {
+    /// Entries in this column, which every segment requires to equal its
+    /// `count`.
+    fn len(&self) -> usize {
+        match self {
+            AttributeColumn::UInt8(v) => v.len(),
+            AttributeColumn::UInt16(v) => v.len(),
+            AttributeColumn::UInt32(v) => v.len(),
+            AttributeColumn::UInt64(v) => v.len(),
+            AttributeColumn::Int8(v) => v.len(),
+            AttributeColumn::Int16(v) => v.len(),
+            AttributeColumn::Int32(v) => v.len(),
+            AttributeColumn::Int64(v) => v.len(),
+            AttributeColumn::Float32(v) => v.len(),
+            AttributeColumn::Float64(v) => v.len(),
+            AttributeColumn::String(v) => v.len(),
+        }
+    }
+}
+
 /// One acquisition source's points, carrying only the fields it actually has.
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 struct Segment {
@@ -108,7 +133,7 @@ struct Segment {
 
 /// A 3D point cloud: one or more acquisition [`Segment`]s sharing a frame, plus
 /// a lazily-built global KD-tree.
-#[derive(Serialize, Deserialize)]
+#[cfg_attr(feature = "debug-geom-feature-write", derive(Serialize, Deserialize))]
 pub struct PointCloud {
     /// Coordinate frame all segments are expressed in.
     frame: CoordinateFrame,
@@ -118,7 +143,7 @@ pub struct PointCloud {
     /// the serialized form, and reset on any mutation. The kiddo alias
     /// `ImmutableKdTree<f64, 3>` expands to `<f64, u64, 3, 32>`: `f64` coords,
     /// `u64` content, 3 dimensions, bucket size 32.
-    #[serde(skip)]
+    #[cfg_attr(feature = "debug-geom-feature-write", serde(skip))]
     kdtree: OnceLock<ImmutableKdTree<f64, 3>>,
 }
 
@@ -150,4 +175,12 @@ impl fmt::Debug for PointCloud {
     }
 }
 
-crate::unsupported!(PointCloud: Triangulate, Reproject);
+crate::unsupported!(
+    PointCloud: Triangulate,
+    Reproject,
+    ConvertFrame,
+    ForceTwoDimension,
+    RemoveAppearance,
+    CountHoles,
+    ExtractHoles
+);

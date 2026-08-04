@@ -24,7 +24,7 @@ impl SourceFactory for FeatureCreatorFactory {
     }
 
     fn description(&self) -> &str {
-        "Generate Custom Features Using Scripts"
+        "Creates features from a script expression that returns one or more attribute maps."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -33,6 +33,10 @@ impl SourceFactory for FeatureCreatorFactory {
 
     fn categories(&self) -> &[&'static str] {
         &["Input"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["scripting"]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
@@ -84,7 +88,7 @@ impl SourceFactory for FeatureCreatorFactory {
 #[serde(rename_all = "camelCase")]
 pub struct FeatureCreator {
     /// # Script Expression
-    /// Write a script expression that returns a map (single feature) or array of maps (multiple features). Each map represents feature attributes as key-value pairs.
+    /// Script expression that returns a map (single feature) or an array of maps (multiple features). Each map holds feature attributes as key-value pairs.
     creator: Code<{ CodeType::FlowExpr as u32 }>,
 }
 

@@ -13,7 +13,7 @@ version.workspace = true
 [features]
 # Temporary migration flag for the new-geometry migration.
 # TODO: Remove after migration.
-new-geometry = []
+new-geometry = ["dep:image", "dep:ktx2-rw"]
 
 [dependencies]
 reearth-flow-common.workspace = true
@@ -32,8 +32,10 @@ bytes.workspace = true
 chrono.workspace = true
 draco-oxide.workspace = true
 gltf.workspace = true
+image = { workspace = true, optional = true }
 indexmap.workspace = true
 itertools.workspace = true
+ktx2-rw = { workspace = true, optional = true }
 nalgebra.workspace = true
 once_cell.workspace = true
 regex.workspace = true

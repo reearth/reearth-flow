@@ -20,7 +20,7 @@ homepage = "https://github.com/reearth/reearth-flow"
 license = "MIT OR Apache-2.0"
 repository = "https://github.com/reearth/reearth-flow"
 rust-version = "1.93.1" # Remember to update clippy.toml as well
-version = "0.0.448"
+version = "0.0.477"
 
 [profile.dev]
 opt-level = 0
@@ -57,6 +57,7 @@ reearth-flow-atlas = { path = "runtime/atlas" }
 reearth-flow-common = { path = "runtime/common" }
 reearth-flow-diagnostics = { path = "runtime/diagnostics" }
 reearth-flow-expr = { path = "runtime/expr" }
+reearth-flow-feature-view = { path = "runtime/feature-view" }
 reearth-flow-geometry = { path = "runtime/geometry" }
 reearth-flow-gltf = { path = "runtime/gltf" }
 reearth-flow-macros = { path = "runtime/macros" }
@@ -129,6 +130,8 @@ gltf = { git = "https://github.com/gltf-rs/gltf", rev = "3def30c9caf96f2dbc85238
   "EXT_texture_webp",
   "extensions",
   "extras",
+  "KHR_texture_transform",
+  "KHR_materials_emissive_strength",
 ] }
 hashbrown = { version = "0.16.1", features = ["serde"] }
 hex = "0.4.3"
@@ -147,6 +150,7 @@ itertools = "0.14.0"
 json-subscriber = "0.2.7"
 jsonpath_lib = "0.3.0"
 kiddo = "5.2.4"
+ktx2-rw = "0.2.4"
 nalgebra = "0.34.1"
 num-traits = "0.2.19"
 num_cpus = "1.17.0"
@@ -182,7 +186,7 @@ parking_lot = "0.12.5"
 petgraph = "0.8.3"
 pretty_assertions = "1.4.1"
 proj = { version = "0.31.0" }
-proj-sys = "0.27.0"
+proj-sys = { version = "0.27.0", features = ["tiff"] }
 prost = "0.13.5"
 quick-xml = { version = "0.37.5", features = ["serialize"] }
 rand = "0.10.0"

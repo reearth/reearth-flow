@@ -22,6 +22,9 @@ new-geometry = [
   "reearth-flow-types/new-geometry",
 ]
 
+# Debug-only intermediate-data form; see reearth-flow-geometry.
+debug-geom-feature-write = ["reearth-flow-types/debug-geom-feature-write"]
+
 [[bin]]
 name = "reearth-flow-worker"
 path = "src/main.rs"

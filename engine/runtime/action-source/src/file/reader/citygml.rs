@@ -27,6 +27,8 @@ use url::Url;
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct CityGmlReaderParam {
+    /// # Flatten Feature Tree
+    /// When enabled, extracts nested child city objects as separate features, each tagged with `parentId` and `parentType` attributes. Defaults to false.
     pub(super) flatten: Option<bool>,
 }
 

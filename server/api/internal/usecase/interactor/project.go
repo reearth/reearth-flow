@@ -221,73 +221,68 @@ func (i *Project) Run(ctx context.Context, p interfaces.RunProjectParam) (_ *job
 		return nil, err
 	}
 
-	var j *job.Job
-	var workflowURLStr string
 	useCloudRun := i.cloudRunWorker != nil
 
+	doc, err := i.websocket.GetLatest(ctx, p.ProjectID.String())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get latest project snapshot: %v", err)
+	}
+	projectID := p.ProjectID
+	projectVersion := doc.Version
+
+	debug := true
+
+	// Built before the transaction: the closure is retried on a serialization
+	// failure, and a job ID minted inside it would submit a second cloud job and
+	// leave a fresh set of orphaned GCS objects on every attempt.
+	j, err := job.New().
+		NewID().
+		Debug(&debug).
+		ProjectID(&projectID).
+		ProjectVersion(&projectVersion).
+		Workspace(proj.Workspace()).
+		Status(job.StatusPending).
+		StartedAt(time.Now()).
+		Build()
+	if err != nil {
+		return nil, err
+	}
+
+	workflowURL, err := i.file.UploadWorkflow(ctx, p.Workflow)
+	if err != nil {
+		return nil, err
+	}
+	workflowURLStr := workflowURL.String()
+
+	metadataURL, err := i.file.UploadMetadata(ctx, j.ID().String(), []string{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to upload metadata: %v", err)
+	}
+	if metadataURL != nil {
+		j.SetMetadataURL(metadataURL.String())
+	}
+
+	j.SetParameters(p.Parameters)
+
 	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
-		prj, err := i.projectRepo.FindByID(ctx, p.ProjectID)
-		if err != nil {
-			return err
-		}
-
-		doc, err := i.websocket.GetLatest(ctx, p.ProjectID.String())
-		if err != nil {
-			return fmt.Errorf("failed to get latest project snapshot: %v", err)
-		}
-		projectID := p.ProjectID
-		projectVersion := doc.Version
-
-		debug := true
-
-		j, err = job.New().
-			NewID().
-			Debug(&debug).
-			ProjectID(&projectID).
-			ProjectVersion(&projectVersion).
-			Workspace(prj.Workspace()).
-			Status(job.StatusPending).
-			StartedAt(time.Now()).
-			Build()
-		if err != nil {
-			return err
-		}
-
-		workflowURL, err := i.file.UploadWorkflow(ctx, p.Workflow)
-		if err != nil {
-			return err
-		}
-		workflowURLStr = workflowURL.String()
-
-		metadataURL, err := i.file.UploadMetadata(ctx, j.ID().String(), []string{})
-		if err != nil {
-			return fmt.Errorf("failed to upload metadata: %v", err)
-		}
-		if metadataURL != nil {
-			j.SetMetadataURL(metadataURL.String())
-		}
-
-		j.SetParameters(p.Parameters)
-
-		if err := i.jobRepo.Save(ctx, j); err != nil {
-			return err
-		}
-
-		if !useCloudRun {
-			gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), workflowURLStr, j.MetadataURL(), nil, p.ProjectID, prj.Workspace(), p.PreviousJobID, p.StartNodeID)
-			if err != nil {
-				return fmt.Errorf("failed to submit job: %v", err)
-			}
-			j.SetGCPJobID(gcpJobID)
-
-			if err := i.jobRepo.Save(ctx, j); err != nil {
-				return err
-			}
-		}
-
-		return nil
+		return i.jobRepo.Save(ctx, j)
 	}); err != nil {
 		return nil, err
+	}
+
+	if !useCloudRun {
+		// Submitted after commit so a retry cannot double-dispatch, and a failure
+		// here leaves a job the user can see rather than an untracked cloud job.
+		gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), workflowURLStr, j.MetadataURL(), nil, p.ProjectID, proj.Workspace(), p.PreviousJobID, p.StartNodeID)
+		if err != nil {
+			failJob(ctx, i.jobRepo, j)
+			return nil, fmt.Errorf("failed to submit job: %v", err)
+		}
+		j.SetGCPJobID(gcpJobID)
+
+		if err := i.jobRepo.Save(ctx, j); err != nil {
+			return nil, err
+		}
 	}
 
 	if useCloudRun {
@@ -340,77 +335,79 @@ func (i *Project) PreviewSchema(ctx context.Context, p interfaces.PreviewSchemaP
 		return nil, err
 	}
 
-	var j *job.Job
-	var workflowURLStr string
-	var reportURL string
 	variables := parametersToVariables(p.Parameters)
 	sampleSize := capSampleSize(p.SampleSize)
 	useCloudRun := i.cloudRunWorker != nil
 
+	prj, err := i.projectRepo.FindByID(ctx, p.ProjectID)
+	if err != nil {
+		return nil, err
+	}
+	if prj == nil {
+		return nil, rerror.ErrNotFound
+	}
+
+	doc, err := i.websocket.GetLatest(ctx, p.ProjectID.String())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get latest project snapshot: %v", err)
+	}
+	projectID := p.ProjectID
+	projectVersion := doc.Version
+
+	debug := true
+
+	// Built before the transaction: the closure is retried on a serialization
+	// failure, and a job ID minted inside it would submit a second probe job and
+	// leave an orphaned workflow object on every attempt.
+	j, err := job.New().
+		NewID().
+		Debug(&debug).
+		Mode(job.ModePreviewSchema).
+		ProjectID(&projectID).
+		ProjectVersion(&projectVersion).
+		Workspace(prj.Workspace()).
+		Status(job.StatusPending).
+		StartedAt(time.Now()).
+		Build()
+	if err != nil {
+		return nil, err
+	}
+
+	workflowURL, err := i.file.UploadWorkflow(ctx, p.Workflow)
+	if err != nil {
+		return nil, err
+	}
+	workflowURLStr := workflowURL.String()
+
+	// Intentionally NO UploadMetadata: probe-schema does not consume metadata.
+
+	j.SetParameters(p.Parameters)
+	// The report URL is surfaced via outputURLs on completion by
+	// Job.updateJobArtifacts, not here: the artifact does not exist until the
+	// worker writes it (and never on failure), so setting it at creation time
+	// would hand clients a URL that 404s.
+
 	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
-		prj, err := i.projectRepo.FindByID(ctx, p.ProjectID)
-		if err != nil {
-			return err
-		}
-
-		doc, err := i.websocket.GetLatest(ctx, p.ProjectID.String())
-		if err != nil {
-			return fmt.Errorf("failed to get latest project snapshot: %v", err)
-		}
-		projectID := p.ProjectID
-		projectVersion := doc.Version
-
-		debug := true
-
-		j, err = job.New().
-			NewID().
-			Debug(&debug).
-			Mode(job.ModePreviewSchema).
-			ProjectID(&projectID).
-			ProjectVersion(&projectVersion).
-			Workspace(prj.Workspace()).
-			Status(job.StatusPending).
-			StartedAt(time.Now()).
-			Build()
-		if err != nil {
-			return err
-		}
-
-		workflowURL, err := i.file.UploadWorkflow(ctx, p.Workflow)
-		if err != nil {
-			return err
-		}
-		workflowURLStr = workflowURL.String()
-
-		// Intentionally NO UploadMetadata: probe-schema does not consume metadata.
-
-		j.SetParameters(p.Parameters)
-		// The report URL is surfaced via outputURLs on completion by
-		// Job.updateJobArtifacts, not here: the artifact does not exist until the
-		// worker writes it (and never on failure), so setting it at creation time
-		// would hand clients a URL that 404s.
-
-		if err := i.jobRepo.Save(ctx, j); err != nil {
-			return err
-		}
-
-		reportURL = i.file.GetJobPreviewSchemaUploadURI(j.ID().String())
-
-		if !useCloudRun {
-			gcpJobID, err := i.batch.SubmitProbeJob(ctx, j.ID(), workflowURLStr, variables, sampleSize, reportURL, p.ProjectID, prj.Workspace())
-			if err != nil {
-				return fmt.Errorf("failed to submit probe job: %v", err)
-			}
-			j.SetGCPJobID(gcpJobID)
-
-			if err := i.jobRepo.Save(ctx, j); err != nil {
-				return err
-			}
-		}
-
-		return nil
+		return i.jobRepo.Save(ctx, j)
 	}); err != nil {
 		return nil, err
+	}
+
+	reportURL := i.file.GetJobPreviewSchemaUploadURI(j.ID().String())
+
+	if !useCloudRun {
+		// Submitted after commit so a retry cannot double-dispatch, and a failure
+		// here leaves a job the user can see rather than an untracked probe job.
+		gcpJobID, err := i.batch.SubmitProbeJob(ctx, j.ID(), workflowURLStr, variables, sampleSize, reportURL, p.ProjectID, prj.Workspace())
+		if err != nil {
+			failJob(ctx, i.jobRepo, j)
+			return nil, fmt.Errorf("failed to submit probe job: %v", err)
+		}
+		j.SetGCPJobID(gcpJobID)
+
+		if err := i.jobRepo.Save(ctx, j); err != nil {
+			return nil, err
+		}
 	}
 
 	if useCloudRun {

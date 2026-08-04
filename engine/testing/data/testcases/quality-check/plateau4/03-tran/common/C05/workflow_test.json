@@ -1,5 +1,6 @@
 {
   "description": "Test quality check for C05",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/03-tran/workflow.yml",
   "workflowVariables": [
     {

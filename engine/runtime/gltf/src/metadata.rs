@@ -5,8 +5,8 @@ pub mod encode;
 pub mod int_type_selector;
 
 pub use decode::{
-    extract_feature_properties, read_mesh_features, read_structural_metadata, PropertyData,
-    PropertyTable, PropertyTables,
+    extract_feature_properties, feature_properties, read_mesh_features, read_structural_metadata,
+    PropertyData, PropertyTable, PropertyTables,
 };
 pub use encode::MetadataEncoder;
 

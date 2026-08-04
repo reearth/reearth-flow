@@ -93,12 +93,14 @@ pub(super) struct CsvWriter {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) struct CsvWriterParam {
-    /// Output path or expression for the CSV/TSV file to create
+    /// # Output File
+    /// Output path or expression for the CSV/TSV file to create.
     pub(super) output: Code,
-    /// File format: csv (comma) or tsv (tab)
+    /// # File Format
+    /// File format to write: CSV (comma-separated) or TSV (tab-separated).
     format: CsvFormat,
     /// # Geometry Configuration
-    /// Optional configuration for exporting geometry to CSV columns
+    /// Optional configuration for exporting geometry to CSV columns.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub(super) geometry: Option<super::writer_geometry::GeometryExportConfig>,
 }

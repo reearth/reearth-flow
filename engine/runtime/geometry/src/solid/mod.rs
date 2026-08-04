@@ -22,7 +22,9 @@ mod validation;
 /// One closed boundary of a [`Solid`]: a general polygon mesh or a triangle
 /// mesh, stored as coordinate-free mesh data so the boundary cannot carry a
 /// frame of its own — its frame is the `Solid`'s.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "schema", schemars(title = "Boundary shell"))]
 pub enum Shell {
     PolygonMesh(PolygonMesh3DData),
     TriangularMesh(TriangularMesh3DData),
@@ -50,13 +52,19 @@ impl Shell {
 
 /// A volumetric solid bounded by an exterior shell and any number of interior
 /// (void) shells. Appearance lives on each shell's mesh.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "schema", schemars(title = "Solid"))]
 pub struct Solid {
     /// Coordinate frame this solid's shells are expressed in; the shells
     /// themselves are coordless raw meshes.
+    #[cfg_attr(feature = "schema", schemars(title = "Coordinate frame"))]
     frame: CoordinateFrame,
+    #[cfg_attr(feature = "schema", schemars(title = "Exterior shell"))]
     exterior: Shell,
     /// Hollow voids.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[cfg_attr(feature = "schema", schemars(title = "Interior shells (voids)"))]
     interiors: Vec<Shell>,
 }
 
@@ -79,3 +87,6 @@ impl Solid {
         &self.interiors
     }
 }
+
+// A solid is one logical volume, not a multi-part container.
+crate::unsupported!(Solid: Split);

@@ -7,3 +7,4 @@ pub mod mvt_lines;
 pub mod mvt_points;
 pub mod mvt_polygons;
 pub mod raster;
+pub mod raster3d;

@@ -2,8 +2,10 @@
 //!
 //! Appearance is painted for the default theme, front side only. Textured
 //! materials across a tile share one or more embedded atlas pages (one glTF
-//! primitive per page); wrapping textures and remote/in-memory rasters aren't
-//! handled yet and fall back to colour-only. Texture detail is bounded by the
+//! primitive per page). Local-file and embedded (in-memory) rasters are both
+//! supported: embedded bytes (e.g. glTF/GLB packed images) are materialized to a
+//! temp file so the path-based atlas packer can read them. Wrapping textures and
+//! remote rasters fall back to colour-only. Texture detail is bounded by the
 //! `texel_size` option (metres per pixel); atlas pages are capped at
 //! `atlas_size` and overflow spills onto further pages.
 
@@ -14,21 +16,28 @@ mod quadtree;
 mod subtree;
 mod tileset;
 
+use std::collections::hash_map::DefaultHasher;
 use std::collections::{BTreeSet, HashMap};
-use std::io::Cursor;
+use std::hash::{Hash, Hasher};
 use std::path::PathBuf;
 use std::sync::Arc;
 
+use rayon::prelude::*;
+
 use reearth_flow_atlas::{build_atlas_multipage, TextureCache, TextureInput};
+use reearth_flow_common::image::MimeType;
+use reearth_flow_geometry::appearance::RasterData;
 use reearth_flow_gltf::next::glb::{self, Granularity};
 use reearth_flow_gltf::next::metadata;
 
+use appearance::TextureSource;
 use primitive::{Geom, TexturedPrimitive, DEFAULT_MATERIAL};
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::FEATURES_PORT;
 use reearth_flow_types::Feature;
 
 use super::sink::Cesium3DTilesWriter;
+pub use super::sink::TextureCodec;
 use crate::errors::SinkError;
 use quadtree::{Cell, GeoBox};
 pub use reearth_flow_gltf::next::metadata::MetadataOptions;
@@ -61,50 +70,84 @@ impl Cesium3DTilesWriter {
         let options = MetadataOptions {
             schema_key: self.params.schema_key.as_deref(),
             skip_unexposed_attributes: self.params.skip_unexposed_attributes,
+            array_map_separator: self.params.array_map_separator.as_deref(),
         };
-        // draco/compute_flat_normal default to true (see `Cesium3DTilesWriterParam`).
         let render = RenderOptions {
-            draco: self.params.draco_compression.unwrap_or(true),
-            compute_flat_normal: self.params.compute_flat_normal.unwrap_or(true),
+            draco: self.params.draco_compression,
+            compute_flat_normal: self.params.compute_flat_normal,
             texel_size: self.params.texel_size.unwrap_or(0.0),
             atlas_size: self.params.atlas_size.unwrap_or(DEFAULT_ATLAS_SIZE),
             atlas_extrusion: self
                 .params
                 .atlas_extrusion
                 .unwrap_or(DEFAULT_ATLAS_EXTRUSION),
+            texture_codec: self.params.texture_codec,
         };
         for ((output, _, _), features) in &self.buffer {
-            let built = build(features, options, self.params.max_zoom, render)?;
+            if output.ends_with(".zip") {
+                let zip = reearth_flow_common::zip::StreamingZipWriter::new(std::io::Cursor::new(
+                    Vec::new(),
+                ));
+                let write_file = |relative_path: String, bytes: Vec<u8>| {
+                    zip.write_entry(&relative_path, &bytes)
+                        .map_err(crate::errors::SinkError::cesium3dtiles_writer)
+                };
 
-            for (relative_path, bytes) in built.tiles.into_iter().chain(built.subtrees) {
+                let max_depth = self.params.max_depth.unwrap_or(DEFAULT_MAX_DEPTH);
+                let built = build(features, options, max_depth, render, write_file)?;
+                for (relative_path, bytes) in built.subtrees {
+                    write_file(relative_path, bytes)?;
+                }
+                write_file("tileset.json".to_string(), built.tileset_json.into_bytes())?;
+
+                let cursor = zip
+                    .finish()
+                    .map_err(|e| crate::errors::SinkError::cesium3dtiles_writer(e.to_string()))?;
+                crate::SinkOutput::new(&ctx.sandbox_root, output, &ctx.storage_resolver)
+                    .and_then(|out| out.write(bytes::Bytes::from(cursor.into_inner())))
+                    .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
+            } else {
+                let write_file = |relative_path: String, bytes: Vec<u8>| {
+                    crate::SinkOutput::new(
+                        &ctx.sandbox_root,
+                        &format!("{output}/{relative_path}"),
+                        &ctx.storage_resolver,
+                    )
+                    .and_then(|out| out.write(bytes::Bytes::from(bytes)))
+                    .map_err(crate::errors::SinkError::cesium3dtiles_writer)
+                };
+
+                // glbs stream out as they're built; only subtree/tileset outputs come back.
+                let max_depth = self.params.max_depth.unwrap_or(DEFAULT_MAX_DEPTH);
+                let built = build(features, options, max_depth, render, write_file)?;
+
+                for (relative_path, bytes) in built.subtrees {
+                    write_file(relative_path, bytes)?;
+                }
+
                 crate::SinkOutput::new(
                     &ctx.sandbox_root,
-                    &format!("{output}/{relative_path}"),
+                    &format!("{output}/tileset.json"),
                     &ctx.storage_resolver,
                 )
-                .and_then(|out| out.write(bytes::Bytes::from(bytes)))
+                .and_then(|out| out.write(bytes::Bytes::from(built.tileset_json)))
                 .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
             }
-
-            crate::SinkOutput::new(
-                &ctx.sandbox_root,
-                &format!("{output}/tileset.json"),
-                &ctx.storage_resolver,
-            )
-            .and_then(|out| out.write(bytes::Bytes::from(built.tileset_json)))
-            .map_err(crate::errors::SinkError::cesium3dtiles_writer)?;
         }
         Ok(())
     }
 }
 
-/// Every file a built tileset is made of, relative to the tileset's output
-/// directory: one content glb per occupied cell, one or more `.subtree`
-/// files, and the `tileset.json` text itself.
+/// The tileset's non-glb outputs, relative to its output directory: the
+/// `tileset.json` text and one or more `.subtree` files. The content glbs are
+/// streamed out through `build`'s `write_tile` callback as they are produced,
+/// not held here; `tile_count` records how many were written.
 pub struct BuiltTileset {
     pub tileset_json: String,
-    pub tiles: Vec<(String, Vec<u8>)>,
     pub subtrees: Vec<(String, Vec<u8>)>,
+    pub tile_count: usize,
+    /// Features that carried renderable geometry; the rest never reach a tile.
+    pub rendered_features: usize,
 }
 
 /// Rendering knobs shared by every cell of a tileset.
@@ -124,6 +167,9 @@ pub struct RenderOptions {
     /// Extrusion ring (pixels) blitted around each atlas region to stop
     /// bilinear bleed between neighbours. `0` disables it.
     pub atlas_extrusion: u32,
+    /// Image codec for atlas pages. `Untextured` attaches no textures; textured
+    /// geometry falls back to its neutral colour.
+    pub texture_codec: TextureCodec,
 }
 
 /// Default atlas page size when the parameter is unset; inherited from the old
@@ -134,15 +180,24 @@ const DEFAULT_ATLAS_SIZE: u32 = 2048;
 /// default. Raise it to blit a bleed-guard ring around each packed region.
 const DEFAULT_ATLAS_EXTRUSION: u32 = 0;
 
+/// Default quadtree depth cap when `max_depth` is unset.
+const DEFAULT_MAX_DEPTH: u32 = 24;
+
 /// Extract and reproject every feature's mesh, place each into the deepest
-/// quadtree cell (bounded by `max_zoom`) that fully contains it, and render
+/// quadtree cell (bounded by `max_depth`) that fully contains it, and render
 /// the result to a [`BuiltTileset`]. A free function so `gml_to_3dtiles` can
 /// drive it directly from parsed CityGML, without a `Cesium3DTilesWriter`.
+///
+/// Each content glb is handed to `write_tile` (relative path, bytes) the moment
+/// it is built and is not retained, so peak memory does not grow with the tile
+/// count. The returned [`BuiltTileset`] carries only the small `tileset.json`
+/// and subtree outputs, which the caller writes after `build` returns.
 pub fn build(
     features: &[Feature],
     options: MetadataOptions,
-    max_zoom: u8,
+    max_depth: u32,
     render: RenderOptions,
+    write_tile: impl Fn(String, Vec<u8>) -> crate::errors::Result<()> + Sync,
 ) -> crate::errors::Result<BuiltTileset> {
     let mut caches = mesh::ExtractCaches::default();
     let extracted: Vec<(&Feature, mesh::ExtractedMesh)> = features
@@ -169,7 +224,7 @@ pub fn build(
         let Some(feature_box) = GeoBox::of(&m.geographic_vertices) else {
             continue;
         };
-        let cell = quadtree::place(&root, &feature_box, max_zoom as u32);
+        let cell = quadtree::place(&root, &feature_box, max_depth);
         by_cell.entry(cell).or_default().push(i);
     }
 
@@ -179,16 +234,26 @@ pub fn build(
     // A decode cache per cell, dropped once the cell's glb is built. PLATEAU
     // textures are per-surface, so a source image is referenced by only one
     // cell; a tileset-wide cache would grow without bound for no reuse gain.
-    let tiles = by_cell
-        .into_iter()
-        .map(|(cell, indices)| {
+    // Stream each cell's glb straight to the caller as it is built, so peak
+    // memory stays at one glb rather than the whole tileset. The glb bytes feed
+    // neither `tileset.json` nor the subtrees (those need only the cell keys,
+    // already captured in `occupied`), so nothing downstream needs them retained.
+    // Cells are independent (own texture cache, own glb, unique output path), so
+    // render them across the rayon pool. Each glb still streams straight to
+    // `write_tile` as it is built, so peak memory stays at one glb per worker.
+    let cells: Vec<(Cell, Vec<usize>)> = by_cell.into_iter().collect();
+    let tile_count = cells.len();
+    cells
+        .par_iter()
+        .try_for_each(|(cell, indices)| -> crate::errors::Result<()> {
             let cell_members: Vec<&(&Feature, mesh::ExtractedMesh)> =
                 indices.iter().map(|&i| &extracted[i]).collect();
             let mut textures = TextureCache::default();
-            let glb = build_cell_glb(&cell_members, options, render, &mut textures)?;
-            Ok((content_path(cell), glb))
-        })
-        .collect::<crate::errors::Result<_>>()?;
+            let mut embedded = EmbeddedTextures::new()?;
+            let glb = build_cell_glb(&cell_members, options, render, &mut textures, &mut embedded)?;
+            write_tile(content_path(*cell), glb)?;
+            Ok(())
+        })?;
 
     let tileset_bytes = render_tileset_json(&root, available_levels)?;
     let subtrees = subtree::build_all(&occupied)
@@ -198,9 +263,43 @@ pub fn build(
 
     Ok(BuiltTileset {
         tileset_json: tileset_bytes,
-        tiles,
         subtrees,
+        tile_count,
+        rendered_features: extracted.len(),
     })
+}
+
+/// Render one feature into a glb, untiled. Where [`build`] splits a whole
+/// dataset across a quadtree, this renders a single picked feature, which is
+/// what a viewer wants when a table row is clicked.
+///
+/// Positions are local to an origin chosen from the rendered geometry, carried
+/// on the scene node's translation exactly as tile content is, so the result
+/// drops into a georeferenced viewer unchanged.
+///
+/// `Ok(None)` means the feature carried no renderable geometry.
+///
+// TODO: Relocate this after GltfWriter is implemented (for the new geometry)
+pub fn build_glb(
+    feature: &Feature,
+    options: MetadataOptions,
+    render: RenderOptions,
+) -> crate::errors::Result<Option<Vec<u8>>> {
+    let mut caches = mesh::ExtractCaches::default();
+    let Some(extracted) = mesh::extract(&feature.geometry, &mut caches) else {
+        return Ok(None);
+    };
+
+    let mut textures = TextureCache::default();
+    let mut embedded = EmbeddedTextures::new()?;
+    build_cell_glb(
+        &[&(feature, extracted)],
+        options,
+        render,
+        &mut textures,
+        &mut embedded,
+    )
+    .map(Some)
 }
 
 fn empty_tileset() -> crate::errors::Result<BuiltTileset> {
@@ -219,8 +318,9 @@ fn empty_tileset() -> crate::errors::Result<BuiltTileset> {
         .collect();
     Ok(BuiltTileset {
         tileset_json: tileset_bytes,
-        tiles: Vec::new(),
         subtrees,
+        tile_count: 0,
+        rendered_features: 0,
     })
 }
 
@@ -236,6 +336,47 @@ fn content_path(cell: Cell) -> String {
 
 fn subtree_path(cell: Cell) -> String {
     format!("subtrees/{}.{}.{}.subtree", cell.level, cell.x, cell.y)
+}
+
+/// Materializes embedded texture bytes (e.g. glTF/GLB packed images) to temp
+/// files so the path-based atlas packer can read them. Deduplicated by content
+/// hash within a cell; the temp dir and its files drop once the cell's glb is
+/// built.
+struct EmbeddedTextures {
+    dir: tempfile::TempDir,
+    by_hash: HashMap<u64, PathBuf>,
+}
+
+impl EmbeddedTextures {
+    fn new() -> crate::errors::Result<Self> {
+        Ok(Self {
+            dir: tempfile::tempdir().map_err(|e| {
+                SinkError::Cesium3DTilesWriter(format!("failed to create texture temp dir: {e}"))
+            })?,
+            by_hash: HashMap::new(),
+        })
+    }
+
+    /// Write `data` to a temp file (once per distinct content) and return its path.
+    fn materialize(&mut self, data: &RasterData) -> crate::errors::Result<PathBuf> {
+        let mut hasher = DefaultHasher::new();
+        data.bytes.hash(&mut hasher);
+        let hash = hasher.finish();
+        if let Some(path) = self.by_hash.get(&hash) {
+            return Ok(path.clone());
+        }
+        let ext = match data.mime_type {
+            MimeType::ImagePng => "png",
+            MimeType::ImageJpeg => "jpg",
+            MimeType::ImageWebp => "webp",
+        };
+        let path = self.dir.path().join(format!("{hash:016x}.{ext}"));
+        std::fs::write(&path, &data.bytes).map_err(|e| {
+            SinkError::Cesium3DTilesWriter(format!("failed to write embedded texture: {e}"))
+        })?;
+        self.by_hash.insert(hash, path.clone());
+        Ok(path)
+    }
 }
 
 /// The atlas holds many textures side by side, so a repeating wrap would bleed
@@ -257,6 +398,7 @@ fn build_cell_glb(
     options: MetadataOptions,
     render: RenderOptions,
     textures: &mut TextureCache,
+    embedded: &mut EmbeddedTextures,
 ) -> crate::errors::Result<Vec<u8>> {
     let cells = primitive::collect(cell_members);
 
@@ -273,7 +415,13 @@ fn build_cell_glb(
     let mut primitives: Vec<(glb::PrimitiveHandle, Vec<u32>)> = Vec::new();
 
     if let Some(textured) = cells.textured {
-        match build_textured_pages(&mut builder, &textured, render, textures)? {
+        // `Untextured` skips texturing entirely and renders the textured
+        // geometry in the neutral fallback colour.
+        let pages = match render.texture_codec {
+            TextureCodec::Untextured => None,
+            _ => build_textured_pages(&mut builder, &textured, render, textures, embedded)?,
+        };
+        match pages {
             Some(pages) => {
                 for page in pages {
                     let material = glb::MaterialDesc {
@@ -358,16 +506,28 @@ struct TexturedPage {
 }
 
 /// Pack the cell's textured faces into one or more atlas pages, embed each page
-/// as a WebP texture, and split the textured geometry so each returned page
-/// carries only the faces whose UVs live on it (glTF binds one texture per
-/// primitive). `Ok(None)` when packing produced no image, so the caller falls
-/// back to colour-only.
+/// with the configured [`TextureCodec`], and split the textured geometry so each
+/// returned page carries only the faces whose UVs live on it (glTF binds one
+/// texture per primitive). `Ok(None)` when packing produced no image, so the
+/// caller falls back to colour-only.
 fn build_textured_pages(
     builder: &mut glb::Builder,
     textured: &TexturedPrimitive,
     render: RenderOptions,
     textures: &mut TextureCache,
+    embedded: &mut EmbeddedTextures,
 ) -> crate::errors::Result<Option<Vec<TexturedPage>>> {
+    // Resolve each polygon's texture to a local file path: on-disk sources pass
+    // through; embedded (in-memory) sources are materialized to a temp file (once
+    // per distinct content) so the path-based atlas packer can read them.
+    let mut polygon_paths: Vec<PathBuf> = Vec::with_capacity(textured.polygon_texture.len());
+    for source in &textured.polygon_texture {
+        polygon_paths.push(match source {
+            TextureSource::File(path) => path.clone(),
+            TextureSource::Embedded(data) => embedded.materialize(data)?,
+        });
+    }
+
     // Group polygons by source texture, one atlas polygon per source polygon;
     // `slots[p] = (input, polygon-within-input)` locates polygon `p`'s entry in
     // the atlas result.
@@ -378,7 +538,7 @@ fn build_textured_pages(
     for (polygon, &tris) in textured.geom.polygon_tris.iter().enumerate() {
         let corners = tris as usize * 3;
         let corner_off = tri_off * 3;
-        let path = &textured.polygon_texture[polygon];
+        let path = &polygon_paths[polygon];
         let pi = *path_index.entry(path.clone()).or_insert_with(|| {
             inputs.push(TextureInput {
                 path: path.clone(),
@@ -395,38 +555,31 @@ fn build_textured_pages(
         tri_off += tris as usize;
     }
 
-    let scales = texture_target_scales(textured, &inputs, render.texel_size);
+    let scales = texture_target_scales(textured, &polygon_paths, &inputs, render.texel_size);
     for (input, scale) in inputs.iter_mut().zip(scales) {
         input.scale = scale;
     }
 
-    let built =
-        match build_atlas_multipage(&inputs, render.atlas_size, render.atlas_extrusion, textures)
-            .map_err(SinkError::cesium3dtiles_writer)?
-        {
-            Some(built) => built,
-            None => return Ok(None),
-        };
+    let codec = codec_for(render.texture_codec);
+    let built = match build_atlas_multipage(
+        &inputs,
+        render.atlas_size,
+        render.atlas_extrusion,
+        codec.block_align(),
+        textures,
+    )
+    .map_err(SinkError::cesium3dtiles_writer)?
+    {
+        Some(built) => built,
+        None => return Ok(None),
+    };
 
-    // WebP has no core-glTF fallback image, so the extension is required.
-    builder.require_extension("EXT_texture_webp");
     let mut page_textures = Vec::with_capacity(built.pages.len());
-    for image in built.pages {
-        let mut webp = Vec::new();
-        image::DynamicImage::ImageRgba8(image)
-            .write_to(&mut Cursor::new(&mut webp), image::ImageFormat::WebP)
-            .map_err(|e| {
-                SinkError::Cesium3DTilesWriter(format!("atlas WebP encode failed: {e}"))
-            })?;
-        let image = builder.push_image(&webp, "image/webp");
-        page_textures.push(builder.push_texture(
-            None,
-            ATLAS_SAMPLER,
-            vec![(
-                "EXT_texture_webp",
-                serde_json::json!({ "source": image.index() }),
-            )],
-        ));
+    for page in built.pages {
+        let texture = builder
+            .push_atlas_texture(&page, codec.as_ref(), ATLAS_SAMPLER)
+            .map_err(SinkError::cesium3dtiles_writer)?;
+        page_textures.push(texture);
     }
 
     Ok(Some(split_textured_by_page(
@@ -437,6 +590,24 @@ fn build_textured_pages(
     )))
 }
 
+/// Resolve the user-facing codec parameter to its glTF codec implementation.
+fn codec_for(codec: TextureCodec) -> Box<dyn glb::Codec> {
+    use reearth_flow_gltf::next::ktx2::{Ktx2Codec, Supercompression};
+    match codec {
+        TextureCodec::Ktx2Etc1s => Box::new(Ktx2Codec {
+            supercompression: Supercompression::Etc1s,
+        }),
+        TextureCodec::Ktx2Uastc => Box::new(Ktx2Codec {
+            supercompression: Supercompression::Uastc,
+        }),
+        TextureCodec::Png => Box::new(glb::PngCodec),
+        TextureCodec::Jpeg => Box::new(glb::JpegCodec),
+        // The `Untextured` cell is filtered out before texturing (see `build`),
+        // so a codec is never resolved for it.
+        TextureCodec::Untextured => unreachable!("Untextured cells are not textured"),
+    }
+}
+
 /// Per input texture, the fraction of native resolution to keep so its
 /// highest-density (finest metres-per-pixel) face is downsampled to
 /// `texel_size` metres per pixel. One scale per texture: the coarser faces
@@ -444,6 +615,7 @@ fn build_textured_pages(
 /// a texture by face. `texel_size == 0.0` disables downsampling (scale `1.0`).
 fn texture_target_scales(
     textured: &TexturedPrimitive,
+    polygon_paths: &[PathBuf],
     inputs: &[TextureInput],
     texel_size: f64,
 ) -> Vec<f64> {
@@ -468,7 +640,7 @@ fn texture_target_scales(
         let tris = tris as usize;
         let range = tri_off..tri_off + tris;
         tri_off += tris;
-        let pi = path_input[&textured.polygon_texture[polygon]];
+        let pi = path_input[&polygon_paths[polygon]];
         let Some(size) = dims[pi] else { continue };
         if let Some(mpp) = polygon_metres_per_pixel(&textured.geom, range, size) {
             min_mpp[pi] = min_mpp[pi].min(mpp);
@@ -667,5 +839,162 @@ fn cell_origin(cells: &primitive::CellPrimitives) -> [f64; 3] {
             sum[1] / count as f64,
             sum[2] / count as f64,
         ]
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use std::io::Cursor;
+
+    /// A minimal red 2x2 PNG, encoded in memory.
+    fn tiny_png() -> Vec<u8> {
+        let img = image::RgbaImage::from_pixel(2, 2, image::Rgba([255, 0, 0, 255]));
+        let mut png = Vec::new();
+        image::DynamicImage::ImageRgba8(img)
+            .write_to(&mut Cursor::new(&mut png), image::ImageFormat::Png)
+            .expect("encode png");
+        png
+    }
+
+    // An embedded (in-memory) texture — what a glTF/GLB packed image decodes to —
+    // must be materialized to a temp file, atlased, and embedded as an atlas page,
+    // not dropped. Exercises the whole `Raster::InMemory` writer path.
+    #[test]
+    fn embedded_texture_is_materialized_and_atlased() {
+        let textured = TexturedPrimitive {
+            geom: Geom {
+                positions: vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+                indices: vec![[0, 1, 2]],
+                polygon_normals: vec![[0.0, 0.0, 1.0]],
+                polygon_tris: vec![1],
+                corner_uv: vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]],
+                feature_ids: vec![0, 0, 0],
+            },
+            polygon_texture: vec![TextureSource::Embedded(RasterData {
+                mime_type: MimeType::ImagePng,
+                bytes: bytes::Bytes::from(tiny_png()),
+            })],
+        };
+        let render = RenderOptions {
+            draco: false,
+            compute_flat_normal: false,
+            texel_size: 0.0,
+            atlas_size: 1024,
+            atlas_extrusion: 0,
+            texture_codec: TextureCodec::Png,
+        };
+
+        let mut builder = glb::Builder::new();
+        let mut cache = TextureCache::default();
+        let mut embedded = EmbeddedTextures::new().expect("temp dir");
+
+        let pages =
+            build_textured_pages(&mut builder, &textured, render, &mut cache, &mut embedded)
+                .expect("build textured pages")
+                .expect("an in-memory texture must produce an atlas page, not colour-only");
+
+        assert_eq!(pages.len(), 1, "one atlas page for the single texture");
+        assert_eq!(
+            pages[0].geom.indices.len(),
+            1,
+            "the textured triangle is kept"
+        );
+        // The embedded bytes were written to a temp file and cached by content hash.
+        assert_eq!(embedded.by_hash.len(), 1);
+    }
+
+    // End to end through the public `build`: a CRS-framed TriangularMesh carrying an
+    // embedded (in-memory) base-colour texture must produce a content glb that embeds
+    // the texture image — proving the whole chain (extract -> appearance resolve ->
+    // collect -> materialize -> atlas -> glb embed) works for in-memory textures.
+    // Uses a geographic CRS so the mesh isn't skipped and the Png codec so the
+    // embedded image carries a recognizable `image/png` mime; independent of the
+    // (separate) glTF georeferencing concern.
+    #[test]
+    fn embedded_texture_round_trips_through_build() {
+        use reearth_flow_geometry::appearance::{
+            AlphaMode, ChannelId, Material, PbrMaterial, Raster, RasterData, Sampler, Texture,
+            ThemeId, UvSource,
+        };
+        use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
+        use reearth_flow_geometry::triangular_mesh::TriangularMesh3D;
+        use reearth_flow_geometry::{Euclidean3DGeometry, Geometry};
+        use reearth_flow_types::Attributes;
+        use std::sync::Mutex;
+
+        let frame = CoordinateFrame::Crs(EpsgCode::new(4979));
+        let mut mesh = TriangularMesh3D::from_soup(
+            frame,
+            [
+                [35.0, 139.0, 10.0],
+                [35.0, 139.001, 10.0],
+                [35.001, 139.0, 10.0],
+            ],
+        );
+        mesh.set_appearance(
+            ThemeId(Arc::from("default")),
+            Material::Pbr(PbrMaterial {
+                base_color: [1.0, 1.0, 1.0, 1.0],
+                metallic: 1.0,
+                roughness: 1.0,
+                emissive: [0.0, 0.0, 0.0],
+                base_color_map: Some(Texture {
+                    raster: Arc::new(Raster::InMemory(RasterData {
+                        mime_type: MimeType::ImagePng,
+                        bytes: bytes::Bytes::from(tiny_png()),
+                    })),
+                    sampler: Sampler::default(),
+                    transform: None,
+                    uv_channel: ChannelId(0),
+                }),
+                metallic_roughness_map: None,
+                normal_map: None,
+                occlusion_map: None,
+                emissive_map: None,
+                alpha_mode: AlphaMode::Opaque,
+                double_sided: false,
+            }),
+            Some(UvSource::Explicit(
+                vec![[0.0, 0.0], [1.0, 0.0], [0.0, 1.0]].into_boxed_slice(),
+            )),
+        )
+        .expect("attach embedded texture");
+
+        let feature = reearth_flow_types::Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(mesh))),
+        );
+        let render = RenderOptions {
+            draco: false,
+            compute_flat_normal: false,
+            texel_size: 0.0,
+            atlas_size: 1024,
+            atlas_extrusion: 0,
+            texture_codec: TextureCodec::Png,
+        };
+        let options = MetadataOptions {
+            schema_key: None,
+            skip_unexposed_attributes: false,
+            array_map_separator: Some("_"),
+        };
+
+        // `build` streams each content glb to the callback; capture them.
+        let tiles = Mutex::new(Vec::new());
+        let built = build(&[feature], options, 18, render, |_path, glb| {
+            tiles.lock().unwrap().push(glb);
+            Ok(())
+        })
+        .expect("build tileset");
+
+        assert_eq!(built.tile_count, 1, "textured mesh produced a content glb");
+        let tiles = tiles.into_inner().unwrap();
+        assert_eq!(tiles.len(), 1);
+        let glb = &tiles[0];
+        let needle = b"image/png";
+        assert!(
+            glb.windows(needle.len()).any(|w| w == needle),
+            "the embedded texture is emitted as an image/png texture in the glb"
+        );
     }
 }

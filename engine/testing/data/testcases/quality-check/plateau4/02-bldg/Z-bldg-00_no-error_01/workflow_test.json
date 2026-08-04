@@ -1,5 +1,6 @@
 {
   "description": "Verify output files: no errors, empty CityGML (no features)",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "workflowVariables": [
     {

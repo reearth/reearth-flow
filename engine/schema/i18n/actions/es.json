@@ -2,30 +2,45 @@
   "actions": [
     {
       "name": "Appearance Remover",
-      "description": "Elimina información de apariencia (materiales, texturas) de la geometría CityGML"
+      "description": "Descarta los materiales, las texturas y las coordenadas de textura de la geometría de una entidad."
     },
     {
       "name": "Area Calculator",
       "description": "Calcula el área plana o inclinada de geometrías de polígono y agrega los resultados como atributos",
       "parameterI18n": {
         "": {
-          "title": "AreaCalculator Parameters",
-          "description": "Configuration for calculating areas of geometries."
+          "title": "Area Calculator Parameters",
+          "description": "Configure how the area of each feature's geometry is measured and stored."
         },
         "areaType": {
-          "description": "Type of area calculation to perform (PlaneArea or SlopedArea)"
+          "title": "Area Type",
+          "description": "Whether to measure the flat projected area or the true sloped surface area. Has no effect on a geometry with no elevation, which is always flat."
         },
         "multiplier": {
-          "description": "Multiplier to scale the area values (default: 1.0)"
+          "title": "Multiplier",
+          "description": "Factor applied to the calculated area, for converting to another unit. Defaults to 1.0."
         },
         "outputAttribute": {
-          "description": "Name of the attribute to store the calculated area (default: \"area\")"
+          "title": "Output Attribute",
+          "description": "Attribute to store the calculated area in. Defaults to `area`."
+        }
+      },
+      "enumI18n": {
+        "AreaType": {
+          "planeArea": {
+            "title": "Planar Area",
+            "description": "Calculates the flat area of the geometry projected onto the XY plane."
+          },
+          "slopedArea": {
+            "title": "Sloped Area",
+            "description": "Calculates the true surface area, accounting for the slope of each face."
+          }
         }
       }
     },
     {
       "name": "Area On Area Overlayer",
-      "description": "Superpone un área sobre otra área",
+      "description": "Subdivide las áreas superpuestas en fragmentos disjuntos y registra cuántas entidades de entrada cubren cada fragmento. Las entradas deben ser geometrías 2D planas, sin elevación, que compartan un mismo marco de coordenadas; coloque un Two Dimension Forcer o un Coordinate Frame Reprojector antes para aplanarlas o unificarlas.",
       "parameterI18n": {
         "": {
           "title": "Area On Area Overlayer Parameters",
@@ -62,31 +77,39 @@
           "description": "Configure how features are grouped and aggregated based on attribute values"
         },
         "aggregateAttributes": {
-          "title": "List of attributes to aggregate"
+          "title": "List of attributes to aggregate",
+          "description": "Attributes that define each group. Each entry reads a value from an existing attribute or an expression and writes it to a new attribute on the aggregated output feature."
         },
         "calculation": {
-          "title": "Calculation to perform"
+          "title": "Calculation to perform",
+          "description": "Expression evaluated to an integer per feature, used as the per-feature value when no calculation value is set."
         },
         "calculationAttribute": {
-          "title": "Attribute to store calculation result"
+          "title": "Attribute to store calculation result",
+          "description": "Attribute on the aggregated feature that stores the computed result."
         },
         "calculationValue": {
-          "title": "Value to use for calculation"
+          "title": "Value to use for calculation",
+          "description": "Constant integer used as the per-feature value. Takes precedence over the calculation expression when set."
         },
         "method": {
-          "title": "Method to use for aggregation"
+          "title": "Method to use for aggregation",
+          "description": "How to aggregate the per-feature calculation value within each group: maximum, minimum, or count."
         }
       },
       "definitionI18n": {
         "AggregateAttribute": {
           "attribute": {
-            "title": "Existing attribute to use"
+            "title": "Existing attribute to use",
+            "description": "Existing attribute to read the group value from. Ignored when a group value expression is provided."
           },
           "attributeValue": {
-            "title": "Value to use for attribute"
+            "title": "Value to use for attribute",
+            "description": "Expression that computes the group value. Takes precedence over the source attribute when both are set."
           },
           "newAttribute": {
-            "title": "New attribute to create"
+            "title": "New attribute to create",
+            "description": "Name of the attribute written to the aggregated feature that holds this group value."
           }
         }
       },
@@ -126,7 +149,8 @@
       "description": "Transforma atributos de características usando tablas de búsqueda",
       "parameterI18n": {
         "": {
-          "title": "AttributeConversionTable Parameters"
+          "title": "AttributeConversionTable Parameters",
+          "description": "Configures the lookup table and the rules that map feature attribute values to replacement values."
         },
         "dataset": {
           "title": "Dataset URI",
@@ -148,16 +172,36 @@
       "definitionI18n": {
         "AttributeConversionTableRule": {
           "conversionTableKeys": {
-            "title": "Keys to match in conversion table"
+            "title": "Keys to match in conversion table",
+            "description": "Table columns matched against the source attribute values."
           },
           "conversionTableTo": {
-            "title": "Attribute to convert to"
+            "title": "Attribute to convert to",
+            "description": "Table column whose value is written to the target attribute."
           },
           "featureFroms": {
-            "title": "Attributes to convert from"
+            "title": "Attributes to convert from",
+            "description": "Feature attributes whose values form the key looked up in the table."
           },
           "featureTo": {
-            "title": "Attribute to convert to"
+            "title": "Attribute to convert to",
+            "description": "Feature attribute that receives the looked-up value."
+          }
+        }
+      },
+      "enumI18n": {
+        "ConversionTableFormat": {
+          "csv": {
+            "title": "CSV",
+            "description": "Comma-separated values with a header row."
+          },
+          "json": {
+            "title": "JSON",
+            "description": "JSON array of objects, or a single object, where each object is a table row."
+          },
+          "tsv": {
+            "title": "TSV",
+            "description": "Tab-separated values with a header row."
           }
         }
       }
@@ -193,7 +237,8 @@
       "description": "Aplanador para atributos anidados",
       "parameterI18n": {
         "": {
-          "title": "AttributeFlattener Parameters"
+          "title": "AttributeFlattener Parameters",
+          "description": "Configures which map-valued attributes are expanded into top-level attributes."
         },
         "attributes": {
           "title": "Attributes to Flatten",
@@ -203,27 +248,50 @@
     },
     {
       "name": "Attribute Manager",
-      "description": "Gestiona atributos",
+      "description": "Creates, converts, renames, or removes feature attributes based on a configurable list of operations.",
       "parameterI18n": {
         "": {
-          "title": "AttributeManager Parameters"
+          "title": "Attribute Manager Parameters",
+          "description": "Defines the ordered list of operations that create, convert, rename, or remove feature attributes."
         },
         "operations": {
           "title": "Attribute Operations",
-          "description": "List of operations to perform on feature attributes (create, convert, rename, remove)"
+          "description": "Operations applied to each feature in order. Each entry names the target attribute, the method to apply, and an optional value expression."
         }
       },
       "definitionI18n": {
         "Operation": {
           "attribute": {
-            "title": "Attribute name"
+            "title": "Attribute Name",
+            "description": "Name of the attribute to create, convert, rename, or remove."
           },
           "method": {
-            "title": "Operation to perform"
+            "title": "Method",
+            "description": "Operation to apply to the attribute."
           },
           "value": {
             "title": "Value",
-            "description": "Value to use for the operation"
+            "description": "Expression evaluated against the feature. Supplies the new value for Create and Convert, or the new attribute name for Rename. Ignored for Remove."
+          }
+        }
+      },
+      "enumI18n": {
+        "Method": {
+          "convert": {
+            "title": "Convert",
+            "description": "Replaces the value of an existing attribute with the result of the value expression. Features that do not already have the attribute are left unchanged."
+          },
+          "create": {
+            "title": "Create",
+            "description": "Sets the attribute to the result of the value expression, creating it or overwriting any existing value."
+          },
+          "remove": {
+            "title": "Remove",
+            "description": "Removes the attribute from the feature."
+          },
+          "rename": {
+            "title": "Rename",
+            "description": "Renames the attribute to the name produced by the value expression. Skipped when the attribute is absent or a target with that name already exists."
           }
         }
       }
@@ -233,7 +301,8 @@
       "description": "Asigna atributos",
       "parameterI18n": {
         "": {
-          "title": "AttributeMapper Parameters"
+          "title": "AttributeMapper Parameters",
+          "description": "Configures the mapping rules that build the output feature's attributes."
         },
         "mappers": {
           "title": "Attribute Mappers",
@@ -243,22 +312,28 @@
       "definitionI18n": {
         "Mapper": {
           "attribute": {
-            "title": "Attribute name"
+            "title": "Attribute name",
+            "description": "Name of the attribute to set, taking its value from the expression, source attribute, or parent/child pair. Leave empty to use the multiple-values expression instead."
           },
           "childAttribute": {
-            "title": "Child attribute name"
+            "title": "Child attribute name",
+            "description": "Key within the parent map whose value is copied to the target attribute."
           },
           "expr": {
-            "title": "Expression to evaluate"
+            "title": "Expression to evaluate",
+            "description": "Expression evaluated to produce the attribute value. Evaluation errors yield a null value."
           },
           "multipleExpr": {
-            "title": "Expression to evaluate multiple attributes"
+            "title": "Expression to evaluate multiple attributes",
+            "description": "Expression returning a map whose entries are added as attributes. Used when no target attribute is set."
           },
           "parentAttribute": {
-            "title": "Parent attribute name"
+            "title": "Parent attribute name",
+            "description": "Map-valued attribute containing the value to copy. Used together with the child attribute."
           },
           "valueAttribute": {
-            "title": "Attribute name to get value from"
+            "title": "Attribute name to get value from",
+            "description": "Existing attribute to copy the value from. Yields null when the attribute is absent."
           }
         }
       }
@@ -325,31 +400,32 @@
       "description": "Extractor de límites",
       "parameterI18n": {
         "": {
-          "title": "BoundsExtractor Parameters"
+          "title": "Bounds Extractor Parameters",
+          "description": "Configure the attribute names each bound is stored under. Every parameter is optional; a bound left unset is stored under its default name. The z bounds are written only when the geometry has an elevation."
         },
         "xmax": {
           "title": "Maximum X Attribute",
-          "description": "Attribute name for storing the maximum X coordinate (defaults to \"xmax\")"
+          "description": "Attribute to store the maximum X coordinate in. Defaults to `xmax`."
         },
         "xmin": {
           "title": "Minimum X Attribute",
-          "description": "Attribute name for storing the minimum X coordinate (defaults to \"xmin\")"
+          "description": "Attribute to store the minimum X coordinate in. Defaults to `xmin`."
         },
         "ymax": {
           "title": "Maximum Y Attribute",
-          "description": "Attribute name for storing the maximum Y coordinate (defaults to \"ymax\")"
+          "description": "Attribute to store the maximum Y coordinate in. Defaults to `ymax`."
         },
         "ymin": {
           "title": "Minimum Y Attribute",
-          "description": "Attribute name for storing the minimum Y coordinate (defaults to \"ymin\")"
+          "description": "Attribute to store the minimum Y coordinate in. Defaults to `ymin`."
         },
         "zmax": {
           "title": "Maximum Z Attribute",
-          "description": "Attribute name for storing the maximum Z coordinate (defaults to \"zmax\")"
+          "description": "Attribute to store the maximum Z coordinate in. Defaults to `zmax`."
         },
         "zmin": {
           "title": "Minimum Z Attribute",
-          "description": "Attribute name for storing the minimum Z coordinate (defaults to \"zmin\")"
+          "description": "Attribute to store the minimum Z coordinate in. Defaults to `zmin`."
         }
       }
     },
@@ -359,26 +435,26 @@
       "parameterI18n": {
         "": {
           "title": "Bufferer Parameters",
-          "description": "Configure how to create buffers around input geometries"
+          "description": "Configure the shape and extent of the buffer created around each geometry."
         },
         "bufferType": {
           "title": "Buffer Type",
-          "description": "The type of buffer to create around the input geometry"
+          "description": "Shape of buffer to create around the input geometry."
         },
         "distance": {
           "title": "Distance",
-          "description": "The distance to extend the buffer from the original geometry (in coordinate units)"
+          "description": "How far the buffer extends from the original geometry, in the units of the geometry's coordinate system. A negative distance contracts it."
         },
         "interpolationAngle": {
           "title": "Interpolation Angle",
-          "description": "The angle in degrees used for curve interpolation when creating rounded corners"
+          "description": "Angular step in degrees used to approximate the rounded corners of a buffered point or curve. A smaller angle produces a smoother outline. Buffering a polygon does not use this value."
         }
       },
       "enumI18n": {
         "BufferType": {
           "area2d": {
             "title": "2D Area Buffer",
-            "description": "Creates a 2D polygon buffer around the input geometry"
+            "description": "Creates a flat polygon buffer around the input geometry, discarding any elevation it carried."
           }
         }
       }
@@ -388,61 +464,61 @@
       "description": "Cambia el nombre de atributos añadiendo/eliminando prefijos o sufijos, o reemplazando texto",
       "parameterI18n": {
         "": {
-          "title": "BulkAttributeRenamer Parameters",
-          "description": "Configure how to rename feature attributes in bulk operations"
+          "title": "Bulk Attribute Renamer Parameters",
+          "description": "Selects which attributes to rename and how their names are transformed."
         },
         "renameAction": {
           "title": "Rename Operation",
-          "description": "The type of renaming operation to perform on the attribute names"
+          "description": "Transformation applied to each attribute name."
         },
         "renameType": {
-          "title": "Which Attributes to Rename",
-          "description": "Choose whether to rename all attributes or only selected ones"
+          "title": "Rename Scope",
+          "description": "Scope of the rename operation: all attributes or a selected subset."
         },
         "renameValue": {
           "title": "Text Value",
-          "description": "The text to add as prefix/suffix, remove, or use as replacement"
+          "description": "Text to add as a prefix or suffix, remove, or use as the replacement, depending on the selected operation."
         },
         "selectedAttributes": {
           "title": "Selected Attribute Names",
-          "description": "List of specific attribute names to rename (required when \"Selected Attributes\" is chosen)"
+          "description": "Attribute names to rename. Required when the rename scope is set to a selected subset."
         },
         "textToFind": {
           "title": "Text Pattern to Find",
-          "description": "Regular expression pattern to match when using \"Replace Text\" operation"
+          "description": "Regular expression matched against attribute names. Required for the replaceText operation."
         }
       },
       "enumI18n": {
         "RenameAction": {
-          "AddPrefix": {
+          "addPrefix": {
             "title": "Add Prefix",
-            "description": "Add text to the beginning of attribute names"
+            "description": "Prepends the text value to each attribute name."
           },
-          "AddSuffix": {
+          "addSuffix": {
             "title": "Add Suffix",
-            "description": "Add text to the end of attribute names"
+            "description": "Appends the text value to each attribute name."
           },
-          "RemovePrefix": {
+          "removePrefix": {
             "title": "Remove Prefix",
-            "description": "Remove text from the beginning of attribute names"
+            "description": "Removes the text value from the start of each attribute name."
           },
-          "RemoveSuffix": {
+          "removeSuffix": {
             "title": "Remove Suffix",
-            "description": "Remove text from the end of attribute names"
+            "description": "Removes the text value from the end of each attribute name."
           },
-          "StringReplace": {
+          "replaceText": {
             "title": "Replace Text",
-            "description": "Find and replace text using regular expressions"
+            "description": "Replaces text matched by the find pattern with the text value, using regular expressions."
           }
         },
         "RenameType": {
-          "All": {
+          "all": {
             "title": "All Attributes",
-            "description": "Rename all attributes in the feature"
+            "description": "Renames every attribute on the feature."
           },
-          "Selected": {
+          "selected": {
             "title": "Selected Attributes",
-            "description": "Rename only specific attributes listed below"
+            "description": "Renames only the attributes listed in selectedAttributes."
           }
         }
       }
@@ -493,15 +569,15 @@
         },
         "dataset": {
           "title": "File Path",
-          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)"
+          "description": "Expression that returns the path to the input file, either a literal path or a variable reference."
         },
         "encoding": {
           "title": "Character Encoding",
-          "description": "Character encoding for the CSV/TSV file. If not specified, defaults to UTF-8.\n\nSupported encodings include: - **UTF-8** - Unicode UTF-8 (default) - **Shift-JIS** - Japanese encoding - **EUC-JP** - Japanese encoding - **Windows Code Pages** - Windows-1250 through Windows-1258 - **ISO-8859 family** - ISO-8859-1 through ISO-8859-16\n\nAll encoding labels are case-insensitive."
+          "description": "Character encoding of the input file, such as \"UTF-8\" or \"Shift-JIS\". Defaults to UTF-8 when omitted; labels are case-insensitive."
         },
         "format": {
           "title": "File Format",
-          "description": "Choose the delimiter format for the input file"
+          "description": "Delimiter format of the input file."
         },
         "geometry": {
           "title": "Geometry Configuration",
@@ -509,7 +585,7 @@
         },
         "headerRows": {
           "title": "Header Row Count",
-          "description": "Number of consecutive rows that make up the header (default: 1). When 0, no header rows are read and column names are auto-generated as \"column1\", \"column2\", etc. When greater than 1, column names are formed by joining non-empty values from each header row with \"_\"."
+          "description": "Number of consecutive rows that make up the header (default: 1). When 0, column names are auto-generated as \"column1\", \"column2\", and so on; when greater than 1, names are formed by joining values from each header row with \"_\"."
         },
         "inline": {
           "title": "Inline Content",
@@ -550,6 +626,7 @@
           "description": "Configuration for writing features to CSV/TSV files."
         },
         "format": {
+          "title": "File Format",
           "description": "File format: csv (comma) or tsv (tab)"
         },
         "geometry": {
@@ -557,6 +634,7 @@
           "description": "Optional configuration for exporting geometry to CSV columns"
         },
         "output": {
+          "title": "Output File",
           "description": "Output path or expression for the CSV/TSV file to create"
         }
       },
@@ -583,7 +661,7 @@
         },
         "dataset": {
           "title": "File Path",
-          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)"
+          "description": "Expression that returns the path to the input file, either a literal path or a variable reference."
         },
         "force2d": {
           "title": "Force 2D",
@@ -709,7 +787,12 @@
       "description": "Escribe las entidades en un archivo",
       "parameterI18n": {
         "": {
-          "title": "Parámetros de Cesium3DTilesWriter"
+          "title": "Parámetros de Cesium3DTilesWriter",
+          "description": "Configuration for writing features to Cesium 3D Tiles."
+        },
+        "arrayMapSeparator": {
+          "title": "Separador de Array/Map",
+          "description": "Separador que une un atributo de array o map anidado con su clave o índice hijo al aplanarlo en columnas de metadatos. Déjelo sin definir para eliminar por completo los atributos de array y map de la salida."
         },
         "atlasExtrusion": {
           "title": "Extrusión del Atlas",
@@ -758,6 +841,29 @@
         "texelSize": {
           "title": "Tamaño de Téxel",
           "description": "Tamaño de téxel objetivo en metros por píxel. Las texturas más finas que este valor se reducen a él. El valor predeterminado es 0, que conserva el detalle completo de la textura."
+        },
+        "textureCodec": {
+          "title": "Códec de Textura",
+          "description": "Códec de imagen para las páginas del atlas. Valor predeterminado: `KTX2/ETC1S`; seleccione `Untextured` para no adjuntar texturas."
+        }
+      },
+      "enumI18n": {
+        "TextureCodec": {
+          "JPEG": {
+            "description": "JPEG, con pérdida y opaco (se descarta el canal alfa)."
+          },
+          "KTX2/ETC1S": {
+            "description": "KTX2 con supercompresión Basis Universal ETC1S (`KHR_texture_basisu`): archivos más pequeños, menor calidad."
+          },
+          "KTX2/UASTC": {
+            "description": "KTX2 con supercompresión Basis Universal UASTC (`KHR_texture_basisu`): mayor calidad, archivos más grandes."
+          },
+          "PNG": {
+            "description": "PNG, sin pérdida y con canal alfa."
+          },
+          "Untextured": {
+            "description": "No adjunta texturas; la geometría texturizada recurre a su color neutro."
+          }
         }
       }
     },
@@ -771,9 +877,12 @@
         },
         "dataset": {
           "title": "File Path",
-          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)"
+          "description": "Expression that returns the path to the input file, either a literal path or a variable reference."
         },
-        "flatten": {},
+        "flatten": {
+          "title": "Flatten Feature Tree",
+          "description": "When enabled, extracts nested child city objects as separate features, each tagged with `parentId` and `parentType` attributes. Defaults to false."
+        },
         "inline": {
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
@@ -785,18 +894,23 @@
       "description": "Escribe entidades en archivos CityGML 2.0",
       "parameterI18n": {
         "": {
-          "title": "CityGmlWriterParam"
+          "title": "CityGmlWriterParam",
+          "description": "Configuration for writing features to CityGML 2.0 files."
         },
         "epsgCode": {
+          "title": "EPSG Code",
           "description": "EPSG code for coordinate reference system"
         },
         "lodFilter": {
+          "title": "LOD Filter",
           "description": "LOD levels to include (e.g., [0, 1, 2]). If empty, includes all LODs."
         },
         "output": {
+          "title": "Output File",
           "description": "Output file path expression"
         },
         "prettyPrint": {
+          "title": "Pretty Print",
           "description": "Whether to format output with indentation (default: true)"
         }
       }
@@ -905,14 +1019,16 @@
       "description": "Descomprime directorios de archivos",
       "parameterI18n": {
         "": {
-          "title": "DirectoryDecompressor Parameters",
-          "description": "Configures the extraction and decompression of archive files."
+          "title": "Directory Decompressor Parameters",
+          "description": "Configures which attributes hold archives and how deeply the extracted directory is unwrapped."
         },
         "archiveAttributes": {
-          "description": "Attributes containing archive file paths to be extracted and decompressed"
+          "title": "Archive Attributes",
+          "description": "Attributes holding the path of a `.zip`, `.7z`, or `.7zip` archive. Each is replaced with the extracted directory path; attributes holding any other value are left unchanged."
         },
         "findDeepestSingleFolder": {
-          "description": "If true, recursively unwraps single-folder nesting until the directory contains multiple items or files directly. If false (default), returns the root extraction folder as-is."
+          "title": "Find Deepest Single Folder",
+          "description": "Keeps unwrapping while the extracted directory contains nothing but a single subdirectory, stopping at the first directory with multiple entries or a file. When disabled, only one level of single-folder nesting is unwrapped."
         }
       }
     },
@@ -968,11 +1084,11 @@
       "parameterI18n": {
         "": {
           "title": "Elevation Extractor Parameters",
-          "description": "Configure where to store the extracted elevation value from geometry coordinates"
+          "description": "Configure where the extracted elevation is stored."
         },
         "outputAttribute": {
           "title": "Output Attribute",
-          "description": "Name of the attribute where the extracted elevation value will be stored"
+          "description": "Attribute to store the elevation in."
         }
       }
     },
@@ -998,11 +1114,11 @@
       "parameterI18n": {
         "": {
           "title": "Extruder Parameters",
-          "description": "Configure how to extrude 2D polygons into 3D solid geometries"
+          "description": "Configure how far each polygon is extruded."
         },
         "distance": {
           "title": "Distance",
-          "description": "The vertical distance (height) to extrude the polygon. Can be a constant value or an expression"
+          "description": "Height to extrude the polygon by, as a constant or an expression evaluated per feature."
         }
       }
     },
@@ -1126,7 +1242,7 @@
         },
         "creator": {
           "title": "Script Expression",
-          "description": "Write a script expression that returns a map (single feature) or array of maps (multiple features). Each map represents feature attributes as key-value pairs."
+          "description": "Script expression that returns a map (single feature) or an array of maps (multiple features). Each map holds feature attributes as key-value pairs."
         }
       }
     },
@@ -1140,19 +1256,19 @@
       "parameterI18n": {
         "": {
           "title": "Feature File Path Extractor Parameters",
-          "description": "Configure how to extract file paths from datasets and optionally extract archives"
+          "description": "Configures which dataset is expanded into file features and whether archives are extracted."
         },
         "destPrefix": {
           "title": "Destination Prefix",
-          "description": "Optional prefix to add to extracted file paths"
+          "description": "Subdirectory created under the temporary extraction directory to hold the extracted files. Applies only when an archive is extracted."
         },
         "extractArchive": {
           "title": "Extract Archive",
-          "description": "Whether to extract archive files found in the dataset"
+          "description": "Extracts the source dataset when it is a `.zip`, `.7z`, or `.7zip` archive and emits one feature per extracted file. When disabled, the archive itself is emitted as a single path."
         },
         "sourceDataset": {
           "title": "Source Dataset",
-          "description": "Expression to get the source dataset path or URL"
+          "description": "Expression evaluating to the path or URL of the file, directory, or archive to expand. A directory is listed recursively; any other path yields a single feature."
         }
       }
     },
@@ -1331,17 +1447,19 @@
       "description": "Transforma entidades mediante expresiones",
       "parameterI18n": {
         "": {
-          "title": "FeatureTransformer Parameters",
-          "description": "Configuration for applying transformation expressions to features."
+          "title": "Feature Transformer Parameters",
+          "description": "Configures the expressions that build each feature's new attributes."
         },
         "transformers": {
-          "description": "List of transformation expressions to apply to each feature"
+          "title": "Transformations",
+          "description": "Expressions applied in order, each one reading the attributes produced by the previous."
         }
       },
       "definitionI18n": {
         "Transform": {
           "expr": {
-            "description": "Expression that modifies the feature (can access and modify attributes, geometry, etc.)"
+            "title": "Expression",
+            "description": "Expression over `attributes` and `env` returning a map that becomes the feature's complete attribute set. A result that is not a map, or an expression that fails to evaluate, leaves the attributes unchanged."
           }
         }
       }
@@ -1380,7 +1498,7 @@
         },
         "extractArchive": {
           "title": "Extract Archive",
-          "description": "Whether to extract files from archives (zip files, etc.) or just list them"
+          "description": "When enabled, archive files (.zip, .7z) are extracted and a feature is emitted for each contained file; when disabled, the archive is emitted as a single file path without extraction."
         },
         "sourceDataset": {
           "title": "Source Dataset",
@@ -1393,11 +1511,12 @@
       "description": "Extrae propiedades de un archivo",
       "parameterI18n": {
         "": {
-          "title": "FilePropertyExtractor Parameters",
-          "description": "Configuration for extracting file system properties from files."
+          "title": "File Property Extractor Parameters",
+          "description": "Configures which attribute holds the path to inspect."
         },
         "filePathAttribute": {
-          "description": "Attribute name containing the file path to analyze for properties"
+          "title": "File Path Attribute",
+          "description": "Name of the attribute holding the path of the file or directory to inspect. Paths that do not exist, and symbolic links, are not inspected."
         }
       }
     },
@@ -1415,7 +1534,7 @@
         },
         "dataset": {
           "title": "File Path",
-          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)"
+          "description": "Expression that returns the path to the input file, either a literal path or a variable reference."
         },
         "inline": {
           "title": "Inline Content",
@@ -1432,9 +1551,11 @@
           "description": "Configuration for writing features to GeoJSON files."
         },
         "groupBy": {
+          "title": "Group By",
           "description": "Optional attributes to group features by, creating separate files for each group"
         },
         "output": {
+          "title": "Output File",
           "description": "Output path or expression for the GeoJSON file to create"
         }
       }
@@ -1444,24 +1565,71 @@
       "description": "Lee características geográficas de archivos GeoPackage (.gpkg) con soporte para características vectoriales, mosaicos y metadatos",
       "parameterI18n": {
         "": {
-          "title": "GeoPackageReaderParam"
+          "title": "GeoPackage Reader Parameters",
+          "description": "Configures which content to read from the GeoPackage file and how geometries are produced."
         },
         "attributeFilter": {},
         "batchSize": {},
         "dataset": {
           "title": "File Path",
-          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)"
+          "description": "Expression that returns the path to the input file, either a literal path or a variable reference."
         },
-        "force2D": {},
+        "force2D": {
+          "title": "Force 2D",
+          "description": "If true, forces all geometries to be 2D (ignoring Z values)."
+        },
         "includeMetadata": {},
         "inline": {
           "title": "Inline Content",
           "description": "Expression that returns the file content as text instead of reading from a file path"
         },
-        "layerName": {},
-        "readMode": {},
+        "layerName": {
+          "title": "Layer Name",
+          "description": "Name of the layer to read. When omitted, the first available layer is used."
+        },
+        "readMode": {
+          "title": "Read Mode",
+          "description": "Which content to read from the GeoPackage file. Defaults to reading vector features."
+        },
         "spatialFilter": {},
-        "tileFormat": {}
+        "tileFormat": {
+          "title": "Tile Format",
+          "description": "Image format to decode when reading raster tiles. Defaults to PNG."
+        }
+      },
+      "enumI18n": {
+        "GeoPackageReadMode": {
+          "all": {
+            "title": "All",
+            "description": "Reads both vector features and raster tiles."
+          },
+          "features": {
+            "title": "Features",
+            "description": "Reads vector features (geometry and attributes)."
+          },
+          "metadataOnly": {
+            "title": "Metadata Only",
+            "description": "Reads only the file's metadata, without features or tiles."
+          },
+          "tiles": {
+            "title": "Tiles",
+            "description": "Reads raster tiles."
+          }
+        },
+        "TileFormat": {
+          "jpeg": {
+            "title": "JPEG",
+            "description": "Decodes tiles as JPEG images."
+          },
+          "png": {
+            "title": "PNG",
+            "description": "Decodes tiles as PNG images."
+          },
+          "webp": {
+            "title": "WebP",
+            "description": "Decodes tiles as WebP images."
+          }
+        }
       }
     },
     {
@@ -1473,25 +1641,64 @@
           "description": "Configuration for writing features to GeoPackage files."
         },
         "createSpatialIndex": {
+          "title": "Create Spatial Index",
           "description": "Create RTree spatial index (default: true)"
         },
         "geometryColumn": {
+          "title": "Geometry Column",
           "description": "Geometry column name (default: \"geom\")"
         },
         "geometryType": {
+          "title": "Geometry Type",
           "description": "Geometry type for table (Point, LineString, Polygon, MultiPoint, MultiLineString, MultiPolygon, or GEOMETRY for mixed)"
         },
         "output": {
+          "title": "Output File",
           "description": "Output path for the GeoPackage file to create"
         },
         "overwrite": {
+          "title": "Overwrite Existing File",
           "description": "Overwrite existing file (default: false)"
         },
         "srsId": {
+          "title": "SRS ID",
           "description": "Spatial Reference System ID (default: 4326 for WGS84)"
         },
         "tableName": {
+          "title": "Table Name",
           "description": "Table name to create (default: \"features\")"
+        }
+      },
+      "enumI18n": {
+        "GeometryType": {
+          "geometry": {
+            "title": "Geometry (Mixed)",
+            "description": "Any geometry type; use when the table holds mixed or unknown geometry types."
+          },
+          "lineString": {
+            "title": "Line String",
+            "description": "A single connected sequence of points per feature."
+          },
+          "multiLineString": {
+            "title": "Multi Line String",
+            "description": "A collection of line strings per feature."
+          },
+          "multiPoint": {
+            "title": "Multi Point",
+            "description": "A collection of points per feature."
+          },
+          "multiPolygon": {
+            "title": "Multi Polygon",
+            "description": "A collection of polygons per feature."
+          },
+          "point": {
+            "title": "Point",
+            "description": "A single point per feature."
+          },
+          "polygon": {
+            "title": "Polygon",
+            "description": "A single polygon, with optional holes, per feature."
+          }
         }
       }
     },
@@ -1514,11 +1721,11 @@
       "parameterI18n": {
         "": {
           "title": "Geometry Extractor Parameters",
-          "description": "Configure where to store the extracted geometry data as a compressed attribute"
+          "description": "Configure where the serialized geometry is stored."
         },
         "outputAttribute": {
           "title": "Output Attribute",
-          "description": "Name of the attribute where the extracted geometry data will be stored as compressed JSON"
+          "description": "Attribute to store the compressed geometry in. Geometry Replacer reads the same representation back onto a feature."
         }
       }
     },
@@ -1538,24 +1745,25 @@
       "parameterI18n": {
         "": {
           "title": "Geometry Part Extractor Parameters",
-          "description": "Configure which geometry parts to extract from 3D geometries"
+          "description": "Configure which kind of part is pulled out of each geometry."
         },
         "geometryPartType": {
           "title": "Part Type",
-          "description": "Type of geometry part to extract"
+          "description": "Kind of part to extract from the geometry."
         }
       },
       "enumI18n": {
         "GeometryPartType": {
           "surface": {
-            "description": "Extract surfaces as separate features"
+            "title": "Surface",
+            "description": "Emits each surface of the geometry as a separate feature."
           }
         }
       }
     },
     {
       "name": "Geometry Remover",
-      "description": "Elimina la geometría de una entidad"
+      "description": "Descarta la geometría de una entidad y conserva sus atributos."
     },
     {
       "name": "Geometry Replacer",
@@ -2033,26 +2241,35 @@
       "parameterI18n": {
         "": {
           "title": "Image Rasterizer Parameters",
-          "description": "Configure how to convert vector geometries to raster images"
+          "description": "Configure the size of the rendered image, where it is written, and how overlapping geometries are resolved."
         },
         "imageWidth": {
-          "description": "The width of image"
+          "title": "Image Width",
+          "description": "Width of the output image in pixels. The height follows from the extent of the input geometries, preserving their aspect ratio."
         },
         "onOverlap": {
           "title": "On Overlap",
-          "description": "Strategy for resolving pixel overlap when multiple polygons cover the same pixel."
+          "description": "How to colour a pixel covered by more than one geometry. When omitted, overlapping geometries are drawn in the order they arrive."
         },
         "saveTo": {
           "title": "Save To",
-          "description": "Optional path expression to save the generated image. If not provided, uses default cache directory."
+          "description": "Path to write the generated image to. When omitted, the image is written to the cache directory."
         }
       },
       "enumI18n": {
         "OnOverlap": {
           "sum": {
-            "description": "Saturating-add RGB channels of all overlapping polygons."
+            "title": "Sum",
+            "description": "Adds the RGB channels of every overlapping polygon, saturating at full intensity."
           },
-          "takeLast": {}
+          "takeFirst": {
+            "title": "Take First",
+            "description": "Keeps the colour of the first polygon drawn over the pixel."
+          },
+          "takeLast": {
+            "title": "Take Last",
+            "description": "Keeps the colour of the last polygon drawn over the pixel."
+          }
         }
       }
     },
@@ -2094,7 +2311,7 @@
         },
         "dataset": {
           "title": "File Path",
-          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)"
+          "description": "Expression that returns the path to the input file, either a literal path or a variable reference."
         },
         "inline": {
           "title": "Inline Content",
@@ -2111,16 +2328,18 @@
           "description": "Configuration for writing features to JSON files."
         },
         "converter": {
+          "title": "Converter Expression",
           "description": "Optional converter expression to transform features before writing"
         },
         "output": {
+          "title": "Output File",
           "description": "Output path or expression for the JSON file to create"
         }
       }
     },
     {
       "name": "Line On Line Overlayer",
-      "description": "Los puntos de intersección se convierten en entidades de puntos que pueden contener la lista combinada de atributos de las líneas originales intersectadas.",
+      "description": "Divide las líneas en sus intersecciones y convierte cada intersección en una entidad de punto que lleva los atributos combinados de las líneas que se cruzan allí. Las entradas deben ser geometrías 2D planas, sin elevación, que compartan un mismo marco de coordenadas; coloque un Two Dimension Forcer o un Coordinate Frame Reprojector antes para aplanarlas o unificarlas.",
       "parameterI18n": {
         "": {
           "title": "Line On Line Overlayer Parameters",
@@ -2160,11 +2379,12 @@
       "description": "Divide en varios elementos los atributos de tipo lista",
       "parameterI18n": {
         "": {
-          "title": "ListExploder Parameters",
-          "description": "Configuration for exploding array attributes into individual features."
+          "title": "List Exploder Parameters",
+          "description": "Configures which list attribute is expanded into individual features."
         },
         "sourceAttribute": {
-          "description": "Attribute containing the array to explode (each element becomes a separate feature)"
+          "title": "Source Attribute",
+          "description": "Attribute holding a list of key-value pairs, one entry per feature to create."
         }
       }
     },
@@ -2203,8 +2423,8 @@
           "description": "Replace colons in attribute keys (e.g., from XML Namespaces) with underscores"
         },
         "compressOutput": {
-          "title": "Compress Output",
-          "description": "Optional expression to determine whether to compress the output tiles"
+          "title": "Compressed Output Path",
+          "description": "Optional path where a compressed archive of the tiles is also written."
         },
         "extent": {
           "title": "Extent",
@@ -2304,67 +2524,82 @@
     },
     {
       "name": "Null Attribute Mapper",
-      "description": "Reemplaza valores de atributos nulos con valores predeterminados configurados",
+      "description": "Replaces null-like attribute values with configured replacement values, optionally removing or routing affected features.",
       "parameterI18n": {
         "": {
-          "title": "NullAttributeMapperParams",
-          "description": "NullAttributeMapper parameters"
+          "title": "Null Attribute Mapper Parameters",
+          "description": "Detects null-like attribute values and replaces them, removes them, or routes affected features according to per-attribute rules."
         },
         "defaultReplacement": {
-          "description": "Fallback replacement for attributes not in mappings (when scope = \"all\")"
+          "title": "Default Replacement",
+          "description": "Value used to replace null-like attributes that have no entry in the mappings. Applies only when the scope inspects all attributes."
         },
         "mappings": {
-          "description": "Per-attribute replacement rules"
+          "title": "Attribute Mappings",
+          "description": "Per-attribute rules describing how each null-like attribute is replaced, removed, or created."
         },
         "nullDefinition": {
-          "description": "Which states count as \"null\""
+          "title": "Null Definition",
+          "description": "States treated as null-like: an explicit null value, a missing attribute, or an empty string. Defaults to null values and missing attributes."
         },
         "routeNullFeatures": {
-          "description": "Emit original features with nulls to hasNull port"
+          "title": "Route Null Features",
+          "description": "When enabled, a copy of each feature that had at least one null-like value is emitted unchanged to a separate output for inspection."
         },
         "scope": {
-          "description": "Which attributes to inspect"
+          "title": "Scope",
+          "description": "Which attributes to inspect: only those named in the mappings, or every attribute on the feature."
         }
       },
       "definitionI18n": {
         "AttributeMapping": {
           "attribute": {
-            "description": "Name of the attribute to inspect"
+            "title": "Attribute",
+            "description": "Name of the attribute to inspect."
           },
           "onMissing": {
-            "description": "What to do when attribute is missing but not in nullDefinition"
+            "title": "On Missing",
+            "description": "Behavior when the attribute is absent and not treated as null-like by the null definition."
           },
           "replacement": {
-            "description": "Value to write when attribute is null-like null means remove the attribute"
+            "title": "Replacement",
+            "description": "Value written when the attribute is null-like. A null value removes the attribute instead."
           }
         }
       },
       "enumI18n": {
         "NullKind": {
           "emptyString": {
-            "description": "AttributeValue::String(\"\")"
+            "title": "Empty String",
+            "description": "An attribute holding a text value with no characters."
           },
           "missing": {
-            "description": "Attribute key absent from the feature"
+            "title": "Missing Attribute",
+            "description": "An attribute that is absent from the feature."
           },
           "null": {
-            "description": "AttributeValue::Null"
+            "title": "Null Value",
+            "description": "An attribute present on the feature but holding an explicit null value."
           }
         },
         "OnMissing": {
           "create": {
-            "description": "Write replacement value, creating the attribute"
+            "title": "Create",
+            "description": "Adds the attribute using the mapping's replacement value."
           },
           "skip": {
-            "description": "Leave unchanged"
+            "title": "Skip",
+            "description": "Leaves the feature unchanged."
           }
         },
         "Scope": {
           "all": {
-            "description": "Check all attributes on the feature"
+            "title": "All Attributes",
+            "description": "Inspects every attribute on the feature."
           },
           "listed": {
-            "description": "Only check attributes named in mappings"
+            "title": "Listed Attributes",
+            "description": "Inspects only the attributes named in the mappings list."
           }
         }
       }
@@ -2379,7 +2614,7 @@
         },
         "dataset": {
           "title": "File Path",
-          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)"
+          "description": "Expression that returns the path to the input file, either a literal path or a variable reference."
         },
         "includeNormals": {
           "title": "Include Normals",
@@ -2439,23 +2674,23 @@
     },
     {
       "name": "Offsetter",
-      "description": "Añade desplazamientos a las coordenadas de la entidad.",
+      "description": "Desplaza todas las coordenadas de la geometría una cantidad fija en cada eje.",
       "parameterI18n": {
         "": {
           "title": "Offsetter Parameters",
-          "description": "Configure the X, Y, and Z coordinate offsets to apply to all geometry coordinates"
+          "description": "Amounts added to every geometry coordinate, one per axis, in the coordinate unit of the geometry's frame."
         },
         "offsetX": {
           "title": "X Offset",
-          "description": "Offset to add to all X coordinates (longitude)"
+          "description": "Amount added to every X coordinate, in the coordinate unit of the geometry's frame (degrees for a geographic CRS). Defaults to zero."
         },
         "offsetY": {
           "title": "Y Offset",
-          "description": "Offset to add to all Y coordinates (latitude)"
+          "description": "Amount added to every Y coordinate, in the coordinate unit of the geometry's frame (degrees for a geographic CRS). Defaults to zero."
         },
         "offsetZ": {
           "title": "Z Offset",
-          "description": "Offset to add to all Z coordinates (elevation)"
+          "description": "Amount added to every Z coordinate, in the coordinate unit of the geometry's frame (metres for a geographic CRS). Defaults to zero."
         }
       }
     },
@@ -3163,19 +3398,19 @@
         },
         "allowEmptyPath": {
           "title": "Allow Null Path",
-          "description": "If true, a dataset expression that evaluates to null produces zero features instead of an error. This is useful for optional shapefile inputs where the path may not be configured."
+          "description": "If true, a null dataset path produces zero features instead of an error, allowing optional shapefile inputs."
         },
         "dataset": {
           "title": "File Path",
-          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)"
+          "description": "Expression that returns the path to the input file, either a literal path or a variable reference."
         },
         "encoding": {
           "title": "Character Encoding",
-          "description": "Character encoding for attribute data in the DBF file. If not specified, encoding is determined from the .cpg file (if present), otherwise defaults to UTF-8.\n\nSupported encodings include: - **UTF-8** - Unicode UTF-8 (default, recommended for all new shapefiles) - **Windows Code Pages** - Windows-1250 through Windows-1258, Windows-874 - **ISO-8859 family** - ISO-8859-1 (Latin-1) through ISO-8859-16 - **Asian encodings** - Shift-JIS, EUC-JP, EUC-KR, Big5, GBK, GB18030 - **Other legacy encodings** - KOI8-R, KOI8-U, IBM866, Macintosh\n\nAll encoding labels are case-insensitive and support common variations (e.g., \"UTF-8\", \"UTF8\", \"utf8\" all work).\n\nUTF-16 is not supported due to byte-level handling requirements. If a UTF-16 shapefile is encountered, an error with conversion instructions is returned.\n\nExamples: - `\"UTF-8\"` - Modern standard - `\"Windows-1252\"` - Common for Western European legacy data - `\"ISO-8859-1\"` - Latin-1, common in older shapefiles - `\"Shift-JIS\"` - Japanese data\n\nPriority order: encoding parameter > .cpg file > UTF-8 default"
+          "description": "Character encoding for attribute data in the DBF file, such as \"UTF-8\", \"Shift-JIS\", or \"Windows-1252\"; labels are case-insensitive. When omitted, the encoding is taken from the .cpg file if present, otherwise UTF-8 (UTF-16 is not supported)."
         },
-        "force2d": {
+        "force2D": {
           "title": "Force 2D",
-          "description": "If true, forces all geometries to be 2D (ignoring Z values)"
+          "description": "If true, forces all geometries to be 2D (ignoring Z values)."
         },
         "inline": {
           "title": "Inline Content",
@@ -3192,10 +3427,12 @@
           "description": "Configuration for writing features to ESRI Shapefile format."
         },
         "groupBy": {
+          "title": "Group By",
           "description": "Optional attributes to group features by, creating separate files for each group"
         },
         "output": {
-          "description": "Output path or expression for the Shapefile to create"
+          "title": "Output Directory",
+          "description": "Output directory path or expression where the generated Shapefile files are written."
         }
       }
     },
@@ -3279,29 +3516,59 @@
       "description": "Calcula estadísticas de las entidades",
       "parameterI18n": {
         "": {
-          "title": "StatisticsCalculator Parameters",
-          "description": "Configuration for calculating statistical aggregations on feature attributes."
+          "title": "Statistics Calculator Parameters",
+          "description": "Defines the grouping attributes and the statistics computed for each group."
         },
         "calculations": {
           "title": "Calculations",
-          "description": "List of statistical calculations to perform on grouped features"
+          "description": "Statistics to compute for each group. Each entry names an output attribute, the aggregation method, and (except for count) the expression whose values are aggregated."
         },
         "groupBy": {
-          "title": "Group by",
-          "description": "Attributes to group features by for aggregation. All of the inputs will be grouped if not specified."
+          "title": "Group By",
+          "description": "Attributes to group features by before aggregating. When omitted, all input features form a single group."
         },
         "groupId": {
-          "title": "Group id",
-          "description": "Optional attribute to store the group identifier. The ID will be formed by concatenating the values of the group_by attributes separated by '|'."
+          "title": "Group ID",
+          "description": "Optional attribute in which to store the group identifier, formed by joining the Group By values with '|'."
         }
       },
       "definitionI18n": {
         "Calculation": {
+          "aggregation": {
+            "title": "Aggregation Method",
+            "description": "Statistic to compute across each group. Defaults to sum."
+          },
           "expr": {
-            "title": "Calculation to perform"
+            "title": "Value Expression",
+            "description": "Expression evaluated per feature to produce the value being aggregated. Required for every method except count, which counts features regardless of value."
           },
           "newAttribute": {
-            "title": "New attribute name"
+            "title": "New Attribute Name",
+            "description": "Name of the output attribute that stores the computed statistic."
+          }
+        }
+      },
+      "enumI18n": {
+        "AggregationMethod": {
+          "count": {
+            "title": "Count",
+            "description": "Counts the number of features in each group. The value expression is not required and is ignored."
+          },
+          "max": {
+            "title": "Maximum",
+            "description": "Keeps the largest value of the expression in each group."
+          },
+          "mean": {
+            "title": "Mean",
+            "description": "Averages the value of the expression across all features in each group."
+          },
+          "min": {
+            "title": "Minimum",
+            "description": "Keeps the smallest value of the expression in each group."
+          },
+          "sum": {
+            "title": "Sum",
+            "description": "Adds the value expression across all features in each group."
           }
         }
       }
@@ -3441,8 +3708,8 @@
       "description": "Fragmenta XML",
       "parameterI18n": {
         "": {
-          "title": "XMLFragmenter Parameters",
-          "description": "Configuration for fragmenting XML documents into smaller pieces."
+          "title": "XML Fragmenter Parameters",
+          "description": "Configures where the XML document comes from and which of its elements become features."
         }
       }
     },
@@ -3451,11 +3718,47 @@
       "description": "Valida contenido XML",
       "parameterI18n": {
         "": {
-          "title": "XmlValidatorParam"
+          "title": "XML Validator Parameters",
+          "description": "Configures which XML document is validated and how thoroughly."
         },
-        "attribute": {},
-        "inputType": {},
-        "validationType": {}
+        "attribute": {
+          "title": "XML Attribute",
+          "description": "Attribute holding the XML document: the file path or URL to read, or the XML text itself, depending on the input type."
+        },
+        "inputType": {
+          "title": "Input Type",
+          "description": "Whether the attribute holds the location of the document or the document itself."
+        },
+        "validationType": {
+          "title": "Validation Type",
+          "description": "Checks to run against the document."
+        }
+      },
+      "enumI18n": {
+        "ValidationType": {
+          "syntax": {
+            "title": "Syntax",
+            "description": "Checks that the document is well-formed XML."
+          },
+          "syntaxAndNamespace": {
+            "title": "Syntax and Namespace",
+            "description": "Also checks that every namespace prefix used by an element is declared on that element or an ancestor, and that unprefixed elements have a default namespace."
+          },
+          "syntaxAndSchema": {
+            "title": "Syntax and Schema",
+            "description": "Also validates the document against the XSD schemas named by its `xsi:schemaLocation`. Unreachable remote schemas are skipped, as those locations are hints per the XML Schema specification."
+          }
+        },
+        "XmlInputType": {
+          "file": {
+            "title": "XML File",
+            "description": "Reads the document from the file path or URL held in the attribute."
+          },
+          "text": {
+            "title": "XML Text",
+            "description": "Uses the attribute value itself as the document."
+          }
+        }
       }
     },
     {
@@ -3467,6 +3770,7 @@
           "description": "Configuration for writing features to XML files."
         },
         "output": {
+          "title": "Output File",
           "description": "Output path or expression for the XML file to create"
         }
       }
@@ -3480,6 +3784,7 @@
           "description": "Configuration for creating ZIP archive files from features."
         },
         "output": {
+          "title": "Output File",
           "description": "Output path"
         }
       }
@@ -3493,7 +3798,15 @@
         },
         "dataset": {
           "title": "File Path",
-          "description": "Expression that returns the path to the input file (e.g., \"data.csv\" or variable reference)"
+          "description": "Expression that returns the path to the input file, either a literal path or a variable reference."
+        },
+        "featureClassAttribute": {
+          "title": "Atributo de clase de entidad",
+          "description": "Clave de atributo bajo la cual almacenar el nombre de clase de EXT_structural_metadata de cada entidad dividida. Si no se establece, el nombre de la clase no se agrega como atributo."
+        },
+        "featureGranularity": {
+          "title": "Granularidad de entidades",
+          "description": "Qué representa cada entidad de salida. `mesh` (el valor predeterminado) genera una entidad por cada malla glTF. `featureId` divide cada malla en una entidad por cada ID de entidad de EXT_mesh_features, adjuntando las propiedades EXT_structural_metadata de ese objeto; los archivos sin EXT_mesh_features siguen generando una entidad por malla."
         },
         "includeNodes": {
           "title": "Include Nodes",
@@ -3510,6 +3823,16 @@
         "triangulate": {
           "title": "Triangulate",
           "description": "If true, converts all primitives to triangles (reserved for future use - currently all primitives are processed as triangles)"
+        }
+      },
+      "enumI18n": {
+        "FeatureGranularity": {
+          "featureId": {
+            "description": "Una entidad por cada ID de entidad de `EXT_mesh_features`, cada una con las propiedades `EXT_structural_metadata` de ese objeto. Los archivos sin `EXT_mesh_features` siguen generando una entidad por malla."
+          },
+          "mesh": {
+            "description": "Una entidad por cada malla glTF (o por instancia de nodo). Las propiedades de metadatos estructurales no se muestran, porque son por objeto, no por malla."
+          }
         }
       }
     },

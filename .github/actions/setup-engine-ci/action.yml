@@ -31,6 +31,17 @@ inputs:
       Jobs needing more (e.g. lint needs taplo-cli) override this.
     required: false
     default: cargo-make
+  setup-proj-grid:
+    description: |
+      Whether to pre-fetch and cache the JGD2011 Japan geoid grid
+      (jp_gsi_gsigeo2011.tif) that PROJ needs for EPSG:6697 height
+      transforms. Without this, PROJ falls back to its on-demand network
+      download from cdn.proj.org, which is unreliable under CI egress
+      restrictions and silently degrades transforms (no error, wrong
+      height) rather than failing loudly. Enable for jobs that exercise
+      plateau geometry/height reprojection (test-qc, test-conv).
+    required: false
+    default: "false"
 
 runs:
   using: composite
@@ -47,3 +58,25 @@ runs:
       uses: taiki-e/install-action@74e87cbfa15a59692b158178d8905a61bf6fca95 # v2.75.20
       with:
         tool: ${{ inputs.tools }}
+    - name: Cache PROJ grid data
+      if: inputs.setup-proj-grid == 'true'
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      with:
+        # ~/.local/share/proj is PROJ's default user-writable directory for
+        # on-demand grid downloads (matches local dev, where this file
+        # already lives after PROJ auto-fetched it once). No PROJ_DATA/
+        # PROJ_LIB override needed - this is where PROJ already looks.
+        path: ~/.local/share/proj
+        key: proj-grids-v1-jp_gsi_gsigeo2011
+    - name: Fetch JGD2011 Japan geoid grid
+      if: inputs.setup-proj-grid == 'true'
+      shell: bash
+      run: |
+        mkdir -p ~/.local/share/proj
+        grid=~/.local/share/proj/jp_gsi_gsigeo2011.tif
+        if [ -s "$grid" ]; then
+          echo "PROJ grid already cached at $grid"
+        else
+          echo "Fetching PROJ grid to $grid"
+          curl -fsSL --retry 3 --retry-delay 2 --proto '=https' --tlsv1.2 -o "$grid" https://cdn.proj.org/jp_gsi_gsigeo2011.tif
+        fi

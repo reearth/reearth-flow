@@ -1,5 +1,6 @@
 {
   "description": "quality-check C08 (public-survey quality attribute missing) for plateau6. The first bldg:Building has urc:geometrySrcDescLod0 = \"000\" but omits urc:srcScaleLod0, so C08 is detected.",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau6/01-common/workflow.yml",
   "workflowVariables": [
     {

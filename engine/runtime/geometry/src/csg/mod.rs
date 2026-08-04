@@ -16,7 +16,9 @@ mod validation;
 
 /// Volumetric, closed 3D geometries that `Csg` boolean operations are defined
 /// over.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "schema", schemars(title = "Volumetric operand"))]
 pub enum ThreeDimensional {
     /// Boxed: a `Solid` (with its shells' appearance) is far larger than the
     /// boxed `Csg`, so the leaf is boxed to keep the enum small.
@@ -25,7 +27,9 @@ pub enum ThreeDimensional {
 }
 
 /// A boolean combination of two volumetric operands.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
+#[cfg_attr(feature = "schema", schemars(title = "Boolean combination"))]
 pub enum Csg {
     Union(Box<ThreeDimensional>, Box<ThreeDimensional>),
     Intersection(Box<ThreeDimensional>, Box<ThreeDimensional>),
@@ -33,5 +37,15 @@ pub enum Csg {
 }
 
 // Tessellation is defined only for `Polygon` / `PolygonMesh`.
-crate::unsupported!(Csg: Triangulate);
-crate::unsupported!(Csg: Reproject);
+crate::unsupported!(Csg: Triangulate, Reproject, ConvertFrame, ForceTwoDimension);
+
+// An unevaluated boolean tree has no faces of its own; counting the rings of its
+// operands would describe a surface the tree does not yet have.
+crate::unsupported!(Csg: CountHoles);
+
+// The boolean tree is unevaluated, so its operands' faces are not this geometry's
+// boundary and taking them apart would not describe it.
+crate::unsupported!(Csg: ExtractHoles);
+
+// A boolean tree is one logical solid, not a multi-part container.
+crate::unsupported!(Csg: Split);

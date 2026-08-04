@@ -1,0 +1,299 @@
+//! Intermediate-data encoding for the polygon leaves: an explicit exterior ring
+//! and a list of interior rings in place of the stored flat `coords` buffer and
+//! its `interior_offsets`. Per-corner UV is nested to mirror those rings.
+
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
+
+use crate::appearance::feature_write::{
+    decode_appearance, encode_appearance, Appearance, FaceRings,
+};
+use crate::coordinate::CoordinateFrame;
+
+/// The single face a polygon presents: its exterior ring, then its interiors.
+fn polygon_layout(exterior: usize, interiors: impl Iterator<Item = usize>) -> Vec<FaceRings> {
+    vec![FaceRings {
+        exterior,
+        holes: interiors.collect(),
+    }]
+}
+
+/// A planar polygon face in 2D space: an exterior ring plus any interior
+/// rings (holes), lying at a single optional elevation.
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[derive(Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", schemars(title = "Polygon (2D)"))]
+struct Polygon2D {
+    #[cfg_attr(feature = "schema", schemars(title = "Coordinate frame"))]
+    frame: CoordinateFrame,
+    #[cfg_attr(feature = "schema", schemars(title = "Exterior ring"))]
+    exterior: Vec<[f64; 2]>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[cfg_attr(feature = "schema", schemars(title = "Interior rings (holes)"))]
+    interiors: Vec<Vec<[f64; 2]>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "schema", schemars(title = "Elevation"))]
+    z: Option<f64>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "schema", schemars(title = "Appearance"))]
+    appearance: Option<Appearance>,
+}
+
+/// A planar polygon face in 3D space: an exterior ring plus any interior
+/// rings (holes).
+#[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
+#[derive(Serialize, Deserialize)]
+#[cfg_attr(feature = "schema", schemars(title = "Polygon (3D)"))]
+struct Polygon3D {
+    #[cfg_attr(feature = "schema", schemars(title = "Coordinate frame"))]
+    frame: CoordinateFrame,
+    #[cfg_attr(feature = "schema", schemars(title = "Exterior ring"))]
+    exterior: Vec<[f64; 3]>,
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    #[cfg_attr(feature = "schema", schemars(title = "Interior rings (holes)"))]
+    interiors: Vec<Vec<[f64; 3]>>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    #[cfg_attr(feature = "schema", schemars(title = "Appearance"))]
+    appearance: Option<Appearance>,
+}
+
+/// Concatenate the exterior and interior rings into `(coords, interior_offsets)`.
+fn flatten_rings<const N: usize>(
+    exterior: Vec<[f64; N]>,
+    interiors: Vec<Vec<[f64; N]>>,
+) -> (Box<[[f64; N]]>, Box<[u32]>) {
+    let mut coords = exterior;
+    let mut interior_offsets = Vec::with_capacity(interiors.len());
+    for ring in interiors {
+        interior_offsets.push(coords.len() as u32);
+        coords.extend(ring);
+    }
+    (
+        coords.into_boxed_slice(),
+        interior_offsets.into_boxed_slice(),
+    )
+}
+
+impl TryFrom<&super::Polygon2D> for Polygon2D {
+    type Error = crate::error::Error;
+
+    fn try_from(p: &super::Polygon2D) -> Result<Self, Self::Error> {
+        let exterior = p.exterior().to_vec();
+        let interiors: Vec<Vec<[f64; 2]>> = p.interiors().map(|r| r.to_vec()).collect();
+        let layout = polygon_layout(exterior.len(), interiors.iter().map(Vec::len));
+        Ok(Polygon2D {
+            frame: p.frame.clone(),
+            appearance: encode_appearance(&p.appearance, &layout)?,
+            exterior,
+            interiors,
+            z: p.elevation(),
+        })
+    }
+}
+
+impl TryFrom<Polygon2D> for super::Polygon2D {
+    type Error = crate::error::Error;
+
+    fn try_from(w: Polygon2D) -> Result<Self, Self::Error> {
+        let layout = polygon_layout(w.exterior.len(), w.interiors.iter().map(Vec::len));
+        let appearance = decode_appearance(w.appearance, &layout)?;
+        let (coords, interior_offsets) = flatten_rings(w.exterior, w.interiors);
+        let mut polygon = super::Polygon2D::from_raw_parts(w.frame, coords, interior_offsets, w.z)?;
+        polygon.appearance = appearance;
+        Ok(polygon)
+    }
+}
+
+impl TryFrom<&super::Polygon3D> for Polygon3D {
+    type Error = crate::error::Error;
+
+    fn try_from(p: &super::Polygon3D) -> Result<Self, Self::Error> {
+        let exterior = p.exterior().to_vec();
+        let interiors: Vec<Vec<[f64; 3]>> = p.interiors().map(|r| r.to_vec()).collect();
+        let layout = polygon_layout(exterior.len(), interiors.iter().map(Vec::len));
+        Ok(Polygon3D {
+            frame: p.frame.clone(),
+            appearance: encode_appearance(&p.appearance, &layout)?,
+            exterior,
+            interiors,
+        })
+    }
+}
+
+impl TryFrom<Polygon3D> for super::Polygon3D {
+    type Error = crate::error::Error;
+
+    fn try_from(w: Polygon3D) -> Result<Self, Self::Error> {
+        let layout = polygon_layout(w.exterior.len(), w.interiors.iter().map(Vec::len));
+        let appearance = decode_appearance(w.appearance, &layout)?;
+        let (coords, interior_offsets) = flatten_rings(w.exterior, w.interiors);
+        let mut polygon = super::Polygon3D::from_raw_parts(w.frame, coords, interior_offsets)?;
+        polygon.appearance = appearance;
+        Ok(polygon)
+    }
+}
+
+impl Serialize for super::Polygon2D {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        Polygon2D::try_from(self)
+            .map_err(serde::ser::Error::custom)?
+            .serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for super::Polygon2D {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        super::Polygon2D::try_from(Polygon2D::deserialize(deserializer)?)
+            .map_err(serde::de::Error::custom)
+    }
+}
+
+impl Serialize for super::Polygon3D {
+    fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
+        Polygon3D::try_from(self)
+            .map_err(serde::ser::Error::custom)?
+            .serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for super::Polygon3D {
+    fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
+        super::Polygon3D::try_from(Polygon3D::deserialize(deserializer)?)
+            .map_err(serde::de::Error::custom)
+    }
+}
+
+#[cfg(feature = "schema")]
+impl schemars::JsonSchema for super::Polygon2D {
+    fn schema_name() -> String {
+        "Polygon2D".to_string()
+    }
+    fn json_schema(generator: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+        <Polygon2D as schemars::JsonSchema>::json_schema(generator)
+    }
+}
+
+#[cfg(feature = "schema")]
+impl schemars::JsonSchema for super::Polygon3D {
+    fn schema_name() -> String {
+        "Polygon3D".to_string()
+    }
+    fn json_schema(generator: &mut schemars::gen::SchemaGenerator) -> schemars::schema::Schema {
+        <Polygon3D as schemars::JsonSchema>::json_schema(generator)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::polygon::{Polygon2D, Polygon3D};
+
+    fn round_trip_2d(p: &Polygon2D) {
+        let json = serde_json::to_string(p).unwrap();
+        let back: Polygon2D = serde_json::from_str(&json).unwrap();
+        assert_eq!(p, &back);
+    }
+
+    fn round_trip_3d(p: &Polygon3D) {
+        let json = serde_json::to_string(p).unwrap();
+        let back: Polygon3D = serde_json::from_str(&json).unwrap();
+        assert_eq!(p, &back);
+    }
+
+    #[test]
+    fn polygon2d_with_hole_and_elevation_round_trips() {
+        let square = [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]];
+        let hole = vec![[1.0, 1.0], [3.0, 1.0], [3.0, 3.0], [1.0, 3.0], [1.0, 1.0]];
+        round_trip_2d(&Polygon2D::from_rings(
+            CoordinateFrame::Euclidean,
+            square,
+            vec![hole.clone()],
+        ));
+
+        let lifted = Polygon2D::from_rings_at_elevation(
+            CoordinateFrame::Euclidean,
+            square,
+            vec![hole],
+            10.0,
+        );
+        round_trip_2d(&lifted);
+
+        let json = serde_json::to_value(&lifted).unwrap();
+        assert_eq!(json["z"], serde_json::json!(10.0));
+    }
+
+    #[test]
+    fn polygon2d_uv_nests_to_mirror_rings() {
+        use crate::test_support::{explicit_uv, textured, theme};
+
+        let square = [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]];
+        let hole = vec![[1.0, 1.0], [3.0, 1.0], [3.0, 3.0], [1.0, 3.0], [1.0, 1.0]];
+        let mut p = Polygon2D::from_rings(CoordinateFrame::Euclidean, square, vec![hole]);
+        // Distinct values, so the flattening order is observable.
+        let corners: Vec<[f64; 2]> = (0..10).map(|i| [i as f64, 0.0]).collect();
+        p.set_appearance(theme("rgb"), textured(), Some(explicit_uv(&corners)))
+            .unwrap();
+
+        let json = serde_json::to_value(&p).unwrap();
+        let nested = &json["appearance"]["themes"][0]["uv_sets"][0]["uv"]["Explicit"];
+        assert_eq!(nested.as_array().unwrap().len(), 1, "a polygon is one face");
+        assert_eq!(
+            nested[0]["exterior"],
+            serde_json::json!([[0.0, 0.0], [1.0, 0.0], [2.0, 0.0], [3.0, 0.0], [4.0, 0.0]])
+        );
+        assert_eq!(
+            nested[0]["holes"][0],
+            serde_json::json!([[5.0, 0.0], [6.0, 0.0], [7.0, 0.0], [8.0, 0.0], [9.0, 0.0]])
+        );
+
+        round_trip_2d(&p);
+    }
+
+    #[test]
+    fn polygon2d_rejects_uv_ring_length_mismatch() {
+        // The exterior ring has four corners; its UV ring offers two.
+        let json = r#"{
+            "frame": "Euclidean",
+            "exterior": [[0.0,0.0],[4.0,0.0],[4.0,4.0],[0.0,0.0]],
+            "appearance": {
+                "materials": [],
+                "themes": [{
+                    "theme": "rgb",
+                    "front": {"Uniform": 0},
+                    "uv_sets": [{
+                        "side": "Front",
+                        "channel": 0,
+                        "uv": {"Explicit": [{"exterior": [[0.0,0.0],[1.0,0.0]]}]}
+                    }]
+                }],
+                "default_theme": "rgb"
+            }
+        }"#;
+        let err = serde_json::from_str::<Polygon2D>(json)
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("UV exterior ring"), "unexpected error: {err}");
+    }
+
+    #[test]
+    fn polygon3d_with_hole_round_trips() {
+        let outer = [
+            [0.0, 0.0, 0.0],
+            [4.0, 0.0, 0.0],
+            [4.0, 4.0, 0.0],
+            [0.0, 4.0, 0.0],
+            [0.0, 0.0, 0.0],
+        ];
+        let hole = vec![
+            [1.0, 1.0, 0.0],
+            [3.0, 1.0, 0.0],
+            [3.0, 3.0, 0.0],
+            [1.0, 3.0, 0.0],
+            [1.0, 1.0, 0.0],
+        ];
+        round_trip_3d(&Polygon3D::from_rings(
+            CoordinateFrame::Euclidean,
+            outer,
+            vec![hole],
+        ));
+    }
+}

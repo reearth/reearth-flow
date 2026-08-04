@@ -11,7 +11,7 @@ use reearth_flow_runtime::{
     event::EventHub,
     executor_operation::{ExecutorContext, NodeContext},
     forwarder::ProcessorChannelForwarder,
-    node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
+    node::{Port, Processor, ProcessorFactory, FEATURES_PORT, REJECTED_PORT},
 };
 use reearth_flow_types::{
     material::Texture, Attributes, Code, CodeType, CompiledCode, Feature, Geometry, GeometryValue,
@@ -23,19 +23,31 @@ use url::Url;
 
 use super::errors::GeometryProcessorError;
 
-static TEXTURE_COORDS_PORT: Lazy<Port> = Lazy::new(|| Port::new("textureCoordinates"));
+static TEXTURE_COORDS_PORT: Lazy<Port> = Lazy::new(|| Port::new("texture-coordinates"));
 static TEXTURED_PORT: Lazy<Port> = Lazy::new(|| Port::new("textured"));
-static BOUNDS_PORT: Lazy<Port> = Lazy::new(|| Port::new("textureBounds"));
+static BOUNDS_PORT: Lazy<Port> = Lazy::new(|| Port::new("texture-bounds"));
 
 /// Overlap resolution strategy for rasterized pixels
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub(super) enum OnOverlap {
+    /// # Take Last
+    /// Keeps the colour of the last polygon drawn over the pixel.
     TakeLast,
+    /// # Take First
+    /// Keeps the colour of the first polygon drawn over the pixel.
     TakeFirst,
+    /// # Maximum
+    /// Keeps the colour of the overlapping polygon whose expression evaluates
+    /// highest.
     Max(Code<{ CodeType::FlowExpr as u32 }>),
+    /// # Minimum
+    /// Keeps the colour of the overlapping polygon whose expression evaluates
+    /// lowest.
     Min(Code<{ CodeType::FlowExpr as u32 }>),
-    /// Saturating-add RGB channels of all overlapping polygons.
+    /// # Sum
+    /// Adds the RGB channels of every overlapping polygon, saturating at full
+    /// intensity.
     Sum,
 }
 
@@ -74,7 +86,7 @@ impl ProcessorFactory for ImageRasterizerFactory {
     }
 
     fn description(&self) -> &str {
-        "Convert vector geometries to raster image format"
+        "Converts vector geometries to a raster image using configurable overlap resolution."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -86,7 +98,7 @@ impl ProcessorFactory for ImageRasterizerFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["raster", "image", "texture"]
+        &["raster"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -98,6 +110,7 @@ impl ProcessorFactory for ImageRasterizerFactory {
             FEATURES_PORT.clone(),
             TEXTURED_PORT.clone(),
             BOUNDS_PORT.clone(),
+            REJECTED_PORT.clone(),
         ]
     }
 
@@ -120,10 +133,8 @@ impl ProcessorFactory for ImageRasterizerFactory {
                 ))
             })?
         } else {
-            return Err(GeometryProcessorError::ImageRasterizerFactory(
-                "Missing required parameter `with`".to_string(),
-            )
-            .into());
+            // Every parameter is optional, so an absent `with` block is valid.
+            ImageRasterizerParam::default()
         };
 
         let evaluated_save_path = params
@@ -168,21 +179,26 @@ impl ProcessorFactory for ImageRasterizerFactory {
 }
 
 /// # Image Rasterizer Parameters
-/// Configure how to convert vector geometries to raster images
+/// Configure the size of the rendered image, where it is written, and how
+/// overlapping geometries are resolved.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct ImageRasterizerParam {
-    /// The width of image
+    /// # Image Width
+    /// Width of the output image in pixels. The height follows from the extent
+    /// of the input geometries, preserving their aspect ratio.
     #[serde(default = "default_image_width")]
     image_width: u32,
 
     /// # Save To
-    /// Optional path expression to save the generated image. If not provided, uses default cache directory.
+    /// Path to write the generated image to. When omitted, the image is written
+    /// to the cache directory.
     #[serde(default)]
     save_to: Option<Code>,
 
     /// # On Overlap
-    /// Strategy for resolving pixel overlap when multiple polygons cover the same pixel.
+    /// How to colour a pixel covered by more than one geometry. When omitted,
+    /// overlapping geometries are drawn in the order they arrive.
     #[serde(default)]
     on_overlap: Option<OnOverlap>,
 }
@@ -269,18 +285,28 @@ impl Processor for ImageRasterizer {
     fn process(
         &mut self,
         ctx: ExecutorContext,
-        _fw: &ProcessorChannelForwarder,
+        fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
 
         // Check which port the feature came from
         if ctx.port == *TEXTURE_COORDS_PORT {
-            // Features from textureCoords port are collected for UV assignment
+            // Features from the texture-coordinates port are collected for UV assignment
             self.texture_coord_features.push(feature.clone());
         } else {
-            // Features from default port are used to build the rasterized image
+            // Features from the features port are used to build the rasterized image
             // Extract color and geometry to accumulate in GeometryPolygons
-            if let Some(mut polygon) = extract_geometry_polygon_from_feature(feature) {
+            let Some(mut polygon) = extract_geometry_polygon_from_feature(feature) else {
+                // Nothing to draw from this feature. Dropping it silently would
+                // leave it unaccounted for, so it goes to `rejected`.
+                ctx.event_hub.debug_log(
+                    Some(ctx.error_span()),
+                    "rasterize rejected: feature has no drawable polygon geometry".to_string(),
+                );
+                fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
+                return Ok(());
+            };
+            {
                 // Evaluate overlap expression if configured
                 if matches!(
                     self.on_overlap,

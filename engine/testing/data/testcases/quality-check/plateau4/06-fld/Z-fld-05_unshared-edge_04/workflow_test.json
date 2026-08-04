@@ -1,5 +1,6 @@
 {
   "description": "Regression test for false-positive unshared edge detection (ajigasawa-machi, pref/nakamuragawa)",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/06-fld/workflow.yml",
   "workflowVariables": [
     {

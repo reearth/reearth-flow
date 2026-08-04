@@ -21,11 +21,6 @@ new-geometry = [
   "reearth-flow-types/new-geometry",
 ]
 
-[[example]]
-name = "gml_to_3dtiles"
-path = "examples/gml_to_3dtiles.rs"
-required-features = ["new-geometry"]
-
 [dependencies]
 reearth-flow-action-log.workspace = true
 reearth-flow-atlas.workspace = true

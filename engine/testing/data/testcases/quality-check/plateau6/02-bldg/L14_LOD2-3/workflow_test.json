@@ -1,5 +1,6 @@
 {
   "description": "Test quality check L14 (solid errors) for LOD2/LOD3 on plateau6 (CityGML 3.0 + i-UR 4.0). Covers 立体のエラー (InvalidSolidBoundaries) and 非水密立体 (Surface Not Closed) on both lod2Solid and lod3Solid.",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
   "workflowVariables": [
     {

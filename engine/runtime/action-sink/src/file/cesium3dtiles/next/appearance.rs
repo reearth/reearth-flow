@@ -15,7 +15,7 @@ use std::path::PathBuf;
 
 use reearth_flow_common::uri::Protocol;
 use reearth_flow_geometry::appearance::{
-    Appearance, ChannelId, FaceBinding, Material, Raster, Side, Texture, UvSource,
+    Appearance, ChannelId, FaceBinding, Material, Raster, RasterData, Side, Texture, UvSource,
 };
 
 /// A material resolved for the writer: glTF PBR metallic-roughness factors plus
@@ -31,10 +31,13 @@ pub(super) struct ResolvedMaterial {
     pub(super) base_texture: Option<TextureSource>,
 }
 
-/// A base-colour texture backed by a local file, ready to feed the atlas packer.
+/// A base-colour texture ready to feed the atlas packer: either a local file
+/// (e.g. a CityGML/OBJ texture on disk) or embedded image bytes (e.g. a glTF/GLB
+/// packed texture), which the writer materializes to a temp file before atlasing.
 #[derive(Clone)]
-pub(super) struct TextureSource {
-    pub(super) path: PathBuf,
+pub(super) enum TextureSource {
+    File(PathBuf),
+    Embedded(RasterData),
 }
 
 /// A triangulated mesh's appearance, flattened onto its triangles and corners.
@@ -178,15 +181,12 @@ fn texture_source(
     }
 
     match &*texture.raster {
-        Raster::Uri(uri) if uri.protocol() == Protocol::File => Some((
-            TextureSource {
-                path: uri.as_path(),
-            },
-            channel,
-        )),
+        Raster::Uri(uri) if uri.protocol() == Protocol::File => {
+            Some((TextureSource::File(uri.as_path()), channel))
+        }
         Raster::Uri(uri) => {
-            // Remote/in-memory rasters are a separate concern (a downloader
-            // action materializes them locally first); the writer is local-only.
+            // Remote rasters are a separate concern (a downloader action
+            // materializes them locally first); the writer is local-only.
             tracing::error!(
                 "Cesium3DTilesWriter: texture {uri} is not a local file ({:?}); rendering \
                  colour-only",
@@ -194,12 +194,8 @@ fn texture_source(
             );
             None
         }
-        Raster::InMemory(_) => {
-            tracing::error!(
-                "Cesium3DTilesWriter: in-memory rasters are not supported yet; rendering \
-                 colour-only"
-            );
-            None
-        }
+        // Embedded bytes (e.g. a glTF/GLB packed image): carried through and
+        // materialized to a temp file just before atlasing (see `build_textured_pages`).
+        Raster::InMemory(data) => Some((TextureSource::Embedded(data.clone()), channel)),
     }
 }

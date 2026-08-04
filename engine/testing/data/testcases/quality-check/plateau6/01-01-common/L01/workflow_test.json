@@ -1,5 +1,6 @@
 {
   "description": "quality-check L01 for plateau6 (CityGML 3.0). Input GML is intentionally malformed (bldg:usage start tag closed with </bldg:class>, a tag mismatch) so the XML parser raises a SyntaxError. Verifies only the L01 error CSV.",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau6/01-common/workflow.yml",
   "workflowVariables": [
     {

@@ -10,6 +10,9 @@ use reearth_flow_runtime::{
     executor_operation::NodeContext,
     node::{IngestionMessage, Port, Source, SourceFactory, FEATURES_PORT},
 };
+// Old-world feature/geometry construction lives only in the not(new-geometry)
+// `send_feature`; the new-world path builds features in `gltf_next`.
+#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_types::{Attribute, AttributeValue, Feature, Geometry, GeometryValue};
 
 use schemars::JsonSchema;
@@ -23,6 +26,13 @@ use crate::{
         get_content, get_input_path, FileReaderCommonParam, FileReaderCompiledParam,
     },
 };
+
+// New-geometry conversion lives in a sibling file, declared here as a child
+// module so it can reuse this module's scene traversal, buffer loading, and
+// triangle extraction via `super::`.
+#[cfg(feature = "new-geometry")]
+#[path = "gltf_next.rs"]
+mod gltf_next;
 
 #[derive(Debug, Clone, Default)]
 pub(crate) struct GltfReaderFactory;
@@ -78,6 +88,8 @@ impl SourceFactory for GltfReaderFactory {
             _triangulate: params.triangulate,
             merge_meshes: params.merge_meshes,
             include_nodes: params.include_nodes,
+            feature_class_attribute: params.feature_class_attribute,
+            feature_granularity: params.feature_granularity,
         };
         Ok(Box::new(GltfReader { params: compiled }))
     }
@@ -89,11 +101,34 @@ struct GltfReaderCompiledParam {
     _triangulate: bool,
     merge_meshes: bool,
     include_nodes: bool,
+    // Only read by the new-geometry split path (`gltf_next::split_features`);
+    // the not(new-geometry) world doesn't split by feature ID at all.
+    #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
+    feature_class_attribute: Option<String>,
+    // Only read by the new-geometry path (`gltf_next::read`), which is the
+    // only path that ever splits a mesh into multiple features.
+    #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
+    feature_granularity: FeatureGranularity,
 }
 
 #[derive(Debug, Clone)]
 pub(super) struct GltfReader {
     params: GltfReaderCompiledParam,
+}
+
+/// # Feature Granularity
+/// Controls what one output feature represents.
+#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub(super) enum FeatureGranularity {
+    /// One feature per glTF mesh (or per node instance). Structural-metadata
+    /// properties are not surfaced, because they are per object, not per mesh.
+    #[default]
+    Mesh,
+    /// One feature per `EXT_mesh_features` feature ID, each carrying that
+    /// object's `EXT_structural_metadata` properties. Files without
+    /// `EXT_mesh_features` still yield one feature per mesh.
+    FeatureId,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -113,6 +148,14 @@ pub(super) struct GltfReaderParam {
     /// If true, includes node hierarchy information from the glTF scene graph in feature attributes
     #[serde(default = "default_true")]
     pub(super) include_nodes: bool,
+    /// # Feature Class Attribute
+    /// Attribute key to store the EXT_structural_metadata class name under, for each split feature. If unset, the class name is not added as an attribute.
+    #[serde(default)]
+    pub(super) feature_class_attribute: Option<String>,
+    /// # Feature Granularity
+    /// What one output feature represents. `mesh` (the default) emits one feature per glTF mesh. `featureId` splits each mesh into one feature per EXT_mesh_features feature ID, attaching that object's EXT_structural_metadata properties; files without EXT_mesh_features still yield one feature per mesh.
+    #[serde(default)]
+    pub(super) feature_granularity: FeatureGranularity,
 }
 
 fn default_true() -> bool {
@@ -148,6 +191,20 @@ impl Source for GltfReader {
         let content = get_content(&self.params.common, storage_resolver.clone()).await?;
 
         read_gltf(&ctx, storage_resolver, &content, &self.params, sender)
+            .await
+            .map_err(Into::<BoxedError>::into)
+    }
+
+    #[cfg(feature = "new-geometry")]
+    async fn start(
+        &mut self,
+        ctx: NodeContext,
+        sender: Sender<(Port, IngestionMessage)>,
+    ) -> Result<(), BoxedError> {
+        let storage_resolver = Arc::clone(&ctx.storage_resolver);
+        let content = get_content(&self.params.common, storage_resolver.clone()).await?;
+
+        gltf_next::read(&ctx, storage_resolver, &content, &self.params, &sender)
             .await
             .map_err(Into::<BoxedError>::into)
     }

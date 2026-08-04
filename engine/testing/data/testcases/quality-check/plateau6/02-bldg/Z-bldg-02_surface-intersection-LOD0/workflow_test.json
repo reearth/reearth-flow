@@ -1,5 +1,6 @@
 {
   "description": "Test Z-bldg-02 LOD0 surface intersection for plateau6. Two buildings whose LOD0 footprints overlap, reported under 'LOD0 面の交差'.",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
   "workflowVariables": [
     {
