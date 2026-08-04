@@ -122,6 +122,7 @@ export default function Editor({
   const editorContext = useMemo(
     (): EditorContextType => ({
       isLocked,
+      canViewIntermediateData: true,
       onNodesChange: handleNodesChange,
       onNodeSettings: handleNodeSettings,
       currentYWorkflow,
