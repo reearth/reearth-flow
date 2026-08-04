@@ -956,7 +956,12 @@ fn cell_origin(cells: &primitive::CellPrimitives) -> [f64; 3] {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
+    use reearth_flow_geometry::triangular_mesh::TriangularMesh3D;
+    use reearth_flow_geometry::{Euclidean3DGeometry, Geometry};
+    use reearth_flow_types::Attributes;
     use std::io::Cursor;
+    use std::sync::Mutex;
 
     /// A minimal red 2x2 PNG, encoded in memory.
     fn tiny_png() -> Vec<u8> {
@@ -1112,6 +1117,105 @@ mod tests {
         assert!(
             glb.windows(needle.len()).any(|w| w == needle),
             "the embedded texture is emitted as an image/png texture in the glb"
+        );
+    }
+
+    /// A plain untextured triangle at `lat, lon`, far enough from other test
+    /// features to land in its own quadtree cell at deep placement levels.
+    fn untextured_feature(lat: f64, lon: f64) -> Feature {
+        let frame = CoordinateFrame::Crs(EpsgCode::new(4979));
+        let mesh = TriangularMesh3D::from_soup(
+            frame,
+            [
+                [lat, lon, 10.0],
+                [lat, lon + 0.0001, 10.0],
+                [lat + 0.0001, lon, 10.0],
+            ],
+        );
+        Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(mesh))),
+        )
+    }
+
+    fn plain_render_options() -> RenderOptions {
+        RenderOptions {
+            draco: false,
+            compute_flat_normal: false,
+            texel_size: 0.0,
+            atlas_size: 1024,
+            atlas_extrusion: 0,
+            texture_codec: TextureCodec::Png,
+        }
+    }
+
+    fn plain_metadata_options() -> MetadataOptions {
+        MetadataOptions {
+            schema_key: None,
+            skip_unexposed_attributes: false,
+            array_map_separator: Some("_"),
+        }
+    }
+
+    // Two features far enough apart to place in different leaf cells must still
+    // land in one content glb once `target_tile_size` is large relative to their
+    // (tiny) combined cost — proving `merge_small_cells` folds undersized sibling
+    // cells upward instead of leaving the tileset needlessly fragmented.
+    #[test]
+    fn small_cells_merge_into_one_tile_under_a_large_target_size() {
+        let features = [untextured_feature(35.0, 139.0), untextured_feature(36.0, 140.0)];
+        let tiles = Mutex::new(Vec::new());
+        let built = build(
+            &features,
+            plain_metadata_options(),
+            DEFAULT_TARGET_TILE_SIZE,
+            plain_render_options(),
+            |_path: String, glb| {
+                tiles.lock().unwrap().push(glb);
+                Ok(())
+            },
+        )
+        .expect("build tileset");
+
+        assert_eq!(
+            built.tile_count, 1,
+            "two spatially separate but tiny-cost features merge into one tile"
+        );
+        assert_eq!(tiles.into_inner().unwrap().len(), 1);
+    }
+
+    // The same two features, but with `target_tile_size` set below what even one
+    // of them costs alone, so no merge/co-placement can fit them together —
+    // proving `split_by_cost` (and, since they'd otherwise share a cell, its
+    // per-cell same-tile-content splitting) keeps every chunk under the target.
+    #[test]
+    fn oversized_cell_splits_into_multiple_same_tile_contents() {
+        // Same location twice: both are forced into the same leaf cell
+        // regardless of `SAFETY_MAX_DEPTH`, isolating `split_by_cost`'s
+        // same-tile-content behaviour from `merge_small_cells`.
+        let features = [untextured_feature(35.0, 139.0), untextured_feature(35.0, 139.0)];
+        let paths = Mutex::new(Vec::new());
+        let built = build(
+            &features,
+            plain_metadata_options(),
+            1,
+            plain_render_options(),
+            |path: String, _glb| {
+                paths.lock().unwrap().push(path);
+                Ok(())
+            },
+        )
+        .expect("build tileset");
+
+        assert_eq!(
+            built.tile_count, 2,
+            "target size of 1 byte forces each feature into its own content chunk"
+        );
+        let paths = paths.into_inner().unwrap();
+        assert_eq!(paths.len(), 2);
+        assert!(
+            paths.iter().any(|p| p.ends_with("_0.glb")) && paths.iter().any(|p| p.ends_with("_1.glb")),
+            "same-tile multi-content naming is used once a cell splits: {paths:?}"
         );
     }
 }

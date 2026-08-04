@@ -12,8 +12,8 @@ const SUBTREES_URI_TEMPLATE: &str = "subtrees/{level}.{x}.{y}.subtree";
 ///
 /// `max_contents` is the dataset-wide maximum same-tile content count (see
 /// `mod.rs`'s same-tile splitting): 1 keeps the plain single-`content` form,
-/// >1 switches every cell to a `contents` array so the array's positions line
-/// up with each `.subtree` file's `contentAvailability` entries.
+/// more than 1 switches every cell to a `contents` array so the array's
+/// positions line up with each `.subtree` file's `contentAvailability` entries.
 pub(super) fn build(root: &GeoBox, available_levels: u32, max_contents: usize) -> Value {
     let region = [
         root.west.to_radians(),
