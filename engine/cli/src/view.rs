@@ -55,10 +55,10 @@ pub fn build_view_command() -> Command {
                         .display_order(4),
                 )
                 .arg(
-                    Arg::new("max-zoom")
-                        .long("max-zoom")
+                    Arg::new("max-depth")
+                        .long("max-depth")
                         .help("Deepest quadtree level a feature may be placed at.")
-                        .value_parser(clap::value_parser!(u8))
+                        .value_parser(clap::value_parser!(u32))
                         .default_value("18")
                         .display_order(5),
                 )
@@ -148,7 +148,7 @@ enum Shape {
     },
     Cesium3DTiles {
         filter: Option<String>,
-        max_zoom: u8,
+        max_depth: u32,
     },
 }
 
@@ -165,7 +165,7 @@ impl ViewCliCommand {
             },
             "3dtiles" => Shape::Cesium3DTiles {
                 filter: matches.remove_one::<String>("filter"),
-                max_zoom: matches.remove_one::<u8>("max-zoom").unwrap_or(18),
+                max_depth: matches.remove_one::<u32>("max-depth").unwrap_or(18),
             },
             other => return Err(crate::errors::Error::unknown_command(other)),
         };
@@ -238,7 +238,7 @@ impl ViewCliCommand {
                     }
                 }
             }
-            Shape::Cesium3DTiles { filter, max_zoom } => {
+            Shape::Cesium3DTiles { filter, max_depth } => {
                 let selection = match filter {
                     Some(expr) => Selection::Filter {
                         expr,
@@ -249,7 +249,7 @@ impl ViewCliCommand {
                 let loaded = load_selected(&input, selection, &storage_resolver)
                     .map_err(crate::errors::Error::run)?;
                 let selected = loaded.selection.len();
-                let view = render_tileset(&loaded.selection, *max_zoom, &options, &destination)
+                let view = render_tileset(&loaded.selection, *max_depth, &options, &destination)
                     .map_err(crate::errors::Error::run)?;
                 match view.entry_point {
                     Some(entry_point) => println!(

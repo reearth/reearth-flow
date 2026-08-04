@@ -424,7 +424,7 @@ pub fn render_feature(
 /// entire edge.
 pub fn render_tileset(
     selection: &[Selected],
-    max_zoom: u8,
+    max_depth: u32,
     options: &ViewOptions,
     destination: &Destination<'_>,
 ) -> Result<RenderedView> {
@@ -440,7 +440,7 @@ pub fn render_tileset(
     let built = build(
         &features,
         options.metadata_options(),
-        max_zoom,
+        max_depth,
         options.render_options(),
         |relative_path, bytes| {
             let uri = destination

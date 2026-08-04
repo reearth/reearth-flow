@@ -93,7 +93,8 @@ impl Cesium3DTilesWriter {
                         .map_err(crate::errors::SinkError::cesium3dtiles_writer)
                 };
 
-                let built = build(features, options, self.params.max_zoom, render, write_file)?;
+                let max_depth = self.params.max_depth.unwrap_or(DEFAULT_MAX_DEPTH);
+                let built = build(features, options, max_depth, render, write_file)?;
                 for (relative_path, bytes) in built.subtrees {
                     write_file(relative_path, bytes)?;
                 }
@@ -117,7 +118,8 @@ impl Cesium3DTilesWriter {
                 };
 
                 // glbs stream out as they're built; only subtree/tileset outputs come back.
-                let built = build(features, options, self.params.max_zoom, render, write_file)?;
+                let max_depth = self.params.max_depth.unwrap_or(DEFAULT_MAX_DEPTH);
+                let built = build(features, options, max_depth, render, write_file)?;
 
                 for (relative_path, bytes) in built.subtrees {
                     write_file(relative_path, bytes)?;
@@ -178,8 +180,11 @@ const DEFAULT_ATLAS_SIZE: u32 = 2048;
 /// default. Raise it to blit a bleed-guard ring around each packed region.
 const DEFAULT_ATLAS_EXTRUSION: u32 = 0;
 
+/// Default quadtree depth cap when `max_depth` is unset.
+const DEFAULT_MAX_DEPTH: u32 = 24;
+
 /// Extract and reproject every feature's mesh, place each into the deepest
-/// quadtree cell (bounded by `max_zoom`) that fully contains it, and render
+/// quadtree cell (bounded by `max_depth`) that fully contains it, and render
 /// the result to a [`BuiltTileset`]. A free function so `gml_to_3dtiles` can
 /// drive it directly from parsed CityGML, without a `Cesium3DTilesWriter`.
 ///
@@ -190,7 +195,7 @@ const DEFAULT_ATLAS_EXTRUSION: u32 = 0;
 pub fn build(
     features: &[Feature],
     options: MetadataOptions,
-    max_zoom: u8,
+    max_depth: u32,
     render: RenderOptions,
     write_tile: impl Fn(String, Vec<u8>) -> crate::errors::Result<()> + Sync,
 ) -> crate::errors::Result<BuiltTileset> {
@@ -219,7 +224,7 @@ pub fn build(
         let Some(feature_box) = GeoBox::of(&m.geographic_vertices) else {
             continue;
         };
-        let cell = quadtree::place(&root, &feature_box, max_zoom as u32);
+        let cell = quadtree::place(&root, &feature_box, max_depth);
         by_cell.entry(cell).or_default().push(i);
     }
 
