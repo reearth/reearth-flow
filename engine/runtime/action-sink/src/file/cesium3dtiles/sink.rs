@@ -315,16 +315,8 @@ impl Cesium3DTilesWriter {
     fn process_default(&mut self, ctx: &ExecutorContext) -> crate::errors::Result<()> {
         let geometry = &ctx.feature.geometry;
         if geometry.is_empty() {
-            // These codes are registry `warn_drop` by default, but an
-            // `errorPolicy` override can promote either to `reject` or
-            // `fatal` (spec 4.2's resolve() ladder) -- so `report()` can
-            // return `Err` here for real. The `?`-propagation through
-            // `map_err` handles that: a promoted `Fatal` is recorded in the
-            // node's fatal slot by `report()` itself *before* returning
-            // `Err`, so the executor-side drain-end backstop still fails the
-            // node even if a future caller ever swallowed this `Err`
-            // (2a-core T1) -- this call site just needs to propagate it,
-            // not guarantee it.
+            // An errorPolicy override can promote this warn_drop to reject/fatal,
+            // so report() can return Err for real here; propagate it.
             ctx.report(DiagnosticDraft::new(ErrorCode::Cesium3dtilesEmptyGeometry))
                 .map_err(|diag| SinkError::Cesium3DTilesWriter(diag.to_string()))?;
             return Ok(());
@@ -397,17 +389,10 @@ impl Cesium3DTilesWriter {
 
         let feature = &ctx.feature;
         let Some(schema_type) = feature.get(schema_key).and_then(|v| v.as_string()) else {
-            // `process_schema` returns `()` (it is called from `process()`'s
-            // schema-port arm, which discards its result), so the `Result`
-            // from `report()` can't be `?`-propagated here. This is not a
-            // silent drop even under a fatal-promoting `errorPolicy`
-            // override: `report()` records a promoted `Fatal` in the node's
-            // fatal slot *before* returning `Err`, and the executor-side
-            // drain-end backstop (2a-core T1) fails the node from that slot
-            // regardless of what this call site does with the returned
-            // `Result` -- discarding it here (`let _ =`) only means this
-            // specific site doesn't also short-circuit `process_schema`'s
-            // own control flow, not that a promoted fatal goes unreported.
+            // process_schema returns () so report()'s Result can't be
+            // ?-propagated here; a promoted Fatal still reaches the node's
+            // fatal slot inside report() itself, so discarding it below only
+            // skips this call site's own control flow, not the failure.
             let _ = ctx.report(
                 DiagnosticDraft::new(ErrorCode::Cesium3dtilesMissingSchemaKey).with_message(
                     format!("skipped schema feature missing '{schema_key}' attribute"),
@@ -707,7 +692,7 @@ mod diagnostics_tests {
                 max_zoom: 0,
                 attach_texture: None,
                 compress_output: None,
-                draco_compression: None,
+                draco_compression: true,
                 skip_unexposed_attributes: false,
                 schema_key: None,
             },

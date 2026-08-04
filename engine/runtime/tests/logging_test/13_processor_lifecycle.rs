@@ -38,7 +38,7 @@ struct FailInitProcessor;
 
 impl Processor for FailInitProcessor {
     fn initialize(&mut self, _ctx: NodeContext) -> Result<(), BoxedError> {
-        Err("synthetic initialize failure for Task 4 test coverage".into())
+        Err("synthetic initialize failure".into())
     }
 
     fn process(
@@ -337,7 +337,7 @@ fn processor_initialize_failure_emits_exactly_one_failed_status() {
 #[test]
 fn processor_success_emits_processor_finished_once_with_metrics() {
     const FEATURE_COUNT: usize = 3;
-    let middle_with_yaml = "          renameType: All\n          renameAction: AddPrefix\n          renameValue: \"test_\"";
+    let middle_with_yaml = "          renameType: all\n          renameAction: addPrefix\n          renameValue: \"test_\"";
     let workflow_yaml = source_middle_sink_workflow_with_params(
         "Bulk Attribute Renamer",
         middle_with_yaml,
