@@ -2,6 +2,7 @@ import {
   useCallback,
   useRef,
   useEffect,
+  useLayoutEffect,
   useState,
   useImperativeHandle,
   forwardRef,
@@ -9,7 +10,13 @@ import {
 
 import { TextArea } from "@flow/components";
 
-import FlowExprAutocomplete from "./FlowExprAutocomplete";
+import {
+  getCompletionContext,
+  type CompletionContext,
+} from "./flowExprAttributeContext";
+import FlowExprAutocomplete, {
+  type FlowExprAutocompleteRef,
+} from "./FlowExprAutocomplete";
 import { type AutocompleteSuggestion } from "./flowExprConstants";
 import FlowExprSyntaxHighlighter from "./FlowExprSyntaxHighlighter";
 import {
@@ -49,55 +56,65 @@ const FlowExprCodeEditor = forwardRef<FlowExprCodeEditorRef, Props>(
     const highlightRef = useRef<HTMLDivElement>(null);
     const placeholderRef = useRef<HTMLDivElement>(null);
     const errorOverlayRef = useRef<HTMLDivElement>(null);
+    const autocompleteRef = useRef<FlowExprAutocompleteRef>(null);
 
-    const [autocompleteVisible, setAutocompleteVisible] = useState(false);
-    const autocompleteVisibleRef = useRef(false);
-    autocompleteVisibleRef.current = autocompleteVisible;
+    // Caret position, mirrored into state so the autocomplete recomputes its
+    // context whenever the caret moves — not only when the text changes.
+    const [caret, setCaret] = useState(0);
+    // The dropdown is armed by editing and disarmed by anything that means
+    // "I'm done here": Escape, moving the caret, accepting a suggestion.
+    const [autocompleteArmed, setAutocompleteArmed] = useState(false);
+    // Applied after the controlled value lands, which otherwise parks the
+    // caret at the end of the textarea.
+    const pendingCaretRef = useRef<number | null>(null);
 
     const [validationErrors, setValidationErrors] = useState<ValidationError[]>(
       [],
     );
     const validationTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-    // Capture-phase ESC handler — fires before Radix Dialog's bubbling handler
-    // so ESC only closes the autocomplete when it is open, not the dialog.
-    useEffect(() => {
-      const handleEsc = (e: KeyboardEvent) => {
-        if (e.key === "Escape" && autocompleteVisibleRef.current) {
-          e.stopImmediatePropagation();
-          setAutocompleteVisible(false);
-        }
-      };
-      document.addEventListener("keydown", handleEsc, { capture: true });
-      return () =>
-        document.removeEventListener("keydown", handleEsc, { capture: true });
-    }, []);
+    const applyCaret = useCallback(
+      (textarea: HTMLTextAreaElement, pos: number) => {
+        textarea.setSelectionRange(pos, pos);
+        textarea.focus();
+        setCaret(pos);
+      },
+      [],
+    );
+
+    useLayoutEffect(() => {
+      const pos = pendingCaretRef.current;
+      if (pos === null || !textareaRef.current) return;
+      pendingCaretRef.current = null;
+      applyCaret(textareaRef.current, pos);
+    }, [value, applyCaret]);
 
     useImperativeHandle(
       ref,
       () => ({
         insertAtCursor: (text: string) => {
-          if (!textareaRef.current) return;
-
           const textarea = textareaRef.current;
+          if (!textarea) return;
+
+          const current = textarea.value;
           const start = textarea.selectionStart;
           const end = textarea.selectionEnd;
-
           const newValue =
-            value.substring(0, start) + text + value.substring(end);
-          onChange(newValue);
+            current.substring(0, start) + text + current.substring(end);
 
-          setTimeout(() => {
-            const newCursorPos = start + text.length;
-            textarea.setSelectionRange(newCursorPos, newCursorPos);
-            textarea.focus();
-          }, 10);
+          setAutocompleteArmed(false);
+          if (newValue === current) {
+            applyCaret(textarea, start + text.length);
+            return;
+          }
+          pendingCaretRef.current = start + text.length;
+          onChange(newValue);
         },
         focus: () => {
           textareaRef.current?.focus();
         },
       }),
-      [value, onChange],
+      [onChange, applyCaret],
     );
 
     const handleScroll = useCallback(() => {
@@ -111,64 +128,49 @@ const FlowExprCodeEditor = forwardRef<FlowExprCodeEditorRef, Props>(
       }
     }, []);
 
+    // Every keydown is offered to the dropdown first; it only claims keys while
+    // it is actually showing something, so Enter/Tab/arrows behave normally the
+    // rest of the time — including elsewhere in the dialog, which a
+    // document-level listener would have hijacked.
     const handleKeyDown = useCallback(
       (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-        if (
-          autocompleteVisible &&
-          ["ArrowUp", "ArrowDown", "Enter", "Tab", "Escape"].includes(e.key)
-        ) {
-          // Let the event bubble to the autocomplete's document listener.
-          // ESC is intercepted separately via a capture-phase handler.
-          return;
-        }
-
-        if (/^[a-zA-Z0-9_:.'"]$/.test(e.key)) {
-          // Quotes are included so the attribute autocomplete can open as soon
-          // as the cursor enters an `attributes["…"]` accessor.
-          setTimeout(() => setAutocompleteVisible(true), 10);
-        } else if (e.key === "Backspace" || e.key === "Delete") {
-          setTimeout(() => {
-            const textarea = textareaRef.current;
-            if (textarea) {
-              const cursorPos = textarea.selectionStart;
-              const textBeforeCursor = textarea.value.substring(0, cursorPos);
-              const lastWord =
-                textBeforeCursor.split(/[^a-zA-Z0-9_:.]/).pop() || "";
-              if (lastWord.length < 1) {
-                setAutocompleteVisible(false);
-              }
-            }
-          }, 10);
-        } else if (
-          e.key === " " ||
-          e.key === "(" ||
-          e.key === ")" ||
-          e.key === ";" ||
-          e.key === ","
-        ) {
-          setAutocompleteVisible(false);
-        }
+        autocompleteRef.current?.handleKeyDown(e);
       },
-      [autocompleteVisible],
+      [],
     );
 
+    const handleChange = useCallback(
+      (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        setCaret(e.target.selectionStart);
+        // Any edit re-arms the dropdown, so backspacing back to a prefix that
+        // matches again brings the suggestions back.
+        setAutocompleteArmed(true);
+        onChange(e.target.value);
+      },
+      [onChange],
+    );
+
+    const lastSyncRef = useRef({ value, caret: 0 });
+    const handleSelectionChange = useCallback(() => {
+      const textarea = textareaRef.current;
+      if (!textarea) return;
+
+      const pos = textarea.selectionStart;
+      const previous = lastSyncRef.current;
+      const textChanged = textarea.value !== previous.value;
+      const caretMoved = pos !== previous.caret;
+      lastSyncRef.current = { value: textarea.value, caret: pos };
+
+      setCaret(pos);
+      if (!textChanged && caretMoved) setAutocompleteArmed(false);
+    }, []);
+
     const handleSuggestionSelect = useCallback(
-      (suggestion: AutocompleteSuggestion) => {
-        if (!textareaRef.current) return;
-
+      (suggestion: AutocompleteSuggestion, context: CompletionContext) => {
         const textarea = textareaRef.current;
-        const cursorPos = textarea.selectionStart;
+        if (!textarea) return;
+
         const text = textarea.value;
-
-        let start = cursorPos;
-        while (start > 0 && /[a-zA-Z0-9_:.]/.test(text[start - 1])) {
-          start--;
-        }
-
-        const word = text.substring(start, cursorPos);
-        const lastDot = word.lastIndexOf(".");
-        const replaceStart = lastDot >= 0 ? start + lastDot + 1 : start;
-
         const insertText = suggestion.insertText;
         const cursorPlaceholder = "{{cursor}}";
         const hasCursorPlaceholder = insertText.includes(cursorPlaceholder);
@@ -176,28 +178,33 @@ const FlowExprCodeEditor = forwardRef<FlowExprCodeEditorRef, Props>(
           ? insertText.replace(cursorPlaceholder, "")
           : insertText;
 
+        // Replaces exactly the span the suggestion was matched against, so
+        // accepting mid-word cannot duplicate the tail.
         const newText =
-          text.substring(0, replaceStart) +
+          text.substring(0, context.start) +
           finalText +
-          text.substring(cursorPos);
+          text.substring(context.end);
+
+        const newCaret = hasCursorPlaceholder
+          ? context.start + insertText.indexOf(cursorPlaceholder)
+          : context.start + finalText.length;
+
+        setAutocompleteArmed(
+          suggestion.type !== "attribute" &&
+            getCompletionContext(newText, newCaret).kind === "attribute",
+        );
+
+        if (newText === text) {
+          applyCaret(textarea, newCaret);
+          return;
+        }
+        pendingCaretRef.current = newCaret;
         onChange(newText);
-
-        setTimeout(() => {
-          if (hasCursorPlaceholder) {
-            const placeholderPos =
-              replaceStart + insertText.indexOf(cursorPlaceholder);
-            textarea.setSelectionRange(placeholderPos, placeholderPos);
-          } else {
-            const newCursorPos = replaceStart + finalText.length;
-            textarea.setSelectionRange(newCursorPos, newCursorPos);
-          }
-          textarea.focus();
-        }, 10);
-
-        setAutocompleteVisible(false);
       },
-      [onChange],
+      [onChange, applyCaret],
     );
+
+    const handleDismiss = useCallback(() => setAutocompleteArmed(false), []);
 
     const createErrorOverlay = useCallback(() => {
       if (!value) return "";
@@ -427,7 +434,8 @@ const FlowExprCodeEditor = forwardRef<FlowExprCodeEditorRef, Props>(
           style={{ zIndex: 3 }}
           placeholder=""
           value={value}
-          onChange={(e) => onChange(e.target.value)}
+          onChange={handleChange}
+          onSelect={handleSelectionChange}
           onScroll={handleScroll}
           onKeyDown={handleKeyDown}
           spellCheck={false}
@@ -485,11 +493,13 @@ const FlowExprCodeEditor = forwardRef<FlowExprCodeEditorRef, Props>(
         )}
 
         <FlowExprAutocomplete
+          ref={autocompleteRef}
           textareaRef={textareaRef}
           value={value}
+          caret={caret}
+          open={autocompleteArmed}
           onSuggestionSelect={handleSuggestionSelect}
-          visible={autocompleteVisible}
-          onVisibilityChange={setAutocompleteVisible}
+          onDismiss={handleDismiss}
           attributeSuggestions={attributeSuggestions}
         />
       </div>
