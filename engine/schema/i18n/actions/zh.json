@@ -802,14 +802,6 @@
           "title": "图集大小",
           "description": "纹理图集的最大尺寸（像素）。超过此值的纹理会分布到额外的图集页；单个大于此值的纹理会被降采样以适配。默认值为 2048。"
         },
-        "attachTexture": {
-          "title": "附加纹理",
-          "description": "是否在生成的瓦片中包含纹理信息"
-        },
-        "compressOutput": {
-          "title": "压缩输出路径",
-          "description": "压缩归档输出的可选路径"
-        },
         "computeFlatNormal": {
           "title": "计算平面法线",
           "description": "为光照计算逐多边形的平面法线。默认为 true。禁用时不写入法线，网格更小，但瓦片不包含光照数据（查看器需自行推导平面法线）。"
@@ -818,13 +810,9 @@
           "title": "Draco 压缩",
           "description": "使用 Draco 压缩。默认为 true。"
         },
-        "maxZoom": {
-          "title": "最大缩放级别",
-          "description": "瓦片生成的最大缩放级别（0-24）"
-        },
-        "minZoom": {
-          "title": "最小缩放级别",
-          "description": "瓦片生成的最小缩放级别（0-24）"
+        "maxDepth": {
+          "title": "最大深度",
+          "description": "四叉树细分深度的硬性上限；其余情况下瓦片粒度取决于要素大小。默认为 24，取值范围 0 到 24。"
         },
         "output": {
           "title": "输出路径",
@@ -950,6 +938,40 @@
         "mode": {
           "title": "Extraction Mode",
           "description": "How to extract coordinates from geometry vertices."
+        }
+      }
+    },
+    {
+      "name": "Coordinate Frame Reprojector",
+      "description": "在坐标参照系之间重投影几何，并在坐标参照系与欧几里得坐标系之间转换",
+      "parameterI18n": {
+        "": {
+          "title": "Coordinate Frame Reprojector Parameters",
+          "description": "Reproject geometry across coordinate reference systems and convert between a CRS and a Euclidean frame. Converting across the Euclidean/CRS boundary reinterprets coordinates as-is: values and ring winding are left unchanged, so orientation follows the destination frame's axis order.\n\nReprojecting across coordinate reference systems takes 2D geometry lying at a single elevation into 3D."
+        },
+        "basePointSource": {
+          "title": "Base Point",
+          "description": "How coordinates bridge the Euclidean/CRS boundary."
+        },
+        "destinationFrame": {
+          "title": "Destination Frame",
+          "description": "Coordinate frame to convert geometry into."
+        },
+        "epsgCode": {
+          "title": "EPSG Code",
+          "description": "EPSG code of the destination CRS. Required when the destination frame is a CRS."
+        }
+      },
+      "enumI18n": {
+        "DestinationFrame": {
+          "crs": {
+            "title": "CRS",
+            "description": "Reproject to a coordinate reference system identified by an EPSG code."
+          },
+          "euclidean": {
+            "title": "Euclidean",
+            "description": "Convert to a non-georeferenced Euclidean frame."
+          }
         }
       }
     },
@@ -1781,26 +1803,7 @@
     },
     {
       "name": "Geometry Splitter",
-      "description": "根据类型分割几何",
-      "parameterI18n": {
-        "": {
-          "title": "GeometrySplitterParam",
-          "description": "Parameters for GeometrySplitter"
-        },
-        "splitLevel": {
-          "description": "Split level for CityGML geometry. - \"element\": Split by surface elements (RoofSurface, WallSurface, etc.) - default - \"polygon\": Split down to individual polygons within each element"
-        }
-      },
-      "enumI18n": {
-        "SplitLevel": {
-          "element": {
-            "description": "Split by GmlGeometry elements (e.g., RoofSurface, WallSurface)"
-          },
-          "polygon": {
-            "description": "Split down to individual polygons within each element"
-          }
-        }
-      }
+      "description": "根据类型分割几何"
     },
     {
       "name": "Geometry Validator",
@@ -1825,10 +1828,6 @@
         "planarityThreshold": {
           "title": "Planarity Threshold",
           "description": "Optional override for how the planarity check bounds a face's out-of-plane deviation: a scale-invariant `ratio` (the default), or an absolute `maxHeight` in the frame's linear unit (linear-unit frames only). Applies only under the new geometry backend."
-        },
-        "validationTypes": {
-          "title": "Validation Types",
-          "description": "List of validation checks to perform on the geometry (duplicate points, corrupt geometry, self-intersection)"
         }
       },
       "definitionI18n": {
@@ -1842,11 +1841,6 @@
           "minVolume": {
             "description": "Minimum volume of a 3D geometry (solid)."
           }
-        }
-      },
-      "enumI18n": {
-        "ValidationType": {
-          "duplicatePoints": {}
         }
       }
     },

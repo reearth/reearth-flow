@@ -802,14 +802,6 @@
           "title": "アトラスサイズ",
           "description": "テクスチャアトラスの最大寸法（ピクセル）。これを超えるテクスチャは追加のアトラスページに分割され、単一のテクスチャがこれより大きい場合は収まるようにダウンサンプリングされる。デフォルトは 2048。"
         },
-        "attachTexture": {
-          "title": "テクスチャを添付",
-          "description": "生成するタイルにテクスチャ情報を含めるか"
-        },
-        "compressOutput": {
-          "title": "圧縮出力パス",
-          "description": "タイルの圧縮アーカイブを書き出す出力先パス（任意）"
-        },
         "computeFlatNormal": {
           "title": "フラット法線を計算",
           "description": "ライティング用にポリゴンごとのフラット法線を計算するか。デフォルトは true。無効にすると法線は出力されずメッシュは小さくなるが、タイルにライティング情報が含まれないためビューアー側でフラット法線を導出する必要がある"
@@ -818,13 +810,9 @@
           "title": "Draco 圧縮",
           "description": "メッシュジオメトリをDracoで圧縮するか（デフォルト: true）"
         },
-        "maxZoom": {
-          "title": "最大ズームレベル",
-          "description": "タイルを生成する最大ズームレベル（0〜24）"
-        },
-        "minZoom": {
-          "title": "最小ズームレベル",
-          "description": "タイルを生成する最小ズームレベル（0〜24）"
+        "maxDepth": {
+          "title": "最大深度",
+          "description": "四分木の分割深度の上限。これを超えない範囲でタイルの粒度は地物のサイズに従う。デフォルトは 24、範囲は 0〜24。"
         },
         "output": {
           "title": "出力パス",
@@ -950,6 +938,40 @@
         "mode": {
           "title": "抽出モード",
           "description": "ジオメトリの頂点から座標を抽出する方法"
+        }
+      }
+    },
+    {
+      "name": "Coordinate Frame Reprojector",
+      "description": "ジオメトリを座標参照系間で再投影し、座標参照系とユークリッド座標系の間で変換する",
+      "parameterI18n": {
+        "": {
+          "title": "CoordinateFrameReprojector パラメータ",
+          "description": "ジオメトリを座標参照系間で再投影し、座標参照系とユークリッド座標系の間で変換する。ユークリッド座標系と座標参照系の境界をまたぐ変換では座標値をそのまま解釈するため、値とリングの回転方向は変更されず、向きは変換先の座標系の軸順序に従う。\n\n座標参照系間の再投影では、単一の標高上にある 2D ジオメトリは 3D になる。"
+        },
+        "basePointSource": {
+          "title": "基準点",
+          "description": "ユークリッド座標系と座標参照系の境界をまたぐ際に座標を対応付ける方法。"
+        },
+        "destinationFrame": {
+          "title": "変換先の座標系",
+          "description": "ジオメトリの変換先となる座標系。"
+        },
+        "epsgCode": {
+          "title": "EPSG コード",
+          "description": "変換先の座標参照系の EPSG コード。変換先が座標参照系の場合は必須。"
+        }
+      },
+      "enumI18n": {
+        "DestinationFrame": {
+          "crs": {
+            "title": "座標参照系",
+            "description": "EPSG コードで指定した座標参照系に再投影する。"
+          },
+          "euclidean": {
+            "title": "ユークリッド座標系",
+            "description": "地理参照を持たないユークリッド座標系に変換する。"
+          }
         }
       }
     },
@@ -1781,26 +1803,7 @@
     },
     {
       "name": "Geometry Splitter",
-      "description": "ジオメトリをタイプ別に分割する",
-      "parameterI18n": {
-        "": {
-          "title": "GeometrySplitter パラメータ",
-          "description": "GeometrySplitter のパラメータ"
-        },
-        "splitLevel": {
-          "description": "CityGML ジオメトリの分割レベル。 - \"element\": サーフェス要素（RoofSurface、WallSurface など）で分割（デフォルト） - \"polygon\": 各要素内の個々のポリゴンまで分割"
-        }
-      },
-      "enumI18n": {
-        "SplitLevel": {
-          "element": {
-            "description": "GmlGeometry 要素（例: RoofSurface、WallSurface）で分割する"
-          },
-          "polygon": {
-            "description": "各要素内の個々のポリゴンまで分割する"
-          }
-        }
-      }
+      "description": "ジオメトリをタイプ別に分割する"
     },
     {
       "name": "Geometry Validator",
@@ -1825,10 +1828,6 @@
         "planarityThreshold": {
           "title": "Planarity Threshold",
           "description": "Optional override for how the planarity check bounds a face's out-of-plane deviation: a scale-invariant `ratio` (the default), or an absolute `maxHeight` in the frame's linear unit (linear-unit frames only). Applies only under the new geometry backend."
-        },
-        "validationTypes": {
-          "title": "検証タイプ",
-          "description": "ジオメトリに対して実行する検証チェックのリスト（重複点、破損ジオメトリ、自己交差）"
         }
       },
       "definitionI18n": {
@@ -1842,11 +1841,6 @@
           "minVolume": {
             "description": "Minimum volume of a 3D geometry (solid)."
           }
-        }
-      },
-      "enumI18n": {
-        "ValidationType": {
-          "duplicatePoints": {}
         }
       }
     },

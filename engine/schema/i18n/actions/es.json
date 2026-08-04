@@ -802,14 +802,6 @@
           "title": "Tamaño del Atlas",
           "description": "Dimensión máxima del atlas de texturas en píxeles. Las texturas que la superan se distribuyen en páginas de atlas adicionales; una sola textura mayor que este valor se reduce para que quepa. El valor predeterminado es 2048."
         },
-        "attachTexture": {
-          "title": "Adjuntar Texturas",
-          "description": "Si se debe incluir información de textura en los mosaicos generados"
-        },
-        "compressOutput": {
-          "title": "Ruta de Salida Comprimida",
-          "description": "Ruta opcional para la salida del archivo comprimido"
-        },
         "computeFlatNormal": {
           "title": "Calcular Normales Planas",
           "description": "Calcula normales planas por polígono para la iluminación. Verdadero por defecto. Cuando se desactiva, no se escriben normales y la malla es más pequeña, pero el mosaico no incluye datos de iluminación (el visor debe derivar las normales planas por sí mismo)."
@@ -818,13 +810,9 @@
           "title": "Compresión Draco",
           "description": "Usar compresión Draco. Verdadero por defecto."
         },
-        "maxZoom": {
-          "title": "Nivel de Zoom Máximo",
-          "description": "Nivel de zoom máximo para la generación de mosaicos (0-24)"
-        },
-        "minZoom": {
-          "title": "Nivel de Zoom Mínimo",
-          "description": "Nivel de zoom mínimo para la generación de mosaicos (0-24)"
+        "maxDepth": {
+          "title": "Profundidad Máxima",
+          "description": "Límite máximo de la profundidad de subdivisión del quadtree; por lo demás, la granularidad de los mosaicos sigue el tamaño de las entidades. Por defecto 24, de 0 a 24."
         },
         "output": {
           "title": "Ruta de Salida",
@@ -950,6 +938,40 @@
         "mode": {
           "title": "Extraction Mode",
           "description": "How to extract coordinates from geometry vertices."
+        }
+      }
+    },
+    {
+      "name": "Coordinate Frame Reprojector",
+      "description": "Reproyecta la geometría entre sistemas de referencia de coordenadas y convierte entre un SRC y un marco euclídeo",
+      "parameterI18n": {
+        "": {
+          "title": "Coordinate Frame Reprojector Parameters",
+          "description": "Reproject geometry across coordinate reference systems and convert between a CRS and a Euclidean frame. Converting across the Euclidean/CRS boundary reinterprets coordinates as-is: values and ring winding are left unchanged, so orientation follows the destination frame's axis order.\n\nReprojecting across coordinate reference systems takes 2D geometry lying at a single elevation into 3D."
+        },
+        "basePointSource": {
+          "title": "Base Point",
+          "description": "How coordinates bridge the Euclidean/CRS boundary."
+        },
+        "destinationFrame": {
+          "title": "Destination Frame",
+          "description": "Coordinate frame to convert geometry into."
+        },
+        "epsgCode": {
+          "title": "EPSG Code",
+          "description": "EPSG code of the destination CRS. Required when the destination frame is a CRS."
+        }
+      },
+      "enumI18n": {
+        "DestinationFrame": {
+          "crs": {
+            "title": "CRS",
+            "description": "Reproject to a coordinate reference system identified by an EPSG code."
+          },
+          "euclidean": {
+            "title": "Euclidean",
+            "description": "Convert to a non-georeferenced Euclidean frame."
+          }
         }
       }
     },
@@ -1781,26 +1803,7 @@
     },
     {
       "name": "Geometry Splitter",
-      "description": "Divide la geometría por tipo",
-      "parameterI18n": {
-        "": {
-          "title": "GeometrySplitterParam",
-          "description": "Parameters for GeometrySplitter"
-        },
-        "splitLevel": {
-          "description": "Split level for CityGML geometry. - \"element\": Split by surface elements (RoofSurface, WallSurface, etc.) - default - \"polygon\": Split down to individual polygons within each element"
-        }
-      },
-      "enumI18n": {
-        "SplitLevel": {
-          "element": {
-            "description": "Split by GmlGeometry elements (e.g., RoofSurface, WallSurface)"
-          },
-          "polygon": {
-            "description": "Split down to individual polygons within each element"
-          }
-        }
-      }
+      "description": "Divide la geometría por tipo"
     },
     {
       "name": "Geometry Validator",
@@ -1825,10 +1828,6 @@
         "planarityThreshold": {
           "title": "Planarity Threshold",
           "description": "Optional override for how the planarity check bounds a face's out-of-plane deviation: a scale-invariant `ratio` (the default), or an absolute `maxHeight` in the frame's linear unit (linear-unit frames only). Applies only under the new geometry backend."
-        },
-        "validationTypes": {
-          "title": "Validation Types",
-          "description": "List of validation checks to perform on the geometry (duplicate points, corrupt geometry, self-intersection)"
         }
       },
       "definitionI18n": {
@@ -1842,11 +1841,6 @@
           "minVolume": {
             "description": "Minimum volume of a 3D geometry (solid)."
           }
-        }
-      },
-      "enumI18n": {
-        "ValidationType": {
-          "duplicatePoints": {}
         }
       }
     },
