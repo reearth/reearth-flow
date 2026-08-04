@@ -75,7 +75,7 @@ export const getFlowExprAutocompleteSuggestions = (
   // brace, rather than in the condition slot.
   {
     label: "if",
-    insertText: "if {\n  {{cursor}}\n} else {\n  \n}",
+    insertText: "if {{cursor}} {\n  \n} else {\n  \n}",
     type: "keyword",
     description: t("if-else expression"),
   },
@@ -87,7 +87,7 @@ export const getFlowExprAutocompleteSuggestions = (
   },
   {
     label: "while",
-    insertText: "while {\n  {{cursor}}\n}",
+    insertText: "while {{cursor}} {\n  \n}",
     type: "keyword",
     description: t("while loop"),
   },
