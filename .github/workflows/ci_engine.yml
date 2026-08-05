@@ -88,8 +88,8 @@ jobs:
         run: cargo make format -- --check
       - name: taplo
         run: cargo make format-taplo -- --check
-      - name: proj-grids version pinning
-        run: cargo make check-proj-grids-version
+      - name: proj-grids attribution notice
+        run: cargo make proj-grids-notice -- --check
 
   validate-generated:
     name: validate generated files (schema + cms workflows)
