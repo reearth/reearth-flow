@@ -81,11 +81,29 @@ pub fn write_cesium_json(
         })
         .collect();
 
-    let json = serde_json::to_string_pretty(&Value::Object(normalized))
-        .map_err(|e| format!("Failed to serialize: {}", e))?;
+    let sorted = sort_json_keys_recursive(Value::Object(normalized));
+
+    let json =
+        serde_json::to_string_pretty(&sorted).map_err(|e| format!("Failed to serialize: {}", e))?;
 
     fs::write(output_path, &json)
         .map_err(|e| format!("Failed to write {}: {}", output_path.display(), e))?;
 
     Ok(())
+}
+
+/// Recursively sorts object keys so the truth file's diff is stable across runs.
+fn sort_json_keys_recursive(value: Value) -> Value {
+    match value {
+        Value::Object(map) => {
+            let mut sorted: serde_json::Map<String, Value> = map
+                .into_iter()
+                .map(|(k, v)| (k, sort_json_keys_recursive(v)))
+                .collect();
+            sorted.sort_keys();
+            Value::Object(sorted)
+        }
+        Value::Array(arr) => Value::Array(arr.into_iter().map(sort_json_keys_recursive).collect()),
+        other => other,
+    }
 }

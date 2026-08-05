@@ -146,7 +146,10 @@ const DEFAULT_TESTS: &[&str] = &[
 ];
 
 #[cfg(feature = "new-geometry")]
-const DEFAULT_TESTS: &[&str] = &["data-convert/plateau6/01-bldg/ward"];
+const DEFAULT_TESTS: &[&str] = &[
+    "data-convert/plateau6/01-bldg/ward",
+    "data-convert/plateau6/01-bldg/osaka-ward",
+];
 
 fn run_test<F>(test_name: &str, relative_path: &std::path::Display, test_fn: F)
 where

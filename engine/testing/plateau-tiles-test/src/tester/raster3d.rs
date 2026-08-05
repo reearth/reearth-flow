@@ -5,7 +5,7 @@ use walkdir::WalkDir;
 
 #[derive(Debug, Deserialize)]
 pub struct Raster3dConfig {
-    pub threshold: Option<f64>,
+    pub threshold: f64,
 }
 
 pub fn test_raster3d(
@@ -13,7 +13,7 @@ pub fn test_raster3d(
     flow_png_dir: &Path,
     config: &Raster3dConfig,
 ) -> Result<(), String> {
-    let threshold = config.threshold.unwrap_or(0.0);
+    let threshold = config.threshold;
 
     if !flow_png_dir.exists() {
         return Err(format!("flow_png_dir does not exist: {:?}", flow_png_dir));
@@ -129,9 +129,7 @@ mod tests {
     use super::*;
 
     fn config(threshold: f64) -> Raster3dConfig {
-        Raster3dConfig {
-            threshold: Some(threshold),
-        }
+        Raster3dConfig { threshold }
     }
 
     fn write_canvas(dir: &std::path::Path, name: &str, w: usize, h: usize, fill: f32) {

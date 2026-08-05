@@ -15,7 +15,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use url::Url;
 
-use crate::citygml_parser::parser::Parser;
+use crate::citygml_parser::parser::{CityGmlVersion, Parser};
 use crate::citygml_parser::pipeline::build_features;
 use crate::feature::errors::FeatureProcessorError;
 
@@ -86,7 +86,7 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
             flatten_single_child_objects: params.flatten_single_child_objects,
             flatten_measure_types: params.flatten_measure_types,
             city_gml_attributes_key: params.city_gml_attributes_key,
-            parser: Parser::new(),
+            parser: Parser::new(CityGmlVersion::V3),
             base_attributes: HashMap::new(),
         }))
     }
@@ -161,7 +161,7 @@ impl Clone for FeatureCityGml3Reader {
             flatten_single_child_objects: self.flatten_single_child_objects,
             flatten_measure_types: self.flatten_measure_types,
             city_gml_attributes_key: self.city_gml_attributes_key.clone(),
-            parser: Parser::new(),
+            parser: Parser::new(CityGmlVersion::V3),
             base_attributes: HashMap::new(),
         }
     }
@@ -212,7 +212,7 @@ impl Processor for FeatureCityGml3Reader {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         for feature in build_features(
-            std::mem::take(&mut self.parser),
+            std::mem::replace(&mut self.parser, Parser::new(CityGmlVersion::V3)),
             &self.extract_tags,
             &self.base_attributes,
             self.city_gml_attributes_key.as_deref(),

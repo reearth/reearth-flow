@@ -802,14 +802,6 @@
           "title": "アトラスサイズ",
           "description": "テクスチャアトラスの最大寸法（ピクセル）。これを超えるテクスチャは追加のアトラスページに分割され、単一のテクスチャがこれより大きい場合は収まるようにダウンサンプリングされる。デフォルトは 2048。"
         },
-        "attachTexture": {
-          "title": "テクスチャを添付",
-          "description": "生成するタイルにテクスチャ情報を含めるか"
-        },
-        "compressOutput": {
-          "title": "圧縮出力パス",
-          "description": "タイルの圧縮アーカイブを書き出す出力先パス（任意）"
-        },
         "computeFlatNormal": {
           "title": "フラット法線を計算",
           "description": "ライティング用にポリゴンごとのフラット法線を計算するか。デフォルトは true。無効にすると法線は出力されずメッシュは小さくなるが、タイルにライティング情報が含まれないためビューアー側でフラット法線を導出する必要がある"
@@ -818,13 +810,9 @@
           "title": "Draco 圧縮",
           "description": "メッシュジオメトリをDracoで圧縮するか（デフォルト: true）"
         },
-        "maxZoom": {
-          "title": "最大ズームレベル",
-          "description": "タイルを生成する最大ズームレベル（0〜24）"
-        },
-        "minZoom": {
-          "title": "最小ズームレベル",
-          "description": "タイルを生成する最小ズームレベル（0〜24）"
+        "maxDepth": {
+          "title": "Max Depth",
+          "description": "Hard cap on the quadtree subdivision depth; tile granularity otherwise follows feature size. Defaults to 24, from 0 to 24."
         },
         "output": {
           "title": "出力パス",
@@ -950,6 +938,39 @@
         "mode": {
           "title": "抽出モード",
           "description": "ジオメトリの頂点から座標を抽出する方法"
+        }
+      }
+    },
+    {
+      "name": "Coordinate Frame Reprojector",
+      "parameterI18n": {
+        "": {
+          "title": "Coordinate Frame Reprojector Parameters",
+          "description": "Reproject geometry across coordinate reference systems and convert between a CRS and a Euclidean frame. Converting across the Euclidean/CRS boundary reinterprets coordinates as-is: values and ring winding are left unchanged, so orientation follows the destination frame's axis order.\n\nReprojecting across coordinate reference systems takes 2D geometry lying at a single elevation into 3D."
+        },
+        "basePointSource": {
+          "title": "Base Point",
+          "description": "How coordinates bridge the Euclidean/CRS boundary."
+        },
+        "destinationFrame": {
+          "title": "Destination Frame",
+          "description": "Coordinate frame to convert geometry into."
+        },
+        "epsgCode": {
+          "title": "EPSG Code",
+          "description": "EPSG code of the destination CRS. Required when the destination frame is a CRS."
+        }
+      },
+      "enumI18n": {
+        "DestinationFrame": {
+          "crs": {
+            "title": "CRS",
+            "description": "Reproject to a coordinate reference system identified by an EPSG code."
+          },
+          "euclidean": {
+            "title": "Euclidean",
+            "description": "Convert to a non-georeferenced Euclidean frame."
+          }
         }
       }
     },
@@ -1781,26 +1802,7 @@
     },
     {
       "name": "Geometry Splitter",
-      "description": "ジオメトリをタイプ別に分割する",
-      "parameterI18n": {
-        "": {
-          "title": "GeometrySplitter パラメータ",
-          "description": "GeometrySplitter のパラメータ"
-        },
-        "splitLevel": {
-          "description": "CityGML ジオメトリの分割レベル。 - \"element\": サーフェス要素（RoofSurface、WallSurface など）で分割（デフォルト） - \"polygon\": 各要素内の個々のポリゴンまで分割"
-        }
-      },
-      "enumI18n": {
-        "SplitLevel": {
-          "element": {
-            "description": "GmlGeometry 要素（例: RoofSurface、WallSurface）で分割する"
-          },
-          "polygon": {
-            "description": "各要素内の個々のポリゴンまで分割する"
-          }
-        }
-      }
+      "description": "ジオメトリをタイプ別に分割する"
     },
     {
       "name": "Geometry Validator",
@@ -1825,10 +1827,6 @@
         "planarityThreshold": {
           "title": "Planarity Threshold",
           "description": "Optional override for how the planarity check bounds a face's out-of-plane deviation: a scale-invariant `ratio` (the default), or an absolute `maxHeight` in the frame's linear unit (linear-unit frames only). Applies only under the new geometry backend."
-        },
-        "validationTypes": {
-          "title": "検証タイプ",
-          "description": "ジオメトリに対して実行する検証チェックのリスト（重複点、破損ジオメトリ、自己交差）"
         }
       },
       "definitionI18n": {
@@ -1842,11 +1840,6 @@
           "minVolume": {
             "description": "Minimum volume of a 3D geometry (solid)."
           }
-        }
-      },
-      "enumI18n": {
-        "ValidationType": {
-          "duplicatePoints": {}
         }
       }
     },
