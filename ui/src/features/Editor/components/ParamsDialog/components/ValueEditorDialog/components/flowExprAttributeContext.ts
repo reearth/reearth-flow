@@ -1,11 +1,19 @@
 /**
  * Matches when the text before the cursor ends inside an open
- * `attributes["…` / `attributes['…` string literal (no closing quote yet).
- * Used to switch FlowExpr autocomplete to attribute-name suggestions.
+ * `<name>["…` / `<name>['…` string literal (no closing quote yet). The leading
+ * guard keeps `myenv["` from reading as an `env` accessor.
  */
-export const ATTRIBUTE_ACCESSOR_RE = /attributes\s*\[\s*["'][^"']*$/;
+const accessorRe = (name: string) =>
+  new RegExp(`(?:^|[^a-zA-Z0-9_$])${name}\\s*\\[\\s*["'][^"']*$`);
 
-const ATTRIBUTE_ACCESSOR_PREFIX_RE = /attributes\s*\[\s*["']([^"']*)$/;
+const accessorPrefixRe = (name: string) =>
+  new RegExp(`(?:^|[^a-zA-Z0-9_$])${name}\\s*\\[\\s*["']([^"']*)$`);
+
+export const ATTRIBUTE_ACCESSOR_RE = accessorRe("attributes");
+export const ENV_ACCESSOR_RE = accessorRe("env");
+
+const ATTRIBUTE_ACCESSOR_PREFIX_RE = accessorPrefixRe("attributes");
+const ENV_ACCESSOR_PREFIX_RE = accessorPrefixRe("env");
 
 const IDENTIFIER_RE = /[a-zA-Z0-9_:.]/;
 /** As above, minus the separators — used to find the end of a single segment. */
@@ -14,8 +22,11 @@ const IDENTIFIER_SEGMENT_RE = /[a-zA-Z0-9_]/;
 export const isInsideAttributeAccessor = (textBeforeCursor: string): boolean =>
   ATTRIBUTE_ACCESSOR_RE.test(textBeforeCursor);
 
+export const isInsideEnvAccessor = (textBeforeCursor: string): boolean =>
+  ENV_ACCESSOR_RE.test(textBeforeCursor);
+
 export type CompletionContext = {
-  kind: "attribute" | "general";
+  kind: "attribute" | "env" | "general";
   prefix: string;
   start: number;
   end: number;
@@ -29,15 +40,22 @@ export const getCompletionContext = (
   const cursor = Math.max(0, Math.min(caret, text.length));
   const before = text.substring(0, cursor);
 
-  const attributeMatch = before.match(ATTRIBUTE_ACCESSOR_PREFIX_RE);
-  if (attributeMatch) {
-    const prefix = attributeMatch[1];
+  const accessors = [
+    { kind: "attribute", re: ATTRIBUTE_ACCESSOR_PREFIX_RE },
+    { kind: "env", re: ENV_ACCESSOR_PREFIX_RE },
+  ] as const;
+
+  for (const { kind, re } of accessors) {
+    const match = before.match(re);
+    if (!match) continue;
+
+    const prefix = match[1];
     let end = cursor;
     while (end < text.length && !/["'\n]/.test(text[end])) {
       end++;
     }
     return {
-      kind: "attribute",
+      kind,
       prefix,
       start: cursor - prefix.length,
       end,

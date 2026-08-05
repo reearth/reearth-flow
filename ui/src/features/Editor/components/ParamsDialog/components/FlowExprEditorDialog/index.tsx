@@ -5,7 +5,7 @@ import {
   FileIcon,
   CircleIcon,
 } from "@phosphor-icons/react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import {
   Button,
@@ -34,6 +34,7 @@ import { useCurrentProject } from "@flow/stores";
 import { Asset } from "@flow/types";
 
 import { FieldContext } from "../../utils/fieldUtils";
+import { toEnvAutocompleteSuggestions } from "../ValueEditorDialog/components/envAutocomplete";
 import FlowExprCodeEditor, {
   type FlowExprCodeEditorRef,
 } from "../ValueEditorDialog/components/FlowExprCodeEditor";
@@ -90,6 +91,10 @@ const FlowExprEditorDialog: React.FC<Props> = ({
   const [currentProject] = useCurrentProject();
   const { useGetWorkflowVariables } = useWorkflowVariables();
   const { workflowVariables } = useGetWorkflowVariables(currentProject?.id);
+  const envSuggestions = useMemo(
+    () => toEnvAutocompleteSuggestions(workflowVariables),
+    [workflowVariables],
+  );
 
   const insertAtCursor = useCallback(
     (text: string) => {
@@ -244,6 +249,7 @@ const FlowExprEditorDialog: React.FC<Props> = ({
                 value={codeValue}
                 onChange={setCodeValue}
                 attributeSuggestions={attributeSuggestions}
+                envSuggestions={envSuggestions}
                 placeholder={t('e.g. Url(env.get("BASE_DIR")) / "filename"')}
               />
             </TabsContent>

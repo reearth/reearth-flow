@@ -1,6 +1,7 @@
 import {
   getCompletionContext,
   isInsideAttributeAccessor,
+  isInsideEnvAccessor,
 } from "./flowExprAttributeContext";
 
 describe("isInsideAttributeAccessor", () => {
@@ -84,5 +85,62 @@ describe("getCompletionContext", () => {
       prefix: "ab",
       end: 2,
     });
+  });
+});
+
+describe("isInsideEnvAccessor", () => {
+  test("matches an open env accessor", () => {
+    expect(isInsideEnvAccessor('env["')).toBe(true);
+    expect(isInsideEnvAccessor('env["BASE_')).toBe(true);
+    expect(isInsideEnvAccessor("Url(env['pa")).toBe(true);
+    expect(isInsideEnvAccessor('env[ "ke')).toBe(true);
+  });
+
+  test("does not match once the string is closed", () => {
+    expect(isInsideEnvAccessor('env["VAR"')).toBe(false);
+    expect(isInsideEnvAccessor('env["VAR"]')).toBe(false);
+  });
+
+  test("does not match a different accessor", () => {
+    expect(isInsideEnvAccessor('attributes["na')).toBe(false);
+    expect(isInsideEnvAccessor("env")).toBe(false);
+  });
+
+  test("does not match an identifier that merely ends in env", () => {
+    expect(isInsideEnvAccessor('myenv["VA')).toBe(false);
+    expect(isInsideEnvAccessor('my_env["VA')).toBe(false);
+  });
+});
+
+describe("getCompletionContext env accessor", () => {
+  test("reports env kind with the typed prefix", () => {
+    const context = getCompletionContext('env["BASE_', 10);
+    expect(context).toMatchObject({
+      kind: "env",
+      prefix: "BASE_",
+      start: 5,
+      end: 10,
+      afterDot: false,
+    });
+  });
+
+  test("an empty accessor yields an empty env prefix", () => {
+    expect(getCompletionContext('env["', 5)).toMatchObject({
+      kind: "env",
+      prefix: "",
+      start: 5,
+    });
+  });
+
+  test("replaces the whole key when completing mid-name", () => {
+    // Caret after "BA" inside an existing "BASE_DIR".
+    const context = getCompletionContext('env["BASE_DIR"]', 7);
+    expect(context).toMatchObject({ kind: "env", prefix: "BA", start: 5 });
+    expect(context.end).toBe(13); // through "BASE_DIR", stopping at the quote
+  });
+
+  test("stays general outside an accessor", () => {
+    expect(getCompletionContext("env", 3).kind).toBe("general");
+    expect(getCompletionContext('myenv["VA', 9).kind).toBe("general");
   });
 });

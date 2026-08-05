@@ -35,6 +35,7 @@ type Props = {
   placeholder?: string;
   className?: string;
   attributeSuggestions?: AutocompleteSuggestion[];
+  envSuggestions?: AutocompleteSuggestion[];
   "data-testid"?: string;
   "aria-label"?: string;
   "data-placeholder"?: string;
@@ -48,6 +49,7 @@ const FlowExprCodeEditor = forwardRef<FlowExprCodeEditorRef, Props>(
       placeholder,
       className = "",
       attributeSuggestions,
+      envSuggestions,
       ...props
     },
     ref,
@@ -190,8 +192,8 @@ const FlowExprCodeEditor = forwardRef<FlowExprCodeEditorRef, Props>(
           : context.start + finalText.length;
 
         setAutocompleteArmed(
-          suggestion.type !== "attribute" &&
-            getCompletionContext(newText, newCaret).kind === "attribute",
+          context.kind === "general" &&
+            getCompletionContext(newText, newCaret).kind !== "general",
         );
 
         if (newText === text) {
@@ -501,6 +503,7 @@ const FlowExprCodeEditor = forwardRef<FlowExprCodeEditorRef, Props>(
           onSuggestionSelect={handleSuggestionSelect}
           onDismiss={handleDismiss}
           attributeSuggestions={attributeSuggestions}
+          envSuggestions={envSuggestions}
         />
       </div>
     );
