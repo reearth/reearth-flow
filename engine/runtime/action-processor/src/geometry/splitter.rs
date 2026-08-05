@@ -319,33 +319,41 @@ impl GeometrySplitter {
         let member_attrs = |i: usize| attrs.get(i).cloned().unwrap_or_default();
 
         let mut groups: indexmap::IndexMap<AttributeValue, Vec<usize>> = indexmap::IndexMap::new();
-        let mut units: Vec<Vec<usize>> = Vec::new();
+        let mut units: Vec<usize> = Vec::new();
         for i in 0..members.len() {
             match member_attrs(i).get(&key) {
                 Some(value) => groups.entry(value.clone()).or_default().push(i),
-                None => units.push(vec![i]),
+                None => units.push(i),
             }
         }
-        units.extend(groups.into_values());
 
         let mut index = 0usize;
-        for indices in units {
+        // A member lacking `group_by` is emitted alone, as the unambiguous owner
+        // of its own attrs.
+        for i in units {
+            index += 1;
+            Self::emit_split_member(
+                context,
+                feature,
+                members[i].clone(),
+                member_attrs(i),
+                index,
+                fw,
+            );
+        }
+        // A grouped member's own attrs have no single owner once merged, so only
+        // `group_by` itself (guaranteed identical across the group) promotes to
+        // the feature; each member's own attrs stay attached on the nested
+        // `GeometryCollection`.
+        for (value, indices) in groups {
             index += 1;
             let group_members: Vec<NextGeometry> =
                 indices.iter().map(|&i| members[i].clone()).collect();
             let group_attrs: Vec<_> = indices.iter().map(|&i| member_attrs(i)).collect();
 
-            let single = group_members.len() == 1;
-            // A lone member is the unambiguous owner of its attrs, so they promote
-            // to the feature. A merged group has no single owner among its
-            // members' attrs, so the feature-level attrs are left untouched; each
-            // member's own attrs stay attached on the nested `GeometryCollection`.
-            let representative_attrs = if single {
-                group_attrs.first().cloned().unwrap_or_default()
-            } else {
-                Default::default()
-            };
-            let geometry = if single {
+            let mut representative_attrs = reearth_flow_types::Attributes::new();
+            representative_attrs.insert(key.clone(), value);
+            let geometry = if group_members.len() == 1 {
                 group_members.into_iter().next().unwrap()
             } else {
                 NextGeometry::GeometryCollection(
