@@ -222,7 +222,10 @@ impl TryFrom<Feature> for Vec<geojson::Feature> {
     }
 }
 
-/// What `feature` writes to as GeoJSON.
+/// What `feature` writes to as GeoJSON: one feature, keeping its id and
+/// attributes, inverting the read. Unlike the old world's writer, a
+/// `GeometryCollection` stays one feature rather than expanding into one per
+/// member.
 pub fn write_feature(feature: &Feature) -> Result<WrittenFeature> {
     let properties = attributes_to_geojson_object(&feature.attributes);
     match &*feature.geometry {
@@ -232,31 +235,6 @@ pub fn write_feature(feature: &Feature) -> Result<WrittenFeature> {
             features: vec![geojson_feature(feature.id, None, properties)],
             crs: CrsCoverage::NoCoordinates,
         }),
-        // A cross-dimensional, cross-frame collection has no single GeoJSON
-        // geometry, so each member becomes a feature of its own — as the old
-        // CityGML geometry did — sharing the feature's properties.
-        Geometry::GeometryCollection(collection) => {
-            let parts = Parts::of(
-                collection.members(),
-                write_geometry,
-                Unwritable::EmptyCollection,
-            )?;
-            warn_omitted(&parts.omitted);
-            let mut frames = Frames::Nothing;
-            let mut features = Vec::with_capacity(parts.written.len());
-            for member in parts.written {
-                frames = frames.and(member.frames);
-                features.push(geojson_feature(
-                    uuid::Uuid::new_v4(),
-                    Some(member.value),
-                    properties.clone(),
-                ));
-            }
-            Ok(WrittenFeature {
-                features,
-                crs: frames.coverage(),
-            })
-        }
         geometry => {
             let written = write_geometry(geometry)?;
             warn_omitted(&written.omitted);
@@ -365,9 +343,9 @@ fn write_geometry(geometry: &Geometry) -> Result<WrittenGeometry, Unwritable> {
         Geometry::None => Err(Unwritable::AbsentGeometry),
         Geometry::Euclidean2D(g) => write_2d(g),
         Geometry::Euclidean3D(g) => write_3d(g),
-        // Only the outermost collection expands into separate features; a nested
-        // one stays a GeoJSON `GeometryCollection` whatever its members are, being
-        // the cross-dimensional, cross-frame container no `Multi*` describes.
+        // A collection stays a GeoJSON `GeometryCollection` whatever its members
+        // are, being the cross-dimensional, cross-frame container no `Multi*`
+        // describes.
         Geometry::GeometryCollection(c) => {
             Parts::of(c.members(), write_geometry, Unwritable::EmptyCollection)
                 .map(Parts::into_geometry_collection)
@@ -1409,9 +1387,10 @@ mod tests {
         );
     }
 
-    // Members become features of their own, sharing the feature's properties.
+    // A collection writes as one feature holding a GeoJSON `GeometryCollection`,
+    // keeping the feature's id and attributes, whatever its members are.
     #[test]
-    fn a_geometry_collection_expands_into_one_feature_per_member() {
+    fn a_geometry_collection_writes_one_feature_holding_all_its_members() {
         let mut attributes = Attributes::new();
         attributes.insert(
             Attribute::new("name"),
@@ -1424,30 +1403,30 @@ mod tests {
                 [1.0, 1.0, 1.0],
             ))),
         ]));
+        let feature = Feature::new_with_attributes_and_geometry(attributes, geometry);
+        let id = feature.id;
 
-        let features: Vec<geojson::Feature> =
-            Feature::new_with_attributes_and_geometry(attributes, geometry)
-                .try_into()
-                .unwrap();
+        let features: Vec<geojson::Feature> = feature.try_into().unwrap();
 
-        assert_eq!(features.len(), 2);
+        assert_eq!(features.len(), 1);
         assert_eq!(
             features[0].geometry.as_ref().map(|g| &g.value),
-            Some(&geojson::Value::Point(vec![0.0, 0.0]))
+            Some(&geojson::Value::GeometryCollection(vec![
+                geojson::Geometry::new(geojson::Value::Point(vec![0.0, 0.0])),
+                geojson::Geometry::new(geojson::Value::Point(vec![1.0, 1.0, 1.0])),
+            ]))
         );
+        assert_eq!(features[0].properties.as_ref().unwrap()["name"], "bldg-1");
         assert_eq!(
-            features[1].geometry.as_ref().map(|g| &g.value),
-            Some(&geojson::Value::Point(vec![1.0, 1.0, 1.0]))
+            features[0].id,
+            Some(geojson::feature::Id::String(id.to_string()))
         );
-        for feature in &features {
-            assert_eq!(feature.properties.as_ref().unwrap()["name"], "bldg-1");
-        }
-        assert_ne!(features[0].id, features[1].id);
     }
 
-    // Only the outermost collection expands; a nested one stays a geometry.
+    // Nesting is kept as it is stored, the members of an inner collection not
+    // being lifted into the outer one.
     #[test]
-    fn a_nested_geometry_collection_stays_one_geojson_geometry() {
+    fn a_nested_geometry_collection_stays_nested() {
         let inner = Geometry::GeometryCollection(GeometryCollection::new([point_2d_in(
             CoordinateFrame::Euclidean,
             [3.0, 4.0],
@@ -1459,7 +1438,9 @@ mod tests {
         assert_eq!(
             value,
             geojson::Value::GeometryCollection(vec![geojson::Geometry::new(
-                geojson::Value::Point(vec![3.0, 4.0])
+                geojson::Value::GeometryCollection(vec![geojson::Geometry::new(
+                    geojson::Value::Point(vec![3.0, 4.0])
+                )])
             )])
         );
     }
@@ -1622,6 +1603,17 @@ mod tests {
         }
     }
 
+    // Nor does a collection with no member at all write an empty geometry.
+    #[test]
+    fn a_collection_with_no_member_is_rejected() {
+        for geometry in [
+            Geometry::Euclidean2D(Euclidean2DGeometry::Collection(Collection2D::new([]))),
+            Geometry::GeometryCollection(GeometryCollection::new([])),
+        ] {
+            assert_eq!(rejection(geometry), Unwritable::EmptyCollection);
+        }
+    }
+
     // An unwritable member writes no empty geometry of its own, and does not take
     // its siblings with it.
     #[test]
@@ -1633,12 +1625,13 @@ mod tests {
             point_2d_in(CoordinateFrame::Euclidean, [0.0, 0.0]),
         ]));
 
-        let features = written(geometry);
+        let value = written_value(geometry);
 
-        assert_eq!(features.len(), 1);
         assert_eq!(
-            features[0].geometry.as_ref().map(|g| &g.value),
-            Some(&geojson::Value::Point(vec![0.0, 0.0]))
+            value,
+            geojson::Value::GeometryCollection(vec![geojson::Geometry::new(
+                geojson::Value::Point(vec![0.0, 0.0])
+            )])
         );
     }
 
@@ -1769,6 +1762,33 @@ mod tests {
         );
     }
 
+    // The coverage describes every coordinate a feature writes, so a collection
+    // written as one feature answers what its members answer between them —
+    // whether they agree on a CRS or not.
+    #[test]
+    fn coverage_reaches_into_a_geometry_collection() {
+        let shared = feature_with(Geometry::GeometryCollection(GeometryCollection::new([
+            point_2d_in(crs(6675), [0.0; 2]),
+            point_2d_in(crs(6675), [1.0; 2]),
+        ])));
+        let mixed = feature_with(Geometry::GeometryCollection(GeometryCollection::new([
+            point_2d_in(crs(6675), [0.0; 2]),
+            point_2d_in(crs(6669), [1.0; 2]),
+        ])));
+
+        assert_eq!(
+            coverage(std::slice::from_ref(&shared)),
+            CrsCoverage::Single(EpsgCode::new(6675))
+        );
+        assert_eq!(
+            coverage(std::slice::from_ref(&mixed)),
+            CrsCoverage::Mixed {
+                first: EpsgCode::new(6675),
+                other: EpsgCode::new(6669),
+            }
+        );
+    }
+
     // --- round trips ---
 
     // Reading then writing returns the GeoJSON that was read: the axis swap on
@@ -1804,6 +1824,18 @@ mod tests {
                 vec![0.0, 1.0],
                 vec![0.0, 0.0],
             ]]]),
+            // Cross-dimensional members, and a nested collection: neither the
+            // members nor the nesting is flattened on the way through.
+            geojson::Value::GeometryCollection(vec![
+                geojson::Geometry::new(geojson::Value::Point(vec![3.0, 4.0])),
+                geojson::Geometry::new(geojson::Value::Point(vec![5.0, 6.0, 7.0])),
+                geojson::Geometry::new(geojson::Value::GeometryCollection(vec![
+                    geojson::Geometry::new(geojson::Value::LineString(vec![
+                        vec![0.0, 0.0],
+                        vec![1.0, 2.0],
+                    ])),
+                ])),
+            ]),
         ];
 
         for value in values {
@@ -1812,29 +1844,23 @@ mod tests {
         }
     }
 
-    // The one asymmetry: a top-level GeometryCollection is read as one feature
-    // and written back as one feature per member, so what round-trips is the
-    // set of member geometries rather than the collection.
+    // A feature keeps its id through a round trip, a GeometryCollection included:
+    // one GeoJSON feature is read as one `Feature` and written back as one.
     #[test]
-    fn a_geometry_collection_round_trips_as_its_members() {
-        let members = vec![
+    fn reading_then_writing_keeps_the_feature_and_its_id() {
+        let id = "550e8400-e29b-41d4-a716-446655440000";
+        let mut gj = geojson_feature(geojson::Value::GeometryCollection(vec![
             geojson::Geometry::new(geojson::Value::Point(vec![3.0, 4.0])),
             geojson::Geometry::new(geojson::Value::Point(vec![5.0, 6.0, 7.0])),
-        ];
-        let feature: Feature = geojson_feature(geojson::Value::GeometryCollection(members.clone()))
-            .try_into()
-            .unwrap();
+        ]));
+        gj.id = Some(geojson::feature::Id::String(id.to_string()));
+        let feature: Feature = gj.clone().try_into().unwrap();
 
         let written: Vec<geojson::Feature> = feature.try_into().unwrap();
 
-        let values: Vec<_> = written
-            .into_iter()
-            .map(|f| f.geometry.expect("geometry expected").value)
-            .collect();
-        assert_eq!(
-            values,
-            members.into_iter().map(|g| g.value).collect::<Vec<_>>()
-        );
+        assert_eq!(written.len(), 1);
+        assert_eq!(written[0].geometry, gj.geometry);
+        assert_eq!(written[0].id, gj.id);
     }
 
     // The quality-check error GeoJSON files declare EPSG:6675 and carry easting
