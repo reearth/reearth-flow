@@ -137,8 +137,6 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup-engine-ci
-        with:
-          setup-proj-grid: "true"
       # This build enables `new-geometry`, whose `ktx2-rw` dep compiles
       # KTX-Software from source.
       - uses: ./.github/actions/install-ktx-toolchain
@@ -177,8 +175,6 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup-engine-ci
-        with:
-          setup-proj-grid: "true"
       - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
@@ -198,8 +194,6 @@ jobs:
         with:
           fetch-depth: 0
       - uses: ./.github/actions/setup-engine-ci
-        with:
-          setup-proj-grid: "true"
       - name: Setup Node.js
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
