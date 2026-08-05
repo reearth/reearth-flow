@@ -2197,15 +2197,14 @@
               }
             }
           },
-          "maxDepth": {
-            "title": "Max Depth",
-            "description": "Hard cap on the quadtree subdivision depth; tile granularity otherwise follows feature size. Defaults to 24, from 0 to 24.",
+          "targetTileSize": {
+            "title": "Target Tile Size",
+            "description": "Target content size per tile, in bytes. Tiles are split when they'd exceed it and merged with neighbours when they'd otherwise be smaller; a single feature that alone exceeds it is kept whole (features are never clipped). A value of 0 disables merging and splits every feature into its own content. Defaults to 1,048,576 (1 MiB).",
             "type": [
               "integer",
               "null"
             ],
-            "format": "uint32",
-            "maximum": 24.0,
+            "format": "uint64",
             "minimum": 0.0
           },
           "dracoCompression": {
@@ -5804,7 +5803,23 @@
       "name": "Geometry Splitter",
       "type": "processor",
       "description": "ジオメトリをタイプ別に分割する",
-      "parameter": null,
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "ジオメトリスプリッターのパラメーター",
+        "description": "ジオメトリスプリッターのパラメーター",
+        "type": "object",
+        "properties": {
+          "groupBy": {
+            "title": "グループ化キー",
+            "description": "分割対象のメンバーをグループ化する属性キー。この属性の値が同じメンバーは分割せずに1つの出力フィーチャにまとめられる。この属性を持たないメンバーは個別に出力される。",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "builtin": true,
       "inputPorts": [
         "features"

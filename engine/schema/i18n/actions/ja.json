@@ -810,10 +810,6 @@
           "title": "Draco 圧縮",
           "description": "メッシュジオメトリをDracoで圧縮するか（デフォルト: true）"
         },
-        "maxDepth": {
-          "title": "Max Depth",
-          "description": "Hard cap on the quadtree subdivision depth; tile granularity otherwise follows feature size. Defaults to 24, from 0 to 24."
-        },
         "output": {
           "title": "出力パス",
           "description": "3D Tilesを書き出すディレクトリパス"
@@ -825,6 +821,10 @@
         "skipUnexposedAttributes": {
           "title": "非公開属性をスキップ",
           "description": "ダブルアンダースコアで始まる属性をスキップするか"
+        },
+        "targetTileSize": {
+          "title": "Target Tile Size",
+          "description": "Target content size per tile, in bytes. Tiles are split when they'd exceed it and merged with neighbours when they'd otherwise be smaller; a single feature that alone exceeds it is kept whole (features are never clipped). A value of 0 disables merging and splits every feature into its own content. Defaults to 1,048,576 (1 MiB)."
         },
         "texelSize": {
           "title": "テクセルサイズ",
@@ -1802,7 +1802,17 @@
     },
     {
       "name": "Geometry Splitter",
-      "description": "ジオメトリをタイプ別に分割する"
+      "description": "ジオメトリをタイプ別に分割する",
+      "parameterI18n": {
+        "": {
+          "title": "ジオメトリスプリッターのパラメーター",
+          "description": "ジオメトリスプリッターのパラメーター"
+        },
+        "groupBy": {
+          "title": "グループ化キー",
+          "description": "分割対象のメンバーをグループ化する属性キー。この属性の値が同じメンバーは分割せずに1つの出力フィーチャにまとめられる。この属性を持たないメンバーは個別に出力される。"
+        }
+      }
     },
     {
       "name": "Geometry Validator",

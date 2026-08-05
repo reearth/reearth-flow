@@ -810,10 +810,6 @@
           "title": "Compresión Draco",
           "description": "Usar compresión Draco. Verdadero por defecto."
         },
-        "maxDepth": {
-          "title": "Max Depth",
-          "description": "Hard cap on the quadtree subdivision depth; tile granularity otherwise follows feature size. Defaults to 24, from 0 to 24."
-        },
         "output": {
           "title": "Ruta de Salida",
           "description": "Ruta del directorio donde se escribirán los 3D Tiles"
@@ -825,6 +821,10 @@
         "skipUnexposedAttributes": {
           "title": "Omitir Atributos no Expuestos",
           "description": "Omitir atributos con prefijo de doble guion bajo"
+        },
+        "targetTileSize": {
+          "title": "Target Tile Size",
+          "description": "Target content size per tile, in bytes. Tiles are split when they'd exceed it and merged with neighbours when they'd otherwise be smaller; a single feature that alone exceeds it is kept whole (features are never clipped). A value of 0 disables merging and splits every feature into its own content. Defaults to 1,048,576 (1 MiB)."
         },
         "texelSize": {
           "title": "Tamaño de Téxel",
@@ -1802,7 +1802,17 @@
     },
     {
       "name": "Geometry Splitter",
-      "description": "Divide la geometría por tipo"
+      "description": "Divide la geometría por tipo",
+      "parameterI18n": {
+        "": {
+          "title": "Parámetros del divisor de geometría",
+          "description": "Parámetros del divisor de geometría"
+        },
+        "groupBy": {
+          "title": "Agrupar por",
+          "description": "Clave de atributo para agrupar los miembros divididos. Los miembros que comparten el mismo valor de este atributo se mantienen juntos en una única entidad de salida en lugar de dividirse por separado; los miembros sin este atributo se emiten individualmente."
+        }
+      }
     },
     {
       "name": "Geometry Validator",

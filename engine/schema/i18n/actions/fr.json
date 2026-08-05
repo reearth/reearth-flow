@@ -810,10 +810,6 @@
           "title": "Compression Draco",
           "description": "Utiliser la compression Draco. Vrai par défaut."
         },
-        "maxDepth": {
-          "title": "Max Depth",
-          "description": "Hard cap on the quadtree subdivision depth; tile granularity otherwise follows feature size. Defaults to 24, from 0 to 24."
-        },
         "output": {
           "title": "Chemin de Sortie",
           "description": "Chemin du répertoire où les 3D Tiles seront écrits"
@@ -825,6 +821,10 @@
         "skipUnexposedAttributes": {
           "title": "Ignorer les Attributs non Exposés",
           "description": "Ignorer les attributs avec un préfixe de double trait de soulignement"
+        },
+        "targetTileSize": {
+          "title": "Target Tile Size",
+          "description": "Target content size per tile, in bytes. Tiles are split when they'd exceed it and merged with neighbours when they'd otherwise be smaller; a single feature that alone exceeds it is kept whole (features are never clipped). A value of 0 disables merging and splits every feature into its own content. Defaults to 1,048,576 (1 MiB)."
         },
         "texelSize": {
           "title": "Taille de Texel",
@@ -1802,7 +1802,17 @@
     },
     {
       "name": "Geometry Splitter",
-      "description": "Split Multi-Geometries into Individual Features"
+      "description": "Split Multi-Geometries into Individual Features",
+      "parameterI18n": {
+        "": {
+          "title": "Paramètres du diviseur de géométrie",
+          "description": "Paramètres du diviseur de géométrie"
+        },
+        "groupBy": {
+          "title": "Regrouper par",
+          "description": "Clé d'attribut utilisée pour regrouper les membres divisés. Les membres partageant la même valeur pour cet attribut sont conservés ensemble dans une seule entité de sortie plutôt que d'être divisés séparément ; les membres sans cet attribut sont émis individuellement."
+        }
+      }
     },
     {
       "name": "Geometry Validator",

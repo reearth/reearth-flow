@@ -810,10 +810,6 @@
           "title": "Draco 压缩",
           "description": "使用 Draco 压缩。默认为 true。"
         },
-        "maxDepth": {
-          "title": "Max Depth",
-          "description": "Hard cap on the quadtree subdivision depth; tile granularity otherwise follows feature size. Defaults to 24, from 0 to 24."
-        },
         "output": {
           "title": "输出路径",
           "description": "写入 3D Tiles 的目录路径"
@@ -825,6 +821,10 @@
         "skipUnexposedAttributes": {
           "title": "跳过未公开属性",
           "description": "跳过带有双下划线前缀的属性"
+        },
+        "targetTileSize": {
+          "title": "Target Tile Size",
+          "description": "Target content size per tile, in bytes. Tiles are split when they'd exceed it and merged with neighbours when they'd otherwise be smaller; a single feature that alone exceeds it is kept whole (features are never clipped). A value of 0 disables merging and splits every feature into its own content. Defaults to 1,048,576 (1 MiB)."
         },
         "texelSize": {
           "title": "纹素大小",
@@ -1802,7 +1802,17 @@
     },
     {
       "name": "Geometry Splitter",
-      "description": "根据类型分割几何"
+      "description": "根据类型分割几何",
+      "parameterI18n": {
+        "": {
+          "title": "几何分割器参数",
+          "description": "几何分割器参数"
+        },
+        "groupBy": {
+          "title": "分组依据",
+          "description": "用于对拆分出的成员进行分组的属性键。共享该属性相同值的成员会合并为一个输出要素，而不是分别拆分；不具有该属性的成员仍会单独输出。"
+        }
+      }
     },
     {
       "name": "Geometry Validator",

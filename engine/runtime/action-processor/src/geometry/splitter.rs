@@ -48,11 +48,13 @@ use schemars::JsonSchema;
 #[cfg(feature = "new-geometry")]
 use serde::{Deserialize, Serialize};
 
+/// # Geometry Splitter Parameters
 /// Parameters for GeometrySplitter
 #[cfg(feature = "new-geometry")]
 #[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GeometrySplitterParam {
+    /// # Group By
     /// Attribute key to group split members by. Members sharing the same value
     /// for this attribute are kept together in a single output feature instead
     /// of being split into separate ones; members lacking the attribute are
