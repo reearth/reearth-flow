@@ -57,13 +57,8 @@ func NewContainer(r *repo.Container, g *gateway.Container,
 		Trigger:       NewTrigger(r, g, job, permissionChecker),
 		User:          NewUser(GQLClient.UserRepo),
 		UserFacingLog: NewUserFacingLogInteractor(g.Redis, r.Job, permissionChecker),
-		// The GraphQL surface gets the authorizing wrapper, not the bare client:
-		// every document operation is addressed by project id and must be checked
-		// against that project's workspace. NewProject above keeps the raw client
-		// on purpose, so project deletion (already permission-checked) does not
-		// re-resolve a project that is mid-delete.
-		Websocket:    NewWebsocket(client, r.Project, permissionChecker),
-		WorkerConfig: NewWorkerConfig(r, permissionChecker),
+		Websocket:     NewWebsocket(client, r.Project, permissionChecker),
+		WorkerConfig:  NewWorkerConfig(r, permissionChecker),
 	}
 }
 

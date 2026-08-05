@@ -54,10 +54,21 @@ func (c *countingWSClient) ImportDocument(context.Context, string, []byte) error
 	c.calls++
 	return nil
 }
+func (c *countingWSClient) GetNamedSnapshots(context.Context, string) ([]*ws.SnapshotMetadata, error) {
+	c.calls++
+	return nil, nil
+}
+func (c *countingWSClient) SaveNamedSnapshot(context.Context, string, string) (*ws.SnapshotMetadata, error) {
+	c.calls++
+	return nil, nil
+}
 func (c *countingWSClient) DeleteDocument(context.Context, string) error { c.calls++; return nil }
 func (c *countingWSClient) Close() error                                 { c.calls++; return nil }
 
-var _ interfaces.WebsocketClient = (*countingWSClient)(nil)
+var (
+	_ interfaces.WebsocketClient = (*countingWSClient)(nil)
+	_ interfaces.WebsocketClient = (*Websocket)(nil)
+)
 
 // wsFixture builds a Websocket interactor over one saved project.
 func wsFixture(t *testing.T, allow bool) (*Websocket, *countingWSClient, *recordingChecker, string, accountsid.WorkspaceID) {
@@ -91,7 +102,7 @@ func assertChecks(t *testing.T, name, action string, call func(context.Context, 
 	t.Helper()
 	i, client, rc, docID, wsID := wsFixture(t, true)
 	require.NoError(t, call(context.Background(), i, docID), name)
-	assert.Equal(t, rbac.ResourceProject, rc.gotResource, name)
+	assert.Equal(t, rbac.ResourceProjectDocument, rc.gotResource, name)
 	assert.Equal(t, action, rc.gotAction, "%s action", name)
 	require.Len(t, rc.gotWorkspace, 1, "%s workspace", name)
 	assert.Equal(t, wsID, rc.gotWorkspace[0], "%s checked the wrong workspace", name)
@@ -126,6 +137,14 @@ func flushToGCS(ctx context.Context, i *Websocket, d string) error { return i.Fl
 func importDocument(ctx context.Context, i *Websocket, d string) error {
 	return i.ImportDocument(ctx, d, []byte("x"))
 }
+func getNamedSnapshots(ctx context.Context, i *Websocket, d string) error {
+	_, err := i.GetNamedSnapshots(ctx, d)
+	return err
+}
+func saveNamedSnapshot(ctx context.Context, i *Websocket, d string) error {
+	_, err := i.SaveNamedSnapshot(ctx, d, "label")
+	return err
+}
 func deleteDocument(ctx context.Context, i *Websocket, d string) error {
 	return i.DeleteDocument(ctx, d)
 }
@@ -142,6 +161,8 @@ func TestWebsocket_DeniedOperationsNeverReachTheClient(t *testing.T) {
 	assertDenied(t, "GetHistoryByVersion", getHistoryByVersion)
 	assertDenied(t, "GetHistoryMetadata", getHistoryMetadata)
 	assertDenied(t, "CreateSnapshot", createSnapshot)
+	assertDenied(t, "GetNamedSnapshots", getNamedSnapshots)
+	assertDenied(t, "SaveNamedSnapshot", saveNamedSnapshot)
 	assertDenied(t, "Rollback", rollback)
 	assertDenied(t, "FlushToGCS", flushToGCS)
 	assertDenied(t, "ImportDocument", importDocument)
@@ -156,6 +177,8 @@ func TestWebsocket_ChecksTargetProjectWorkspace(t *testing.T) {
 	assertChecks(t, "GetHistoryByVersion", rbac.ActionRead, getHistoryByVersion)
 	assertChecks(t, "GetHistoryMetadata", rbac.ActionRead, getHistoryMetadata)
 	assertChecks(t, "CreateSnapshot", rbac.ActionRead, createSnapshot)
+	assertChecks(t, "GetNamedSnapshots", rbac.ActionRead, getNamedSnapshots)
+	assertChecks(t, "SaveNamedSnapshot", rbac.ActionEdit, saveNamedSnapshot)
 	assertChecks(t, "Rollback", rbac.ActionEdit, rollback)
 	assertChecks(t, "FlushToGCS", rbac.ActionEdit, flushToGCS)
 	assertChecks(t, "ImportDocument", rbac.ActionEdit, importDocument)
