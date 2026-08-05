@@ -151,20 +151,50 @@ impl Entry {
             let options = [allow_ballpark.as_ptr(), ptr::null()];
             let pj =
                 proj_create_crs_to_crs_from_pj(ctx, src, dst, ptr::null_mut(), options.as_ptr());
-            proj_destroy(src);
-            proj_destroy(dst);
             if pj.is_null() {
                 let msg = ctx_errno_string(ctx);
+                let approximate = ballpark_path_exists(ctx, src, dst);
+                proj_destroy(src);
+                proj_destroy(dst);
                 proj_context_destroy(ctx);
-                return Err(Error::projection(format!(
-                    "failed to create transform EPSG:{from}->EPSG:{to}: {msg}{}",
-                    grids::missing_grid_hint()
-                )));
+                return Err(Error::projection(if approximate {
+                    format!(
+                        "failed to create transform EPSG:{from}->EPSG:{to}: {msg}. PROJ can \
+                         relate them only by a ballpark operation, which is refused because it \
+                         would omit the datum shift: either a required grid is absent ({}), or \
+                         the EPSG registry publishes no accurate transformation between these \
+                         datums",
+                        grids::supply_hint()
+                    )
+                } else {
+                    format!(
+                        "failed to create transform EPSG:{from}->EPSG:{to}: {msg}. PROJ has no \
+                         operation between these CRSs at all, so no grid can supply one"
+                    )
+                }));
             }
+            proj_destroy(src);
+            proj_destroy(dst);
 
             Ok(Self { from, to, ctx, pj })
         }
     }
+}
+
+/// Whether PROJ can relate `src` and `dst` once ballpark operations are allowed.
+///
+/// Consulted only when the strict transformation could not be built, to tell
+/// "the accurate path needs a grid we do not have" apart from "no accurate path
+/// is published". The latter is a property of the datum pair that no grid fixes:
+/// NAD83(CSRS) to WGS 84, for instance, is registered only as a ballpark offset.
+// SAFETY: `ctx`, `src` and `dst` must be valid, non-null PROJ objects.
+unsafe fn ballpark_path_exists(ctx: *mut PJ_CONTEXT, src: *const PJ, dst: *const PJ) -> bool {
+    let pj = proj_create_crs_to_crs_from_pj(ctx, src, dst, ptr::null_mut(), ptr::null());
+    if pj.is_null() {
+        return false;
+    }
+    proj_destroy(pj);
+    true
 }
 
 /// Format a PROJ `errno` into its message string.
@@ -644,6 +674,25 @@ mod tests {
             z > 130.0,
             "expected a geoid-corrected ellipsoidal height (~140 m), got {z}"
         );
+    }
+
+    #[test]
+    fn a_pair_with_only_a_ballpark_path_says_so_rather_than_blaming_a_grid() {
+        // EPSG:6649 (NAD83(CSRS) + CGVD2013 height) to WGS84 3D cannot be built
+        // accurately at any grid coverage: EPSG registers NAD83(CSRS) to WGS 84
+        // only as a ballpark offset, so every candidate operation carries one.
+        // Reporting a missing grid would send the reader looking for a file that
+        // would not help.
+        let mut cache = ReprojectionCache::new();
+        let err = cache
+            .transform(
+                EpsgCode::new(6649),
+                EpsgCode::new(4979),
+                [45.5, -73.6, 50.0],
+            )
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("ballpark"), "unexpected error: {err}");
     }
 
     fn demote(code: u16) -> TwoDimensionalCrs {

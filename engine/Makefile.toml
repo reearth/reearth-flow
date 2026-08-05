@@ -210,6 +210,40 @@ fi
 ''',
 ]
 
+# The embedded grid set records the PROJ-data release it was cut from, and the
+# script that produced it declares the same release. A bump that edits one but
+# not the other leaves the manifest describing files it did not fetch.
+#
+# The deployed mirror (tools/proj-grids/mirror.py, synced to the bucket the
+# workers mount) must be built from this same release: the mirror is searched
+# ahead of the embedded grids, so two releases means PROJ can select a different
+# geoid model in production than in development, and the same workflow produces
+# heights differing by centimetres with nothing to point at. That version lives
+# outside the repository and cannot be checked here.
+[tasks.check-proj-grids-version]
+script = [
+  '''
+#!/usr/bin/env bash -eu
+
+MANIFEST=runtime/geometry/grids/MANIFEST.tsv
+UPDATE=runtime/geometry/grids/update.sh
+
+MANIFEST_VERSION=$(sed -n '1s/^# PROJ-data \([^[:space:]]*\).*/\1/p' "$MANIFEST")
+SCRIPT_VERSION=$(sed -n 's/^PROJ_DATA_VERSION="\(.*\)"$/\1/p' "$UPDATE")
+
+if [ -z "$MANIFEST_VERSION" ] || [ -z "$SCRIPT_VERSION" ]; then
+  echo "Could not read the PROJ-data version from $MANIFEST and $UPDATE"
+  exit 1
+fi
+if [ "$MANIFEST_VERSION" != "$SCRIPT_VERSION" ]; then
+  echo "$UPDATE pins PROJ-data $SCRIPT_VERSION but $MANIFEST was generated from $MANIFEST_VERSION."
+  echo "Re-run $UPDATE so the vendored grids and their manifest agree."
+  exit 1
+fi
+echo "PROJ-data $MANIFEST_VERSION pinned consistently."
+''',
+]
+
 [tasks.doc-workflow]
 script = ['''
 #!/usr/bin/env bash -eux

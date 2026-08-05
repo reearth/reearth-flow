@@ -82,7 +82,7 @@ static EMBEDDED_GRIDS: &[EmbeddedGrid] = embedded![
 /// the search paths of the context that builds the transformation, so a context
 /// created directly would only see whatever the machine happens to have.
 pub(crate) fn create_context() -> Result<*mut PJ_CONTEXT> {
-    let paths: Vec<*const c_char> = search_paths().iter().map(|p| p.as_ptr()).collect();
+    let paths: Vec<*const c_char> = resolved().search.iter().map(|p| p.as_ptr()).collect();
     // SAFETY: the context is checked for null before it is handed out; the
     // pointers are into strings that outlive the call, which is all PROJ needs
     // as it copies the paths it is given.
@@ -98,57 +98,79 @@ pub(crate) fn create_context() -> Result<*mut PJ_CONTEXT> {
     }
 }
 
-/// A sentence naming the ways a missing grid can be supplied, appended to the
-/// errors PROJ raises when it cannot build a transformation. Reports the unpack
-/// failure instead when the embedded grids could not be written out, since that
-/// turns transformations that normally work into failures.
-pub(crate) fn missing_grid_hint() -> String {
-    match embedded_dir() {
-        Ok(_) => format!(
-            "; a grid may be missing: put it in a directory named by {GRID_DIR_VAR} \
-             (grids are published at https://cdn.proj.org)"
+/// How a missing grid can be supplied, for the errors PROJ raises when it cannot
+/// build a transformation. Reports the unpack failure instead when the embedded
+/// grids could not be written out, since that turns transformations that normally
+/// work into failures and is the more useful thing to say.
+pub(crate) fn supply_hint() -> String {
+    match &resolved().unpack_failure {
+        None => format!(
+            "supply it in a directory named by {GRID_DIR_VAR}; grids are published at \
+             https://cdn.proj.org"
         ),
-        Err(e) => format!(
-            "; the embedded grids could not be unpacked ({e}), so every vertical \
-             datum change will fail: set {GRID_CACHE_DIR_VAR} to a writable \
-             directory, or {GRID_DIR_VAR} to one holding the grids"
+        Some(e) => format!(
+            "the embedded grids could not be unpacked ({e}), so every vertical datum change \
+             will fail: set {GRID_CACHE_DIR_VAR} to a writable directory, or {GRID_DIR_VAR} \
+             to one holding the grids"
         ),
     }
 }
 
-/// The search paths handed to every context, most specific first: the
+/// Where this process looks for grids, worked out once.
+struct Resolved {
+    /// The search paths, in the order PROJ should try them.
+    search: Vec<CString>,
+    /// Why the embedded grids could not be written out, when they could not be.
+    unpack_failure: Option<String>,
+}
+
+/// Resolve the grid directories, unpacking the embedded grids that are not
+/// already supplied from elsewhere. Runs once per process.
+fn resolved() -> &'static Resolved {
+    static RESOLVED: OnceLock<Resolved> = OnceLock::new();
+    RESOLVED.get_or_init(|| {
+        let external = external_dirs();
+        let (embedded, unpack_failure) = match unpack_embedded(&external) {
+            Embedded::Dir(dir) => (Some(dir), None),
+            Embedded::AlreadySupplied => (None, None),
+            Embedded::Failed(why) => (None, Some(why)),
+        };
+        let dirs = ordered_dirs(external, embedded, proj_default_paths());
+        Resolved {
+            search: dirs
+                .iter()
+                .filter_map(|d| CString::new(d.as_os_str().as_encoded_bytes()).ok())
+                .collect(),
+            unpack_failure,
+        }
+    })
+}
+
+/// The directories named by [`GRID_DIR_VAR`], dropping the empty entries a path
+/// list picks up from a trailing or doubled separator.
+fn external_dirs() -> Vec<PathBuf> {
+    let Some(list) = std::env::var_os(GRID_DIR_VAR) else {
+        return Vec::new();
+    };
+    std::env::split_paths(&list)
+        .filter(|p| !p.as_os_str().is_empty())
+        .collect()
+}
+
+/// Order the three sources of grid directories, most specific first: the
 /// directories named by [`GRID_DIR_VAR`], the unpacked embedded grids, then
 /// whatever PROJ would have searched on its own.
 ///
 /// The last part matters because setting search paths *replaces* PROJ's
 /// defaults rather than adding to them, and a build linked against a system
 /// PROJ reads `proj.db` from one of those default directories.
-fn search_paths() -> &'static [CString] {
-    static PATHS: OnceLock<Vec<CString>> = OnceLock::new();
-    PATHS.get_or_init(|| {
-        let dirs = ordered_dirs(
-            std::env::var_os(GRID_DIR_VAR),
-            embedded_dir().ok(),
-            proj_default_paths(),
-        );
-        dirs.iter()
-            .filter_map(|d| CString::new(d.as_os_str().as_encoded_bytes()).ok())
-            .collect()
-    })
-}
-
-/// Order the three sources of grid directories, dropping the empty entries a
-/// path list picks up from a trailing or doubled separator.
 fn ordered_dirs(
-    external: Option<std::ffi::OsString>,
-    embedded: Option<&Path>,
+    external: Vec<PathBuf>,
+    embedded: Option<PathBuf>,
     defaults: Vec<PathBuf>,
 ) -> Vec<PathBuf> {
-    let mut dirs: Vec<PathBuf> = Vec::new();
-    if let Some(external) = external {
-        dirs.extend(std::env::split_paths(&external).filter(|p| !p.as_os_str().is_empty()));
-    }
-    dirs.extend(embedded.map(Path::to_path_buf));
+    let mut dirs = external;
+    dirs.extend(embedded);
     dirs.extend(defaults);
     dirs
 }
@@ -172,28 +194,38 @@ fn proj_default_paths() -> Vec<PathBuf> {
     }
 }
 
-/// The directory the embedded grids have been unpacked into, unpacking them on
-/// first use. The result is computed once per process; a failure is remembered
-/// as the message to report rather than retried.
-fn embedded_dir() -> Result<&'static Path, &'static str> {
-    static DIR: OnceLock<std::result::Result<PathBuf, String>> = OnceLock::new();
-    DIR.get_or_init(|| unpack_into_first_writable(cache_dirs()))
-        .as_ref()
-        .map(PathBuf::as_path)
-        .map_err(String::as_str)
+/// What became of the embedded grids.
+enum Embedded {
+    /// They are readable in this directory, which belongs on the search path.
+    Dir(PathBuf),
+    /// Every one of them was already available from an earlier directory, so
+    /// nothing was written and there is no directory to add.
+    AlreadySupplied,
+    /// They could not be written anywhere, with every attempt reported.
+    Failed(String),
 }
 
-/// Unpack into the first candidate that accepts the write, reporting every
-/// attempt if none does.
-fn unpack_into_first_writable(candidates: Vec<PathBuf>) -> std::result::Result<PathBuf, String> {
+/// Write out the embedded grids that `external` does not already supply.
+///
+/// A deployment that mounts or bakes in the full grid catalogue already has every
+/// embedded grid under the same name, and rewriting them there would only cost
+/// memory on a container whose filesystem is in RAM.
+fn unpack_embedded(external: &[PathBuf]) -> Embedded {
+    let missing: Vec<&EmbeddedGrid> = EMBEDDED_GRIDS
+        .iter()
+        .filter(|grid| !external.iter().any(|dir| dir.join(grid.name).is_file()))
+        .collect();
+    if missing.is_empty() {
+        return Embedded::AlreadySupplied;
+    }
     let mut failures = Vec::new();
-    for dir in candidates {
-        match unpack(&dir) {
-            Ok(()) => return Ok(dir),
+    for dir in cache_dirs() {
+        match unpack(&dir, &missing) {
+            Ok(()) => return Embedded::Dir(dir),
             Err(e) => failures.push(format!("{}: {e}", dir.display())),
         }
     }
-    Err(failures.join("; "))
+    Embedded::Failed(failures.join("; "))
 }
 
 /// Where to unpack the embedded grids, in order of preference. A configured
@@ -213,15 +245,15 @@ fn cache_dirs() -> Vec<PathBuf> {
     dirs
 }
 
-/// Write any embedded grid that is not already in `dir`.
+/// Write each of `grids` into `dir` unless it is already there.
 ///
 /// A grid file is immutable under its name, so one whose size already matches is
 /// left alone. Writes go to a temporary name and are renamed into place, so a
 /// reader in another process sees either the old file or the whole new one, and
 /// concurrent writers cannot interleave.
-fn unpack(dir: &Path) -> io::Result<()> {
+fn unpack(dir: &Path, grids: &[&EmbeddedGrid]) -> io::Result<()> {
     fs::create_dir_all(dir)?;
-    for grid in EMBEDDED_GRIDS {
+    for grid in grids {
         let dest = dir.join(grid.name);
         if is_current(&dest, grid.bytes.len()) {
             continue;
@@ -314,12 +346,31 @@ mod tests {
         unsafe { proj_sys::proj_context_destroy(ctx) };
     }
 
+    /// Unpack `grids` into the first of `candidates` that accepts the write, the
+    /// way [`unpack_embedded`] does, without consulting the environment.
+    fn unpack_into_first_writable(
+        candidates: Vec<PathBuf>,
+        grids: &[&EmbeddedGrid],
+    ) -> std::result::Result<PathBuf, String> {
+        let mut failures = Vec::new();
+        for dir in candidates {
+            match unpack(&dir, grids) {
+                Ok(()) => return Ok(dir),
+                Err(e) => failures.push(format!("{}: {e}", dir.display())),
+            }
+        }
+        Err(failures.join("; "))
+    }
+
+    fn all_grids() -> Vec<&'static EmbeddedGrid> {
+        EMBEDDED_GRIDS.iter().collect()
+    }
+
     #[test]
     fn external_directories_are_searched_before_the_embedded_ones() {
-        let external = std::env::join_paths(["/srv/grids", "", "/mnt/grids"]).unwrap();
         let dirs = ordered_dirs(
-            Some(external),
-            Some(Path::new("/cache/embedded")),
+            vec![PathBuf::from("/srv/grids"), PathBuf::from("/mnt/grids")],
+            Some(PathBuf::from("/cache/embedded")),
             vec![PathBuf::from("/usr/share/proj")],
         );
         assert_eq!(
@@ -337,19 +388,52 @@ mod tests {
     fn proj_own_directories_are_kept_when_there_is_nothing_of_ours() {
         // Setting search paths replaces PROJ's defaults, so dropping them would
         // cost a system-PROJ build its `proj.db`.
-        let dirs = ordered_dirs(None, None, vec![PathBuf::from("/usr/share/proj")]);
+        let dirs = ordered_dirs(Vec::new(), None, vec![PathBuf::from("/usr/share/proj")]);
         assert_eq!(dirs, [PathBuf::from("/usr/share/proj")]);
+    }
+
+    #[test]
+    fn grids_supplied_externally_are_not_unpacked_again() {
+        // A deployment carrying the full catalogue already has every embedded
+        // grid, so nothing should be written and no directory added.
+        let mirror = tempfile::tempdir().unwrap();
+        for grid in EMBEDDED_GRIDS {
+            fs::write(mirror.path().join(grid.name), grid.bytes).unwrap();
+        }
+        assert!(matches!(
+            unpack_embedded(&[mirror.path().to_path_buf()]),
+            Embedded::AlreadySupplied
+        ));
+    }
+
+    #[test]
+    fn only_the_grids_an_external_directory_lacks_are_unpacked() {
+        let mirror = tempfile::tempdir().unwrap();
+        let supplied = EMBEDDED_GRIDS[0].name;
+        fs::write(mirror.path().join(supplied), EMBEDDED_GRIDS[0].bytes).unwrap();
+        let cache = tempfile::tempdir().unwrap();
+        let missing: Vec<&EmbeddedGrid> = EMBEDDED_GRIDS
+            .iter()
+            .filter(|g| !mirror.path().join(g.name).is_file())
+            .collect();
+        assert_eq!(missing.len(), EMBEDDED_GRIDS.len() - 1);
+        unpack(cache.path(), &missing).unwrap();
+        assert!(!cache.path().join(supplied).exists());
+        assert!(cache.path().join(EMBEDDED_GRIDS[1].name).is_file());
     }
 
     #[test]
     fn an_unwritable_cache_directory_falls_through_to_the_next_one() {
         let usable = tempfile::tempdir().unwrap();
         fs::write(usable.path().join("blocker"), b"").unwrap();
-        let dir = unpack_into_first_writable(vec![
-            // A directory cannot be created underneath a regular file.
-            usable.path().join("blocker").join("grids"),
-            usable.path().join("grids"),
-        ])
+        let dir = unpack_into_first_writable(
+            vec![
+                // A directory cannot be created underneath a regular file.
+                usable.path().join("blocker").join("grids"),
+                usable.path().join("grids"),
+            ],
+            &all_grids(),
+        )
         .unwrap();
         assert_eq!(dir, usable.path().join("grids"));
         assert!(dir.join(EMBEDDED_GRIDS[0].name).is_file());
@@ -359,10 +443,13 @@ mod tests {
     fn no_writable_cache_directory_reports_every_attempt() {
         let blocked = tempfile::tempdir().unwrap();
         fs::write(blocked.path().join("file"), b"").unwrap();
-        let err = unpack_into_first_writable(vec![
-            blocked.path().join("file").join("a"),
-            blocked.path().join("file").join("b"),
-        ])
+        let err = unpack_into_first_writable(
+            vec![
+                blocked.path().join("file").join("a"),
+                blocked.path().join("file").join("b"),
+            ],
+            &all_grids(),
+        )
         .unwrap_err();
         assert!(err.contains("/a:") && err.contains("/b:"), "{err}");
     }
@@ -370,13 +457,13 @@ mod tests {
     #[test]
     fn unpacking_is_idempotent_and_repairs_a_damaged_grid() {
         let dir = tempfile::tempdir().unwrap();
-        unpack(dir.path()).unwrap();
+        unpack(dir.path(), &all_grids()).unwrap();
         let victim = dir.path().join(EMBEDDED_GRIDS[0].name);
         let written = fs::metadata(&victim).unwrap().len();
         assert_eq!(written, EMBEDDED_GRIDS[0].bytes.len() as u64);
 
         fs::write(&victim, b"truncated").unwrap();
-        unpack(dir.path()).unwrap();
+        unpack(dir.path(), &all_grids()).unwrap();
         assert_eq!(fs::metadata(&victim).unwrap().len(), written);
         assert!(
             fs::read_dir(dir.path()).unwrap().all(|e| !e

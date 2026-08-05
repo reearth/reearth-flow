@@ -35,3 +35,6 @@ logs/
 # Test-generated temporary files
 testing/data/testcases/quality-check/**/*.zip
 testing/data/results/
+
+# Python bytecode from the tooling scripts under tools/
+__pycache__/
