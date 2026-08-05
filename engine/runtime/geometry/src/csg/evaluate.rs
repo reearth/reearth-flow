@@ -1,22 +1,23 @@
-//! Boolean evaluation of a [`Csg`] tree into a [`Solid`] bounded by one
-//! triangulated exterior shell.
+//! Boolean evaluation of a [`Csg`] tree into a [`Solid`].
 //!
-//! Each boolean indexes both boundary surfaces ([`TriangleSet::rtree`]),
-//! splits only the polygons near the other surface by the planes of the
-//! nearby triangles (see [`split_against`]), and classifies each fragment by
-//! its centroid's exact ray-crossing parity (see [`classify`]); the operation
-//! keeps the matching fragments.
+//! Each boolean indexes both surfaces ([`TriangleSet::rtree`]), splits only the
+//! polygons near the other one (see [`split_against`]), and keeps the fragments
+//! whose centroid parity matches the operation (see [`classify`]).
 //!
-//! Operands must share one coordinate frame (mixed frames are an error) and
-//! be closed, consistently outward-wound boundaries; an open or mis-wound
-//! boundary produces an arbitrary volume, not an error. Appearance does not
-//! propagate to the result.
+//! Crossings are recorded against the edge they cut rather than materialised
+//! into it, so both polygons on an edge (and one the plane never reached) agree
+//! on the vertices along it. Only once every crossing is recorded are vertices
+//! merged within the tolerance and the boundaries subdivided.
+//!
+//! Operands must share one frame, be in linear units (the tolerance is a
+//! distance), and be closed and outward-wound; an open or mis-wound boundary
+//! gives an arbitrary volume, not an error. Appearance is not propagated.
 
 use std::collections::{HashMap, HashSet};
 
 use rstar::{RTree, AABB};
 
-use crate::coordinate::CoordinateFrame;
+use crate::coordinate::{CoordinateFrame, UnitKind};
 use crate::error::Error;
 use crate::ops::triangulation::Cache;
 use crate::predicates::kernel::{cross3, dot3, sub3};
@@ -29,20 +30,29 @@ use crate::triangular_mesh::TriangularMesh3DData;
 
 use super::{Csg, ThreeDimensional};
 
+/// A corner, as an index into [`Arena::positions`].
+type VertexId = u32;
+
+/// An edge, named by its endpoints in ascending id order.
+type EdgeId = (VertexId, VertexId);
+
+/// The edge a crossing subdivides, and its parameter along that edge.
+type OnEdge = (EdgeId, f64);
+
 impl Csg {
-    /// Evaluate the boolean tree into the solid volume it denotes, as a solid
-    /// bounded by a single triangulated exterior shell, or `None` when the
-    /// result encloses no volume.
+    /// The solid the tree denotes, or `None` when it encloses no volume.
     ///
     /// `tolerance` is the distance within which a vertex counts as lying on a
-    /// cutting plane; a value at or below zero falls back to a small default.
+    /// cutting plane and two vertices count as one; at or below zero it falls
+    /// back to a small default.
     pub fn evaluate(&self, tolerance: f64) -> Result<Option<Solid>, Error> {
         let eps = if tolerance > 0.0 { tolerance } else { 1e-9 };
         let mut cache = Cache::default();
-        let (polygons, frame) = evaluate_tree(self, eps, &mut cache)?;
+        let mut arena = Arena::default();
+        let (mut polygons, frame) = evaluate_tree(self, eps, &mut cache, &mut arena)?;
 
-        let soup = polygons.iter().flat_map(|p| p.fan()).flatten();
-        let mesh = TriangularMesh3DData::from_soup(soup);
+        arena.merge(eps, &mut polygons);
+        let mesh = arena.mesh(&polygons);
         if mesh.num_triangles() == 0 {
             return Ok(None);
         }
@@ -55,9 +65,283 @@ impl Csg {
     }
 }
 
-/// Separate the evaluated boundary into the exterior mesh and interior void
-/// shells: an edge-connected component that is closed and encloses a
-/// canonically negative volume is a void; everything else stays exterior.
+/// A degree covers a different distance at every latitude, so one tolerance
+/// cannot mean one distance across a geographic operand.
+fn require_linear_units(frame: &CoordinateFrame) -> Result<(), Error> {
+    match frame.unit_kind() {
+        UnitKind::Linear => Ok(()),
+        UnitKind::Angular => Err(Error::invalid_geometry(
+            "CSG evaluation cannot be done in geographic coordinates: it merges vertices within \
+             a distance tolerance, and a degree is not a distance. Reproject the operands to a \
+             projected CRS first.",
+        )),
+        UnitKind::Undeterminable(reason) => Err(Error::invalid_geometry(format!(
+            "CSG evaluation needs coordinates in linear units, and this frame's units could not \
+             be classified: {reason}"
+        ))),
+    }
+}
+
+/// The vertices the boolean works over. Corners live here once and polygons
+/// address them by index, so a point two polygons share is one entry rather
+/// than two coordinate copies to be recognised as equal later.
+#[derive(Default)]
+struct Arena {
+    positions: Vec<[f64; 3]>,
+    /// Operand corners by exact coordinate bits, so one shared by several faces
+    /// enters once.
+    interned: HashMap<[u64; 3], VertexId>,
+    on_edge: HashMap<VertexId, OnEdge>,
+    /// The crossings on each edge, with their parameters.
+    splits: HashMap<(VertexId, VertexId), Vec<(f64, VertexId)>>,
+}
+
+impl Arena {
+    #[inline]
+    fn position(&self, id: VertexId) -> [f64; 3] {
+        self.positions[id as usize]
+    }
+
+    /// An operand corner, interned on exact coordinates.
+    fn intern(&mut self, p: [f64; 3]) -> VertexId {
+        let key = [p[0].to_bits(), p[1].to_bits(), p[2].to_bits()];
+        if let Some(&id) = self.interned.get(&key) {
+            return id;
+        }
+        let id = self.push(p);
+        self.interned.insert(key, id);
+        id
+    }
+
+    fn push(&mut self, p: [f64; 3]) -> VertexId {
+        let id = self.positions.len() as VertexId;
+        self.positions.push(p);
+        id
+    }
+
+    /// The edge the side `u`-`v` runs along, with the parameters of `u` and `v`
+    /// on it. A piece of an already-cut edge is carried by that whole edge, so
+    /// every crossing anywhere along it is filed in one place: two polygons cut
+    /// by the same planes in opposite orders would otherwise file under
+    /// different keys and neither would see the other's. A side belonging to no
+    /// such edge carries itself.
+    fn carrier(&self, u: VertexId, v: VertexId) -> ((VertexId, VertexId), f64, f64) {
+        let ends = |edge: (VertexId, VertexId), id: VertexId| {
+            if id == edge.0 {
+                Some(0.0)
+            } else if id == edge.1 {
+                Some(1.0)
+            } else {
+                None
+            }
+        };
+        let on_u = self.on_edge.get(&u).copied();
+        let on_v = self.on_edge.get(&v).copied();
+        let carried = match (on_u, on_v) {
+            (Some((e, tu)), Some((f, tv))) if e == f => Some((e, tu, tv)),
+            (Some((e, tu)), None) => ends(e, v).map(|tv| (e, tu, tv)),
+            (None, Some((e, tv))) => ends(e, u).map(|tu| (e, tu, tv)),
+            _ => None,
+        };
+        carried.unwrap_or(if u < v {
+            ((u, v), 0.0, 1.0)
+        } else {
+            ((v, u), 1.0, 0.0)
+        })
+    }
+
+    /// The vertex where `plane` crosses the side `u`-`v`, recorded against that
+    /// side's carrier. The parameter runs along the carrier's canonical
+    /// direction, independent of both the traversal direction and how far the
+    /// polygon had already been cut, so two polygons cut by one plane land on
+    /// the same vertex rather than two a few bits apart.
+    ///
+    /// The position is materialised here because further splitting needs
+    /// coordinates; what is deferred is cutting it into the boundaries.
+    fn crossing(&mut self, u: VertexId, v: VertexId, plane: &Plane) -> VertexId {
+        let (edge, _, _) = self.carrier(u, v);
+        let (a, b) = (self.position(edge.0), self.position(edge.1));
+        let t = (plane.w - dot3(plane.normal, a)) / dot3(plane.normal, sub3(b, a));
+        if let Some(recorded) = self.splits.get(&edge) {
+            if let Some(&(_, id)) = recorded
+                .iter()
+                .find(|(seen, _)| seen.to_bits() == t.to_bits())
+            {
+                return id;
+            }
+        }
+        let id = self.push(lerp(a, b, t));
+        self.on_edge.insert(id, (edge, t));
+        self.splits.entry(edge).or_default().push((t, id));
+        id
+    }
+
+    /// Merge vertices within `eps`, rewriting `polygons` and the crossings onto
+    /// the survivors, which are then more than `eps` apart.
+    fn merge(&mut self, eps: f64, polygons: &mut [Polygon]) {
+        let mut grid: HashMap<[i64; 3], Vec<VertexId>> = HashMap::new();
+        let mut remap: Vec<VertexId> = Vec::with_capacity(self.positions.len());
+        for (i, p) in self.positions.iter().enumerate() {
+            let base = cell(*p, eps);
+            let mut onto = None;
+            'search: for dx in -1..=1 {
+                for dy in -1..=1 {
+                    for dz in -1..=1 {
+                        let key = [base[0] + dx, base[1] + dy, base[2] + dz];
+                        for &j in grid.get(&key).map(Vec::as_slice).unwrap_or_default() {
+                            let q = self.positions[j as usize];
+                            if (0..3).all(|k| (q[k] - p[k]).abs() <= eps) {
+                                onto = Some(j);
+                                break 'search;
+                            }
+                        }
+                    }
+                }
+            }
+            match onto {
+                Some(j) => remap.push(j),
+                None => {
+                    grid.entry(base).or_default().push(i as VertexId);
+                    remap.push(i as VertexId);
+                }
+            }
+        }
+
+        for polygon in polygons.iter_mut() {
+            for id in &mut polygon.vertices {
+                *id = remap[*id as usize];
+            }
+            polygon.vertices.dedup();
+            if polygon.vertices.len() > 1 && polygon.vertices.first() == polygon.vertices.last() {
+                polygon.vertices.pop();
+            }
+        }
+
+        let mut splits: HashMap<(VertexId, VertexId), Vec<(f64, VertexId)>> = HashMap::new();
+        let mut on_edge: HashMap<VertexId, OnEdge> = HashMap::new();
+        // In vertex order, not the map's: replay order decides which carrier a
+        // merged vertex keeps, so a hashed order would differ run to run.
+        let mut records: Vec<(VertexId, OnEdge)> =
+            std::mem::take(&mut self.on_edge).into_iter().collect();
+        records.sort_by_key(|&(id, _)| id);
+        for (id, (edge, t)) in records {
+            let id = remap[id as usize];
+            let (u, v) = (remap[edge.0 as usize], remap[edge.1 as usize]);
+            if u == v || id == u || id == v {
+                continue;
+            }
+            // Surviving ids may reverse the pair, and a parameter measured the
+            // other way runs backwards.
+            let (key, t) = if u < v {
+                ((u, v), t)
+            } else {
+                ((v, u), 1.0 - t)
+            };
+            splits.entry(key).or_default().push((t, id));
+            on_edge.entry(id).or_insert((key, t));
+        }
+        for recorded in splits.values_mut() {
+            recorded.sort_by(|(a, _), (b, _)| a.total_cmp(b));
+            recorded.dedup_by_key(|(_, id)| *id);
+        }
+        self.splits = splits;
+        self.on_edge = on_edge;
+    }
+
+    /// The result mesh, with every recorded crossing cut in.
+    fn mesh(&self, polygons: &[Polygon]) -> TriangularMesh3DData {
+        let mut soup: Vec<[f64; 3]> = Vec::new();
+        let mut ring: Vec<VertexId> = Vec::new();
+        for polygon in polygons {
+            ring.clear();
+            self.walk_boundary(&polygon.vertices, &mut ring);
+            self.fan(&ring, &mut soup);
+        }
+        TriangularMesh3DData::from_soup(soup)
+    }
+
+    /// The boundary, subdivided by the crossings on its edges, so an edge
+    /// another polygon had cut is cut here too.
+    fn walk_boundary(&self, vertices: &[VertexId], out: &mut Vec<VertexId>) {
+        let n = vertices.len();
+        for i in 0..n {
+            let (u, v) = (vertices[i], vertices[(i + 1) % n]);
+            out.push(u);
+            self.crossings_between(u, v, out);
+        }
+        out.dedup();
+        if out.len() > 1 && out.first() == out.last() {
+            out.pop();
+        }
+    }
+
+    /// The crossings strictly between `u` and `v` on their carrier, ordered
+    /// from `u` to `v`.
+    fn crossings_between(&self, u: VertexId, v: VertexId, out: &mut Vec<VertexId>) {
+        let (edge, tu, tv) = self.carrier(u, v);
+        let Some(recorded) = self.splits.get(&edge) else {
+            return;
+        };
+        let (low, high) = if tu <= tv { (tu, tv) } else { (tv, tu) };
+        let mut between: Vec<(f64, VertexId)> = recorded
+            .iter()
+            .copied()
+            .filter(|&(t, id)| t > low && t < high && id != u && id != v)
+            .collect();
+        between.sort_by(|(a, _), (b, _)| a.total_cmp(b));
+        if tu > tv {
+            between.reverse();
+        }
+        out.extend(between.into_iter().map(|(_, id)| id));
+    }
+
+    /// Fan the ring into triangles, dropping degenerate ones.
+    fn fan(&self, ring: &[VertexId], soup: &mut Vec<[f64; 3]>) {
+        if ring.len() < 3 {
+            return;
+        }
+        let apex = self.sharpest_corner(ring);
+        let n = ring.len();
+        for i in 1..n - 1 {
+            let corners = [
+                self.position(ring[apex]),
+                self.position(ring[(apex + i) % n]),
+                self.position(ring[(apex + i + 1) % n]),
+            ];
+            let normal = cross3(sub3(corners[1], corners[0]), sub3(corners[2], corners[0]));
+            if dot3(normal, normal) > 0.0 {
+                soup.extend(corners);
+            }
+        }
+    }
+
+    /// The corner with the largest turn: fanning from one inside a collinear
+    /// run would turn the run into slivers and lose its vertices.
+    fn sharpest_corner(&self, ring: &[VertexId]) -> usize {
+        let n = ring.len();
+        let mut apex = 0;
+        let mut sharpest = -1.0;
+        for i in 0..n {
+            let before = self.position(ring[(i + n - 1) % n]);
+            let at = self.position(ring[i]);
+            let after = self.position(ring[(i + 1) % n]);
+            let turn = cross3(sub3(at, before), sub3(after, at));
+            let turn = dot3(turn, turn);
+            if turn > sharpest {
+                sharpest = turn;
+                apex = i;
+            }
+        }
+        apex
+    }
+}
+
+fn cell(p: [f64; 3], eps: f64) -> [i64; 3] {
+    p.map(|x| (x / eps).floor() as i64)
+}
+
+/// Split the boundary into the exterior mesh and its void shells: a closed
+/// component enclosing a canonically negative volume is a void.
 fn partition_shells(
     mesh: TriangularMesh3DData,
     frame: &CoordinateFrame,
@@ -101,7 +385,10 @@ fn partition_shells(
     let sign = f64::from(frame.orientation_sign()?);
     let mut voids: Vec<Vec<usize>> = Vec::new();
     let mut exterior: Vec<usize> = Vec::new();
-    for component in components.into_values() {
+    // In triangle order, not the map's, so shells come out the same each run.
+    let mut components: Vec<Vec<usize>> = components.into_values().collect();
+    components.sort_by_key(|component| component[0]);
+    for component in components {
         if is_closed(&component, &triangles)
             && signed_volume(&component, &triangles, vertices) * sign < 0.0
         {
@@ -143,8 +430,7 @@ fn is_closed(component: &[usize], triangles: &[[u32; 3]]) -> bool {
     counts.values().all(|&c| c == 2)
 }
 
-/// The component's right-hand-rule signed volume (divergence theorem over
-/// signed tetrahedra).
+/// The component's right-hand-rule signed volume.
 fn signed_volume(component: &[usize], triangles: &[[u32; 3]], vertices: &[[f64; 3]]) -> f64 {
     component
         .iter()
@@ -160,12 +446,13 @@ fn evaluate_tree(
     csg: &Csg,
     eps: f64,
     cache: &mut Cache,
+    arena: &mut Arena,
 ) -> Result<(Vec<Polygon>, CoordinateFrame), Error> {
     let (left, right) = match csg {
         Csg::Union(l, r) | Csg::Intersection(l, r) | Csg::Difference(l, r) => (l, r),
     };
-    let (left, left_frame) = evaluate_operand(left, eps, cache)?;
-    let (right, right_frame) = evaluate_operand(right, eps, cache)?;
+    let (left, left_frame) = evaluate_operand(left, eps, cache, arena)?;
+    let (right, right_frame) = evaluate_operand(right, eps, cache, arena)?;
     if left_frame != right_frame {
         return Err(Error::mismatched_geometry(
             "CSG operands are expressed in different coordinate frames",
@@ -176,7 +463,7 @@ fn evaluate_tree(
         Csg::Intersection(..) => BoolOp::Intersection,
         Csg::Difference(..) => BoolOp::Difference,
     };
-    Ok((boolean(op, left, right, eps), left_frame))
+    Ok((boolean(op, left, right, arena, eps), left_frame))
 }
 
 /// Evaluate one operand into its boundary polygons and its frame.
@@ -184,26 +471,30 @@ fn evaluate_operand(
     operand: &ThreeDimensional,
     eps: f64,
     cache: &mut Cache,
+    arena: &mut Arena,
 ) -> Result<(Vec<Polygon>, CoordinateFrame), Error> {
     match operand {
-        ThreeDimensional::Solid(solid) => Ok((solid_polygons(solid, cache), solid.frame().clone())),
-        ThreeDimensional::Csg(csg) => evaluate_tree(csg, eps, cache),
+        ThreeDimensional::Solid(solid) => {
+            let frame = solid.frame().clone();
+            require_linear_units(&frame)?;
+            Ok((solid_polygons(solid, cache, arena), frame))
+        }
+        ThreeDimensional::Csg(csg) => evaluate_tree(csg, eps, cache, arena),
     }
 }
 
-/// The boundary polygons of a solid: every shell, exterior and voids,
-/// triangulated, with degenerate triangles dropped.
-fn solid_polygons(solid: &Solid, cache: &mut Cache) -> Vec<Polygon> {
+/// Every shell of a solid, triangulated, degenerate triangles dropped.
+fn solid_polygons(solid: &Solid, cache: &mut Cache, arena: &mut Arena) -> Vec<Polygon> {
     let mut polygons = Vec::new();
-    shell_polygons(solid.exterior(), cache, &mut polygons);
+    shell_polygons(solid.exterior(), cache, arena, &mut polygons);
     for shell in solid.interiors() {
-        shell_polygons(shell, cache, &mut polygons);
+        shell_polygons(shell, cache, arena, &mut polygons);
     }
     polygons
 }
 
 /// Append one shell's faces as triangle polygons.
-fn shell_polygons(shell: &Shell, cache: &mut Cache, out: &mut Vec<Polygon>) {
+fn shell_polygons(shell: &Shell, cache: &mut Cache, arena: &mut Arena, out: &mut Vec<Polygon>) {
     let data;
     let mesh = match shell {
         Shell::TriangularMesh(d) => d,
@@ -221,7 +512,7 @@ fn shell_polygons(shell: &Shell, cache: &mut Cache, out: &mut Vec<Polygon>) {
         );
         if let Some(plane) = Plane::from_points(a, b, c) {
             out.push(Polygon {
-                vertices: vec![a, b, c],
+                vertices: vec![arena.intern(a), arena.intern(b), arena.intern(c)],
                 plane,
             });
         }
@@ -243,11 +534,30 @@ struct Plane {
     w: f64,
 }
 
-/// A vertex's side of a plane, and (bitwise-or'ed) a polygon's.
+/// A vertex's side of a plane, and or'ed together a polygon's.
 const COPLANAR: u8 = 0;
 const FRONT: u8 = 1;
 const BACK: u8 = 2;
 const SPANNING: u8 = 3;
+
+/// Where [`Plane::split_polygon`] puts each piece.
+#[derive(Default)]
+struct SplitParts {
+    coplanar_front: Vec<Polygon>,
+    coplanar_back: Vec<Polygon>,
+    front: Vec<Polygon>,
+    back: Vec<Polygon>,
+}
+
+impl SplitParts {
+    /// Every piece: they all carry on to the remaining planes.
+    fn into_all(mut self) -> Vec<Polygon> {
+        self.front.append(&mut self.back);
+        self.front.append(&mut self.coplanar_front);
+        self.front.append(&mut self.coplanar_back);
+        self.front
+    }
+}
 
 impl Plane {
     /// The plane through three points, `None` when they are (near) collinear.
@@ -269,48 +579,38 @@ impl Plane {
         self.w = -self.w;
     }
 
-    /// Classify `polygon` against this plane, pushing it to the matching output
-    /// and splitting it when it spans both sides.
-    fn split_polygon(
-        &self,
-        polygon: &Polygon,
-        eps: f64,
-        coplanar_front: &mut Vec<Polygon>,
-        coplanar_back: &mut Vec<Polygon>,
-        front: &mut Vec<Polygon>,
-        back: &mut Vec<Polygon>,
-    ) {
+    /// Classify `polygon` against this plane, splitting it where it spans both
+    /// sides. Crossings come from the arena, so they are shared with every
+    /// other polygon on the same edge.
+    fn split_polygon(&self, polygon: &Polygon, arena: &mut Arena, eps: f64, out: &mut SplitParts) {
         let mut polygon_type = COPLANAR;
-        let types: Vec<u8> = polygon
-            .vertices
-            .iter()
-            .map(|&v| {
-                let t = dot3(self.normal, v) - self.w;
-                let ty = if t < -eps {
-                    BACK
-                } else if t > eps {
-                    FRONT
-                } else {
-                    COPLANAR
-                };
-                polygon_type |= ty;
-                ty
-            })
-            .collect();
+        let mut types: Vec<u8> = Vec::with_capacity(polygon.vertices.len());
+        for &id in &polygon.vertices {
+            let distance = dot3(self.normal, arena.position(id)) - self.w;
+            let side = if distance < -eps {
+                BACK
+            } else if distance > eps {
+                FRONT
+            } else {
+                COPLANAR
+            };
+            polygon_type |= side;
+            types.push(side);
+        }
 
         match polygon_type {
             COPLANAR => {
                 if dot3(self.normal, polygon.plane.normal) > 0.0 {
-                    coplanar_front.push(polygon.clone());
+                    out.coplanar_front.push(polygon.clone());
                 } else {
-                    coplanar_back.push(polygon.clone());
+                    out.coplanar_back.push(polygon.clone());
                 }
             }
-            FRONT => front.push(polygon.clone()),
-            BACK => back.push(polygon.clone()),
+            FRONT => out.front.push(polygon.clone()),
+            BACK => out.back.push(polygon.clone()),
             _ => {
-                let mut f: Vec<[f64; 3]> = Vec::new();
-                let mut b: Vec<[f64; 3]> = Vec::new();
+                let mut f: Vec<VertexId> = Vec::new();
+                let mut b: Vec<VertexId> = Vec::new();
                 let n = polygon.vertices.len();
                 for i in 0..n {
                     let j = (i + 1) % n;
@@ -323,20 +623,19 @@ impl Plane {
                         b.push(vi);
                     }
                     if (ti | tj) == SPANNING {
-                        let t = (self.w - dot3(self.normal, vi)) / dot3(self.normal, sub3(vj, vi));
-                        let v = lerp(vi, vj, t);
-                        f.push(v);
-                        b.push(v);
+                        let crossing = arena.crossing(vi, vj, self);
+                        f.push(crossing);
+                        b.push(crossing);
                     }
                 }
                 if f.len() >= 3 {
-                    front.push(Polygon {
+                    out.front.push(Polygon {
                         vertices: f,
                         plane: polygon.plane.clone(),
                     });
                 }
                 if b.len() >= 3 {
-                    back.push(Polygon {
+                    out.back.push(Polygon {
                         vertices: b,
                         plane: polygon.plane.clone(),
                     });
@@ -346,11 +645,11 @@ impl Plane {
     }
 }
 
-/// A planar convex boundary polygon; splitting a triangle keeps its fragments
-/// convex, so convexity is an invariant.
+/// A planar convex boundary polygon. Splitting keeps fragments convex, so
+/// convexity is an invariant.
 #[derive(Clone)]
 struct Polygon {
-    vertices: Vec<[f64; 3]>,
+    vertices: Vec<VertexId>,
     plane: Plane,
 }
 
@@ -360,20 +659,27 @@ impl Polygon {
         self.plane.flip();
     }
 
-    /// The polygon as a fan of triangles, each as its three corners.
-    fn fan(&self) -> impl Iterator<Item = [[f64; 3]; 3]> + '_ {
+    /// A fan of triangles, for the queryable surface: the crossings cut in at
+    /// the end do not change the shape.
+    fn triangles<'a>(&'a self, arena: &'a Arena) -> impl Iterator<Item = [[f64; 3]; 3]> + 'a {
         let v = &self.vertices;
-        (1..v.len().saturating_sub(1)).map(move |i| [v[0], v[i], v[i + 1]])
+        (1..v.len().saturating_sub(1)).map(move |i| {
+            [
+                arena.position(v[0]),
+                arena.position(v[i]),
+                arena.position(v[i + 1]),
+            ]
+        })
     }
 
-    /// The vertex average: strictly interior for a convex polygon, on its
-    /// plane, so it stands in for the whole fragment once the fragment cannot
-    /// cross the other surface.
-    fn centroid(&self) -> [f64; 3] {
+    /// The corner average: interior to a convex polygon, so it stands in for
+    /// the whole fragment once the fragment cannot cross the other surface.
+    fn centroid(&self, arena: &Arena) -> [f64; 3] {
         let mut c = [0.0f64; 3];
-        for v in &self.vertices {
+        for &id in &self.vertices {
+            let p = arena.position(id);
             for k in 0..3 {
-                c[k] += v[k];
+                c[k] += p[k];
             }
         }
         let n = self.vertices.len() as f64;
@@ -381,13 +687,14 @@ impl Polygon {
     }
 
     /// The polygon's box, inflated by `pad` on every side.
-    fn envelope(&self, pad: f64) -> AABB<[f64; 3]> {
+    fn envelope(&self, arena: &Arena, pad: f64) -> AABB<[f64; 3]> {
         let mut min = [f64::INFINITY; 3];
         let mut max = [f64::NEG_INFINITY; 3];
-        for v in &self.vertices {
+        for &id in &self.vertices {
+            let p = arena.position(id);
             for k in 0..3 {
-                min[k] = min[k].min(v[k]);
-                max[k] = max[k].max(v[k]);
+                min[k] = min[k].min(p[k]);
+                max[k] = max[k].max(p[k]);
             }
         }
         AABB::from_corners(min.map(|x| x - pad), max.map(|x| x + pad))
@@ -403,9 +710,8 @@ enum BoolOp {
     Difference,
 }
 
-/// One operand surface with its triangle index: the welded triangle soup, the
-/// rstar tree over its per-triangle boxes, and the pool bounds for the parity
-/// probe's fast reject.
+/// An operand surface with its triangle index, and the pool bounds for the
+/// parity probe's fast reject.
 struct IndexedSurface<'a> {
     set: TriangleSet<'a>,
     tree: RTree<TriBox>,
@@ -432,16 +738,22 @@ enum FragmentSide {
 }
 
 /// The boundary of the boolean `op` over the volumes bounded by `a` and `b`.
-fn boolean(op: BoolOp, a: Vec<Polygon>, b: Vec<Polygon>, eps: f64) -> Vec<Polygon> {
-    let a_data = welded(&a);
-    let b_data = welded(&b);
+fn boolean(
+    op: BoolOp,
+    a: Vec<Polygon>,
+    b: Vec<Polygon>,
+    arena: &mut Arena,
+    eps: f64,
+) -> Vec<Polygon> {
+    let a_data = welded(&a, arena);
+    let b_data = welded(&b, arena);
     let a_surface = IndexedSurface::new(&a_data);
     let b_surface = IndexedSurface::new(&b_data);
 
     let mut out = Vec::new();
 
-    for fragment in split_against(a, &b_surface, eps) {
-        let keep = match classify(&fragment, &b_surface) {
+    for fragment in split_against(a, &b_surface, arena, eps) {
+        let keep = match classify(&fragment, &b_surface, arena) {
             FragmentSide::Inside => matches!(op, BoolOp::Intersection),
             FragmentSide::Outside => {
                 matches!(op, BoolOp::Union | BoolOp::Difference)
@@ -460,8 +772,8 @@ fn boolean(op: BoolOp, a: Vec<Polygon>, b: Vec<Polygon>, eps: f64) -> Vec<Polygo
         }
     }
 
-    for mut fragment in split_against(b, &a_surface, eps) {
-        let keep = match classify(&fragment, &a_surface) {
+    for mut fragment in split_against(b, &a_surface, arena, eps) {
+        let keep = match classify(&fragment, &a_surface, arena) {
             FragmentSide::Inside => {
                 matches!(op, BoolOp::Intersection | BoolOp::Difference)
             }
@@ -484,15 +796,26 @@ fn boolean(op: BoolOp, a: Vec<Polygon>, b: Vec<Polygon>, eps: f64) -> Vec<Polygo
 
 /// The polygons' triangles welded into one mesh, the queryable form of an
 /// operand surface.
-fn welded(polygons: &[Polygon]) -> TriangularMesh3DData {
-    TriangularMesh3DData::from_soup(polygons.iter().flat_map(|p| p.fan()).flatten())
+fn welded(polygons: &[Polygon], arena: &Arena) -> TriangularMesh3DData {
+    TriangularMesh3DData::from_soup(
+        polygons
+            .iter()
+            .flat_map(|p| p.triangles(arena))
+            .flatten()
+            .collect::<Vec<_>>(),
+    )
 }
 
 /// Split each polygon by the planes of the other surface's nearby triangles.
 /// A polygon whose (inflated) box meets no triangle box passes through whole;
 /// afterwards no fragment crosses the other surface, because a crossing
 /// triangle's box meets the fragment's box and its plane was applied.
-fn split_against(polygons: Vec<Polygon>, other: &IndexedSurface<'_>, eps: f64) -> Vec<Polygon> {
+fn split_against(
+    polygons: Vec<Polygon>,
+    other: &IndexedSurface<'_>,
+    arena: &mut Arena,
+    eps: f64,
+) -> Vec<Polygon> {
     let mut out = Vec::new();
     let mut planes: Vec<Plane> = Vec::new();
     let mut seen: HashSet<[u64; 4]> = HashSet::new();
@@ -501,7 +824,7 @@ fn split_against(polygons: Vec<Polygon>, other: &IndexedSurface<'_>, eps: f64) -
         seen.clear();
         for tri_box in other
             .tree
-            .locate_in_envelope_intersecting(&polygon.envelope(eps))
+            .locate_in_envelope_intersecting(&polygon.envelope(arena, eps))
         {
             let t = other.set.triangle(tri_box.idx as usize);
             let Some(plane) = Plane::from_points(t[0], t[1], t[2]) else {
@@ -524,26 +847,13 @@ fn split_against(polygons: Vec<Polygon>, other: &IndexedSurface<'_>, eps: f64) -
         }
         let mut fragments = vec![polygon];
         for plane in &planes {
-            let mut coplanar_front = Vec::new();
-            let mut coplanar_back = Vec::new();
-            let mut front = Vec::new();
-            let mut back = Vec::new();
+            let mut parts = SplitParts::default();
             for fragment in &fragments {
                 // Coplanar fragments pass through unsplit; front and back
                 // fragments continue on to the remaining planes.
-                plane.split_polygon(
-                    fragment,
-                    eps,
-                    &mut coplanar_front,
-                    &mut coplanar_back,
-                    &mut front,
-                    &mut back,
-                );
+                plane.split_polygon(fragment, arena, eps, &mut parts);
             }
-            front.append(&mut back);
-            front.append(&mut coplanar_front);
-            front.append(&mut coplanar_back);
-            fragments = front;
+            fragments = parts.into_all();
         }
         out.extend(fragments);
     }
@@ -553,8 +863,8 @@ fn split_against(polygons: Vec<Polygon>, other: &IndexedSurface<'_>, eps: f64) -
 /// Which side of `other`'s volume a fragment lies on, decided by its centroid:
 /// exact ray-crossing parity for inside or outside, and for a centroid landing
 /// exactly on the other surface, the orientation of the triangle it lands on.
-fn classify(fragment: &Polygon, other: &IndexedSurface<'_>) -> FragmentSide {
-    let centroid = fragment.centroid();
+fn classify(fragment: &Polygon, other: &IndexedSurface<'_>, arena: &Arena) -> FragmentSide {
+    let centroid = fragment.centroid(arena);
     match shell_position_bounded(centroid, &other.set, Some(&other.tree), other.bounds) {
         CoordPos::Inside => FragmentSide::Inside,
         CoordPos::Outside => FragmentSide::Outside,
@@ -580,6 +890,10 @@ fn classify(fragment: &Polygon, other: &IndexedSurface<'_>) -> FragmentSide {
 mod tests {
     use super::*;
     use crate::coordinate::EpsgCode;
+    #[cfg(feature = "new-geometry")]
+    use crate::validation_next::{
+        validate_one, ValidationParams, ValidationResult, ValidationType,
+    };
 
     /// An axis-aligned cube as a 12-triangle shell with outward winding.
     fn cube_shell(min: [f64; 3], max: [f64; 3]) -> TriangularMesh3DData {
@@ -662,6 +976,29 @@ mod tests {
     }
 
     #[test]
+    fn the_result_pools_each_position_once() {
+        let a = cube([0.0, 0.0, 0.0], [1.0, 1.0, 1.0]);
+        let b = cube([0.5, 0.25, 0.25], [1.5, 0.75, 0.75]);
+        for csg in [
+            Csg::union(a.clone(), b.clone()),
+            Csg::intersection(a.clone(), b.clone()),
+            Csg::difference(a, b),
+        ] {
+            let result = csg.evaluate(1e-9).unwrap().unwrap();
+            let Shell::TriangularMesh(mesh) = result.exterior() else {
+                panic!("expected a triangulated shell");
+            };
+            let pool = mesh.vertices();
+            for (i, u) in pool.iter().enumerate() {
+                for v in &pool[i + 1..] {
+                    let apart = (0..3).map(|k| (u[k] - v[k]).abs()).fold(0.0, f64::max);
+                    assert!(apart > 1e-9, "the pool carries {u:?} twice");
+                }
+            }
+        }
+    }
+
+    #[test]
     fn a_disjoint_intersection_encloses_no_volume() {
         let a = cube([0.0, 0.0, 0.0], [1.0, 1.0, 1.0]);
         let b = cube([5.0, 5.0, 5.0], [6.0, 6.0, 6.0]);
@@ -685,6 +1022,8 @@ mod tests {
         let a = cube([0.0; 3], [3.0; 3]);
         let b = cube([1.0; 3], [2.0; 3]);
         let result = Csg::difference(a, b).evaluate(1e-9).unwrap().unwrap();
+        #[cfg(feature = "new-geometry")]
+        assert!(watertight(&result), "both shells are closed");
         assert_eq!(result.interiors().len(), 1, "the removed cube is a void");
         assert!((shell_volume(result.exterior()) - 27.0).abs() < 1e-9);
         assert!(
@@ -715,6 +1054,8 @@ mod tests {
         let a = cube([0.0, 0.0, 0.0], [1.0, 1.0, 1.0]);
         let b = cube([1.0, 0.0, 0.0], [2.0, 1.0, 1.0]);
         let union = Csg::union(a, b).evaluate(1e-9).unwrap().unwrap();
+        #[cfg(feature = "new-geometry")]
+        assert!(watertight(&union), "the joined boundary is closed");
         assert!((volume(&union) - 2.0).abs() < 1e-9);
         let Shell::TriangularMesh(mesh) = union.exterior() else {
             panic!("expected a triangulated shell");
@@ -727,6 +1068,21 @@ mod tests {
         assert!(!interior, "no boundary triangle lies in the shared plane");
     }
 
+    /// The tolerance is a distance, so degrees cannot express it: a geographic
+    /// operand is refused rather than merged by an amount that means a
+    /// different distance at every latitude.
+    #[test]
+    fn operands_in_geographic_coordinates_are_an_error() {
+        let frame = CoordinateFrame::Crs(EpsgCode::new(4326));
+        let a = Solid::from_exterior(frame.clone(), cube_shell([0.0; 3], [1.0; 3]));
+        let b = Solid::from_exterior(frame, cube_shell([0.5, 0.0, 0.0], [1.5, 1.0, 1.0]));
+        let error = Csg::union(a, b).evaluate(1e-9).unwrap_err();
+        assert!(
+            error.to_string().contains("geographic coordinates"),
+            "expected a geographic-coordinate refusal, got: {error}"
+        );
+    }
+
     #[test]
     fn operands_in_different_frames_are_an_error() {
         let a = cube([0.0, 0.0, 0.0], [1.0, 1.0, 1.0]);
@@ -737,4 +1093,3 @@ mod tests {
         assert!(Csg::union(a, b).evaluate(1e-9).is_err());
     }
 }
-
