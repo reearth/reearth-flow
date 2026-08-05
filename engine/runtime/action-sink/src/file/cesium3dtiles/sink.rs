@@ -183,7 +183,8 @@ pub struct Cesium3DTilesWriterParam {
     /// Target content size per tile, in bytes. Tiles are split when they'd
     /// exceed it and merged with neighbours when they'd otherwise be smaller;
     /// a single feature that alone exceeds it is kept whole (features are
-    /// never clipped). Defaults to 1,048,576 (1 MiB).
+    /// never clipped). A value of 0 disables merging and splits every feature
+    /// into its own content. Defaults to 1,048,576 (1 MiB).
     #[cfg(feature = "new-geometry")]
     pub(super) target_tile_size: Option<u64>,
     /// # Attach Textures

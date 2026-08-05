@@ -335,8 +335,17 @@ impl GeometrySplitter {
                 indices.iter().map(|&i| members[i].clone()).collect();
             let group_attrs: Vec<_> = indices.iter().map(|&i| member_attrs(i)).collect();
 
-            let representative_attrs = group_attrs.first().cloned().unwrap_or_default();
-            let geometry = if group_members.len() == 1 {
+            let single = group_members.len() == 1;
+            // A lone member is the unambiguous owner of its attrs, so they promote
+            // to the feature. A merged group has no single owner among its
+            // members' attrs, so the feature-level attrs are left untouched; each
+            // member's own attrs stay attached on the nested `GeometryCollection`.
+            let representative_attrs = if single {
+                group_attrs.first().cloned().unwrap_or_default()
+            } else {
+                Default::default()
+            };
+            let geometry = if single {
                 group_members.into_iter().next().unwrap()
             } else {
                 NextGeometry::GeometryCollection(

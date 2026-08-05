@@ -283,11 +283,11 @@ pub fn build(
     cell_contents
         .par_iter()
         .try_for_each(|(cell, chunks)| -> crate::errors::Result<()> {
+            let mut textures = TextureCache::default();
+            let mut embedded = EmbeddedTextures::new()?;
             for (n, indices) in chunks.iter().enumerate() {
                 let cell_members: Vec<&(&Feature, mesh::ExtractedMesh)> =
                     indices.iter().map(|&i| &extracted[i]).collect();
-                let mut textures = TextureCache::default();
-                let mut embedded = EmbeddedTextures::new()?;
                 let glb =
                     build_cell_glb(&cell_members, options, render, &mut textures, &mut embedded)?;
                 write_tile(content_path(*cell, n, max_contents > 1), glb)?;
@@ -1163,7 +1163,10 @@ mod tests {
     // cells upward instead of leaving the tileset needlessly fragmented.
     #[test]
     fn small_cells_merge_into_one_tile_under_a_large_target_size() {
-        let features = [untextured_feature(35.0, 139.0), untextured_feature(36.0, 140.0)];
+        let features = [
+            untextured_feature(35.0, 139.0),
+            untextured_feature(36.0, 140.0),
+        ];
         let tiles = Mutex::new(Vec::new());
         let built = build(
             &features,
@@ -1193,7 +1196,10 @@ mod tests {
         // Same location twice: both are forced into the same leaf cell
         // regardless of `SAFETY_MAX_DEPTH`, isolating `split_by_cost`'s
         // same-tile-content behaviour from `merge_small_cells`.
-        let features = [untextured_feature(35.0, 139.0), untextured_feature(35.0, 139.0)];
+        let features = [
+            untextured_feature(35.0, 139.0),
+            untextured_feature(35.0, 139.0),
+        ];
         let paths = Mutex::new(Vec::new());
         let built = build(
             &features,
@@ -1214,7 +1220,8 @@ mod tests {
         let paths = paths.into_inner().unwrap();
         assert_eq!(paths.len(), 2);
         assert!(
-            paths.iter().any(|p| p.ends_with("_0.glb")) && paths.iter().any(|p| p.ends_with("_1.glb")),
+            paths.iter().any(|p| p.ends_with("_0.glb"))
+                && paths.iter().any(|p| p.ends_with("_1.glb")),
             "same-tile multi-content naming is used once a cell splits: {paths:?}"
         );
     }
