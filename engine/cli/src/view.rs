@@ -55,11 +55,11 @@ pub fn build_view_command() -> Command {
                         .display_order(4),
                 )
                 .arg(
-                    Arg::new("max-depth")
-                        .long("max-depth")
-                        .help("Deepest quadtree level a feature may be placed at.")
-                        .value_parser(clap::value_parser!(u32))
-                        .default_value("18")
+                    Arg::new("target-tile-size")
+                        .long("target-tile-size")
+                        .help("Target content size per tile, in bytes.")
+                        .value_parser(clap::value_parser!(u64))
+                        .default_value("1048576")
                         .display_order(5),
                 )
                 .display_order(2),
@@ -148,7 +148,7 @@ enum Shape {
     },
     Cesium3DTiles {
         filter: Option<String>,
-        max_depth: u32,
+        target_tile_size: u64,
     },
 }
 
@@ -165,7 +165,9 @@ impl ViewCliCommand {
             },
             "3dtiles" => Shape::Cesium3DTiles {
                 filter: matches.remove_one::<String>("filter"),
-                max_depth: matches.remove_one::<u32>("max-depth").unwrap_or(18),
+                target_tile_size: matches
+                    .remove_one::<u64>("target-tile-size")
+                    .unwrap_or(1_048_576),
             },
             other => return Err(crate::errors::Error::unknown_command(other)),
         };
@@ -238,7 +240,10 @@ impl ViewCliCommand {
                     }
                 }
             }
-            Shape::Cesium3DTiles { filter, max_depth } => {
+            Shape::Cesium3DTiles {
+                filter,
+                target_tile_size,
+            } => {
                 let selection = match filter {
                     Some(expr) => Selection::Filter {
                         expr,
@@ -249,8 +254,9 @@ impl ViewCliCommand {
                 let loaded = load_selected(&input, selection, &storage_resolver)
                     .map_err(crate::errors::Error::run)?;
                 let selected = loaded.selection.len();
-                let view = render_tileset(&loaded.selection, *max_depth, &options, &destination)
-                    .map_err(crate::errors::Error::run)?;
+                let view =
+                    render_tileset(&loaded.selection, *target_tile_size, &options, &destination)
+                        .map_err(crate::errors::Error::run)?;
                 match view.entry_point {
                     Some(entry_point) => println!(
                         "Rendered {} of {selected} selected features ({} scanned) into {} \

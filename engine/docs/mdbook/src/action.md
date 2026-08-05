@@ -2164,15 +2164,14 @@ Writes features to Cesium 3D Tiles format for 3D web visualization.
         }
       }
     },
-    "maxDepth": {
-      "title": "Max Depth",
-      "description": "Hard cap on the quadtree subdivision depth; tile granularity otherwise follows feature size. Defaults to 24, from 0 to 24.",
+    "targetTileSize": {
+      "title": "Target Tile Size",
+      "description": "Target content size per tile, in bytes. Tiles are split when they'd exceed it and merged with neighbours when they'd otherwise be smaller; a single feature that alone exceeds it is kept whole (features are never clipped). A value of 0 disables merging and splits every feature into its own content. Defaults to 1,048,576 (1 MiB).",
       "type": [
         "integer",
         "null"
       ],
-      "format": "uint32",
-      "maximum": 24.0,
+      "format": "uint64",
       "minimum": 0.0
     },
     "dracoCompression": {
@@ -5648,7 +5647,25 @@ Replace Feature Geometry from Attribute
 ### Description
 Split Multi-Geometries into Individual Features
 ### Parameters
-* No parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Geometry Splitter Parameters",
+  "description": "Parameters for GeometrySplitter",
+  "type": "object",
+  "properties": {
+    "groupBy": {
+      "title": "Group By",
+      "description": "Attribute key to group split members by. Members sharing the same value for this attribute are kept together in a single output feature instead of being split into separate ones; members lacking the attribute are still emitted individually.",
+      "default": null,
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}
+```
 ### Input Ports
 * features
 ### Output Ports

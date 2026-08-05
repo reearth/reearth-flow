@@ -2197,15 +2197,14 @@
               }
             }
           },
-          "maxDepth": {
-            "title": "Max Depth",
-            "description": "Hard cap on the quadtree subdivision depth; tile granularity otherwise follows feature size. Defaults to 24, from 0 to 24.",
+          "targetTileSize": {
+            "title": "Target Tile Size",
+            "description": "Target content size per tile, in bytes. Tiles are split when they'd exceed it and merged with neighbours when they'd otherwise be smaller; a single feature that alone exceeds it is kept whole (features are never clipped). A value of 0 disables merging and splits every feature into its own content. Defaults to 1,048,576 (1 MiB).",
             "type": [
               "integer",
               "null"
             ],
-            "format": "uint32",
-            "maximum": 24.0,
+            "format": "uint64",
             "minimum": 0.0
           },
           "dracoCompression": {
@@ -5804,7 +5803,23 @@
       "name": "Geometry Splitter",
       "type": "processor",
       "description": "根据类型分割几何",
-      "parameter": null,
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "几何分割器参数",
+        "description": "几何分割器参数",
+        "type": "object",
+        "properties": {
+          "groupBy": {
+            "title": "分组依据",
+            "description": "用于对拆分出的成员进行分组的属性键。共享该属性相同值的成员会合并为一个输出要素，而不是分别拆分；不具有该属性的成员仍会单独输出。",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "builtin": true,
       "inputPorts": [
         "features"
