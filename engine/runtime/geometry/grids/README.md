@@ -5,7 +5,7 @@ change by reading one of these. These grids are added to give the software a
 minimal capability of vertical datum shift regardless of where it runs.
 
 External grid models can be supplied at runtime through `FLOW_PROJ_GRID_DIR`
-per environment.
+per environment. See [Supplying grids at runtime](#supplying-grids-at-runtime).
 
 ## Files
 
@@ -42,6 +42,27 @@ Edit the version in the `MANIFEST.tsv` header line and re-run `./update.sh`, the
 `cargo make proj-grids-notice`. The version selects the licence table only; the
 grids themselves are pinned by SHA-256, not by release, because the CDN is a
 rolling mirror.
+
+## Supplying grids at runtime
+
+- `FLOW_PROJ_GRID_DIR` names directories of `.tif` files, in the platform's
+  path-list syntax, searched ahead of the embedded set. Use it to add a grid the
+  set lacks, or to override one. A directory already holding the whole embedded
+  set also suppresses unpacking, which is why the container images set it; when
+  overriding it there, keep the image's own directory on the list:
+  `FLOW_PROJ_GRID_DIR=/mnt/geoids:/usr/local/share/proj-grids`.
+- `FLOW_PROJ_GRID_CACHE_DIR` is where the embedded grids are unpacked when
+  `FLOW_PROJ_GRID_DIR` does not already supply them. It defaults to the user
+  cache directory, falling back to the temporary directory. Set it when neither
+  is writable.
+
+Grids installed the way PROJ installs them, in its own user-writable directory
+or under `PROJ_DATA`, are still found, after the two above.
+
+A transformation whose grid is missing fails rather than quietly returning an
+uncorrected height, because ballpark operations are refused. The feature is sent
+to the processor's `rejected` port, so a workflow leaving that port unwired drops
+it and still reports success.
 
 ## Attribution
 

@@ -53,8 +53,7 @@ RUN \
     apt-get update && \
     apt-get install -y \
     ca-certificates \
-    python3 \
-    libproj25 && \
+    python3 && \
     rm -rf /var/lib/apt/lists/*
 
 # The same geodetic grids the binary embeds. Supplying them as files means the

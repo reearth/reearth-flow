@@ -14,7 +14,10 @@ use std::os::raw::c_char;
 use std::path::{Path, PathBuf};
 use std::sync::OnceLock;
 
-use proj_sys::{proj_context_create, proj_context_set_search_paths, proj_info, PJ_CONTEXT};
+use proj_sys::{
+    proj_context_create, proj_context_destroy, proj_context_get_user_writable_directory,
+    proj_context_set_search_paths, PJ_CONTEXT,
+};
 
 use crate::error::{Error, Result};
 
@@ -96,7 +99,7 @@ fn resolved() -> &'static Resolved {
             Embedded::AlreadySupplied => (None, None),
             Embedded::Failed(why) => (None, Some(why)),
         };
-        let dirs = ordered_dirs(external, embedded, proj_default_paths());
+        let dirs = ordered_dirs(external, embedded, proj_default_grid_dirs());
         Resolved {
             search: dirs
                 .iter()
@@ -122,9 +125,9 @@ fn external_dirs() -> Vec<PathBuf> {
 /// directories named by [`GRID_DIR_VAR`], the unpacked embedded grids, then
 /// whatever PROJ would have searched on its own.
 ///
-/// The last part matters because setting search paths *replaces* PROJ's
-/// defaults rather than adding to them, and a build linked against a system
-/// PROJ reads `proj.db` from one of those default directories.
+/// The last part matters because setting search paths on a context *replaces*
+/// PROJ's own lookup rather than adding to it, so a grid installed the way PROJ
+/// installs them would otherwise stop being found.
 fn ordered_dirs(
     external: Vec<PathBuf>,
     embedded: Option<PathBuf>,
@@ -136,22 +139,39 @@ fn ordered_dirs(
     dirs
 }
 
-/// The directories PROJ searches by default, read before any context of ours
-/// overrides them.
-fn proj_default_paths() -> Vec<PathBuf> {
-    // SAFETY: `proj_info` returns a struct of pointers into PROJ's own static
-    // storage, valid for the life of the process; `path_count` bounds the array.
+/// The directories PROJ would look in for a grid on its own, in its own order.
+///
+/// PROJ publishes no accessor for this list: `proj_info` reports only the paths
+/// already set on the default context, which is empty until something sets them.
+/// The two that can hold grids are rebuilt here, the user-writable directory
+/// PROJ downloads into and the directories named by `PROJ_DATA`. The remaining
+/// two, the location relative to the executable and the path compiled into the
+/// library, hold an installation's own data rather than grids added later.
+fn proj_default_grid_dirs() -> Vec<PathBuf> {
+    let mut dirs = Vec::new();
+    if let Some(dir) = user_writable_dir() {
+        dirs.push(dir);
+    }
+    if let Some(list) = std::env::var_os("PROJ_DATA").or_else(|| std::env::var_os("PROJ_LIB")) {
+        dirs.extend(std::env::split_paths(&list).filter(|p| !p.as_os_str().is_empty()));
+    }
+    dirs
+}
+
+/// The directory PROJ treats as its own writable store, which is where it puts
+/// a grid it downloads. Asks for it without creating it.
+fn user_writable_dir() -> Option<PathBuf> {
+    // SAFETY: the returned string belongs to the context, so it is copied before
+    // the context is destroyed; a null context is never passed on.
     unsafe {
-        let info = proj_info();
-        if info.paths.is_null() {
-            return Vec::new();
+        let ctx = proj_context_create();
+        if ctx.is_null() {
+            return None;
         }
-        (0..info.path_count)
-            .filter_map(|i| {
-                let p = *info.paths.add(i);
-                (!p.is_null()).then(|| PathBuf::from(CStr::from_ptr(p).to_string_lossy().as_ref()))
-            })
-            .collect()
+        let dir = proj_context_get_user_writable_directory(ctx, 0);
+        let dir = (!dir.is_null()).then(|| CStr::from_ptr(dir).to_string_lossy().into_owned());
+        proj_context_destroy(ctx);
+        dir.filter(|d| !d.is_empty()).map(PathBuf::from)
     }
 }
 
@@ -271,6 +291,24 @@ mod tests {
         }
         // SAFETY: `ctx` came from `create_context` and is not used again.
         unsafe { proj_sys::proj_context_destroy(ctx) };
+    }
+
+    /// Setting search paths on a context replaces PROJ's own lookup, so an empty
+    /// list here means a grid installed the way PROJ installs them stops being
+    /// found. The user-writable directory is always one of them.
+    #[test]
+    fn proj_own_grid_directories_are_kept_on_the_search_path() {
+        let defaults = proj_default_grid_dirs();
+        assert!(
+            !defaults.is_empty(),
+            "PROJ's own grid directories were dropped from the search path"
+        );
+        assert!(
+            resolved().search.iter().any(|path| defaults
+                .iter()
+                .any(|dir| path.as_bytes() == dir.as_os_str().as_encoded_bytes())),
+            "the resolved search path keeps none of {defaults:?}"
+        );
     }
 
     fn all_grids() -> Vec<&'static EmbeddedGrid> {

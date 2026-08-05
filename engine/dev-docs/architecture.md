@@ -33,12 +33,7 @@ Runtime behavior controlled by `FLOW_RUNTIME_*` variables.
 
 ### Geodetic Grids
 
-The engine embeds the geoid grids listed in [`runtime/geometry/grids/`](../runtime/geometry/grids/README.md), so vertical datum changes they cover need nothing installed. These variables cover the rest.
-
-- `FLOW_PROJ_GRID_DIR` - Directories of `.tif` grid files to search ahead of the embedded set, in the platform's path-list syntax (`:`-separated on Unix, `;` on Windows). Use it to supply a grid the embedded set lacks, or to override one. A directory holding the whole embedded set also suppresses unpacking, which is why the container images set it. When overriding it there, keep the image's own directory on the list: `FLOW_PROJ_GRID_DIR=/mnt/geoids:/usr/local/share/proj-grids`.
-- `FLOW_PROJ_GRID_CACHE_DIR` - Where the embedded grids are unpacked when they are not already supplied by `FLOW_PROJ_GRID_DIR`. Defaults to the user cache directory, falling back to the temporary directory. Set it when neither is writable.
-
-A vertical transformation whose grid is missing fails rather than silently returning an uncorrected height, because ballpark operations are refused. The failing feature is sent to the processor's `rejected` port, so a workflow that leaves that port unwired loses the feature and still reports success.
+`FLOW_PROJ_GRID_DIR` and `FLOW_PROJ_GRID_CACHE_DIR` control where PROJ finds the geoid grids a vertical datum change needs. See [Geodetic grids](../runtime/geometry/grids/README.md#supplying-grids-at-runtime).
 
 ### Workflow Variables
 
