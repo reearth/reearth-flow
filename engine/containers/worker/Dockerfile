@@ -57,6 +57,11 @@ RUN \
     libproj25 && \
     rm -rf /var/lib/apt/lists/*
 
+# The same geodetic grids the binary embeds. Supplying them as files means the
+# binary finds them here instead of unpacking its own copy at first use.
+COPY runtime/geometry/grids/*.tif /usr/local/share/proj-grids/
+ENV FLOW_PROJ_GRID_DIR=/usr/local/share/proj-grids
+
 COPY --chmod=0755 --from=builder /tmp/reearth-flow-worker /bin
 COPY --chmod=0755 --from=builder /tmp/reearth-flow-worker-server /bin
 RUN mkdir -p /work

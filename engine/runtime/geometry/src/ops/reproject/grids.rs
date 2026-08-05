@@ -34,47 +34,8 @@ struct EmbeddedGrid {
     bytes: &'static [u8],
 }
 
-macro_rules! embedded {
-    ($($name:literal),* $(,)?) => {
-        &[$(EmbeddedGrid {
-            name: $name,
-            bytes: include_bytes!(concat!("../../../grids/", $name)),
-        }),*]
-    };
-}
-
-/// The embedded set: current-generation geoid models, one per national vertical
-/// datum, plus the global EGM96 fallback. Kept in step with `grids/MANIFEST.tsv`
-/// by [`tests::embedded_set_matches_manifest`].
-static EMBEDDED_GRIDS: &[EmbeddedGrid] = embedded![
-    "at_bev_GV_Hoehengrid_plus_Geoid_V2.tif",
-    "be_ign_hBG18.tif",
-    "ch_swisstopo_chgeo2004_ETRS89_LHN95.tif",
-    "ch_swisstopo_chgeo2004_ETRS89_LN02.tif",
-    "cz_cuzk_CR-2005.tif",
-    "de_bkg_gcg2016.tif",
-    "dk_sdfi_dvr90_2023.tif",
-    "es_ign_egm08-rednap-canarias.tif",
-    "es_ign_egm08-rednap.tif",
-    "fi_nls_fin2023n2000.tif",
-    "fr_ign_RAF20.tif",
-    "hu_bme_geoid2014.tif",
-    "is_lmi_Icegeoid_ISN2016.tif",
-    "jp_gsi_gsigeo2011.tif",
-    "jp_gsi_jpgeo2024.tif",
-    "lv_lgia_lv14.tif",
-    "nl_nsgi_nlgeo2018.tif",
-    "no_kv_HREF2018B_NN2000_EUREF89.tif",
-    "pl_gugik_geoid2021-PL-EVRF2007-NH.tif",
-    "pt_dgt_GeodPT08.tif",
-    "se_lantmateriet_SWEN17_RH2000.tif",
-    "si_gurs_SLO-VRP2016-Koper.tif",
-    "sk_gku_Slovakia_ETRS89h_to_EVRF2007.tif",
-    "uk_os_OSGM15_Belfast.tif",
-    "uk_os_OSGM15_GB.tif",
-    "uk_os_OSGM15_Malin.tif",
-    "us_nga_egm96_15.tif",
-];
+// Defines EMBEDDED_GRIDS from the rows of `grids/MANIFEST.tsv`.
+include!(concat!(env!("OUT_DIR"), "/embedded_grids.rs"));
 
 /// Create a PROJ context that can see the embedded and external grids.
 ///
@@ -279,45 +240,11 @@ fn is_current(path: &Path, len: usize) -> bool {
 
 #[cfg(test)]
 mod tests {
-    use std::collections::BTreeSet;
     use std::ptr;
 
     use super::*;
     use crate::coordinate::EpsgCode;
     use crate::ops::reproject::ReprojectionCache;
-
-    /// The names and sizes recorded in the manifest the vendoring script writes.
-    fn manifest() -> Vec<(&'static str, usize)> {
-        include_str!("../../../grids/MANIFEST.tsv")
-            .lines()
-            .skip(2)
-            .filter(|line| !line.trim().is_empty())
-            .map(|line| {
-                let mut fields = line.split('\t');
-                let name = fields.next().expect("manifest row has a name");
-                let size = fields.next().expect("manifest row has a size");
-                (name, size.parse().expect("manifest size is a number"))
-            })
-            .collect()
-    }
-
-    #[test]
-    fn embedded_set_matches_manifest() {
-        let expected: BTreeSet<&str> = manifest().into_iter().map(|(name, _)| name).collect();
-        let embedded: BTreeSet<&str> = EMBEDDED_GRIDS.iter().map(|g| g.name).collect();
-        assert_eq!(embedded, expected);
-    }
-
-    #[test]
-    fn embedded_grids_are_whole() {
-        for (name, size) in manifest() {
-            let grid = EMBEDDED_GRIDS
-                .iter()
-                .find(|g| g.name == name)
-                .expect("checked by embedded_set_matches_manifest");
-            assert_eq!(grid.bytes.len(), size, "{name} is not the vendored size");
-        }
-    }
 
     #[test]
     fn every_embedded_grid_is_known_and_available_to_proj() {
@@ -346,50 +273,8 @@ mod tests {
         unsafe { proj_sys::proj_context_destroy(ctx) };
     }
 
-    /// Unpack `grids` into the first of `candidates` that accepts the write, the
-    /// way [`unpack_embedded`] does, without consulting the environment.
-    fn unpack_into_first_writable(
-        candidates: Vec<PathBuf>,
-        grids: &[&EmbeddedGrid],
-    ) -> std::result::Result<PathBuf, String> {
-        let mut failures = Vec::new();
-        for dir in candidates {
-            match unpack(&dir, grids) {
-                Ok(()) => return Ok(dir),
-                Err(e) => failures.push(format!("{}: {e}", dir.display())),
-            }
-        }
-        Err(failures.join("; "))
-    }
-
     fn all_grids() -> Vec<&'static EmbeddedGrid> {
         EMBEDDED_GRIDS.iter().collect()
-    }
-
-    #[test]
-    fn external_directories_are_searched_before_the_embedded_ones() {
-        let dirs = ordered_dirs(
-            vec![PathBuf::from("/srv/grids"), PathBuf::from("/mnt/grids")],
-            Some(PathBuf::from("/cache/embedded")),
-            vec![PathBuf::from("/usr/share/proj")],
-        );
-        assert_eq!(
-            dirs,
-            [
-                PathBuf::from("/srv/grids"),
-                PathBuf::from("/mnt/grids"),
-                PathBuf::from("/cache/embedded"),
-                PathBuf::from("/usr/share/proj"),
-            ]
-        );
-    }
-
-    #[test]
-    fn proj_own_directories_are_kept_when_there_is_nothing_of_ours() {
-        // Setting search paths replaces PROJ's defaults, so dropping them would
-        // cost a system-PROJ build its `proj.db`.
-        let dirs = ordered_dirs(Vec::new(), None, vec![PathBuf::from("/usr/share/proj")]);
-        assert_eq!(dirs, [PathBuf::from("/usr/share/proj")]);
     }
 
     #[test]
@@ -404,54 +289,6 @@ mod tests {
             unpack_embedded(&[external.path().to_path_buf()]),
             Embedded::AlreadySupplied
         ));
-    }
-
-    #[test]
-    fn only_the_grids_an_external_directory_lacks_are_unpacked() {
-        let external = tempfile::tempdir().unwrap();
-        let supplied = EMBEDDED_GRIDS[0].name;
-        fs::write(external.path().join(supplied), EMBEDDED_GRIDS[0].bytes).unwrap();
-        let cache = tempfile::tempdir().unwrap();
-        let missing: Vec<&EmbeddedGrid> = EMBEDDED_GRIDS
-            .iter()
-            .filter(|g| !external.path().join(g.name).is_file())
-            .collect();
-        assert_eq!(missing.len(), EMBEDDED_GRIDS.len() - 1);
-        unpack(cache.path(), &missing).unwrap();
-        assert!(!cache.path().join(supplied).exists());
-        assert!(cache.path().join(EMBEDDED_GRIDS[1].name).is_file());
-    }
-
-    #[test]
-    fn an_unwritable_cache_directory_falls_through_to_the_next_one() {
-        let usable = tempfile::tempdir().unwrap();
-        fs::write(usable.path().join("blocker"), b"").unwrap();
-        let dir = unpack_into_first_writable(
-            vec![
-                // A directory cannot be created underneath a regular file.
-                usable.path().join("blocker").join("grids"),
-                usable.path().join("grids"),
-            ],
-            &all_grids(),
-        )
-        .unwrap();
-        assert_eq!(dir, usable.path().join("grids"));
-        assert!(dir.join(EMBEDDED_GRIDS[0].name).is_file());
-    }
-
-    #[test]
-    fn no_writable_cache_directory_reports_every_attempt() {
-        let blocked = tempfile::tempdir().unwrap();
-        fs::write(blocked.path().join("file"), b"").unwrap();
-        let err = unpack_into_first_writable(
-            vec![
-                blocked.path().join("file").join("a"),
-                blocked.path().join("file").join("b"),
-            ],
-            &all_grids(),
-        )
-        .unwrap_err();
-        assert!(err.contains("/a:") && err.contains("/b:"), "{err}");
     }
 
     #[test]

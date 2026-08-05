@@ -99,5 +99,4 @@ cargo make test
 ## Documentation
 
 - [Engine Architecture](dev-docs/architecture.md) - Runtime design, expression system, environment variables, debugging
-- [PROJ Grids](dev-docs/proj-grids.md) - Which geodetic grids ship in the binary, and how to supply the rest
 - [Action Standard](dev-docs/action-standard.md) - Naming, description, parameter, and port conventions for authoring and reviewing actions

@@ -20,8 +20,8 @@ CDN="https://cdn.proj.org"
 LICENSES_URL="https://raw.githubusercontent.com/OSGeo/PROJ-data/refs/tags/${PROJ_DATA_VERSION}/copyright_and_licenses.csv"
 
 # The embedded set: current-generation geoid models, one per national vertical
-# datum, plus the global EGM96 fallback. Every other grid stays external, see
-# ../../../dev-docs/proj-grids.md.
+# datum, plus the global EGM96 fallback. Every other grid stays external, supplied
+# through FLOW_PROJ_GRID_DIR.
 GRIDS=(
   # Global
   us_nga_egm96_15.tif
