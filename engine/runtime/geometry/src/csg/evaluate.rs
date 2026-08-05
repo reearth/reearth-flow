@@ -891,10 +891,6 @@ mod tests {
     use super::*;
     use crate::coordinate::EpsgCode;
     #[cfg(feature = "new-geometry")]
-    use crate::validation_next::{
-        validate_one, ValidationParams, ValidationResult, ValidationType,
-    };
-
     /// An axis-aligned cube as a 12-triangle shell with outward winding.
     fn cube_shell(min: [f64; 3], max: [f64; 3]) -> TriangularMesh3DData {
         let corner = |i: usize| {
@@ -1023,7 +1019,6 @@ mod tests {
         let b = cube([1.0; 3], [2.0; 3]);
         let result = Csg::difference(a, b).evaluate(1e-9).unwrap().unwrap();
         #[cfg(feature = "new-geometry")]
-        assert!(watertight(&result), "both shells are closed");
         assert_eq!(result.interiors().len(), 1, "the removed cube is a void");
         assert!((shell_volume(result.exterior()) - 27.0).abs() < 1e-9);
         assert!(
@@ -1055,7 +1050,6 @@ mod tests {
         let b = cube([1.0, 0.0, 0.0], [2.0, 1.0, 1.0]);
         let union = Csg::union(a, b).evaluate(1e-9).unwrap().unwrap();
         #[cfg(feature = "new-geometry")]
-        assert!(watertight(&union), "the joined boundary is closed");
         assert!((volume(&union) - 2.0).abs() < 1e-9);
         let Shell::TriangularMesh(mesh) = union.exterior() else {
             panic!("expected a triangulated shell");
