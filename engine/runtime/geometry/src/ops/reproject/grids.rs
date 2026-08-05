@@ -207,9 +207,9 @@ enum Embedded {
 
 /// Write out the embedded grids that `external` does not already supply.
 ///
-/// A deployment that mounts or bakes in the full grid catalogue already has every
-/// embedded grid under the same name, and rewriting them there would only cost
-/// memory on a container whose filesystem is in RAM.
+/// An external directory holding the same grids under the same names makes the
+/// write redundant, and skipping it costs a container whose filesystem is in RAM
+/// nothing at start-up.
 fn unpack_embedded(external: &[PathBuf]) -> Embedded {
     let missing: Vec<&EmbeddedGrid> = EMBEDDED_GRIDS
         .iter()
@@ -394,27 +394,27 @@ mod tests {
 
     #[test]
     fn grids_supplied_externally_are_not_unpacked_again() {
-        // A deployment carrying the full catalogue already has every embedded
-        // grid, so nothing should be written and no directory added.
-        let mirror = tempfile::tempdir().unwrap();
+        // An external directory holding every embedded grid leaves nothing to
+        // write and no directory to add.
+        let external = tempfile::tempdir().unwrap();
         for grid in EMBEDDED_GRIDS {
-            fs::write(mirror.path().join(grid.name), grid.bytes).unwrap();
+            fs::write(external.path().join(grid.name), grid.bytes).unwrap();
         }
         assert!(matches!(
-            unpack_embedded(&[mirror.path().to_path_buf()]),
+            unpack_embedded(&[external.path().to_path_buf()]),
             Embedded::AlreadySupplied
         ));
     }
 
     #[test]
     fn only_the_grids_an_external_directory_lacks_are_unpacked() {
-        let mirror = tempfile::tempdir().unwrap();
+        let external = tempfile::tempdir().unwrap();
         let supplied = EMBEDDED_GRIDS[0].name;
-        fs::write(mirror.path().join(supplied), EMBEDDED_GRIDS[0].bytes).unwrap();
+        fs::write(external.path().join(supplied), EMBEDDED_GRIDS[0].bytes).unwrap();
         let cache = tempfile::tempdir().unwrap();
         let missing: Vec<&EmbeddedGrid> = EMBEDDED_GRIDS
             .iter()
-            .filter(|g| !mirror.path().join(g.name).is_file())
+            .filter(|g| !external.path().join(g.name).is_file())
             .collect();
         assert_eq!(missing.len(), EMBEDDED_GRIDS.len() - 1);
         unpack(cache.path(), &missing).unwrap();
