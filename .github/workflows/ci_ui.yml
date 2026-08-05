@@ -44,7 +44,7 @@ jobs:
       - name: Check
         run: yarn run coverage
       # - name: Send coverage report
-      #   uses: codecov/codecov-action@v2
+      #   uses: codecov/codecov-action@f32b3a3741e1053eb607407145bc9619351dc93b # v2
       #   with:
       #     token: ${{ secrets.CODECOV_TOKEN }}
       #     flags: web,web-beta,web-classic,web-utils
