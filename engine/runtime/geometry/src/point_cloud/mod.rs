@@ -175,6 +175,14 @@ impl fmt::Debug for PointCloud {
     }
 }
 
+impl PointCloud {
+    /// The coordinate frame all segments are expressed in.
+    #[inline]
+    pub fn frame(&self) -> &CoordinateFrame {
+        &self.frame
+    }
+}
+
 crate::unsupported!(
     PointCloud: Triangulate,
     Reproject,
