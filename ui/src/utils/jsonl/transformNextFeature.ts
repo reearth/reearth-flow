@@ -31,7 +31,23 @@ export type TransformedFeature = {
   /**
    * The parsed JSONL record as the engine wrote it, inline image bytes
    * excepted. The details panel shows this rather than the derived geometry,
-   * so debugging sees the engine's own structure.
+   * so debugging sees the engine's own structure — which is the point, since
+   * the derived form drops the unselected LODs, appearance themes, UV sets and
+   * a tangent frame's basis, and those are usually what a geometry bug is in.
+   *
+   * Possible performance issue, so measure before assuming it is fine. Over
+   * 2000 features (the panel's `displayLimit`) shaped like PLATEAU CityGML — a
+   * `GeometryCollection` of three LODs in EPSG:6697 — the derived features
+   * alone retain ~35 MB and retaining this as well takes it to ~123 MB. Most
+   * of that gap is LOD: the derived form keeps the one it draws, this keeps all
+   * three. It costs far less elsewhere, ~1.15x on an east-first CRS, where
+   * `toPosition` returns the source array instead of copying it.
+   *
+   * Nothing walks it — it is not a column, and the table's global filter runs
+   * over columns — so the cost is memory, not time. The worst case is a session
+   * holding several files at once: `MAX_CACHED_FILES` is 8, so nine open node
+   * outputs sit near 1 GB rather than ~280 MB. If that shows up, drop this
+   * field (assigned in `useStreamingDebugRunQuery`) or lower that cap.
    */
   source?: unknown;
 };

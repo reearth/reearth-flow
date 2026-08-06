@@ -405,9 +405,11 @@ export const useStreamingDebugRunQuery = (
               const transformedData = dataToAdd.map((feature) => {
                 try {
                   const transformed = intermediateDataTransform(feature);
-                  // Keep the engine's own record for raw inspection; its inline
-                  // image bytes have already been dropped, so this retains no
-                  // pixels.
+                  // Keep the engine's own record for raw inspection; its
+                  // inline image bytes have already been dropped, so this
+                  // retains no pixels. It does retain everything else, though
+                  // — see `source` on TransformedFeature for what that costs
+                  // and when to reach for this line.
                   transformed.source = feature;
                   return transformed;
                 } catch (error) {
@@ -472,9 +474,11 @@ export const useStreamingDebugRunQuery = (
               const transformedData = dataToAdd.map((feature) => {
                 try {
                   const transformed = intermediateDataTransform(feature);
-                  // Keep the engine's own record for raw inspection; its inline
-                  // image bytes have already been dropped, so this retains no
-                  // pixels.
+                  // Keep the engine's own record for raw inspection; its
+                  // inline image bytes have already been dropped, so this
+                  // retains no pixels. It does retain everything else, though
+                  // — see `source` on TransformedFeature for what that costs
+                  // and when to reach for this line.
                   transformed.source = feature;
                   return transformed;
                 } catch (error) {
