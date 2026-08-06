@@ -99,7 +99,11 @@ impl Parts {
             }
         }
         if written.is_empty() {
-            return Err(omitted.into_iter().next().unwrap_or_else(empty));
+            let mut reasons = omitted.into_iter();
+            let first = reasons.next();
+            // Reasons past the first would otherwise fall off the Vec unreported.
+            warn_omitted(&reasons.collect::<Vec<_>>());
+            return Err(first.unwrap_or_else(empty));
         }
         for part in &mut written {
             omitted.append(&mut part.omitted);
@@ -259,18 +263,11 @@ pub fn export_geometry(
 pub fn geometry_to_wkt(geometry: &Geometry) -> Result<String, GeometryExportError> {
     match geometry {
         Geometry::None => Ok(String::new()),
-        geometry => match write_geometry(geometry) {
-            Ok(written) => {
-                warn_omitted(&written.omitted);
-                Ok(written.text)
-            }
-            // Nothing writable is an empty cell, not a failed row: the feature's
-            // attributes are still worth writing. `csv.rs` warns either way.
-            Err(reason) => {
-                tracing::warn!(%reason, "writing an empty WKT cell");
-                Ok(String::new())
-            }
-        },
+        geometry => {
+            let written = write_geometry(geometry)?;
+            warn_omitted(&written.omitted);
+            Ok(written.text)
+        }
     }
 }
 
@@ -803,9 +800,29 @@ mod tests {
         assert_eq!(wkt_of(&geometry), "MULTIPOINT(0 0, 1 1, 2 2)");
     }
 
-    // Nothing writable under it means nothing to write.
+    // Nothing writable under it means the geometry itself is unwritable: the spec
+    // has an unwritable geometry error so `csv.rs` can warn and count it as a
+    // failure, rather than `geometry_to_wkt` swallowing it into a silent empty
+    // cell. The cell the CSV row ends up with is still empty either way, that
+    // happens in `csv.rs`'s `Err` branch, not here.
     #[test]
-    fn an_empty_collection_writes_an_empty_cell() {
-        assert_eq!(wkt_of(&collection_2d(Vec::new())), "");
+    fn an_empty_collection_cannot_be_written() {
+        assert!(matches!(
+            geometry_to_wkt(&collection_2d(Vec::new())),
+            Err(GeometryExportError::UnsupportedGeometryCollection)
+        ));
+    }
+
+    // A container with one writable and one unwritable member still writes the
+    // writable one; the unwritable one is only an omission, not a failure of the
+    // whole geometry. The asymmetric coordinate would also catch an axis-order
+    // slip in the surviving member.
+    #[test]
+    fn a_partially_writable_collection_writes_its_writable_members() {
+        let geometry = collection_2d(vec![
+            point_2d(euclidean(), [1.0, 0.0]),
+            Euclidean2DGeometry::Collection(Collection2D::new(Vec::new())),
+        ]);
+        assert_eq!(wkt_of(&geometry), "MULTIPOINT(1 0)");
     }
 }
