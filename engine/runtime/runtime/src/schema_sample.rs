@@ -36,7 +36,7 @@ pub struct SampleOutcome {
 ///
 /// `sample_size == 0` means "read all features the source emits".
 ///
-/// `env_vars` resolves the source's `dataset` expression; pass the workflow's
+/// `variables` resolves the source's `dataset` expression; pass the workflow's
 /// `with:` vars so `variables.get("path")` resolves as it would under `run`
 /// (pass an empty map when the dataset is a plain literal).
 ///
@@ -45,7 +45,7 @@ pub fn sample_source(
     kind: &NodeKind,
     with: &Option<HashMap<String, serde_json::Value>>,
     sample_size: usize,
-    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+    variables: Arc<serde_json::Map<String, serde_json::Value>>,
 ) -> SampleOutcome {
     let NodeKind::Source(factory) = kind else {
         return SampleOutcome {
@@ -58,7 +58,7 @@ pub fn sample_source(
     // (e.g. `variables.get("path")`) resolve against the workflow's `with:` vars,
     // exactly as they do under `run`. Other fields keep their defaults.
     let ctx = NodeContext {
-        env_vars,
+        variables,
         ..NodeContext::default()
     };
     let source = match factory.build(

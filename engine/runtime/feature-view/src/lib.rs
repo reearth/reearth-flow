@@ -153,7 +153,7 @@ pub enum Selection<'a> {
     /// The features a Flow expression evaluates true for.
     Filter {
         expr: &'a str,
-        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+        variables: Arc<serde_json::Map<String, serde_json::Value>>,
     },
 }
 
@@ -174,7 +174,7 @@ enum Scan<'a> {
     Filter {
         expr: &'a str,
         code: CompiledCode,
-        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+        variables: Arc<serde_json::Map<String, serde_json::Value>>,
     },
 }
 
@@ -183,7 +183,7 @@ impl<'a> Scan<'a> {
         Ok(match selection {
             Selection::All => Scan::All,
             Selection::Row(row) => Scan::Row(row),
-            Selection::Filter { expr, env_vars } => {
+            Selection::Filter { expr, variables } => {
                 let code = Code::<{ CodeType::FlowExpr as u32 }> {
                     ty: CodeType::FlowExpr,
                     value: expr.to_string(),
@@ -194,7 +194,7 @@ impl<'a> Scan<'a> {
                         source,
                     })?,
                     expr,
-                    env_vars,
+                    variables,
                 }
             }
         })
@@ -252,16 +252,16 @@ pub fn load_selected(
             Scan::Filter {
                 expr,
                 code,
-                env_vars,
+                variables,
             } => {
                 let feature = parse(line, row)?;
-                let matched = code
-                    .eval_bool(&feature, Arc::clone(env_vars))
-                    .map_err(|source| Error::FilterEval {
-                        expr: expr.to_string(),
-                        feature_id: feature.id.to_string(),
-                        source,
-                    })?;
+                let matched =
+                    code.eval_bool(&feature, Arc::clone(variables))
+                        .map_err(|source| Error::FilterEval {
+                            expr: expr.to_string(),
+                            feature_id: feature.id.to_string(),
+                            source,
+                        })?;
                 matched.then_some(feature)
             }
         };
@@ -690,7 +690,7 @@ mod tests {
             &input,
             Selection::Filter {
                 expr: r#"attributes["kind"] == "keep""#,
-                env_vars: Arc::new(serde_json::Map::new()),
+                variables: Arc::new(serde_json::Map::new()),
             },
             &resolver,
         )

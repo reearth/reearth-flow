@@ -535,7 +535,7 @@ impl Processor for InputRouter {
         fw.send(ExecutorContext::new(
             feature,
             FEATURES_PORT.clone(),
-            Arc::clone(&ctx.env_vars),
+            Arc::clone(&ctx.variables),
             Arc::clone(&ctx.storage_resolver),
             Arc::clone(&ctx.kv_store),
             ctx.event_hub,
@@ -627,7 +627,7 @@ impl Processor for OutputRouter {
         fw.send(ExecutorContext::new(
             feature,
             Port::new(&self.routing_port),
-            Arc::clone(&ctx.env_vars),
+            Arc::clone(&ctx.variables),
             Arc::clone(&ctx.storage_resolver),
             Arc::clone(&ctx.kv_store),
             ctx.event_hub,

@@ -242,7 +242,7 @@ impl ViewCliCommand {
                 let selection = match filter {
                     Some(expr) => Selection::Filter {
                         expr,
-                        env_vars: Arc::new(serde_json::Map::new()),
+                        variables: Arc::new(serde_json::Map::new()),
                     },
                     None => Selection::All,
                 };

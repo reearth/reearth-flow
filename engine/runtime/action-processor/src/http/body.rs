@@ -23,7 +23,7 @@ pub(crate) enum BodyContent {
 pub(crate) fn build_request_body(
     body: &CompiledRequestBody,
     feature: &Feature,
-    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+    variables: Arc<serde_json::Map<String, serde_json::Value>>,
     storage_resolver: &Arc<StorageResolver>,
 ) -> Result<BuiltBody> {
     match body {
@@ -32,7 +32,7 @@ pub(crate) fn build_request_body(
             content_type,
         } => {
             let text = content_ast
-                .eval_string(feature, env_vars.clone())
+                .eval_string(feature, variables.clone())
                 .map_err(|e| {
                     HttpProcessorError::Request(format!("Failed to evaluate body content: {e:?}"))
                 })?;
@@ -47,7 +47,7 @@ pub(crate) fn build_request_body(
             source,
             content_type,
         } => {
-            let binary_data = load_binary_source(source, feature, env_vars, storage_resolver)?;
+            let binary_data = load_binary_source(source, feature, variables, storage_resolver)?;
 
             Ok(BuiltBody {
                 content: BodyContent::Binary(binary_data),
@@ -63,7 +63,7 @@ pub(crate) fn build_request_body(
             for field in fields {
                 let value = field
                     .value_ast
-                    .eval_string(feature, env_vars.clone())
+                    .eval_string(feature, variables.clone())
                     .map_err(|e| {
                         HttpProcessorError::Request(format!(
                             "Failed to evaluate form field '{}': {e:?}",
@@ -84,7 +84,8 @@ pub(crate) fn build_request_body(
             let mut form = Form::new();
 
             for part in parts {
-                form = add_multipart_part(form, part, feature, env_vars.clone(), storage_resolver)?;
+                form =
+                    add_multipart_part(form, part, feature, variables.clone(), storage_resolver)?;
             }
 
             Ok(BuiltBody {
@@ -98,13 +99,13 @@ pub(crate) fn build_request_body(
 fn load_binary_source(
     source: &CompiledBinarySource,
     feature: &Feature,
-    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+    variables: Arc<serde_json::Map<String, serde_json::Value>>,
     storage_resolver: &Arc<StorageResolver>,
 ) -> Result<Vec<u8>> {
     match source {
         CompiledBinarySource::Base64 { data_ast } => {
             let base64_str = data_ast
-                .eval_string(feature, env_vars.clone())
+                .eval_string(feature, variables.clone())
                 .map_err(|e| {
                     HttpProcessorError::Request(format!("Failed to evaluate base64 data: {e:?}"))
                 })?;
@@ -118,7 +119,7 @@ fn load_binary_source(
 
         CompiledBinarySource::File { path_ast } => {
             let file_path_str = path_ast
-                .eval_string(feature, env_vars.clone())
+                .eval_string(feature, variables.clone())
                 .map_err(|e| {
                     HttpProcessorError::Request(format!("Failed to evaluate file path: {e:?}"))
                 })?;
@@ -150,13 +151,13 @@ fn add_multipart_part(
     form: Form,
     part: &CompiledMultipartPart,
     feature: &Feature,
-    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+    variables: Arc<serde_json::Map<String, serde_json::Value>>,
     storage_resolver: &Arc<StorageResolver>,
 ) -> Result<Form> {
     match part {
         CompiledMultipartPart::Text { name, value_ast } => {
             let text_value = value_ast
-                .eval_string(feature, env_vars.clone())
+                .eval_string(feature, variables.clone())
                 .map_err(|e| {
                     HttpProcessorError::Request(format!(
                         "Failed to evaluate multipart text field '{name}': {e:?}"
@@ -172,7 +173,7 @@ fn add_multipart_part(
             filename,
             content_type,
         } => {
-            let file_data = load_binary_source(source, feature, env_vars, storage_resolver)?;
+            let file_data = load_binary_source(source, feature, variables, storage_resolver)?;
 
             let mut part = Part::bytes(file_data);
 
@@ -212,7 +213,7 @@ mod tests {
 
     #[test]
     fn test_text_body() {
-        let env_vars = make_env(&[("message", "Hello World")]);
+        let variables = make_env(&[("message", "Hello World")]);
 
         let body = ExpressionCompiler::new()
             .compile_body(&RequestBody::Text {
@@ -226,7 +227,7 @@ mod tests {
 
         let storage_resolver = Arc::new(StorageResolver::new());
         let feature = empty_feature();
-        let result = build_request_body(&body, &feature, env_vars, &storage_resolver);
+        let result = build_request_body(&body, &feature, variables, &storage_resolver);
 
         assert!(result.is_ok());
         let built = result.unwrap();
@@ -239,7 +240,7 @@ mod tests {
 
     #[test]
     fn test_base64_binary_body() {
-        let env_vars = make_env(&[("data", "SGVsbG8=")]);
+        let variables = make_env(&[("data", "SGVsbG8=")]);
 
         let body = ExpressionCompiler::new()
             .compile_body(&RequestBody::Binary {
@@ -255,7 +256,7 @@ mod tests {
 
         let storage_resolver = Arc::new(StorageResolver::new());
         let feature = empty_feature();
-        let result = build_request_body(&body, &feature, env_vars, &storage_resolver);
+        let result = build_request_body(&body, &feature, variables, &storage_resolver);
 
         assert!(result.is_ok());
         let built = result.unwrap();
@@ -267,7 +268,7 @@ mod tests {
 
     #[test]
     fn test_form_urlencoded_body() {
-        let env_vars = make_env(&[("user", "john"), ("pass", "secret")]);
+        let variables = make_env(&[("user", "john"), ("pass", "secret")]);
 
         let body = ExpressionCompiler::new()
             .compile_body(&RequestBody::FormUrlEncoded {
@@ -292,7 +293,7 @@ mod tests {
 
         let storage_resolver = Arc::new(StorageResolver::new());
         let feature = empty_feature();
-        let result = build_request_body(&body, &feature, env_vars, &storage_resolver);
+        let result = build_request_body(&body, &feature, variables, &storage_resolver);
 
         assert!(result.is_ok());
         let built = result.unwrap();
@@ -314,7 +315,7 @@ mod tests {
 
     #[test]
     fn test_multipart_text() {
-        let env_vars = make_env(&[("name", "John Doe")]);
+        let variables = make_env(&[("name", "John Doe")]);
 
         let body = ExpressionCompiler::new()
             .compile_body(&RequestBody::Multipart {
@@ -330,7 +331,7 @@ mod tests {
 
         let storage_resolver = Arc::new(StorageResolver::new());
         let feature = empty_feature();
-        let result = build_request_body(&body, &feature, env_vars, &storage_resolver);
+        let result = build_request_body(&body, &feature, variables, &storage_resolver);
 
         assert!(result.is_ok());
     }

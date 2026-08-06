@@ -79,7 +79,7 @@ thread_local! {
 fn eval_with_feature(
     expr: &reearth_flow_expr::CompiledExpr,
     feature: &Feature,
-    env_vars: &Arc<serde_json::Map<String, serde_json::Value>>,
+    variables: &Arc<serde_json::Map<String, serde_json::Value>>,
 ) -> TypesResult<AttributeValue> {
     EVAL_ENV.with(|env| {
         env_bind(
@@ -90,7 +90,7 @@ fn eval_with_feature(
         env_bind(
             env,
             "variables",
-            ExprValue::object(VariablesObject(Arc::clone(env_vars))),
+            ExprValue::object(VariablesObject(Arc::clone(variables))),
         );
         reearth_flow_expr::eval::<FlowValue>(expr, env).map(|FlowValue(v)| v)
     })
@@ -98,14 +98,14 @@ fn eval_with_feature(
 
 fn eval_with_vars(
     expr: &reearth_flow_expr::CompiledExpr,
-    env_vars: &Arc<serde_json::Map<String, serde_json::Value>>,
+    variables: &Arc<serde_json::Map<String, serde_json::Value>>,
 ) -> TypesResult<AttributeValue> {
     EVAL_ENV.with(|env| {
         env_remove(env, "attributes");
         env_bind(
             env,
             "variables",
-            ExprValue::object(VariablesObject(Arc::clone(env_vars))),
+            ExprValue::object(VariablesObject(Arc::clone(variables))),
         );
         reearth_flow_expr::eval::<FlowValue>(expr, env).map(|FlowValue(v)| v)
     })
@@ -274,22 +274,22 @@ impl CompiledCode {
     pub fn eval(
         &self,
         feature: &Feature,
-        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+        variables: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> TypesResult<AttributeValue> {
         match self {
             CompiledCode::Literal(s) => Ok(AttributeValue::String(s.clone())),
-            CompiledCode::Expr(e) => eval_with_feature(e, feature, &env_vars),
+            CompiledCode::Expr(e) => eval_with_feature(e, feature, &variables),
         }
     }
 
     pub fn eval_bool(
         &self,
         feature: &Feature,
-        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+        variables: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> TypesResult<bool> {
         match self {
             CompiledCode::Literal(s) => Ok(!s.is_empty()),
-            CompiledCode::Expr(e) => eval_with_feature(e, feature, &env_vars)?
+            CompiledCode::Expr(e) => eval_with_feature(e, feature, &variables)?
                 .as_bool()
                 .ok_or_else(|| TypesError::Conversion("eval result is not a bool".into())),
         }
@@ -298,14 +298,14 @@ impl CompiledCode {
     pub fn eval_float(
         &self,
         feature: &Feature,
-        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+        variables: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> TypesResult<f64> {
         match self {
             CompiledCode::Literal(s) => s
                 .trim()
                 .parse::<f64>()
                 .map_err(|_| TypesError::Conversion(format!("literal {s:?} is not a number"))),
-            CompiledCode::Expr(e) => eval_with_feature(e, feature, &env_vars)?
+            CompiledCode::Expr(e) => eval_with_feature(e, feature, &variables)?
                 .as_f64()
                 .ok_or_else(|| TypesError::Conversion("expected number".into())),
         }
@@ -314,14 +314,14 @@ impl CompiledCode {
     pub fn eval_int(
         &self,
         feature: &Feature,
-        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+        variables: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> TypesResult<i64> {
         match self {
             CompiledCode::Literal(s) => s
                 .trim()
                 .parse::<i64>()
                 .map_err(|_| TypesError::Conversion(format!("literal {s:?} is not an integer"))),
-            CompiledCode::Expr(e) => eval_with_feature(e, feature, &env_vars)?
+            CompiledCode::Expr(e) => eval_with_feature(e, feature, &variables)?
                 .as_i64()
                 .ok_or_else(|| TypesError::Conversion("expected integer".into())),
         }
@@ -330,36 +330,36 @@ impl CompiledCode {
     pub fn eval_string(
         &self,
         feature: &Feature,
-        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+        variables: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> TypesResult<String> {
         match self {
             CompiledCode::Literal(s) => Ok(s.clone()),
-            CompiledCode::Expr(e) => eval_with_feature(e, feature, &env_vars)?
+            CompiledCode::Expr(e) => eval_with_feature(e, feature, &variables)?
                 .as_string()
                 .ok_or_else(|| TypesError::Conversion("eval result is not a string".into())),
         }
     }
 
     /// Evaluate with only `variables` in scope (no `attributes`), returning an AttributeValue.
-    pub fn eval_env_only(
+    pub fn eval_variables_only(
         &self,
-        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+        variables: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> TypesResult<AttributeValue> {
         match self {
             CompiledCode::Literal(s) => Ok(AttributeValue::String(s.clone())),
-            CompiledCode::Expr(e) => eval_with_vars(e, &env_vars),
+            CompiledCode::Expr(e) => eval_with_vars(e, &variables),
         }
     }
 
     /// Evaluate as string with only `variables` in scope (no `attributes`).
     /// Use this in finish-time contexts where no current feature exists.
-    pub fn eval_string_env_only(
+    pub fn eval_string_variables_only(
         &self,
-        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+        variables: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> TypesResult<String> {
         match self {
             CompiledCode::Literal(s) => Ok(s.clone()),
-            CompiledCode::Expr(e) => eval_with_vars(e, &env_vars)?
+            CompiledCode::Expr(e) => eval_with_vars(e, &variables)?
                 .as_string()
                 .ok_or_else(|| TypesError::Conversion("eval result is not a string".into())),
         }
@@ -370,7 +370,7 @@ impl CompiledCode {
 /// or evaluates `attribute_ast` as a string expression. Returns "" if neither is set.
 pub fn fetch_attribute_value(
     feature: &Feature,
-    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+    variables: Arc<serde_json::Map<String, serde_json::Value>>,
     attribute: &Option<Vec<crate::Attribute>>,
     attribute_ast: &Option<CompiledCode>,
 ) -> String {
@@ -382,7 +382,7 @@ pub fn fetch_attribute_value(
             .collect::<Vec<_>>()
             .join("-")
     } else if let Some(ast) = attribute_ast {
-        ast.eval_string(feature, env_vars)
+        ast.eval_string(feature, variables)
             .unwrap_or_else(|_| "".to_string())
     } else {
         "".to_string()
@@ -544,21 +544,21 @@ mod tests {
             ty: CodeType::FlowExpr,
             value: expr.to_string(),
         };
-        let env_vars = Arc::new(serde_json::Map::new());
+        let variables = Arc::new(serde_json::Map::new());
         code.compile()
             .unwrap()
-            .eval_bool(feature, env_vars)
+            .eval_bool(feature, variables)
             .unwrap()
     }
 
     #[test]
     fn test_eval_string_env_only() {
-        let mut env_vars = serde_json::Map::new();
-        env_vars.insert(
+        let mut variables = serde_json::Map::new();
+        variables.insert(
             "key".to_string(),
             serde_json::Value::String("val".to_string()),
         );
-        let env_vars = Arc::new(env_vars);
+        let variables = Arc::new(variables);
 
         let literal: Code = Code {
             ty: CodeType::String,
@@ -568,7 +568,7 @@ mod tests {
             literal
                 .compile()
                 .unwrap()
-                .eval_string_env_only(Arc::clone(&env_vars))
+                .eval_string_variables_only(Arc::clone(&variables))
                 .unwrap(),
             "hello"
         );
@@ -580,7 +580,7 @@ mod tests {
         assert_eq!(
             expr.compile()
                 .unwrap()
-                .eval_string_env_only(Arc::clone(&env_vars))
+                .eval_string_variables_only(Arc::clone(&variables))
                 .unwrap(),
             "val"
         );
@@ -593,7 +593,7 @@ mod tests {
         assert!(no_attr
             .compile()
             .unwrap()
-            .eval_string_env_only(Arc::clone(&env_vars))
+            .eval_string_variables_only(Arc::clone(&variables))
             .is_err());
     }
 

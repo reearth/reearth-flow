@@ -162,7 +162,7 @@ pub fn infer_with_sampling(
     // (`Engine::with_vars(workflow.with...)`). Threading it into the source
     // sampling below lets `dataset` expressions such as `variables.get("path")`
     // resolve during sampling — the same way `run` resolves them.
-    let env_vars = std::sync::Arc::new(vars);
+    let variables = std::sync::Arc::new(vars);
     let graph = dag.graph();
     let order = petgraph::algo::toposort(graph, None)
         .map_err(|_| crate::errors::ExecutionError::SchemaInferenceCycle)?;
@@ -184,7 +184,7 @@ pub fn infer_with_sampling(
                     kind,
                     &node.with,
                     sample_size,
-                    env_vars.clone(),
+                    variables.clone(),
                 );
                 if let Some(note) = outcome.note {
                     result.notes.insert(node.handle.id.to_string(), note);

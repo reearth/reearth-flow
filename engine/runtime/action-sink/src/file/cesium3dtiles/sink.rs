@@ -331,11 +331,11 @@ impl Cesium3DTilesWriter {
             .as_ref()
             .and_then(|key| ctx.feature.get(key).and_then(|v| v.as_string()));
 
-        let env_vars = ctx.env_vars.clone();
+        let variables = ctx.variables.clone();
         let output = self
             .params
             .output
-            .eval_string(&ctx.feature, Arc::clone(&env_vars))
+            .eval_string(&ctx.feature, Arc::clone(&variables))
             .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))?;
         let compress_output = self
             .params
@@ -343,7 +343,7 @@ impl Cesium3DTilesWriter {
             .as_ref()
             .map(|c| -> crate::errors::Result<String> {
                 let compress_path = c
-                    .eval_string(&ctx.feature, Arc::clone(&env_vars))
+                    .eval_string(&ctx.feature, Arc::clone(&variables))
                     .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))?;
                 Ok(compress_path)
             })

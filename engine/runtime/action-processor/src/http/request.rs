@@ -31,12 +31,12 @@ impl RequestBuilder {
         mut self,
         compiled_headers: &[CompiledHeader],
         feature: &Feature,
-        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+        variables: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> Result<Self> {
         for compiled_header in compiled_headers {
             let value = compiled_header
                 .value_ast
-                .eval_string(feature, env_vars.clone())
+                .eval_string(feature, variables.clone())
                 .map_err(|e| {
                     HttpProcessorError::Request(format!(
                         "Failed to evaluate header '{}': {e:?}",
@@ -78,12 +78,12 @@ impl RequestBuilder {
         mut self,
         compiled_params: &[CompiledQueryParam],
         feature: &Feature,
-        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+        variables: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> Result<Self> {
         for compiled_param in compiled_params {
             let value = compiled_param
                 .value_ast
-                .eval_string(feature, env_vars.clone())
+                .eval_string(feature, variables.clone())
                 .map_err(|e| {
                     HttpProcessorError::Request(format!(
                         "Failed to evaluate query parameter '{}': {e:?}",
@@ -138,7 +138,7 @@ mod tests {
 
     #[test]
     fn test_request_builder_evaluates_query_params_from_scope() {
-        let env_vars = make_env(&[("id", "123")]);
+        let variables = make_env(&[("id", "123")]);
 
         let compiled_params = vec![CompiledQueryParam {
             name: "user_id".to_string(),
@@ -153,7 +153,7 @@ mod tests {
 
         let feature = empty_feature();
         let builder = RequestBuilder::new(Method::GET, "https://example.com".to_string());
-        let result = builder.with_query_params(&compiled_params, &feature, env_vars);
+        let result = builder.with_query_params(&compiled_params, &feature, variables);
 
         assert!(result.is_ok());
         let builder = result.unwrap();

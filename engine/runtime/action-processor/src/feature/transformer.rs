@@ -121,10 +121,10 @@ impl Processor for FeatureTransformer {
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let env_vars = ctx.env_vars.clone();
+        let variables = ctx.variables.clone();
         let mut new_feature = feature.clone();
         for transformer in &self.transformers {
-            new_feature = mapper(&new_feature, &transformer.expr, env_vars.clone());
+            new_feature = mapper(&new_feature, &transformer.expr, variables.clone());
         }
         fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
         Ok(())
@@ -146,14 +146,14 @@ impl Processor for FeatureTransformer {
 fn mapper(
     feature: &Feature,
     code: &CompiledCode,
-    env_vars: std::sync::Arc<serde_json::Map<String, serde_json::Value>>,
+    variables: std::sync::Arc<serde_json::Map<String, serde_json::Value>>,
 ) -> Feature {
-    let Ok(new_value) = code.eval(feature, env_vars) else {
+    let Ok(new_value) = code.eval(feature, variables) else {
         return feature.clone();
     };
     if let AttributeValue::Map(new_value) = new_value {
         // Keep the feature's identity and geometry: the expression only sees `attributes`
-        // (and `env`), so it can never produce geometry, and building a brand new feature
+        // (and `variables`), so it can never produce geometry, and building a brand new feature
         // here silently dropped it.
         return feature.with_attributes(
             new_value

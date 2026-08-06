@@ -52,7 +52,7 @@ pub struct SinkNode<F> {
     runtime: Arc<Handle>,
     span: tracing::Span,
     features_written: Arc<AtomicU64>,
-    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+    variables: Arc<serde_json::Map<String, serde_json::Value>>,
     storage_resolver: Arc<StorageResolver>,
     kv_store: Arc<dyn KvStore>,
     sandbox_root: Uri,
@@ -108,7 +108,7 @@ impl<F: Future + Unpin + Debug> SinkNode<F> {
             runtime,
             span,
             features_written: Arc::new(AtomicU64::new(0)),
-            env_vars: ctx.env_vars.clone(),
+            variables: ctx.variables.clone(),
             storage_resolver: ctx.storage_resolver.clone(),
             kv_store: ctx.kv_store.clone(),
             sandbox_root: ctx.sandbox_root.clone(),
@@ -161,7 +161,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for SinkNode<F> {
         let init_result = self
             .sink
             .initialize(NodeContext {
-                env_vars: self.env_vars.clone(),
+                variables: self.variables.clone(),
                 kv_store: self.kv_store.clone(),
                 storage_resolver: self.storage_resolver.clone(),
                 event_hub: self.event_hub.clone(),

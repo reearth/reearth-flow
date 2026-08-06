@@ -259,7 +259,7 @@ pub(super) fn parse_and_register(
         nusamai_plateau::codelist::Resolver::new()
     };
     let city_gml_path = dataset
-        .eval_string(&feature, ctx.env_vars.clone())
+        .eval_string(&feature, ctx.variables.clone())
         .map_err(|e| FeatureProcessorError::FileCityGmlReader(format!("{e:?}")))?;
     let input_path = Uri::from_str(city_gml_path.as_str())
         .map_err(|e| FeatureProcessorError::FileCityGmlReader(format!("{e:?}")))?;

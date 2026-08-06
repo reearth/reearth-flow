@@ -141,9 +141,9 @@ fn samples_geojson_dataset_resolved_from_engine_var() {
 
     let mut vars = serde_json::Map::new();
     vars.insert("datasetPath".to_string(), json!(uri));
-    let env_vars = Arc::new(vars);
+    let variables = Arc::new(vars);
 
-    let outcome = sample_source(geojson_factory(), &Some(with), 10, env_vars);
+    let outcome = sample_source(geojson_factory(), &Some(with), 10, variables);
 
     assert!(
         outcome.note.is_none(),

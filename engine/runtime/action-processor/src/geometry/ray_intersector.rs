@@ -393,10 +393,10 @@ impl RayIntersector {
     fn evaluate_pair_id(
         &self,
         feature: &Feature,
-        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+        variables: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> Result<String, BoxedError> {
         self.pair_id_ast
-            .eval(feature, env_vars)
+            .eval(feature, variables)
             .map(|av| av.to_string())
             .map_err(|e| {
                 GeometryProcessorError::RayIntersector(format!("Failed to evaluate pairId: {e}"))
@@ -407,10 +407,10 @@ impl RayIntersector {
     fn evaluate_closest_only(
         &self,
         feature: &Feature,
-        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+        variables: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> Result<bool, BoxedError> {
         match &self.closest_only_ast {
-            Some(ast) => ast.eval_bool(feature, env_vars).map_err(|e| {
+            Some(ast) => ast.eval_bool(feature, variables).map_err(|e| {
                 GeometryProcessorError::RayIntersector(format!(
                     "Failed to evaluate closestIntersectionOnly: {e}"
                 ))
@@ -423,10 +423,10 @@ impl RayIntersector {
     fn evaluate_tolerance(
         &self,
         feature: &Feature,
-        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+        variables: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> Result<f64, BoxedError> {
         match &self.tolerance_ast {
-            Some(ast) => ast.eval_float(feature, env_vars).map_err(|e| {
+            Some(ast) => ast.eval_float(feature, variables).map_err(|e| {
                 GeometryProcessorError::RayIntersector(format!("Failed to evaluate tolerance: {e}"))
                     .into()
             }),
@@ -437,10 +437,10 @@ impl RayIntersector {
     fn evaluate_include_ray_origin(
         &self,
         feature: &Feature,
-        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+        variables: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> Result<bool, BoxedError> {
         match &self.include_ray_origin_ast {
-            Some(ast) => ast.eval_bool(feature, env_vars).map_err(|e| {
+            Some(ast) => ast.eval_bool(feature, variables).map_err(|e| {
                 GeometryProcessorError::RayIntersector(format!(
                     "Failed to evaluate includeRayOrigin: {e}"
                 ))
@@ -453,10 +453,10 @@ impl RayIntersector {
     fn evaluate_geom_id(
         &self,
         feature: &Feature,
-        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+        variables: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> Option<String> {
         self.geom_id_ast.as_ref().and_then(|ast| {
-            let av = ast.eval(feature, env_vars).ok()?;
+            let av = ast.eval(feature, variables).ok()?;
             if matches!(av, AttributeValue::Null) {
                 return None;
             }
@@ -588,9 +588,9 @@ impl Processor for RayIntersector {
         }
 
         let feature = &ctx.feature;
-        let env_vars = ctx.env_vars.clone();
+        let variables = ctx.variables.clone();
 
-        let pair_id = self.evaluate_pair_id(feature, env_vars.clone())?;
+        let pair_id = self.evaluate_pair_id(feature, variables.clone())?;
 
         // Register pair_id
         if self.pair_id_set.insert(pair_id.clone()) {
@@ -626,7 +626,7 @@ impl Processor for RayIntersector {
                 }
             },
             port if port == &*GEOM_PORT => {
-                let geom_id = self.evaluate_geom_id(feature, env_vars.clone());
+                let geom_id = self.evaluate_geom_id(feature, variables.clone());
 
                 let serialize_mesh = |mesh: TriangularMesh<f64, f64>,
                                       gid: Option<String>|
@@ -732,7 +732,7 @@ impl Processor for RayIntersector {
             None => return Ok(()),
         };
 
-        let env_vars = ctx.env_vars.clone();
+        let variables = ctx.variables.clone();
         let pair_ids = std::mem::take(&mut self.pair_ids);
 
         let intersection_path = dir.join("intersection.jsonl.zst");
@@ -857,13 +857,13 @@ impl Processor for RayIntersector {
                         );
 
                         let closest_only = self
-                            .evaluate_closest_only(&record.feature, env_vars.clone())
+                            .evaluate_closest_only(&record.feature, variables.clone())
                             .unwrap_or(true);
                         let tolerance = self
-                            .evaluate_tolerance(&record.feature, env_vars.clone())
+                            .evaluate_tolerance(&record.feature, variables.clone())
                             .unwrap_or(DEFAULT_TOLERANCE);
                         let include_ray_origin = self
-                            .evaluate_include_ray_origin(&record.feature, env_vars.clone())
+                            .evaluate_include_ray_origin(&record.feature, variables.clone())
                             .unwrap_or(true);
 
                         let include_origin = if include_ray_origin {

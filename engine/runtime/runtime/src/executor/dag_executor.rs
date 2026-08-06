@@ -46,7 +46,7 @@ pub struct DagExecutorJoinHandle {
 impl DagExecutor {
     #[allow(clippy::too_many_arguments)]
     pub async fn new(
-        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+        variables: Arc<serde_json::Map<String, serde_json::Value>>,
         storage_resolver: Arc<StorageResolver>,
         kv_store: Arc<dyn KvStore>,
         entry_graph_id: uuid::Uuid,
@@ -59,7 +59,7 @@ impl DagExecutor {
             DagSchemas::from_graphs(entry_graph_id, graphs, factories, global_params)?;
         let event_hub = EventHub::new(options.event_hub_capacity);
         let ctx = NodeContext::new(
-            env_vars,
+            variables,
             storage_resolver,
             kv_store,
             event_hub,
@@ -77,7 +77,7 @@ impl DagExecutor {
         self,
         shutdown: F,
         runtime: Arc<Handle>,
-        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+        variables: Arc<serde_json::Map<String, serde_json::Value>>,
         storage_resolver: Arc<StorageResolver>,
         kv_store: Arc<dyn crate::kvs::KvStore>,
         ingress_state: Arc<State>,
@@ -110,7 +110,7 @@ impl DagExecutor {
         let node_indexes = execution_dag.graph().node_indices().collect::<Vec<_>>();
 
         let ctx = NodeContext::new(
-            Arc::clone(&env_vars),
+            Arc::clone(&variables),
             Arc::clone(&storage_resolver),
             Arc::clone(&kv_store),
             execution_dag.event_hub().clone(),
@@ -163,7 +163,7 @@ impl DagExecutor {
                 NodeKind::Source { .. } => continue,
                 NodeKind::Processor(_) => {
                     let ctx = NodeContext::new(
-                        Arc::clone(&env_vars),
+                        Arc::clone(&variables),
                         Arc::clone(&storage_resolver),
                         Arc::clone(&kv_store),
                         execution_dag.event_hub().clone(),
@@ -182,7 +182,7 @@ impl DagExecutor {
                 }
                 NodeKind::Sink(_) => {
                     let ctx = NodeContext::new(
-                        Arc::clone(&env_vars),
+                        Arc::clone(&variables),
                         Arc::clone(&storage_resolver),
                         Arc::clone(&kv_store),
                         execution_dag.event_hub().clone(),
@@ -221,7 +221,7 @@ impl DagExecutor {
                 replay_groups.len()
             );
 
-            let env_vars2 = Arc::clone(&env_vars);
+            let env_vars2 = Arc::clone(&variables);
             let storage_resolver2 = Arc::clone(&storage_resolver);
             let kv_store2 = Arc::clone(&kv_store);
             let event_hub2 = execution_dag.event_hub().clone();
@@ -504,7 +504,7 @@ fn replay_inject(cfg: IncrementalRunConfig, groups: Vec<ReplayGroup>, node_ctx: 
                         let ctx = crate::executor_operation::ExecutorContext::new(
                             feature,
                             e.downstream_input_port.clone(),
-                            node_ctx.env_vars.clone(),
+                            node_ctx.variables.clone(),
                             node_ctx.storage_resolver.clone(),
                             node_ctx.kv_store.clone(),
                             node_ctx.event_hub.clone(),

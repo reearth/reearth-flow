@@ -11,7 +11,7 @@ use super::params::ApiKeyLocation;
 pub(crate) fn apply_authentication(
     auth: &CompiledAuthentication,
     feature: &Feature,
-    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+    variables: Arc<serde_json::Map<String, serde_json::Value>>,
     headers: &mut HeaderMap,
     query_params: &mut Vec<(String, String)>,
 ) -> Result<()> {
@@ -21,12 +21,12 @@ pub(crate) fn apply_authentication(
             password_ast,
         } => {
             let username_val = username_ast
-                .eval_string(feature, env_vars.clone())
+                .eval_string(feature, variables.clone())
                 .map_err(|e| {
                     HttpProcessorError::Request(format!("Failed to evaluate username: {e:?}"))
                 })?;
             let password_val = password_ast
-                .eval_string(feature, env_vars.clone())
+                .eval_string(feature, variables.clone())
                 .map_err(|e| {
                     HttpProcessorError::Request(format!("Failed to evaluate password: {e:?}"))
                 })?;
@@ -42,7 +42,7 @@ pub(crate) fn apply_authentication(
         }
         Bearer { token_ast } => {
             let token_val = token_ast
-                .eval_string(feature, env_vars.clone())
+                .eval_string(feature, variables.clone())
                 .map_err(|e| {
                     HttpProcessorError::Request(format!("Failed to evaluate token: {e:?}"))
                 })?;
@@ -60,7 +60,7 @@ pub(crate) fn apply_authentication(
             location,
         } => {
             let key_val = key_value_ast
-                .eval_string(feature, env_vars.clone())
+                .eval_string(feature, variables.clone())
                 .map_err(|e| {
                     HttpProcessorError::Request(format!("Failed to evaluate API key: {e:?}"))
                 })?;
@@ -104,7 +104,7 @@ mod tests {
 
     #[test]
     fn test_basic_auth() {
-        let env_vars = make_env(&[("username", "testuser"), ("password", "testpass")]);
+        let variables = make_env(&[("username", "testuser"), ("password", "testpass")]);
 
         let auth = ExpressionCompiler::new()
             .compile_auth(&Authentication::Basic {
@@ -124,7 +124,7 @@ mod tests {
 
         let feature = empty_feature();
         let result =
-            apply_authentication(&auth, &feature, env_vars, &mut headers, &mut query_params);
+            apply_authentication(&auth, &feature, variables, &mut headers, &mut query_params);
         assert!(result.is_ok());
         assert!(headers.contains_key(AUTHORIZATION));
 
@@ -134,7 +134,7 @@ mod tests {
 
     #[test]
     fn test_bearer_auth() {
-        let env_vars = make_env(&[("token", "abc123")]);
+        let variables = make_env(&[("token", "abc123")]);
 
         let auth = ExpressionCompiler::new()
             .compile_auth(&Authentication::Bearer {
@@ -150,7 +150,7 @@ mod tests {
 
         let feature = empty_feature();
         let result =
-            apply_authentication(&auth, &feature, env_vars, &mut headers, &mut query_params);
+            apply_authentication(&auth, &feature, variables, &mut headers, &mut query_params);
         assert!(result.is_ok());
         assert!(headers.contains_key(AUTHORIZATION));
 
@@ -160,7 +160,7 @@ mod tests {
 
     #[test]
     fn test_api_key_header() {
-        let env_vars = make_env(&[("api_key", "key123")]);
+        let variables = make_env(&[("api_key", "key123")]);
 
         let auth = ExpressionCompiler::new()
             .compile_auth(&Authentication::ApiKey {
@@ -178,7 +178,7 @@ mod tests {
 
         let feature = empty_feature();
         let result =
-            apply_authentication(&auth, &feature, env_vars, &mut headers, &mut query_params);
+            apply_authentication(&auth, &feature, variables, &mut headers, &mut query_params);
         assert!(result.is_ok());
         assert!(headers.contains_key("x-api-key"));
 
@@ -188,7 +188,7 @@ mod tests {
 
     #[test]
     fn test_api_key_query() {
-        let env_vars = make_env(&[("api_key", "key456")]);
+        let variables = make_env(&[("api_key", "key456")]);
 
         let auth = ExpressionCompiler::new()
             .compile_auth(&Authentication::ApiKey {
@@ -206,7 +206,7 @@ mod tests {
 
         let feature = empty_feature();
         let result =
-            apply_authentication(&auth, &feature, env_vars, &mut headers, &mut query_params);
+            apply_authentication(&auth, &feature, variables, &mut headers, &mut query_params);
         assert!(result.is_ok());
         assert_eq!(query_params.len(), 1);
         assert_eq!(query_params[0].0, "apikey");

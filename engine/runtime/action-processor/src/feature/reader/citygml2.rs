@@ -179,7 +179,7 @@ impl Processor for FeatureCityGml2Reader {
     ) -> Result<(), BoxedError> {
         let path = self
             .dataset
-            .eval_string(&ctx.feature, ctx.env_vars.clone())
+            .eval_string(&ctx.feature, ctx.variables.clone())
             .map_err(|e| {
                 FeatureProcessorError::FileCityGml2Reader(format!("Failed to eval dataset: {e:?}"))
             })?;

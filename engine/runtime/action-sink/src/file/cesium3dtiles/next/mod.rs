@@ -56,7 +56,7 @@ impl Cesium3DTilesWriter {
         let output = self
             .params
             .output
-            .eval_string(&ctx.feature, Arc::clone(&ctx.env_vars))
+            .eval_string(&ctx.feature, Arc::clone(&ctx.variables))
             .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))?;
 
         self.buffer
