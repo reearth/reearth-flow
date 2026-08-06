@@ -1774,8 +1774,8 @@ graphs:
     type: action
     action: Grid Divider
     with:
-      unitSquareSize: 1.0
-      keepSquareOnly: true
+      cellSize: 1.0
+      completeCellsOnly: true
   - id: 00000001-0000-0000-0000-00000000000a
     name: FilterRoofSurfaces
     type: action
@@ -1920,18 +1920,9 @@ graphs:
     type: action
     action: Ray Intersector
     with:
-      pairId:
-        type: flowExpr
-        value: '"all"'
-      closestIntersectionOnly:
-        type: flowExpr
-        value: 'true'
-      includeRayOrigin:
-        type: flowExpr
-        value: 'false'
-      tolerance:
-        type: flowExpr
-        value: '0.01'
+      closestIntersectionOnly: true
+      includeRayOrigin: false
+      tolerance: 0.01
       outputGeometryType: lineSegmentToIntersection
       ray:
         posX: rayOriginX
@@ -2414,18 +2405,9 @@ graphs:
     type: action
     action: Ray Intersector
     with:
-      pairId:
-        type: flowExpr
-        value: '"all"'
-      closestIntersectionOnly:
-        type: flowExpr
-        value: 'true'
-      includeRayOrigin:
-        type: flowExpr
-        value: 'false'
-      tolerance:
-        type: flowExpr
-        value: '0.01'
+      closestIntersectionOnly: true
+      includeRayOrigin: false
+      tolerance: 0.01
       geomId:
         type: flowExpr
         value: attributes.get("gmlId", "")
@@ -3023,8 +3005,8 @@ graphs:
     type: action
     action: Grid Divider
     with:
-      unitSquareSize: 5.0
-      keepSquareOnly: false
+      cellSize: 5.0
+      completeCellsOnly: false
   - id: 00000002-0000-0000-0000-00000000000c
     name: TotalRadiationTypeRouter
     type: action
@@ -3272,7 +3254,7 @@ graphs:
   - id: e0000001-0000-0000-0000-000000000035
     from: 00000001-0000-0000-0000-000000000010
     to: 00000001-0000-0000-0000-00000000001d
-    fromPort: no_intersection
+    fromPort: no-intersection
     toPort: features
   - id: e0000003-0000-0000-0000-000000000004
     from: 00000001-0000-0000-0000-000000000011
@@ -3322,7 +3304,7 @@ graphs:
   - id: e0000001-0000-0000-0000-000000000013
     from: 00000001-0000-0000-0000-000000000010
     to: 00000004-0000-0000-0000-000000000010
-    fromPort: no_intersection
+    fromPort: no-intersection
     toPort: features
   - id: e0000004-0000-0000-0000-000000000011
     from: 00000004-0000-0000-0000-000000000010

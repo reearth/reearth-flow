@@ -1,5 +1,6 @@
 mod citygml;
 mod csv;
+pub(super) mod geojson;
 mod json;
 
 use std::collections::HashMap;

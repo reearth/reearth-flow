@@ -37,7 +37,7 @@ impl ProcessorFactory for GeometryValidatorFactory {
     }
 
     fn description(&self) -> &str {
-        "Validate Feature Geometry Quality"
+        "Validates feature geometry for issues such as duplicate points, corrupt geometry, or self-intersection."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -49,7 +49,7 @@ impl ProcessorFactory for GeometryValidatorFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["validate"]
+        &["validation"]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {
@@ -93,16 +93,23 @@ impl ProcessorFactory for GeometryValidatorFactory {
 
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 pub enum ValidationType {
+    /// # Duplicate Points
+    /// Flags coordinates that repeat anywhere in the geometry, using exact equality.
     #[serde(rename = "duplicatePoints")]
     DuplicatePoints,
+    /// # Duplicate Consecutive Points
+    /// Flags neighbouring coordinates closer together than the given tolerance.
     #[serde(rename = "duplicateConsecutivePoints")]
     DuplicateConsecutivePoints(f64),
-    /// Corrupt geometry check with optional tolerance for interior/exterior ring intersection.
+    /// # Corrupt Geometry
+    /// Flags structurally invalid geometry. Takes an optional tolerance for
+    /// interior/exterior ring intersection.
     #[serde(rename = "corruptGeometry")]
     CorruptGeometry(Option<f64>),
-    /// Self-intersection check with optional tolerance.
-    /// If tolerance is None or 0.0, exact intersection check is performed.
-    /// If tolerance > 0.0, intersections within tolerance distance are ignored.
+    /// # Self-Intersection
+    /// Flags geometry that crosses itself. Omitting the tolerance, or setting it
+    /// to 0.0, checks for exact intersections; a larger value ignores
+    /// intersections within that distance.
     #[serde(rename = "selfIntersection")]
     SelfIntersection(Option<f64>),
 }
@@ -113,12 +120,20 @@ pub enum ValidationType {
 /// always run and cannot be disabled.
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, JsonSchema)]
 pub enum OptionalCheck {
+    /// # Duplicate Points
+    /// Detection of coordinates that repeat within the geometry.
     #[serde(rename = "duplicatePoints")]
     DuplicatePoints,
+    /// # Orientable
+    /// Detection of surfaces whose faces cannot be given a consistent orientation.
     #[serde(rename = "orientable")]
     Orientable,
+    /// # Orientation
+    /// Detection of rings wound in the wrong direction.
     #[serde(rename = "orientation")]
     Orientation,
+    /// # Shell Orientation
+    /// Detection of solid shells whose faces point the wrong way.
     #[serde(rename = "shellOrientation")]
     ShellOrientation,
 }
@@ -127,9 +142,11 @@ pub enum OptionalCheck {
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub enum PlanarityThreshold {
+    /// # Ratio
     /// Dimensionless ratio of the face's convex-hull minimum height to its
     /// diameter; scale-invariant.
     Ratio(f64),
+    /// # Max Height
     /// Absolute maximum out-of-plane height, in the coordinate unit (metres).
     /// Applied only in a linear-unit frame, where the planarity check runs.
     MaxHeight(f64),
@@ -142,13 +159,16 @@ pub enum PlanarityThreshold {
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, Default, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct DegenerateThresholds {
-    /// Minimum length of a 1D geometry (line / ring edge).
+    /// # Minimum Length
+    /// Shortest length a 1D geometry (line or ring edge) may have before it is flagged.
     #[serde(default)]
     min_length: f64,
-    /// Minimum area of a 2D geometry (face / ring).
+    /// # Minimum Area
+    /// Smallest area a 2D geometry (face or ring) may have before it is flagged.
     #[serde(default)]
     min_area: f64,
-    /// Minimum volume of a 3D geometry (solid).
+    /// # Minimum Volume
+    /// Smallest volume a 3D geometry (solid) may have before it is flagged.
     #[serde(default)]
     min_volume: f64,
 }
@@ -247,11 +267,13 @@ impl From<ValidationProblemReport> for ValidationResult {
 }
 
 /// # Geometry Validator Parameters
-/// Configure which validation checks to perform on feature geometries
+/// Configure which validation checks to perform on feature geometries.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 pub struct GeometryValidator {
     /// # Validation Types
+    /// Checks to run against each feature's geometry. Empty by default, which
+    /// passes every feature that has geometry.
     #[serde(default)]
     #[cfg(not(feature = "new-geometry"))]
     validation_types: Vec<ValidationType>,
