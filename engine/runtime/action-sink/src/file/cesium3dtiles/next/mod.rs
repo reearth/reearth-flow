@@ -10,6 +10,7 @@
 //! `atlas_size` and overflow spills onto further pages.
 
 mod appearance;
+mod cost;
 mod mesh;
 mod primitive;
 mod quadtree;
@@ -93,8 +94,11 @@ impl Cesium3DTilesWriter {
                         .map_err(crate::errors::SinkError::cesium3dtiles_writer)
                 };
 
-                let max_depth = self.params.max_depth.unwrap_or(DEFAULT_MAX_DEPTH);
-                let built = build(features, options, max_depth, render, write_file)?;
+                let target_tile_size = self
+                    .params
+                    .target_tile_size
+                    .unwrap_or(DEFAULT_TARGET_TILE_SIZE);
+                let built = build(features, options, target_tile_size, render, write_file)?;
                 for (relative_path, bytes) in built.subtrees {
                     write_file(relative_path, bytes)?;
                 }
@@ -118,8 +122,11 @@ impl Cesium3DTilesWriter {
                 };
 
                 // glbs stream out as they're built; only subtree/tileset outputs come back.
-                let max_depth = self.params.max_depth.unwrap_or(DEFAULT_MAX_DEPTH);
-                let built = build(features, options, max_depth, render, write_file)?;
+                let target_tile_size = self
+                    .params
+                    .target_tile_size
+                    .unwrap_or(DEFAULT_TARGET_TILE_SIZE);
+                let built = build(features, options, target_tile_size, render, write_file)?;
 
                 for (relative_path, bytes) in built.subtrees {
                     write_file(relative_path, bytes)?;
@@ -180,22 +187,23 @@ const DEFAULT_ATLAS_SIZE: u32 = 2048;
 /// default. Raise it to blit a bleed-guard ring around each packed region.
 const DEFAULT_ATLAS_EXTRUSION: u32 = 0;
 
-/// Default quadtree depth cap when `max_depth` is unset.
-const DEFAULT_MAX_DEPTH: u32 = 24;
+/// Hard safety cap on quadtree depth, well beyond any depth `target_tile_size`
+/// would realistically drive placement to; guards against pathological inputs
+/// (e.g. many coincident features) rather than acting as a tuning knob.
+const SAFETY_MAX_DEPTH: u32 = 24;
 
-/// Extract and reproject every feature's mesh, place each into the deepest
-/// quadtree cell (bounded by `max_depth`) that fully contains it, and render
-/// the result to a [`BuiltTileset`]. A free function so `gml_to_3dtiles` can
-/// drive it directly from parsed CityGML, without a `Cesium3DTilesWriter`.
-///
-/// Each content glb is handed to `write_tile` (relative path, bytes) the moment
-/// it is built and is not retained, so peak memory does not grow with the tile
-/// count. The returned [`BuiltTileset`] carries only the small `tileset.json`
-/// and subtree outputs, which the caller writes after `build` returns.
+/// Default per-tile content-size target (bytes) when `target_tile_size` is
+/// unset.
+const DEFAULT_TARGET_TILE_SIZE: u64 = 1_048_576;
+
+/// A free function so `gml_to_3dtiles` can drive it directly from parsed
+/// CityGML, without a `Cesium3DTilesWriter`. Content glbs stream through
+/// `write_tile` as built rather than being retained, so peak memory stays at
+/// one glb regardless of tile count.
 pub fn build(
     features: &[Feature],
     options: MetadataOptions,
-    max_depth: u32,
+    target_tile_size: u64,
     render: RenderOptions,
     write_tile: impl Fn(String, Vec<u8>) -> crate::errors::Result<()> + Sync,
 ) -> crate::errors::Result<BuiltTileset> {
@@ -219,17 +227,48 @@ pub fn build(
         .reduce(GeoBox::union)
         .expect("extracted is non-empty, and mesh::extract never returns an empty vertex buffer");
 
+    let mut cost_caches = cost::CostCaches::default();
     let mut by_cell: HashMap<Cell, Vec<usize>> = HashMap::new();
-    for (i, (_, m)) in extracted.iter().enumerate() {
+    let mut cell_cost: HashMap<Cell, u64> = HashMap::new();
+    let mut feature_cost: Vec<u64> = vec![0; extracted.len()];
+    for (i, (feature, m)) in extracted.iter().enumerate() {
         let Some(feature_box) = GeoBox::of(&m.geographic_vertices) else {
             continue;
         };
-        let cell = quadtree::place(&root, &feature_box, max_depth);
+        let cell = quadtree::place(&root, &feature_box, SAFETY_MAX_DEPTH);
+        let cost = cost::estimate(feature, m, &mut cost_caches);
         by_cell.entry(cell).or_default().push(i);
+        *cell_cost.entry(cell).or_default() += cost;
+        feature_cost[i] = cost;
     }
+
+    merge_small_cells(&mut by_cell, &mut cell_cost, target_tile_size);
 
     let occupied: BTreeSet<Cell> = by_cell.keys().copied().collect();
     let available_levels = occupied.iter().map(|c| c.level).max().unwrap_or(0) + 1;
+
+    // A cell over `target_tile_size` splits into several same-tile contents
+    // (3D Tiles 1.1 multiple contents) rather than growing an oversized glb;
+    // this only aids fetch parallelism, since the union of contents holds
+    // exactly the cell's features either way.
+    let cell_contents: Vec<(Cell, Vec<Vec<usize>>)> = by_cell
+        .into_iter()
+        .map(|(cell, indices)| {
+            (
+                cell,
+                split_by_cost(&indices, &feature_cost, target_tile_size),
+            )
+        })
+        .collect();
+    let content_counts: HashMap<Cell, usize> = cell_contents
+        .iter()
+        .map(|(cell, chunks)| (*cell, chunks.len()))
+        .collect();
+    // The content URI template and the subtree `contentAvailability` array are
+    // both declared once for the whole tileset, so every cell shares the same
+    // slot count even where only one cell actually splits.
+    let max_contents = content_counts.values().copied().max().unwrap_or(1);
+    let tile_count: usize = cell_contents.iter().map(|(_, chunks)| chunks.len()).sum();
 
     // A decode cache per cell, dropped once the cell's glb is built. PLATEAU
     // textures are per-surface, so a source image is referenced by only one
@@ -238,25 +277,26 @@ pub fn build(
     // memory stays at one glb rather than the whole tileset. The glb bytes feed
     // neither `tileset.json` nor the subtrees (those need only the cell keys,
     // already captured in `occupied`), so nothing downstream needs them retained.
-    // Cells are independent (own texture cache, own glb, unique output path), so
-    // render them across the rayon pool. Each glb still streams straight to
+    // Cells are independent (own texture cache, own glb(s), unique output path),
+    // so render them across the rayon pool. Each glb still streams straight to
     // `write_tile` as it is built, so peak memory stays at one glb per worker.
-    let cells: Vec<(Cell, Vec<usize>)> = by_cell.into_iter().collect();
-    let tile_count = cells.len();
-    cells
+    cell_contents
         .par_iter()
-        .try_for_each(|(cell, indices)| -> crate::errors::Result<()> {
-            let cell_members: Vec<&(&Feature, mesh::ExtractedMesh)> =
-                indices.iter().map(|&i| &extracted[i]).collect();
+        .try_for_each(|(cell, chunks)| -> crate::errors::Result<()> {
             let mut textures = TextureCache::default();
             let mut embedded = EmbeddedTextures::new()?;
-            let glb = build_cell_glb(&cell_members, options, render, &mut textures, &mut embedded)?;
-            write_tile(content_path(*cell), glb)?;
+            for (n, indices) in chunks.iter().enumerate() {
+                let cell_members: Vec<&(&Feature, mesh::ExtractedMesh)> =
+                    indices.iter().map(|&i| &extracted[i]).collect();
+                let glb =
+                    build_cell_glb(&cell_members, options, render, &mut textures, &mut embedded)?;
+                write_tile(content_path(*cell, n, max_contents > 1), glb)?;
+            }
             Ok(())
         })?;
 
-    let tileset_bytes = render_tileset_json(&root, available_levels)?;
-    let subtrees = subtree::build_all(&occupied)
+    let tileset_bytes = render_tileset_json(&root, available_levels, max_contents)?;
+    let subtrees = subtree::build_all(&occupied, &content_counts, max_contents)
         .into_iter()
         .map(|(cell, bytes)| (subtree_path(cell), bytes))
         .collect();
@@ -267,6 +307,65 @@ pub fn build(
         tile_count,
         rendered_features: extracted.len(),
     })
+}
+
+/// Partition a cell's features into fetch-parallel content chunks, each kept
+/// under `target_tile_size` where possible; a single feature already over the
+/// target is kept whole in its own chunk (features are never split).
+fn split_by_cost(
+    indices: &[usize],
+    feature_cost: &[u64],
+    target_tile_size: u64,
+) -> Vec<Vec<usize>> {
+    let mut chunks: Vec<Vec<usize>> = Vec::new();
+    let mut current: Vec<usize> = Vec::new();
+    let mut current_cost = 0u64;
+    for &i in indices {
+        let cost = feature_cost[i];
+        if !current.is_empty() && current_cost + cost > target_tile_size {
+            chunks.push(std::mem::take(&mut current));
+            current_cost = 0;
+        }
+        current.push(i);
+        current_cost += cost;
+    }
+    if !current.is_empty() {
+        chunks.push(current);
+    }
+    chunks
+}
+
+/// Fold small sibling cells upward into their parent while staying within
+/// `target_tile_size`, deepest level first so a fold can cascade to the root.
+fn merge_small_cells(
+    by_cell: &mut HashMap<Cell, Vec<usize>>,
+    cell_cost: &mut HashMap<Cell, u64>,
+    target_tile_size: u64,
+) {
+    let max_level = by_cell.keys().map(|c| c.level).max().unwrap_or(0);
+    for level in (1..=max_level).rev() {
+        let mut by_parent: HashMap<Cell, Vec<Cell>> = HashMap::new();
+        for cell in by_cell.keys().filter(|c| c.level == level) {
+            if let Some(parent) = cell.parent() {
+                by_parent.entry(parent).or_default().push(*cell);
+            }
+        }
+        for (parent, mut children) in by_parent {
+            children.sort_by_key(|c| cell_cost[c]);
+            let mut parent_cost = cell_cost.get(&parent).copied().unwrap_or(0);
+            for child in children {
+                let child_cost = cell_cost[&child];
+                if parent_cost + child_cost > target_tile_size {
+                    continue;
+                }
+                let features = by_cell.remove(&child).unwrap();
+                by_cell.entry(parent).or_default().extend(features);
+                cell_cost.remove(&child);
+                parent_cost += child_cost;
+                cell_cost.insert(parent, parent_cost);
+            }
+        }
+    }
 }
 
 /// Render one feature into a glb, untiled. Where [`build`] splits a whole
@@ -311,8 +410,8 @@ fn empty_tileset() -> crate::errors::Result<BuiltTileset> {
         min_height: 0.0,
         max_height: 0.0,
     };
-    let tileset_bytes = render_tileset_json(&root, 1)?;
-    let subtrees = subtree::build_all(&BTreeSet::new())
+    let tileset_bytes = render_tileset_json(&root, 1, 1)?;
+    let subtrees = subtree::build_all(&BTreeSet::new(), &HashMap::new(), 1)
         .into_iter()
         .map(|(cell, bytes)| (subtree_path(cell), bytes))
         .collect();
@@ -324,14 +423,26 @@ fn empty_tileset() -> crate::errors::Result<BuiltTileset> {
     })
 }
 
-fn render_tileset_json(root: &GeoBox, available_levels: u32) -> crate::errors::Result<String> {
-    let tileset_json = tileset::build(root, available_levels);
+fn render_tileset_json(
+    root: &GeoBox,
+    available_levels: u32,
+    max_contents: usize,
+) -> crate::errors::Result<String> {
+    let tileset_json = tileset::build(root, available_levels, max_contents);
     serde_json::to_string_pretty(&tileset_json)
         .map_err(|e| SinkError::Cesium3DTilesWriter(format!("{e:?}")))
 }
 
-fn content_path(cell: Cell) -> String {
-    format!("content/{}/{}/{}.glb", cell.level, cell.x, cell.y)
+/// `multi` picks the naming scheme: plain `{y}.glb` when every cell in the
+/// dataset has a single content (the common case, unchanged from before
+/// same-tile splitting existed), else `{y}_{n}.glb` for every cell, since the
+/// content URI template is declared once for the whole tileset.
+fn content_path(cell: Cell, n: usize, multi: bool) -> String {
+    if multi {
+        format!("content/{}/{}/{}_{}.glb", cell.level, cell.x, cell.y, n)
+    } else {
+        format!("content/{}/{}/{}.glb", cell.level, cell.x, cell.y)
+    }
 }
 
 fn subtree_path(cell: Cell) -> String {
@@ -845,7 +956,12 @@ fn cell_origin(cells: &primitive::CellPrimitives) -> [f64; 3] {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
+    use reearth_flow_geometry::triangular_mesh::TriangularMesh3D;
+    use reearth_flow_geometry::{Euclidean3DGeometry, Geometry};
+    use reearth_flow_types::Attributes;
     use std::io::Cursor;
+    use std::sync::Mutex;
 
     /// A minimal red 2x2 PNG, encoded in memory.
     fn tiny_png() -> Vec<u8> {
@@ -981,10 +1097,16 @@ mod tests {
 
         // `build` streams each content glb to the callback; capture them.
         let tiles = Mutex::new(Vec::new());
-        let built = build(&[feature], options, 18, render, |_path, glb| {
-            tiles.lock().unwrap().push(glb);
-            Ok(())
-        })
+        let built = build(
+            &[feature],
+            options,
+            DEFAULT_TARGET_TILE_SIZE,
+            render,
+            |_path: String, glb| {
+                tiles.lock().unwrap().push(glb);
+                Ok(())
+            },
+        )
         .expect("build tileset");
 
         assert_eq!(built.tile_count, 1, "textured mesh produced a content glb");
@@ -995,6 +1117,112 @@ mod tests {
         assert!(
             glb.windows(needle.len()).any(|w| w == needle),
             "the embedded texture is emitted as an image/png texture in the glb"
+        );
+    }
+
+    /// A plain untextured triangle at `lat, lon`, far enough from other test
+    /// features to land in its own quadtree cell at deep placement levels.
+    fn untextured_feature(lat: f64, lon: f64) -> Feature {
+        let frame = CoordinateFrame::Crs(EpsgCode::new(4979));
+        let mesh = TriangularMesh3D::from_soup(
+            frame,
+            [
+                [lat, lon, 10.0],
+                [lat, lon + 0.0001, 10.0],
+                [lat + 0.0001, lon, 10.0],
+            ],
+        );
+        Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(mesh))),
+        )
+    }
+
+    fn plain_render_options() -> RenderOptions {
+        RenderOptions {
+            draco: false,
+            compute_flat_normal: false,
+            texel_size: 0.0,
+            atlas_size: 1024,
+            atlas_extrusion: 0,
+            texture_codec: TextureCodec::Png,
+        }
+    }
+
+    fn plain_metadata_options() -> MetadataOptions<'static> {
+        MetadataOptions {
+            schema_key: None,
+            skip_unexposed_attributes: false,
+            array_map_separator: Some("_"),
+        }
+    }
+
+    // Two features far enough apart to place in different leaf cells must still
+    // land in one content glb once `target_tile_size` is large relative to their
+    // (tiny) combined cost — proving `merge_small_cells` folds undersized sibling
+    // cells upward instead of leaving the tileset needlessly fragmented.
+    #[test]
+    fn small_cells_merge_into_one_tile_under_a_large_target_size() {
+        let features = [
+            untextured_feature(35.0, 139.0),
+            untextured_feature(36.0, 140.0),
+        ];
+        let tiles = Mutex::new(Vec::new());
+        let built = build(
+            &features,
+            plain_metadata_options(),
+            DEFAULT_TARGET_TILE_SIZE,
+            plain_render_options(),
+            |_path: String, glb| {
+                tiles.lock().unwrap().push(glb);
+                Ok(())
+            },
+        )
+        .expect("build tileset");
+
+        assert_eq!(
+            built.tile_count, 1,
+            "two spatially separate but tiny-cost features merge into one tile"
+        );
+        assert_eq!(tiles.into_inner().unwrap().len(), 1);
+    }
+
+    // The same two features, but with `target_tile_size` set below what even one
+    // of them costs alone, so no merge/co-placement can fit them together —
+    // proving `split_by_cost` (and, since they'd otherwise share a cell, its
+    // per-cell same-tile-content splitting) keeps every chunk under the target.
+    #[test]
+    fn oversized_cell_splits_into_multiple_same_tile_contents() {
+        // Same location twice: both are forced into the same leaf cell
+        // regardless of `SAFETY_MAX_DEPTH`, isolating `split_by_cost`'s
+        // same-tile-content behaviour from `merge_small_cells`.
+        let features = [
+            untextured_feature(35.0, 139.0),
+            untextured_feature(35.0, 139.0),
+        ];
+        let paths = Mutex::new(Vec::new());
+        let built = build(
+            &features,
+            plain_metadata_options(),
+            1,
+            plain_render_options(),
+            |path: String, _glb| {
+                paths.lock().unwrap().push(path);
+                Ok(())
+            },
+        )
+        .expect("build tileset");
+
+        assert_eq!(
+            built.tile_count, 2,
+            "target size of 1 byte forces each feature into its own content chunk"
+        );
+        let paths = paths.into_inner().unwrap();
+        assert_eq!(paths.len(), 2);
+        assert!(
+            paths.iter().any(|p| p.ends_with("_0.glb"))
+                && paths.iter().any(|p| p.ends_with("_1.glb")),
+            "same-tile multi-content naming is used once a cell splits: {paths:?}"
         );
     }
 }
