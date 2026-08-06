@@ -115,19 +115,79 @@ fn translate_segment(seg: &mut Segment, delta: [f64; 3]) {
 }
 
 impl Place for PointCloud {
-    /// A point cloud's positions are packed per-segment in one of three
-    /// encodings (`F64`, `F32`, or a scale/offset `ScaledI32`). `Translate`
-    /// stays within each encoding (an offset shift for `ScaledI32`, an
-    /// in-place add for the float encodings) because addition alone commutes
-    /// with the decode. A general affine's rotation does not: it would need
-    /// every point decoded, rotated, and re-encoded, and `ScaledI32` has no
-    /// scale/offset pair that represents a rotated point without that
-    /// decode/re-encode round trip. There is no coordinate buffer this
-    /// primitive can rewrite in place, so placement is rejected outright.
-    fn place(&mut self, _affine: &Affine3, _frame: &CoordinateFrame) -> crate::error::Result<()> {
-        Err(crate::error::Error::invalid_geometry(
-            "cannot place a PointCloud geometry",
-        ))
+    /// Apply `affine` to every point of every segment, keeping each segment's
+    /// position encoding, then set the frame.
+    ///
+    /// A `ScaledI32` segment decodes as `raw * scale + offset`: a pure shift
+    /// (what `Translate` needs) fits that shape by moving `offset` alone, but
+    /// a rotation does not — there is no `scale`/`offset` pair that encodes a
+    /// rotated point without first decoding every point to a float, rotating,
+    /// and requantizing, which this primitive does not do. So a `ScaledI32`
+    /// segment is rejected. `F64` and `F32` segments have no such obstruction:
+    /// each point is decoded to `[f64; 3]`, rotated and translated by
+    /// `affine.apply`, and re-encoded in place, exactly mirroring how
+    /// `translate_segment` already rewrites those two encodings.
+    ///
+    /// The encoding check runs before any segment is mutated, so a rejected
+    /// cloud (one carrying a `ScaledI32` segment) is left untouched.
+    fn place(&mut self, affine: &Affine3, frame: &CoordinateFrame) -> crate::error::Result<()> {
+        if self
+            .segments
+            .iter()
+            .any(|seg| matches!(seg.position, PositionEncoding::ScaledI32 { .. }))
+        {
+            return Err(crate::error::Error::invalid_geometry(
+                "cannot place a PointCloud segment encoded as ScaledI32: a rotation cannot be \
+                 represented in a scaled-integer encoding",
+            ));
+        }
+        for seg in self.segments.iter_mut() {
+            place_segment(seg, affine);
+        }
+        self.kdtree = OnceLock::new();
+        self.frame = frame.clone();
+        Ok(())
+    }
+}
+
+/// Apply `affine` to every position in a `F64` or `F32` segment, decoding,
+/// transforming, and re-encoding each point in place. Never called on a
+/// `ScaledI32` segment: `Place::place` rejects those before any segment is
+/// mutated.
+fn place_segment(seg: &mut Segment, affine: &Affine3) {
+    let stride = seg.stride as usize;
+    match &seg.position {
+        PositionEncoding::F64 => {
+            for point in 0..seg.count {
+                let base = point * stride;
+                let p = [
+                    f64::from_le_bytes(seg.data[base..base + 8].try_into().unwrap()),
+                    f64::from_le_bytes(seg.data[base + 8..base + 16].try_into().unwrap()),
+                    f64::from_le_bytes(seg.data[base + 16..base + 24].try_into().unwrap()),
+                ];
+                let out = affine.apply(p);
+                seg.data[base..base + 8].copy_from_slice(&out[0].to_le_bytes());
+                seg.data[base + 8..base + 16].copy_from_slice(&out[1].to_le_bytes());
+                seg.data[base + 16..base + 24].copy_from_slice(&out[2].to_le_bytes());
+            }
+        }
+        PositionEncoding::F32 => {
+            for point in 0..seg.count {
+                let base = point * stride;
+                let p = [
+                    f32::from_le_bytes(seg.data[base..base + 4].try_into().unwrap()) as f64,
+                    f32::from_le_bytes(seg.data[base + 4..base + 8].try_into().unwrap()) as f64,
+                    f32::from_le_bytes(seg.data[base + 8..base + 12].try_into().unwrap()) as f64,
+                ];
+                let out = affine.apply(p);
+                seg.data[base..base + 4].copy_from_slice(&(out[0] as f32).to_le_bytes());
+                seg.data[base + 4..base + 8].copy_from_slice(&(out[1] as f32).to_le_bytes());
+                seg.data[base + 8..base + 12].copy_from_slice(&(out[2] as f32).to_le_bytes());
+            }
+        }
+        PositionEncoding::ScaledI32 { .. } => {
+            unreachable!("Place::place rejects ScaledI32 segments before mutating any segment")
+        }
     }
 }
 
@@ -304,5 +364,64 @@ mod tests {
     fn empty_point_cloud_has_no_box() {
         let pc = PointCloud::from_positions(CoordinateFrame::Euclidean, Vec::<[f64; 3]>::new());
         assert!(pc.bounding_box().is_err());
+    }
+
+    /// Row-major matrix that maps (x, y, z) -> (x, -z, y): the Y-up to Z-up flip.
+    fn y_up_to_z_up() -> [[f64; 3]; 3] {
+        [[1.0, 0.0, 0.0], [0.0, 0.0, -1.0], [0.0, 1.0, 0.0]]
+    }
+
+    #[test]
+    fn f64_point_cloud_is_placed_and_the_frame_is_set() {
+        use crate::coordinate::EpsgCode;
+
+        let mut pc = PointCloud::from_positions(
+            CoordinateFrame::Euclidean,
+            [[0.0, 1.0, 2.0], [4.0, -1.0, 2.0]],
+        );
+        let affine = Affine3::new(y_up_to_z_up(), [10.0, 20.0, 30.0]);
+        let target = CoordinateFrame::Crs(EpsgCode::new(4978));
+        pc.place(&affine, &target).unwrap();
+
+        assert_eq!(positions(&pc), [[10.0, 18.0, 31.0], [14.0, 18.0, 29.0]]);
+        assert_eq!(pc.frame, target);
+    }
+
+    #[test]
+    fn f32_point_cloud_is_placed_and_the_frame_is_set() {
+        use crate::coordinate::EpsgCode;
+
+        let mut pc = PointCloud {
+            frame: CoordinateFrame::Euclidean,
+            segments: smallvec::smallvec![f32_segment(&[[0.0, 1.0, 2.0]])],
+            kdtree: OnceLock::new(),
+        };
+        let affine = Affine3::new(y_up_to_z_up(), [10.0, 20.0, 30.0]);
+        let target = CoordinateFrame::Crs(EpsgCode::new(4978));
+        pc.place(&affine, &target).unwrap();
+
+        assert_eq!(positions(&pc), [[10.0, 18.0, 31.0]]);
+        assert_eq!(pc.frame, target);
+        assert!(matches!(pc.segments[0].position, PositionEncoding::F32));
+    }
+
+    #[test]
+    fn scaled_i32_point_cloud_place_is_rejected_and_leaves_the_cloud_untouched() {
+        let seg = scaled_i32_segment([0.001; 3], [0.0; 3], &[[1000, 2000, 3000]]);
+        let packed = seg.data.clone();
+        let mut pc = PointCloud {
+            frame: CoordinateFrame::Euclidean,
+            segments: smallvec::smallvec![seg],
+            kdtree: OnceLock::new(),
+        };
+        let before = positions(&pc);
+        let result = pc.place(&Affine3::identity(), &CoordinateFrame::Euclidean);
+
+        assert!(result.is_err());
+        // Rejected before any segment is mutated: packed bytes, decoded
+        // positions, and frame are all exactly as they started.
+        assert_eq!(pc.segments[0].data, packed);
+        assert_eq!(positions(&pc), before);
+        assert_eq!(pc.frame, CoordinateFrame::Euclidean);
     }
 }
