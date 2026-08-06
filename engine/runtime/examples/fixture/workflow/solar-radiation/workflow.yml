@@ -311,8 +311,8 @@ graphs:
         type: action
         action: Grid Divider
         with:
-          unitSquareSize: 1.0
-          keepSquareOnly: true
+          cellSize: 1.0
+          completeCellsOnly: true
 
       - id: 00000001-0000-0000-0000-00000000000a
         name: FilterRoofSurfaces
@@ -475,19 +475,9 @@ graphs:
         type: action
         action: Ray Intersector
         with:
-          # All rays are checked with all geometries
-          pairId:
-            type: flowExpr
-            value: '"all"'
-          closestIntersectionOnly:
-            type: flowExpr
-            value: "true"
-          includeRayOrigin:
-            type: flowExpr
-            value: "false"
-          tolerance:
-            type: flowExpr
-            value: "0.01"
+          closestIntersectionOnly: true
+          includeRayOrigin: false
+          tolerance: 0.01
           outputGeometryType: lineSegmentToIntersection
           ray:
             posX: rayOriginX
@@ -1055,19 +1045,9 @@ graphs:
         type: action
         action: Ray Intersector
         with:
-          # All rays are checked with all geometries
-          pairId:
-            type: flowExpr
-            value: '"all"'
-          closestIntersectionOnly:
-            type: flowExpr
-            value: "true"
-          includeRayOrigin:
-            type: flowExpr
-            value: "false"
-          tolerance:
-            type: flowExpr
-            value: "0.01"
+          closestIntersectionOnly: true
+          includeRayOrigin: false
+          tolerance: 0.01
           geomId:
             type: flowExpr
             value: 'attributes.get("gmlId", "")'
@@ -1771,8 +1751,8 @@ graphs:
         type: action
         action: Grid Divider
         with:
-          unitSquareSize: 5.0
-          keepSquareOnly: false
+          cellSize: 5.0
+          completeCellsOnly: false
 
       # After TotalRadiationAggregator: route bldg → NormalizeRadiation, dem → DEM merge pipeline
       - id: 00000002-0000-0000-0000-00000000000c
@@ -2102,11 +2082,11 @@ graphs:
 
 
 
-      # RayIntersector no_intersection → ComputeRadiation
+      # RayIntersector no-intersection → ComputeRadiation
       - id: e0000001-0000-0000-0000-000000000035
         from: 00000001-0000-0000-0000-000000000010
         to: 00000001-0000-0000-0000-00000000001d
-        fromPort: no_intersection
+        fromPort: no-intersection
         toPort: features
 
       # ComputeCosTheta → SnowFactorMerger (requestor)
@@ -2175,11 +2155,11 @@ graphs:
         toPort: supplier
 
       # Section 7: Reflection Computation (conditional on outputReflection)
-      # RayIntersector no_intersection → ReflectionOutputFilter
+      # RayIntersector no-intersection → ReflectionOutputFilter
       - id: e0000001-0000-0000-0000-000000000013
         from: 00000001-0000-0000-0000-000000000010
         to: 00000004-0000-0000-0000-000000000010
-        fromPort: no_intersection
+        fromPort: no-intersection
         toPort: features
 
       # ReflectionOutputFilter → ComputeReflection (only when outputReflection=true)
