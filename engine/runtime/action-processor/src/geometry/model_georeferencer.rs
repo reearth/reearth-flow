@@ -929,4 +929,47 @@ mod tests {
         .resolve();
         assert!(result.is_err());
     }
+
+    #[test]
+    fn placing_a_collection_places_every_member_and_keeps_member_attributes() {
+        use reearth_flow_types::{Attribute, AttributeValue, Attributes};
+
+        let member = |soup: Vec<[f64; 3]>| {
+            Euclidean3DGeometry::TriangularMesh(Box::new(TriangularMesh3D::from_soup(
+                CoordinateFrame::Euclidean,
+                soup,
+            )))
+        };
+        let mut attrs = Attributes::new();
+        attrs.insert(Attribute::new("gmlId"), AttributeValue::String("a".into()));
+
+        let collection = Collection3D::with_attributes(
+            vec![
+                member(vec![[1.0, 2.0, 3.0], [1.0, 2.0, 3.0], [1.0, 2.0, 3.0]]),
+                member(vec![[4.0, 5.0, 6.0], [4.0, 5.0, 6.0], [4.0, 5.0, 6.0]]),
+            ],
+            vec![attrs.clone(), attrs],
+        )
+        .unwrap();
+        let mut geometry = Geometry::Euclidean3D(Euclidean3DGeometry::Collection(collection));
+
+        let target = CoordinateFrame::Crs(EpsgCode::new(4978));
+        geometry.place(&axis_affine(&UpAxis::Y), &target).unwrap();
+
+        let Geometry::Euclidean3D(Euclidean3DGeometry::Collection(c)) = &geometry else {
+            panic!("expected a collection, got {geometry:?}");
+        };
+        assert_eq!(c.members().len(), 2, "both members survive");
+        assert_eq!(
+            c.member_attributes().len(),
+            2,
+            "per-member attributes survive"
+        );
+        for m in c.members() {
+            let Euclidean3DGeometry::TriangularMesh(mesh) = m else {
+                panic!("expected a mesh member, got {m:?}");
+            };
+            assert_eq!(*mesh.frame(), target, "every member's frame is set");
+        }
+    }
 }

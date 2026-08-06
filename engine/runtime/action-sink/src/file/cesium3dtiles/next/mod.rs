@@ -1120,6 +1120,57 @@ mod tests {
         );
     }
 
+    /// A geocentric (EPSG:4978) mesh — exactly what the Model Georeferencer
+    /// emits — must produce actual tile content. This is the check that #2293
+    /// was about: before placement existed, a Euclidean mesh yielded an empty
+    /// tileset. It also proves the writer accepts a geocentric declared frame.
+    #[test]
+    fn geocentric_mesh_produces_tile_content() {
+        // Small triangle near lat 35.908, lon 140.102 in ECEF metres.
+        let base = [-3958731.9, -3309830.0, 3736419.1];
+        let soup = vec![
+            base,
+            [base[0] + 30.0, base[1], base[2]],
+            [base[0], base[1] + 30.0, base[2]],
+        ];
+        let mesh = TriangularMesh3D::from_soup(CoordinateFrame::Crs(EpsgCode::new(4978)), soup);
+        let feature = Feature::new_with_attributes_and_geometry(
+            Attributes::new(),
+            Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(mesh))),
+        );
+
+        let tiles = Mutex::new(Vec::new());
+        let built = build(
+            &[feature],
+            plain_metadata_options(),
+            DEFAULT_TARGET_TILE_SIZE,
+            plain_render_options(),
+            |name: String, glb| {
+                tiles.lock().unwrap().push((name, glb));
+                Ok(())
+            },
+        )
+        .expect("build tileset");
+
+        assert!(
+            built.tile_count > 0,
+            "a geocentric mesh must produce tile content"
+        );
+        let written = tiles.into_inner().unwrap();
+        assert!(
+            !written.is_empty(),
+            "a geocentric mesh must produce tile content"
+        );
+        assert!(
+            written.iter().all(|(_, bytes)| !bytes.is_empty()),
+            "tiles must not be empty: {:?}",
+            written
+                .iter()
+                .map(|(n, b)| (n.clone(), b.len()))
+                .collect::<Vec<_>>()
+        );
+    }
+
     /// A plain untextured triangle at `lat, lon`, far enough from other test
     /// features to land in its own quadtree cell at deep placement levels.
     fn untextured_feature(lat: f64, lon: f64) -> Feature {
