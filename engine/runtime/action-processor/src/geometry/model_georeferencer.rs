@@ -4,11 +4,12 @@
 //! such as the Cesium 3D Tiles writer.
 //!
 //! `declareCrs` treats the model's coordinates as already expressed in a given
-//! CRS and simply tags them (after an optional up-axis flip). `anchor` will
-//! place a local model at a geographic position, aligned to the local
-//! east/north/up directions there; it is not implemented yet (Task 3).
+//! CRS and simply tags them (after an optional up-axis flip). `anchor` places a
+//! local model at a geographic position, aligned to the local east/north/up
+//! directions there, via a local ENU basis on the WGS 84 ellipsoid.
 
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use once_cell::sync::Lazy;
 use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode, UnitKind};
@@ -170,24 +171,72 @@ pub struct ModelGeoreferencer {
 
 impl ModelGeoreferencer {
     /// Compute the affine and target frame for `self.placement` and apply them
-    /// to `feature`'s geometry.
-    fn place_feature(&self, feature: &mut Feature) -> Result<(), BoxedError> {
+    /// to `feature`'s geometry. `env_vars` is threaded through to evaluate the
+    /// `anchor` placement's expression parameters against `feature`.
+    fn place_feature(
+        &self,
+        feature: &mut Feature,
+        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+    ) -> Result<(), BoxedError> {
         let (affine, target) = match &self.placement {
             Placement::DeclareCrs { epsg_code } => {
                 let epsg = EpsgCode::new(*epsg_code);
                 validate_declared_crs(epsg)?;
                 (axis_affine(&self.up_axis), CoordinateFrame::Crs(epsg))
             }
-            Placement::Anchor { .. } => {
-                return Err(Box::new(GeometryProcessorError::ModelGeoreferencer(
-                    "anchor placement is not implemented yet".to_string(),
-                )));
+            Placement::Anchor {
+                latitude,
+                longitude,
+                height,
+                heading,
+            } => {
+                let lat = eval_expr_f64(latitude, feature, env_vars.clone())?;
+                let lon = eval_expr_f64(longitude, feature, env_vars.clone())?;
+                let height_m = match height {
+                    Some(code) => eval_expr_f64(code, feature, env_vars.clone())?,
+                    None => 0.0,
+                };
+                let heading_deg = match heading {
+                    Some(code) => eval_expr_f64(code, feature, env_vars.clone())?,
+                    None => 0.0,
+                };
+                (
+                    anchor_affine(lat, lon, height_m, heading_deg, &self.up_axis),
+                    CoordinateFrame::Crs(EpsgCode::new(4978)),
+                )
             }
         };
         feature.geometry_mut().place(&affine, &target).map_err(|e| {
             Box::new(GeometryProcessorError::ModelGeoreferencer(e.to_string())) as BoxedError
         })
     }
+}
+
+/// Evaluate an `anchor` placement expression parameter to an `f64`, the same
+/// way `coordinate_frame_reprojector.rs` evaluates its `base_point` expression:
+/// compile, evaluate against the feature, and treat any failure -- to compile,
+/// to evaluate, or to coerce the result to a number -- as an evaluation
+/// failure rather than a panic, surfaced to the caller as an error so the
+/// feature is routed to the `rejected` port.
+fn eval_expr_f64(
+    code: &Code<{ CodeType::FlowExpr as u32 }>,
+    feature: &Feature,
+    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+) -> Result<f64, BoxedError> {
+    let compiled = code.compile().map_err(|e| {
+        Box::new(GeometryProcessorError::ModelGeoreferencer(format!(
+            "failed to compile anchor expression: {e:?}"
+        ))) as BoxedError
+    })?;
+    compiled
+        .eval(feature, env_vars)
+        .ok()
+        .and_then(|v| v.as_f64())
+        .ok_or_else(|| {
+            Box::new(GeometryProcessorError::ModelGeoreferencer(
+                "anchor expression did not evaluate to a number".to_string(),
+            )) as BoxedError
+        })
 }
 
 impl Processor for ModelGeoreferencer {
@@ -207,7 +256,7 @@ impl Processor for ModelGeoreferencer {
             return Ok(());
         }
 
-        match self.place_feature(&mut feature) {
+        match self.place_feature(&mut feature, ctx.env_vars.clone()) {
             Ok(()) => fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone())),
             Err(e) => {
                 ctx.event_hub.warn_log(
@@ -243,6 +292,71 @@ fn axis_affine(up_axis: &UpAxis) -> Affine3 {
         ),
         UpAxis::Z => Affine3::identity(),
     }
+}
+
+/// The WGS 84 ellipsoid's semi-major axis, in metres.
+const WGS84_A: f64 = 6378137.0;
+/// The WGS 84 ellipsoid's inverse flattening.
+const WGS84_INV_F: f64 = 298.257223563;
+
+/// WGS 84 geodetic latitude/longitude/height to geocentric (ECEF) metres.
+fn geodetic_to_ecef(lat_deg: f64, lon_deg: f64, height_m: f64) -> [f64; 3] {
+    let f = 1.0 / WGS84_INV_F;
+    let e2 = f * (2.0 - f);
+    let (lat, lon) = (lat_deg.to_radians(), lon_deg.to_radians());
+    let (sin_lat, cos_lat) = (lat.sin(), lat.cos());
+    let (sin_lon, cos_lon) = (lon.sin(), lon.cos());
+    let n = WGS84_A / (1.0 - e2 * sin_lat * sin_lat).sqrt();
+    [
+        (n + height_m) * cos_lat * cos_lon,
+        (n + height_m) * cos_lat * sin_lon,
+        (n * (1.0 - e2) + height_m) * sin_lat,
+    ]
+}
+
+/// The affine placing a Z-up local model at the anchor, aligned to local
+/// east/north/up and rotated `heading_deg` clockwise from north, composed after
+/// the source model's axis convention.
+fn anchor_affine(
+    lat_deg: f64,
+    lon_deg: f64,
+    height_m: f64,
+    heading_deg: f64,
+    up_axis: &UpAxis,
+) -> Affine3 {
+    let (lat, lon) = (lat_deg.to_radians(), lon_deg.to_radians());
+    let (sin_lat, cos_lat) = (lat.sin(), lat.cos());
+    let (sin_lon, cos_lon) = (lon.sin(), lon.cos());
+
+    let east = [-sin_lon, cos_lon, 0.0];
+    let north = [-sin_lat * cos_lon, -sin_lat * sin_lon, cos_lat];
+    let up = [cos_lat * cos_lon, cos_lat * sin_lon, sin_lat];
+
+    // Heading clockwise from north: the model's +Y (north) swings toward the
+    // given bearing, so its images are combinations of east and north.
+    let (sin_h, cos_h) = (
+        heading_deg.to_radians().sin(),
+        heading_deg.to_radians().cos(),
+    );
+    let col_x = [
+        cos_h * east[0] - sin_h * north[0],
+        cos_h * east[1] - sin_h * north[1],
+        cos_h * east[2] - sin_h * north[2],
+    ];
+    let col_y = [
+        sin_h * east[0] + cos_h * north[0],
+        sin_h * east[1] + cos_h * north[1],
+        sin_h * east[2] + cos_h * north[2],
+    ];
+
+    // Columns are the images of the model's x, y, z basis vectors.
+    let rotation = [
+        [col_x[0], col_y[0], up[0]],
+        [col_x[1], col_y[1], up[1]],
+        [col_x[2], col_y[2], up[2]],
+    ];
+    let enu = Affine3::new(rotation, geodetic_to_ecef(lat_deg, lon_deg, height_m));
+    enu.compose(&axis_affine(up_axis))
 }
 
 /// Reject a declared CRS whose units are angular: model coordinates are metres.
@@ -505,6 +619,149 @@ mod tests {
         assert_eq!(
             *features[0].geometry, geometry,
             "collection must be untouched"
+        );
+    }
+
+    /// A `Code` carrying a literal numeric flow expression, e.g. `flow_expr(35.908)`.
+    fn flow_expr(value: f64) -> Code<{ CodeType::FlowExpr as u32 }> {
+        Code {
+            ty: CodeType::FlowExpr,
+            value: format!("{value}"),
+        }
+    }
+
+    #[test]
+    fn geodetic_to_ecef_matches_known_reference_points() {
+        // Null island: on the equator at the prime meridian, ECEF is (a, 0, 0).
+        let p = geodetic_to_ecef(0.0, 0.0, 0.0);
+        assert!((p[0] - 6378137.0).abs() < 1e-3, "x was {}", p[0]);
+        assert!(p[1].abs() < 1e-6 && p[2].abs() < 1e-6);
+
+        // The north pole: x and y vanish, z is the semi-minor axis b = a(1 - f).
+        let n = geodetic_to_ecef(90.0, 0.0, 0.0);
+        let b = 6378137.0 * (1.0 - 1.0 / 298.257223563);
+        assert!(n[0].abs() < 1e-6 && n[1].abs() < 1e-6, "got {n:?}");
+        assert!((n[2] - b).abs() < 1e-3, "z was {} expected {b}", n[2]);
+    }
+
+    #[test]
+    fn anchor_places_the_model_origin_at_the_anchor() {
+        let (lat, lon) = (35.908, 140.102);
+        let a = anchor_affine(lat, lon, 0.0, 0.0, &UpAxis::Z);
+        let origin = a.apply([0.0, 0.0, 0.0]);
+        let expected = geodetic_to_ecef(lat, lon, 0.0);
+        for i in 0..3 {
+            assert!(
+                (origin[i] - expected[i]).abs() < 1e-6,
+                "axis {i}: {origin:?} vs {expected:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn anchor_maps_model_up_to_local_up() {
+        let (lat, lon) = (35.908, 140.102);
+        let a = anchor_affine(lat, lon, 0.0, 0.0, &UpAxis::Z);
+        // 100 m up the model's Z must land approximately 100 m further from the
+        // earth's centre. "up" is the WGS 84 ellipsoid normal at this latitude,
+        // which is exactly radial only at the equator and the poles; away from
+        // those, ellipsoidal flattening tilts it slightly off-radial (by up to
+        // ~0.17 degrees at mid-latitudes), so the geocentric radius grows by
+        // very nearly, but not exactly, the height moved along it. At 35.908
+        // degrees that shortfall is ~5e-4 m per 100 m of height, so the
+        // tolerance below is loosened from a geometric identity (which would
+        // only hold on a sphere) to what WGS 84's flattening actually permits.
+        let base = a.apply([0.0, 0.0, 0.0]);
+        let up = a.apply([0.0, 0.0, 100.0]);
+        let r = |p: [f64; 3]| (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt();
+        assert!(
+            (r(up) - r(base) - 100.0).abs() < 1e-3,
+            "radius grew by {}",
+            r(up) - r(base)
+        );
+    }
+
+    #[test]
+    fn heading_rotates_the_model_about_its_up_axis() {
+        let (lat, lon) = (0.0, 0.0);
+        // At (0,0): east is +Y ECEF, north is +Z ECEF.
+        let north = anchor_affine(lat, lon, 0.0, 0.0, &UpAxis::Z).apply([0.0, 100.0, 0.0]);
+        let base = anchor_affine(lat, lon, 0.0, 0.0, &UpAxis::Z).apply([0.0, 0.0, 0.0]);
+        assert!(
+            (north[2] - base[2] - 100.0).abs() < 1e-6,
+            "0 deg heading points north"
+        );
+
+        // 90 degrees clockwise from north is east.
+        let east = anchor_affine(lat, lon, 0.0, 90.0, &UpAxis::Z).apply([0.0, 100.0, 0.0]);
+        assert!(
+            (east[1] - base[1] - 100.0).abs() < 1e-6,
+            "90 deg heading points east"
+        );
+    }
+
+    #[test]
+    fn process_anchor_places_model_origin_at_the_expected_ecef_position() {
+        // End-to-end through `process`: the previous review round found that a
+        // unit-tested helper with untested wiring is how a real bug escapes, so
+        // this drives the whole processor, not just `anchor_affine` directly.
+        let (lat, lon) = (35.908, 140.102);
+        let geometry = euclidean_mesh(vec![[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]);
+        let feature = Feature::new_with_attributes_and_geometry(Attributes::new(), geometry);
+        let mut processor = ModelGeoreferencer {
+            placement: Placement::Anchor {
+                latitude: flow_expr(lat),
+                longitude: flow_expr(lon),
+                height: None,
+                heading: None,
+            },
+            up_axis: UpAxis::Z,
+        };
+
+        let (features, ports) = run_processor(&feature, &mut processor);
+
+        assert_eq!(ports, vec![FEATURES_PORT.clone()]);
+        let m = match &*features[0].geometry {
+            Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(m)) => m,
+            other => panic!("expected a triangular mesh, got {other:?}"),
+        };
+        let expected = geodetic_to_ecef(lat, lon, 0.0);
+        for v in m.vertices() {
+            for i in 0..3 {
+                assert!(
+                    (v[i] - expected[i]).abs() < 1e-6,
+                    "axis {i}: {v:?} vs {expected:?}"
+                );
+            }
+        }
+        assert_eq!(*m.frame(), CoordinateFrame::Crs(EpsgCode::new(4978)));
+    }
+
+    #[test]
+    fn process_rejects_a_feature_whose_anchor_expression_fails_to_evaluate() {
+        // A malformed expression must not panic; it must route to `rejected`.
+        let geometry = euclidean_mesh(vec![[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]);
+        let feature =
+            Feature::new_with_attributes_and_geometry(Attributes::new(), geometry.clone());
+        let mut processor = ModelGeoreferencer {
+            placement: Placement::Anchor {
+                latitude: Code {
+                    ty: CodeType::FlowExpr,
+                    value: "this is not a valid expression [[[".to_string(),
+                },
+                longitude: flow_expr(140.102),
+                height: None,
+                heading: None,
+            },
+            up_axis: UpAxis::Z,
+        };
+
+        let (features, ports) = run_processor(&feature, &mut processor);
+
+        assert_eq!(ports, vec![REJECTED_PORT.clone()]);
+        assert_eq!(
+            *features[0].geometry, geometry,
+            "geometry must be untouched on evaluation failure"
         );
     }
 }
