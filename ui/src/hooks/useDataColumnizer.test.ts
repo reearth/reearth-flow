@@ -10,8 +10,8 @@ const OWNER = "https://example.test/node.out.jsonl.zst";
 
 /** Run raw JSONL lines through the transform the streaming hook applies. */
 function columnize(lines: unknown[]) {
-  const features = lines.map((line, rowIndex) =>
-    intermediateDataTransform(line, { owner: OWNER, rowIndex }),
+  const features = lines.map((line) =>
+    intermediateDataTransform(line, { owner: OWNER }),
   );
 
   // Built once, outside the render callback: the hook re-runs its effect
@@ -222,14 +222,5 @@ describe("new-format features reach the table", () => {
     expect(
       (result.current.tableColumns as any[]).map((c) => c.header),
     ).not.toContain("_source");
-  });
-
-  test("each row carries the line it came from, for view selection", () => {
-    const { rows } = columnize([
-      { id: "1", attributes: {}, geometry: "None" },
-      { id: "2", attributes: {}, geometry: "None" },
-    ]);
-
-    expect(rows.map((row) => row._rowIndex)).toEqual([0, 1]);
   });
 });

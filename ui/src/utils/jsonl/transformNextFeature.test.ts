@@ -374,6 +374,59 @@ describe("2D geometry becomes GeoJSON", () => {
     expect(result.geometry).toMatchObject({ type: "GeometryCollection" });
   });
 
+  test("takes a collection's frame from its members", () => {
+    // A Collection has only `members` and `attrs` — no frame of its own — so
+    // the frame has to come from the members. This is what a GeoPackage read
+    // produces.
+    const result = transformNextFeature(
+      feature({
+        Euclidean2D: {
+          Collection: {
+            members: [
+              {
+                Polygon: {
+                  frame: { Crs: 6668 },
+                  exterior: [
+                    [35.659, 139.675],
+                    [35.659, 139.676],
+                    [35.66, 139.676],
+                  ],
+                },
+              },
+            ],
+          },
+        },
+      }),
+      { owner: OWNER },
+    );
+
+    expect(result.geometry).toMatchObject({
+      type: "MultiPolygon",
+      frame: "EPSG:6668",
+    });
+  });
+
+  test("reports every frame a collection's members sit in", () => {
+    // Members may differ; naming one would claim they agree.
+    const result = transformNextFeature(
+      feature({
+        Euclidean2D: {
+          Collection: {
+            members: [
+              { Point: { frame: { Crs: 6668 }, position: [35.6, 139.7] } },
+              { Point: { frame: { Crs: 3857 }, position: [100, 200] } },
+            ],
+          },
+        },
+      }),
+      { owner: OWNER },
+    );
+
+    expect(result.geometry).toMatchObject({
+      frame: "EPSG:6668, EPSG:3857",
+    });
+  });
+
   test("names a tangent frame by its anchor", () => {
     const result = transformNextFeature(
       feature({
@@ -786,6 +839,46 @@ describe("a CityGML feature's per-LOD collection", () => {
     expect(result.geometry).not.toHaveProperty("lod");
   });
 
+  test("finds the frame through a nested collection", () => {
+    // CityGML reaches two levels: a GeometryCollection of per-LOD members,
+    // each of which may be a MultiSurface and so a collection in turn. No
+    // collection carries a frame, so it has to come from the leaves.
+    const result = transformNextFeature(
+      feature({
+        GeometryCollection: {
+          members: [
+            {
+              Euclidean3D: {
+                Collection: {
+                  members: [
+                    {
+                      Polygon: {
+                        frame: { Crs: 6697 },
+                        exterior: [
+                          [35.6, 139.7, 0],
+                          [35.6, 139.8, 0],
+                          [35.7, 139.8, 0],
+                        ],
+                      },
+                    },
+                  ],
+                },
+              },
+            },
+          ],
+          attrs: [{ lod: 2 }],
+        },
+      }),
+      { owner: OWNER },
+    );
+
+    expect(result.geometry).toMatchObject({
+      type: "MultiPolygon",
+      frame: "EPSG:6697",
+      lod: 2,
+    });
+  });
+
   test("still summarizes a collection with nothing drawable in it", () => {
     const result = transformNextFeature(
       feature({ GeometryCollection: { members: ["None", "None"] } }),
@@ -793,6 +886,24 @@ describe("a CityGML feature's per-LOD collection", () => {
     );
 
     expect(result.geometry).toMatchObject({ type: "Geometry collection" });
+  });
+});
+
+describe("geometry the schema does not know", () => {
+  test("names it by its discriminant instead of reporting Unknown", () => {
+    const result = transformNextFeature(
+      feature({
+        Euclidean3D: { Nurbs: { frame: { Crs: 6697 }, degree: 3 } },
+      }),
+      { owner: OWNER },
+    );
+
+    // A newer engine can emit a variant this build has never seen; the table
+    // should still say what it was.
+    expect(result.geometry).toEqual({
+      type: "Nurbs",
+      frame: "EPSG:6697",
+    });
   });
 });
 
@@ -883,19 +994,5 @@ describe("intermediateDataTransform dispatch", () => {
       coordinates: [1, 2],
       frame: "EPSG:4326",
     });
-  });
-
-  test("stamps the source line on both formats, for view selection", () => {
-    const next = intermediateDataTransform(feature("None"), {
-      owner: OWNER,
-      rowIndex: 41,
-    });
-    const legacy = intermediateDataTransform(
-      { id: "1", attributes: {}, geometry: { value: "none" } },
-      { owner: OWNER, rowIndex: 42 },
-    );
-
-    expect(next.rowIndex).toBe(41);
-    expect(legacy.rowIndex).toBe(42);
   });
 });

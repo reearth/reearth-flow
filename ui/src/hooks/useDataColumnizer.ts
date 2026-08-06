@@ -84,10 +84,7 @@ export default ({
         const tableData = features.map((feature: any, index: number) => ({
           id: JSON.stringify(feature.id || index),
           // Underscored keys are carried for the details panel, which filters
-          // them out of the fields it lists. `_rowIndex` is the line this row
-          // came from, which is how the engine's view renderer selects a
-          // feature (`Selection::Row`).
-          _rowIndex: feature.rowIndex ?? index,
+          // them out of the fields it lists.
           _appearance: feature.appearance,
           _source: feature.source,
           ...Object.fromEntries(

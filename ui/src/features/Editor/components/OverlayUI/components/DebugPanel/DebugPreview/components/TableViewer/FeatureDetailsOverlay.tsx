@@ -39,11 +39,7 @@ type Props = {
   detectedGeometryType?: string | null;
 };
 
-const FeatureDetailsOverlay: React.FC<Props> = ({
-  feature,
-  onClose,
-  detectedGeometryType,
-}) => {
+const FeatureDetailsOverlay: React.FC<Props> = ({ feature, onClose }) => {
   const t = useT();
   const [searchTerm, setSearchTerm] = useState<string>("");
 
@@ -305,11 +301,11 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
             tooltipText={t("Back to table")}
           />
           <div className="flex items-center gap-2">
-            {detectedGeometryType && (
+            {/* {detectedGeometryType && (
               <span className="text-xs text-muted-foreground">
                 {detectedGeometryType}
               </span>
-            )}
+            )} */}
             <h3 className="text-sm">
               {t("Feature ID: ")} {processedFeature.id}
             </h3>

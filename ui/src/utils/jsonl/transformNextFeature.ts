@@ -28,8 +28,6 @@ type Position = number[];
 export type NextTransformOptions = {
   /** Data URL of the file being read; owns any images lifted out of it. */
   owner: string;
-  /** 0-based line number in the source JSONL. */
-  rowIndex?: number;
 };
 
 export type TransformedFeature = {
@@ -37,12 +35,6 @@ export type TransformedFeature = {
   type: "Feature";
   properties: Record<string, unknown>;
   geometry?: unknown;
-  /**
-   * Line this feature sits at in its file. The engine's view renderer selects
-   * by row (`Selection::Row`) and stamps only `rowIndex` on what it renders,
-   * so this is the join between a table row and a rendered view.
-   */
-  rowIndex?: number;
   /**
    * Materials and their texture maps. Held beside the geometry rather than
    * inside it so the table does not grow a column per material, and so the
@@ -246,14 +238,21 @@ function toGeoJson(
       };
     }
     case "Collection": {
+      // Members are bare leaves rather than whole geometries here, so they are
+      // wrapped back into the dimension they came from to be resolved.
       const members = (leaf.members ?? []) as unknown[];
-      const geometries = members
-        .map((member) => {
-          const described = describeGeometry({ [dimension]: member });
-          return toGeoJson(described.variant, described.value, dimension);
-        })
+      const described = members.map((member) =>
+        describeGeometry({ [dimension]: member }),
+      );
+      const geometries = described
+        .map((member) => toGeoJson(member.variant, member.value, dimension))
         .filter(Boolean) as Record<string, unknown>[];
-      return mergeMembers(geometries);
+
+      // A collection has no frame of its own; take it from the members.
+      return {
+        ...mergeMembers(geometries),
+        ...frameOfCollection(described, geometries),
+      };
     }
     default:
       return null;
@@ -332,9 +331,9 @@ type SelectedCollection = {
  * further collections — so conversion has to start at the top of the enum, not
  * at a leaf.
  */
-function geometryToGeoJson(geometry: unknown): Record<string, unknown> | null {
-  const described = describeGeometry(geometry);
-
+function geoJsonOfDescribed(
+  described: GeometryDescription,
+): Record<string, unknown> | null {
   if (described.kind === "2d" || described.kind === "3d") {
     const dimension: Dimension =
       described.kind === "2d" ? "Euclidean2D" : "Euclidean3D";
@@ -346,15 +345,43 @@ function geometryToGeoJson(geometry: unknown): Record<string, unknown> | null {
   return null;
 }
 
-/** Frame of the first member that declares one; a collection carries none itself. */
-function frameOfMembers(members: unknown[]): Record<string, unknown> {
-  for (const member of members) {
-    const described = describeGeometry(member);
-    const leaf = (described.value ?? {}) as Record<string, unknown>;
+/**
+ * Frame for a collection, taken from the first member that has one.
+ *
+ * No collection carries a frame — `Collection2D`, `Collection3D` and the
+ * top-level `GeometryCollection` all hold only `members` and `attrs`, because
+ * members may sit in different frames. Reporting the first is better than
+ * reporting none: it is right whenever they agree, which is the usual case, and
+ * the raw view shows the truth when they do not.
+ *
+ * Falls back to the converted members, which covers a member that is itself a
+ * collection and has already resolved its own frame. CityGML reaches two levels
+ * this way: a `GeometryCollection` of per-LOD members, each of which may be a
+ * `MultiSurface` and so a collection in turn.
+ */
+function frameOfCollection(
+  described: GeometryDescription[],
+  converted: Record<string, unknown>[],
+): Record<string, unknown> {
+  const frames = new Set<string>();
+
+  for (const member of described) {
+    const leaf = (member.value ?? {}) as Record<string, unknown>;
     const frame = describeFrame(leaf.frame);
-    if (frame) return { frame };
+    if (frame) frames.add(frame);
   }
-  return {};
+
+  // A member that is itself a collection has already resolved its own.
+  if (frames.size === 0) {
+    for (const member of converted) {
+      if (typeof member.frame === "string") frames.add(member.frame);
+    }
+  }
+
+  if (frames.size === 0) return {};
+  // Every frame present, not just the first: naming one of several would say
+  // the members agree when they do not.
+  return { frame: [...frames].join(", ") };
 }
 
 /**
@@ -387,15 +414,18 @@ function collectionToGeoJson(value: unknown): SelectedCollection {
       ? members
       : members.filter((_, index) => levels[index] === lod);
 
-  const geometries = selected.map(geometryToGeoJson).filter(Boolean) as Record<
-    string,
-    unknown
-  >[];
+  const described = selected.map(describeGeometry);
+  const geometries = described
+    .map(geoJsonOfDescribed)
+    .filter(Boolean) as Record<string, unknown>[];
 
   if (geometries.length === 0) return { geometry: null, lod };
 
   return {
-    geometry: { ...mergeMembers(geometries), ...frameOfMembers(selected) },
+    geometry: {
+      ...mergeMembers(geometries),
+      ...frameOfCollection(described, geometries),
+    },
     lod,
   };
 }
@@ -513,8 +543,6 @@ export function transformNextFeature(
     type: "Feature",
     properties: { ...parsed.attributes },
   };
-
-  if (options.rowIndex !== undefined) transformed.rowIndex = options.rowIndex;
 
   const appearance = extractAppearance(parsed.geometry, options.owner);
   if (appearance.materials.length > 0) transformed.appearance = appearance;

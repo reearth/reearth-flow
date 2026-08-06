@@ -95,18 +95,38 @@ describe("new-format viewer selection", () => {
     });
   });
 
-  test("reports the predominant type, not whichever came first", () => {
-    const features = [
+  test("names the type only when the file agrees on one", () => {
+    const uniform = [next(mesh({ Crs: 4979 })), next(mesh({ Crs: 4979 }))];
+
+    expect(analyzeDataType(uniform)).toMatchObject({
+      geometryType: "Triangle mesh (3D)",
+    });
+  });
+
+  test("says Mixed rather than naming the most common type", () => {
+    // A file of polylines, points and polygons is not a file of polylines.
+    // Picking a winner would present a mixed file as uniform.
+    const mixed = [
       next(point({ Crs: 4326 })),
       next(mesh({ Crs: 4979 })),
       next(mesh({ Crs: 4979 })),
       next(mesh({ Crs: 4979 })),
     ];
 
-    expect(analyzeDataType(features)).toMatchObject({
-      geometryType: "Triangle mesh (3D)",
+    expect(analyzeDataType(mixed)).toMatchObject({
+      geometryType: "Mixed",
+      // The viewer still has to choose, and the file is predominantly 3D.
       visualizerType: "3d-map",
     });
+  });
+
+  test("says Mixed for a legacy file too", () => {
+    const mixed = [
+      legacy({ flowGeometry2D: { point: { x: 1, y: 2 } } }),
+      legacy({ cityGmlGeometry: { gmlGeometries: [] } }),
+    ];
+
+    expect(analyzeDataType(mixed)).toMatchObject({ geometryType: "Mixed" });
   });
 
   test("ignores features with no geometry when choosing", () => {

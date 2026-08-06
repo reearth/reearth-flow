@@ -73,20 +73,21 @@ function detectGeometryType(feature: any): GeometryType {
   return "Unknown";
 }
 
-/** The most common entry, or null when there are none. */
-function predominant(values: string[]): string | null {
-  const counts = new Map<string, number>();
-  for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1);
+/** Shown when a file holds more than one kind of geometry. */
+const MIXED_LABEL = "Mixed";
 
-  let best: string | null = null;
-  let bestCount = 0;
-  for (const [value, count] of counts) {
-    if (count > bestCount) {
-      best = value;
-      bestCount = count;
-    }
-  }
-  return best;
+/**
+ * The one type a file holds, or {@link MIXED_LABEL} when it holds several.
+ *
+ * Naming the most common would present a mixed file as uniform — a file of
+ * polylines, points and polygons is not a file of polylines. The per-row
+ * `geometry.type` column carries the detail; this is only the headline.
+ */
+function singleType(labels: string[]): string | null {
+  const distinct = new Set(labels);
+  if (distinct.size === 0) return null;
+  if (distinct.size === 1) return [...distinct][0];
+  return MIXED_LABEL;
 }
 
 type Drawable = {
@@ -166,7 +167,7 @@ function analyzeNextFormat(sample: any[]): {
     .filter((entry): entry is Drawable => entry !== null);
 
   if (drawables.length === 0) {
-    return { geometryType: predominant(labels), visualizerType: null };
+    return { geometryType: singleType(labels), visualizerType: null };
   }
 
   // Model-space 3D goes to the model viewer, not a map: an OBJ or glTF read
@@ -178,14 +179,14 @@ function analyzeNextFormat(sample: any[]): {
     (entry) => entry.modelSpace && entry.kind === "3d",
   ).length;
   if (models * 2 >= drawables.length) {
-    return { geometryType: predominant(labels), visualizerType: "3d-model" };
+    return { geometryType: singleType(labels), visualizerType: "3d-model" };
   }
 
   // 3D coordinates carry an altitude the 2D map drops, so a predominantly 3D
   // file gets the globe.
   const threeD = drawables.filter((entry) => entry.kind === "3d").length;
   return {
-    geometryType: predominant(labels),
+    geometryType: singleType(labels),
     visualizerType: threeD * 2 >= drawables.length ? "3d-map" : "2d-map",
   };
 }
@@ -255,12 +256,11 @@ export function analyzeDataType(features: any[]): {
     visualizerType = hasObjGltfSource ? "3d-model" : "3d-map";
   }
 
-  return {
-    geometryType: predominantType
-      ? (LEGACY_TYPE_LABELS[predominantType] ?? predominantType)
-      : predominantType,
-    visualizerType,
-  };
+  // The viewer has to pick one, but the label does not: name the type only
+  // when the sample agrees on it.
+  const named = entries.map(([type]) => LEGACY_TYPE_LABELS[type] ?? type);
+
+  return { geometryType: singleType(named), visualizerType };
 }
 
 // Smart cache management to prevent memory issues with multiple files
@@ -407,15 +407,10 @@ export const useStreamingDebugRunQuery = (
               const remainingToAdd = displayLimit - streamData.length;
               const dataToAdd = result.data.slice(0, remainingToAdd);
 
-              // `streamData.length` is the feature's own line number: features
-              // are appended in file order and nothing before the display
-              // limit is skipped.
-              const firstRow = streamData.length;
-              const transformedData = dataToAdd.map((feature, offset) => {
+              const transformedData = dataToAdd.map((feature) => {
                 try {
                   const transformed = intermediateDataTransform(feature, {
                     owner: dataUrl,
-                    rowIndex: firstRow + offset,
                   });
                   // Keep the engine's own record for raw inspection; its
                   // embedded images have already been lifted out, so this
@@ -481,12 +476,10 @@ export const useStreamingDebugRunQuery = (
               const remainingToAdd = displayLimit - streamData.length;
               const dataToAdd = result.data.slice(0, remainingToAdd);
 
-              const firstRow = streamData.length;
-              const transformedData = dataToAdd.map((feature, offset) => {
+              const transformedData = dataToAdd.map((feature) => {
                 try {
                   const transformed = intermediateDataTransform(feature, {
                     owner: dataUrl,
-                    rowIndex: firstRow + offset,
                   });
                   // Keep the engine's own record for raw inspection; its
                   // embedded images have already been lifted out, so this

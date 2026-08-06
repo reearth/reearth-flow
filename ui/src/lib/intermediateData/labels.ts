@@ -123,7 +123,18 @@ export function describeGeometry(geometry: unknown): GeometryDescription {
   const kind: GeometryKind = top.variant === "Euclidean2D" ? "2d" : "3d";
   const leaf = top.definition ? stepInto(top.definition, top.value) : null;
   if (!leaf) {
-    return { ...unknown, kind, value: top.value };
+    // A leaf variant this build's schema does not know: the schema is read
+    // from the engine at build time, but the two deploy separately, so a
+    // running UI can be handed geometry from a newer engine. Keep the raw
+    // discriminant — naming what arrived is the whole point of the panel, and
+    // "Unknown" withholds it at exactly the moment it is wanted.
+    const tag = tagOf(top.value);
+    return {
+      ...unknown,
+      kind,
+      variant: tag,
+      value: tag ? (top.value as Record<string, unknown>)[tag] : top.value,
+    };
   }
 
   return {

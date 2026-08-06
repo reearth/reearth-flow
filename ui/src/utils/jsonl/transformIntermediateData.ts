@@ -27,14 +27,7 @@ export function intermediateDataTransform(
   parsedData: any,
   options?: Partial<NextTransformOptions>,
 ): TransformedFeature {
-  const transformed: TransformedFeature = isNextFormat(parsedData)
-    ? transformNextFeature(parsedData, {
-        owner: options?.owner ?? "",
-        rowIndex: options?.rowIndex,
-      })
+  return isNextFormat(parsedData)
+    ? transformNextFeature(parsedData, { owner: options?.owner ?? "" })
     : transformLegacyFeature(parsedData);
-
-  if (options?.rowIndex !== undefined) transformed.rowIndex = options.rowIndex;
-
-  return transformed;
 }

@@ -68,10 +68,21 @@ describe("describeGeometry", () => {
     expect(result.kind).toBe("unknown");
   });
 
-  test("returns unknown rather than throwing on an unrecognised variant", () => {
-    expect(describeGeometry({ Euclidean2D: { Hyperbola: {} } }).kind).toBe(
-      "2d",
-    );
+  test("keeps the raw discriminant of a variant the schema does not know", () => {
+    // The engine can deploy ahead of the UI, and naming what arrived is more
+    // use than reporting "Unknown".
+    const result = describeGeometry({
+      Euclidean2D: { Hyperbola: { frame: { Crs: 4326 } } },
+    });
+
+    expect(result.kind).toBe("2d");
+    expect(result.variant).toBe("Hyperbola");
+    expect(result.definition).toBeNull();
+    // Unwrapped like a known leaf, so the frame is still readable.
+    expect(result.value).toEqual({ frame: { Crs: 4326 } });
+  });
+
+  test("returns unknown rather than throwing on unrecognisable input", () => {
     expect(describeGeometry(null).kind).toBe("unknown");
     expect(describeGeometry({ a: 1, b: 2 }).kind).toBe("unknown");
   });

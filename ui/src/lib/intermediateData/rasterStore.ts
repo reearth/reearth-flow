@@ -184,6 +184,16 @@ export function releaseObjectUrl(ref: string): void {
   }
 }
 
+/**
+ * Drop an entry outright, ignoring `objectUrlRefs`.
+ *
+ * Eviction deliberately wins over display: a file leaving the query cache takes
+ * its images with it. A thumbnail still on screen from that file breaks, which
+ * needs the details panel open on one of nine-plus cached files, and costs a
+ * broken image rather than anything worse — `releaseObjectUrl` finds no entry
+ * afterwards and returns, so there is no double revoke. The refcount is for
+ * {@link releaseObjectUrl}, where several components may show one image.
+ */
 function discard(key: string, entry: RasterEntry): void {
   if (entry.objectUrl) URL.revokeObjectURL(entry.objectUrl);
   if (entry.data) retainedBytes -= entry.byteLength;
