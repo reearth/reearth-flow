@@ -10,7 +10,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func TestClient_GetSnapshots_DecodesList(t *testing.T) {
+func TestClient_GetNamedSnapshots_DecodesList(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, http.MethodGet, r.Method)
 		assert.Equal(t, "/api/document/proj1/snapshots", r.URL.Path)
@@ -23,7 +23,7 @@ func TestClient_GetSnapshots_DecodesList(t *testing.T) {
 	client, err := NewClient(Config{ServerURL: server.URL})
 	assert.NoError(t, err)
 
-	got, err := client.GetSnapshots(context.Background(), "proj1")
+	got, err := client.GetNamedSnapshots(context.Background(), "proj1")
 	assert.NoError(t, err)
 	assert.Len(t, got, 2)
 
@@ -40,7 +40,7 @@ func TestClient_GetSnapshots_DecodesList(t *testing.T) {
 
 // An unparseable timestamp must stay zero rather than becoming time.Now(), which
 // would misorder and mislabel history. The row is still returned.
-func TestClient_GetSnapshots_UnparseableTimestampStaysZero(t *testing.T) {
+func TestClient_GetNamedSnapshots_UnparseableTimestampStaysZero(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_, _ = w.Write([]byte(`[{"id":1,"label":"broken","timestamp":"not-a-timestamp","size":7}]`))
@@ -50,7 +50,7 @@ func TestClient_GetSnapshots_UnparseableTimestampStaysZero(t *testing.T) {
 	client, err := NewClient(Config{ServerURL: server.URL})
 	assert.NoError(t, err)
 
-	got, err := client.GetSnapshots(context.Background(), "proj1")
+	got, err := client.GetNamedSnapshots(context.Background(), "proj1")
 	assert.NoError(t, err)
 	assert.Len(t, got, 1)
 	assert.Equal(t, int64(1), got[0].ID)
@@ -59,7 +59,7 @@ func TestClient_GetSnapshots_UnparseableTimestampStaysZero(t *testing.T) {
 	assert.True(t, got[0].Timestamp.IsZero(), "timestamp must stay zero, not be fabricated from time.Now()")
 }
 
-func TestClient_GetSnapshots_SetsAPISecretHeader(t *testing.T) {
+func TestClient_GetNamedSnapshots_SetsAPISecretHeader(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		assert.Equal(t, "my-secret", r.Header.Get("X-API-Secret"))
 		w.Header().Set("Content-Type", "application/json")
@@ -70,11 +70,11 @@ func TestClient_GetSnapshots_SetsAPISecretHeader(t *testing.T) {
 	client, err := NewClient(Config{ServerURL: server.URL, APISecret: "my-secret"})
 	assert.NoError(t, err)
 
-	_, err = client.GetSnapshots(context.Background(), "proj1")
+	_, err = client.GetNamedSnapshots(context.Background(), "proj1")
 	assert.NoError(t, err)
 }
 
-func TestClient_GetSnapshots_NonOKStatus(t *testing.T) {
+func TestClient_GetNamedSnapshots_NonOKStatus(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusInternalServerError)
 		_, _ = w.Write([]byte("boom"))
@@ -84,7 +84,7 @@ func TestClient_GetSnapshots_NonOKStatus(t *testing.T) {
 	client, err := NewClient(Config{ServerURL: server.URL})
 	assert.NoError(t, err)
 
-	_, err = client.GetSnapshots(context.Background(), "proj1")
+	_, err = client.GetNamedSnapshots(context.Background(), "proj1")
 	assert.Error(t, err)
 }
 

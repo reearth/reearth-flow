@@ -39,7 +39,7 @@ func (m *mockWebsocketClient) GetHistoryByVersion(context.Context, string, int) 
 func (m *mockWebsocketClient) GetHistoryMetadata(context.Context, string) ([]*ws.HistoryMetadata, error) {
 	return nil, nil
 }
-func (m *mockWebsocketClient) GetSnapshots(context.Context, string) ([]*ws.SnapshotMetadata, error) {
+func (m *mockWebsocketClient) GetNamedSnapshots(context.Context, string) ([]*ws.SnapshotMetadata, error) {
 	return nil, nil
 }
 func (m *mockWebsocketClient) SaveNamedSnapshot(context.Context, string, string) (*ws.SnapshotMetadata, error) {

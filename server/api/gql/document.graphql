@@ -28,8 +28,7 @@ type ProjectSnapshotMetadata {
   version: Int!
 }
 
-# A labelled snapshot in a project's version history. snapshotNumber counts saved
-# snapshots per room; it is not an update-log version. See reearth-flow#2344.
+# A labelled snapshot in a project's version history.
 type NamedSnapshot {
   snapshotNumber: Int!
   label: String!
@@ -54,5 +53,5 @@ extend type Query {
   latestProjectSnapshot(projectId: ID!): ProjectDocument
   projectHistory(projectId: ID!): [ProjectSnapshotMetadata!]!
   projectSnapshot(projectId: ID!, version: Int!): ProjectSnapshot!
-  projectSnapshots(projectId: ID!): [NamedSnapshot!]!
+  projectNamedSnapshots(projectId: ID!): [NamedSnapshot!]!
 }

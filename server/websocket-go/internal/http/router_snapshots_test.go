@@ -11,11 +11,11 @@ import (
 
 var errUnexpected = errors.New("unexpected store failure")
 
-// TestGetSnapshots_ReturnsNewestFirstWithLabels: the router must pass the
+// TestGetNamedSnapshots_ReturnsNewestFirstWithLabels: the router must pass the
 // store's snapshot list through to JSON verbatim, preserving order and label.
 // (Ordering itself is the store's contract — see adapt_snapshots_test.go for
 // a test that exercises that against a real SnapshotStore implementation.)
-func TestGetSnapshots_ReturnsNewestFirstWithLabels(t *testing.T) {
+func TestGetNamedSnapshots_ReturnsNewestFirstWithLabels(t *testing.T) {
 	newer := time.Date(2026, 7, 30, 12, 0, 0, 0, time.UTC)
 	older := newer.Add(-time.Hour)
 	store := &fakeStore{
@@ -50,9 +50,9 @@ func TestGetSnapshots_ReturnsNewestFirstWithLabels(t *testing.T) {
 	}
 }
 
-// TestGetSnapshots_UnknownRoomIsEmptyList: a room with no snapshots (or that
+// TestGetNamedSnapshots_UnknownRoomIsEmptyList: a room with no snapshots (or that
 // doesn't exist) must render as an empty JSON array, never null and never an error.
-func TestGetSnapshots_UnknownRoomIsEmptyList(t *testing.T) {
+func TestGetNamedSnapshots_UnknownRoomIsEmptyList(t *testing.T) {
 	store := &fakeStore{snapshots: nil}
 	h := newTestRouter(store)
 	rec := do(t, h, "GET", "/api/document/unknown-room/snapshots", "")
@@ -65,10 +65,10 @@ func TestGetSnapshots_UnknownRoomIsEmptyList(t *testing.T) {
 	}
 }
 
-// TestGetSnapshots_StoreErrorIs500: a genuine store failure (not "no
+// TestGetNamedSnapshots_StoreErrorIs500: a genuine store failure (not "no
 // snapshots") must surface as a logged 500, matching every other list-style
 // handler in this router.
-func TestGetSnapshots_StoreErrorIs500(t *testing.T) {
+func TestGetNamedSnapshots_StoreErrorIs500(t *testing.T) {
 	store := &fakeStore{snapshotErr: errUnexpected}
 	h := newTestRouter(store)
 	rec := do(t, h, "GET", "/api/document/proj1/snapshots", "")

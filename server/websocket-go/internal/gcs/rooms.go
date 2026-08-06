@@ -8,11 +8,12 @@ import (
 
 // ListRooms enumerates every room the bucket holds data for.
 //
-// NOTE: not wired yet; admin cleanup still enumerates live rooms only. See
-// reearth/reearth-flow#2333, which also lists two bugs to fix before wiring.
+// TODO(reearth/reearth-flow#2333): wire this to admin cleanup, which still
+// enumerates live rooms only. That issue lists two bugs to fix first.
 //
-// Phase 2 is a prefix listing. Phase 1 recovers rooms from the OID index objects
-// plus the snapshot counters, which cover snapshot-only rooms.
+// The two object layouts differ: one is a prefix listing, the other recovers
+// rooms from the OID index objects plus the snapshot counters, which are what
+// cover a room holding snapshots but no update log.
 func (a *Adapter) ListRooms(ctx context.Context) ([]string, error) {
 	if a.phase2 {
 		prefixes, err := a.store.listPrefixes(ctx, "")

@@ -458,7 +458,7 @@ func (c *Client) DeleteDocument(ctx context.Context, docID string) error {
 	return nil
 }
 
-func (c *Client) GetSnapshots(ctx context.Context, docID string) ([]*websocket.SnapshotMetadata, error) {
+func (c *Client) GetNamedSnapshots(ctx context.Context, docID string) ([]*websocket.SnapshotMetadata, error) {
 	url := fmt.Sprintf("%s/api/document/%s/snapshots", c.config.ServerURL, docID)
 	req, err := http.NewRequestWithContext(ctx, "GET", url, nil)
 	if err != nil {
@@ -508,7 +508,7 @@ func (c *Client) GetSnapshots(ctx context.Context, docID string) ([]*websocket.S
 }
 
 // SaveNamedSnapshot saves a labelled snapshot. The save endpoint returns only
-// {id, label}, so the rest is enriched from GetSnapshots.
+// {id, label}, so the rest is enriched from GetNamedSnapshots.
 func (c *Client) SaveNamedSnapshot(ctx context.Context, docID, label string) (*websocket.SnapshotMetadata, error) {
 	url := fmt.Sprintf("%s/api/document/%s/snapshots", c.config.ServerURL, docID)
 
@@ -551,7 +551,7 @@ func (c *Client) SaveNamedSnapshot(ctx context.Context, docID, label string) (*w
 		return nil, fmt.Errorf("websocket server reported snapshot id %d for doc %s: nothing was saved", saved.ID, docID)
 	}
 
-	snapshots, err := c.GetSnapshots(ctx, docID)
+	snapshots, err := c.GetNamedSnapshots(ctx, docID)
 	if err != nil {
 		log.Warnf("failed to enrich saved snapshot metadata: %v", err)
 		return &websocket.SnapshotMetadata{ID: saved.ID, Label: saved.Label}, nil

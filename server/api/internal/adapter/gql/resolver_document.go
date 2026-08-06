@@ -50,8 +50,8 @@ func (r *queryResolver) ProjectHistory(ctx context.Context, projectId gqlmodel.I
 	return nodes, nil
 }
 
-func (r *queryResolver) ProjectSnapshots(ctx context.Context, projectId gqlmodel.ID) ([]*gqlmodel.NamedSnapshot, error) {
-	snaps, err := usecases(ctx).Websocket.GetSnapshots(ctx, string(projectId))
+func (r *queryResolver) ProjectNamedSnapshots(ctx context.Context, projectId gqlmodel.ID) ([]*gqlmodel.NamedSnapshot, error) {
+	snaps, err := usecases(ctx).Websocket.GetNamedSnapshots(ctx, string(projectId))
 	if err != nil {
 		return nil, err
 	}

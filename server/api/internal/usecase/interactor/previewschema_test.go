@@ -52,7 +52,7 @@ func (w *fakeWebsocket) GetHistoryByVersion(context.Context, string, int) (*webs
 func (w *fakeWebsocket) GetHistoryMetadata(context.Context, string) ([]*websocket.HistoryMetadata, error) {
 	return nil, nil
 }
-func (w *fakeWebsocket) GetSnapshots(context.Context, string) ([]*websocket.SnapshotMetadata, error) {
+func (w *fakeWebsocket) GetNamedSnapshots(context.Context, string) ([]*websocket.SnapshotMetadata, error) {
 	return nil, nil
 }
 func (w *fakeWebsocket) SaveNamedSnapshot(context.Context, string, string) (*websocket.SnapshotMetadata, error) {
