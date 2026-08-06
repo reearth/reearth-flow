@@ -48,13 +48,15 @@ rolling mirror.
 - `FLOW_PROJ_GRID_DIR` names directories of `.tif` files, in the platform's
   path-list syntax, searched ahead of the embedded set. Use it to add a grid the
   set lacks, or to override one. A directory already holding the whole embedded
-  set also suppresses unpacking, which is why the container images set it; when
-  overriding it there, keep the image's own directory on the list:
-  `FLOW_PROJ_GRID_DIR=/mnt/geoids:/usr/local/share/proj-grids`.
+  set also suppresses unpacking.
 - `FLOW_PROJ_GRID_CACHE_DIR` is where the embedded grids are unpacked when
   `FLOW_PROJ_GRID_DIR` does not already supply them. It defaults to the user
   cache directory, falling back to the temporary directory. Set it when neither
   is writable.
+
+The embedded grids are written out once per process, on the first reprojection,
+and not at all if a process never reprojects. Files already present at the right
+size are left alone.
 
 Grids installed the way PROJ installs them, in its own user-writable directory
 or under `PROJ_DATA`, are still found, after the two above.
