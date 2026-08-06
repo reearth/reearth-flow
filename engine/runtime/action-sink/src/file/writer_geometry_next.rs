@@ -9,6 +9,7 @@ use std::sync::{Mutex, OnceLock};
 
 use indexmap::IndexMap;
 use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
+use reearth_flow_geometry::ops::Split;
 use reearth_flow_geometry::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
 use super::{GeometryExportConfig, GeometryExportMode};
@@ -309,11 +310,12 @@ fn write_2d(geometry: &Euclidean2DGeometry) -> Result<WrittenWkt, GeometryExport
         Point(p) => Ok(point(p.frame(), p.position())),
         LineString(l) => Ok(curve(l.frame(), l.coords())),
         Polygon(p) => Ok(area(p.frame(), p.exterior(), p.interiors())),
+        PolygonMesh(m) => write_faces((**m).clone(), geometry),
+        TriangularMesh(m) => write_faces((**m).clone(), geometry),
         Collection(c) => Parts::of(c.members(), write_2d, || {
             GeometryExportError::UnsupportedGeometryCollection
         })
         .map(Parts::into_one_geometry),
-        other => Err(unsupported(other)),
     }
 }
 
@@ -323,12 +325,40 @@ fn write_3d(geometry: &Euclidean3DGeometry) -> Result<WrittenWkt, GeometryExport
         Point(p) => Ok(point(p.frame(), p.position())),
         LineString(l) => Ok(curve(l.frame(), l.coords())),
         Polygon(p) => Ok(area(p.frame(), p.exterior(), p.interiors())),
+        PolygonMesh(m) => write_faces((**m).clone(), geometry),
+        TriangularMesh(m) => write_faces((**m).clone(), geometry),
         Collection(c) => Parts::of(c.members(), write_3d, || {
             GeometryExportError::UnsupportedGeometryCollection
         })
         .map(Parts::into_one_geometry),
-        other => Err(unsupported(other)),
+        // WKT has no volume, nor the boolean tree built from volumes. A PointCloud
+        // could fill a MULTIPOINT, but that would emit a position per sample.
+        Solid(_) | Csg(_) | PointCloud(_) => Err(unsupported(geometry)),
     }
+}
+
+/// A mesh writes as its faces, folding into a `MULTIPOLYGON` the way a collection
+/// writes as its members.
+///
+/// The `Split` op takes `&mut self`, hence the mesh is passed by value; splitting a
+/// mesh reads it rather than emptying it, so the geometry it came from is left
+/// intact. `geometry` names the mesh in the error when its faces cannot be read.
+///
+/// A building-sized mesh becomes one cell holding hundreds of rings. That is the
+/// same output the GeoJSON writer produces, but CSV is opened in spreadsheet tools
+/// with cell-length limits, so the cell may be truncated by the reader rather than
+/// by us. Kept as a comment rather than a parameter description: doc comments on the
+/// parameter types feed `schema/actions*.json` and the i18n files, which this port
+/// must leave byte-identical.
+fn write_faces(
+    mut mesh: impl Split,
+    geometry: &impl std::fmt::Debug,
+) -> Result<WrittenWkt, GeometryExportError> {
+    let mut faces = Vec::new();
+    mesh.split(&mut |face, _| faces.push(face))
+        .map_err(|_| unsupported(geometry))?;
+    Parts::of(&faces, write_geometry, || unsupported(geometry))
+        .map(Parts::into_one_geometry)
 }
 
 // The 2D and 3D leaves differ only in how long a position is, so what turns one
@@ -496,7 +526,9 @@ mod tests {
         coordinate::{BaseFrame, CoordinateFrame, EpsgCode, TangentPlane},
         line_string::{LineString2D, LineString3D},
         point::{Point2D, Point3D},
+        point_cloud::PointCloud,
         polygon::{Polygon2D, Polygon3D},
+        triangular_mesh::TriangularMesh3D,
         Euclidean2DGeometry, Euclidean3DGeometry, Geometry, GeometryCollection,
     };
 
@@ -824,5 +856,49 @@ mod tests {
             Euclidean2DGeometry::Collection(Collection2D::new(Vec::new())),
         ]);
         assert_eq!(wkt_of(&geometry), "MULTIPOINT(1 0)");
+    }
+
+    // A mesh writes as its faces, folding into a MULTIPOLYGON the way a collection
+    // writes as its members. `Split` closes each face's ring itself.
+    #[test]
+    fn a_triangular_mesh_writes_its_faces() {
+        let mesh = TriangularMesh3D::from_soup(
+            euclidean(),
+            [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+        );
+        let geometry =
+            Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(mesh)));
+        assert_eq!(
+            wkt_of(&geometry),
+            "MULTIPOLYGON(((0 0 0, 1 0 0, 0 1 0, 0 0 0)))"
+        );
+    }
+
+    // A mesh with no face has nothing to write. `geometry_to_wkt` (not `wkt_of`,
+    // which unwraps) is used directly: an unwritable geometry is an `Err` at this
+    // layer, matching `an_empty_collection_cannot_be_written` above; `csv.rs` is
+    // what turns that `Err` into the empty cell the row ends up with.
+    #[test]
+    fn an_empty_mesh_writes_an_empty_cell() {
+        let mesh = TriangularMesh3D::from_soup(euclidean(), Vec::<[f64; 3]>::new());
+        let geometry =
+            Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(mesh)));
+        assert!(matches!(
+            geometry_to_wkt(&geometry),
+            Err(GeometryExportError::UnsupportedGeometryType(_))
+        ));
+    }
+
+    // WKT has no volume, and a PointCloud would emit a position per sample even
+    // though a MULTIPOINT could hold one. Both match the GeoJSON writer's
+    // refusals, which are also `Err` at this layer (see the comment above).
+    #[test]
+    fn a_point_cloud_writes_an_empty_cell() {
+        let cloud = PointCloud::from_positions(euclidean(), [[0.0, 0.0, 0.0]]);
+        let geometry = Geometry::Euclidean3D(Euclidean3DGeometry::PointCloud(Box::new(cloud)));
+        assert!(matches!(
+            geometry_to_wkt(&geometry),
+            Err(GeometryExportError::UnsupportedGeometryType(_))
+        ));
     }
 }
