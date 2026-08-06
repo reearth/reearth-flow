@@ -170,13 +170,39 @@ fn write_csv(
     delimiter: Delimiter,
     geometry_config: Option<&super::writer_geometry::GeometryExportConfig>,
 ) -> Result<(), crate::errors::SinkError> {
-    if features.is_empty() {
+    let records = csv_records(features, geometry_config)?;
+    if records.is_empty() {
         return Ok(());
     }
     let mut wtr = csv::WriterBuilder::new()
         .delimiter(delimiter.into())
         .quote_style(csv::QuoteStyle::NonNumeric)
         .from_writer(vec![]);
+    for record in records {
+        wtr.write_record(record)
+            .map_err(|e| crate::errors::SinkError::CsvWriter(format!("{e:?}")))?;
+    }
+    wtr.flush()
+        .map_err(|e| crate::errors::SinkError::CsvWriter(format!("{e:?}")))?;
+    let data = String::from_utf8(
+        wtr.into_inner()
+            .map_err(|e| crate::errors::SinkError::CsvWriter(format!("{e:?}")))?,
+    )
+    .map_err(|e| crate::errors::SinkError::CsvWriter(format!("{e:?}")))?;
+    out.write(Bytes::from(data))
+        .map_err(|e| crate::errors::SinkError::CsvWriter(format!("{e:?}")))?;
+    Ok(())
+}
+
+fn csv_records(
+    features: &[Feature],
+    geometry_config: Option<&super::writer_geometry::GeometryExportConfig>,
+) -> Result<Vec<Vec<String>>, crate::errors::SinkError> {
+    if features.is_empty() {
+        return Ok(Vec::new());
+    }
+
+    let mut records: Vec<Vec<String>> = Vec::new();
 
     // Get geometry column names if geometry export is configured
     let geometry_columns = geometry_config
@@ -214,8 +240,7 @@ fn write_csv(
     // Write header
     if let Some(ref fields) = header_fields {
         if !fields.is_empty() {
-            wtr.write_record(fields.clone())
-                .map_err(|e| crate::errors::SinkError::CsvWriter(format!("{e:?}")))?;
+            records.push(fields.clone());
         }
     }
 
@@ -223,10 +248,18 @@ fn write_csv(
     // than one per row; the per-feature warning below names which feature failed.
     let mut failed = 0usize;
 
+    // An empty attribute set is still a row when geometry columns were asked for:
+    // a feature can carry geometry and nothing else. Without this, the header is
+    // written and then the first row fails the whole file.
+    let has_columns = attribute_fields
+        .as_ref()
+        .is_some_and(|fields| !fields.is_empty())
+        || !geometry_columns.is_empty();
+
     // Write rows with geometry
     for (feature, row) in features.iter().zip(rows.iter()) {
         match attribute_fields {
-            Some(ref attr_fields) if !attr_fields.is_empty() => {
+            Some(ref attr_fields) if has_columns => {
                 // Get attribute values only (not geometry)
                 let mut values = get_row_values(row, attr_fields)?;
 
@@ -253,13 +286,10 @@ fn write_csv(
                     }
                 }
 
-                wtr.write_record(values)
-                    .map_err(|e| crate::errors::SinkError::CsvWriter(format!("{e:?}")))?;
+                records.push(values);
             }
             _ => match row {
-                AttributeValue::String(s) => wtr
-                    .write_record(vec![s])
-                    .map_err(|e| crate::errors::SinkError::CsvWriter(format!("{e:?}")))?,
+                AttributeValue::String(s) => records.push(vec![s.clone()]),
                 AttributeValue::Array(s) => {
                     let values = s
                         .iter()
@@ -268,8 +298,7 @@ fn write_csv(
                             _ => String::new(),
                         })
                         .collect::<Vec<_>>();
-                    wtr.write_record(values)
-                        .map_err(|e| crate::errors::SinkError::CsvWriter(format!("{e:?}")))?
+                    records.push(values);
                 }
                 _ => {
                     return Err(crate::errors::SinkError::CsvWriter(
@@ -281,23 +310,57 @@ fn write_csv(
     }
 
     if failed > 0 {
-        tracing::warn!(
-            failed,
-            "{failed} feature(s) could not export geometry to {}",
-            out.uri()
-        );
+        tracing::warn!(failed, "{failed} feature(s) could not export geometry");
     }
 
-    wtr.flush()
-        .map_err(|e| crate::errors::SinkError::CsvWriter(format!("{e:?}")))?;
-    let data = String::from_utf8(
-        wtr.into_inner()
-            .map_err(|e| crate::errors::SinkError::CsvWriter(format!("{e:?}")))?,
-    )
-    .map_err(|e| crate::errors::SinkError::CsvWriter(format!("{e:?}")))?;
-    out.write(Bytes::from(data))
-        .map_err(|e| crate::errors::SinkError::CsvWriter(format!("{e:?}")))?;
-    Ok(())
+    Ok(records)
+}
+
+#[cfg(test)]
+mod tests {
+    use indexmap::IndexMap;
+    use reearth_flow_types::Attribute;
+
+    use super::super::writer_geometry::{GeometryExportConfig, GeometryExportMode};
+    use super::*;
+
+    fn wkt_config() -> GeometryExportConfig {
+        GeometryExportConfig {
+            mode: GeometryExportMode::Wkt {
+                column: "wkt".to_string(),
+            },
+        }
+    }
+
+    // A feature can carry geometry and nothing else. Writing the header and then
+    // failing the row would leave a CSV whose single column has no values.
+    #[test]
+    fn a_feature_with_no_attributes_writes_its_geometry_columns() {
+        let feature = Feature::new_with_attributes(IndexMap::new());
+        let records = csv_records(&[feature], Some(&wkt_config()))
+            .expect("a geometry-only feature should write");
+        assert_eq!(records, vec![vec!["wkt".to_string()], vec![String::new()]]);
+    }
+
+    // The pre-existing path stays as it was: attributes with no geometry config.
+    #[test]
+    fn a_feature_with_attributes_writes_them_unchanged() {
+        let mut attributes = IndexMap::new();
+        attributes.insert(
+            Attribute::new("category".to_string()),
+            AttributeValue::String("A".to_string()),
+        );
+        let feature = Feature::new_with_attributes(attributes);
+        let records = csv_records(&[feature], None).expect("attributes should write");
+        // AttributeValue::String("A").to_string() yields the bare string "A"
+        // (no embedded quote characters); the csv crate's
+        // quote_style(NonNumeric) is what adds the surrounding quotes seen in
+        // the actual output file, so there is no double-quoting here.
+        assert_eq!(
+            records,
+            vec![vec!["category".to_string()], vec!["A".to_string()]]
+        );
+    }
 }
 
 fn get_fields(row: &AttributeValue) -> Option<Vec<String>> {
