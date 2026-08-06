@@ -11,24 +11,16 @@ script = ['''
 cargo fmt --all ${@:-}
 ''']
 
-# NOTE: the `new-geometry` migration flag switches `Feature.geometry` to the new type
-# and is mutually exclusive with the default geometry world, so no single feature set
-# covers both. Each world therefore gets its own full `--workspace --all-targets`
-# invocation, and CI runs both.
 [tasks.check]
 script = ['''
 #!/usr/bin/env bash -eux
 cargo check --workspace --all-targets
-cargo check --workspace --all-targets --features new-geometry \
-  --exclude reearth-flow-tests
 ''']
 
 [tasks.clippy]
 script = ['''
 #!/usr/bin/env bash -eux
 cargo clippy --workspace --all-targets -- -D warnings
-cargo clippy --workspace --all-targets --features new-geometry \
-  --exclude reearth-flow-tests -- -D warnings
 ''']
 
 [tasks.clippy-fix]
@@ -50,9 +42,10 @@ cargo make test-conv-new-geometry ${@:-}
 script = ['''
 #!/usr/bin/env bash -eux
 # Both geometry worlds.
-cargo test --workspace --all-targets --exclude workflow-tests ${@:-}
-cargo test --workspace --all-targets --features new-geometry,schema \
+cargo test --workspace --all-targets --features schema \
   --exclude workflow-tests --exclude reearth-flow-tests ${@:-}
+cargo test --workspace --all-targets --no-default-features \
+  --exclude workflow-tests ${@:-}
 ''']
 
 # Runs in the new-geometry world. Every test case whose `workflow_test.json`
@@ -96,8 +89,7 @@ export PLATEAU_TILES_TEST_CONCURRENCY="${PLATEAU_TILES_TEST_CONCURRENCY:-4}" # d
 cargo run -p plateau-tiles-test --bin plateau-tiles-test ${@:-}
 ''']
 
-# Separate task since it builds a distinct binary (new-geometry feature); folds
-# into test-conv once new-geometry becomes the default and this one is removed.
+# Separate task since it builds a distinct binary (new-geometry feature).
 [tasks.test-conv-new-geometry]
 script = ['''
 #!/usr/bin/env bash -eux
@@ -116,7 +108,7 @@ cargo run -p plateau-tiles-test --bin plateau-tiles-test --features new-geometry
 script = ['''
 #!/usr/bin/env bash -eux
 cargo clean --doc
-cargo doc --no-deps --features new-geometry,schema
+cargo doc --no-deps --features schema
 ''']
 
 [tasks.coverage]

@@ -424,7 +424,7 @@ pub fn render_feature(
 /// entire edge.
 pub fn render_tileset(
     selection: &[Selected],
-    max_depth: u32,
+    target_tile_size: u64,
     options: &ViewOptions,
     destination: &Destination<'_>,
 ) -> Result<RenderedView> {
@@ -440,7 +440,7 @@ pub fn render_tileset(
     let built = build(
         &features,
         options.metadata_options(),
-        max_depth,
+        target_tile_size,
         options.render_options(),
         |relative_path, bytes| {
             let uri = destination
@@ -559,7 +559,13 @@ mod tests {
     fn tileset_to(dir: &Path, selection: &[Selected], options: &ViewOptions) -> RenderedView {
         let root = Uri::for_test(&format!("file://{}", dir.display()));
         let resolver = StorageResolver::new();
-        render_tileset(selection, 18, options, &destination(&root, &resolver)).expect("render")
+        render_tileset(
+            selection,
+            1_048_576,
+            options,
+            &destination(&root, &resolver),
+        )
+        .expect("render")
     }
 
     fn destination<'a>(root: &'a Uri, resolver: &'a StorageResolver) -> Destination<'a> {

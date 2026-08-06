@@ -802,14 +802,6 @@
           "title": "Tamaño del Atlas",
           "description": "Dimensión máxima del atlas de texturas en píxeles. Las texturas que la superan se distribuyen en páginas de atlas adicionales; una sola textura mayor que este valor se reduce para que quepa. El valor predeterminado es 2048."
         },
-        "attachTexture": {
-          "title": "Adjuntar Texturas",
-          "description": "Si se debe incluir información de textura en los mosaicos generados"
-        },
-        "compressOutput": {
-          "title": "Ruta de Salida Comprimida",
-          "description": "Ruta opcional para la salida del archivo comprimido"
-        },
         "computeFlatNormal": {
           "title": "Calcular Normales Planas",
           "description": "Calcula normales planas por polígono para la iluminación. Verdadero por defecto. Cuando se desactiva, no se escriben normales y la malla es más pequeña, pero el mosaico no incluye datos de iluminación (el visor debe derivar las normales planas por sí mismo)."
@@ -817,14 +809,6 @@
         "dracoCompression": {
           "title": "Compresión Draco",
           "description": "Usar compresión Draco. Verdadero por defecto."
-        },
-        "maxZoom": {
-          "title": "Nivel de Zoom Máximo",
-          "description": "Nivel de zoom máximo para la generación de mosaicos (0-24)"
-        },
-        "minZoom": {
-          "title": "Nivel de Zoom Mínimo",
-          "description": "Nivel de zoom mínimo para la generación de mosaicos (0-24)"
         },
         "output": {
           "title": "Ruta de Salida",
@@ -837,6 +821,10 @@
         "skipUnexposedAttributes": {
           "title": "Omitir Atributos no Expuestos",
           "description": "Omitir atributos con prefijo de doble guion bajo"
+        },
+        "targetTileSize": {
+          "title": "Target Tile Size",
+          "description": "Target content size per tile, in bytes. Tiles are split when they'd exceed it and merged with neighbours when they'd otherwise be smaller; a single feature that alone exceeds it is kept whole (features are never clipped). A value of 0 disables merging and splits every feature into its own content. Defaults to 1,048,576 (1 MiB)."
         },
         "texelSize": {
           "title": "Tamaño de Téxel",
@@ -950,6 +938,39 @@
         "mode": {
           "title": "Extraction Mode",
           "description": "How to extract coordinates from geometry vertices."
+        }
+      }
+    },
+    {
+      "name": "Coordinate Frame Reprojector",
+      "parameterI18n": {
+        "": {
+          "title": "Coordinate Frame Reprojector Parameters",
+          "description": "Reproject geometry across coordinate reference systems and convert between a CRS and a Euclidean frame. Converting across the Euclidean/CRS boundary reinterprets coordinates as-is: values and ring winding are left unchanged, so orientation follows the destination frame's axis order.\n\nReprojecting across coordinate reference systems takes 2D geometry lying at a single elevation into 3D."
+        },
+        "basePointSource": {
+          "title": "Base Point",
+          "description": "How coordinates bridge the Euclidean/CRS boundary."
+        },
+        "destinationFrame": {
+          "title": "Destination Frame",
+          "description": "Coordinate frame to convert geometry into."
+        },
+        "epsgCode": {
+          "title": "EPSG Code",
+          "description": "EPSG code of the destination CRS. Required when the destination frame is a CRS."
+        }
+      },
+      "enumI18n": {
+        "DestinationFrame": {
+          "crs": {
+            "title": "CRS",
+            "description": "Reproject to a coordinate reference system identified by an EPSG code."
+          },
+          "euclidean": {
+            "title": "Euclidean",
+            "description": "Convert to a non-georeferenced Euclidean frame."
+          }
         }
       }
     },
@@ -1784,21 +1805,12 @@
       "description": "Divide la geometría por tipo",
       "parameterI18n": {
         "": {
-          "title": "GeometrySplitterParam",
-          "description": "Parameters for GeometrySplitter"
+          "title": "Parámetros del divisor de geometría",
+          "description": "Parámetros del divisor de geometría"
         },
-        "splitLevel": {
-          "description": "Split level for CityGML geometry. - \"element\": Split by surface elements (RoofSurface, WallSurface, etc.) - default - \"polygon\": Split down to individual polygons within each element"
-        }
-      },
-      "enumI18n": {
-        "SplitLevel": {
-          "element": {
-            "description": "Split by GmlGeometry elements (e.g., RoofSurface, WallSurface)"
-          },
-          "polygon": {
-            "description": "Split down to individual polygons within each element"
-          }
+        "groupBy": {
+          "title": "Agrupar por",
+          "description": "Clave de atributo para agrupar los miembros divididos. Los miembros que comparten el mismo valor de este atributo se mantienen juntos en una única entidad de salida en lugar de dividirse por separado; los miembros sin este atributo se emiten individualmente."
         }
       }
     },
@@ -1825,10 +1837,6 @@
         "planarityThreshold": {
           "title": "Planarity Threshold",
           "description": "Optional override for how the planarity check bounds a face's out-of-plane deviation: a scale-invariant `ratio` (the default), or an absolute `maxHeight` in the frame's linear unit (linear-unit frames only). Applies only under the new geometry backend."
-        },
-        "validationTypes": {
-          "title": "Validation Types",
-          "description": "List of validation checks to perform on the geometry (duplicate points, corrupt geometry, self-intersection)"
         }
       },
       "definitionI18n": {
@@ -1842,11 +1850,6 @@
           "minVolume": {
             "description": "Minimum volume of a 3D geometry (solid)."
           }
-        }
-      },
-      "enumI18n": {
-        "ValidationType": {
-          "duplicatePoints": {}
         }
       }
     },

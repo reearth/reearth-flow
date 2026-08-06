@@ -802,14 +802,6 @@
           "title": "图集大小",
           "description": "纹理图集的最大尺寸（像素）。超过此值的纹理会分布到额外的图集页；单个大于此值的纹理会被降采样以适配。默认值为 2048。"
         },
-        "attachTexture": {
-          "title": "附加纹理",
-          "description": "是否在生成的瓦片中包含纹理信息"
-        },
-        "compressOutput": {
-          "title": "压缩输出路径",
-          "description": "压缩归档输出的可选路径"
-        },
         "computeFlatNormal": {
           "title": "计算平面法线",
           "description": "为光照计算逐多边形的平面法线。默认为 true。禁用时不写入法线，网格更小，但瓦片不包含光照数据（查看器需自行推导平面法线）。"
@@ -817,14 +809,6 @@
         "dracoCompression": {
           "title": "Draco 压缩",
           "description": "使用 Draco 压缩。默认为 true。"
-        },
-        "maxZoom": {
-          "title": "最大缩放级别",
-          "description": "瓦片生成的最大缩放级别（0-24）"
-        },
-        "minZoom": {
-          "title": "最小缩放级别",
-          "description": "瓦片生成的最小缩放级别（0-24）"
         },
         "output": {
           "title": "输出路径",
@@ -837,6 +821,10 @@
         "skipUnexposedAttributes": {
           "title": "跳过未公开属性",
           "description": "跳过带有双下划线前缀的属性"
+        },
+        "targetTileSize": {
+          "title": "Target Tile Size",
+          "description": "Target content size per tile, in bytes. Tiles are split when they'd exceed it and merged with neighbours when they'd otherwise be smaller; a single feature that alone exceeds it is kept whole (features are never clipped). A value of 0 disables merging and splits every feature into its own content. Defaults to 1,048,576 (1 MiB)."
         },
         "texelSize": {
           "title": "纹素大小",
@@ -950,6 +938,39 @@
         "mode": {
           "title": "Extraction Mode",
           "description": "How to extract coordinates from geometry vertices."
+        }
+      }
+    },
+    {
+      "name": "Coordinate Frame Reprojector",
+      "parameterI18n": {
+        "": {
+          "title": "Coordinate Frame Reprojector Parameters",
+          "description": "Reproject geometry across coordinate reference systems and convert between a CRS and a Euclidean frame. Converting across the Euclidean/CRS boundary reinterprets coordinates as-is: values and ring winding are left unchanged, so orientation follows the destination frame's axis order.\n\nReprojecting across coordinate reference systems takes 2D geometry lying at a single elevation into 3D."
+        },
+        "basePointSource": {
+          "title": "Base Point",
+          "description": "How coordinates bridge the Euclidean/CRS boundary."
+        },
+        "destinationFrame": {
+          "title": "Destination Frame",
+          "description": "Coordinate frame to convert geometry into."
+        },
+        "epsgCode": {
+          "title": "EPSG Code",
+          "description": "EPSG code of the destination CRS. Required when the destination frame is a CRS."
+        }
+      },
+      "enumI18n": {
+        "DestinationFrame": {
+          "crs": {
+            "title": "CRS",
+            "description": "Reproject to a coordinate reference system identified by an EPSG code."
+          },
+          "euclidean": {
+            "title": "Euclidean",
+            "description": "Convert to a non-georeferenced Euclidean frame."
+          }
         }
       }
     },
@@ -1784,21 +1805,12 @@
       "description": "根据类型分割几何",
       "parameterI18n": {
         "": {
-          "title": "GeometrySplitterParam",
-          "description": "Parameters for GeometrySplitter"
+          "title": "几何分割器参数",
+          "description": "几何分割器参数"
         },
-        "splitLevel": {
-          "description": "Split level for CityGML geometry. - \"element\": Split by surface elements (RoofSurface, WallSurface, etc.) - default - \"polygon\": Split down to individual polygons within each element"
-        }
-      },
-      "enumI18n": {
-        "SplitLevel": {
-          "element": {
-            "description": "Split by GmlGeometry elements (e.g., RoofSurface, WallSurface)"
-          },
-          "polygon": {
-            "description": "Split down to individual polygons within each element"
-          }
+        "groupBy": {
+          "title": "分组依据",
+          "description": "用于对拆分出的成员进行分组的属性键。共享该属性相同值的成员会合并为一个输出要素，而不是分别拆分；不具有该属性的成员仍会单独输出。"
         }
       }
     },
@@ -1825,10 +1837,6 @@
         "planarityThreshold": {
           "title": "Planarity Threshold",
           "description": "Optional override for how the planarity check bounds a face's out-of-plane deviation: a scale-invariant `ratio` (the default), or an absolute `maxHeight` in the frame's linear unit (linear-unit frames only). Applies only under the new geometry backend."
-        },
-        "validationTypes": {
-          "title": "Validation Types",
-          "description": "List of validation checks to perform on the geometry (duplicate points, corrupt geometry, self-intersection)"
         }
       },
       "definitionI18n": {
@@ -1842,11 +1850,6 @@
           "minVolume": {
             "description": "Minimum volume of a 3D geometry (solid)."
           }
-        }
-      },
-      "enumI18n": {
-        "ValidationType": {
-          "duplicatePoints": {}
         }
       }
     },

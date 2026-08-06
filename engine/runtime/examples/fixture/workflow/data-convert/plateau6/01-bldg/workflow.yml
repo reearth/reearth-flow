@@ -99,6 +99,8 @@ graphs:
         name: GeometrySplitterByLod
         type: action
         action: Geometry Splitter
+        with:
+          groupBy: "lod"
 
       # Collapse to one row per (gmlId, lod) pair first: a building can have
       # multiple geometry members at the same LOD, and the lodMask sum below
@@ -252,7 +254,7 @@ graphs:
         action: Cesium 3D Tiles Writer
         with:
           schemaKey: __citygml_feature_type
-          maxDepth: 18
+          targetTileSize: 1048576
           attachTexture: false
           output:
             type: flowExpr
@@ -313,7 +315,7 @@ graphs:
         action: Cesium 3D Tiles Writer
         with:
           schemaKey: __citygml_feature_type
-          maxDepth: 18
+          targetTileSize: 1048576
           attachTexture: true
           output:
             type: flowExpr
@@ -325,7 +327,7 @@ graphs:
         action: Cesium 3D Tiles Writer
         with:
           schemaKey: __citygml_feature_type
-          maxDepth: 18
+          targetTileSize: 1048576
           textureCodec: Untextured
           output:
             type: flowExpr
@@ -386,7 +388,7 @@ graphs:
         action: Cesium 3D Tiles Writer
         with:
           schemaKey: __citygml_feature_type
-          maxDepth: 18
+          targetTileSize: 1048576
           attachTexture: true
           output:
             type: flowExpr
@@ -398,7 +400,7 @@ graphs:
         action: Cesium 3D Tiles Writer
         with:
           schemaKey: __citygml_feature_type
-          maxDepth: 18
+          targetTileSize: 1048576
           textureCodec: Untextured
           output:
             type: flowExpr
