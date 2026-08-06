@@ -219,6 +219,10 @@ fn write_csv(
         }
     }
 
+    // Accumulated over the rows so one line reports the file's failures rather
+    // than one per row; the per-feature warning below names which feature failed.
+    let mut failed = 0usize;
+
     // Write rows with geometry
     for (feature, row) in features.iter().zip(rows.iter()) {
         match attribute_fields {
@@ -236,9 +240,12 @@ fn write_csv(
                             }
                         }
                         Err(e) => {
-                            // Skip non-point geometries for coordinate mode, or log error for WKT mode
-                            tracing::warn!("Failed to export geometry: {}", e);
-                            // Write empty strings for geometry columns
+                            failed += 1;
+                            tracing::warn!(
+                                feature_id = %feature.id,
+                                error = %e,
+                                "failed to export geometry; writing empty geometry columns"
+                            );
                             for _ in &geometry_columns {
                                 values.push(String::new());
                             }
@@ -272,6 +279,15 @@ fn write_csv(
             },
         }
     }
+
+    if failed > 0 {
+        tracing::warn!(
+            failed,
+            "{failed} feature(s) could not export geometry to {}",
+            out.uri()
+        );
+    }
+
     wtr.flush()
         .map_err(|e| crate::errors::SinkError::CsvWriter(format!("{e:?}")))?;
     let data = String::from_utf8(
