@@ -53,6 +53,8 @@ pub(super) enum AttributeProcessorError {
     DateTimeConverterFactory(String),
     #[error("Attribute DateTimeConverter error: {0}")]
     DateTimeConverter(String),
+    #[error("Attribute Path Flattener error: {0}")]
+    PathFlattenerFactory(String),
 }
 
 #[allow(dead_code)]

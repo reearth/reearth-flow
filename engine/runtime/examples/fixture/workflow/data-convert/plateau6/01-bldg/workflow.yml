@@ -51,6 +51,17 @@ graphs:
           dataset:
             type: flowExpr
             value: attributes["path"]
+          cityGmlAttributesKey: cityGmlAttributes
+          flattenLeafAttributes:
+            - uom
+
+      - id: 6a1b3c5d-7e9f-4a1b-8c3d-5e7f9a1b3c5d
+        name: AttributePathFlattener
+        type: action
+        action: Attribute Path Flattener
+        with:
+          inline: !include ../../../../config/plateau6_bldg_flatten_attributes.json
+          summaryAttribute: attributes
 
       - id: 3d0e8b1f-6a2c-4e0b-9f5d-7c1a8b4e2f60
         name: AttributeManager
@@ -63,24 +74,7 @@ graphs:
               value:
                 type: flowExpr
                 value: |
-                  ade_of_building = attributes.get("bldg:adeOfAbstractBuilding");
-                  entries = [];
-                  if type(ade_of_building) == list {
-                    entries = ade_of_building;
-                  } else if type(ade_of_building) == dict {
-                    entries = [ade_of_building];
-                  }
-                  id_map = null;
-                  for entry in entries {
-                    if entry.get("uro:BuildingIDAttribute") {
-                      id_map = entry.get("uro:BuildingIDAttribute");
-                    }
-                  }
-                  gml_city_code = null;
-                  if id_map {
-                    gml_city_code = id_map.get("uro:city_code") or id_map.get("uro:city");
-                  }
-                  gml_city_code or env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5]
+                  attributes.get("uro:BuildingIDAttribute_uro:city_code") or env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5]
             - attribute: baseCityCode
               method: create
               value:
@@ -443,6 +437,11 @@ graphs:
         toPort: features
       - id: a2631c5e-f7e9-40c1-bec2-ddddee56257c
         from: 25d2c806-4c6f-47dc-bfe9-e99c2f951f0a
+        to: 6a1b3c5d-7e9f-4a1b-8c3d-5e7f9a1b3c5d
+        fromPort: features
+        toPort: features
+      - id: b4c6d8e0-2a4c-4e6a-8c0e-2a4c6e8a0b2c
+        from: 6a1b3c5d-7e9f-4a1b-8c3d-5e7f9a1b3c5d
         to: 3d0e8b1f-6a2c-4e0b-9f5d-7c1a8b4e2f60
         fromPort: features
         toPort: features

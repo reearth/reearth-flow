@@ -32,8 +32,11 @@ pub fn build_features(
     citygml_attribute_key: Option<&str>,
     keep_attributes: bool,
     flatten_single_child_objects: bool,
-    flatten_measure_types: bool,
+    flatten_leaf_attributes: &[String],
 ) -> Vec<Feature> {
+    // The legacy parser's measure-flattening is hardcoded to `uom`; any
+    // non-empty list enables it, matching this module's simpler bool knob.
+    let flatten_measure_types = !flatten_leaf_attributes.is_empty();
     let (pending, raw_registry, ns_registry) = parser.finish();
     let mut codelist_resolver = codespace::CodelistResolver::new();
     let mut out = Vec::new();
@@ -182,15 +185,15 @@ mod build_next {
     /// `extract_tags` is non-empty — one feature per matching flattened node, each with its
     /// geometry attached. Signature mirrors the legacy `build_features` so the readers share one
     /// `finish` across geometry worlds.
-    // TODO: honor `base_attributes` and the keep/flatten options in the new-geometry path.
+    // TODO: honor `base_attributes` and `flatten_single_child_objects` in the new-geometry path.
     pub fn build_features(
         parser: Parser,
         extract_tags: &HashSet<String>,
         _base_attributes: &HashMap<String, Attributes>,
-        _citygml_attribute_key: Option<&str>,
+        citygml_attribute_key: Option<&str>,
         _keep_attributes: bool,
         _flatten_single_child_objects: bool,
-        _flatten_measure_types: bool,
+        flatten_leaf_attributes: &[String],
     ) -> Vec<Feature> {
         let ParserOutput {
             pending,
@@ -209,6 +212,8 @@ mod build_next {
             &srs_by_file,
             &ns_registry,
             extract_tags,
+            citygml_attribute_key,
+            flatten_leaf_attributes,
         )
     }
 
@@ -223,6 +228,8 @@ mod build_next {
         srs_by_file: &HashMap<String, EpsgCode>,
         ns_registry: &NamespaceRegistry,
         extract_tags: &HashSet<String>,
+        citygml_attribute_key: Option<&str>,
+        flatten_leaf_attributes: &[String],
     ) -> Vec<Feature> {
         let mut out = Vec::new();
         let mut codelist_resolver = codespace::CodelistResolver::new();
@@ -239,7 +246,11 @@ mod build_next {
             };
 
             if extract_tags.is_empty() {
-                let mut feature = parser::to_feature(&feature_root);
+                let mut feature = parser::to_feature(
+                    &feature_root,
+                    citygml_attribute_key,
+                    flatten_leaf_attributes,
+                );
                 attach_geometry(&mut feature, &geoms, geom_registry, appearance, srs_by_file);
                 out.push(feature);
             } else {
@@ -261,7 +272,8 @@ mod build_next {
                     }
                 }
                 for (node, parent_id) in &extracted {
-                    let mut feature = parser::to_feature(node);
+                    let mut feature =
+                        parser::to_feature(node, citygml_attribute_key, flatten_leaf_attributes);
                     if let Some(id) = parent_id {
                         feature.insert(
                             CITYGML_PARENT_GML_ID_KEY,
