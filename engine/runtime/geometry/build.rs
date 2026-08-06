@@ -1,9 +1,8 @@
 //! Generates the table of geodetic grids compiled into the crate.
 //!
-//! `grids/MANIFEST.tsv` is the embedded set: it names each grid and records the
-//! size and SHA-256 of the file that grid must be. This checks the contents of
-//! `grids/` against those rows and emits the `include_bytes!` entries that embed
-//! them, so the set is authored in one place only.
+//! `grids/MANIFEST.tsv` names the set and records the size and SHA-256 of each
+//! file. This checks `grids/` against those rows and emits the `include_bytes!`
+//! entries that embed them.
 
 use std::collections::BTreeSet;
 use std::env;
@@ -72,10 +71,8 @@ fn main() {
     fs::write(&out, table).unwrap_or_else(|e| panic!("{}: {e}", out.display()));
 }
 
-/// Read the manifest rows, which follow the version and column headers.
-///
-/// A row must carry at least a name, a size and a SHA-256; one holding only a
-/// name is a grid that `update.sh` has not fetched yet.
+/// Read the manifest rows, which follow the version and column headers. Each
+/// must carry at least a name, a size and a SHA-256.
 fn parse(text: &str) -> Result<Vec<Row>, String> {
     let mut rows = Vec::new();
     for line in text.lines().skip(2).filter(|line| !line.trim().is_empty()) {
@@ -125,8 +122,7 @@ fn verify(path: &Path, row: &Row) -> Result<(), String> {
     Ok(())
 }
 
-/// The grid files in `grids` that no manifest row names, which would ship in a
-/// container image without being embedded in the binary.
+/// The grid files in `grids` that no manifest row names.
 fn unlisted(grids: &Path, rows: &[Row]) -> Vec<String> {
     let listed: BTreeSet<&str> = rows.iter().map(|row| row.name.as_str()).collect();
     let entries = fs::read_dir(grids).unwrap_or_else(|e| panic!("{}: {e}", grids.display()));

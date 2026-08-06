@@ -1,11 +1,8 @@
 //! The geodetic grids carried inside the binary, and the PROJ search path built
 //! from them.
 //!
-//! PROJ resolves a vertical datum change by reading a geoid grid; with no grid
-//! it has no operation to offer and the reprojection fails outright. The grids
-//! in `grids/` are compiled in so that the transformations they cover work with
-//! nothing installed on the machine. Everything else is external: point
-//! [`GRID_DIR_VAR`] at a directory of `.tif` grids and they are searched first.
+//! The grids in `grids/` are compiled in. Further grids come from the
+//! directories named by [`GRID_DIR_VAR`], which are searched first.
 
 use std::ffi::{CStr, CString};
 use std::fs;
@@ -42,9 +39,7 @@ include!(concat!(env!("OUT_DIR"), "/embedded_grids.rs"));
 
 /// Create a PROJ context that can see the embedded and external grids.
 ///
-/// Every context in this crate must come from here: PROJ resolves grids against
-/// the search paths of the context that builds the transformation, so a context
-/// created directly would only see whatever the machine happens to have.
+/// Every context in this crate must come from here, or it will not see them.
 pub(crate) fn create_context() -> Result<*mut PJ_CONTEXT> {
     let paths: Vec<*const c_char> = resolved().search.iter().map(|p| p.as_ptr()).collect();
     // SAFETY: the context is checked for null before it is handed out; the
@@ -64,8 +59,7 @@ pub(crate) fn create_context() -> Result<*mut PJ_CONTEXT> {
 
 /// How a missing grid can be supplied, for the errors PROJ raises when it cannot
 /// build a transformation. Reports the unpack failure instead when the embedded
-/// grids could not be written out, since that turns transformations that normally
-/// work into failures and is the more useful thing to say.
+/// grids could not be written out.
 pub(crate) fn supply_hint() -> String {
     match &resolved().unpack_failure {
         None => format!(
@@ -110,8 +104,8 @@ fn resolved() -> &'static Resolved {
     })
 }
 
-/// The directories named by [`GRID_DIR_VAR`], dropping the empty entries a path
-/// list picks up from a trailing or doubled separator.
+/// The directories named by [`GRID_DIR_VAR`], without the empty entries a path
+/// list can carry.
 fn external_dirs() -> Vec<PathBuf> {
     let Some(list) = std::env::var_os(GRID_DIR_VAR) else {
         return Vec::new();
@@ -124,10 +118,6 @@ fn external_dirs() -> Vec<PathBuf> {
 /// Order the three sources of grid directories, most specific first: the
 /// directories named by [`GRID_DIR_VAR`], the unpacked embedded grids, then
 /// whatever PROJ would have searched on its own.
-///
-/// The last part matters because setting search paths on a context *replaces*
-/// PROJ's own lookup rather than adding to it, so a grid installed the way PROJ
-/// installs them would otherwise stop being found.
 fn ordered_dirs(
     external: Vec<PathBuf>,
     embedded: Option<PathBuf>,
@@ -139,14 +129,8 @@ fn ordered_dirs(
     dirs
 }
 
-/// The directories PROJ would look in for a grid on its own, in its own order.
-///
-/// PROJ publishes no accessor for this list: `proj_info` reports only the paths
-/// already set on the default context, which is empty until something sets them.
-/// The two that can hold grids are rebuilt here, the user-writable directory
-/// PROJ downloads into and the directories named by `PROJ_DATA`. The remaining
-/// two, the location relative to the executable and the path compiled into the
-/// library, hold an installation's own data rather than grids added later.
+/// The directories PROJ would look in for a grid on its own, in its own order:
+/// its user-writable directory, then those named by `PROJ_DATA`.
 fn proj_default_grid_dirs() -> Vec<PathBuf> {
     let mut dirs = Vec::new();
     if let Some(dir) = user_writable_dir() {
@@ -158,8 +142,7 @@ fn proj_default_grid_dirs() -> Vec<PathBuf> {
     dirs
 }
 
-/// The directory PROJ treats as its own writable store, which is where it puts
-/// a grid it downloads. Asks for it without creating it.
+/// The directory PROJ treats as its own writable store. Does not create it.
 fn user_writable_dir() -> Option<PathBuf> {
     // SAFETY: the returned string belongs to the context, so it is copied before
     // the context is destroyed; a null context is never passed on.
@@ -179,18 +162,13 @@ fn user_writable_dir() -> Option<PathBuf> {
 enum Embedded {
     /// They are readable in this directory, which belongs on the search path.
     Dir(PathBuf),
-    /// Every one of them was already available from an earlier directory, so
-    /// nothing was written and there is no directory to add.
+    /// Every one was already available elsewhere, so nothing was written.
     AlreadySupplied,
     /// They could not be written anywhere, with every attempt reported.
     Failed(String),
 }
 
 /// Write out the embedded grids that `external` does not already supply.
-///
-/// An external directory holding the same grids under the same names makes the
-/// write redundant, and skipping it costs a container whose filesystem is in RAM
-/// nothing at start-up.
 fn unpack_embedded(external: &[PathBuf]) -> Embedded {
     let missing: Vec<&EmbeddedGrid> = EMBEDDED_GRIDS
         .iter()
@@ -209,11 +187,9 @@ fn unpack_embedded(external: &[PathBuf]) -> Embedded {
     Embedded::Failed(failures.join("; "))
 }
 
-/// Where to unpack the embedded grids, in order of preference. A configured
-/// directory is the only candidate, since silently writing somewhere else would
-/// defeat the point of configuring one; otherwise the user cache directory is
-/// tried first and the temporary directory second, which is what a container
-/// with no writable home falls back to.
+/// Where to unpack the embedded grids, in order of preference: the directory
+/// named by [`GRID_CACHE_DIR_VAR`] alone when it is set, otherwise the user
+/// cache directory then the temporary directory.
 fn cache_dirs() -> Vec<PathBuf> {
     if let Some(dir) = std::env::var_os(GRID_CACHE_DIR_VAR) {
         return vec![PathBuf::from(dir)];
@@ -226,12 +202,9 @@ fn cache_dirs() -> Vec<PathBuf> {
     dirs
 }
 
-/// Write each of `grids` into `dir` unless it is already there.
-///
-/// A grid file is immutable under its name, so one whose size already matches is
-/// left alone. Writes go to a temporary name and are renamed into place, so a
-/// reader in another process sees either the old file or the whole new one, and
-/// concurrent writers cannot interleave.
+/// Write each of `grids` into `dir` unless it is already there at the right
+/// size. Writes are renamed into place, so a concurrent reader sees one whole
+/// file or the other.
 fn unpack(dir: &Path, grids: &[&EmbeddedGrid]) -> io::Result<()> {
     fs::create_dir_all(dir)?;
     for grid in grids {
@@ -293,9 +266,8 @@ mod tests {
         unsafe { proj_sys::proj_context_destroy(ctx) };
     }
 
-    /// Setting search paths on a context replaces PROJ's own lookup, so an empty
-    /// list here means a grid installed the way PROJ installs them stops being
-    /// found. The user-writable directory is always one of them.
+    /// An empty list means a grid installed the way PROJ installs them would
+    /// stop being found.
     #[test]
     fn proj_own_grid_directories_are_kept_on_the_search_path() {
         let defaults = proj_default_grid_dirs();

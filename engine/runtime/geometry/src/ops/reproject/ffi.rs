@@ -181,12 +181,8 @@ impl Entry {
     }
 }
 
-/// Whether PROJ can relate `src` and `dst` once ballpark operations are allowed.
-///
-/// Consulted only when the strict transformation could not be built, to tell
-/// "the accurate path needs a grid we do not have" apart from "no accurate path
-/// is published". The latter is a property of the datum pair that no grid fixes:
-/// NAD83(CSRS) to WGS 84, for instance, is registered only as a ballpark offset.
+/// Whether PROJ can relate `src` and `dst` once ballpark operations are allowed,
+/// which tells a missing grid apart from a datum pair with no accurate path.
 // SAFETY: `ctx`, `src` and `dst` must be valid, non-null PROJ objects.
 unsafe fn ballpark_path_exists(ctx: *mut PJ_CONTEXT, src: *const PJ, dst: *const PJ) -> bool {
     let pj = proj_create_crs_to_crs_from_pj(ctx, src, dst, ptr::null_mut(), ptr::null());
@@ -659,9 +655,7 @@ mod tests {
     fn dutch_vertical_is_corrected_never_silently_wrong() {
         // EPSG:7415 (Amersfoort / RD New + NAP height) carries an orthometric
         // height; converting to WGS84 3D must add the ~46 m NL geoid separation,
-        // which `nl_nsgi_nlgeo2018.tif` supplies from the embedded grid set. The
-        // outcome that must never happen is silently returning the input height
-        // as if it were ellipsoidal.
+        // never return the input height as if it were ellipsoidal.
         let mut cache = ReprojectionCache::new();
         let [_, _, z] = cache
             .transform(
@@ -678,11 +672,8 @@ mod tests {
 
     #[test]
     fn a_pair_with_only_a_ballpark_path_says_so_rather_than_blaming_a_grid() {
-        // EPSG:6649 (NAD83(CSRS) + CGVD2013 height) to WGS84 3D cannot be built
-        // accurately at any grid coverage: EPSG registers NAD83(CSRS) to WGS 84
-        // only as a ballpark offset, so every candidate operation carries one.
-        // Reporting a missing grid would send the reader looking for a file that
-        // would not help.
+        // EPSG registers NAD83(CSRS) to WGS 84 only as a ballpark offset, so no
+        // grid makes EPSG:6649 -> 4979 accurate and none should be blamed.
         let mut cache = ReprojectionCache::new();
         let err = cache
             .transform(
