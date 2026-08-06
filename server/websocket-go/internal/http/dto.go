@@ -79,3 +79,25 @@ type ImportRequest struct {
 type errorResponse struct {
 	Error string `json:"error"`
 }
+
+// SnapshotItem is one labelled snapshot in the version history.
+type SnapshotItem struct {
+	ID        int64  `json:"id"`
+	Label     string `json:"label"`
+	Timestamp string `json:"timestamp"`
+	Size      int64  `json:"size"`
+}
+
+// SaveSnapshotRequest is the POST body for creating a named snapshot.
+type SaveSnapshotRequest struct {
+	Label string `json:"label"`
+}
+
+// SnapshotStateResponse is one snapshot's stored state. Deliberately not
+// DocumentResponse: that shape would ship `"version":0`, and rollback with
+// version 0 prunes the whole update log.
+type SnapshotStateResponse struct {
+	ID         string      `json:"id"`
+	SnapshotID int64       `json:"snapshot_id"`
+	Updates    UpdateBytes `json:"updates"`
+}
