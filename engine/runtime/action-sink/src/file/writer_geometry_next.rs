@@ -191,8 +191,11 @@ fn unsupported(geometry: &impl std::fmt::Debug) -> GeometryExportError {
 mod tests {
     use super::*;
     use reearth_flow_geometry::{
-        coordinate::CoordinateFrame, line_string::LineString2D, point::Point2D, polygon::Polygon2D,
-        Euclidean2DGeometry, Geometry,
+        coordinate::CoordinateFrame,
+        line_string::{LineString2D, LineString3D},
+        point::{Point2D, Point3D},
+        polygon::{Polygon2D, Polygon3D},
+        Euclidean2DGeometry, Euclidean3DGeometry, Geometry,
     };
 
     fn wkt_of(geometry: &Geometry) -> String {
@@ -260,5 +263,105 @@ mod tests {
     #[test]
     fn an_absent_geometry_writes_an_empty_cell() {
         assert_eq!(wkt_of(&Geometry::None), "");
+    }
+
+    // The 2D tests above exercise `write_2d`; these mirror them for `write_3d` so a
+    // bug specific to 3D field extraction (an extra coordinate, a wrong order) does
+    // not ship undetected.
+
+    #[test]
+    fn point_3d_writes_as_wkt_point() {
+        let geometry = Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+            euclidean(),
+            [1.0, 2.0, 3.0],
+        )));
+        assert_eq!(wkt_of(&geometry), "POINT(1 2 3)");
+    }
+
+    #[test]
+    fn line_string_3d_writes_as_wkt_linestring() {
+        let geometry = Geometry::Euclidean3D(Euclidean3DGeometry::LineString(
+            LineString3D::from_coords(euclidean(), [[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]]),
+        ));
+        assert_eq!(wkt_of(&geometry), "LINESTRING(0 0 0, 1 1 1)");
+    }
+
+    #[test]
+    fn polygon_3d_writes_its_exterior_and_closes_its_ring() {
+        let geometry = Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(
+            Polygon3D::from_rings(
+                euclidean(),
+                [[0.0, 0.0, 0.0], [4.0, 0.0, 0.0], [4.0, 4.0, 1.0]],
+                Vec::<Vec<[f64; 3]>>::new(),
+            ),
+        )));
+        assert_eq!(wkt_of(&geometry), "POLYGON((0 0 0, 4 0 0, 4 4 1, 0 0 0))");
+    }
+
+    // Direct tests of the two public entry points `csv.rs` actually calls
+    // (`export_geometry`, `extract_coordinates`), rather than only the internal
+    // `geometry_to_wkt` helper the tests above exercise.
+
+    #[test]
+    fn export_geometry_in_wkt_mode_writes_the_configured_column() {
+        let geometry = Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
+            euclidean(),
+            [1.0, 2.0],
+        )));
+        let config = GeometryExportConfig {
+            mode: GeometryExportMode::Wkt {
+                column: "geometry".to_string(),
+            },
+        };
+        let columns = export_geometry(&geometry, &config).expect("geometry expected to export");
+        assert_eq!(columns.len(), 1);
+        assert_eq!(columns.get("geometry"), Some(&"POINT(1 2)".to_string()));
+    }
+
+    // Covers the `Some(z)`/`Some(z_column)` guard in `export_geometry`'s coordinates
+    // branch. Task 5's coordinate tests may cover similar ground later; that overlap
+    // is fine, this one belongs to this task's entry points.
+    #[test]
+    fn export_geometry_in_coordinates_mode_writes_x_y_z_in_order() {
+        let geometry = Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+            euclidean(),
+            [1.0, 2.0, 3.0],
+        )));
+        let config = GeometryExportConfig {
+            mode: GeometryExportMode::Coordinates {
+                x_column: "x".to_string(),
+                y_column: "y".to_string(),
+                z_column: Some("z".to_string()),
+            },
+        };
+        let columns = export_geometry(&geometry, &config).expect("geometry expected to export");
+        assert_eq!(
+            columns.into_iter().collect::<Vec<_>>(),
+            vec![
+                ("x".to_string(), "1".to_string()),
+                ("y".to_string(), "2".to_string()),
+                ("z".to_string(), "3".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn extract_coordinates_on_a_2d_point_has_no_z() {
+        let geometry = Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
+            euclidean(),
+            [1.0, 2.0],
+        )));
+        assert_eq!(extract_coordinates(&geometry).unwrap(), (1.0, 2.0, None));
+    }
+
+    #[test]
+    fn extract_coordinates_on_a_non_point_geometry_errors() {
+        let geometry = Geometry::Euclidean2D(Euclidean2DGeometry::LineString(
+            LineString2D::from_coords(euclidean(), [[0.0, 0.0], [1.0, 1.0]]),
+        ));
+        assert!(matches!(
+            extract_coordinates(&geometry),
+            Err(GeometryExportError::NonPointGeometry)
+        ));
     }
 }
