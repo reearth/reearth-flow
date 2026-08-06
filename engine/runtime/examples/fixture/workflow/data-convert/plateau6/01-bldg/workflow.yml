@@ -75,7 +75,7 @@ graphs:
                 type: flowExpr
                 value: |
                   attributes.get("uro:BuildingIDAttribute_uro:city_code") or env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5]
-            - attribute: baseCityCode
+            - attribute: __baseCityCode
               method: create
               value:
                 type: flowExpr
@@ -106,7 +106,7 @@ graphs:
           conditions:
             - expr:
                 type: flowExpr
-                value: attributes["city_code"] == attributes["baseCityCode"] or attributes["__wardParentCode"] == attributes["baseCityCode"]
+                value: attributes["city_code"] == attributes["__baseCityCode"] or attributes["__wardParentCode"] == attributes["__baseCityCode"]
               outputPort: features
 
       - id: 16247597-565a-40df-a8d4-7445468978fd
@@ -203,14 +203,14 @@ graphs:
               value:
                 type: flowExpr
                 value: attributes["__citygml_gml_id"]
-            - attribute: _output_base
+            - attribute: __output_base
               method: create
               value:
                 type: flowExpr
                 value: |
                   city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
                   suffix = "";
-                  if attributes["city_code"] != attributes["baseCityCode"] {
+                  if attributes["city_code"] != attributes["__baseCityCode"] {
                     suffix = "_" + attributes["city_code"] + "_" + attributes["cityNameEn"];
                   }
                   city_gml + suffix
@@ -269,9 +269,10 @@ graphs:
           schemaKey: __citygml_feature_type
           targetTileSize: 1048576
           attachTexture: false
+          skipUnexposedAttributes: true
           output:
             type: flowExpr
-            value: attributes["_output_base"] + "_bldg_3dtiles_lod1.zip"
+            value: attributes["__output_base"] + "_bldg_3dtiles_lod1.zip"
 
       # --- LOD2 branch ---
       - id: acf7b926-7c8b-4448-9a3d-af4a1d1aa2cd
@@ -330,9 +331,10 @@ graphs:
           schemaKey: __citygml_feature_type
           targetTileSize: 1048576
           attachTexture: true
+          skipUnexposedAttributes: true
           output:
             type: flowExpr
-            value: attributes["_output_base"] + "_bldg_3dtiles_lod2.zip"
+            value: attributes["__output_base"] + "_bldg_3dtiles_lod2.zip"
 
       - id: 0beef7bf-acac-4661-b325-fb8adea8739a
         name: Cesium3DTilesWriterLod2NoTexture
@@ -342,9 +344,10 @@ graphs:
           schemaKey: __citygml_feature_type
           targetTileSize: 1048576
           textureCodec: Untextured
+          skipUnexposedAttributes: true
           output:
             type: flowExpr
-            value: attributes["_output_base"] + "_bldg_3dtiles_lod2_no_texture.zip"
+            value: attributes["__output_base"] + "_bldg_3dtiles_lod2_no_texture.zip"
 
       # --- LOD3 branch ---
       - id: acd88b8a-708a-4adf-ad6e-b471d934191d
@@ -403,9 +406,10 @@ graphs:
           schemaKey: __citygml_feature_type
           targetTileSize: 1048576
           attachTexture: true
+          skipUnexposedAttributes: true
           output:
             type: flowExpr
-            value: attributes["_output_base"] + "_bldg_3dtiles_lod3.zip"
+            value: attributes["__output_base"] + "_bldg_3dtiles_lod3.zip"
 
       - id: cfca323d-02e2-49a2-a327-d928746657a1
         name: Cesium3DTilesWriterLod3NoTexture
@@ -415,9 +419,10 @@ graphs:
           schemaKey: __citygml_feature_type
           targetTileSize: 1048576
           textureCodec: Untextured
+          skipUnexposedAttributes: true
           output:
             type: flowExpr
-            value: attributes["_output_base"] + "_bldg_3dtiles_lod3_no_texture.zip"
+            value: attributes["__output_base"] + "_bldg_3dtiles_lod3_no_texture.zip"
 
     edges:
       - id: b312699e-9e9f-48e9-9624-512c788bdbe1
