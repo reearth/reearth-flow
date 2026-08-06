@@ -170,7 +170,7 @@ fn write_csv(
     delimiter: Delimiter,
     geometry_config: Option<&super::writer_geometry::GeometryExportConfig>,
 ) -> Result<(), crate::errors::SinkError> {
-    let records = csv_records(features, geometry_config)?;
+    let (records, failed) = csv_records(features, geometry_config)?;
     if records.is_empty() {
         return Ok(());
     }
@@ -191,15 +191,25 @@ fn write_csv(
     .map_err(|e| crate::errors::SinkError::CsvWriter(format!("{e:?}")))?;
     out.write(Bytes::from(data))
         .map_err(|e| crate::errors::SinkError::CsvWriter(format!("{e:?}")))?;
+    // Logged here, after the write has succeeded, so the count stays
+    // attributable to this file's path even though `csv_records` (shared by
+    // every buffered output file in a run) has no access to `out`.
+    if failed > 0 {
+        tracing::warn!(
+            failed,
+            "{failed} feature(s) could not export geometry to {}",
+            out.uri()
+        );
+    }
     Ok(())
 }
 
 fn csv_records(
     features: &[Feature],
     geometry_config: Option<&super::writer_geometry::GeometryExportConfig>,
-) -> Result<Vec<Vec<String>>, crate::errors::SinkError> {
+) -> Result<(Vec<Vec<String>>, usize), crate::errors::SinkError> {
     if features.is_empty() {
-        return Ok(Vec::new());
+        return Ok((Vec::new(), 0));
     }
 
     let mut records: Vec<Vec<String>> = Vec::new();
@@ -309,58 +319,7 @@ fn csv_records(
         }
     }
 
-    if failed > 0 {
-        tracing::warn!(failed, "{failed} feature(s) could not export geometry");
-    }
-
-    Ok(records)
-}
-
-#[cfg(test)]
-mod tests {
-    use indexmap::IndexMap;
-    use reearth_flow_types::Attribute;
-
-    use super::super::writer_geometry::{GeometryExportConfig, GeometryExportMode};
-    use super::*;
-
-    fn wkt_config() -> GeometryExportConfig {
-        GeometryExportConfig {
-            mode: GeometryExportMode::Wkt {
-                column: "wkt".to_string(),
-            },
-        }
-    }
-
-    // A feature can carry geometry and nothing else. Writing the header and then
-    // failing the row would leave a CSV whose single column has no values.
-    #[test]
-    fn a_feature_with_no_attributes_writes_its_geometry_columns() {
-        let feature = Feature::new_with_attributes(IndexMap::new());
-        let records = csv_records(&[feature], Some(&wkt_config()))
-            .expect("a geometry-only feature should write");
-        assert_eq!(records, vec![vec!["wkt".to_string()], vec![String::new()]]);
-    }
-
-    // The pre-existing path stays as it was: attributes with no geometry config.
-    #[test]
-    fn a_feature_with_attributes_writes_them_unchanged() {
-        let mut attributes = IndexMap::new();
-        attributes.insert(
-            Attribute::new("category".to_string()),
-            AttributeValue::String("A".to_string()),
-        );
-        let feature = Feature::new_with_attributes(attributes);
-        let records = csv_records(&[feature], None).expect("attributes should write");
-        // AttributeValue::String("A").to_string() yields the bare string "A"
-        // (no embedded quote characters); the csv crate's
-        // quote_style(NonNumeric) is what adds the surrounding quotes seen in
-        // the actual output file, so there is no double-quoting here.
-        assert_eq!(
-            records,
-            vec![vec!["category".to_string()], vec!["A".to_string()]]
-        );
-    }
+    Ok((records, failed))
 }
 
 fn get_fields(row: &AttributeValue) -> Option<Vec<String>> {
@@ -385,4 +344,72 @@ fn get_row_values(
             )),
         })
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use indexmap::IndexMap;
+    use reearth_flow_types::Attribute;
+
+    use super::super::writer_geometry::{GeometryExportConfig, GeometryExportMode};
+    use super::*;
+
+    fn wkt_config() -> GeometryExportConfig {
+        GeometryExportConfig {
+            mode: GeometryExportMode::Wkt {
+                column: "wkt".to_string(),
+            },
+        }
+    }
+
+    // A feature can carry geometry and nothing else. Writing the header and then
+    // failing the row would leave a CSV whose single column has no values.
+    #[test]
+    fn a_feature_with_no_attributes_writes_its_geometry_columns() {
+        let feature = Feature::new_with_attributes(IndexMap::new());
+        let (records, failed) = csv_records(&[feature], Some(&wkt_config()))
+            .expect("a geometry-only feature should write");
+        assert_eq!(records, vec![vec!["wkt".to_string()], vec![String::new()]]);
+        assert_eq!(failed, 0);
+    }
+
+    // The pre-existing path stays as it was: attributes with no geometry config.
+    #[test]
+    fn a_feature_with_attributes_writes_them_unchanged() {
+        let mut attributes = IndexMap::new();
+        attributes.insert(
+            Attribute::new("category".to_string()),
+            AttributeValue::String("A".to_string()),
+        );
+        let feature = Feature::new_with_attributes(attributes);
+        let (records, failed) = csv_records(&[feature], None).expect("attributes should write");
+        // AttributeValue::String("A").to_string() yields the bare string "A"
+        // (no embedded quote characters); the csv crate's
+        // quote_style(NonNumeric) is what adds the surrounding quotes seen in
+        // the actual output file, so there is no double-quoting here.
+        assert_eq!(
+            records,
+            vec![vec!["category".to_string()], vec!["A".to_string()]]
+        );
+        assert_eq!(failed, 0);
+    }
+
+    // `write_csv`'s early bail on `records.is_empty()` depends on this: an
+    // empty feature set must produce an empty record set, not an error or a
+    // header-only record, so that no file gets written at all.
+    #[test]
+    fn no_features_produces_no_records() {
+        let (records, failed) = csv_records(&[], None).expect("empty input should not error");
+        assert_eq!(records, Vec::<Vec<String>>::new());
+        assert_eq!(failed, 0);
+    }
+
+    // The guard fix only widens the matched arm for the geometry-columns
+    // case; a feature with no attributes and no geometry config must still
+    // fall through to the unsupported-input error, unchanged.
+    #[test]
+    fn a_feature_with_no_attributes_and_no_geometry_config_still_errors() {
+        let feature = Feature::new_with_attributes(IndexMap::new());
+        assert!(matches!(csv_records(&[feature], None), Err(_)));
+    }
 }
