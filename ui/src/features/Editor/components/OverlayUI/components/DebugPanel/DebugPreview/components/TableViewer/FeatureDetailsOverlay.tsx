@@ -40,12 +40,9 @@ const FeatureDetailsOverlay: React.FC<Props> = ({ feature, onClose }) => {
   const t = useT();
   const [searchTerm, setSearchTerm] = useState<string>("");
 
-  // The record as the engine wrote it. The fields listed below are derived for
-  // the map and drop what it does not need — face holes, themes, UV sets, a
-  // tangent frame's basis — so raw inspection reads this instead.
-  const source: unknown = feature?._source;
-  const sourceGeometry = (source as { geometry?: unknown } | undefined)
-    ?.geometry;
+  const sourceGeometry = (
+    feature?._source as { geometry?: unknown } | undefined
+  )?.geometry;
 
   // Process feature properties for display
   const processedFeature = useMemo(() => {
@@ -305,10 +302,7 @@ const FeatureDetailsOverlay: React.FC<Props> = ({ feature, onClose }) => {
             type="button"
             className="flex h-7 items-center gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
             onClick={() =>
-              openRaw(
-                `${t("Feature")} ${processedFeature.id}`,
-                source ?? feature,
-              )
+              openRaw(`${t("Feature")} ${processedFeature.id}`, feature)
             }>
             <BracketsCurlyIcon size={12} />
             {t("View all raw")}

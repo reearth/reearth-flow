@@ -30,6 +30,31 @@ function columnize(lines: unknown[]) {
   };
 }
 
+describe("the row the raw dialog shows", () => {
+  test("carries every attribute in the file, flat, nulls included", () => {
+    const point = (id: string, attributes: Record<string, unknown>) => ({
+      id,
+      attributes,
+      geometry: {
+        Euclidean2D: {
+          Point: { frame: { Crs: 4326 }, position: [35.6, 139.7] },
+        },
+      },
+    });
+
+    const { rows } = columnize([
+      point("a", { name: "Shibuya", height: 12 }),
+      point("b", { name: "Shinjuku" }), // no `height`
+    ]);
+
+    // Flat keys, not a nested `attributes` object.
+    expect(rows[1]).not.toHaveProperty("attributes");
+    expect(rows[1].attributesname).toBe('"Shinjuku"');
+    // Present as null rather than missing, so the column stays readable.
+    expect(rows[1].attributesheight).toBe("null");
+  });
+});
+
 describe("new-format features reach the table", () => {
   test("a 2D feature contributes geometry and attribute columns", () => {
     const { headers, rows } = columnize([
