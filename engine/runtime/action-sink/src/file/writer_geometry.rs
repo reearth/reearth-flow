@@ -751,4 +751,68 @@ mod tests {
             Err(GeometryExportError::UnsupportedGeometryCollection)
         ));
     }
+
+    // `extract_coordinates` had no test in either geometry world before this task.
+    // Gated off under `new-geometry`: these call the old-world entry point, which
+    // only exists in that configuration.
+    #[cfg(not(feature = "new-geometry"))]
+    mod coordinates {
+        use super::*;
+
+        fn geometry_2d(point: Point2D<f64>) -> Geometry {
+            Geometry {
+                epsg: Some(4326),
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Point(point)),
+            }
+        }
+
+        #[test]
+        fn a_2d_point_extracts_x_and_y_without_a_height() {
+            let geometry = geometry_2d(Point2D::from([1.5, 2.5]));
+            assert_eq!(extract_coordinates(&geometry).unwrap(), (1.5, 2.5, None));
+        }
+
+        #[test]
+        fn a_3d_point_extracts_its_height() {
+            let geometry = Geometry {
+                epsg: Some(4326),
+                value: GeometryValue::FlowGeometry3D(Geometry3D::Point(Point3D::from([
+                    1.0, 2.0, 3.0,
+                ]))),
+            };
+            assert_eq!(
+                extract_coordinates(&geometry).unwrap(),
+                (1.0, 2.0, Some(3.0))
+            );
+        }
+
+        #[test]
+        fn a_non_point_geometry_is_rejected() {
+            let geometry = Geometry {
+                epsg: Some(4326),
+                value: GeometryValue::FlowGeometry2D(Geometry2D::LineString(LineString2D::new(
+                    vec![
+                        Coordinate::<f64, NoValue>::from([0.0, 0.0]),
+                        Coordinate::<f64, NoValue>::from([1.0, 1.0]),
+                    ],
+                ))),
+            };
+            assert!(matches!(
+                extract_coordinates(&geometry),
+                Err(GeometryExportError::NonPointGeometry)
+            ));
+        }
+
+        #[test]
+        fn an_absent_geometry_is_rejected() {
+            let geometry = Geometry {
+                epsg: None,
+                value: GeometryValue::None,
+            };
+            assert!(matches!(
+                extract_coordinates(&geometry),
+                Err(GeometryExportError::EmptyGeometry)
+            ));
+        }
+    }
 }

@@ -280,14 +280,25 @@ pub fn extract_coordinates(
     match geometry {
         Geometry::None => Err(GeometryExportError::EmptyGeometry),
         Geometry::Euclidean2D(Euclidean2DGeometry::Point(p)) => {
-            let [x, y] = p.position();
+            let [x, y] = horizontal(p.frame(), p.position());
             Ok((x, y, None))
         }
         Geometry::Euclidean3D(Euclidean3DGeometry::Point(p)) => {
             let [x, y, z] = p.position();
+            let [x, y] = horizontal(p.frame(), [x, y]);
             Ok((x, y, Some(z)))
         }
         _ => Err(GeometryExportError::NonPointGeometry),
+    }
+}
+
+/// A stored horizontal pair as `(easting, northing)`, so an x column always holds
+/// the easting whatever order the CRS declares.
+fn horizontal(frame: &CoordinateFrame, [a, b]: [f64; 2]) -> [f64; 2] {
+    if swaps_axes(frame) {
+        [b, a]
+    } else {
+        [a, b]
     }
 }
 
@@ -751,6 +762,84 @@ mod tests {
 
     fn point_2d(frame: CoordinateFrame, position: [f64; 2]) -> Euclidean2DGeometry {
         Euclidean2DGeometry::Point(Point2D::new(frame, position))
+    }
+
+    // Coverage for `export_geometry`'s coordinates mode, the counterpart of the
+    // `geometry_to_wkt`/WKT-mode tests above. `extract_coordinates` had no test in
+    // either geometry world before this task.
+
+    fn coordinates_config(z: Option<&str>) -> GeometryExportConfig {
+        GeometryExportConfig {
+            mode: GeometryExportMode::Coordinates {
+                x_column: "x".to_string(),
+                y_column: "y".to_string(),
+                z_column: z.map(str::to_string),
+            },
+        }
+    }
+
+    fn exported(geometry: &Geometry, config: &GeometryExportConfig) -> Vec<(String, String)> {
+        export_geometry(geometry, config)
+            .expect("geometry expected to export")
+            .into_iter()
+            .collect()
+    }
+
+    #[test]
+    fn a_2d_point_exports_x_and_y() {
+        let geometry = Geometry::Euclidean2D(point_2d(euclidean(), [1.5, 2.5]));
+        assert_eq!(
+            exported(&geometry, &coordinates_config(None)),
+            vec![
+                ("x".to_string(), "1.5".to_string()),
+                ("y".to_string(), "2.5".to_string())
+            ]
+        );
+    }
+
+    // A 2D point has no height, so a configured z column is left for `csv.rs` to
+    // fill with an empty string.
+    #[test]
+    fn a_2d_point_leaves_a_configured_z_column_unset() {
+        let geometry = Geometry::Euclidean2D(point_2d(euclidean(), [1.0, 2.0]));
+        let columns = exported(&geometry, &coordinates_config(Some("z")));
+        assert_eq!(columns.len(), 2);
+        assert!(!columns.iter().any(|(name, _)| name == "z"));
+    }
+
+    // Coordinates mode is Point-only; a collection holding one point included. This
+    // is the `export_geometry`-level counterpart of
+    // `extract_coordinates_on_a_non_point_geometry_errors` above.
+    #[test]
+    fn a_non_point_geometry_cannot_export_coordinates() {
+        let geometry = collection_2d(vec![point_2d(euclidean(), [0.0, 0.0])]);
+        assert!(matches!(
+            export_geometry(&geometry, &coordinates_config(None)),
+            Err(GeometryExportError::NonPointGeometry)
+        ));
+    }
+
+    // Unlike WKT mode, which writes an empty cell.
+    #[test]
+    fn an_absent_geometry_cannot_export_coordinates() {
+        assert!(matches!(
+            export_geometry(&Geometry::None, &coordinates_config(None)),
+            Err(GeometryExportError::EmptyGeometry)
+        ));
+    }
+
+    // A north-first CRS is swapped here too, so x is always the easting.
+    #[test]
+    fn coordinates_are_exported_east_first() {
+        let geometry =
+            Geometry::Euclidean2D(point_2d(CoordinateFrame::Crs(EpsgCode::new(6675)), [1.0, 2.0]));
+        assert_eq!(
+            exported(&geometry, &coordinates_config(None)),
+            vec![
+                ("x".to_string(), "2".to_string()),
+                ("y".to_string(), "1".to_string())
+            ]
+        );
     }
 
     // A uniform collection is the new geometry's `Multi*`, so it folds back.
