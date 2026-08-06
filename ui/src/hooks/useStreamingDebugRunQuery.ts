@@ -89,24 +89,52 @@ function predominant(values: string[]): string | null {
   return best;
 }
 
+type Drawable = {
+  kind: "2d" | "3d";
+  /** True when the coordinates are not on the earth; see {@link isModelSpace}. */
+  modelSpace: boolean;
+};
+
 /**
- * The dimension a geometry actually draws in, or null when nothing does.
+ * Whether a frame places coordinates on the earth or in model space.
+ *
+ * The OBJ and glTF readers emit `CoordinateFrame::Euclidean` because those
+ * formats carry no CRS — glTF's reader says so outright, "no CRS, so every leaf
+ * uses `CoordinateFrame::Euclidean`". A tangent plane anchored in a Euclidean
+ * base is the same. Neither is longitude and latitude, so neither belongs on a
+ * globe.
+ */
+function isModelSpace(frame: unknown): boolean {
+  if (frame === "Euclidean") return true;
+  if (!frame || typeof frame !== "object") return false;
+
+  const tangent = (frame as Record<string, unknown>).Tangent;
+  if (tangent && typeof tangent === "object") {
+    return isModelSpace((tangent as Record<string, unknown>).base);
+  }
+  return false;
+}
+
+/**
+ * What a geometry draws as, or null when nothing in it draws.
  *
  * Descends into a collection's members: a CityGML feature is a collection of
  * per-LOD members, so judging it by its own kind would conclude the file has
  * nothing to draw.
  */
-function drawableKind(described: GeometryDescription): "2d" | "3d" | null {
+function drawable(described: GeometryDescription): Drawable | null {
   if (described.kind === "2d" || described.kind === "3d") {
-    return hasGeoJsonForm(described.variant) ? described.kind : null;
+    if (!hasGeoJsonForm(described.variant)) return null;
+    const leaf = (described.value ?? {}) as Record<string, unknown>;
+    return { kind: described.kind, modelSpace: isModelSpace(leaf.frame) };
   }
 
   if (described.kind === "collection") {
     const members = ((described.value as { members?: unknown[] } | undefined)
       ?.members ?? []) as unknown[];
     for (const member of members) {
-      const kind = drawableKind(describeGeometry(member));
-      if (kind) return kind;
+      const found = drawable(describeGeometry(member));
+      if (found) return found;
     }
   }
 
@@ -133,24 +161,42 @@ function analyzeNextFormat(sample: any[]): {
     .filter((entry) => entry.kind !== "none" && entry.kind !== "unknown")
     .map((entry) => entry.label || entry.variant || "Unknown");
 
-  const drawable = described
-    .map(drawableKind)
-    .filter((kind): kind is "2d" | "3d" => kind !== null);
+  const drawables = described
+    .map(drawable)
+    .filter((entry): entry is Drawable => entry !== null);
 
-  if (drawable.length === 0) {
+  if (drawables.length === 0) {
     return { geometryType: predominant(labels), visualizerType: null };
+  }
+
+  // Model-space 3D goes to the model viewer, not a map: an OBJ or glTF read
+  // has no CRS, so its coordinates would land at null island on a globe. The
+  // legacy path reached the same place by sniffing an `OBJ`/`glTF` source
+  // attribute; the frame states it outright. Left to the maps in 2D, which is
+  // what the legacy path did there regardless of CRS.
+  const models = drawables.filter(
+    (entry) => entry.modelSpace && entry.kind === "3d",
+  ).length;
+  if (models * 2 >= drawables.length) {
+    return { geometryType: predominant(labels), visualizerType: "3d-model" };
   }
 
   // 3D coordinates carry an altitude the 2D map drops, so a predominantly 3D
   // file gets the globe.
-  const threeD = drawable.filter((kind) => kind === "3d").length;
+  const threeD = drawables.filter((entry) => entry.kind === "3d").length;
   return {
     geometryType: predominant(labels),
-    visualizerType: threeD * 2 >= drawable.length ? "3d-map" : "2d-map",
+    visualizerType: threeD * 2 >= drawables.length ? "3d-map" : "2d-map",
   };
 }
 
-function analyzeDataType(features: any[]): {
+/**
+ * The geometry label and viewer for a file, from a sample of its raw features.
+ *
+ * Exported for testing: it decides which viewer opens and is the one place
+ * both geometry formats have to agree.
+ */
+export function analyzeDataType(features: any[]): {
   geometryType: GeometryType;
   visualizerType: VisualizerType;
 } {
