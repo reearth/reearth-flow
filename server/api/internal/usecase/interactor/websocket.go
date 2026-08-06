@@ -7,6 +7,7 @@ import (
 	ws "github.com/reearth/reearth-flow/api/pkg/websocket"
 )
 
+// TODO(2026-09): delete this file, it is unreachable. See reearth-flow#2334.
 type Websocket struct {
 	client interfaces.WebsocketClient
 }
