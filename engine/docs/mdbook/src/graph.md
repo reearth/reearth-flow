@@ -21,7 +21,7 @@ A graph is a data structure that consists of a finite set of nodes (or vertices)
     with:
       conditions:
       - expr: |
-          variables.get("__value").extension == "gml"
+          attributes["extension"] == "gml"
         outputPort: default
 ```
 

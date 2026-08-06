@@ -552,7 +552,7 @@ mod tests {
     }
 
     #[test]
-    fn test_eval_string_env_only() {
+    fn test_eval_string_variables_only() {
         let mut variables = serde_json::Map::new();
         variables.insert(
             "key".to_string(),

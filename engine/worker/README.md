@@ -54,7 +54,7 @@ graphs:
         with:
           format: tsv
           dataset: |
-            variables.get("__value").csvPath
+            attributes["csvPath"]
 
       - id: f5e66920-24c0-4c70-ae16-6be1ed3b906c
         name: JsonWriter

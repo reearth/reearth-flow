@@ -716,7 +716,7 @@ mod tests {
     }
 
     #[test]
-    fn build_fails_when_output_expression_references_missing_env_var() {
+    fn build_fails_when_output_expression_references_missing_workflow_variable() {
         let ctx = NodeContext::default();
         let with = make_with(
             json!({"type": "flowExpr", "value": "variables[\"nonexistent_output_dir\"]"}),

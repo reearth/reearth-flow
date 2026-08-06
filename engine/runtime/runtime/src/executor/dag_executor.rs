@@ -221,7 +221,7 @@ impl DagExecutor {
                 replay_groups.len()
             );
 
-            let env_vars2 = Arc::clone(&variables);
+            let variables2 = Arc::clone(&variables);
             let storage_resolver2 = Arc::clone(&storage_resolver);
             let kv_store2 = Arc::clone(&kv_store);
             let event_hub2 = execution_dag.event_hub().clone();
@@ -230,7 +230,7 @@ impl DagExecutor {
                 .name("replay-injector".to_string())
                 .spawn(move || {
                     let node_ctx = NodeContext::new(
-                        env_vars2,
+                        variables2,
                         storage_resolver2,
                         kv_store2,
                         event_hub2,

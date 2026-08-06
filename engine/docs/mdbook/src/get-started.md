@@ -58,7 +58,7 @@ graphs:
     with:
       conditions:
       - expr: |
-          variables.get("__value").extension == "gml"
+          attributes["extension"] == "gml"
         outputPort: default
   - id: b1a91180-ab88-4c1a-aab5-48c242a218cc
     name: PLATEAU3.UDXFolderExtractor-01
@@ -66,7 +66,7 @@ graphs:
     action: PLATEAU3.UDXFolderExtractor
     with:
       cityGmlPath: |
-        variables.get("__value")["path"]
+        attributes["path"]
   - id: b1a91180-ab88-4c1a-aab5-48c242a218cd
     name: FeatureFilter02
     type: action
@@ -74,7 +74,7 @@ graphs:
     with:
       conditions:
       - expr: |
-          (variables.get("targetPackages") ?? []).is_empty() || variables.get("__value")["package"] in variables.get("targetPackages")
+          not variables["targetPackages"] or attributes["package"] in variables["targetPackages"]
         outputPort: default
   - id: b1a91180-ab88-4c1a-aab5-48c242a218ce
     name: FeatureCounter01
