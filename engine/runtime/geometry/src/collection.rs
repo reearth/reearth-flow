@@ -302,14 +302,22 @@ impl crate::ops::Translate for Collection3D {
 }
 
 impl crate::ops::Place for Collection3D {
+    /// Placed atomically: a member failing partway through (`Csg`, a 2D
+    /// member, a `ScaledI32`-encoded `PointCloud` segment, ...) must not leave
+    /// earlier members transformed while the collection as a whole is
+    /// rejected. So this places into a cloned members vector and only writes
+    /// it back to `self` once every member has succeeded, rather than
+    /// mutating `self.members` in place and returning on the first error.
     fn place(
         &mut self,
         affine: &crate::ops::Affine3,
         frame: &crate::coordinate::CoordinateFrame,
     ) -> crate::error::Result<()> {
-        for member in self.members_mut() {
+        let mut members = self.members.clone();
+        for member in members.iter_mut() {
             member.place(affine, frame)?;
         }
+        self.members = members;
         Ok(())
     }
 }
@@ -505,5 +513,57 @@ mod tests {
     fn empty_collection_has_no_box() {
         let c = Collection2D::new(std::iter::empty());
         assert!(c.bounding_box().is_err());
+    }
+
+    #[test]
+    fn place_is_atomic_when_a_later_member_is_unplaceable() {
+        // Regression for the atomicity bug: `place` used to mutate members in
+        // order and return on the first error, so a collection with an
+        // unplaceable member reached the caller's `rejected` port with
+        // earlier members already transformed and reframed. This asserts the
+        // whole collection comes back byte-identical (full structural
+        // equality, not just "it errored") after a failed `place`.
+        use crate::csg::Csg;
+        use crate::ops::{Affine3, Place};
+        use crate::solid::Solid;
+        use crate::triangular_mesh::TriangularMesh3DData;
+
+        fn unplaceable_csg() -> Euclidean3DGeometry {
+            let shell = TriangularMesh3DData::from_parts(
+                vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+                [0u32, 1, 2],
+            )
+            .unwrap();
+            let solid = Solid::from_exterior(CoordinateFrame::Euclidean, shell);
+            // `Csg::place` unconditionally errors: a boolean tree has no
+            // single coordinate buffer or frame of its own to place.
+            Euclidean3DGeometry::Csg(Csg::union(solid.clone(), solid))
+        }
+
+        let placeable =
+            Euclidean3DGeometry::Point(Point3D::new(CoordinateFrame::Euclidean, [1.0, 2.0, 3.0]));
+        let mut collection = Collection3D::new([placeable, unplaceable_csg()]);
+        let before = collection.clone();
+
+        // A non-identity affine, so a bug that transforms the placeable
+        // member before failing on the `Csg` member would actually change
+        // its coordinates rather than coincidentally leaving them alone.
+        let affine = Affine3::new(
+            [[1.0, 0.0, 0.0], [0.0, 0.0, -1.0], [0.0, 1.0, 0.0]],
+            [10.0, 20.0, 30.0],
+        );
+        let target = CoordinateFrame::Crs(EpsgCode::new(4978));
+
+        let result = collection.place(&affine, &target);
+
+        assert!(
+            result.is_err(),
+            "placement must fail because of the Csg member"
+        );
+        assert_eq!(
+            collection, before,
+            "the whole collection, including the placeable member, must be untouched \
+             when a later member fails to place"
+        );
     }
 }

@@ -476,10 +476,17 @@ impl Place for Geometry {
     ) -> crate::error::Result<()> {
         match self {
             Geometry::Euclidean3D(g) => g.place(affine, frame),
+            // Placed atomically, mirroring `Collection3D::place`: a member
+            // failing partway through must not leave earlier members
+            // transformed while the collection as a whole is rejected. Place
+            // into a cloned members vector and only write it back to `self`
+            // once every member has succeeded.
             Geometry::GeometryCollection(c) => {
-                for member in c.members_mut() {
+                let mut members = c.members.clone();
+                for member in members.iter_mut() {
                     member.place(affine, frame)?;
                 }
+                c.members = members;
                 Ok(())
             }
             Geometry::None => Err(crate::error::Error::invalid_geometry(

@@ -66,10 +66,10 @@ enum Placement {
     #[serde(rename_all = "camelCase")]
     Anchor {
         /// # Latitude
-        /// Latitude of the anchor in degrees.
+        /// Latitude of the anchor in degrees, in the range [-90, 90].
         latitude: Code<{ CodeType::FlowExpr as u32 }>,
         /// # Longitude
-        /// Longitude of the anchor in degrees.
+        /// Longitude of the anchor in degrees, in the range [-180, 180].
         longitude: Code<{ CodeType::FlowExpr as u32 }>,
         /// # Height
         /// Height of the anchor in metres above the ellipsoid.
@@ -249,13 +249,23 @@ impl ModelGeoreferencer {
             }
             ResolvedPlacement::Anchor(anchor) => {
                 let lat = eval_expr_f64(&anchor.latitude, "latitude", feature, env_vars.clone())?;
+                validate_anchor_value("latitude", lat, Some((-90.0, 90.0)))?;
                 let lon = eval_expr_f64(&anchor.longitude, "longitude", feature, env_vars.clone())?;
+                validate_anchor_value("longitude", lon, Some((-180.0, 180.0)))?;
                 let height_m = match &anchor.height {
-                    Some(code) => eval_expr_f64(code, "height", feature, env_vars.clone())?,
+                    Some(code) => {
+                        let h = eval_expr_f64(code, "height", feature, env_vars.clone())?;
+                        validate_anchor_value("height", h, None)?;
+                        h
+                    }
                     None => 0.0,
                 };
                 let heading_deg = match &anchor.heading {
-                    Some(code) => eval_expr_f64(code, "heading", feature, env_vars.clone())?,
+                    Some(code) => {
+                        let h = eval_expr_f64(code, "heading", feature, env_vars.clone())?;
+                        validate_anchor_value("heading", h, None)?;
+                        h
+                    }
                     None => 0.0,
                 };
                 (
@@ -271,11 +281,14 @@ impl ModelGeoreferencer {
 }
 
 /// Evaluate an already-compiled `anchor` placement expression parameter to an
-/// `f64` against `feature`, the same way `coordinate_frame_reprojector.rs`
-/// evaluates its precompiled `base_point` expression: evaluate, and treat any
-/// failure -- to evaluate, or to coerce the result to a number -- as an
-/// evaluation failure rather than a panic, surfaced to the caller as an error
-/// so the feature is routed to the `rejected` port. `name` identifies which
+/// `f64` against `feature`, via [`CompiledCode::eval_float`] -- which already
+/// preserves the real evaluation error (missing attribute, wrong type, thrown
+/// expression, ...) and handles number coercion consistently with the rest of
+/// the codebase's expression-evaluating actions (e.g.
+/// `coordinate_frame_reprojector.rs`'s `base_point`, `rotator_3d.rs`'s
+/// rotation parameters), rather than reimplementing that logic and discarding
+/// the error via `.ok()`. Any failure is surfaced to the caller as an error so
+/// the feature is routed to the `rejected` port. `name` identifies which
 /// anchor parameter (`"latitude"`, `"longitude"`, `"height"`, or `"heading"`)
 /// failed, for the error message.
 fn eval_expr_f64(
@@ -284,14 +297,44 @@ fn eval_expr_f64(
     feature: &Feature,
     env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
 ) -> Result<f64, BoxedError> {
-    code.eval(feature, env_vars)
-        .ok()
-        .and_then(|v| v.as_f64())
-        .ok_or_else(|| {
-            Box::new(GeometryProcessorError::ModelGeoreferencer(format!(
-                "anchor `{name}` expression did not evaluate to a number"
-            ))) as BoxedError
-        })
+    code.eval_float(feature, env_vars).map_err(|e| {
+        Box::new(GeometryProcessorError::ModelGeoreferencer(format!(
+            "anchor `{name}` expression failed: {e}"
+        ))) as BoxedError
+    })
+}
+
+/// Reject an anchor value that is non-finite, or (when `range` is given)
+/// outside it. `range` is `Some((min, max))` for `latitude`
+/// (`[-90, 90]`) and `longitude` (`[-180, 180]`); `height` and `heading` have
+/// no valid range of their own, so they pass `None` and only get the
+/// non-finite check.
+///
+/// The range check is the important case: the most common way to reach it is
+/// a caller swapping `latitude` and `longitude`, which otherwise produces a
+/// finite, self-consistent ECEF position on the far side of the planet with
+/// no error anywhere in the run. The non-finite check is belt-and-braces --
+/// the expression layer already rejects non-finite results before they ever
+/// reach here, so this branch cannot actually trigger today -- kept in case
+/// that ever changes.
+fn validate_anchor_value(
+    name: &'static str,
+    value: f64,
+    range: Option<(f64, f64)>,
+) -> Result<(), BoxedError> {
+    if !value.is_finite() {
+        return Err(Box::new(GeometryProcessorError::ModelGeoreferencer(format!(
+            "anchor `{name}` evaluated to a non-finite value: {value}"
+        ))) as BoxedError);
+    }
+    if let Some((min, max)) = range {
+        if value < min || value > max {
+            return Err(Box::new(GeometryProcessorError::ModelGeoreferencer(format!(
+                "anchor `{name}` is out of range: {value} (must be between {min} and {max})"
+            ))) as BoxedError);
+        }
+    }
+    Ok(())
 }
 
 impl Processor for ModelGeoreferencer {
@@ -302,10 +345,10 @@ impl Processor for ModelGeoreferencer {
     ) -> Result<(), BoxedError> {
         let mut feature = ctx.feature.clone();
 
-        if let Some(epsg) = find_crs_frame(&feature.geometry) {
+        if let Some(framed) = find_crs_frame(&feature.geometry) {
             ctx.event_hub.warn_log(
                 Some(ctx.error_span()),
-                format!("feature geometry is already tagged with CRS EPSG:{epsg}; skipping"),
+                format!("feature geometry is already framed ({framed}); skipping"),
             );
             fw.send(ctx.new_with_feature_and_port(feature, REJECTED_PORT.clone()));
             return Ok(());
@@ -318,7 +361,14 @@ impl Processor for ModelGeoreferencer {
                     Some(ctx.error_span()),
                     format!("georeferencing failed: {e}"),
                 );
-                fw.send(ctx.new_with_feature_and_port(feature, REJECTED_PORT.clone()));
+                // Forward the ORIGINAL feature, not `feature`: `place_feature`
+                // mutates `feature` in place and can fail partway through a
+                // collection, so `feature` may already carry a partially
+                // transformed geometry at this point. `ctx.feature` is
+                // untouched. Belt-and-braces alongside making `Place` itself
+                // atomic (see `Collection3D`/`GeometryCollection`'s `place`),
+                // which is the actual fix for the partial-mutation source.
+                fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), REJECTED_PORT.clone()));
             }
         }
         Ok(())
@@ -429,20 +479,44 @@ fn validate_declared_crs(epsg: EpsgCode) -> Result<(), BoxedError> {
     }
 }
 
-/// The EPSG code of the first `Crs`-tagged leaf found anywhere in `geometry`,
+/// What a leaf was found already framed as, by [`find_crs_frame`] /
+/// [`find_crs_frame_3d`] — everything that is not bare `Euclidean` space, and
+/// therefore already georeferenced content that must not be placed again.
+#[derive(Debug, Clone, PartialEq)]
+enum AlreadyFramed {
+    /// Tagged with a coordinate reference system, by EPSG code.
+    Crs(EpsgCode),
+    /// Tagged with some other non-`Euclidean`, non-`Crs` frame. Currently the
+    /// only such frame is `Tangent`: it IS georeferenced content whenever its
+    /// base is a `Crs` (see `BaseFrame::Crs`), so it must be rejected the same
+    /// way a `Crs` frame is, not folded in with `Euclidean`.
+    Other(&'static str),
+}
+
+impl std::fmt::Display for AlreadyFramed {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            AlreadyFramed::Crs(epsg) => write!(f, "CRS EPSG:{epsg}"),
+            AlreadyFramed::Other(name) => f.write_str(name),
+        }
+    }
+}
+
+/// The frame of the first non-`Euclidean` leaf found anywhere in `geometry`,
 /// searched recursively through `GeometryCollection` and `Collection3D`
-/// members. `None` means every leaf reachable this way is `Euclidean` (or the
-/// geometry is empty / 2D) — it does **not** mean placement is safe: `Csg` and
-/// a `ScaledI32`-encoded `PointCloud` segment are left for [`Place::place`]'s
-/// own error handling, since it already unconditionally rejects both
-/// regardless of their current frame (a `Csg` carries no frame of its own; a
-/// `ScaledI32` segment cannot represent a rotation). Every leaf `Place::place`
-/// *would* silently accept and overwrite — `Point`, `LineString`, `Polygon`,
-/// `PolygonMesh`, `TriangularMesh`, `Solid`, and an `F64`/`F32`-encoded
-/// `PointCloud` — is inspected here, at any collection depth, so re-running
-/// this action on already-georeferenced geometry is caught rather than
-/// silently re-transforming and overwriting the frame.
-fn find_crs_frame(geometry: &Geometry) -> Option<EpsgCode> {
+/// members. `None` means every leaf reachable this way genuinely is
+/// `Euclidean` (or the geometry is empty / 2D) — it does **not** mean
+/// placement is safe: `Csg` and a `ScaledI32`-encoded `PointCloud` segment are
+/// left for [`Place::place`]'s own error handling, since it already
+/// unconditionally rejects both regardless of their current frame (a `Csg`
+/// carries no frame of its own; a `ScaledI32` segment cannot represent a
+/// rotation). Every other leaf `Place::place` *would* silently accept and
+/// overwrite — `Point`, `LineString`, `Polygon`, `PolygonMesh`,
+/// `TriangularMesh`, `Solid`, and an `F64`/`F32`-encoded `PointCloud` — is
+/// inspected here, at any collection depth, so re-running this action on
+/// already-georeferenced (`Crs`) or tangent-plane (`Tangent`) geometry is
+/// caught rather than silently re-transforming and overwriting the frame.
+fn find_crs_frame(geometry: &Geometry) -> Option<AlreadyFramed> {
     match geometry {
         Geometry::Euclidean3D(g) => find_crs_frame_3d(g),
         Geometry::Euclidean2D(_) | Geometry::None => None,
@@ -451,7 +525,7 @@ fn find_crs_frame(geometry: &Geometry) -> Option<EpsgCode> {
 }
 
 /// [`find_crs_frame`], scoped to an already-3D-embedded geometry.
-fn find_crs_frame_3d(geometry: &Euclidean3DGeometry) -> Option<EpsgCode> {
+fn find_crs_frame_3d(geometry: &Euclidean3DGeometry) -> Option<AlreadyFramed> {
     let frame = match geometry {
         Euclidean3DGeometry::Point(p) => p.frame(),
         Euclidean3DGeometry::PointCloud(pc) => pc.frame(),
@@ -466,9 +540,14 @@ fn find_crs_frame_3d(geometry: &Euclidean3DGeometry) -> Option<EpsgCode> {
             return c.members().iter().find_map(find_crs_frame_3d)
         }
     };
+    // Exhaustive on purpose (no `_` arm): a new `CoordinateFrame` variant
+    // must be triaged here explicitly rather than silently falling through
+    // to "safe to place", which is exactly the bug this match is fixing for
+    // `Tangent`.
     match frame {
-        CoordinateFrame::Crs(epsg) => Some(*epsg),
-        _ => None,
+        CoordinateFrame::Euclidean => None,
+        CoordinateFrame::Crs(epsg) => Some(AlreadyFramed::Crs(*epsg)),
+        CoordinateFrame::Tangent(_) => Some(AlreadyFramed::Other("Tangent")),
     }
 }
 
@@ -476,7 +555,7 @@ fn find_crs_frame_3d(geometry: &Euclidean3DGeometry) -> Option<EpsgCode> {
 mod tests {
     use super::*;
     use reearth_flow_geometry::collection::Collection3D;
-    use reearth_flow_geometry::coordinate::CoordinateFrame;
+    use reearth_flow_geometry::coordinate::{BaseFrame, CoordinateFrame, TangentPlane};
     use reearth_flow_geometry::point_cloud::PointCloud;
     use reearth_flow_geometry::triangular_mesh::TriangularMesh3D;
     use reearth_flow_geometry::{Euclidean3DGeometry, Geometry};
@@ -673,6 +752,38 @@ mod tests {
         assert_eq!(
             *features[0].geometry, geometry,
             "collection must be untouched"
+        );
+    }
+
+    #[test]
+    fn process_rejects_a_tangent_framed_leaf_unchanged() {
+        // The spec gap this fixes: `Tangent` IS georeferenced content whenever
+        // its base is a `Crs` (`BaseFrame::Crs`), so the already-framed guard
+        // must reject it exactly like a `Crs` frame -- not fold it into
+        // "Euclidean" and silently apply a model-space affine to tangent-plane
+        // coordinates before relabelling them `Crs(..)`.
+        let tangent = CoordinateFrame::Tangent(Box::new(TangentPlane {
+            base: BaseFrame::Crs(EpsgCode::new(6697)),
+            origin: [0.0, 0.0, 0.0],
+            u: [1.0, 0.0, 0.0],
+            v: [0.0, 1.0, 0.0],
+        }));
+        let geometry = Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(
+            TriangularMesh3D::from_soup(
+                tangent,
+                vec![[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]],
+            ),
+        )));
+        let feature =
+            Feature::new_with_attributes_and_geometry(Attributes::new(), geometry.clone());
+        let mut processor = processor_from(Placement::DeclareCrs { epsg_code: 6677 }, UpAxis::Y);
+
+        let (features, ports) = run_processor(&feature, &mut processor);
+
+        assert_eq!(ports, vec![REJECTED_PORT.clone()]);
+        assert_eq!(
+            *features[0].geometry, geometry,
+            "tangent-framed geometry must be untouched"
         );
     }
 
@@ -909,6 +1020,79 @@ mod tests {
             *features[0].geometry, geometry,
             "geometry must be untouched on evaluation failure"
         );
+    }
+
+    #[test]
+    fn process_rejects_a_swapped_latitude_and_longitude() {
+        // The failure mode this fix exists for: a user swaps latitude and
+        // longitude (the most common error for this parameter shape). Without
+        // range validation, this produces a finite, self-consistent ECEF
+        // position on the far side of the planet with no error anywhere in
+        // the run. Here `latitude: 140.102` is out of [-90, 90], so it must be
+        // rejected instead.
+        let geometry = euclidean_mesh(vec![[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]);
+        let feature =
+            Feature::new_with_attributes_and_geometry(Attributes::new(), geometry.clone());
+        let mut processor = processor_from(
+            Placement::Anchor {
+                latitude: flow_expr(140.102),
+                longitude: flow_expr(35.908),
+                height: None,
+                heading: None,
+            },
+            UpAxis::Z,
+        );
+
+        let (features, ports) = run_processor(&feature, &mut processor);
+
+        assert_eq!(ports, vec![REJECTED_PORT.clone()]);
+        assert_eq!(
+            *features[0].geometry, geometry,
+            "geometry must be untouched when latitude is out of range"
+        );
+    }
+
+    #[test]
+    fn process_rejects_an_out_of_range_longitude() {
+        let geometry = euclidean_mesh(vec![[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]);
+        let feature =
+            Feature::new_with_attributes_and_geometry(Attributes::new(), geometry.clone());
+        let mut processor = processor_from(
+            Placement::Anchor {
+                latitude: flow_expr(35.908),
+                longitude: flow_expr(200.0),
+                height: None,
+                heading: None,
+            },
+            UpAxis::Z,
+        );
+
+        let (features, ports) = run_processor(&feature, &mut processor);
+
+        assert_eq!(ports, vec![REJECTED_PORT.clone()]);
+        assert_eq!(
+            *features[0].geometry, geometry,
+            "geometry must be untouched when longitude is out of range"
+        );
+    }
+
+    #[test]
+    fn validate_anchor_value_rejects_out_of_range_and_non_finite() {
+        assert!(validate_anchor_value("latitude", 90.0, Some((-90.0, 90.0))).is_ok());
+        assert!(validate_anchor_value("latitude", -90.0, Some((-90.0, 90.0))).is_ok());
+        assert!(validate_anchor_value("latitude", 90.001, Some((-90.0, 90.0))).is_err());
+        assert!(validate_anchor_value("latitude", -90.001, Some((-90.0, 90.0))).is_err());
+        assert!(validate_anchor_value("longitude", 180.0, Some((-180.0, 180.0))).is_ok());
+        assert!(validate_anchor_value("longitude", 180.001, Some((-180.0, 180.0))).is_err());
+        // Non-finite is rejected regardless of whether a range is given -- the
+        // expression layer already rejects non-finite results before they
+        // reach here, but this is belt-and-braces.
+        assert!(validate_anchor_value("latitude", f64::NAN, Some((-90.0, 90.0))).is_err());
+        assert!(validate_anchor_value("height", f64::INFINITY, None).is_err());
+        assert!(validate_anchor_value("height", f64::NEG_INFINITY, None).is_err());
+        // No range means any finite value is fine.
+        assert!(validate_anchor_value("height", -1000.0, None).is_ok());
+        assert!(validate_anchor_value("heading", 720.0, None).is_ok());
     }
 
     #[test]

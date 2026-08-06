@@ -126,6 +126,12 @@ impl Translate for Solid {
 impl Place for Solid {
     /// Apply `affine` to every shell's vertices and set the frame once for the
     /// whole solid (a `Solid` carries a single frame for all its shells).
+    ///
+    /// Already atomic, unlike `Collection3D`/`GeometryCollection::place`: there
+    /// is no fallible step inside the loop below (`vertices_mut()` cannot
+    /// fail, and `apply_affine_3d` is infallible), so no shell can be
+    /// transformed while a later one fails -- there is no later-one-fails
+    /// case to leave `self` half-mutated for.
     fn place(&mut self, affine: &Affine3, frame: &CoordinateFrame) -> crate::error::Result<()> {
         for shell in std::iter::once(&mut self.exterior).chain(self.interiors.iter_mut()) {
             let vertices = match shell {

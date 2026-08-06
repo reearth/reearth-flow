@@ -8352,7 +8352,7 @@ Assigns a coordinate reference system to model-space 3D geometry, optionally anc
             },
             "latitude": {
               "title": "Latitude",
-              "description": "Latitude of the anchor in degrees.",
+              "description": "Latitude of the anchor in degrees, in the range [-90, 90].",
               "type": "object",
               "format": "code",
               "required": [
@@ -8373,7 +8373,7 @@ Assigns a coordinate reference system to model-space 3D geometry, optionally anc
             },
             "longitude": {
               "title": "Longitude",
-              "description": "Longitude of the anchor in degrees.",
+              "description": "Longitude of the anchor in degrees, in the range [-180, 180].",
               "type": "object",
               "format": "code",
               "required": [
