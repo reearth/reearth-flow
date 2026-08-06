@@ -1,196 +1,40 @@
-use nusamai_citygml::PropertyType;
+//! The legacy world's half of the converter seam: `CityGmlGeometry` in, the
+//! shared [`super::model`] out.
+//!
+//! Its behaviour is fixed by what the legacy build already emits, so nothing
+//! here narrows or widens: interior shells were discarded at read time and can
+//! never reach it, points are dropped, triangles fold into `MultiSurface`, and
+//! the material/texture palettes are the feature's whole global arrays.
+
 use reearth_flow_geometry::types::coordinate::Coordinate3D;
 use reearth_flow_geometry::types::polygon::Polygon3D;
 use reearth_flow_types::geometry::{CityGmlGeometry, GeometryType, GmlGeometry};
 use reearth_flow_types::lod::LodMask;
-use reearth_flow_types::material::{Texture, X3DMaterial};
 
-#[derive(Debug, Clone)]
-pub struct GeometryEntry {
-    pub lod: u8,
-    pub property: Option<PropertyType>,
-    pub element: GmlElement,
-}
+use super::model::{
+    AppearanceBundle, BoundingEnvelope, GeometryEntry, GmlElement, GmlSolid, GmlSurface,
+};
 
-#[derive(Debug, Clone)]
-pub enum GmlElement {
-    Solid {
-        id: Option<String>,
-        surfaces: Vec<GmlSurface>,
-    },
-    MultiSurface {
-        id: Option<String>,
-        surfaces: Vec<GmlSurface>,
-    },
-    MultiCurve {
-        id: Option<String>,
-        curves: Vec<Vec<Coordinate3D<f64>>>,
-    },
-}
-
-#[derive(Debug, Clone)]
-pub struct GmlSurface {
-    pub id: Option<String>,
-    pub exterior: Vec<Coordinate3D<f64>>,
-    pub interiors: Vec<Vec<Coordinate3D<f64>>>,
-    /// Index into `AppearanceBundle::materials` (None if no material)
-    pub material_idx: Option<u32>,
-    /// Index into `AppearanceBundle::textures` (None if no texture)
-    pub texture_idx: Option<u32>,
-    /// UV coords for exterior ring, parallel to `exterior` vertices
-    pub uv_exterior: Vec<[f64; 2]>,
-    /// UV coords for each interior ring, parallel to `interiors` vertices
-    pub uv_interiors: Vec<Vec<[f64; 2]>>,
+/// The shared model's coordinates are bare ordinate triples, so every legacy
+/// ring crosses the seam through here.
+fn ring_coords(coords: &[Coordinate3D<f64>]) -> Vec<[f64; 3]> {
+    coords.iter().map(|c| [c.x, c.y, c.z]).collect()
 }
 
 impl From<&Polygon3D<f64>> for GmlSurface {
     fn from(polygon: &Polygon3D<f64>) -> Self {
         Self {
             id: None,
-            exterior: polygon.exterior().0.clone(),
+            exterior: ring_coords(&polygon.exterior().0),
             interiors: polygon
                 .interiors()
                 .iter()
-                .map(|ring| ring.0.clone())
+                .map(|ring| ring_coords(&ring.0))
                 .collect(),
             material_idx: None,
             texture_idx: None,
             uv_exterior: Vec::new(),
             uv_interiors: Vec::new(),
-        }
-    }
-}
-
-/// Appearance data for a feature, parallel to the materials/textures in `CityGmlGeometry`.
-#[derive(Debug, Clone)]
-pub struct AppearanceBundle {
-    pub materials: Vec<X3DMaterial>,
-    pub textures: Vec<Texture>,
-}
-
-impl AppearanceBundle {
-    pub fn has_content(&self) -> bool {
-        !self.materials.is_empty() || !self.textures.is_empty()
-    }
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum CityObjectType {
-    Building,
-    BuildingPart,
-    Road,
-    Railway,
-    Track,
-    Square,
-    Bridge,
-    BridgePart,
-    Tunnel,
-    TunnelPart,
-    WaterBody,
-    LandUse,
-    SolitaryVegetationObject,
-    PlantCover,
-    CityFurniture,
-    ReliefFeature,
-    GenericCityObject,
-}
-
-impl CityObjectType {
-    pub fn from_feature_type(feature_type: &str) -> Self {
-        let normalized = feature_type.to_lowercase();
-        if normalized.contains("buildingpart") {
-            Self::BuildingPart
-        } else if normalized.contains("building") {
-            Self::Building
-        } else if normalized.contains("railway") {
-            Self::Railway
-        } else if normalized.contains("road") {
-            Self::Road
-        } else if normalized.contains("track") {
-            Self::Track
-        } else if normalized.contains("square") {
-            Self::Square
-        } else if normalized.contains("bridgepart") {
-            Self::BridgePart
-        } else if normalized.contains("bridge") {
-            Self::Bridge
-        } else if normalized.contains("tunnelpart") {
-            Self::TunnelPart
-        } else if normalized.contains("tunnel") {
-            Self::Tunnel
-        } else if normalized.contains("waterbody") {
-            Self::WaterBody
-        } else if normalized.contains("landuse") {
-            Self::LandUse
-        } else if normalized.contains("solitaryvegetationobject") {
-            Self::SolitaryVegetationObject
-        } else if normalized.contains("plantcover") {
-            Self::PlantCover
-        } else if normalized.contains("cityfurniture") {
-            Self::CityFurniture
-        } else if normalized.contains("relieffeature") {
-            Self::ReliefFeature
-        } else {
-            Self::GenericCityObject
-        }
-    }
-
-    pub fn element_name(&self) -> &'static str {
-        match self {
-            Self::Building => "bldg:Building",
-            Self::BuildingPart => "bldg:BuildingPart",
-            Self::Road => "tran:Road",
-            Self::Railway => "tran:Railway",
-            Self::Track => "tran:Track",
-            Self::Square => "tran:Square",
-            Self::Bridge => "brid:Bridge",
-            Self::BridgePart => "brid:BridgePart",
-            Self::Tunnel => "tun:Tunnel",
-            Self::TunnelPart => "tun:TunnelPart",
-            Self::WaterBody => "wtr:WaterBody",
-            Self::LandUse => "luse:LandUse",
-            Self::SolitaryVegetationObject => "veg:SolitaryVegetationObject",
-            Self::PlantCover => "veg:PlantCover",
-            Self::CityFurniture => "frn:CityFurniture",
-            Self::ReliefFeature => "dem:ReliefFeature",
-            Self::GenericCityObject => "gen:GenericCityObject",
-        }
-    }
-
-    pub fn namespace_prefix(&self) -> &'static str {
-        match self {
-            Self::Building | Self::BuildingPart => "bldg",
-            Self::Road | Self::Railway | Self::Track | Self::Square => "tran",
-            Self::Bridge | Self::BridgePart => "brid",
-            Self::Tunnel | Self::TunnelPart => "tun",
-            Self::WaterBody => "wtr",
-            Self::LandUse => "luse",
-            Self::SolitaryVegetationObject | Self::PlantCover => "veg",
-            Self::CityFurniture => "frn",
-            Self::ReliefFeature => "dem",
-            Self::GenericCityObject => "gen",
-        }
-    }
-
-    pub fn id_prefix(&self) -> &'static str {
-        match self {
-            Self::Building => "bldg",
-            Self::BuildingPart => "bldg_part",
-            Self::Road => "road",
-            Self::Railway => "rail",
-            Self::Track => "track",
-            Self::Square => "square",
-            Self::Bridge => "brid",
-            Self::BridgePart => "brid_part",
-            Self::Tunnel => "tun",
-            Self::TunnelPart => "tun_part",
-            Self::WaterBody => "wtr",
-            Self::LandUse => "luse",
-            Self::SolitaryVegetationObject => "veg_sol",
-            Self::PlantCover => "veg_plant",
-            Self::CityFurniture => "frn",
-            Self::ReliefFeature => "dem",
-            Self::GenericCityObject => "gen",
         }
     }
 }
@@ -209,7 +53,10 @@ pub fn convert_citygml_geometry(
             if !lod_filter.has_lod(lod) {
                 return None;
             }
-            let property = gml_geom.gml_trait.as_ref().map(|t| t.property);
+            // The model carries the wrapper's local name as a plain string, so
+            // `PropertyType`'s `Display` — which is what the writer formatted
+            // anyway — is applied here rather than leaking the type across.
+            let property = gml_geom.gml_trait.as_ref().map(|t| t.property.to_string());
             convert_gml_geometry(gml_geom, geometry, need_appearance).map(|elem| GeometryEntry {
                 lod,
                 property,
@@ -244,10 +91,13 @@ fn convert_gml_geometry(
                     make_gml_surface(poly, gml_geom.pos as usize + i, parent, need_appearance)
                 })
                 .collect();
-            Some(GmlElement::Solid {
+            Some(GmlElement::Solid(GmlSolid {
                 id: gml_geom.id.clone(),
-                surfaces,
-            })
+                exterior: surfaces,
+                // The legacy reader logs "interior of Solid is not supported,
+                // skipped", so a void never reaches this converter.
+                interiors: Vec::new(),
+            }))
         }
         GeometryType::Surface | GeometryType::Triangle => {
             if gml_geom.polygons.is_empty() {
@@ -275,7 +125,7 @@ fn convert_gml_geometry(
                 curves: gml_geom
                     .line_strings
                     .iter()
-                    .map(|ls| ls.0.clone())
+                    .map(|ls| ring_coords(&ls.0))
                     .collect(),
             })
         }
@@ -322,8 +172,12 @@ fn make_gml_surface(
 
     GmlSurface {
         id: None, // assigned by the writer using its id_counter
-        exterior: poly.exterior().0.clone(),
-        interiors: poly.interiors().iter().map(|ring| ring.0.clone()).collect(),
+        exterior: ring_coords(&poly.exterior().0),
+        interiors: poly
+            .interiors()
+            .iter()
+            .map(|ring| ring_coords(&ring.0))
+            .collect(),
         material_idx,
         texture_idx,
         uv_exterior,
@@ -331,10 +185,18 @@ fn make_gml_surface(
     }
 }
 
-pub fn format_pos_list(coords: &[Coordinate3D<f64>]) -> String {
+/// Serialize `coords` as the body of a `gml:posList` — or of a `gml:lowerCorner`
+/// / `gml:upperCorner`, which the writer formats the same way so a document's
+/// envelope always reads in the same axis order as its geometry.
+///
+/// Legacy leaves store `x` as longitude/easting, while the CRSs this writer
+/// declares put latitude/northing first, so the ordinates are transposed to
+/// `y x z` here. The unified world stores ordinates in the CRS's own declared
+/// order and so has its own, identity, formatter.
+pub fn format_pos_list(coords: &[[f64; 3]]) -> String {
     coords
         .iter()
-        .map(|c| format!("{} {} {}", c.y, c.x, c.z))
+        .map(|c| format!("{} {} {}", c[1], c[0], c[2]))
         .collect::<Vec<_>>()
         .join(" ")
 }
@@ -359,34 +221,9 @@ pub fn compute_envelope(geometry: &CityGmlGeometry) -> Option<BoundingEnvelope> 
     }
 
     Some(BoundingEnvelope {
-        lower: Coordinate3D::new__(min_x, min_y, min_z),
-        upper: Coordinate3D::new__(max_x, max_y, max_z),
+        lower: [min_x, min_y, min_z],
+        upper: [max_x, max_y, max_z],
     })
-}
-
-#[derive(Debug, Clone)]
-pub struct BoundingEnvelope {
-    pub lower: Coordinate3D<f64>,
-    pub upper: Coordinate3D<f64>,
-}
-
-impl BoundingEnvelope {
-    pub fn merge(&mut self, other: &BoundingEnvelope) {
-        self.lower.x = self.lower.x.min(other.lower.x);
-        self.lower.y = self.lower.y.min(other.lower.y);
-        self.lower.z = self.lower.z.min(other.lower.z);
-        self.upper.x = self.upper.x.max(other.upper.x);
-        self.upper.y = self.upper.y.max(other.upper.y);
-        self.upper.z = self.upper.z.max(other.upper.z);
-    }
-
-    pub fn lower_corner_str(&self) -> String {
-        format!("{} {} {}", self.lower.y, self.lower.x, self.lower.z)
-    }
-
-    pub fn upper_corner_str(&self) -> String {
-        format!("{} {} {}", self.upper.y, self.upper.x, self.upper.z)
-    }
 }
 
 #[cfg(test)]
@@ -395,23 +232,8 @@ mod tests {
     use reearth_flow_geometry::types::line_string::LineString3D;
 
     #[test]
-    fn test_city_object_type_from_feature_type() {
-        assert_eq!(
-            CityObjectType::from_feature_type("bldg:Building"),
-            CityObjectType::Building
-        );
-        assert_eq!(
-            CityObjectType::from_feature_type("tran:Road"),
-            CityObjectType::Road
-        );
-    }
-
-    #[test]
     fn test_format_pos_list() {
-        let coords = vec![
-            Coordinate3D::new__(135.0, 35.0, 10.0),
-            Coordinate3D::new__(135.1, 35.1, 11.0),
-        ];
+        let coords = vec![[135.0, 35.0, 10.0], [135.1, 35.1, 11.0]];
         let result = format_pos_list(&coords);
         assert_eq!(result, "35 135 10 35.1 135.1 11");
     }

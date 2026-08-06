@@ -1,4 +1,7 @@
 pub mod converter;
+/// The converter→writer seam. Shared and unconditional: it names no geometry
+/// type, so both worlds' converters build it and one writer consumes it.
+pub mod model;
 pub mod writer;
 
 use std::collections::{HashMap, HashSet};
@@ -21,9 +24,8 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::errors::SinkError;
-use converter::{
-    compute_envelope, convert_citygml_geometry, AppearanceBundle, BoundingEnvelope, CityObjectType,
-};
+use converter::{compute_envelope, convert_citygml_geometry};
+use model::{AppearanceBundle, BoundingEnvelope, CityObjectType};
 use writer::CityGmlXmlWriter;
 
 /// Write `features` as CityGML 2.0 to `output`, copying texture images alongside it.
