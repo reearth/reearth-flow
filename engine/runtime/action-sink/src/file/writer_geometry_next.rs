@@ -3,9 +3,12 @@
 //! than the old `Geometry { epsg, value }` wrapper. Sibling of the old-world logic
 //! in `writer_geometry.rs`; selected under `new-geometry`.
 
+use std::collections::HashSet;
 use std::fmt::Write as _;
+use std::sync::{Mutex, OnceLock};
 
 use indexmap::IndexMap;
+use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
 use reearth_flow_geometry::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
 use super::{GeometryExportConfig, GeometryExportMode};
@@ -100,9 +103,9 @@ fn write_geometry(geometry: &Geometry) -> Result<WrittenWkt, GeometryExportError
 fn write_2d(geometry: &Euclidean2DGeometry) -> Result<WrittenWkt, GeometryExportError> {
     use Euclidean2DGeometry::*;
     match geometry {
-        Point(p) => Ok(point(p.position())),
-        LineString(l) => Ok(curve(l.coords())),
-        Polygon(p) => Ok(area(p.exterior(), p.interiors())),
+        Point(p) => Ok(point(p.frame(), p.position())),
+        LineString(l) => Ok(curve(l.frame(), l.coords())),
+        Polygon(p) => Ok(area(p.frame(), p.exterior(), p.interiors())),
         other => Err(unsupported(other)),
     }
 }
@@ -110,9 +113,9 @@ fn write_2d(geometry: &Euclidean2DGeometry) -> Result<WrittenWkt, GeometryExport
 fn write_3d(geometry: &Euclidean3DGeometry) -> Result<WrittenWkt, GeometryExportError> {
     use Euclidean3DGeometry::*;
     match geometry {
-        Point(p) => Ok(point(p.position())),
-        LineString(l) => Ok(curve(l.coords())),
-        Polygon(p) => Ok(area(p.exterior(), p.interiors())),
+        Point(p) => Ok(point(p.frame(), p.position())),
+        LineString(l) => Ok(curve(l.frame(), l.coords())),
+        Polygon(p) => Ok(area(p.frame(), p.exterior(), p.interiors())),
         other => Err(unsupported(other)),
     }
 }
@@ -120,28 +123,30 @@ fn write_3d(geometry: &Euclidean3DGeometry) -> Result<WrittenWkt, GeometryExport
 // The 2D and 3D leaves differ only in how long a position is, so what turns one
 // into WKT is written once, over `N`-element positions.
 
-fn point<const N: usize>(position: [f64; N]) -> WrittenWkt {
+fn point<const N: usize>(frame: &CoordinateFrame, position: [f64; N]) -> WrittenWkt {
     WrittenWkt {
         kind: Some(Kind::Point),
-        text: format!("POINT({})", coordinate(position)),
+        text: format!("POINT({})", coordinate(swaps_axes(frame), position)),
     }
 }
 
-fn curve<const N: usize>(coords: &[[f64; N]]) -> WrittenWkt {
+fn curve<const N: usize>(frame: &CoordinateFrame, coords: &[[f64; N]]) -> WrittenWkt {
     WrittenWkt {
         kind: Some(Kind::Curve),
-        text: format!("LINESTRING({})", coordinate_list(coords)),
+        text: format!("LINESTRING({})", coordinate_list(swaps_axes(frame), coords)),
     }
 }
 
 /// What an area writes to: its exterior ring, then its holes.
 fn area<'a, const N: usize>(
+    frame: &CoordinateFrame,
     exterior: &'a [[f64; N]],
     interiors: impl Iterator<Item = &'a [[f64; N]]>,
 ) -> WrittenWkt {
+    let swap = swaps_axes(frame);
     let rings = std::iter::once(exterior)
         .chain(interiors)
-        .map(|ring| format!("({})", coordinate_list(&closed_ring(ring))))
+        .map(|ring| format!("({})", coordinate_list(swap, &closed_ring(ring))))
         .collect::<Vec<_>>()
         .join(", ");
     WrittenWkt {
@@ -150,9 +155,65 @@ fn area<'a, const N: usize>(
     }
 }
 
-/// One stored coordinate, space-separated. `{}` formatting matches the old writer,
+/// Whether a frame stores its horizontal axes reflected from canonical
+/// `(East, North)` order, so that they must be swapped on the way out.
+///
+/// WKT names no coordinate reference system and consumers read it east-first, so
+/// the stored order is undone here. Only a CRS declares an axis order to swap back
+/// to: `Euclidean` coordinates are east-first by construction, and a `Tangent`
+/// frame's are offsets along its own in-plane axes rather than its base CRS's.
+///
+/// A CRS whose order cannot be established is written as stored, which reverses its
+/// coordinates if it turns out to declare `(North, East)`, hence the warning.
+fn swaps_axes(frame: &CoordinateFrame) -> bool {
+    let Some(code) = epsg_code(frame) else {
+        return false;
+    };
+    match frame.orientation_sign() {
+        Ok(sign) => sign < 0,
+        Err(error) => {
+            warn_unresolved_axis_order(code, error);
+            false
+        }
+    }
+}
+
+/// The EPSG code a frame names, if it names one. `Euclidean` names none, and a
+/// `Tangent` plane's in-plane coordinates are not its base CRS's.
+fn epsg_code(frame: &CoordinateFrame) -> Option<EpsgCode> {
+    match frame {
+        CoordinateFrame::Crs(code) => Some(*code),
+        CoordinateFrame::Euclidean | CoordinateFrame::Tangent(_) => None,
+    }
+}
+
+/// Warn about a CRS whose axis order could not be established, once per code: an
+/// axis order is a fixed property of a CRS, so warning per coordinate would repeat
+/// the same line for every feature in the file.
+fn warn_unresolved_axis_order(code: EpsgCode, error: impl std::fmt::Display) {
+    static WARNED: OnceLock<Mutex<HashSet<EpsgCode>>> = OnceLock::new();
+
+    let mut warned = WARNED
+        .get_or_init(Mutex::default)
+        .lock()
+        .unwrap_or_else(|poisoned| poisoned.into_inner());
+    if warned.insert(code) {
+        tracing::warn!(
+            %error,
+            "cannot establish the axis order of EPSG:{code}; writing its \
+             coordinates in the order they are stored, which reverses them if \
+             the CRS declares (northing, easting)"
+        );
+    }
+}
+
+/// One stored coordinate, space-separated, east-first. Only the horizontal pair is
+/// reordered; a height stays where it is. `{}` formatting matches the old writer,
 /// so a whole number writes as `1` rather than `1.0`.
-fn coordinate<const N: usize>(coordinate: [f64; N]) -> String {
+fn coordinate<const N: usize>(swap: bool, mut coordinate: [f64; N]) -> String {
+    if swap {
+        coordinate.swap(0, 1);
+    }
     let mut text = String::new();
     for (i, value) in coordinate.iter().enumerate() {
         if i > 0 {
@@ -163,10 +224,10 @@ fn coordinate<const N: usize>(coordinate: [f64; N]) -> String {
     text
 }
 
-fn coordinate_list<const N: usize>(coords: &[[f64; N]]) -> String {
+fn coordinate_list<const N: usize>(swap: bool, coords: &[[f64; N]]) -> String {
     coords
         .iter()
-        .map(|&c| coordinate(c))
+        .map(|&c| coordinate(swap, c))
         .collect::<Vec<_>>()
         .join(", ")
 }
@@ -191,7 +252,7 @@ fn unsupported(geometry: &impl std::fmt::Debug) -> GeometryExportError {
 mod tests {
     use super::*;
     use reearth_flow_geometry::{
-        coordinate::CoordinateFrame,
+        coordinate::{BaseFrame, CoordinateFrame, EpsgCode, TangentPlane},
         line_string::{LineString2D, LineString3D},
         point::{Point2D, Point3D},
         polygon::{Polygon2D, Polygon3D},
@@ -296,6 +357,52 @@ mod tests {
             ),
         )));
         assert_eq!(wkt_of(&geometry), "POLYGON((0 0 0, 4 0 0, 4 4 1, 0 0 0))");
+    }
+
+    // EPSG:6675 (JGD2011 plane rectangular CS IX) declares northing first, so a
+    // stored coordinate is reversed on the way out: WKT is always east-first.
+    #[test]
+    fn a_north_first_crs_swaps_its_horizontal_pair() {
+        let geometry = Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
+            CoordinateFrame::Crs(EpsgCode::new(6675)),
+            [1.0, 2.0],
+        )));
+        assert_eq!(wkt_of(&geometry), "POINT(2 1)");
+    }
+
+    // Euclidean coordinates are east-first by construction.
+    #[test]
+    fn a_euclidean_frame_is_not_swapped() {
+        let geometry = Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
+            euclidean(),
+            [1.0, 2.0],
+        )));
+        assert_eq!(wkt_of(&geometry), "POINT(1 2)");
+    }
+
+    // A tangent plane's coordinates are offsets along its own in-plane axes, not
+    // its base CRS's, so the base CRS's axis order does not apply.
+    #[test]
+    fn a_tangent_frame_is_not_swapped() {
+        let frame = CoordinateFrame::Tangent(Box::new(TangentPlane {
+            base: BaseFrame::Crs(EpsgCode::new(6675)),
+            origin: [0.0, 0.0, 0.0],
+            u: [1.0, 0.0, 0.0],
+            v: [0.0, 1.0, 0.0],
+        }));
+        let geometry =
+            Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(frame, [1.0, 2.0])));
+        assert_eq!(wkt_of(&geometry), "POINT(1 2)");
+    }
+
+    // A height is not part of the horizontal pair and stays where it is.
+    #[test]
+    fn a_height_is_not_reordered() {
+        let geometry = Geometry::Euclidean3D(Euclidean3DGeometry::Point(Point3D::new(
+            CoordinateFrame::Crs(EpsgCode::new(6675)),
+            [1.0, 2.0, 3.0],
+        )));
+        assert_eq!(wkt_of(&geometry), "POINT(2 1 3)");
     }
 
     // Direct tests of the two public entry points `csv.rs` actually calls
