@@ -410,6 +410,6 @@ mod tests {
     #[test]
     fn a_feature_with_no_attributes_and_no_geometry_config_still_errors() {
         let feature = Feature::new_with_attributes(IndexMap::new());
-        assert!(matches!(csv_records(&[feature], None), Err(_)));
+        assert!(csv_records(&[feature], None).is_err());
     }
 }

@@ -368,8 +368,7 @@ fn write_faces(
     let mut faces = Vec::new();
     mesh.split(&mut |face, _| faces.push(face))
         .map_err(|_| unsupported(geometry))?;
-    Parts::of(&faces, write_geometry, || unsupported(geometry))
-        .map(Parts::into_one_geometry)
+    Parts::of(&faces, write_geometry, || unsupported(geometry)).map(Parts::into_one_geometry)
 }
 
 // The 2D and 3D leaves differ only in how long a position is, so what turns one
@@ -573,7 +572,13 @@ mod tests {
         let geometry = Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
             Polygon2D::from_rings(
                 euclidean(),
-                [[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0], [0.0, 0.0]],
+                [
+                    [0.0, 0.0],
+                    [10.0, 0.0],
+                    [10.0, 10.0],
+                    [0.0, 10.0],
+                    [0.0, 0.0],
+                ],
                 vec![vec![
                     [2.0, 2.0],
                     [8.0, 2.0],
@@ -831,8 +836,10 @@ mod tests {
     // A north-first CRS is swapped here too, so x is always the easting.
     #[test]
     fn coordinates_are_exported_east_first() {
-        let geometry =
-            Geometry::Euclidean2D(point_2d(CoordinateFrame::Crs(EpsgCode::new(6675)), [1.0, 2.0]));
+        let geometry = Geometry::Euclidean2D(point_2d(
+            CoordinateFrame::Crs(EpsgCode::new(6675)),
+            [1.0, 2.0],
+        ));
         assert_eq!(
             exported(&geometry, &coordinates_config(None)),
             vec![
@@ -897,7 +904,10 @@ mod tests {
             point_2d(euclidean(), [0.0, 0.0]),
             point_2d(CoordinateFrame::Crs(EpsgCode::new(3857)), [1.0, 1.0]),
         ]);
-        assert_eq!(wkt_of(&geometry), "GEOMETRYCOLLECTION(POINT(0 0), POINT(1 1))");
+        assert_eq!(
+            wkt_of(&geometry),
+            "GEOMETRYCOLLECTION(POINT(0 0), POINT(1 1))"
+        );
     }
 
     // The top-level container is cross-dimensional, so no `Multi*` describes it.
@@ -907,7 +917,10 @@ mod tests {
             Geometry::Euclidean2D(point_2d(euclidean(), [0.0, 0.0])),
             Geometry::Euclidean2D(point_2d(euclidean(), [1.0, 1.0])),
         ]));
-        assert_eq!(wkt_of(&geometry), "GEOMETRYCOLLECTION(POINT(0 0), POINT(1 1))");
+        assert_eq!(
+            wkt_of(&geometry),
+            "GEOMETRYCOLLECTION(POINT(0 0), POINT(1 1))"
+        );
     }
 
     // A nested `Multi*` flattens into the fold rather than nesting inside it.
@@ -955,8 +968,7 @@ mod tests {
             euclidean(),
             [[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
         );
-        let geometry =
-            Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(mesh)));
+        let geometry = Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(mesh)));
         assert_eq!(
             wkt_of(&geometry),
             "MULTIPOLYGON(((0 0 0, 1 0 0, 0 1 0, 0 0 0)))"
@@ -970,8 +982,7 @@ mod tests {
     #[test]
     fn an_empty_mesh_writes_an_empty_cell() {
         let mesh = TriangularMesh3D::from_soup(euclidean(), Vec::<[f64; 3]>::new());
-        let geometry =
-            Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(mesh)));
+        let geometry = Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(mesh)));
         assert!(matches!(
             geometry_to_wkt(&geometry),
             Err(GeometryExportError::UnsupportedGeometryType(_))
