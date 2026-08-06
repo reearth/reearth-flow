@@ -745,21 +745,48 @@ mod tests {
 
     const SRS: &str = "http://www.opengis.net/def/crs/EPSG/0/6697";
 
-    // Exterior: 3 coords → posList "35 139 0 35 139.1 0 35.1 139 0"
-    // (format_pos_list emits y x z, integer-valued floats drop the decimal)
-    fn triangle() -> Vec<[f64; 3]> {
-        vec![[139.0, 35.0, 0.0], [139.1, 35.0, 0.0], [139.0, 35.1, 0.0]]
+    /// Coordinates as the compiled world stores them, chosen so both worlds'
+    /// formatters emit the *same* `posList` — which is exactly the round-trip
+    /// invariant: legacy stores `x` as longitude and transposes on write, the
+    /// unified world stores the CRS's own axis order and writes it verbatim.
+    /// Every expected XML string below is therefore written once.
+    #[cfg(not(feature = "new-geometry"))]
+    mod fixture {
+        /// Exterior: 3 coords → posList "35 139 0 35 139.1 0 35.1 139 0"
+        /// (integer-valued floats drop the decimal).
+        pub fn triangle() -> Vec<[f64; 3]> {
+            vec![[139.0, 35.0, 0.0], [139.1, 35.0, 0.0], [139.0, 35.1, 0.0]]
+        }
+
+        /// Offset from `triangle()` so the two are distinguishable in an expected
+        /// posList: "35.01 139.01 1 35.01 139.02 1 35.02 139.01 1".
+        pub fn offset_triangle() -> Vec<[f64; 3]> {
+            vec![
+                [139.01, 35.01, 1.0],
+                [139.02, 35.01, 1.0],
+                [139.01, 35.02, 1.0],
+            ]
+        }
     }
 
-    // Offset from `triangle()` so the two are distinguishable in an expected
-    // posList: "35.01 139.01 1 35.01 139.02 1 35.02 139.01 1".
-    fn offset_triangle() -> Vec<[f64; 3]> {
-        vec![
-            [139.01, 35.01, 1.0],
-            [139.02, 35.01, 1.0],
-            [139.01, 35.02, 1.0],
-        ]
+    #[cfg(feature = "new-geometry")]
+    mod fixture {
+        /// The same triangle, stored in EPSG:6697's declared order (lat, lon,
+        /// height), which the identity formatter writes unchanged.
+        pub fn triangle() -> Vec<[f64; 3]> {
+            vec![[35.0, 139.0, 0.0], [35.0, 139.1, 0.0], [35.1, 139.0, 0.0]]
+        }
+
+        pub fn offset_triangle() -> Vec<[f64; 3]> {
+            vec![
+                [35.01, 139.01, 1.0],
+                [35.01, 139.02, 1.0],
+                [35.02, 139.01, 1.0],
+            ]
+        }
     }
+
+    use fixture::{offset_triangle, triangle};
 
     /// A geometry-only surface: no material, no texture, so the writer mints no
     /// `gml:id` for it and the expected XML stays about the nesting.

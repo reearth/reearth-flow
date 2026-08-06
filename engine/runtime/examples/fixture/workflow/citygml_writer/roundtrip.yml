@@ -1,0 +1,61 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/reearth/reearth-flow/main/engine/schema/workflow.json
+#
+# CityGML in, CityGML out, through the reader that both geometry worlds share.
+#
+# `Feature CityGML 2 Reader` is ungated, so this workflow runs under the legacy
+# build and under `new-geometry`, and the two are compared against one expected
+# document. `epsgCode` is set because the reader records the CRS structurally
+# (per-leaf frames under `new-geometry`, not at all in the legacy world), so it
+# is the parameter — not the geometry — that makes the legacy build declare the
+# source's EPSG.
+id: f8922aa0-9825-4104-a628-aa19a8cc561d
+name: "CityGML Writer round trip"
+entryGraphId: fffe39d0-a30e-425f-a041-547253f79b1b
+with:
+  cityGmlPath:
+graphs:
+  - id: fffe39d0-a30e-425f-a041-547253f79b1b
+    name: main
+    nodes:
+      - id: 2502b7a3-3b26-4d5f-9983-001d8b9b03fe
+        name: FeatureCreator
+        type: action
+        action: Feature Creator
+        with:
+          creator:
+            type: flowExpr
+            value: |
+              [
+                {"cityGmlPath": env["cityGmlPath"]},
+              ]
+
+      - id: 567b77bf-3d07-4cfc-b6bb-78e66016d422
+        name: FeatureCityGml2Reader
+        type: action
+        action: Feature CityGML 2 Reader
+        with:
+          dataset:
+            type: flowExpr
+            value: attributes["cityGmlPath"]
+
+      - id: 88ece51e-8e78-4634-873f-58e60b68e254
+        name: CityGmlWriter
+        type: action
+        action: CityGML Writer
+        with:
+          output:
+            type: string
+            value: expected_output.gml
+          epsgCode: 6697
+          prettyPrint: true
+    edges:
+      - id: eb238cb6-ff7c-4c1d-a01a-c7cf2e4e0962
+        from: 2502b7a3-3b26-4d5f-9983-001d8b9b03fe
+        to: 567b77bf-3d07-4cfc-b6bb-78e66016d422
+        fromPort: features
+        toPort: features
+      - id: deb9f080-dd12-4103-b013-cf807c7a5397
+        from: 567b77bf-3d07-4cfc-b6bb-78e66016d422
+        to: 88ece51e-8e78-4634-873f-58e60b68e254
+        fromPort: features
+        toPort: features

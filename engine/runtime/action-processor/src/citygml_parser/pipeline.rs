@@ -20,6 +20,15 @@ use super::{
 /// `GeometryCollection` member's source LOD (absent for a `tin`, which has none).
 pub const MEMBER_LOD_KEY: &str = "lod";
 
+/// Per-member attribute key under which the new-geometry path records the local
+/// name of the geometry property each `GeometryCollection` member was carved
+/// from (`"lod0RoofEdge"`, `"lod2Solid"`, `"tin"`, …).
+///
+/// Always written, including for a `tin`, which carries no LOD: the property
+/// name is the only thing that lets a writer re-emit the source element instead
+/// of guessing a name from the LOD and the geometry family.
+pub const MEMBER_PROPERTY_KEY: &str = "citygmlProperty";
+
 /// Resolves the parsed document (xlink + codespace) and returns one feature per top-level city
 /// object, or — when `extract_tags` is non-empty — one feature per matching flattened node.
 /// `base_attributes` maps a source file URL to the input feature's attributes (e.g. `package`),
@@ -167,7 +176,7 @@ mod build_next {
         CITYGML_ROOT_GML_ID_KEY,
     };
 
-    use super::MEMBER_LOD_KEY;
+    use super::{MEMBER_LOD_KEY, MEMBER_PROPERTY_KEY};
 
     use crate::citygml_parser::{
         appearance::{self, AppearanceIndex},
@@ -299,7 +308,8 @@ mod build_next {
         srs_by_file: &HashMap<String, EpsgCode>,
     ) {
         // Each member records its source LOD (a `tin` has none) so downstream
-        // sinks can select a single LOD; gml:id is still TODO.
+        // sinks can select a single LOD, and the property name it was carved
+        // from so a writer can re-emit that element; gml:id is still TODO.
         let mut members: Vec<Geometry> = Vec::new();
         let mut attrs: Vec<Attributes> = Vec::new();
         for pending in geoms {
@@ -316,6 +326,10 @@ mod build_next {
                     AttributeValue::Number(lod.into()),
                 );
             }
+            member_attrs.insert(
+                Attribute::new(MEMBER_PROPERTY_KEY),
+                AttributeValue::String(pending.property.clone()),
+            );
             members.push(member);
             attrs.push(member_attrs);
         }
@@ -345,6 +359,7 @@ mod build_next {
                      xmlns:core="http://www.opengis.net/citygml/3.0"
                      xmlns:bldg="http://www.opengis.net/citygml/building/3.0"
                      xmlns:con="http://www.opengis.net/citygml/construction/3.0"
+                     xmlns:dem="http://www.opengis.net/citygml/relief/3.0"
                      xmlns:gml="http://www.opengis.net/gml/3.2"
                      xmlns:xlink="http://www.w3.org/1999/xlink">{members}</core:CityModel>"#
             );
@@ -443,6 +458,46 @@ mod build_next {
                 }
                 other => panic!("expected GeometryCollection, got {other:?}"),
             }
+        }
+
+        /// Every member carries the property it was carved from, and only a
+        /// member that had one carries a LOD — a `dem:tin` is the case where the
+        /// property name is the sole source of the element's name.
+        #[test]
+        fn member_attributes_carry_the_property_name_and_the_lod() {
+            let features = run(
+                &format!(
+                    "<core:cityObjectMember><bldg:Building gml:id=\"b_props\">\
+                       <bldg:lod0RoofEdge><gml:MultiSurface><gml:surfaceMember>{TA}</gml:surfaceMember></gml:MultiSurface></bldg:lod0RoofEdge>\
+                       <dem:tin><gml:TriangulatedSurface><gml:patches>{TA}</gml:patches></gml:TriangulatedSurface></dem:tin>\
+                     </bldg:Building></core:cityObjectMember>"
+                ),
+                &[],
+            );
+            let Geometry::GeometryCollection(gc) = &*features[0].geometry else {
+                panic!("expected a GeometryCollection");
+            };
+            let attrs = gc.member_attributes();
+            assert_eq!(attrs.len(), 2);
+
+            assert_eq!(
+                attrs[0].get(&Attribute::new(MEMBER_PROPERTY_KEY)),
+                Some(&AttributeValue::String("lod0RoofEdge".to_string()))
+            );
+            assert_eq!(
+                attrs[0].get(&Attribute::new(MEMBER_LOD_KEY)),
+                Some(&AttributeValue::Number(0.into()))
+            );
+
+            assert_eq!(
+                attrs[1].get(&Attribute::new(MEMBER_PROPERTY_KEY)),
+                Some(&AttributeValue::String("tin".to_string()))
+            );
+            assert_eq!(
+                attrs[1].get(&Attribute::new(MEMBER_LOD_KEY)),
+                None,
+                "a tin has no LOD to record"
+            );
         }
 
         #[test]

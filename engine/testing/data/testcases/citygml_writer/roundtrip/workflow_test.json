@@ -1,0 +1,13 @@
+{
+  "description": "CityGML 2.0 read then written back: one expected document compared in both geometry worlds. The emitted gml:posList must equal the source's verbatim, which is the axis-order gate - the legacy world transposes on read and back on write, the unified world stores and writes the CRS's own axis order.",
+  "workflowPath": "citygml_writer/roundtrip.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "input.gml"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "expected_output.gml"
+  }
+}

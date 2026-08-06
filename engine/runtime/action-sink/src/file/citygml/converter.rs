@@ -8,12 +8,88 @@
 
 use reearth_flow_geometry::types::coordinate::Coordinate3D;
 use reearth_flow_geometry::types::polygon::Polygon3D;
-use reearth_flow_types::geometry::{CityGmlGeometry, GeometryType, GmlGeometry};
+use reearth_flow_types::conversion::CrsCoverage;
+use reearth_flow_types::geometry::{CityGmlGeometry, GeometryType, GeometryValue, GmlGeometry};
 use reearth_flow_types::lod::LodMask;
+use reearth_flow_types::Feature;
 
 use super::model::{
-    AppearanceBundle, BoundingEnvelope, GeometryEntry, GmlElement, GmlSolid, GmlSurface,
+    AppearanceBundle, BoundingEnvelope, ConvertedCityObject, GeometryEntry, GmlElement, GmlSolid,
+    GmlSurface, TextureRef, TextureSource,
 };
+use crate::errors::SinkError;
+
+/// Convert one feature's geometry into the shared CityGML model.
+///
+/// The legacy world's CRS is a whole-feature EPSG rather than a per-leaf frame,
+/// so no coverage is folded here: [`srs_name`] reads the feature field directly,
+/// exactly as this writer always has.
+pub fn convert_city_object(
+    feature: &Feature,
+    lod_mask: &LodMask,
+) -> Result<ConvertedCityObject, SinkError> {
+    let GeometryValue::CityGmlGeometry(ref geometry) = feature.geometry.value else {
+        // A feature carrying some other geometry has never produced a city
+        // object here; it is passed over, not reported.
+        return Ok(ConvertedCityObject {
+            geometries: Vec::new(),
+            appearance: AppearanceBundle {
+                materials: Vec::new(),
+                textures: Vec::new(),
+            },
+            envelope: None,
+            crs: CrsCoverage::NoCoordinates,
+            textures: Vec::new(),
+            omissions: Vec::new(),
+        });
+    };
+
+    let (geometries, appearance) = convert_citygml_geometry(geometry, lod_mask);
+    // Deliberately not filtered by LOD: this reproduces the envelope the legacy
+    // build has always written, which is folded over every vertex of the
+    // feature's geometry.
+    let envelope = compute_envelope(geometry);
+    let textures = geometry
+        .textures
+        .iter()
+        .map(|texture| TextureRef {
+            key: texture.uri.to_string(),
+            source: TextureSource::Uri(texture.uri.clone()),
+        })
+        .collect();
+
+    Ok(ConvertedCityObject {
+        geometries,
+        appearance,
+        envelope,
+        crs: CrsCoverage::NoCoordinates,
+        textures,
+        omissions: Vec::new(),
+    })
+}
+
+/// The OGC CRS URI to declare, reproducing today's chain verbatim: the
+/// `epsgCode` parameter, else the *first* feature's whole-geometry EPSG, else
+/// EPSG:4326.
+///
+/// `coverage` is unused: it is folded over per-leaf frames, which the legacy
+/// geometry model does not have. Changing this chain would change the legacy
+/// build's output, which this port does not do.
+pub fn srs_name(
+    features: &[Feature],
+    epsg_code: Option<u32>,
+    _coverage: CrsCoverage,
+) -> Result<String, SinkError> {
+    Ok(epsg_code
+        .or_else(|| {
+            features
+                .first()
+                .and_then(|f| f.geometry.epsg)
+                .map(|e| e as u32)
+        })
+        .map(|code| format!("http://www.opengis.net/def/crs/EPSG/0/{code}"))
+        .unwrap_or_else(|| "http://www.opengis.net/def/crs/EPSG/0/4326".to_string()))
+}
 
 /// The shared model's coordinates are bare ordinate triples, so every legacy
 /// ring crosses the seam through here.

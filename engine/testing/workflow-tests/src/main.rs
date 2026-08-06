@@ -453,11 +453,13 @@ impl TestContext {
             self.verify_csv_file(output, file_name, b',')?;
         } else if file_name.ends_with(".tsv") {
             self.verify_csv_file(output, file_name, b'\t')?;
+        } else if file_name.ends_with(".gml") {
+            self.verify_citygml_file(file_name)?;
         } else {
             // Extract extension for error message
             let extension = file_name.rsplit('.').next().unwrap_or("unknown");
             anyhow::bail!(
-                "Unsupported file format '.{extension}'. Only json, geojson, jsonl, csv, and tsv files are supported."
+                "Unsupported file format '.{extension}'. Only json, geojson, jsonl, csv, gml, and tsv files are supported."
             );
         }
         Ok(())
@@ -873,6 +875,45 @@ impl TestContext {
         assert_eq!(
             actual, expected,
             "GeoJSON output mismatch for {}",
+            self.test_name
+        );
+        Ok(())
+    }
+
+    /// Compare a CityGML document against its expectation as an element tree.
+    ///
+    /// XML has degrees of freedom the writer's output is not contracted to fix —
+    /// indentation, line breaks, and attribute order — so the comparison is over
+    /// a parsed tree with whitespace-only text dropped and attributes sorted,
+    /// not over bytes. What it does not relax is structure: element order,
+    /// nesting, attribute values, and text content all have to match.
+    fn verify_citygml_file(&self, file_name: &str) -> Result<()> {
+        let expected_file = self.test_dir.join(file_name);
+        let actual_file = self.actual_output_dir.join(file_name);
+
+        if !actual_file.exists() {
+            anyhow::bail!("Output file not found at {actual_file:?}");
+        }
+
+        let mut expected = parse_xml_tree(&fs::read_to_string(&expected_file)?)
+            .with_context(|| format!("failed to parse expected CityGML {expected_file:?}"))?;
+        let mut actual = parse_xml_tree(&fs::read_to_string(&actual_file)?)
+            .with_context(|| format!("failed to parse CityGML output {actual_file:?}"))?;
+
+        // The writer mints `poly_N` / `poly_N_e` / `poly_N_i0` ids from a
+        // per-file counter, so they shift whenever an unrelated surface is added
+        // ahead of them; only the fact that a target resolves is contracted.
+        scrub_generated_gml_ids(&mut expected);
+        scrub_generated_gml_ids(&mut actual);
+
+        // A city object whose source carried no gml:id is written under the
+        // engine's per-run feature UUID, which differs on every execution.
+        scrub_feature_uuid_gml_ids(&mut expected);
+        scrub_feature_uuid_gml_ids(&mut actual);
+
+        assert_eq!(
+            actual, expected,
+            "CityGML output mismatch for {}",
             self.test_name
         );
         Ok(())
@@ -1447,6 +1488,154 @@ fn sort_geojson_features(value: &mut serde_json::Value) {
     if let Some(features) = value.get_mut("features").and_then(|f| f.as_array_mut()) {
         features.sort_by_cached_key(|f| f.to_string());
     }
+}
+
+/// One XML element, normalized for comparison: attributes are order-independent
+/// and whitespace-only text is dropped, but child order is not.
+#[derive(Debug, Clone, PartialEq, Eq)]
+struct XmlElement {
+    name: String,
+    attributes: std::collections::BTreeMap<String, String>,
+    children: Vec<XmlNode>,
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+enum XmlNode {
+    Element(XmlElement),
+    Text(String),
+}
+
+/// Parse an XML document into its root element, dropping the declaration,
+/// comments, processing instructions, and whitespace-only text.
+fn parse_xml_tree(xml: &str) -> Result<XmlElement> {
+    use quick_xml::events::{BytesStart, Event};
+
+    fn start(event: &BytesStart) -> Result<XmlElement> {
+        let name = String::from_utf8(event.name().as_ref().to_vec())?;
+        let mut attributes = std::collections::BTreeMap::new();
+        for attribute in event.attributes() {
+            let attribute = attribute?;
+            attributes.insert(
+                String::from_utf8(attribute.key.as_ref().to_vec())?,
+                attribute.unescape_value()?.into_owned(),
+            );
+        }
+        Ok(XmlElement {
+            name,
+            attributes,
+            children: Vec::new(),
+        })
+    }
+
+    let mut reader = quick_xml::Reader::from_str(xml);
+    reader.config_mut().trim_text(true);
+
+    let mut stack: Vec<XmlElement> = Vec::new();
+    let mut root: Option<XmlElement> = None;
+
+    fn close(
+        element: XmlElement,
+        stack: &mut [XmlElement],
+        root: &mut Option<XmlElement>,
+    ) -> Result<()> {
+        match stack.last_mut() {
+            Some(parent) => parent.children.push(XmlNode::Element(element)),
+            None if root.is_none() => *root = Some(element),
+            None => anyhow::bail!("document has more than one root element"),
+        }
+        Ok(())
+    }
+
+    fn push_text(text: String, stack: &mut [XmlElement]) {
+        let text = text.trim();
+        if text.is_empty() {
+            return;
+        }
+        if let Some(parent) = stack.last_mut() {
+            parent.children.push(XmlNode::Text(text.to_string()));
+        }
+    }
+
+    loop {
+        match reader.read_event()? {
+            Event::Start(event) => stack.push(start(&event)?),
+            Event::Empty(event) => close(start(&event)?, &mut stack, &mut root)?,
+            Event::End(event) => {
+                let element = stack
+                    .pop()
+                    .with_context(|| format!("unbalanced end tag {:?}", event.name()))?;
+                close(element, &mut stack, &mut root)?;
+            }
+            Event::Text(event) => push_text(event.unescape()?.into_owned(), &mut stack),
+            Event::CData(event) => {
+                push_text(String::from_utf8(event.into_inner().to_vec())?, &mut stack)
+            }
+            Event::Eof => break,
+            _ => {}
+        }
+    }
+
+    root.context("document has no root element")
+}
+
+/// Rewrite every attribute value and text node of `element` and its descendants
+/// through `rewrite`.
+fn rewrite_xml_values(element: &mut XmlElement, rewrite: &impl Fn(&str, &str) -> Option<String>) {
+    for (name, value) in element.attributes.iter_mut() {
+        if let Some(rewritten) = rewrite(name, value) {
+            *value = rewritten;
+        }
+    }
+    for child in element.children.iter_mut() {
+        match child {
+            XmlNode::Element(child) => rewrite_xml_values(child, rewrite),
+            XmlNode::Text(text) => {
+                if let Some(rewritten) = rewrite("", text) {
+                    *text = rewritten;
+                }
+            }
+        }
+    }
+}
+
+/// Replace the counter in every `poly_<n>` reference with a fixed placeholder.
+///
+/// The writer mints polygon and ring `gml:id`s from a counter that restarts per
+/// output file, so the numbers shift whenever a surface is added ahead of them.
+/// The `_e` / `_i<n>` suffix is kept: it says which ring the id names.
+fn scrub_generated_gml_ids(element: &mut XmlElement) {
+    rewrite_xml_values(element, &|_name, value| {
+        value.contains("poly_").then(|| mask_generated_ids(value))
+    });
+}
+
+fn mask_generated_ids(value: &str) -> String {
+    let mut out = String::with_capacity(value.len());
+    let mut rest = value;
+    while let Some(at) = rest.find("poly_") {
+        let (before, from) = rest.split_at(at + "poly_".len());
+        out.push_str(before);
+        let digits = from.len() - from.trim_start_matches(|c: char| c.is_ascii_digit()).len();
+        if digits == 0 {
+            rest = from;
+            continue;
+        }
+        out.push('N');
+        rest = &from[digits..];
+    }
+    out.push_str(rest);
+    out
+}
+
+/// Replace a `gml:id` that is a bare UUID with a fixed placeholder.
+///
+/// A city object whose source document carried no `gml:id` is written under the
+/// engine's per-run feature UUID, so it differs on every execution.
+fn scrub_feature_uuid_gml_ids(element: &mut XmlElement) {
+    rewrite_xml_values(element, &|name, value| {
+        (name == "gml:id" && uuid::Uuid::parse_str(value).is_ok())
+            .then(|| "<per-run-uuid>".to_string())
+    });
 }
 
 /// Check if a filename matches any of the given glob patterns

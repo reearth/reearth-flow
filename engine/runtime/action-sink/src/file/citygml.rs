@@ -1,8 +1,16 @@
-pub mod converter;
 /// The converter→writer seam. Shared and unconditional: it names no geometry
 /// type, so both worlds' converters build it and one writer consumes it.
 pub mod model;
 pub mod writer;
+
+// One module name, two files: the shared shell calls `converter::…` with no
+// `cfg` at the call site, and `writer.rs` resolves `format_pos_list` to the
+// compiled world's formatter the same way.
+#[cfg(not(feature = "new-geometry"))]
+pub mod converter;
+#[cfg(feature = "new-geometry")]
+#[path = "citygml/converter_next.rs"]
+pub mod converter;
 
 use std::collections::{HashMap, HashSet};
 use std::io::BufWriter;
@@ -16,7 +24,7 @@ use reearth_flow_runtime::event::EventHub;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
 use reearth_flow_runtime::node::{Port, Sink, SinkFactory, FEATURES_PORT};
 use reearth_flow_storage::resolve::StorageResolver;
-use reearth_flow_types::geometry::GeometryValue;
+use reearth_flow_types::conversion::CrsCoverage;
 use reearth_flow_types::lod::LodMask;
 use reearth_flow_types::{CitygmlFeatureExt, Code, Feature};
 use schemars::JsonSchema;
@@ -24,15 +32,22 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::errors::SinkError;
-use converter::{compute_envelope, convert_citygml_geometry};
-use model::{AppearanceBundle, BoundingEnvelope, CityObjectType};
+use model::{
+    AppearanceBundle, BoundingEnvelope, CityObjectType, ConvertedCityObject, TextureRef,
+    TextureSource,
+};
 use writer::CityGmlXmlWriter;
 
 /// Write `features` as CityGML 2.0 to `output`, copying texture images alongside it.
 ///
 /// This is the single canonical implementation shared by both the `CityGmlWriter` sink and
 /// the `Feature Writer` processor.
-#[cfg(not(feature = "new-geometry"))]
+///
+/// Every feature is converted before the header is written, because the header
+/// declares an `srsName` and a `gml:boundedBy` that only the converted geometry
+/// can justify: the CRS is folded over the coordinates that actually reach the
+/// file, and so is the envelope. That costs holding the converted geometry
+/// alongside the buffered features for the duration of the write.
 pub fn write_citygml_to_storage(
     output: &Uri,
     sandbox_root: &Uri,
@@ -46,30 +61,48 @@ pub fn write_citygml_to_storage(
         return Ok(());
     }
 
-    let srs_name = epsg_code
-        .or_else(|| {
-            features
-                .first()
-                .and_then(|f| f.geometry.epsg)
-                .map(|e| e as u32)
-        })
-        .map(|code| format!("http://www.opengis.net/def/crs/EPSG/0/{code}"))
-        .unwrap_or_else(|| "http://www.opengis.net/def/crs/EPSG/0/4326".to_string());
-
-    // Compute bounding envelope from all features.
+    let mut converted: Vec<ConvertedCityObject> = Vec::with_capacity(features.len());
     let mut envelope: Option<BoundingEnvelope> = None;
+    let mut crs = CrsCoverage::default();
+    let mut textures: Vec<TextureRef> = Vec::new();
+    let mut texture_keys: HashSet<String> = HashSet::new();
+
     for feature in features {
-        if let GeometryValue::CityGmlGeometry(ref geom) = feature.geometry.value {
-            if let Some(env) = compute_envelope(geom) {
-                match &mut envelope {
-                    Some(existing) => existing.merge(&env),
-                    None => envelope = Some(env),
-                }
+        let object = converter::convert_city_object(feature, lod_mask)?;
+
+        if !object.omissions.is_empty() {
+            // One line per feature, not per leaf: the omissions are already
+            // aggregated by kind.
+            let omitted = object
+                .omissions
+                .iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join("; ");
+            tracing::warn!(
+                feature_id = %feature.id,
+                "CityGML Writer: {omitted}"
+            );
+        }
+
+        if let Some(object_envelope) = &object.envelope {
+            match &mut envelope {
+                Some(existing) => existing.merge(object_envelope),
+                None => envelope = Some(object_envelope.clone()),
             }
         }
+        crs = crs.and(object.crs);
+        for texture in &object.textures {
+            if texture_keys.insert(texture.key.clone()) {
+                textures.push(texture.clone());
+            }
+        }
+
+        converted.push(object);
     }
 
-    let uri_remap = stage_textures(features, output, sandbox_root, storage_resolver)?;
+    let srs_name = converter::srs_name(features, epsg_code, crs)?;
+    let uri_remap = stage_textures(&textures, output, sandbox_root, storage_resolver)?;
 
     // Build and write XML.
     let buffer_size = (features.len() * 4096).clamp(32 * 1024, 512 * 1024);
@@ -81,35 +114,31 @@ pub fn write_citygml_to_storage(
 
         xml_writer.write_header(envelope.as_ref())?;
 
-        for feature in features {
-            let GeometryValue::CityGmlGeometry(ref geom) = feature.geometry.value else {
+        for (feature, object) in features.iter().zip(&converted) {
+            // A feature whose geometry all fell out of the LOD filter, or that
+            // CityGML has no element for, produces no cityObjectMember at all.
+            if object.geometries.is_empty() {
                 continue;
-            };
+            }
 
             let feature_type_str = feature
                 .feature_type()
                 .unwrap_or_else(|| "gen:GenericCityObject".to_string());
-            let feature_type = feature_type_str.as_str();
-            let city_type = CityObjectType::from_feature_type(feature_type);
-
-            let (geometries, appearance) = convert_citygml_geometry(geom, lod_mask);
-            if geometries.is_empty() {
-                continue;
-            }
+            let city_type = CityObjectType::from_feature_type(feature_type_str.as_str());
 
             let gml_id_str = feature
                 .feature_id()
                 .unwrap_or_else(|| feature.id.to_string());
-            let appearance_opt: Option<&AppearanceBundle> = if appearance.has_content() {
-                Some(&appearance)
+            let appearance: Option<&AppearanceBundle> = if object.appearance.has_content() {
+                Some(&object.appearance)
             } else {
                 None
             };
             xml_writer.write_city_object(
                 city_type,
-                &geometries,
+                &object.geometries,
                 Some(gml_id_str.as_str()),
-                appearance_opt,
+                appearance,
             )?;
         }
 
@@ -126,8 +155,8 @@ pub fn write_citygml_to_storage(
     Ok(())
 }
 
-/// Stage every texture image referenced by `features` next to the GML file and
-/// return the source-URI → relative-staged-path remap the writer rewrites
+/// Stage every image the converted document references next to the GML file and
+/// return the key → relative-staged-path remap the writer rewrites
 /// `app:imageURI` with.
 ///
 /// Images land in a `{gml_stem}_appearance/` directory beside the GML file, and
@@ -135,22 +164,20 @@ pub fn write_citygml_to_storage(
 /// source URI cannot escape the sandbox. The returned paths are relative to the
 /// GML file, not to the sandbox root, because that is what `app:imageURI` means.
 ///
-/// Two keys are tracked, deliberately distinct:
-/// - dedup is keyed on the **source** URI, so one image referenced by many
-///   features is read and written exactly once;
-/// - uniqueness is keyed on the **destination** basename, because only the last
-///   path segment of a source URI becomes the file name. Two distinct sources
-///   named `a/tex.png` and `b/tex.png` would otherwise both stage to
-///   `{stem}_appearance/tex.png`, and since `SinkOutput::write` is a full
-///   overwrite the second would silently replace the first. The later one gets
-///   a numbered suffix (`tex_1.png`) instead.
+/// `textures` arrives deduplicated by [`TextureRef::key`] — the source URI
+/// string — so one image referenced by many features is read and written exactly
+/// once. What still has to be disambiguated here is the **destination
+/// basename**, because only the last path segment of a source URI becomes the
+/// file name. Two distinct sources named `a/tex.png` and `b/tex.png` would
+/// otherwise both stage to `{stem}_appearance/tex.png`, and since
+/// `SinkOutput::write` is a full overwrite the second would silently replace the
+/// first. The later one gets a numbered suffix (`tex_1.png`) instead.
 ///
 /// A per-texture failure warns and continues, leaving that texture's original
 /// absolute `app:imageURI` in the output; only a destination that cannot be
 /// derived at all is fatal.
-#[cfg(not(feature = "new-geometry"))]
 fn stage_textures(
-    features: &[Feature],
+    textures: &[TextureRef],
     output: &Uri,
     sandbox_root: &Uri,
     storage_resolver: &Arc<StorageResolver>,
@@ -187,82 +214,81 @@ fn stage_textures(
         .map(|(parent, _)| parent)
         .unwrap_or("");
 
-    // Copy texture images to the appearance dir and build a URI → relative-path remap.
+    // Copy texture images to the appearance dir and build a key → relative-path remap.
     let mut uri_remap: HashMap<String, String> = HashMap::new();
     let mut staged_names: HashSet<String> = HashSet::new();
-    for feature in features {
-        let GeometryValue::CityGmlGeometry(ref geom) = feature.geometry.value else {
+    for texture in textures {
+        let TextureSource::Uri(ref source) = texture.source;
+        let src_str = source.to_string();
+        if uri_remap.contains_key(&texture.key) {
             continue;
-        };
-        for texture in &geom.textures {
-            let src_str = texture.uri.to_string();
-            if uri_remap.contains_key(&src_str) {
+        }
+        let filename = match source.path_segments().and_then(|mut s| s.next_back()) {
+            Some(name) => name.to_string(),
+            None => {
+                tracing::warn!(
+                    "texture URI has no path segments, skipping copy: {}",
+                    src_str
+                );
                 continue;
             }
-            let filename = match texture.uri.path_segments().and_then(|mut s| s.next_back()) {
-                Some(name) => name.to_string(),
-                None => {
+        };
+        let src_uri = match Uri::from_str(&src_str) {
+            Ok(u) => u,
+            Err(e) => {
+                tracing::warn!("failed to parse texture source URI '{}': {}", src_str, e);
+                continue;
+            }
+        };
+        let src_storage = match storage_resolver.resolve(&src_uri) {
+            Ok(s) => s,
+            Err(e) => {
+                tracing::warn!(
+                    "failed to resolve storage for texture source '{}': {}",
+                    src_str,
+                    e
+                );
+                continue;
+            }
+        };
+        let bytes = match src_storage.get_sync(src_uri.path().as_path()) {
+            Ok(b) => b,
+            Err(e) => {
+                tracing::warn!("failed to read texture file '{}': {}", src_str, e);
+                continue;
+            }
+        };
+        // Only a texture that is about to be written claims a destination
+        // name, so a skipped one leaves the un-suffixed name free.
+        let staged_name = unique_staged_name(&filename, &staged_names);
+        // Compute the texture destination as a relative path under sandbox_root.
+        // e.g. "group/foo_appearance/bar.png" (or "foo_appearance/bar.png" at root)
+        let texture_rel_path = if gml_rel_parent.is_empty() {
+            format!("{}/{}", appearance_dir_name, staged_name)
+        } else {
+            format!("{}/{}/{}", gml_rel_parent, appearance_dir_name, staged_name)
+        };
+        let dst_out =
+            match crate::SinkOutput::new(sandbox_root, &texture_rel_path, storage_resolver) {
+                Ok(o) => o,
+                Err(e) => {
                     tracing::warn!(
-                        "texture URI has no path segments, skipping copy: {}",
-                        src_str
-                    );
-                    continue;
-                }
-            };
-            let src_uri = match Uri::from_str(&src_str) {
-                Ok(u) => u,
-                Err(e) => {
-                    tracing::warn!("failed to parse texture source URI '{}': {}", src_str, e);
-                    continue;
-                }
-            };
-            let src_storage = match storage_resolver.resolve(&src_uri) {
-                Ok(s) => s,
-                Err(e) => {
-                    tracing::warn!(
-                        "failed to resolve storage for texture source '{}': {}",
-                        src_str,
-                        e
-                    );
-                    continue;
-                }
-            };
-            let bytes = match src_storage.get_sync(src_uri.path().as_path()) {
-                Ok(b) => b,
-                Err(e) => {
-                    tracing::warn!("failed to read texture file '{}': {}", src_str, e);
-                    continue;
-                }
-            };
-            // Only a texture that is about to be written claims a destination
-            // name, so a skipped one leaves the un-suffixed name free.
-            let staged_name = unique_staged_name(&filename, &staged_names);
-            // Compute the texture destination as a relative path under sandbox_root.
-            // e.g. "group/foo_appearance/bar.png" (or "foo_appearance/bar.png" at root)
-            let texture_rel_path = if gml_rel_parent.is_empty() {
-                format!("{}/{}", appearance_dir_name, staged_name)
-            } else {
-                format!("{}/{}/{}", gml_rel_parent, appearance_dir_name, staged_name)
-            };
-            let dst_out =
-                match crate::SinkOutput::new(sandbox_root, &texture_rel_path, storage_resolver) {
-                    Ok(o) => o,
-                    Err(e) => {
-                        tracing::warn!(
                         "failed to acquire sandboxed SinkOutput for texture destination '{}': {}",
                         texture_rel_path,
                         e
                     );
-                        continue;
-                    }
-                };
-            if let Err(e) = dst_out.write(bytes) {
-                tracing::warn!("failed to write texture file '{}': {}", texture_rel_path, e);
-                continue;
-            }
-            uri_remap.insert(src_str, format!("{}/{}", appearance_dir_name, staged_name));
-            staged_names.insert(staged_name);
+                    continue;
+                }
+            };
+        if let Err(e) = dst_out.write(bytes) {
+            tracing::warn!("failed to write texture file '{}': {}", texture_rel_path, e);
+            continue;
         }
+        uri_remap.insert(
+            texture.key.clone(),
+            format!("{}/{}", appearance_dir_name, staged_name),
+        );
+        staged_names.insert(staged_name);
     }
 
     Ok(uri_remap)
@@ -275,7 +301,6 @@ fn stage_textures(
 /// `mime_type_from_uri` sniffs `app:mimeType` from. Iteration order of the copy
 /// loop is buffer order then per-feature texture order, so the numbering is
 /// deterministic for a given input.
-#[cfg(not(feature = "new-geometry"))]
 fn unique_staged_name(desired: &str, taken: &HashSet<String>) -> String {
     if !taken.contains(desired) {
         return desired.to_string();
@@ -370,7 +395,6 @@ impl SinkFactory for CityGmlWriterFactory {
             },
             lod_mask,
             buffer: Vec::new(),
-            envelope: None,
         }))
     }
 }
@@ -427,7 +451,6 @@ struct CityGmlWriterSink {
     params: CityGmlWriterCompiledParam,
     lod_mask: LodMask,
     buffer: Vec<Feature>,
-    envelope: Option<BoundingEnvelope>,
 }
 
 impl Sink for CityGmlWriterSink {
@@ -435,24 +458,13 @@ impl Sink for CityGmlWriterSink {
         "CityGML Writer"
     }
 
-    #[cfg(not(feature = "new-geometry"))]
+    /// Buffering is all this does: the envelope and the CRS are folded during
+    /// conversion in `finish`, from exactly the geometry that reaches the file.
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
-        let feature = ctx.feature;
-
-        if let GeometryValue::CityGmlGeometry(ref geom) = feature.geometry.value {
-            if let Some(env) = compute_envelope(geom) {
-                match &mut self.envelope {
-                    Some(existing) => existing.merge(&env),
-                    None => self.envelope = Some(env),
-                }
-            }
-        }
-
-        self.buffer.push(feature);
+        self.buffer.push(ctx.feature);
         Ok(())
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
         let path = self.params.output.as_str();
         let out = crate::SinkOutput::new(&ctx.sandbox_root, path, &ctx.storage_resolver)
@@ -500,14 +512,12 @@ mod sandbox_tests {
         );
     }
 
-    /// Coverage for `stage_textures`, which only exists in the legacy build:
-    /// it reads `GeometryValue::CityGmlGeometry`, a type the unified build's
-    /// `Feature` cannot hold.
+    /// Coverage for `stage_textures`, which both worlds share: it is fed the
+    /// converted texture manifest, which names no geometry type.
     ///
     /// Everything runs over `ram://` storage, so no test touches the filesystem.
     /// Each test builds its own `StorageResolver`, and an OpenDAL memory backend
     /// is per-operator, so the in-memory stores are isolated from each other.
-    #[cfg(not(feature = "new-geometry"))]
     mod staging {
         use std::str::FromStr;
         use std::sync::Arc;
@@ -515,11 +525,9 @@ mod sandbox_tests {
         use bytes::Bytes;
         use reearth_flow_common::uri::Uri;
         use reearth_flow_storage::resolve::StorageResolver;
-        use reearth_flow_types::geometry::{CityGmlGeometry, Geometry, GeometryValue};
-        use reearth_flow_types::material::Texture;
-        use reearth_flow_types::Feature;
         use url::Url;
 
+        use super::super::model::{TextureRef, TextureSource};
         use super::super::stage_textures;
 
         fn resolver() -> Arc<StorageResolver> {
@@ -553,18 +561,15 @@ mod sandbox_tests {
                 .is_ok()
         }
 
-        /// One feature whose CityGML geometry references `uris`, in order.
-        fn textured_feature(uris: &[&str]) -> Feature {
-            let textures = uris
-                .iter()
-                .map(|uri| Texture {
-                    uri: Url::parse(uri).unwrap(),
+        /// The manifest a conversion hands back for `uris`, in order — keyed on
+        /// the source URI, which is what a URI-backed raster's key always is.
+        fn manifest(uris: &[&str]) -> Vec<TextureRef> {
+            uris.iter()
+                .map(|uri| TextureRef {
+                    key: uri.to_string(),
+                    source: TextureSource::Uri(Url::parse(uri).unwrap()),
                 })
-                .collect();
-            let geometry = CityGmlGeometry::new(Vec::new(), Vec::new(), textures);
-            Feature::from(Geometry::with_value(GeometryValue::CityGmlGeometry(
-                geometry,
-            )))
+                .collect()
         }
 
         /// The collision regression: dedup is by source URI, so two distinct
@@ -578,12 +583,9 @@ mod sandbox_tests {
 
             let sandbox_root = Uri::from_str("ram:///jobs/collision").unwrap();
             let output = Uri::from_str("ram:///jobs/collision/city.gml").unwrap();
-            let features = vec![textured_feature(&[
-                "ram:///src/a/wall.png",
-                "ram:///src/b/wall.png",
-            ])];
+            let textures = manifest(&["ram:///src/a/wall.png", "ram:///src/b/wall.png"]);
 
-            let remap = stage_textures(&features, &output, &sandbox_root, &resolver).unwrap();
+            let remap = stage_textures(&textures, &output, &sandbox_root, &resolver).unwrap();
 
             assert_eq!(
                 remap.get("ram:///src/a/wall.png").map(String::as_str),
@@ -606,8 +608,8 @@ mod sandbox_tests {
             );
         }
 
-        /// Dedup stays keyed on the source URI: one image referenced twice — here
-        /// from two features — is staged once and claims one destination name.
+        /// Dedup stays keyed on the source URI: one image referenced twice is
+        /// staged once and claims one destination name.
         #[test]
         fn the_same_source_twice_stages_once() {
             let resolver = resolver();
@@ -615,12 +617,9 @@ mod sandbox_tests {
 
             let sandbox_root = Uri::from_str("ram:///jobs/dedup").unwrap();
             let output = Uri::from_str("ram:///jobs/dedup/city.gml").unwrap();
-            let features = vec![
-                textured_feature(&["ram:///src/wall.png"]),
-                textured_feature(&["ram:///src/wall.png"]),
-            ];
+            let textures = manifest(&["ram:///src/wall.png", "ram:///src/wall.png"]);
 
-            let remap = stage_textures(&features, &output, &sandbox_root, &resolver).unwrap();
+            let remap = stage_textures(&textures, &output, &sandbox_root, &resolver).unwrap();
 
             assert_eq!(remap.len(), 1, "one source URI, one remap entry");
             assert_eq!(
@@ -640,9 +639,9 @@ mod sandbox_tests {
             let resolver = resolver();
             let sandbox_root = Uri::from_str("ram:///jobs/segmentless").unwrap();
             let output = Uri::from_str("ram:///jobs/segmentless/city.gml").unwrap();
-            let features = vec![textured_feature(&["data:image/png;base64,AAAA"])];
+            let textures = manifest(&["data:image/png;base64,AAAA"]);
 
-            let remap = stage_textures(&features, &output, &sandbox_root, &resolver).unwrap();
+            let remap = stage_textures(&textures, &output, &sandbox_root, &resolver).unwrap();
 
             assert!(
                 remap.is_empty(),
@@ -661,9 +660,9 @@ mod sandbox_tests {
 
             let sandbox_root = Uri::from_str("ram:///jobs/nested").unwrap();
             let output = Uri::from_str("ram:///jobs/nested/group/city.gml").unwrap();
-            let features = vec![textured_feature(&["ram:///src/wall.png"])];
+            let textures = manifest(&["ram:///src/wall.png"]);
 
-            let remap = stage_textures(&features, &output, &sandbox_root, &resolver).unwrap();
+            let remap = stage_textures(&textures, &output, &sandbox_root, &resolver).unwrap();
 
             assert_eq!(
                 remap.get("ram:///src/wall.png").map(String::as_str),

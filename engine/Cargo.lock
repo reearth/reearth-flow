@@ -8233,6 +8233,7 @@ dependencies = [
  "jsonpath_lib",
  "pretty_assertions",
  "proc-macro2",
+ "quick-xml 0.37.5",
  "quote",
  "reearth-flow-action-log",
  "reearth-flow-action-plateau-processor",
