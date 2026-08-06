@@ -14,13 +14,159 @@ use reearth_flow_geometry::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 use super::{GeometryExportConfig, GeometryExportMode};
 use crate::errors::GeometryExportError;
 
-/// What a geometry writes to: its WKT text and, when it has one, the `MULTI*`
-/// family it can fold into. Carried as a value rather than appended to a buffer
-/// because folding a collection has to flatten a nested `MULTI*` into its parent,
-/// which needs the family after the text is built.
+/// What a geometry writes to: its WKT text, the `MULTI*` family it can fold into,
+/// the coordinate frames its coordinates came from, and the reasons parts of it
+/// were left out.
+///
+/// The frames and reasons come out of the same pass as the text, so nothing has to
+/// re-walk the geometry to recover them. Carrying the reasons rather than logging
+/// them where a part is dropped keeps the recursion a pure map, the whole
+/// geometry's omissions being reported once it is written.
 struct WrittenWkt {
     kind: Option<Kind>,
     text: String,
+    frames: Frames,
+    omitted: Vec<GeometryExportError>,
+}
+
+impl WrittenWkt {
+    /// What a leaf writes to: one text, in one frame, leaving nothing out.
+    fn leaf(frame: &CoordinateFrame, kind: Kind, text: String) -> Self {
+        Self {
+            kind: Some(kind),
+            text,
+            frames: Frames::of(frame),
+            omitted: Vec::new(),
+        }
+    }
+}
+
+/// The coordinate frames the coordinates written for a geometry came from.
+///
+/// Decides whether written parts may fold into a `MULTI*`, which needs frame
+/// identity: two `Euclidean` parts fold even though neither names a CRS.
+#[derive(Clone, Default)]
+enum Frames {
+    #[default]
+    Nothing,
+    One(CoordinateFrame),
+    Many,
+}
+
+impl Frames {
+    fn of(frame: &CoordinateFrame) -> Self {
+        Self::One(frame.clone())
+    }
+
+    fn and(self, other: Self) -> Self {
+        match (self, other) {
+            (Self::Nothing, frames) | (frames, Self::Nothing) => frames,
+            (Self::One(one), Self::One(other)) if one == other => Self::One(one),
+            _ => Self::Many,
+        }
+    }
+
+    fn uniform(&self) -> bool {
+        !matches!(self, Self::Many)
+    }
+}
+
+/// The writable parts of a container, and every reason the writer left something
+/// out.
+struct Parts {
+    /// Non-empty: a container with no writable part cannot be written either,
+    /// which `Parts::of` reports as an error instead.
+    written: Vec<WrittenWkt>,
+    omitted: Vec<GeometryExportError>,
+}
+
+impl Parts {
+    /// Write every part, keeping the writable ones: a part WKT cannot express is
+    /// dropped where it appears rather than failing the geometry around it, so it
+    /// does not discard its siblings. `Err` once nothing is left, a container
+    /// reduced to nothing being unwritable too.
+    fn of<T>(
+        parts: &[T],
+        write: impl Fn(&T) -> Result<WrittenWkt, GeometryExportError>,
+        empty: impl FnOnce() -> GeometryExportError,
+    ) -> Result<Self, GeometryExportError> {
+        let mut written = Vec::new();
+        let mut omitted = Vec::new();
+        for part in parts {
+            match write(part) {
+                Ok(part) => written.push(part),
+                Err(reason) => omitted.push(reason),
+            }
+        }
+        if written.is_empty() {
+            return Err(omitted.into_iter().next().unwrap_or_else(empty));
+        }
+        for part in &mut written {
+            omitted.append(&mut part.omitted);
+        }
+        Ok(Self { written, omitted })
+    }
+
+    /// The parts as one WKT geometry: a `MULTI*` when they are all of one family
+    /// and share a coordinate frame, a `GEOMETRYCOLLECTION` otherwise.
+    ///
+    /// Parts that differ in frame are not folded: that would put coordinates from
+    /// different reference systems in one geometry, and WKT names no CRS to
+    /// describe either of them.
+    fn into_one_geometry(self) -> WrittenWkt {
+        let kinds: Option<Vec<Kind>> = self.written.iter().map(|part| part.kind).collect();
+        let uniform = kinds.as_ref().and_then(|kinds| {
+            let first = *kinds.first()?;
+            kinds.iter().all(|kind| *kind == first).then_some(first)
+        });
+        match uniform {
+            Some(kind) if self.frames().uniform() => self.present(Some(kind), |parts| {
+                kind.fold(parts.iter().map(|part| part.text.as_str()))
+            }),
+            _ => {
+                if !self.frames().uniform() {
+                    warn_mixed_frames();
+                }
+                self.into_geometry_collection()
+            }
+        }
+    }
+
+    /// The parts as one WKT `GEOMETRYCOLLECTION`, whatever they are.
+    fn into_geometry_collection(self) -> WrittenWkt {
+        self.present(None, |parts| {
+            format!(
+                "GEOMETRYCOLLECTION({})",
+                parts
+                    .iter()
+                    .map(|part| part.text.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
+            )
+        })
+    }
+
+    fn frames(&self) -> Frames {
+        self.written
+            .iter()
+            .map(|part| part.frames.clone())
+            .fold(Frames::Nothing, Frames::and)
+    }
+
+    /// The parts as the one geometry `present` builds from their texts, carrying the
+    /// frames they were written in and what the writer left out.
+    fn present(
+        self,
+        kind: Option<Kind>,
+        present: impl FnOnce(&[WrittenWkt]) -> String,
+    ) -> WrittenWkt {
+        WrittenWkt {
+            kind,
+            text: present(&self.written),
+            frames: self.frames(),
+            omitted: self.omitted,
+        }
+    }
 }
 
 /// The `MULTI*` family a written geometry belongs to. A `GEOMETRYCOLLECTION`
@@ -30,6 +176,51 @@ enum Kind {
     Point,
     Curve,
     Area,
+}
+
+impl Kind {
+    /// Texts that all belong to this family, folded into the matching `MULTI*`. A
+    /// text that is already a `MULTI*` is flattened into the result: its own
+    /// members become members here, rather than nesting.
+    fn fold<'a>(self, texts: impl Iterator<Item = &'a str>) -> String {
+        let keyword = match self {
+            Self::Point => "MULTIPOINT",
+            Self::Curve => "MULTILINESTRING",
+            Self::Area => "MULTIPOLYGON",
+        };
+        let members = texts
+            .map(|text| Self::members_of(text, keyword))
+            .collect::<Vec<_>>()
+            .join(", ");
+        format!("{keyword}({members})")
+    }
+
+    /// A part's contribution to the fold: the inside of an already-folded `MULTI*`,
+    /// or the whole text with its own keyword dropped.
+    ///
+    /// `MULTIPOINT` is the flat form — `MULTIPOINT(0 0, 1 1)`, matching the old
+    /// writer — so a `POINT`'s coordinates go in bare; the other families keep
+    /// their parenthesised bodies.
+    fn members_of(text: &str, multi: &str) -> String {
+        let body = |text: &str, keyword: &str| {
+            text.strip_prefix(keyword)
+                .and_then(|rest| rest.strip_prefix('('))
+                .and_then(|rest| rest.strip_suffix(')'))
+                .map(str::to_string)
+        };
+        if let Some(inner) = body(text, multi) {
+            return inner;
+        }
+        for keyword in ["POINT", "LINESTRING", "POLYGON"] {
+            if let Some(inner) = body(text, keyword) {
+                return match keyword {
+                    "POINT" => inner,
+                    _ => format!("({inner})"),
+                };
+            }
+        }
+        text.to_string()
+    }
 }
 
 /// Export geometry to column values based on configuration.
@@ -68,7 +259,18 @@ pub fn export_geometry(
 pub fn geometry_to_wkt(geometry: &Geometry) -> Result<String, GeometryExportError> {
     match geometry {
         Geometry::None => Ok(String::new()),
-        geometry => Ok(write_geometry(geometry)?.text),
+        geometry => match write_geometry(geometry) {
+            Ok(written) => {
+                warn_omitted(&written.omitted);
+                Ok(written.text)
+            }
+            // Nothing writable is an empty cell, not a failed row: the feature's
+            // attributes are still worth writing. `csv.rs` warns either way.
+            Err(reason) => {
+                tracing::warn!(%reason, "writing an empty WKT cell");
+                Ok(String::new())
+            }
+        },
     }
 }
 
@@ -96,7 +298,11 @@ fn write_geometry(geometry: &Geometry) -> Result<WrittenWkt, GeometryExportError
         Geometry::None => Err(GeometryExportError::EmptyGeometry),
         Geometry::Euclidean2D(g) => write_2d(g),
         Geometry::Euclidean3D(g) => write_3d(g),
-        Geometry::GeometryCollection(_) => Err(GeometryExportError::UnsupportedGeometryCollection),
+        // Cross-dimensional and cross-frame, so no `Multi*` describes it.
+        Geometry::GeometryCollection(c) => Parts::of(c.members(), write_geometry, || {
+            GeometryExportError::UnsupportedGeometryCollection
+        })
+        .map(Parts::into_geometry_collection),
     }
 }
 
@@ -106,6 +312,10 @@ fn write_2d(geometry: &Euclidean2DGeometry) -> Result<WrittenWkt, GeometryExport
         Point(p) => Ok(point(p.frame(), p.position())),
         LineString(l) => Ok(curve(l.frame(), l.coords())),
         Polygon(p) => Ok(area(p.frame(), p.exterior(), p.interiors())),
+        Collection(c) => Parts::of(c.members(), write_2d, || {
+            GeometryExportError::UnsupportedGeometryCollection
+        })
+        .map(Parts::into_one_geometry),
         other => Err(unsupported(other)),
     }
 }
@@ -116,6 +326,10 @@ fn write_3d(geometry: &Euclidean3DGeometry) -> Result<WrittenWkt, GeometryExport
         Point(p) => Ok(point(p.frame(), p.position())),
         LineString(l) => Ok(curve(l.frame(), l.coords())),
         Polygon(p) => Ok(area(p.frame(), p.exterior(), p.interiors())),
+        Collection(c) => Parts::of(c.members(), write_3d, || {
+            GeometryExportError::UnsupportedGeometryCollection
+        })
+        .map(Parts::into_one_geometry),
         other => Err(unsupported(other)),
     }
 }
@@ -124,17 +338,19 @@ fn write_3d(geometry: &Euclidean3DGeometry) -> Result<WrittenWkt, GeometryExport
 // into WKT is written once, over `N`-element positions.
 
 fn point<const N: usize>(frame: &CoordinateFrame, position: [f64; N]) -> WrittenWkt {
-    WrittenWkt {
-        kind: Some(Kind::Point),
-        text: format!("POINT({})", coordinate(swaps_axes(frame), position)),
-    }
+    WrittenWkt::leaf(
+        frame,
+        Kind::Point,
+        format!("POINT({})", coordinate(swaps_axes(frame), position)),
+    )
 }
 
 fn curve<const N: usize>(frame: &CoordinateFrame, coords: &[[f64; N]]) -> WrittenWkt {
-    WrittenWkt {
-        kind: Some(Kind::Curve),
-        text: format!("LINESTRING({})", coordinate_list(swaps_axes(frame), coords)),
-    }
+    WrittenWkt::leaf(
+        frame,
+        Kind::Curve,
+        format!("LINESTRING({})", coordinate_list(swaps_axes(frame), coords)),
+    )
 }
 
 /// What an area writes to: its exterior ring, then its holes.
@@ -149,10 +365,7 @@ fn area<'a, const N: usize>(
         .map(|ring| format!("({})", coordinate_list(swap, &closed_ring(ring))))
         .collect::<Vec<_>>()
         .join(", ");
-    WrittenWkt {
-        kind: Some(Kind::Area),
-        text: format!("POLYGON({rings})"),
-    }
+    WrittenWkt::leaf(frame, Kind::Area, format!("POLYGON({rings})"))
 }
 
 /// Whether a frame stores its horizontal axes reflected from canonical
@@ -248,15 +461,46 @@ fn unsupported(geometry: &impl std::fmt::Debug) -> GeometryExportError {
     GeometryExportError::UnsupportedGeometryType(format!("{geometry:?}"))
 }
 
+/// Warn that a WKT cell holds coordinates from more than one reference system.
+///
+/// Once per process, like the axis-order warning: WKT names no CRS and a CSV column
+/// has nowhere to put one, so this warning is the only trace of the mixture. The
+/// members are still written — refusing them would discard data the user asked to
+/// export. (The spec says "once per output file"; the module has no notion of the
+/// output, so once per process is the honest approximation.)
+fn warn_mixed_frames() {
+    static WARNED: OnceLock<()> = OnceLock::new();
+    WARNED.get_or_init(|| {
+        tracing::warn!(
+            "a WKT cell holds coordinates in more than one reference system; WKT \
+             declares none, so the mixture is not recoverable from the output"
+        );
+    });
+}
+
+/// Report what the writer left out. An omission does not fail the geometry around
+/// it, so this warning is the only trace of it. Deduplicated by message: a mesh
+/// drops the same reason once per face otherwise.
+fn warn_omitted(omitted: &[GeometryExportError]) {
+    let mut seen = std::collections::BTreeSet::new();
+    for reason in omitted {
+        let reason = reason.to_string();
+        if seen.insert(reason.clone()) {
+            tracing::warn!(%reason, "omitting a geometry member from the CSV output");
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use reearth_flow_geometry::{
+        collection::Collection2D,
         coordinate::{BaseFrame, CoordinateFrame, EpsgCode, TangentPlane},
         line_string::{LineString2D, LineString3D},
         point::{Point2D, Point3D},
         polygon::{Polygon2D, Polygon3D},
-        Euclidean2DGeometry, Euclidean3DGeometry, Geometry,
+        Euclidean2DGeometry, Euclidean3DGeometry, Geometry, GeometryCollection,
     };
 
     fn wkt_of(geometry: &Geometry) -> String {
@@ -470,5 +714,98 @@ mod tests {
             extract_coordinates(&geometry),
             Err(GeometryExportError::NonPointGeometry)
         ));
+    }
+
+    fn collection_2d(members: Vec<Euclidean2DGeometry>) -> Geometry {
+        Geometry::Euclidean2D(Euclidean2DGeometry::Collection(Collection2D::new(members)))
+    }
+
+    fn point_2d(frame: CoordinateFrame, position: [f64; 2]) -> Euclidean2DGeometry {
+        Euclidean2DGeometry::Point(Point2D::new(frame, position))
+    }
+
+    // A uniform collection is the new geometry's `Multi*`, so it folds back.
+    #[test]
+    fn a_uniform_collection_folds_into_a_multi() {
+        let geometry = collection_2d(vec![
+            point_2d(euclidean(), [0.0, 0.0]),
+            point_2d(euclidean(), [1.0, 1.0]),
+        ]);
+        assert_eq!(wkt_of(&geometry), "MULTIPOINT(0 0, 1 1)");
+    }
+
+    #[test]
+    fn a_uniform_collection_of_areas_folds_into_a_multipolygon() {
+        let square = |offset: f64| {
+            Euclidean2DGeometry::Polygon(Box::new(Polygon2D::from_rings(
+                euclidean(),
+                [
+                    [offset, offset],
+                    [offset + 1.0, offset],
+                    [offset + 1.0, offset + 1.0],
+                    [offset, offset],
+                ],
+                Vec::<Vec<[f64; 2]>>::new(),
+            )))
+        };
+        let geometry = collection_2d(vec![square(0.0), square(3.0)]);
+        assert_eq!(
+            wkt_of(&geometry),
+            "MULTIPOLYGON(((0 0, 1 0, 1 1, 0 0)), ((3 3, 4 3, 4 4, 3 3)))"
+        );
+    }
+
+    // Members of different families have no `Multi*` form covering them.
+    #[test]
+    fn a_mixed_collection_writes_a_geometrycollection() {
+        let geometry = collection_2d(vec![
+            point_2d(euclidean(), [0.0, 0.0]),
+            Euclidean2DGeometry::LineString(LineString2D::from_coords(
+                euclidean(),
+                [[1.0, 1.0], [2.0, 2.0]],
+            )),
+        ]);
+        assert_eq!(
+            wkt_of(&geometry),
+            "GEOMETRYCOLLECTION(POINT(0 0), LINESTRING(1 1, 2 2))"
+        );
+    }
+
+    // Folding members from different frames would put coordinates from two
+    // reference systems in one geometry that names neither.
+    #[test]
+    fn members_in_different_frames_do_not_fold() {
+        let geometry = collection_2d(vec![
+            point_2d(euclidean(), [0.0, 0.0]),
+            point_2d(CoordinateFrame::Crs(EpsgCode::new(3857)), [1.0, 1.0]),
+        ]);
+        assert_eq!(wkt_of(&geometry), "GEOMETRYCOLLECTION(POINT(0 0), POINT(1 1))");
+    }
+
+    // The top-level container is cross-dimensional, so no `Multi*` describes it.
+    #[test]
+    fn the_top_level_collection_always_writes_a_geometrycollection() {
+        let geometry = Geometry::GeometryCollection(GeometryCollection::new(vec![
+            Geometry::Euclidean2D(point_2d(euclidean(), [0.0, 0.0])),
+            Geometry::Euclidean2D(point_2d(euclidean(), [1.0, 1.0])),
+        ]));
+        assert_eq!(wkt_of(&geometry), "GEOMETRYCOLLECTION(POINT(0 0), POINT(1 1))");
+    }
+
+    // A nested `Multi*` flattens into the fold rather than nesting inside it.
+    #[test]
+    fn a_nested_uniform_collection_flattens_when_folded() {
+        let inner = Euclidean2DGeometry::Collection(Collection2D::new(vec![
+            point_2d(euclidean(), [1.0, 1.0]),
+            point_2d(euclidean(), [2.0, 2.0]),
+        ]));
+        let geometry = collection_2d(vec![point_2d(euclidean(), [0.0, 0.0]), inner]);
+        assert_eq!(wkt_of(&geometry), "MULTIPOINT(0 0, 1 1, 2 2)");
+    }
+
+    // Nothing writable under it means nothing to write.
+    #[test]
+    fn an_empty_collection_writes_an_empty_cell() {
+        assert_eq!(wkt_of(&collection_2d(Vec::new())), "");
     }
 }
