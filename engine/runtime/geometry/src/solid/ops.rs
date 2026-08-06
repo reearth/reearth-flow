@@ -105,7 +105,10 @@ fn reproject_shell(
     transform_coords_3d(cache, from, target, vertices)
 }
 
-use crate::ops::{plan_frame_step, translate_3d, ConvertFrame, FrameStep, Translate};
+use crate::ops::{
+    apply_affine_3d, plan_frame_step, translate_3d, Affine3, ConvertFrame, FrameStep, Place,
+    Translate,
+};
 
 impl Translate for Solid {
     fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
@@ -116,6 +119,22 @@ impl Translate for Solid {
             };
             translate_3d(vertices, delta);
         }
+        Ok(())
+    }
+}
+
+impl Place for Solid {
+    /// Apply `affine` to every shell's vertices and set the frame once for the
+    /// whole solid (a `Solid` carries a single frame for all its shells).
+    fn place(&mut self, affine: &Affine3, frame: &CoordinateFrame) -> crate::error::Result<()> {
+        for shell in std::iter::once(&mut self.exterior).chain(self.interiors.iter_mut()) {
+            let vertices = match shell {
+                Shell::PolygonMesh(data) => data.vertices_mut(),
+                Shell::TriangularMesh(data) => data.vertices_mut(),
+            };
+            apply_affine_3d(vertices, affine);
+        }
+        self.frame = frame.clone();
         Ok(())
     }
 }

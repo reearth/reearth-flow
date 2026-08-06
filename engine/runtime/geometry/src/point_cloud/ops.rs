@@ -1,7 +1,8 @@
 use std::sync::OnceLock;
 
 use super::{AttributeColumn, PointCloud, PositionEncoding, Segment};
-use crate::ops::{Aabb, BoundingBox, Split, Translate, UnsupportedOperation};
+use crate::coordinate::CoordinateFrame;
+use crate::ops::{Aabb, Affine3, BoundingBox, Place, Split, Translate, UnsupportedOperation};
 use crate::point::Point3D;
 use crate::{Euclidean3DGeometry, Geometry};
 use reearth_flow_common::attribute::{Attribute, AttributeValue, Attributes};
@@ -110,6 +111,23 @@ fn translate_segment(seg: &mut Segment, delta: [f64; 3]) {
                 }
             }
         }
+    }
+}
+
+impl Place for PointCloud {
+    /// A point cloud's positions are packed per-segment in one of three
+    /// encodings (`F64`, `F32`, or a scale/offset `ScaledI32`). `Translate`
+    /// stays within each encoding (an offset shift for `ScaledI32`, an
+    /// in-place add for the float encodings) because addition alone commutes
+    /// with the decode. A general affine's rotation does not: it would need
+    /// every point decoded, rotated, and re-encoded, and `ScaledI32` has no
+    /// scale/offset pair that represents a rotated point without that
+    /// decode/re-encode round trip. There is no coordinate buffer this
+    /// primitive can rewrite in place, so placement is rejected outright.
+    fn place(&mut self, _affine: &Affine3, _frame: &CoordinateFrame) -> crate::error::Result<()> {
+        Err(crate::error::Error::invalid_geometry(
+            "cannot place a PointCloud geometry",
+        ))
     }
 }
 

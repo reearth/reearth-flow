@@ -59,9 +59,9 @@ use serde::{Deserialize, Serialize};
 
 use ops::triangulation::Cache;
 use ops::{
-    Aabb, BoundingBox, ConvertFrame, CountHoles, ExtractHoles, ExtractedPart, ForceTwoDimension,
-    ForceTwoDimensionError, RemoveAppearance, Reproject, ReprojectionCache, Translate, Triangulate,
-    UnsupportedOperation,
+    Aabb, Affine3, BoundingBox, ConvertFrame, CountHoles, ExtractHoles, ExtractedPart,
+    ForceTwoDimension, ForceTwoDimensionError, Place, RemoveAppearance, Reproject,
+    ReprojectionCache, Translate, Triangulate, UnsupportedOperation,
 };
 // `ValidationParams` / `ValidationType` / `ValidationReport` are named by the
 // `enum_dispatch`-generated `Validate` impls on the geometry enums, so they must
@@ -209,6 +209,8 @@ impl GeometryCollection {
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "schema", schemars(title = "2D geometry"))]
+// `Place` is intentionally NOT dispatched here: placement is a 3D-only
+// operation (see `impl Place for Geometry`, which errors on `Euclidean2D`).
 pub enum Euclidean2DGeometry {
     Point(Point2D),
     LineString(LineString2D),
@@ -237,6 +239,7 @@ pub enum Euclidean2DGeometry {
         Reproject,
         ConvertFrame,
         Translate,
+        Place,
         Split,
         ForceTwoDimension,
         RemoveAppearance,
@@ -253,6 +256,7 @@ pub enum Euclidean2DGeometry {
         Validate,
         ConvertFrame,
         Translate,
+        Place,
         Split,
         ForceTwoDimension,
         RemoveAppearance,
@@ -461,6 +465,30 @@ impl Translate for GeometryCollection {
             member.translate(delta)?;
         }
         Ok(())
+    }
+}
+
+impl Place for Geometry {
+    fn place(
+        &mut self,
+        affine: &ops::Affine3,
+        frame: &coordinate::CoordinateFrame,
+    ) -> crate::error::Result<()> {
+        match self {
+            Geometry::Euclidean3D(g) => g.place(affine, frame),
+            Geometry::GeometryCollection(c) => {
+                for member in c.members_mut() {
+                    member.place(affine, frame)?;
+                }
+                Ok(())
+            }
+            Geometry::None => Err(crate::error::Error::invalid_geometry(
+                "cannot place an empty geometry",
+            )),
+            Geometry::Euclidean2D(_) => Err(crate::error::Error::invalid_geometry(
+                "cannot place 2D geometry; placement requires 3D coordinates",
+            )),
+        }
     }
 }
 

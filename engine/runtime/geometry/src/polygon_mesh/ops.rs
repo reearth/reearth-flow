@@ -114,7 +114,10 @@ impl Reproject for PolygonMesh3D {
     }
 }
 
-use crate::ops::{plan_frame_step, translate_2d, translate_3d, ConvertFrame, FrameStep, Translate};
+use crate::ops::{
+    apply_affine_3d, plan_frame_step, translate_2d, translate_3d, Affine3, ConvertFrame, FrameStep,
+    Place, Translate,
+};
 
 impl Translate for PolygonMesh2D {
     fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
@@ -126,6 +129,14 @@ impl Translate for PolygonMesh2D {
 impl Translate for PolygonMesh3D {
     fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
         translate_3d(self.data.vertices_mut(), delta);
+        Ok(())
+    }
+}
+
+impl Place for PolygonMesh3D {
+    fn place(&mut self, affine: &Affine3, frame: &CoordinateFrame) -> crate::error::Result<()> {
+        apply_affine_3d(self.data.vertices_mut(), affine);
+        self.frame = frame.clone();
         Ok(())
     }
 }

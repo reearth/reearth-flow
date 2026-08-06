@@ -9,12 +9,15 @@
 //! `Collection`s recurse by hand over their children.
 
 pub mod hole;
+pub mod place;
 pub mod reproject;
 pub mod split;
 pub mod triangulation;
 
 pub(crate) use hole::{area_2d, emit_face_2d, emit_face_3d, emit_triangles_3d};
 pub use hole::{CountHoles, ExtractHoles, ExtractedPart};
+pub(crate) use place::apply_affine_3d;
+pub use place::{Affine3, Place};
 pub(crate) use reproject::{
     axis_order_sign, crs_demote_to_2d, crs_is_linear, lift_coords, TwoDimensionalCrs,
 };

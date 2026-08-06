@@ -104,7 +104,10 @@ impl Reproject for Polygon3D {
     }
 }
 
-use crate::ops::{plan_frame_step, translate_2d, translate_3d, ConvertFrame, FrameStep, Translate};
+use crate::ops::{
+    apply_affine_3d, plan_frame_step, translate_2d, translate_3d, Affine3, ConvertFrame, FrameStep,
+    Place, Translate,
+};
 
 impl Translate for Polygon2D {
     fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
@@ -116,6 +119,14 @@ impl Translate for Polygon2D {
 impl Translate for Polygon3D {
     fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
         translate_3d(&mut self.coords, delta);
+        Ok(())
+    }
+}
+
+impl Place for Polygon3D {
+    fn place(&mut self, affine: &Affine3, frame: &CoordinateFrame) -> crate::error::Result<()> {
+        apply_affine_3d(&mut self.coords, affine);
+        self.frame = frame.clone();
         Ok(())
     }
 }

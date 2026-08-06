@@ -301,6 +301,19 @@ impl crate::ops::Translate for Collection3D {
     }
 }
 
+impl crate::ops::Place for Collection3D {
+    fn place(
+        &mut self,
+        affine: &crate::ops::Affine3,
+        frame: &crate::coordinate::CoordinateFrame,
+    ) -> crate::error::Result<()> {
+        for member in self.members_mut() {
+            member.place(affine, frame)?;
+        }
+        Ok(())
+    }
+}
+
 impl crate::ops::RemoveAppearance for Collection2D {
     fn remove_appearance(&mut self) {
         for member in self.members_mut() {
