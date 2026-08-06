@@ -1,12 +1,13 @@
 //! The unified world's half of the converter seam: `reearth_flow_geometry`'s
 //! recursive hierarchy in, the shared [`super::model`] out.
 //!
-//! Scope, deliberately narrow for now: `Polygon` and `LineString` leaves, and
-//! collections of them. Meshes, solids, and appearance need a face visitor the
-//! geometry crate does not expose yet, so every one of them is reported as a
-//! [`GeometryOmission`] rather than silently skipped.
+//! Scope: every 3D leaf CityGML 2.0 has an element for — `Polygon`,
+//! `LineString`, `PolygonMesh`, `TriangularMesh`, `Solid` — and collections of
+//! them. `Point`, `PointCloud`, `Csg` and the 2D leaves have no counterpart and
+//! are reported as a [`GeometryOmission`] rather than silently skipped.
+//! Appearance is still Phase 5's: surfaces come out bare.
 //!
-//! Two things this module owns that the legacy converter does not:
+//! Three things this module owns that the legacy converter does not:
 //!
 //! - **Axis order.** The new reader stores `gml:posList` ordinates in the axis
 //!   order the CRS itself declares, so [`format_pos_list`] writes them back
@@ -17,8 +18,15 @@
 //!   reach the file, so it is never a guess: one CRS is declared, a mixture is
 //!   an error, and coordinates outside any CRS are only labelled when the user
 //!   supplied an `epsgCode` to label them with.
+//! - **Ring closure.** A `gml:LinearRing` must repeat its first corner, but the
+//!   geometry crate stores rings as they arrived — a triangle-mesh face has
+//!   three corners and no closing one. Every emitted ring is closed here, at
+//!   the one point where the ring and (from Phase 5) its UV slice are both in
+//!   hand, so the two cannot drift apart.
 
 use reearth_flow_geometry::coordinate::CoordinateFrame;
+use reearth_flow_geometry::polygon_mesh::FaceVisit;
+use reearth_flow_geometry::solid::{Shell, Solid};
 use reearth_flow_geometry::{Euclidean3DGeometry, Geometry, GeometryCollection};
 use reearth_flow_types::conversion::CrsCoverage;
 use reearth_flow_types::lod::LodMask;
@@ -26,7 +34,7 @@ use reearth_flow_types::{Attribute, AttributeValue, Attributes, CitygmlFeatureEx
 
 use super::model::{
     AppearanceBundle, BoundingEnvelope, ConvertedCityObject, GeometryEntry, GeometryOmission,
-    GmlElement, GmlSurface,
+    GmlElement, GmlSolid, GmlSurface,
 };
 use crate::errors::SinkError;
 
@@ -156,6 +164,7 @@ struct FeatureContext {
 /// construction, which is what makes coalescing them into one `gml:MultiSurface`
 /// / `gml:MultiCurve` safe.
 enum Piece {
+    Solid(GmlSolid),
     Surface(GmlSurface),
     Curve(Vec<[f64; 3]>),
 }
@@ -277,19 +286,7 @@ impl Conversion {
                 let exterior = polygon.exterior().to_vec();
                 let interiors: Vec<Vec<[f64; 3]>> =
                     polygon.interiors().map(<[[f64; 3]]>::to_vec).collect();
-                self.fold_envelope(&exterior);
-                for ring in &interiors {
-                    self.fold_envelope(ring);
-                }
-                out.push(Piece::Surface(GmlSurface {
-                    id: None,
-                    exterior,
-                    interiors,
-                    material_idx: None,
-                    texture_idx: None,
-                    uv_exterior: Vec::new(),
-                    uv_interiors: Vec::new(),
-                }));
+                out.push(Piece::Surface(self.surface(exterior, interiors)));
             }
             Euclidean3DGeometry::LineString(line_string) => {
                 self.fold_frame(line_string.frame());
@@ -302,6 +299,31 @@ impl Conversion {
                     self.collect_pieces(member, out);
                 }
             }
+            // A mesh is a set of independent faces sharing a vertex pool, which
+            // is exactly what `gml:MultiSurface` is: one `gml:Polygon` per face.
+            Euclidean3DGeometry::PolygonMesh(mesh) => {
+                self.fold_frame(mesh.frame());
+                let mut faces = Vec::with_capacity(mesh.num_faces());
+                mesh.for_each_face(|face| faces.push(face_rings(&face)));
+                for (exterior, interiors) in faces {
+                    out.push(Piece::Surface(self.surface(exterior, interiors)));
+                }
+            }
+            Euclidean3DGeometry::TriangularMesh(mesh) => {
+                self.fold_frame(mesh.frame());
+                let mut faces = Vec::with_capacity(mesh.num_triangles());
+                mesh.for_each_face(|face| faces.push(face_rings(&face)));
+                for (exterior, interiors) in faces {
+                    out.push(Piece::Surface(self.surface(exterior, interiors)));
+                }
+            }
+            // One `gml:CompositeSurface` per shell: the exterior bounds the
+            // volume, each interior bounds a void the unified reader kept and
+            // the legacy one discarded.
+            Euclidean3DGeometry::Solid(solid) => {
+                self.fold_frame(solid.frame());
+                out.push(Piece::Solid(self.solid(solid)));
+            }
             // Parity-first omissions: CityGML 2.0 has no element for these, and
             // coercing them would fabricate geometry.
             Euclidean3DGeometry::Point(_) => self.omit("Point", POINT_REASON),
@@ -311,24 +333,91 @@ impl Conversion {
                 "a boolean tree has no CityGML counterpart until it is evaluated, which the \
                  writer does not do",
             ),
-            // Temporary omissions: these need the geometry crate's face visitor.
-            Euclidean3DGeometry::PolygonMesh(_) => self.omit("PolygonMesh", NOT_YET_REASON),
-            Euclidean3DGeometry::TriangularMesh(_) => self.omit("TriangularMesh", NOT_YET_REASON),
-            Euclidean3DGeometry::Solid(_) => self.omit("Solid", NOT_YET_REASON),
         }
     }
 
-    /// Group one member's emitted leaves by GML family: all surfaces into one
+    /// One solid, as its exterior shell's faces plus one face list per void.
+    fn solid(&mut self, solid: &Solid) -> GmlSolid {
+        GmlSolid {
+            id: None,
+            exterior: self.shell(solid.exterior()),
+            interiors: solid
+                .interiors()
+                .iter()
+                .map(|shell| self.shell(shell))
+                .collect(),
+        }
+    }
+
+    /// One boundary shell's faces, whichever mesh kind it is.
+    fn shell(&mut self, shell: &Shell) -> Vec<GmlSurface> {
+        let mut faces = Vec::with_capacity(shell.num_faces());
+        shell.for_each_face(|face| faces.push(face_rings(&face)));
+        faces
+            .into_iter()
+            .map(|(exterior, interiors)| self.surface(exterior, interiors))
+            .collect()
+    }
+
+    /// Build one `gml:Polygon` from a face's rings: close each ring, fold its
+    /// coordinates into the envelope, and leave the appearance slots empty for
+    /// Phase 5 to fill.
+    fn surface(&mut self, exterior: Vec<[f64; 3]>, interiors: Vec<Vec<[f64; 3]>>) -> GmlSurface {
+        let mut exterior = exterior;
+        // The closing corner duplicates the ring's first, which is the corner
+        // whose UV Phase 5 duplicates in the same step. Nothing reads it yet.
+        let _closed_at = close_ring(&mut exterior);
+        self.fold_envelope(&exterior);
+        let interiors = interiors
+            .into_iter()
+            .map(|mut ring| {
+                let _closed_at = close_ring(&mut ring);
+                self.fold_envelope(&ring);
+                ring
+            })
+            .collect();
+        GmlSurface {
+            id: None,
+            exterior,
+            interiors,
+            material_idx: None,
+            texture_idx: None,
+            uv_exterior: Vec::new(),
+            uv_interiors: Vec::new(),
+        }
+    }
+
+    /// Group one member's emitted leaves by GML family: all solids into one
+    /// `gml:Solid` or `gml:MultiSolid`, all surfaces into one
     /// `gml:MultiSurface`, all curves into one `gml:MultiCurve`. A member that
-    /// produced both yields one entry per family.
+    /// produced several families yields one entry per family, in descending
+    /// dimension.
     fn push_entries(&mut self, lod: u8, property: Option<&str>, pieces: Vec<Piece>) {
+        let mut solids = Vec::new();
         let mut surfaces = Vec::new();
         let mut curves = Vec::new();
         for piece in pieces {
             match piece {
+                Piece::Solid(solid) => solids.push(solid),
                 Piece::Surface(surface) => surfaces.push(surface),
                 Piece::Curve(curve) => curves.push(curve),
             }
+        }
+        // One solid stays a `gml:Solid`, so a `lod1Solid` property still names
+        // the element it wraps; several coalesce into one `gml:MultiSolid`,
+        // which is only nameable because the source property name is retained.
+        match solids.len() {
+            0 => {}
+            1 => self.geometries.push(GeometryEntry {
+                lod,
+                property: property.map(str::to_string),
+                element: GmlElement::Solid(solids.pop().expect("one solid")),
+            }),
+            _ => self.geometries.push(GeometryEntry {
+                lod,
+                property: property.map(str::to_string),
+                element: GmlElement::MultiSolid { id: None, solids },
+            }),
         }
         if !surfaces.is_empty() {
             self.geometries.push(GeometryEntry {
@@ -392,8 +481,34 @@ impl Conversion {
 const POINT_REASON: &str =
     "this writer emits no gml:Point / gml:MultiPoint, matching the legacy build";
 
-const NOT_YET_REASON: &str = "reading a mesh's or a solid's faces needs a geometry-crate visitor \
-                              that does not exist yet";
+/// A visited face's rings as owned coordinates: the exterior first, then the
+/// holes. Copied out because the visitor's borrows do not outlive the callback.
+fn face_rings(face: &FaceVisit<'_>) -> (Vec<[f64; 3]>, Vec<Vec<[f64; 3]>>) {
+    (
+        face.exterior.coords.to_vec(),
+        face.interiors
+            .iter()
+            .map(|ring| ring.coords.to_vec())
+            .collect(),
+    )
+}
+
+/// Close `ring` for GML: a `gml:LinearRing` repeats its first corner, and rings
+/// reach here open whenever they came from a triangle (three corners, no
+/// closing one) or from an index-sourced mesh, so this is not an edge case.
+///
+/// Returns the ring-local position of the corner the appended one duplicates —
+/// always `0` — or `None` when the ring was already closed. Phase 5 extends the
+/// ring's UV slice by exactly that corner, which is why closing a ring and
+/// slicing its UV have to happen in the same step.
+fn close_ring(ring: &mut Vec<[f64; 3]>) -> Option<usize> {
+    let first = *ring.first()?;
+    if *ring.last()? == first {
+        return None;
+    }
+    ring.push(first);
+    Some(0)
+}
 
 /// The property name a member records, if it records one.
 fn member_property(attributes: &Attributes) -> Option<&str> {
@@ -417,6 +532,9 @@ mod tests {
         use reearth_flow_geometry::line_string::LineString3D;
         use reearth_flow_geometry::point::Point3D;
         use reearth_flow_geometry::polygon::Polygon3D;
+        use reearth_flow_geometry::polygon_mesh::{PolygonMesh3D, PolygonMesh3DData};
+        use reearth_flow_geometry::solid::{Shell, Solid};
+        use reearth_flow_geometry::triangular_mesh::TriangularMesh3D;
         use reearth_flow_geometry::{Euclidean3DGeometry, Geometry, GeometryCollection};
         use reearth_flow_types::{Attribute, AttributeValue, Attributes, Feature};
 
@@ -460,6 +578,87 @@ mod tests {
 
         pub fn point(frame: CoordinateFrame) -> Euclidean3DGeometry {
             Euclidean3DGeometry::Point(Point3D::new(frame, [35.0, 139.0, 0.0]))
+        }
+
+        /// Two triangular faces sharing an edge, given as vertex-index faces so
+        /// their rings are stored **open** — the shape ring closure has to fix.
+        pub fn polygon_mesh(frame: CoordinateFrame) -> Euclidean3DGeometry {
+            Euclidean3DGeometry::PolygonMesh(Box::new(
+                PolygonMesh3D::from_parts(
+                    frame,
+                    mesh_vertices(),
+                    vec![vec![0u32, 1, 2], vec![1, 3, 2]],
+                )
+                .unwrap(),
+            ))
+        }
+
+        /// One square face with one square hole, as raw CSR — the only way to
+        /// get a hole into a mesh without going through `Polygon`.
+        pub fn polygon_mesh_with_a_hole(frame: CoordinateFrame) -> Euclidean3DGeometry {
+            Euclidean3DGeometry::PolygonMesh(Box::new(
+                PolygonMesh3D::from_raw_parts(
+                    frame,
+                    vec![
+                        [35.0, 139.0, 0.0],
+                        [35.4, 139.0, 0.0],
+                        [35.4, 139.4, 0.0],
+                        [35.0, 139.4, 0.0],
+                        [35.1, 139.1, 0.0],
+                        [35.3, 139.1, 0.0],
+                        [35.3, 139.3, 0.0],
+                        [35.1, 139.3, 0.0],
+                    ],
+                    vec![0, 1, 2, 3, 4, 5, 6, 7],
+                    vec![],
+                    vec![4],
+                )
+                .unwrap(),
+            ))
+        }
+
+        /// The same two triangles as a triangle mesh; its faces are three
+        /// corners each, always open.
+        pub fn triangular_mesh(frame: CoordinateFrame) -> Euclidean3DGeometry {
+            Euclidean3DGeometry::TriangularMesh(Box::new(
+                TriangularMesh3D::from_parts(frame, mesh_vertices(), [0u32, 1, 2, 1, 3, 2])
+                    .unwrap(),
+            ))
+        }
+
+        /// A solid bounded by one two-face exterior shell and `voids` interior
+        /// shells, each one face.
+        pub fn solid(frame: CoordinateFrame, voids: usize) -> Euclidean3DGeometry {
+            let exterior = Shell::PolygonMesh(
+                PolygonMesh3DData::from_parts(mesh_vertices(), [[0u32, 1, 2], [1, 3, 2]]).unwrap(),
+            );
+            let interiors = (0..voids)
+                .map(|n| {
+                    let offset = 0.01 * (n as f64 + 1.0);
+                    Shell::PolygonMesh(
+                        PolygonMesh3DData::from_parts(
+                            vec![
+                                [35.0 + offset, 139.0 + offset, 0.0],
+                                [35.1 + offset, 139.0 + offset, 0.0],
+                                [35.0 + offset, 139.1 + offset, 0.0],
+                            ],
+                            [[0u32, 1, 2]],
+                        )
+                        .unwrap(),
+                    )
+                })
+                .collect();
+            Euclidean3DGeometry::Solid(Box::new(Solid::new(frame, exterior, interiors)))
+        }
+
+        /// The four corners the mesh fixtures share.
+        fn mesh_vertices() -> Vec<[f64; 3]> {
+            vec![
+                [35.0, 139.0, 0.0],
+                [35.1, 139.0, 0.0],
+                [35.0, 139.1, 0.0],
+                [35.1, 139.1, 0.0],
+            ]
         }
 
         pub fn collection3d(members: Vec<Euclidean3DGeometry>) -> Euclidean3DGeometry {
@@ -525,6 +724,28 @@ mod tests {
             GmlElement::MultiCurve { curves, .. } => curves,
             other => panic!("expected a MultiCurve, got {other:?}"),
         }
+    }
+
+    fn solid_of(entry: &GeometryEntry) -> &GmlSolid {
+        match &entry.element {
+            GmlElement::Solid(solid) => solid,
+            other => panic!("expected a Solid, got {other:?}"),
+        }
+    }
+
+    fn multi_solid(entry: &GeometryEntry) -> &[GmlSolid] {
+        match &entry.element {
+            GmlElement::MultiSolid { solids, .. } => solids,
+            other => panic!("expected a MultiSolid, got {other:?}"),
+        }
+    }
+
+    /// Whether every ring of a surface repeats its first corner, which is what
+    /// makes it a valid `gml:LinearRing`.
+    fn is_closed(surface: &GmlSurface) -> bool {
+        std::iter::once(&surface.exterior)
+            .chain(&surface.interiors)
+            .all(|ring| ring.first() == ring.last() && ring.len() >= 4)
     }
 
     /// The reader writes these keys; the converter reads them. They are spelled
@@ -681,6 +902,208 @@ mod tests {
         let feature = feature(vec![(attributes, triangle(crs(6697), 0.0))]);
 
         assert!(convert_city_object(&feature, &all_lods()).is_err());
+    }
+
+    // Meshes
+
+    /// A mesh is a set of independent faces over one vertex pool, so it becomes
+    /// one `gml:MultiSurface` with one `gml:Polygon` per face — and each face's
+    /// ring, stored open, is closed on the way out.
+    #[test]
+    fn a_polygon_mesh_becomes_one_surface_per_face() {
+        let feature = feature(vec![(
+            member_attrs(Some(2), Some("lod2MultiSurface")),
+            polygon_mesh(crs(6697)),
+        )]);
+
+        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+
+        let surfaces = surfaces(&converted.geometries[0]);
+        assert_eq!(surfaces.len(), 2);
+        assert!(surfaces.iter().all(is_closed), "{surfaces:?}");
+        assert_eq!(
+            surfaces[0].exterior,
+            vec![
+                [35.0, 139.0, 0.0],
+                [35.1, 139.0, 0.0],
+                [35.0, 139.1, 0.0],
+                // the closing corner, appended here
+                [35.0, 139.0, 0.0],
+            ]
+        );
+        assert!(converted.omissions.is_empty());
+    }
+
+    /// A mesh face's hole survives as a `gml:interior` ring of the same polygon,
+    /// not as a face of its own.
+    #[test]
+    fn a_mesh_face_keeps_its_hole_as_an_interior_ring() {
+        let feature = feature(vec![(
+            member_attrs(Some(2), None),
+            polygon_mesh_with_a_hole(crs(6697)),
+        )]);
+
+        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+
+        let surfaces = surfaces(&converted.geometries[0]);
+        assert_eq!(surfaces.len(), 1);
+        assert_eq!(surfaces[0].interiors.len(), 1);
+        assert!(is_closed(&surfaces[0]));
+        assert_eq!(surfaces[0].interiors[0][0], [35.1, 139.1, 0.0]);
+    }
+
+    /// A `dem:tin` reaches the sink as a triangle mesh, whose faces are always
+    /// stored open — the case ring closure exists for.
+    #[test]
+    fn a_triangular_mesh_becomes_one_closed_surface_per_triangle() {
+        let feature = feature(vec![(
+            member_attrs(None, Some("tin")),
+            triangular_mesh(crs(6697)),
+        )]);
+
+        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+
+        assert_eq!(converted.geometries[0].property.as_deref(), Some("tin"));
+        let surfaces = surfaces(&converted.geometries[0]);
+        assert_eq!(surfaces.len(), 2);
+        assert!(surfaces.iter().all(is_closed), "{surfaces:?}");
+        assert!(surfaces.iter().all(|s| s.exterior.len() == 4));
+    }
+
+    // Solids
+
+    /// A lone solid stays a `gml:Solid`, so the source property that named it
+    /// (`lod1Solid`) still names the element it wraps.
+    #[test]
+    fn a_solid_becomes_a_gml_solid_with_its_exterior_faces() {
+        let feature = feature(vec![(
+            member_attrs(Some(1), Some("lod1Solid")),
+            solid(crs(6697), 0),
+        )]);
+
+        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+
+        assert_eq!(converted.geometries.len(), 1);
+        assert_eq!(converted.geometries[0].lod, 1);
+        assert_eq!(
+            converted.geometries[0].property.as_deref(),
+            Some("lod1Solid")
+        );
+        let solid = solid_of(&converted.geometries[0]);
+        assert_eq!(solid.exterior.len(), 2);
+        assert!(solid.interiors.is_empty());
+        assert!(solid.exterior.iter().all(is_closed));
+    }
+
+    /// The void the unified reader deliberately kept, and the legacy one
+    /// discarded, becomes one `gml:interior` shell per void.
+    #[test]
+    fn a_solids_voids_become_interior_shells() {
+        let feature = feature(vec![(
+            member_attrs(Some(1), Some("lod1Solid")),
+            solid(crs(6697), 2),
+        )]);
+
+        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+
+        let solid = solid_of(&converted.geometries[0]);
+        assert_eq!(solid.exterior.len(), 2);
+        assert_eq!(solid.interiors.len(), 2);
+        assert!(solid.interiors.iter().all(|shell| shell.len() == 1));
+        assert_eq!(solid.interiors[0][0].exterior[0], [35.01, 139.01, 0.0]);
+        assert_eq!(solid.interiors[1][0].exterior[0], [35.02, 139.02, 0.0]);
+    }
+
+    /// A collection of nothing but solids is one `gml:MultiSolid`, which is only
+    /// nameable because the source property name is retained.
+    #[test]
+    fn a_homogeneous_collection_of_solids_coalesces_into_a_multi_solid() {
+        let feature = feature(vec![(
+            member_attrs(Some(2), Some("lod2MultiSolid")),
+            collection3d(vec![solid(crs(6697), 0), solid(crs(6697), 1)]),
+        )]);
+
+        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+
+        assert_eq!(converted.geometries.len(), 1);
+        assert_eq!(
+            converted.geometries[0].property.as_deref(),
+            Some("lod2MultiSolid")
+        );
+        let solids = multi_solid(&converted.geometries[0]);
+        assert_eq!(solids.len(), 2);
+        assert!(solids[0].interiors.is_empty());
+        assert_eq!(solids[1].interiors.len(), 1);
+    }
+
+    /// Families never merge: a collection holding a solid and a surface yields
+    /// one entry each, solid first.
+    #[test]
+    fn a_solid_beside_a_surface_yields_one_entry_per_family() {
+        let feature = feature(vec![(
+            member_attrs(Some(2), None),
+            collection3d(vec![triangle(crs(6697), 0.0), solid(crs(6697), 0)]),
+        )]);
+
+        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+
+        assert_eq!(converted.geometries.len(), 2);
+        assert_eq!(solid_of(&converted.geometries[0]).exterior.len(), 2);
+        assert_eq!(surfaces(&converted.geometries[1]).len(), 1);
+    }
+
+    /// A solid's coordinates reach the file, so they have to reach the envelope
+    /// and the CRS coverage too.
+    #[test]
+    fn a_solid_folds_its_coordinates_into_the_envelope_and_the_crs() {
+        let feature = feature(vec![(member_attrs(Some(1), None), solid(crs(6697), 1))]);
+
+        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+
+        let envelope = converted.envelope.unwrap();
+        assert_eq!(envelope.lower, [35.0, 139.0, 0.0]);
+        // The void's far corner, written as the arithmetic that produced it so
+        // the assertion does not depend on a decimal literal rounding the same
+        // way `139.1 + 0.01` does.
+        assert_eq!(envelope.upper, [35.1 + 0.01, 139.1 + 0.01, 0.0]);
+        assert_eq!(converted.crs, CrsCoverage::Single(6697.into()));
+    }
+
+    // Ring closure
+
+    /// An open ring gains its first corner back, and says so: Phase 5 duplicates
+    /// the UV of exactly that corner in the same step.
+    #[test]
+    fn closing_an_open_ring_appends_its_first_corner() {
+        let mut ring = vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]];
+
+        assert_eq!(close_ring(&mut ring), Some(0));
+        assert_eq!(ring.len(), 4);
+        assert_eq!(ring[3], [0.0, 0.0, 0.0]);
+    }
+
+    /// A ring that already closes is left exactly as it was — the CityGML→
+    /// CityGML round trip must not grow a corner per ring.
+    #[test]
+    fn closing_an_already_closed_ring_changes_nothing() {
+        let mut ring = vec![
+            [0.0, 0.0, 0.0],
+            [1.0, 0.0, 0.0],
+            [0.0, 1.0, 0.0],
+            [0.0, 0.0, 0.0],
+        ];
+        let before = ring.clone();
+
+        assert_eq!(close_ring(&mut ring), None);
+        assert_eq!(ring, before);
+    }
+
+    #[test]
+    fn closing_an_empty_ring_is_a_no_op() {
+        let mut ring: Vec<[f64; 3]> = Vec::new();
+
+        assert_eq!(close_ring(&mut ring), None);
+        assert!(ring.is_empty());
     }
 
     // Collections

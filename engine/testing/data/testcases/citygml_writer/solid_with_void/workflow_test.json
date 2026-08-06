@@ -1,0 +1,14 @@
+{
+  "description": "A CityGML solid with one void shell, written from unified geometry. New-world only: the legacy reader discards a solid's interior shells while parsing and records no source property name, so this input has no old/new comparison to make - it pins gml:interior at solid level and the retained bldg:lod0RoofEdge property instead.",
+  "workflowPath": "citygml_writer/roundtrip.yml",
+  "skipLegacyGeometry": true,
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "input.gml"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "expected_output.gml"
+  }
+}

@@ -25,6 +25,7 @@ mod ops;
 #[cfg(feature = "new-geometry")]
 mod validation;
 
+pub use faces::{FaceRing, FaceVisit};
 pub(crate) use ops::build_open_rings;
 
 /// A connected, vertex-sharing polygon mesh in 2D space, lying at a single
@@ -103,11 +104,19 @@ pub struct PolygonMesh3D {
 }
 
 impl PolygonMesh3DData {
-    /// The vertex pool. Crate-internal: lets a [`Solid`](crate::solid::Solid)
-    /// shell bound itself without exposing the raw layout.
+    /// The vertex pool. Public so a [`Solid`](crate::solid::Solid) shell — which
+    /// is this data and nothing else — can be read from outside the crate
+    /// without exposing the raw CSR layout.
     #[inline]
-    pub(crate) fn vertices(&self) -> &[[f64; 3]] {
+    pub fn vertices(&self) -> &[[f64; 3]] {
         &self.vertices
+    }
+
+    /// Borrow the appearance, if any. Public for the same reason as
+    /// [`vertices`](Self::vertices): a shell's appearance lives here.
+    #[inline]
+    pub fn appearance(&self) -> &Option<Appearance> {
+        &self.appearance
     }
 }
 
@@ -213,6 +222,13 @@ impl PolygonMesh3D {
     #[inline]
     pub fn vertices(&self) -> &[[f64; 3]] {
         self.data.vertices()
+    }
+
+    /// Invoke `f` once per face; see
+    /// [`PolygonMesh3DData::for_each_face`](PolygonMesh3DData::for_each_face).
+    #[inline]
+    pub fn for_each_face(&self, f: impl FnMut(FaceVisit<'_>)) {
+        self.data.for_each_face(f);
     }
 }
 

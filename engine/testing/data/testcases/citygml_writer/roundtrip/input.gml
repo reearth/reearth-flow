@@ -36,6 +36,54 @@
 					</gml:surfaceMember>
 				</gml:MultiSurface>
 			</bldg:lod2MultiSurface>
+			<!-- A void-free tetrahedron. Both geometry worlds can carry it, which
+			     is what makes it usable for the strict old/new comparison; a solid
+			     with a void goes to the new-world-only `solid_with_void` case,
+			     because the legacy reader discards interior shells while parsing. -->
+			<bldg:lod1Solid>
+				<gml:Solid>
+					<gml:exterior>
+						<gml:Shell>
+							<gml:surfaceMember>
+								<gml:Polygon>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>35.0 135.0 0 35.001 135.0 0 35.0 135.001 0 35.0 135.0 0</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+							<gml:surfaceMember>
+								<gml:Polygon>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>35.0 135.0 0 35.0 135.0 10 35.001 135.0 0 35.0 135.0 0</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+							<gml:surfaceMember>
+								<gml:Polygon>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>35.001 135.0 0 35.0 135.0 10 35.0 135.001 0 35.001 135.0 0</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+							<gml:surfaceMember>
+								<gml:Polygon>
+									<gml:exterior>
+										<gml:LinearRing>
+											<gml:posList>35.0 135.001 0 35.0 135.0 10 35.0 135.0 0 35.0 135.001 0</gml:posList>
+										</gml:LinearRing>
+									</gml:exterior>
+								</gml:Polygon>
+							</gml:surfaceMember>
+						</gml:Shell>
+					</gml:exterior>
+				</gml:Solid>
+			</bldg:lod1Solid>
 		</bldg:Building>
 	</core:cityObjectMember>
 </core:CityModel>

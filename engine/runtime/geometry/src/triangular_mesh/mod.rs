@@ -76,11 +76,19 @@ pub struct TriangularMesh3D {
 }
 
 impl TriangularMesh3DData {
-    /// The vertex pool. Crate-internal: lets a [`Solid`](crate::solid::Solid)
-    /// shell bound itself without exposing the raw layout.
+    /// The vertex pool. Public so a [`Solid`](crate::solid::Solid) shell — which
+    /// is this data and nothing else — can be read from outside the crate
+    /// without exposing the raw index layout.
     #[inline]
-    pub(crate) fn vertices(&self) -> &[[f64; 3]] {
+    pub fn vertices(&self) -> &[[f64; 3]] {
         &self.vertices
+    }
+
+    /// Borrow the appearance, if any. Public for the same reason as
+    /// [`vertices`](Self::vertices): a shell's appearance lives here.
+    #[inline]
+    pub fn appearance(&self) -> &Option<Appearance> {
+        &self.appearance
     }
 }
 
@@ -185,6 +193,13 @@ impl TriangularMesh3D {
     #[inline]
     pub fn vertices(&self) -> &[[f64; 3]] {
         self.data.vertices()
+    }
+
+    /// Invoke `f` once per triangle; see
+    /// [`TriangularMesh3DData::for_each_face`](TriangularMesh3DData::for_each_face).
+    #[inline]
+    pub fn for_each_face(&self, f: impl FnMut(crate::polygon_mesh::FaceVisit<'_>)) {
+        self.data.for_each_face(f);
     }
 }
 

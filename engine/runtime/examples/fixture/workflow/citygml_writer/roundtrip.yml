@@ -8,6 +8,9 @@
 # (per-leaf frames under `new-geometry`, not at all in the legacy world), so it
 # is the parameter — not the geometry — that makes the legacy build declare the
 # source's EPSG.
+#
+# The input file is a workflow variable, so the new-world-only `solid_with_void`
+# case reuses this same workflow with its own source and its own expectation.
 id: f8922aa0-9825-4104-a628-aa19a8cc561d
 name: "CityGML Writer round trip"
 entryGraphId: fffe39d0-a30e-425f-a041-547253f79b1b

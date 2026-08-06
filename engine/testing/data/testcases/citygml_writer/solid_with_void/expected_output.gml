@@ -3,38 +3,24 @@
   <gml:boundedBy>
     <gml:Envelope srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
       <gml:lowerCorner>35 135 0</gml:lowerCorner>
-      <gml:upperCorner>35.001 135.001 10</gml:upperCorner>
+      <gml:upperCorner>35.002 135.002 20</gml:upperCorner>
     </gml:Envelope>
   </gml:boundedBy>
   <core:cityObjectMember>
-    <bldg:Building gml:id="test-building-001">
-      <bldg:lod2MultiSurface>
+    <bldg:Building gml:id="test-building-002">
+      <bldg:lod0RoofEdge>
         <gml:MultiSurface srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
           <gml:surfaceMember>
             <gml:Polygon>
               <gml:exterior>
                 <gml:LinearRing>
-                  <gml:posList>35 135 0 35 135.001 0 35.001 135.001 0 35.001 135 0 35 135 0</gml:posList>
-                </gml:LinearRing>
-              </gml:exterior>
-              <gml:interior>
-                <gml:LinearRing>
-                  <gml:posList>35.0002 135.0002 0 35.0008 135.0002 0 35.0008 135.0008 0 35.0002 135.0008 0 35.0002 135.0002 0</gml:posList>
-                </gml:LinearRing>
-              </gml:interior>
-            </gml:Polygon>
-          </gml:surfaceMember>
-          <gml:surfaceMember>
-            <gml:Polygon>
-              <gml:exterior>
-                <gml:LinearRing>
-                  <gml:posList>35 135 10 35.001 135 10 35.001 135.001 10 35 135.001 10 35 135 10</gml:posList>
+                  <gml:posList>35 135 20 35.002 135 20 35.002 135.002 20 35 135.002 20 35 135 20</gml:posList>
                 </gml:LinearRing>
               </gml:exterior>
             </gml:Polygon>
           </gml:surfaceMember>
         </gml:MultiSurface>
-      </bldg:lod2MultiSurface>
+      </bldg:lod0RoofEdge>
       <bldg:lod1Solid>
         <gml:Solid srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">
           <gml:exterior>
@@ -43,7 +29,7 @@
                 <gml:Polygon>
                   <gml:exterior>
                     <gml:LinearRing>
-                      <gml:posList>35 135 0 35.001 135 0 35 135.001 0 35 135 0</gml:posList>
+                      <gml:posList>35 135 0 35.002 135 0 35 135.002 0 35 135 0</gml:posList>
                     </gml:LinearRing>
                   </gml:exterior>
                 </gml:Polygon>
@@ -52,7 +38,7 @@
                 <gml:Polygon>
                   <gml:exterior>
                     <gml:LinearRing>
-                      <gml:posList>35 135 0 35 135 10 35.001 135 0 35 135 0</gml:posList>
+                      <gml:posList>35 135 0 35 135 20 35.002 135 0 35 135 0</gml:posList>
                     </gml:LinearRing>
                   </gml:exterior>
                 </gml:Polygon>
@@ -61,7 +47,7 @@
                 <gml:Polygon>
                   <gml:exterior>
                     <gml:LinearRing>
-                      <gml:posList>35.001 135 0 35 135 10 35 135.001 0 35.001 135 0</gml:posList>
+                      <gml:posList>35.002 135 0 35 135 20 35 135.002 0 35.002 135 0</gml:posList>
                     </gml:LinearRing>
                   </gml:exterior>
                 </gml:Polygon>
@@ -70,13 +56,53 @@
                 <gml:Polygon>
                   <gml:exterior>
                     <gml:LinearRing>
-                      <gml:posList>35 135.001 0 35 135 10 35 135 0 35 135.001 0</gml:posList>
+                      <gml:posList>35 135.002 0 35 135 20 35 135 0 35 135.002 0</gml:posList>
                     </gml:LinearRing>
                   </gml:exterior>
                 </gml:Polygon>
               </gml:surfaceMember>
             </gml:CompositeSurface>
           </gml:exterior>
+          <gml:interior>
+            <gml:CompositeSurface>
+              <gml:surfaceMember>
+                <gml:Polygon>
+                  <gml:exterior>
+                    <gml:LinearRing>
+                      <gml:posList>35.0005 135.0005 1 35.001 135.0005 1 35.0005 135.001 1 35.0005 135.0005 1</gml:posList>
+                    </gml:LinearRing>
+                  </gml:exterior>
+                </gml:Polygon>
+              </gml:surfaceMember>
+              <gml:surfaceMember>
+                <gml:Polygon>
+                  <gml:exterior>
+                    <gml:LinearRing>
+                      <gml:posList>35.0005 135.0005 1 35.0005 135.0005 5 35.001 135.0005 1 35.0005 135.0005 1</gml:posList>
+                    </gml:LinearRing>
+                  </gml:exterior>
+                </gml:Polygon>
+              </gml:surfaceMember>
+              <gml:surfaceMember>
+                <gml:Polygon>
+                  <gml:exterior>
+                    <gml:LinearRing>
+                      <gml:posList>35.001 135.0005 1 35.0005 135.0005 5 35.0005 135.001 1 35.001 135.0005 1</gml:posList>
+                    </gml:LinearRing>
+                  </gml:exterior>
+                </gml:Polygon>
+              </gml:surfaceMember>
+              <gml:surfaceMember>
+                <gml:Polygon>
+                  <gml:exterior>
+                    <gml:LinearRing>
+                      <gml:posList>35.0005 135.001 1 35.0005 135.0005 5 35.0005 135.0005 1 35.0005 135.001 1</gml:posList>
+                    </gml:LinearRing>
+                  </gml:exterior>
+                </gml:Polygon>
+              </gml:surfaceMember>
+            </gml:CompositeSurface>
+          </gml:interior>
         </gml:Solid>
       </bldg:lod1Solid>
     </bldg:Building>

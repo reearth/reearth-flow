@@ -107,6 +107,13 @@ fn generate_test_code(
                     ignore = "Workflow not yet migrated to new-geometry"
                 )]
             }
+        } else if test_case.profile.skip_legacy_geometry {
+            quote! {
+                #[cfg_attr(
+                    not(feature = "new-geometry"),
+                    ignore = "Expectation only the new-geometry build can produce"
+                )]
+            }
         } else {
             quote! {}
         };
