@@ -3871,6 +3871,12 @@ Writes features to a GeoJSON file for each resolved output path.
           "type": "string"
         }
       }
+    },
+    "writeCrs": {
+      "title": "Write CRS",
+      "description": "Whether to declare the coordinate reference system of the written coordinates in a legacy GeoJSON 2008 `crs` member. Defaults to false; enable it when the coordinates are not WGS84 longitude / latitude and the consumer reads that member.",
+      "default": false,
+      "type": "boolean"
     }
   }
 }
@@ -4999,6 +5005,12 @@ Writes features to GeoJSON files, optionally grouping them into separate files.
       "items": {
         "$ref": "#/definitions/Attribute"
       }
+    },
+    "writeCrs": {
+      "title": "Write CRS",
+      "description": "Whether to declare the coordinate reference system of the written coordinates in a legacy GeoJSON 2008 `crs` member. Defaults to false; enable it when the coordinates are not WGS84 longitude / latitude and the consumer reads that member.",
+      "default": false,
+      "type": "boolean"
     }
   },
   "definitions": {

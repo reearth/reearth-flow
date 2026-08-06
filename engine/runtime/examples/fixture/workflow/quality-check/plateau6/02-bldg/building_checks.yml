@@ -303,6 +303,7 @@ nodes:
       output:
         type: string
         value: error_geometry/02_建築物_LOD0面の交差.geojson
+      writeCrs: true
 
   # --- LOD0 surface orientation pipeline ---
   # SurfaceValidator2D emits LOD0 surfaces whose exterior ring is not
@@ -1298,6 +1299,7 @@ nodes:
       output:
         type: string
         value: error_geometry/02_建築物_LOD2以上境界面のエラー.geojson
+      writeCrs: true
 
   # --- LOD2 solid-boundary validation pipeline (L14) ---
   - id: f2cfc80d-26e2-43e9-9038-89f698e84147
