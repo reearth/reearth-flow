@@ -3,11 +3,33 @@
 //!
 //! Scope: every 3D leaf CityGML 2.0 has an element for — `Polygon`,
 //! `LineString`, `PolygonMesh`, `TriangularMesh`, `Solid` — and collections of
-//! them. `Point`, `PointCloud`, `Csg` and the 2D leaves have no counterpart and
-//! are reported as a [`GeometryOmission`] rather than silently skipped.
-//! Appearance is still Phase 5's: surfaces come out bare.
+//! them, each carrying whatever appearance the leaf held.
 //!
-//! Three things this module owns that the legacy converter does not:
+//! # What this writer does not emit
+//!
+//! Every one of these is a deliberate narrowing, reported rather than silently
+//! dropped, and none of them is a limitation of CityGML 2.0 — they are the edges
+//! of this port:
+//!
+//! - **`Point`, `PointCloud`, `Csg`, and every 2D leaf.** `gml:Point` /
+//!   `gml:MultiPoint` output matches the legacy build's (there is none); a
+//!   boolean tree has no counterpart until it is evaluated, which this writer
+//!   does not do; and promoting a 2D leaf to `Z = 0` would fabricate elevation.
+//!   Each becomes a [`GeometryOmission`].
+//! - **Appearance beyond one theme, one side, one map.** The default theme, the
+//!   front side, `Explicit` UV and the diffuse map only — see
+//!   [`super::appearance_next`], which owns those narrowings and names each of
+//!   them.
+//! - **`app:GeoreferencedTexture`.** Only `app:ParameterizedTexture` is written.
+//! - **Source geometry `gml:id`s.** The unified geometry model does not retain
+//!   the `gml:id` of the surface a leaf came from, so `gml:Polygon` ids are
+//!   minted by the writer and only when an appearance targets them.
+//! - **Feature attributes, semantic surfaces (`bldg:boundedBy` and its kin), and
+//!   `xsi:schemaLocation`.** A written city object carries its `gml:id`, its
+//!   type and its geometry, and nothing else.
+//! - **CityGML 3.0 / GML 3.2.** The output is CityGML 2.0.
+//!
+//! # What this module owns that the legacy converter does not
 //!
 //! - **Axis order.** The new reader stores `gml:posList` ordinates in the axis
 //!   order the CRS itself declares, so [`format_pos_list`] writes them back
@@ -18,12 +40,17 @@
 //!   reach the file, so it is never a guess: one CRS is declared, a mixture is
 //!   an error, and coordinates outside any CRS are only labelled when the user
 //!   supplied an `epsgCode` to label them with.
-//! - **Ring closure.** A `gml:LinearRing` must repeat its first corner, but the
-//!   geometry crate stores rings as they arrived — a triangle-mesh face has
-//!   three corners and no closing one. Every emitted ring is closed here, at
-//!   the one point where the ring and (from Phase 5) its UV slice are both in
-//!   hand, so the two cannot drift apart.
+//! - **Ring closure, and the UV that has to follow it.** A `gml:LinearRing` must
+//!   repeat its first corner, but the geometry crate stores rings as they
+//!   arrived — a triangle-mesh face has three corners and no closing one. Every
+//!   emitted ring is closed here, and the corner the appended one duplicates is
+//!   recorded in the same step, so [`super::appearance_next`] extends that
+//!   ring's texture coordinates by exactly that corner and the two cannot drift
+//!   apart.
 
+use std::ops::Range;
+
+use reearth_flow_geometry::appearance::Appearance;
 use reearth_flow_geometry::coordinate::CoordinateFrame;
 use reearth_flow_geometry::polygon_mesh::FaceVisit;
 use reearth_flow_geometry::solid::{Shell, Solid};
@@ -32,9 +59,12 @@ use reearth_flow_types::conversion::CrsCoverage;
 use reearth_flow_types::lod::LodMask;
 use reearth_flow_types::{Attribute, AttributeValue, Attributes, CitygmlFeatureExt, Feature};
 
+use super::appearance_next::{
+    self, FaceCorners, LeafContext, Palette, RingCorners, SurfaceBinding,
+};
 use super::model::{
-    AppearanceBundle, BoundingEnvelope, ConvertedCityObject, GeometryEntry, GeometryOmission,
-    GmlElement, GmlSolid, GmlSurface,
+    BoundingEnvelope, ConvertedCityObject, GeometryEntry, GeometryOmission, GmlElement, GmlSolid,
+    GmlSurface,
 };
 use crate::errors::SinkError;
 
@@ -56,6 +86,14 @@ const DEFAULT_LOD: u8 = 0;
 /// The highest LOD [`LodMask`] can represent; a larger value could not be
 /// filtered on, so it is rejected rather than silently written.
 const MAX_LOD: u8 = 4;
+
+/// Whether a texture this world referenced but could not stage aborts the write.
+///
+/// It does: the unified path resolves appearance itself and knows exactly which
+/// images the document points at, so a staged image that was never written would
+/// leave a dangling `app:imageURI` nobody asked for. The legacy path keeps its
+/// warn-and-continue behaviour.
+pub const STRICT_TEXTURE_STAGING: bool = true;
 
 /// Serialize `coords` as the body of a `gml:posList` — or of a
 /// `gml:lowerCorner` / `gml:upperCorner`, which the writer formats the same way
@@ -176,6 +214,9 @@ struct Conversion {
     geometries: Vec<GeometryEntry>,
     envelope: Option<BoundingEnvelope>,
     crs: CrsCoverage,
+    /// The material and texture palettes every leaf's bindings index into, one
+    /// `app:Appearance` per feature.
+    palette: Palette,
     omissions: Vec<GeometryOmission>,
 }
 
@@ -183,13 +224,10 @@ impl Conversion {
     fn finish(self) -> ConvertedCityObject {
         ConvertedCityObject {
             geometries: self.geometries,
-            appearance: AppearanceBundle {
-                materials: Vec::new(),
-                textures: Vec::new(),
-            },
+            appearance: self.palette.bundle,
             envelope: self.envelope,
             crs: self.crs,
-            textures: Vec::new(),
+            textures: self.palette.textures,
             omissions: self.omissions,
         }
     }
@@ -215,7 +253,7 @@ impl Conversion {
             }
             Geometry::Euclidean3D(geometry) => {
                 let mut pieces = Vec::new();
-                self.collect_pieces(geometry, &mut pieces);
+                self.collect_pieces(geometry, &mut pieces)?;
                 self.push_entries(lod, property, pieces);
                 Ok(())
             }
@@ -279,14 +317,31 @@ impl Conversion {
 
     /// Flatten one 3D geometry into the leaves CityGML 2.0 can carry, reporting
     /// the rest.
-    fn collect_pieces(&mut self, geometry: &Euclidean3DGeometry, out: &mut Vec<Piece>) {
+    fn collect_pieces(
+        &mut self,
+        geometry: &Euclidean3DGeometry,
+        out: &mut Vec<Piece>,
+    ) -> Result<(), SinkError> {
         match geometry {
+            // A polygon is one face whose rings are concatenated in its own
+            // coordinate buffer, exterior first — which is also the corner
+            // buffer its UV is parallel to.
             Euclidean3DGeometry::Polygon(polygon) => {
                 self.fold_frame(polygon.frame());
-                let exterior = polygon.exterior().to_vec();
-                let interiors: Vec<Vec<[f64; 3]>> =
-                    polygon.interiors().map(<[[f64; 3]]>::to_vec).collect();
-                out.push(Piece::Surface(self.surface(exterior, interiors)));
+                let mut corner = 0;
+                let mut ring = |coords: &[[f64; 3]]| {
+                    let start = corner;
+                    corner += coords.len();
+                    (coords.to_vec(), start..corner)
+                };
+                let face = FaceRings {
+                    face: 0,
+                    exterior: ring(polygon.exterior()),
+                    interiors: polygon.interiors().map(ring).collect(),
+                };
+                let surfaces =
+                    self.emit_surfaces(vec![face], polygon.appearance(), "a Polygon leaf")?;
+                out.extend(surfaces.into_iter().map(Piece::Surface));
             }
             Euclidean3DGeometry::LineString(line_string) => {
                 self.fold_frame(line_string.frame());
@@ -296,7 +351,7 @@ impl Conversion {
             }
             Euclidean3DGeometry::Collection(collection) => {
                 for member in collection.members() {
-                    self.collect_pieces(member, out);
+                    self.collect_pieces(member, out)?;
                 }
             }
             // A mesh is a set of independent faces sharing a vertex pool, which
@@ -304,25 +359,24 @@ impl Conversion {
             Euclidean3DGeometry::PolygonMesh(mesh) => {
                 self.fold_frame(mesh.frame());
                 let mut faces = Vec::with_capacity(mesh.num_faces());
-                mesh.for_each_face(|face| faces.push(face_rings(&face)));
-                for (exterior, interiors) in faces {
-                    out.push(Piece::Surface(self.surface(exterior, interiors)));
-                }
+                mesh.for_each_face(|face| faces.push(FaceRings::from(&face)));
+                let surfaces = self.emit_surfaces(faces, mesh.appearance(), "a PolygonMesh")?;
+                out.extend(surfaces.into_iter().map(Piece::Surface));
             }
             Euclidean3DGeometry::TriangularMesh(mesh) => {
                 self.fold_frame(mesh.frame());
                 let mut faces = Vec::with_capacity(mesh.num_triangles());
-                mesh.for_each_face(|face| faces.push(face_rings(&face)));
-                for (exterior, interiors) in faces {
-                    out.push(Piece::Surface(self.surface(exterior, interiors)));
-                }
+                mesh.for_each_face(|face| faces.push(FaceRings::from(&face)));
+                let surfaces = self.emit_surfaces(faces, mesh.appearance(), "a TriangularMesh")?;
+                out.extend(surfaces.into_iter().map(Piece::Surface));
             }
             // One `gml:CompositeSurface` per shell: the exterior bounds the
             // volume, each interior bounds a void the unified reader kept and
             // the legacy one discarded.
             Euclidean3DGeometry::Solid(solid) => {
                 self.fold_frame(solid.frame());
-                out.push(Piece::Solid(self.solid(solid)));
+                let solid = self.solid(solid)?;
+                out.push(Piece::Solid(solid));
             }
             // Parity-first omissions: CityGML 2.0 has no element for these, and
             // coercing them would fabricate geometry.
@@ -334,57 +388,118 @@ impl Conversion {
                  writer does not do",
             ),
         }
+        Ok(())
     }
 
     /// One solid, as its exterior shell's faces plus one face list per void.
-    fn solid(&mut self, solid: &Solid) -> GmlSolid {
-        GmlSolid {
-            id: None,
-            exterior: self.shell(solid.exterior()),
-            interiors: solid
-                .interiors()
-                .iter()
-                .map(|shell| self.shell(shell))
-                .collect(),
+    ///
+    /// A solid carries no appearance of its own; each boundary shell carries
+    /// its own, over its own corner buffer, so each is resolved separately.
+    fn solid(&mut self, solid: &Solid) -> Result<GmlSolid, SinkError> {
+        let exterior = self.shell(solid.exterior(), "a Solid's exterior shell")?;
+        let mut interiors = Vec::with_capacity(solid.interiors().len());
+        for shell in solid.interiors() {
+            interiors.push(self.shell(shell, "a Solid's interior shell")?);
         }
-    }
-
-    /// One boundary shell's faces, whichever mesh kind it is.
-    fn shell(&mut self, shell: &Shell) -> Vec<GmlSurface> {
-        let mut faces = Vec::with_capacity(shell.num_faces());
-        shell.for_each_face(|face| faces.push(face_rings(&face)));
-        faces
-            .into_iter()
-            .map(|(exterior, interiors)| self.surface(exterior, interiors))
-            .collect()
-    }
-
-    /// Build one `gml:Polygon` from a face's rings: close each ring, fold its
-    /// coordinates into the envelope, and leave the appearance slots empty for
-    /// Phase 5 to fill.
-    fn surface(&mut self, exterior: Vec<[f64; 3]>, interiors: Vec<Vec<[f64; 3]>>) -> GmlSurface {
-        let mut exterior = exterior;
-        // The closing corner duplicates the ring's first, which is the corner
-        // whose UV Phase 5 duplicates in the same step. Nothing reads it yet.
-        let _closed_at = close_ring(&mut exterior);
-        self.fold_envelope(&exterior);
-        let interiors = interiors
-            .into_iter()
-            .map(|mut ring| {
-                let _closed_at = close_ring(&mut ring);
-                self.fold_envelope(&ring);
-                ring
-            })
-            .collect();
-        GmlSurface {
+        Ok(GmlSolid {
             id: None,
             exterior,
             interiors,
-            material_idx: None,
-            texture_idx: None,
-            uv_exterior: Vec::new(),
-            uv_interiors: Vec::new(),
+        })
+    }
+
+    /// One boundary shell's faces, whichever mesh kind it is.
+    fn shell(&mut self, shell: &Shell, named: &'static str) -> Result<Vec<GmlSurface>, SinkError> {
+        let mut faces = Vec::with_capacity(shell.num_faces());
+        shell.for_each_face(|face| faces.push(FaceRings::from(&face)));
+        self.emit_surfaces(faces, shell.appearance(), named)
+    }
+
+    /// Turn one leaf's faces into `gml:Polygon`s and paint them.
+    ///
+    /// Closing the rings and resolving the appearance are one step on purpose:
+    /// the corner a closed ring duplicates is only known here, and it is exactly
+    /// the corner whose texture coordinate has to be duplicated with it.
+    fn emit_surfaces(
+        &mut self,
+        faces: Vec<FaceRings>,
+        appearance: &Option<Appearance>,
+        named: &'static str,
+    ) -> Result<Vec<GmlSurface>, SinkError> {
+        let mut surfaces = Vec::with_capacity(faces.len());
+        let mut corners = Vec::with_capacity(faces.len());
+        for face in faces {
+            let (surface, face_corners) = self.surface(face);
+            surfaces.push(surface);
+            corners.push(face_corners);
         }
+
+        let Some(appearance) = appearance else {
+            return Ok(surfaces);
+        };
+        let context = LeafContext {
+            feature: &self.context.id,
+            geometry: named,
+        };
+        let resolved = appearance_next::resolve(appearance, &corners, &mut self.palette, &context)?;
+        for (surface, binding) in surfaces.iter_mut().zip(resolved.bindings) {
+            paint(surface, binding);
+        }
+        for omission in resolved.omissions {
+            self.omit_n(omission.geometry, omission.reason, omission.count);
+        }
+        Ok(surfaces)
+    }
+
+    /// Build one `gml:Polygon` from a face's rings: close each ring, fold its
+    /// coordinates into the envelope, and record where each ring's texture
+    /// coordinates live.
+    fn surface(&mut self, face: FaceRings) -> (GmlSurface, FaceCorners) {
+        let (exterior, exterior_corners) = self.ring(face.exterior);
+        let mut interiors = Vec::with_capacity(face.interiors.len());
+        let mut interior_corners = Vec::with_capacity(face.interiors.len());
+        for ring in face.interiors {
+            let (ring, corners) = self.ring(ring);
+            interiors.push(ring);
+            interior_corners.push(corners);
+        }
+        (
+            GmlSurface {
+                id: None,
+                exterior,
+                interiors,
+                material_idx: None,
+                texture_idx: None,
+                uv_exterior: Vec::new(),
+                uv_interiors: Vec::new(),
+            },
+            FaceCorners {
+                face: face.face,
+                exterior: exterior_corners,
+                interiors: interior_corners,
+            },
+        )
+    }
+
+    /// Close one ring, fold it into the envelope, and say where its texture
+    /// coordinates come from.
+    fn ring(
+        &mut self,
+        (mut ring, corners): (Vec<[f64; 3]>, Range<usize>),
+    ) -> (Vec<[f64; 3]>, RingCorners) {
+        // The closing corner duplicates the ring's first, whose absolute
+        // position in the corner buffer is where the ring's range starts.
+        let closure = close_ring(&mut ring).map(|local| corners.start + local);
+        self.fold_envelope(&ring);
+        let len = ring.len();
+        (
+            ring,
+            RingCorners {
+                corners,
+                closure,
+                len,
+            },
+        )
     }
 
     /// Group one member's emitted leaves by GML family: all solids into one
@@ -463,34 +578,63 @@ impl Conversion {
     /// Record one leaf CityGML 2.0 has no place for, aggregated by kind so a
     /// collection of a thousand points is reported once.
     fn omit(&mut self, geometry: &'static str, reason: &'static str) {
+        self.omit_n(geometry, reason, 1);
+    }
+
+    /// As [`omit`](Self::omit), for a narrowing that already counted itself —
+    /// an appearance drops several themes or maps at once.
+    fn omit_n(&mut self, geometry: &'static str, reason: &'static str, count: usize) {
         match self
             .omissions
             .iter_mut()
             .find(|omission| omission.geometry == geometry)
         {
-            Some(omission) => omission.count += 1,
+            Some(omission) => omission.count += count,
             None => self.omissions.push(GeometryOmission {
                 geometry,
                 reason,
-                count: 1,
+                count,
             }),
         }
     }
 }
 
+/// Apply one resolved binding to the surface it belongs to.
+fn paint(surface: &mut GmlSurface, binding: SurfaceBinding) {
+    surface.material_idx = binding.material_idx;
+    surface.texture_idx = binding.texture_idx;
+    surface.uv_exterior = binding.uv_exterior;
+    surface.uv_interiors = binding.uv_interiors;
+}
+
 const POINT_REASON: &str =
     "this writer emits no gml:Point / gml:MultiPoint, matching the legacy build";
 
-/// A visited face's rings as owned coordinates: the exterior first, then the
-/// holes. Copied out because the visitor's borrows do not outlive the callback.
-fn face_rings(face: &FaceVisit<'_>) -> (Vec<[f64; 3]>, Vec<Vec<[f64; 3]>>) {
-    (
-        face.exterior.coords.to_vec(),
-        face.interiors
-            .iter()
-            .map(|ring| ring.coords.to_vec())
-            .collect(),
-    )
+/// One face on its way out: each ring's coordinates paired with the corner range
+/// that ring occupies in its leaf's corner buffer.
+///
+/// The coordinates are copied because the face visitor's borrows do not outlive
+/// its callback; the ranges are carried alongside because they are the only
+/// thing that can line a ring up with the theme's per-corner UV array, and they
+/// are not recoverable once the coordinates have been copied out.
+struct FaceRings {
+    face: usize,
+    exterior: (Vec<[f64; 3]>, Range<usize>),
+    interiors: Vec<(Vec<[f64; 3]>, Range<usize>)>,
+}
+
+impl From<&FaceVisit<'_>> for FaceRings {
+    fn from(face: &FaceVisit<'_>) -> Self {
+        Self {
+            face: face.face,
+            exterior: (face.exterior.coords.to_vec(), face.exterior.corners.clone()),
+            interiors: face
+                .interiors
+                .iter()
+                .map(|ring| (ring.coords.to_vec(), ring.corners.clone()))
+                .collect(),
+        }
+    }
 }
 
 /// Close `ring` for GML: a `gml:LinearRing` repeats its first corner, and rings
@@ -525,13 +669,20 @@ mod tests {
     /// The unified world is the only one that builds these, so the fixtures need
     /// no gating: this whole module compiles only under `new-geometry`.
     mod fixture {
+        use std::str::FromStr;
+        use std::sync::Arc;
+
+        use reearth_flow_common::uri::Uri;
+        use reearth_flow_geometry::appearance::{
+            ChannelId, Material, PhongMaterial, Raster, Sampler, Texture, ThemeId, UvSource,
+        };
         use reearth_flow_geometry::collection::Collection3D;
         use reearth_flow_geometry::coordinate::{
             BaseFrame, CoordinateFrame, EpsgCode, TangentPlane,
         };
         use reearth_flow_geometry::line_string::LineString3D;
         use reearth_flow_geometry::point::Point3D;
-        use reearth_flow_geometry::polygon::Polygon3D;
+        use reearth_flow_geometry::polygon::{Polygon3D, PolygonFace};
         use reearth_flow_geometry::polygon_mesh::{PolygonMesh3D, PolygonMesh3DData};
         use reearth_flow_geometry::solid::{Shell, Solid};
         use reearth_flow_geometry::triangular_mesh::TriangularMesh3D;
@@ -649,6 +800,92 @@ mod tests {
                 })
                 .collect();
             Euclidean3DGeometry::Solid(Box::new(Solid::new(frame, exterior, interiors)))
+        }
+
+        /// A Phong material painted with the image at `uri`, sampling the
+        /// default UV channel — the shape a CityGML `ParameterizedTexture`
+        /// arrives in.
+        pub fn textured(uri: &str) -> Material {
+            Material::Phong(PhongMaterial {
+                diffuse: [0.5, 0.5, 0.5],
+                specular: [0.0; 3],
+                emissive: [0.0; 3],
+                ambient_intensity: 0.5,
+                shininess: 0.0,
+                transparency: 0.0,
+                diffuse_map: Some(Texture {
+                    raster: Arc::new(Raster::Uri(Uri::from_str(uri).unwrap())),
+                    sampler: Sampler::default(),
+                    transform: None,
+                    uv_channel: ChannelId::default(),
+                }),
+                emissive_map: None,
+                normal_map: None,
+            })
+        }
+
+        /// The closed triangle of [`triangle`], painted, with one UV per stored
+        /// corner (four, because the ring arrives closed).
+        pub fn textured_triangle(frame: CoordinateFrame, uv: Vec<[f64; 2]>) -> Euclidean3DGeometry {
+            let Euclidean3DGeometry::Polygon(mut polygon) = triangle(frame, 0.0) else {
+                unreachable!("`triangle` builds a polygon");
+            };
+            polygon
+                .set_appearance(
+                    ThemeId(Arc::from("rgbTexture")),
+                    textured("file:///textures/wall.png"),
+                    Some(UvSource::Explicit(uv.into_boxed_slice())),
+                )
+                .unwrap();
+            Euclidean3DGeometry::Polygon(polygon)
+        }
+
+        /// The two-triangle mesh of [`triangular_mesh`], painted, with one UV per
+        /// corner — six, three per face, which is what makes a face's slice of
+        /// them observable.
+        pub fn textured_triangular_mesh(
+            frame: CoordinateFrame,
+            uv: Vec<[f64; 2]>,
+        ) -> Euclidean3DGeometry {
+            let Euclidean3DGeometry::TriangularMesh(mut mesh) = triangular_mesh(frame) else {
+                unreachable!("`triangular_mesh` builds a triangular mesh");
+            };
+            mesh.set_appearance(
+                ThemeId(Arc::from("rgbTexture")),
+                textured("file:///textures/roof.png"),
+                Some(UvSource::Explicit(uv.into_boxed_slice())),
+            )
+            .unwrap();
+            Euclidean3DGeometry::TriangularMesh(mesh)
+        }
+
+        /// A triangle painted differently on each side — the case this writer
+        /// narrows to its front side alone.
+        pub fn two_sided_triangle(frame: CoordinateFrame) -> Euclidean3DGeometry {
+            let Euclidean3DGeometry::Polygon(mut polygon) = triangle(frame, 0.0) else {
+                unreachable!("`triangle` builds a polygon");
+            };
+            let plain = |diffuse: [f32; 3]| {
+                Material::Phong(PhongMaterial {
+                    diffuse,
+                    specular: [0.0; 3],
+                    emissive: [0.0; 3],
+                    ambient_intensity: 0.5,
+                    shininess: 0.0,
+                    transparency: 0.0,
+                    diffuse_map: None,
+                    emissive_map: None,
+                    normal_map: None,
+                })
+            };
+            polygon
+                .set_two_sided_appearance(
+                    ThemeId(Arc::from("rgbTexture")),
+                    PolygonFace::single(plain([1.0, 0.0, 0.0]), None),
+                    PolygonFace::single(plain([0.0, 0.0, 1.0]), None),
+                )
+                .unwrap();
+            Euclidean3DGeometry::Polygon(polygon)
         }
 
         /// The four corners the mesh fixtures share.
@@ -1104,6 +1341,161 @@ mod tests {
 
         assert_eq!(close_ring(&mut ring), None);
         assert!(ring.is_empty());
+    }
+
+    // Appearance
+
+    /// The whole appearance path, end to end on one leaf: the material and the
+    /// image reach the feature's palettes, the surface points at both, the
+    /// selected theme is what the document will declare, and the image is
+    /// listed for the shell to stage.
+    #[test]
+    fn a_textured_polygon_reaches_the_document_with_its_material_texture_and_image() {
+        let feature = feature(vec![(
+            member_attrs(Some(2), Some("lod2MultiSurface")),
+            textured_triangle(
+                crs(6697),
+                vec![[0.0, 0.0], [1.0, 0.0], [0.5, 1.0], [0.0, 0.0]],
+            ),
+        )]);
+
+        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+
+        let surfaces = surfaces(&converted.geometries[0]);
+        assert_eq!(surfaces[0].material_idx, Some(0));
+        assert_eq!(surfaces[0].texture_idx, Some(0));
+        assert_eq!(converted.appearance.theme.as_deref(), Some("rgbTexture"));
+        assert_eq!(converted.appearance.materials.len(), 1);
+        assert_eq!(
+            converted.appearance.textures[0].key,
+            "file:///textures/wall.png"
+        );
+        assert_eq!(converted.textures.len(), 1);
+        assert!(converted.omissions.is_empty());
+    }
+
+    /// The flip, at the level a reader→writer round trip sees it: what the
+    /// CityGML reader turned into Flow's top-left origin comes back out in
+    /// CityGML's bottom-left one.
+    #[test]
+    fn an_emitted_uv_is_flipped_back_to_citygmls_origin() {
+        let feature = feature(vec![(
+            member_attrs(Some(2), None),
+            textured_triangle(
+                crs(6697),
+                vec![[0.0, 0.0], [1.0, 0.25], [0.5, 1.0], [0.0, 0.0]],
+            ),
+        )]);
+
+        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+
+        assert_eq!(
+            surfaces(&converted.geometries[0])[0].uv_exterior,
+            vec![[0.0, 1.0], [1.0, 0.75], [0.5, 0.0], [0.0, 1.0]]
+        );
+    }
+
+    /// The reason the face visitor hands back corner ranges at all: a mesh's UV
+    /// is one flat array over the whole corner buffer, so each face's ring takes
+    /// its own slice of it — and each open face gains the UV of the corner its
+    /// closure repeats, from within its own slice.
+    #[test]
+    fn each_mesh_face_takes_its_own_slice_of_the_meshs_uv() {
+        // Six corners, three per triangle, each face's UVs distinguishable.
+        let uv = vec![
+            [0.0, 0.0],
+            [0.1, 0.0],
+            [0.2, 0.0],
+            [0.5, 0.0],
+            [0.6, 0.0],
+            [0.7, 0.0],
+        ];
+        let feature = feature(vec![(
+            member_attrs(None, Some("tin")),
+            textured_triangular_mesh(crs(6697), uv),
+        )]);
+
+        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+
+        let surfaces = surfaces(&converted.geometries[0]);
+        assert_eq!(surfaces.len(), 2);
+        // `v` is 0 throughout, so every flipped ordinate is 1 and only the slice
+        // boundary is under test.
+        assert_eq!(
+            surfaces[0].uv_exterior,
+            vec![[0.0, 1.0], [0.1, 1.0], [0.2, 1.0], [0.0, 1.0]],
+            "face 0 takes corners 0..3, closed by repeating corner 0"
+        );
+        assert_eq!(
+            surfaces[1].uv_exterior,
+            vec![[0.5, 1.0], [0.6, 1.0], [0.7, 1.0], [0.5, 1.0]],
+            "face 1 takes corners 3..6, closed by repeating corner 3"
+        );
+        // A closed ring and its UV have the same length, which is the whole
+        // point of closing and slicing in one step.
+        assert!(surfaces
+            .iter()
+            .all(|surface| surface.exterior.len() == surface.uv_exterior.len()));
+    }
+
+    /// One image under two leaves is one `app:ParameterizedTexture` and one
+    /// staged file, while the materials still merge with an index offset.
+    #[test]
+    fn palettes_merge_across_a_features_leaves() {
+        let uv = || vec![[0.0, 0.0], [1.0, 0.0], [0.5, 1.0], [0.0, 0.0]];
+        let feature = feature(vec![
+            (
+                member_attrs(Some(1), None),
+                textured_triangle(crs(6697), uv()),
+            ),
+            (
+                member_attrs(Some(2), None),
+                textured_triangle(crs(6697), uv()),
+            ),
+        ]);
+
+        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+
+        assert_eq!(converted.appearance.materials.len(), 2);
+        assert_eq!(converted.appearance.textures.len(), 1);
+        assert_eq!(converted.textures.len(), 1);
+        assert_eq!(surfaces(&converted.geometries[0])[0].material_idx, Some(0));
+        assert_eq!(surfaces(&converted.geometries[1])[0].material_idx, Some(1));
+        assert_eq!(surfaces(&converted.geometries[1])[0].texture_idx, Some(0));
+    }
+
+    /// An appearance narrowing is reported through the same channel as a
+    /// geometry one, so it reaches the feature's single warning line.
+    #[test]
+    fn an_appearance_narrowing_is_reported_with_the_geometry_omissions() {
+        let feature = feature(vec![(
+            member_attrs(Some(2), None),
+            two_sided_triangle(crs(6697)),
+        )]);
+
+        let converted = convert_city_object(&feature, &all_lods()).unwrap();
+
+        assert_eq!(converted.omissions.len(), 1);
+        assert_eq!(
+            converted.omissions[0].geometry,
+            "back-side appearance binding"
+        );
+        // The front side is still painted, and only the front material is in
+        // the palette.
+        assert_eq!(converted.appearance.materials.len(), 1);
+        assert_eq!(converted.appearance.materials[0].diffuse_color.r, 1.0);
+    }
+
+    /// A bare leaf stays bare: no appearance means no palettes, no images, and
+    /// no `app:appearanceMember` in the document.
+    #[test]
+    fn a_leaf_with_no_appearance_produces_no_palettes() {
+        let converted = convert_city_object(&bare(triangle(crs(6697), 0.0)), &all_lods()).unwrap();
+
+        assert!(!converted.appearance.has_content());
+        assert!(converted.appearance.theme.is_none());
+        assert!(converted.textures.is_empty());
+        assert_eq!(surfaces(&converted.geometries[0])[0].material_idx, None);
     }
 
     // Collections

@@ -14,8 +14,10 @@
 
 use std::fmt;
 
+use bytes::Bytes;
+use reearth_flow_common::image::MimeType;
 use reearth_flow_types::conversion::CrsCoverage;
-use reearth_flow_types::material::{Texture, X3DMaterial};
+use reearth_flow_types::material::X3DMaterial;
 
 /// One feature's worth of converted CityGML, plus everything the shared shell
 /// needs in order to write the document around it.
@@ -103,16 +105,36 @@ pub struct GmlSurface {
 
 /// Appearance data for a feature: the palettes `GmlSurface::material_idx` and
 /// `GmlSurface::texture_idx` index into.
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default)]
 pub struct AppearanceBundle {
+    /// The name written as `app:theme`.
+    ///
+    /// `None` keeps the literal this writer has always emitted (`rgbTexture`):
+    /// the legacy geometry model carries no theme name, so there is nothing
+    /// truer to write. The unified world resolves a real
+    /// [`ThemeId`](reearth_flow_geometry::appearance::ThemeId) and puts it here,
+    /// because a wrong theme name breaks appearance selection downstream.
+    pub theme: Option<String>,
     pub materials: Vec<X3DMaterial>,
-    pub textures: Vec<Texture>,
+    pub textures: Vec<GmlTexture>,
 }
 
 impl AppearanceBundle {
     pub fn has_content(&self) -> bool {
         !self.materials.is_empty() || !self.textures.is_empty()
     }
+}
+
+/// One `app:ParameterizedTexture`'s image, as the writer needs it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct GmlTexture {
+    /// The [`TextureRef::key`] this image was staged under, and therefore the
+    /// key the writer looks the staged relative path up by.
+    pub key: String,
+    /// What `app:imageURI` says when nothing was staged under [`key`](Self::key)
+    /// — the source URI, which is what the legacy build has always written for a
+    /// texture whose file could not be copied.
+    pub uri: String,
 }
 
 /// The `gml:boundedBy` extent of what was emitted.
@@ -149,7 +171,25 @@ pub struct TextureRef {
 pub enum TextureSource {
     /// A raster the shell reads out of storage at this URI.
     Uri(url::Url),
-    // Rasters an OBJ or glTF reader carried in memory are not modelled yet.
+    /// A raster that arrived already decoded into memory — an OBJ `map_Kd` or a
+    /// glTF/GLB packed image — with no URI to read it back from. The shell
+    /// writes the bytes itself, naming the file from the [`MimeType`].
+    InMemory { mime: MimeType, bytes: Bytes },
+}
+
+impl TextureSource {
+    /// The file extension a staged copy of this image gets.
+    ///
+    /// A URI-backed raster keeps whatever its source URI's last segment already
+    /// says, so this is only consulted for in-memory bytes, whose format is the
+    /// closed three-value [`MimeType`] and nothing else.
+    pub fn extension(mime: MimeType) -> &'static str {
+        match mime {
+            MimeType::ImageJpeg => "jpg",
+            MimeType::ImagePng => "png",
+            MimeType::ImageWebp => "webp",
+        }
+    }
 }
 
 /// One kind of geometry a conversion left out of the document.

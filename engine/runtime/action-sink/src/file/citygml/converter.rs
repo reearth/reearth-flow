@@ -15,9 +15,16 @@ use reearth_flow_types::Feature;
 
 use super::model::{
     AppearanceBundle, BoundingEnvelope, ConvertedCityObject, GeometryEntry, GmlElement, GmlSolid,
-    GmlSurface, TextureRef, TextureSource,
+    GmlSurface, GmlTexture, TextureRef, TextureSource,
 };
 use crate::errors::SinkError;
+
+/// Whether a texture this world referenced but could not stage aborts the write.
+///
+/// It does not: the legacy path warns and continues, leaving that texture's
+/// original absolute `app:imageURI` in the document. Tightening it would change
+/// what this build accepts, which this port does not do.
+pub const STRICT_TEXTURE_STAGING: bool = false;
 
 /// Convert one feature's geometry into the shared CityGML model.
 ///
@@ -33,10 +40,7 @@ pub fn convert_city_object(
         // object here; it is passed over, not reported.
         return Ok(ConvertedCityObject {
             geometries: Vec::new(),
-            appearance: AppearanceBundle {
-                materials: Vec::new(),
-                textures: Vec::new(),
-            },
+            appearance: AppearanceBundle::default(),
             envelope: None,
             crs: CrsCoverage::NoCoordinates,
             textures: Vec::new(),
@@ -142,8 +146,20 @@ pub fn convert_citygml_geometry(
         .collect();
 
     let appearance = AppearanceBundle {
+        // The legacy geometry model records no theme name, so the writer keeps
+        // emitting the literal it always has.
+        theme: None,
         materials: geometry.materials.clone(),
-        textures: geometry.textures.clone(),
+        // Both key and fallback URI are the source URI string, which is exactly
+        // what `app:imageURI` has always been rewritten by here.
+        textures: geometry
+            .textures
+            .iter()
+            .map(|texture| GmlTexture {
+                key: texture.uri.to_string(),
+                uri: texture.uri.to_string(),
+            })
+            .collect(),
     };
 
     (entries, appearance)

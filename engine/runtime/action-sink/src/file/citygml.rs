@@ -12,6 +12,12 @@ pub mod converter;
 #[path = "citygml/converter_next.rs"]
 pub mod converter;
 
+// Appearance resolution has no legacy counterpart: the legacy converter reads
+// palettes the reader already flattened, while this narrows the native
+// appearance graph. It exists only in the world that has one.
+#[cfg(feature = "new-geometry")]
+mod appearance_next;
+
 use std::collections::{HashMap, HashSet};
 use std::io::BufWriter;
 use std::str::FromStr;
@@ -102,7 +108,13 @@ pub fn write_citygml_to_storage(
     }
 
     let srs_name = converter::srs_name(features, epsg_code, crs)?;
-    let uri_remap = stage_textures(&textures, output, sandbox_root, storage_resolver)?;
+    let uri_remap = stage_textures(
+        &textures,
+        output,
+        sandbox_root,
+        storage_resolver,
+        converter::STRICT_TEXTURE_STAGING,
+    )?;
 
     // Build and write XML.
     let buffer_size = (features.len() * 4096).clamp(32 * 1024, 512 * 1024);
@@ -165,22 +177,28 @@ pub fn write_citygml_to_storage(
 /// GML file, not to the sandbox root, because that is what `app:imageURI` means.
 ///
 /// `textures` arrives deduplicated by [`TextureRef::key`] — the source URI
-/// string — so one image referenced by many features is read and written exactly
-/// once. What still has to be disambiguated here is the **destination
-/// basename**, because only the last path segment of a source URI becomes the
-/// file name. Two distinct sources named `a/tex.png` and `b/tex.png` would
-/// otherwise both stage to `{stem}_appearance/tex.png`, and since
-/// `SinkOutput::write` is a full overwrite the second would silently replace the
-/// first. The later one gets a numbered suffix (`tex_1.png`) instead.
+/// string for a URI-backed raster, a content hash for one that arrived as bytes
+/// — so one image referenced by many features is read and written exactly once.
+/// What still has to be disambiguated here is the **destination basename**,
+/// because only the last path segment of a source URI becomes the file name. Two
+/// distinct sources named `a/tex.png` and `b/tex.png` would otherwise both stage
+/// to `{stem}_appearance/tex.png`, and since `SinkOutput::write` is a full
+/// overwrite the second would silently replace the first. The later one gets a
+/// numbered suffix (`tex_1.png`) instead.
 ///
-/// A per-texture failure warns and continues, leaving that texture's original
-/// absolute `app:imageURI` in the output; only a destination that cannot be
-/// derived at all is fatal.
+/// `strict` is the compiled world's policy for a texture that is referenced but
+/// cannot be read or written, supplied by the converter module (see
+/// `converter::STRICT_TEXTURE_STAGING`). The legacy path warns and continues,
+/// leaving that texture's original absolute `app:imageURI` in the output — the
+/// behaviour it has always had. The unified path fails the write instead, so an
+/// emitted document can never point `app:imageURI` at an image nobody wrote.
+/// Either way, a destination that cannot be derived at all is fatal in both.
 fn stage_textures(
     textures: &[TextureRef],
     output: &Uri,
     sandbox_root: &Uri,
     storage_resolver: &Arc<StorageResolver>,
+    strict: bool,
 ) -> Result<HashMap<String, String>, SinkError> {
     // Compute appearance directory name from GML output stem (e.g. "foo_appearance")
     let gml_stem = output
@@ -218,43 +236,13 @@ fn stage_textures(
     let mut uri_remap: HashMap<String, String> = HashMap::new();
     let mut staged_names: HashSet<String> = HashSet::new();
     for texture in textures {
-        let TextureSource::Uri(ref source) = texture.source;
-        let src_str = source.to_string();
         if uri_remap.contains_key(&texture.key) {
             continue;
         }
-        let filename = match source.path_segments().and_then(|mut s| s.next_back()) {
-            Some(name) => name.to_string(),
-            None => {
-                tracing::warn!(
-                    "texture URI has no path segments, skipping copy: {}",
-                    src_str
-                );
-                continue;
-            }
-        };
-        let src_uri = match Uri::from_str(&src_str) {
-            Ok(u) => u,
-            Err(e) => {
-                tracing::warn!("failed to parse texture source URI '{}': {}", src_str, e);
-                continue;
-            }
-        };
-        let src_storage = match storage_resolver.resolve(&src_uri) {
-            Ok(s) => s,
-            Err(e) => {
-                tracing::warn!(
-                    "failed to resolve storage for texture source '{}': {}",
-                    src_str,
-                    e
-                );
-                continue;
-            }
-        };
-        let bytes = match src_storage.get_sync(src_uri.path().as_path()) {
-            Ok(b) => b,
-            Err(e) => {
-                tracing::warn!("failed to read texture file '{}': {}", src_str, e);
+        let (filename, bytes) = match load_texture(texture, storage_resolver) {
+            Ok(loaded) => loaded,
+            Err(reason) => {
+                report_texture_failure(strict, reason)?;
                 continue;
             }
         };
@@ -272,16 +260,21 @@ fn stage_textures(
             match crate::SinkOutput::new(sandbox_root, &texture_rel_path, storage_resolver) {
                 Ok(o) => o,
                 Err(e) => {
-                    tracing::warn!(
-                        "failed to acquire sandboxed SinkOutput for texture destination '{}': {}",
-                        texture_rel_path,
-                        e
-                    );
+                    report_texture_failure(
+                        strict,
+                        format!(
+                            "failed to acquire sandboxed SinkOutput for texture destination \
+                             '{texture_rel_path}': {e}"
+                        ),
+                    )?;
                     continue;
                 }
             };
         if let Err(e) = dst_out.write(bytes) {
-            tracing::warn!("failed to write texture file '{}': {}", texture_rel_path, e);
+            report_texture_failure(
+                strict,
+                format!("failed to write texture file '{texture_rel_path}': {e}"),
+            )?;
             continue;
         }
         uri_remap.insert(
@@ -292,6 +285,77 @@ fn stage_textures(
     }
 
     Ok(uri_remap)
+}
+
+/// The destination file name and the bytes for one referenced image, or an
+/// explanation of why it could not be obtained.
+///
+/// The two sources differ in where the name comes from: a URI-backed raster
+/// keeps its source's last path segment, so a CityGML→CityGML round trip stages
+/// `wall.png` as `wall.png`; an in-memory one has no source name at all, so it
+/// is named after its content-hash key with the extension the closed
+/// [`MimeType`](reearth_flow_common::image::MimeType) enum fixes. The key is
+/// filtered down to file-name-safe characters, so no key a producer invents can
+/// steer a write out of the appearance directory.
+fn load_texture(
+    texture: &TextureRef,
+    storage_resolver: &Arc<StorageResolver>,
+) -> Result<(String, Bytes), String> {
+    match &texture.source {
+        TextureSource::Uri(source) => {
+            let src_str = source.to_string();
+            let filename = source
+                .path_segments()
+                .and_then(|mut segments| segments.next_back())
+                .filter(|name| !name.is_empty())
+                .ok_or_else(|| {
+                    format!("texture URI has no path segments, skipping copy: {src_str}")
+                })?
+                .to_string();
+            let src_uri = Uri::from_str(&src_str)
+                .map_err(|e| format!("failed to parse texture source URI '{src_str}': {e}"))?;
+            let src_storage = storage_resolver.resolve(&src_uri).map_err(|e| {
+                format!("failed to resolve storage for texture source '{src_str}': {e}")
+            })?;
+            let bytes = src_storage
+                .get_sync(src_uri.path().as_path())
+                .map_err(|e| format!("failed to read texture file '{src_str}': {e}"))?;
+            Ok((filename, bytes))
+        }
+        TextureSource::InMemory { mime, bytes } => {
+            let stem: String = texture
+                .key
+                .chars()
+                .filter(|c| c.is_ascii_alphanumeric() || *c == '_' || *c == '-')
+                .collect();
+            if stem.is_empty() {
+                return Err(format!(
+                    "in-memory texture key '{}' yields no usable file name",
+                    texture.key
+                ));
+            }
+            Ok((
+                format!("{stem}.{}", TextureSource::extension(*mime)),
+                bytes.clone(),
+            ))
+        }
+    }
+}
+
+/// Apply the compiled world's policy to one texture that could not be staged.
+///
+/// `strict` turns it into a `SinkError` because the alternative is a document
+/// whose `app:imageURI` names an image nobody wrote; otherwise it is the warning
+/// the legacy build has always emitted before carrying on with the source URI
+/// left in place.
+fn report_texture_failure(strict: bool, reason: String) -> Result<(), SinkError> {
+    if strict {
+        return Err(SinkError::CityGmlWriter(format!(
+            "{reason}; the document would reference an image that was never written"
+        )));
+    }
+    tracing::warn!("{reason}");
+    Ok(())
 }
 
 /// Return `desired` if no texture has been staged under that name yet, otherwise
@@ -523,12 +587,19 @@ mod sandbox_tests {
         use std::sync::Arc;
 
         use bytes::Bytes;
+        use reearth_flow_common::image::MimeType;
         use reearth_flow_common::uri::Uri;
         use reearth_flow_storage::resolve::StorageResolver;
         use url::Url;
 
         use super::super::model::{TextureRef, TextureSource};
         use super::super::stage_textures;
+
+        /// The legacy world's policy: a texture that cannot be staged warns and
+        /// the write carries on.
+        const LENIENT: bool = false;
+        /// The unified world's policy: it aborts the write instead.
+        const STRICT: bool = true;
 
         fn resolver() -> Arc<StorageResolver> {
             Arc::new(StorageResolver::new())
@@ -585,7 +656,8 @@ mod sandbox_tests {
             let output = Uri::from_str("ram:///jobs/collision/city.gml").unwrap();
             let textures = manifest(&["ram:///src/a/wall.png", "ram:///src/b/wall.png"]);
 
-            let remap = stage_textures(&textures, &output, &sandbox_root, &resolver).unwrap();
+            let remap =
+                stage_textures(&textures, &output, &sandbox_root, &resolver, LENIENT).unwrap();
 
             assert_eq!(
                 remap.get("ram:///src/a/wall.png").map(String::as_str),
@@ -619,7 +691,8 @@ mod sandbox_tests {
             let output = Uri::from_str("ram:///jobs/dedup/city.gml").unwrap();
             let textures = manifest(&["ram:///src/wall.png", "ram:///src/wall.png"]);
 
-            let remap = stage_textures(&textures, &output, &sandbox_root, &resolver).unwrap();
+            let remap =
+                stage_textures(&textures, &output, &sandbox_root, &resolver, LENIENT).unwrap();
 
             assert_eq!(remap.len(), 1, "one source URI, one remap entry");
             assert_eq!(
@@ -641,12 +714,91 @@ mod sandbox_tests {
             let output = Uri::from_str("ram:///jobs/segmentless/city.gml").unwrap();
             let textures = manifest(&["data:image/png;base64,AAAA"]);
 
-            let remap = stage_textures(&textures, &output, &sandbox_root, &resolver).unwrap();
+            let remap =
+                stage_textures(&textures, &output, &sandbox_root, &resolver, LENIENT).unwrap();
 
             assert!(
                 remap.is_empty(),
                 "a skipped texture keeps its original app:imageURI; got {remap:?}"
             );
+        }
+
+        /// A raster that arrived as bytes has no URI to name it, so it is named
+        /// after its key with the extension its MIME type fixes — one per value
+        /// of the closed three-value enum.
+        #[test]
+        fn an_in_memory_raster_stages_under_its_mime_types_extension() {
+            let resolver = resolver();
+            let sandbox_root = Uri::from_str("ram:///jobs/inline").unwrap();
+            let output = Uri::from_str("ram:///jobs/inline/city.gml").unwrap();
+            let textures: Vec<TextureRef> = [
+                (MimeType::ImageJpeg, "jpg", &b"jpeg-bytes"[..]),
+                (MimeType::ImagePng, "png", &b"png-bytes"[..]),
+                (MimeType::ImageWebp, "webp", &b"webp-bytes"[..]),
+            ]
+            .iter()
+            .map(|(mime, ext, bytes)| TextureRef {
+                key: format!("hash_{ext}"),
+                source: TextureSource::InMemory {
+                    mime: *mime,
+                    bytes: Bytes::from_static(bytes),
+                },
+            })
+            .collect();
+
+            let remap = stage_textures(&textures, &output, &sandbox_root, &resolver, STRICT)
+                .expect("in-memory rasters need no source to read");
+
+            for (ext, bytes) in [
+                ("jpg", &b"jpeg-bytes"[..]),
+                ("png", &b"png-bytes"[..]),
+                ("webp", &b"webp-bytes"[..]),
+            ] {
+                assert_eq!(
+                    remap.get(&format!("hash_{ext}")).map(String::as_str),
+                    Some(format!("city_appearance/hash_{ext}.{ext}").as_str())
+                );
+                assert_eq!(
+                    read(
+                        &resolver,
+                        &format!("ram:///jobs/inline/city_appearance/hash_{ext}.{ext}")
+                    ),
+                    Bytes::copy_from_slice(bytes)
+                );
+            }
+        }
+
+        /// The two worlds' policies, on one input: a texture whose source does
+        /// not exist. The legacy path leaves the original `app:imageURI` in the
+        /// document and carries on, which is what it has always done.
+        #[test]
+        fn an_unreadable_texture_warns_in_the_legacy_path() {
+            let resolver = resolver();
+            let sandbox_root = Uri::from_str("ram:///jobs/missing").unwrap();
+            let output = Uri::from_str("ram:///jobs/missing/city.gml").unwrap();
+            let textures = manifest(&["ram:///src/absent.png"]);
+
+            let remap = stage_textures(&textures, &output, &sandbox_root, &resolver, LENIENT)
+                .expect("the legacy path tolerates an unreadable texture");
+
+            assert!(remap.is_empty(), "nothing was staged; got {remap:?}");
+        }
+
+        /// The unified path fails the write instead, because it resolved the
+        /// appearance itself and the document would name an image nobody wrote.
+        #[test]
+        fn an_unreadable_texture_fails_the_write_in_the_unified_path() {
+            let resolver = resolver();
+            let sandbox_root = Uri::from_str("ram:///jobs/missing-strict").unwrap();
+            let output = Uri::from_str("ram:///jobs/missing-strict/city.gml").unwrap();
+            let textures = manifest(&["ram:///src/absent.png"]);
+
+            let message = stage_textures(&textures, &output, &sandbox_root, &resolver, STRICT)
+                .unwrap_err()
+                .to_string();
+
+            assert!(message.contains("ram:///src/absent.png"), "{message}");
+            assert!(message.contains("never written"), "{message}");
         }
 
         /// The staged path is physically under the GML's own directory, while the
@@ -662,7 +814,8 @@ mod sandbox_tests {
             let output = Uri::from_str("ram:///jobs/nested/group/city.gml").unwrap();
             let textures = manifest(&["ram:///src/wall.png"]);
 
-            let remap = stage_textures(&textures, &output, &sandbox_root, &resolver).unwrap();
+            let remap =
+                stage_textures(&textures, &output, &sandbox_root, &resolver, LENIENT).unwrap();
 
             assert_eq!(
                 remap.get("ram:///src/wall.png").map(String::as_str),

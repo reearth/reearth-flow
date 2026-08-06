@@ -3,7 +3,7 @@ use std::io::Write;
 
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
 use quick_xml::Writer;
-use reearth_flow_types::material::{Texture, X3DMaterial};
+use reearth_flow_types::material::X3DMaterial;
 
 // The seam is geometry-neutral and shared; only the `posList` formatter is
 // world-specific, and `converter` resolves to the compiled world's module, so
@@ -11,9 +11,15 @@ use reearth_flow_types::material::{Texture, X3DMaterial};
 use super::converter::format_pos_list;
 use super::model::{
     AppearanceBundle, BoundingEnvelope, CityObjectType, GeometryEntry, GmlElement, GmlSolid,
-    GmlSurface,
+    GmlSurface, GmlTexture,
 };
 use crate::errors::SinkError;
+
+/// The `app:theme` written for an appearance whose source recorded no theme
+/// name. It is the theme PLATEAU's textured city models use, and the literal
+/// this writer emitted unconditionally before the unified converter started
+/// resolving real [`ThemeId`](reearth_flow_geometry::appearance::ThemeId)s.
+const FALLBACK_THEME: &str = "rgbTexture";
 
 /// Collected per-surface appearance info, built while writing geometry.
 struct SurfaceAppearance {
@@ -540,7 +546,11 @@ impl<W: Write> CityGmlXmlWriter<W> {
             .write_event(Event::Start(BytesStart::new("app:Appearance")))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
-        self.write_text_element("app:theme", "rgbTexture")?;
+        // The theme the converter actually selected, so downstream appearance
+        // selection keeps working; only a world that records no theme name at
+        // all falls back to the historical literal.
+        let theme = appearance.theme.as_deref().unwrap_or(FALLBACK_THEME);
+        self.write_text_element("app:theme", theme)?;
 
         let mut sorted_materials: Vec<_> = by_material.into_iter().collect();
         sorted_materials.sort_by_key(|(k, _)| *k);
@@ -601,7 +611,7 @@ impl<W: Write> CityGmlXmlWriter<W> {
 
     fn write_parameterized_texture(
         &mut self,
-        texture: &Texture,
+        texture: &GmlTexture,
         targets: &[&SurfaceAppearance],
     ) -> Result<(), SinkError> {
         self.writer
@@ -611,11 +621,14 @@ impl<W: Write> CityGmlXmlWriter<W> {
             .write_event(Event::Start(BytesStart::new("app:ParameterizedTexture")))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
+        // Keyed on what the texture was staged under, not on its URI: an
+        // in-memory raster has no URI to key by. For a URI-backed one the key
+        // *is* the URI string, so the legacy rewrite is unchanged.
         let image_uri = self
             .uri_remap
-            .get(texture.uri.as_str())
+            .get(texture.key.as_str())
             .cloned()
-            .unwrap_or_else(|| texture.uri.to_string());
+            .unwrap_or_else(|| texture.uri.clone());
         self.write_text_element("app:imageURI", image_uri.as_str())?;
         self.write_text_element("app:mimeType", mime_type_from_uri(image_uri.as_str()))?;
 
@@ -738,8 +751,7 @@ fn mime_type_from_uri(uri: &str) -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use reearth_flow_types::material::{Texture, X3DMaterial};
-    use url::Url;
+    use reearth_flow_types::material::X3DMaterial;
 
     use super::*;
 
@@ -846,6 +858,7 @@ mod tests {
             uv_interiors: vec![],
         };
         let appearance = AppearanceBundle {
+            theme: None,
             // X3DMaterial::default(): diffuse=0.7/0.7/0.7, specular=0.04/0.04/0.04, ambient=0.9
             materials: vec![X3DMaterial::default()],
             textures: vec![],
@@ -904,9 +917,11 @@ mod tests {
             uv_interiors: vec![],
         };
         let appearance = AppearanceBundle {
+            theme: None,
             materials: vec![],
-            textures: vec![Texture {
-                uri: Url::parse("file:///textures/wall.jpg").unwrap(),
+            textures: vec![GmlTexture {
+                key: "file:///textures/wall.jpg".to_string(),
+                uri: "file:///textures/wall.jpg".to_string(),
             }],
         };
 
@@ -947,6 +962,91 @@ mod tests {
             r#"</app:appearanceMember>"#,
         );
         assert_eq!(xml, expected);
+    }
+
+    /// A bundle that names its theme writes that name, not the historical
+    /// literal — the one deliberate departure from what this writer used to
+    /// emit, because a wrong `app:theme` breaks appearance selection for
+    /// anything reading the output back.
+    #[test]
+    fn a_named_theme_is_written_instead_of_the_fallback_literal() {
+        let surface = GmlSurface {
+            id: None,
+            exterior: triangle(),
+            interiors: vec![],
+            material_idx: Some(0),
+            texture_idx: None,
+            uv_exterior: vec![],
+            uv_interiors: vec![],
+        };
+        let appearance = AppearanceBundle {
+            theme: Some("iurTexture".to_string()),
+            materials: vec![X3DMaterial::default()],
+            textures: vec![],
+        };
+
+        let xml = write_building(vec![surface], Some(&appearance));
+
+        assert!(
+            xml.contains("<app:theme>iurTexture</app:theme>"),
+            "expected the selected theme, got: {xml}"
+        );
+        assert!(!xml.contains("rgbTexture"), "{xml}");
+    }
+
+    /// `app:imageURI` is rewritten by the staging key, which for an in-memory
+    /// raster is not a URI at all. The fallback URI is only what a texture that
+    /// was never staged keeps.
+    #[test]
+    fn the_image_uri_is_rewritten_by_the_staging_key() {
+        let surface = GmlSurface {
+            id: None,
+            exterior: triangle(),
+            interiors: vec![],
+            material_idx: None,
+            texture_idx: Some(0),
+            uv_exterior: vec![[0.0, 0.0], [1.0, 0.0], [0.5, 1.0]],
+            uv_interiors: vec![],
+        };
+        let appearance = AppearanceBundle {
+            theme: Some("rgbTexture".to_string()),
+            materials: vec![],
+            textures: vec![GmlTexture {
+                key: "inline:0123456789abcdef".to_string(),
+                uri: "0123456789abcdef.png".to_string(),
+            }],
+        };
+
+        let mut buf = Vec::new();
+        let mut w = CityGmlXmlWriter::new(&mut buf, false, SRS.to_string());
+        w.set_uri_remap(HashMap::from([(
+            "inline:0123456789abcdef".to_string(),
+            "city_appearance/0123456789abcdef.png".to_string(),
+        )]));
+        w.write_city_object(
+            CityObjectType::Building,
+            &[GeometryEntry {
+                lod: 2,
+                property: None,
+                element: GmlElement::MultiSurface {
+                    id: None,
+                    surfaces: vec![surface],
+                },
+            }],
+            Some("obj-001"),
+            Some(&appearance),
+        )
+        .unwrap();
+        w.flush_appearances().unwrap();
+        let xml = String::from_utf8(buf).unwrap();
+
+        assert!(
+            xml.contains(
+                "<app:imageURI>city_appearance/0123456789abcdef.png</app:imageURI>\
+                 <app:mimeType>image/png</app:mimeType>"
+            ),
+            "{xml}"
+        );
     }
 
     // Solid shells
