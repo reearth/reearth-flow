@@ -1,7 +1,6 @@
 use std::collections::HashMap;
 
 use indexmap::IndexMap;
-#[cfg(not(feature = "new-geometry"))]
 use reearth_flow_action_sink::file::geojson::write_geojson_to_storage;
 use reearth_flow_runtime::{
     errors::BoxedError,
@@ -16,10 +15,10 @@ use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
-use super::errors::FeatureProcessorError;
+use crate::feature::errors::FeatureProcessorError;
 
 #[derive(Debug, Clone, Default)]
-pub(super) struct FeatureGeoJsonWriterFactory;
+pub(crate) struct FeatureGeoJsonWriterFactory;
 
 impl ProcessorFactory for FeatureGeoJsonWriterFactory {
     fn name(&self) -> &str {
@@ -81,6 +80,7 @@ impl ProcessorFactory for FeatureGeoJsonWriterFactory {
             .map_err(|e| FeatureProcessorError::FeatureGeoJsonWriterFactory(format!("{e:?}")))?;
         Ok(Box::new(FeatureGeoJsonWriter {
             output,
+            write_crs: params.write_crs,
             buffer: HashMap::new(),
         }))
     }
@@ -103,11 +103,23 @@ struct FeatureGeoJsonWriterParam {
         description = "Path (or expression evaluated per feature) of the GeoJSON file to write. Features sharing a resolved path are written to the same file, so the expression can split features across files by attribute value."
     )]
     output: Code,
+    /// # Write CRS
+    ///
+    /// Whether to declare the coordinate reference system of the written coordinates in a
+    /// legacy GeoJSON 2008 `crs` member. Defaults to false; enable it when the coordinates
+    /// are not WGS84 longitude / latitude and the consumer reads that member.
+    #[schemars(
+        title = "Write CRS",
+        description = "Whether to declare the coordinate reference system of the written coordinates in a legacy GeoJSON 2008 `crs` member. Defaults to false; enable it when the coordinates are not WGS84 longitude / latitude and the consumer reads that member."
+    )]
+    #[serde(default)]
+    write_crs: bool,
 }
 
 #[derive(Debug, Clone)]
 struct FeatureGeoJsonWriter {
     output: CompiledCode,
+    write_crs: bool,
     buffer: HashMap<String, Vec<Feature>>,
 }
 
@@ -128,10 +140,6 @@ impl Processor for FeatureGeoJsonWriter {
         Ok(())
     }
 
-    // Gated on `not(new-geometry)`, like `FeatureWriter::finish`: the GeoJSON
-    // write path depends on `TryFrom<Feature> for Vec<geojson::Feature>`, which
-    // is only available in the current geometry world.
-    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         ctx: NodeContext,
@@ -150,7 +158,7 @@ impl Processor for FeatureGeoJsonWriter {
                     "sink output {rel_path:?} rejected by sandbox: {e}"
                 ))
             })?;
-            write_geojson_to_storage(&sink_output, features)
+            write_geojson_to_storage(&sink_output, features, self.write_crs)
                 .map_err(|e| FeatureProcessorError::FeatureGeoJsonWriter(format!("{e:?}")))?;
 
             let feature: Feature = IndexMap::<Attribute, AttributeValue>::from([(
