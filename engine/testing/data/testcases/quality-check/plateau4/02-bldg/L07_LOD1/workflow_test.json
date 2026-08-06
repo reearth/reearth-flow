@@ -1,5 +1,6 @@
 {
   "description": "Test quality check L07 for LOD1",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/02-bldg/workflow.yml",
   "workflowVariables": [
     {

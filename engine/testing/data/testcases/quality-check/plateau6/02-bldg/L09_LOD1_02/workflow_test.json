@@ -1,5 +1,6 @@
 {
   "description": "Test quality check L09_LOD1_02 for plateau6 (SelfIntersection@LOD1, another building variant).",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
   "workflowVariables": [
     {

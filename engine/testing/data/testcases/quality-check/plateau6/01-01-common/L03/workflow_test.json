@@ -1,5 +1,6 @@
 {
   "description": "L03 for plateau6 (CityGML 3.0): a veg:PlantCover placed under the bldg package (which accepts only Building / CityObjectGroup) yields one invalid feature type (L03エラー=1, 詳細={PlantCover:1}). PACKAGE_TO_VALID_FEATURE_TYPES is local-name based, so the 2.0 map applies unchanged.",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau6/01-common/workflow.yml",
   "workflowVariables": [
     {

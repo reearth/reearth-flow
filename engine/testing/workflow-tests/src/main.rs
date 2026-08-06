@@ -1519,6 +1519,7 @@ mod tests {
             description: None,
             skip: false,
             skip_reason: None,
+            skip_new_geometry: false,
             workflow_path: "dummy".to_string(),
             workflow_variables: vec![],
             zip_before_test: vec![],

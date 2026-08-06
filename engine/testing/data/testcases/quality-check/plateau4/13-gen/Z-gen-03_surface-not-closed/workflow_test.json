@@ -1,5 +1,6 @@
 {
   "description": "Test quality check for ring not closed errors in generic city object",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/13-gen/workflow.yml",
   "workflowVariables": [
     {

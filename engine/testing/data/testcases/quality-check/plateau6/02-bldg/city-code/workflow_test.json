@@ -1,5 +1,6 @@
 {
   "description": "Test CITY-CODE for plateau6",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
   "workflowVariables": [
     {

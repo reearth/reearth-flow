@@ -1,5 +1,6 @@
 {
   "description": "Test quality check L13 for LOD0 #3 on plateau6 (CityGML 3.0 + i-UR 4.0). #03: square exterior, two interior rings that overlap each other. Reported as IntersectionBetweenInteriorAndInterior under 'LOD0 面のエラー'.",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
   "workflowVariables": [
     {

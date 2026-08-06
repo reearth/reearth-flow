@@ -40,7 +40,28 @@ use serde::{Deserialize, Serialize};
 #[cfg(feature = "new-geometry")]
 use reearth_flow_geometry::ops::Split;
 #[cfg(feature = "new-geometry")]
-use reearth_flow_types::AttributeValue;
+use reearth_flow_geometry::{Geometry as NextGeometry, GeometryCollection};
+#[cfg(feature = "new-geometry")]
+use reearth_flow_types::{Attribute, AttributeValue};
+#[cfg(feature = "new-geometry")]
+use schemars::JsonSchema;
+#[cfg(feature = "new-geometry")]
+use serde::{Deserialize, Serialize};
+
+/// # Geometry Splitter Parameters
+/// Configure how multi-part geometries are split into individual features.
+#[cfg(feature = "new-geometry")]
+#[derive(Debug, Clone, Default, Serialize, Deserialize, JsonSchema)]
+#[serde(rename_all = "camelCase")]
+pub struct GeometrySplitterParam {
+    /// # Group By
+    /// Attribute key to group split members by. Members sharing the same value
+    /// for this attribute are kept together in a single output feature instead
+    /// of being split into separate ones; members lacking the attribute are
+    /// still emitted individually.
+    #[serde(default)]
+    pub group_by: Option<String>,
+}
 
 /// Minimum number of triangles to trigger file-backed output for TriangularMesh splits.
 #[cfg(not(feature = "new-geometry"))]
@@ -93,7 +114,7 @@ impl ProcessorFactory for GeometrySplitterFactory {
 
     #[cfg(feature = "new-geometry")]
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-        None
+        Some(schemars::schema_for!(GeometrySplitterParam))
     }
 
     fn categories(&self) -> &[&'static str] {
@@ -149,9 +170,25 @@ impl ProcessorFactory for GeometrySplitterFactory {
         _ctx: NodeContext,
         _event_hub: EventHub,
         _action: String,
-        _with: Option<HashMap<String, Value>>,
+        with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        Ok(Box::new(GeometrySplitter))
+        let param: GeometrySplitterParam = if let Some(with) = with {
+            let value: Value = serde_json::to_value(with).map_err(|e| {
+                GeometryProcessorError::GeometrySplitterFactory(format!(
+                    "Failed to serialize 'with' parameter: {e}"
+                ))
+            })?;
+            serde_json::from_value(value).map_err(|e| {
+                GeometryProcessorError::GeometrySplitterFactory(format!(
+                    "Failed to deserialize 'with' parameter: {e}"
+                ))
+            })?
+        } else {
+            GeometrySplitterParam::default()
+        };
+        Ok(Box::new(GeometrySplitter {
+            group_by: param.group_by,
+        }))
     }
 }
 
@@ -166,8 +203,10 @@ pub struct GeometrySplitter {
 
 /// Splits a collection, mesh, or point cloud into one feature per member.
 #[cfg(feature = "new-geometry")]
-#[derive(Debug, Clone)]
-pub struct GeometrySplitter;
+#[derive(Debug, Clone, Default)]
+pub struct GeometrySplitter {
+    group_by: Option<String>,
+}
 
 #[cfg(not(feature = "new-geometry"))]
 impl Drop for GeometrySplitter {
@@ -230,22 +269,20 @@ impl Processor for GeometrySplitter {
         // Take the geometry out (cloning the buffer only if it is shared) so each
         // split member is forwarded as it is produced, without ever holding the
         // whole decomposition in memory.
-        let mut geometry = std::mem::take(feature.geometry_mut());
+        let geometry = std::mem::take(feature.geometry_mut());
+
+        if let (Some(key), NextGeometry::GeometryCollection(collection)) =
+            (&self.group_by, &geometry)
+        {
+            Self::emit_grouped(&context, &feature, collection, key, fw);
+            return Ok(());
+        }
+
+        let mut geometry = geometry;
         let mut index = 0usize;
         let result = geometry.split(&mut |member, attributes| {
             index += 1;
-            let mut new_feature = feature.clone();
-            new_feature.set_geometry(member);
-            new_feature.extend(attributes);
-            new_feature.insert(
-                "_split_index",
-                AttributeValue::Number(serde_json::Number::from(index)),
-            );
-            fw.send(ExecutorContext::new_with_context_feature_and_port(
-                &context,
-                new_feature,
-                FEATURES_PORT.clone(),
-            ));
+            Self::emit_split_member(&context, &feature, member, attributes, index, fw);
         });
         // Not a multi-part container: restore the geometry and pass through.
         if result.is_err() {
@@ -269,6 +306,96 @@ impl Processor for GeometrySplitter {
 
     fn name(&self) -> &str {
         "Geometry Splitter"
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl GeometrySplitter {
+    /// Split `collection`, keeping members that share the same `group_by` attribute
+    /// value together in one output feature instead of emitting each separately.
+    /// Members lacking that attribute are still emitted one per feature.
+    fn emit_grouped(
+        context: &reearth_flow_runtime::executor_operation::Context,
+        feature: &reearth_flow_types::Feature,
+        collection: &GeometryCollection,
+        group_by: &str,
+        fw: &ProcessorChannelForwarder,
+    ) {
+        let key = Attribute::new(group_by.to_string());
+        let members = collection.members();
+        let attrs = collection.member_attributes();
+        let member_attrs = |i: usize| attrs.get(i).cloned().unwrap_or_default();
+
+        let mut groups: indexmap::IndexMap<AttributeValue, Vec<usize>> = indexmap::IndexMap::new();
+        let mut units: Vec<usize> = Vec::new();
+        for i in 0..members.len() {
+            match member_attrs(i).get(&key) {
+                Some(value) => groups.entry(value.clone()).or_default().push(i),
+                None => units.push(i),
+            }
+        }
+
+        let mut index = 0usize;
+        // A member lacking `group_by` is emitted alone, as the unambiguous owner
+        // of its own attrs.
+        for i in units {
+            index += 1;
+            Self::emit_split_member(
+                context,
+                feature,
+                members[i].clone(),
+                member_attrs(i),
+                index,
+                fw,
+            );
+        }
+        // A grouped member's own attrs have no single owner once merged, so only
+        // `group_by` itself (guaranteed identical across the group) promotes to
+        // the feature; each member's own attrs stay attached on the nested
+        // `GeometryCollection`.
+        for (value, indices) in groups {
+            index += 1;
+            let group_members: Vec<NextGeometry> =
+                indices.iter().map(|&i| members[i].clone()).collect();
+            let group_attrs: Vec<_> = indices.iter().map(|&i| member_attrs(i)).collect();
+
+            let mut representative_attrs = reearth_flow_types::Attributes::new();
+            representative_attrs.insert(key.clone(), value);
+            let geometry = if group_members.len() == 1 {
+                group_members.into_iter().next().unwrap()
+            } else {
+                NextGeometry::GeometryCollection(
+                    GeometryCollection::with_attributes(group_members, group_attrs)
+                        .expect("attrs is built one-per-member"),
+                )
+            };
+            Self::emit_split_member(context, feature, geometry, representative_attrs, index, fw);
+        }
+    }
+
+    /// Emit one split-off member as its own feature: clone `feature`, replace its
+    /// geometry with `member`, merge in `attributes`, and tag it with its position
+    /// among its siblings.
+    fn emit_split_member(
+        context: &reearth_flow_runtime::executor_operation::Context,
+        feature: &reearth_flow_types::Feature,
+        member: NextGeometry,
+        attributes: reearth_flow_types::Attributes,
+        index: usize,
+        fw: &ProcessorChannelForwarder,
+    ) {
+        let mut new_feature = feature.clone();
+        new_feature.set_geometry(member);
+        new_feature.extend(attributes);
+        new_feature.insert(
+            "_split_index",
+            AttributeValue::Number(serde_json::Number::from(index)),
+        );
+        fw.send(ExecutorContext::new_with_context_feature_and_port(
+            context,
+            new_feature,
+            FEATURES_PORT.clone(),
+        ));
     }
 }
 

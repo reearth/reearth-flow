@@ -1,7 +1,19 @@
 [package]
 name = "workflow-tests"
-version = "0.1.292"
+version = "0.1.297"
 edition = "2021"
+
+[features]
+default = []
+# Temporary migration flag for the new-geometry migration.
+# TODO: Remove after migration.
+new-geometry = [
+  "reearth-flow-action-plateau-processor/new-geometry",
+  "reearth-flow-action-processor/new-geometry",
+  "reearth-flow-action-sink/new-geometry",
+  "reearth-flow-action-source/new-geometry",
+  "reearth-flow-types/new-geometry",
+]
 
 [[bin]]
 name = "normalize-workflow-tests"

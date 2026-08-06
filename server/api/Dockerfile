@@ -11,6 +11,9 @@ RUN apk add --update --no-cache \
 
 WORKDIR /reearth-flow
 
+# The shared schema module is replaced to ../db, so it has to be in place
+# before go mod download can resolve it.
+COPY server/db/ /db/
 COPY server/api/go.mod server/api/go.sum /reearth-flow/
 RUN go mod download
 

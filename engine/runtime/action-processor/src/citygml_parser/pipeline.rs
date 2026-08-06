@@ -329,6 +329,7 @@ mod build_next {
     #[cfg(test)]
     mod tests {
         use super::*;
+        use crate::citygml_parser::parser::CityGmlVersion;
         use reearth_flow_geometry::Euclidean3DGeometry;
         use reearth_flow_types::CitygmlFeatureExt;
         use url::Url;
@@ -347,7 +348,7 @@ mod build_next {
                      xmlns:gml="http://www.opengis.net/gml/3.2"
                      xmlns:xlink="http://www.w3.org/1999/xlink">{members}</core:CityModel>"#
             );
-            let mut parser = Parser::new();
+            let mut parser = Parser::new(CityGmlVersion::V3);
             parser
                 .parse(xml.as_bytes(), &Url::parse("file:///test.gml").unwrap())
                 .unwrap();

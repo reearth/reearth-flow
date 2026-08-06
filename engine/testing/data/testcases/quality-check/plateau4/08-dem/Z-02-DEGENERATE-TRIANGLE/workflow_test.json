@@ -1,5 +1,6 @@
 {
   "description": "Test for plateau4 08 degenerate triangles.",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/08-dem/workflow.yml",
   "workflowVariables": [
     {

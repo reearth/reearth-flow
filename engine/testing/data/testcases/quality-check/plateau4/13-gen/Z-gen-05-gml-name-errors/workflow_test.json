@@ -1,5 +1,6 @@
 {
   "description": "Test quality check for uncoded gml:name errors in generic city object. The gml:name element is missing the codeSpace attribute, making it 'uncoded'.",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau4/13-gen/workflow.yml",
   "workflowVariables": [
     {

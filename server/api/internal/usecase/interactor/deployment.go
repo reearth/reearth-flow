@@ -16,6 +16,7 @@ import (
 	"github.com/reearth/reearth-flow/api/pkg/deployment"
 	"github.com/reearth/reearth-flow/api/pkg/id"
 	"github.com/reearth/reearth-flow/api/pkg/job"
+	"github.com/reearth/reearthx/log"
 	"github.com/reearth/reearthx/usecasex"
 )
 
@@ -205,7 +206,10 @@ func (i *Deployment) Update(ctx context.Context, dp interfaces.UpdateDeploymentP
 		return nil, err
 	}
 
-	var result *deployment.Deployment
+	var (
+		result              *deployment.Deployment
+		previousWorkflowURL string
+	)
 	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
 		d, err := i.deploymentRepo.FindByID(ctx, dp.ID)
 		if err != nil {
@@ -216,11 +220,10 @@ func (i *Deployment) Update(ctx context.Context, dp interfaces.UpdateDeploymentP
 		}
 
 		if dp.Workflow != nil {
-			if u, _ := url.Parse(d.WorkflowURL()); u != nil {
-				if err := i.file.RemoveWorkflow(ctx, u); err != nil {
-					return err
-				}
-			}
+			// Captured, not deleted, until the transaction commits: removing it here
+			// is irreversible, so any later failure (or a serialization retry) would
+			// roll the row back to a WorkflowURL whose object no longer exists.
+			previousWorkflowURL = d.WorkflowURL()
 
 			u, err := i.file.UploadWorkflow(ctx, dp.Workflow)
 			if err != nil {
@@ -234,7 +237,14 @@ func (i *Deployment) Update(ctx context.Context, dp interfaces.UpdateDeploymentP
 					return err
 				}
 
-				d.SetVersion(incrementVersion(currentHead.Version()))
+				// Defensive: every repo returns ErrNotFound rather than a nil head,
+				// so this cannot be nil today. incrementVersion("") is "v1", which
+				// is what Create uses for a project with no head.
+				var headVersion string
+				if currentHead != nil {
+					headVersion = currentHead.Version()
+				}
+				d.SetVersion(incrementVersion(headVersion))
 				d.SetIsHead(true)
 				if currentHead != nil && currentHead.ID() != d.ID() {
 					d.SetHeadID(currentHead.ID())
@@ -259,6 +269,18 @@ func (i *Deployment) Update(ctx context.Context, dp interfaces.UpdateDeploymentP
 	}); err != nil {
 		return nil, err
 	}
+
+	// Only now is it safe to drop the old object: the row that stopped referencing
+	// it is durable. Best-effort, since a failure here leaks an object rather than
+	// breaking the deployment.
+	if previousWorkflowURL != "" && previousWorkflowURL != result.WorkflowURL() {
+		if u, _ := url.Parse(previousWorkflowURL); u != nil {
+			if err := i.file.RemoveWorkflow(ctx, u); err != nil {
+				log.Errorfc(ctx, "deployment: could not remove superseded workflow %s: %v", previousWorkflowURL, err)
+			}
+		}
+	}
+
 	return result, nil
 }
 
@@ -282,7 +304,8 @@ func (i *Deployment) Delete(ctx context.Context, deploymentID id.DeploymentID) (
 		return interfaces.ErrDeploymentHasTriggers
 	}
 
-	return i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
+	var orphanedWorkflows []string
+	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
 		dep, err := i.deploymentRepo.FindByID(ctx, deploymentID)
 		if err != nil {
 			return err
@@ -291,6 +314,9 @@ func (i *Deployment) Delete(ctx context.Context, deploymentID id.DeploymentID) (
 			return fmt.Errorf("deployment not found: %s", deploymentID)
 		}
 
+		// Reset so a retried attempt does not accumulate the previous one's entries.
+		orphanedWorkflows = nil
+
 		if dep.Project() != nil {
 			versions, err := i.deploymentRepo.FindVersions(ctx, dep.Workspace(), dep.Project())
 			if err != nil {
@@ -298,22 +324,14 @@ func (i *Deployment) Delete(ctx context.Context, deploymentID id.DeploymentID) (
 			}
 
 			for _, version := range versions {
-				if u, _ := url.Parse(version.WorkflowURL()); u != nil {
-					if err := i.file.RemoveWorkflow(ctx, u); err != nil {
-						return err
-					}
-				}
+				orphanedWorkflows = append(orphanedWorkflows, version.WorkflowURL())
 
 				if err := i.deploymentRepo.Remove(ctx, version.ID()); err != nil {
 					return err
 				}
 			}
 		} else {
-			if u, _ := url.Parse(dep.WorkflowURL()); u != nil {
-				if err := i.file.RemoveWorkflow(ctx, u); err != nil {
-					return err
-				}
-			}
+			orphanedWorkflows = append(orphanedWorkflows, dep.WorkflowURL())
 
 			if err := i.deploymentRepo.Remove(ctx, deploymentID); err != nil {
 				return err
@@ -321,7 +339,24 @@ func (i *Deployment) Delete(ctx context.Context, deploymentID id.DeploymentID) (
 		}
 
 		return nil
-	})
+	}); err != nil {
+		return err
+	}
+
+	// Deleted only once the rows are gone. Removing these inside the transaction
+	// would leave deployments pointing at missing workflows if the commit failed.
+	for _, raw := range orphanedWorkflows {
+		if raw == "" {
+			continue
+		}
+		if u, _ := url.Parse(raw); u != nil {
+			if err := i.file.RemoveWorkflow(ctx, u); err != nil {
+				log.Errorfc(ctx, "deployment: could not remove workflow %s of deleted deployment: %v", raw, err)
+			}
+		}
+	}
+
+	return nil
 }
 
 func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeploymentParam) (_ *job.Job, err error) {
@@ -336,7 +371,36 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 		return nil, err
 	}
 
-	var j *job.Job
+	debug := false
+	did := dep.ID()
+
+	// Built before the transaction on purpose: job.New().NewID() inside a retried
+	// closure mints a fresh ID on every attempt, so a serialization retry would
+	// submit a second cloud job and orphan the first.
+	j, err := job.New().
+		NewID().
+		Debug(&debug).
+		Deployment(&did).
+		Workspace(dep.Workspace()).
+		Status(job.StatusPending).
+		StartedAt(time.Now()).
+		Build()
+	if err != nil {
+		return nil, err
+	}
+
+	metadataURL, err := i.file.UploadMetadata(ctx, j.ID().String(), []string{}) // TODO: add assets
+	if err != nil {
+		return nil, fmt.Errorf("failed to upload metadata: %v", err)
+	}
+	if metadataURL != nil {
+		j.SetMetadataURL(metadataURL.String())
+	}
+
+	var (
+		workflowURL string
+		projectID   id.ProjectID
+	)
 	if err := i.transaction.WithinTransaction(ctx, func(ctx context.Context) error {
 		d, err := i.deploymentRepo.FindByID(ctx, p.DeploymentID)
 		if err != nil {
@@ -346,46 +410,25 @@ func (i *Deployment) Execute(ctx context.Context, p interfaces.ExecuteDeployment
 			return fmt.Errorf("deployment not found: %s", p.DeploymentID)
 		}
 
-		debug := false
-		did := d.ID()
-
-		j, err = job.New().
-			NewID().
-			Debug(&debug).
-			Deployment(&did).
-			Workspace(d.Workspace()).
-			Status(job.StatusPending).
-			StartedAt(time.Now()).
-			Build()
-		if err != nil {
-			return err
-		}
-
-		metadataURL, err := i.file.UploadMetadata(ctx, j.ID().String(), []string{}) // TODO: add assets
-		if err != nil {
-			return fmt.Errorf("failed to upload metadata: %v", err)
-		}
-		if metadataURL != nil {
-			j.SetMetadataURL(metadataURL.String())
-		}
-
-		if err := i.jobRepo.Save(ctx, j); err != nil {
-			return err
-		}
-
-		var projectID id.ProjectID
+		workflowURL = d.WorkflowURL()
 		if d.Project() != nil {
 			projectID = *d.Project()
 		}
 
-		gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), d.WorkflowURL(), j.MetadataURL(), nil, projectID, d.Workspace(), nil, nil)
-		if err != nil {
-			return interfaces.ErrJobCreationFailed
-		}
-		j.SetGCPJobID(gcpJobID)
-
 		return i.jobRepo.Save(ctx, j)
 	}); err != nil {
+		return nil, err
+	}
+
+	// Submitted only once the pending row is committed, so a failure here leaves a
+	// job the user can see instead of a cloud job with no record of it.
+	gcpJobID, err := i.batch.SubmitJob(ctx, j.ID(), workflowURL, j.MetadataURL(), nil, projectID, dep.Workspace(), nil, nil)
+	if err != nil {
+		failJob(ctx, i.jobRepo, j)
+		return nil, interfaces.ErrJobCreationFailed
+	}
+	j.SetGCPJobID(gcpJobID)
+	if err := i.jobRepo.Save(ctx, j); err != nil {
 		return nil, err
 	}
 

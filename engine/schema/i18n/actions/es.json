@@ -40,7 +40,7 @@
     },
     {
       "name": "Area On Area Overlayer",
-      "description": "Superpone un área sobre otra área",
+      "description": "Subdivide las áreas superpuestas en fragmentos disjuntos y registra cuántas entidades de entrada cubren cada fragmento. Las entradas deben ser geometrías 2D planas, sin elevación, que compartan un mismo marco de coordenadas; coloque un Two Dimension Forcer o un Coordinate Frame Reprojector antes para aplanarlas o unificarlas.",
       "parameterI18n": {
         "": {
           "title": "Area On Area Overlayer Parameters",
@@ -802,14 +802,6 @@
           "title": "Tamaño del Atlas",
           "description": "Dimensión máxima del atlas de texturas en píxeles. Las texturas que la superan se distribuyen en páginas de atlas adicionales; una sola textura mayor que este valor se reduce para que quepa. El valor predeterminado es 2048."
         },
-        "attachTexture": {
-          "title": "Adjuntar Texturas",
-          "description": "Si se debe incluir información de textura en los mosaicos generados"
-        },
-        "compressOutput": {
-          "title": "Ruta de Salida Comprimida",
-          "description": "Ruta opcional para la salida del archivo comprimido"
-        },
         "computeFlatNormal": {
           "title": "Calcular Normales Planas",
           "description": "Calcula normales planas por polígono para la iluminación. Verdadero por defecto. Cuando se desactiva, no se escriben normales y la malla es más pequeña, pero el mosaico no incluye datos de iluminación (el visor debe derivar las normales planas por sí mismo)."
@@ -817,14 +809,6 @@
         "dracoCompression": {
           "title": "Compresión Draco",
           "description": "Usar compresión Draco. Verdadero por defecto."
-        },
-        "maxZoom": {
-          "title": "Nivel de Zoom Máximo",
-          "description": "Nivel de zoom máximo para la generación de mosaicos (0-24)"
-        },
-        "minZoom": {
-          "title": "Nivel de Zoom Mínimo",
-          "description": "Nivel de zoom mínimo para la generación de mosaicos (0-24)"
         },
         "output": {
           "title": "Ruta de Salida",
@@ -837,6 +821,10 @@
         "skipUnexposedAttributes": {
           "title": "Omitir Atributos no Expuestos",
           "description": "Omitir atributos con prefijo de doble guion bajo"
+        },
+        "targetTileSize": {
+          "title": "Target Tile Size",
+          "description": "Target content size per tile, in bytes. Tiles are split when they'd exceed it and merged with neighbours when they'd otherwise be smaller; a single feature that alone exceeds it is kept whole (features are never clipped). A value of 0 disables merging and splits every feature into its own content. Defaults to 1,048,576 (1 MiB)."
         },
         "texelSize": {
           "title": "Tamaño de Téxel",
@@ -950,6 +938,39 @@
         "mode": {
           "title": "Extraction Mode",
           "description": "How to extract coordinates from geometry vertices."
+        }
+      }
+    },
+    {
+      "name": "Coordinate Frame Reprojector",
+      "parameterI18n": {
+        "": {
+          "title": "Coordinate Frame Reprojector Parameters",
+          "description": "Reproject geometry across coordinate reference systems and convert between a CRS and a Euclidean frame. Converting across the Euclidean/CRS boundary reinterprets coordinates as-is: values and ring winding are left unchanged, so orientation follows the destination frame's axis order.\n\nReprojecting across coordinate reference systems takes 2D geometry lying at a single elevation into 3D."
+        },
+        "basePointSource": {
+          "title": "Base Point",
+          "description": "How coordinates bridge the Euclidean/CRS boundary."
+        },
+        "destinationFrame": {
+          "title": "Destination Frame",
+          "description": "Coordinate frame to convert geometry into."
+        },
+        "epsgCode": {
+          "title": "EPSG Code",
+          "description": "EPSG code of the destination CRS. Required when the destination frame is a CRS."
+        }
+      },
+      "enumI18n": {
+        "DestinationFrame": {
+          "crs": {
+            "title": "CRS",
+            "description": "Reproject to a coordinate reference system identified by an EPSG code."
+          },
+          "euclidean": {
+            "title": "Euclidean",
+            "description": "Convert to a non-georeferenced Euclidean frame."
+          }
         }
       }
     },
@@ -1787,21 +1808,9 @@
           "title": "Geometry Splitter Parameters",
           "description": "Configure how multi-part geometries are split into individual features."
         },
-        "splitLevel": {
-          "title": "Split Level",
-          "description": "How far to split CityGML geometry. Applies only to CityGML; other geometry types are always split into their individual parts."
-        }
-      },
-      "enumI18n": {
-        "SplitLevel": {
-          "element": {
-            "title": "Element",
-            "description": "Splits by surface element, such as a roof surface or a wall surface."
-          },
-          "polygon": {
-            "title": "Polygon",
-            "description": "Splits further, down to the individual polygons within each surface element."
-          }
+        "groupBy": {
+          "title": "Group By",
+          "description": "Attribute key to group split members by. Members sharing the same value for this attribute are kept together in a single output feature instead of being split into separate ones; members lacking the attribute are still emitted individually."
         }
       }
     },
@@ -1828,10 +1837,6 @@
         "planarityThreshold": {
           "title": "Planarity Threshold",
           "description": "Optional override for how the planarity check bounds a face's out-of-plane deviation: a scale-invariant `ratio` (the default), or an absolute `maxHeight` in the frame's linear unit (linear-unit frames only)."
-        },
-        "validationTypes": {
-          "title": "Validation Types",
-          "description": "Checks to run against each feature's geometry. Empty by default, which passes every feature that has geometry."
         }
       },
       "definitionI18n": {
@@ -1867,12 +1872,6 @@
           "shellOrientation": {
             "title": "Shell Orientation",
             "description": "Detection of solid shells whose faces point the wrong way."
-          }
-        },
-        "ValidationType": {
-          "duplicatePoints": {
-            "title": "Duplicate Points",
-            "description": "Flags coordinates that repeat anywhere in the geometry, using exact equality."
           }
         }
       }
@@ -2367,7 +2366,7 @@
     },
     {
       "name": "Line On Line Overlayer",
-      "description": "Los puntos de intersección se convierten en entidades de puntos que pueden contener la lista combinada de atributos de las líneas originales intersectadas.",
+      "description": "Divide las líneas en sus intersecciones y convierte cada intersección en una entidad de punto que lleva los atributos combinados de las líneas que se cruzan allí. Las entradas deben ser geometrías 2D planas, sin elevación, que compartan un mismo marco de coordenadas; coloque un Two Dimension Forcer o un Coordinate Frame Reprojector antes para aplanarlas o unificarlas.",
       "parameterI18n": {
         "": {
           "title": "Line On Line Overlayer Parameters",
@@ -3851,6 +3850,14 @@
           "title": "File Path",
           "description": "Expression that returns the path to the input file, either a literal path or a variable reference."
         },
+        "featureClassAttribute": {
+          "title": "Atributo de clase de entidad",
+          "description": "Clave de atributo bajo la cual almacenar el nombre de clase de EXT_structural_metadata de cada entidad dividida. Si no se establece, el nombre de la clase no se agrega como atributo."
+        },
+        "featureGranularity": {
+          "title": "Granularidad de entidades",
+          "description": "Qué representa cada entidad de salida. `mesh` (el valor predeterminado) genera una entidad por cada malla glTF. `featureId` divide cada malla en una entidad por cada ID de entidad de EXT_mesh_features, adjuntando las propiedades EXT_structural_metadata de ese objeto; los archivos sin EXT_mesh_features siguen generando una entidad por malla."
+        },
         "includeNodes": {
           "title": "Include Nodes",
           "description": "If true, includes node hierarchy information from the glTF scene graph in feature attributes"
@@ -3866,6 +3873,16 @@
         "triangulate": {
           "title": "Triangulate",
           "description": "If true, converts all primitives to triangles (reserved for future use - currently all primitives are processed as triangles)"
+        }
+      },
+      "enumI18n": {
+        "FeatureGranularity": {
+          "featureId": {
+            "description": "Una entidad por cada ID de entidad de `EXT_mesh_features`, cada una con las propiedades `EXT_structural_metadata` de ese objeto. Los archivos sin `EXT_mesh_features` siguen generando una entidad por malla."
+          },
+          "mesh": {
+            "description": "Una entidad por cada malla glTF (o por instancia de nodo). Las propiedades de metadatos estructurales no se muestran, porque son por objeto, no por malla."
+          }
         }
       }
     },

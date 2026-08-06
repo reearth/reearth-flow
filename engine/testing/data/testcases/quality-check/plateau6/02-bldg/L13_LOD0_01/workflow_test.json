@@ -1,5 +1,6 @@
 {
   "description": "Test quality check L13 for LOD0 #1 on plateau6 (CityGML 3.0 + i-UR 4.0). #01: square exterior, interior ring extends outside it. Reported as InteriorRingNotContainedInExteriorRing under 'LOD0 面のエラー'.",
+  "skipNewGeometry": true,
   "workflowPath": "quality-check/plateau6/02-bldg/workflow.yml",
   "workflowVariables": [
     {

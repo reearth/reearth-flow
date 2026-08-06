@@ -99,7 +99,7 @@
     {
       "name": "Area On Area Overlayer",
       "type": "processor",
-      "description": "Perform Area Overlay Analysis",
+      "description": "Subdivides overlapping areas into non-overlapping pieces and records how many input features cover each piece. Inputs must be flat 2D geometries sharing one coordinate frame; place a Two Dimension Forcer or a Coordinate Frame Reprojector upstream to flatten or unify them.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Area On Area Overlayer Parameters",
@@ -2172,8 +2172,6 @@
         "description": "Configuration for writing features to Cesium 3D Tiles.",
         "type": "object",
         "required": [
-          "maxZoom",
-          "minZoom",
           "output"
         ],
         "properties": {
@@ -2199,27 +2197,15 @@
               }
             }
           },
-          "minZoom": {
-            "title": "Minimum Zoom Level",
-            "description": "Lowest zoom level to generate tiles for, from 0 to 24.",
-            "type": "integer",
-            "format": "uint8",
-            "minimum": 0.0
-          },
-          "maxZoom": {
-            "title": "Maximum Zoom Level",
-            "description": "Highest zoom level to generate tiles for, from 0 to 24.",
-            "type": "integer",
-            "format": "uint8",
-            "minimum": 0.0
-          },
-          "attachTexture": {
-            "title": "Attach Textures",
-            "description": "Whether to include texture information in the generated tiles.",
+          "targetTileSize": {
+            "title": "Target Tile Size",
+            "description": "Target content size per tile, in bytes. Tiles are split when they'd exceed it and merged with neighbours when they'd otherwise be smaller; a single feature that alone exceeds it is kept whole (features are never clipped). A value of 0 disables merging and splits every feature into its own content. Defaults to 1,048,576 (1 MiB).",
             "type": [
-              "boolean",
+              "integer",
               "null"
-            ]
+            ],
+            "format": "uint64",
+            "minimum": 0.0
           },
           "dracoCompression": {
             "title": "Draco Compression",
@@ -2297,31 +2283,6 @@
               "string",
               "null"
             ]
-          },
-          "compressOutput": {
-            "title": "Compressed Output Path",
-            "description": "Optional path where a compressed archive of the tiles is also written.",
-            "type": [
-              "object",
-              "null"
-            ],
-            "format": "code",
-            "required": [
-              "type",
-              "value"
-            ],
-            "properties": {
-              "type": {
-                "type": "string",
-                "enum": [
-                  "flowExpr",
-                  "string"
-                ]
-              },
-              "value": {
-                "type": "string"
-              }
-            }
           }
         },
         "definitions": {
@@ -2761,6 +2722,190 @@
         "Geometry"
       ],
       "tags": []
+    },
+    {
+      "name": "Coordinate Frame Reprojector",
+      "type": "processor",
+      "description": "Reprojects geometry between coordinate reference systems and converts between a CRS and a Euclidean frame.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Coordinate Frame Reprojector Parameters",
+        "description": "Reproject geometry across coordinate reference systems and convert between a CRS and a Euclidean frame. Converting across the Euclidean/CRS boundary reinterprets coordinates as-is: values and ring winding are left unchanged, so orientation follows the destination frame's axis order.\n\nReprojecting across coordinate reference systems takes 2D geometry lying at a single elevation into 3D.",
+        "type": "object",
+        "required": [
+          "destinationFrame"
+        ],
+        "properties": {
+          "destinationFrame": {
+            "title": "Destination Frame",
+            "description": "Coordinate frame to convert geometry into.",
+            "allOf": [
+              {
+                "$ref": "#/definitions/DestinationFrame"
+              }
+            ]
+          },
+          "epsgCode": {
+            "title": "EPSG Code",
+            "description": "EPSG code of the destination CRS. Required when the destination frame is a CRS.",
+            "default": null,
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "uint16",
+            "minimum": 0.0
+          },
+          "basePointSource": {
+            "title": "Base Point",
+            "description": "How coordinates bridge the Euclidean/CRS boundary.",
+            "default": {
+              "type": "asIs"
+            },
+            "allOf": [
+              {
+                "$ref": "#/definitions/BasePoint"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "DestinationFrame": {
+            "description": "The destination coordinate frame kind.",
+            "oneOf": [
+              {
+                "title": "CRS",
+                "description": "Reproject to a coordinate reference system identified by an EPSG code.",
+                "type": "string",
+                "enum": [
+                  "crs"
+                ]
+              },
+              {
+                "title": "Euclidean",
+                "description": "Convert to a non-georeferenced Euclidean frame.",
+                "type": "string",
+                "enum": [
+                  "euclidean"
+                ]
+              }
+            ]
+          },
+          "BasePoint": {
+            "description": "How coordinates bridge the Euclidean/CRS boundary, carrying the input each mode needs. Ignored for a pure CRS-to-CRS reprojection.",
+            "oneOf": [
+              {
+                "title": "As Is",
+                "description": "Reinterpret coordinate values unchanged across the boundary.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "asIs"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "Value",
+                "description": "Offset by a base point given as an expression evaluating to `[x, y, z]`.",
+                "type": "object",
+                "required": [
+                  "basePoint",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "value"
+                    ]
+                  },
+                  "basePoint": {
+                    "title": "Base Point",
+                    "description": "Expression evaluating to an `[x, y, z]` origin in CRS space, in the CRS's declared axis order.",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              },
+              {
+                "title": "From Port",
+                "description": "Offset by a base point taken from the base-point input port, matched to each feature by a key.",
+                "type": "object",
+                "required": [
+                  "matchKey",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "fromPort"
+                    ]
+                  },
+                  "matchKey": {
+                    "title": "Match Key",
+                    "description": "Expression identifying which base-point feature applies to a given feature. Evaluated against both streams.",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features",
+        "base-point"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": [
+        "coordinate-system",
+        "3d"
+      ]
     },
     {
       "name": "Date Time Converter",
@@ -5480,22 +5625,6 @@
             }
           },
           {
-            "title": "Multiple Geometries",
-            "description": "Separates the features whose geometry is a container that can hold more than one part.",
-            "type": "object",
-            "required": [
-              "filterType"
-            ],
-            "properties": {
-              "filterType": {
-                "type": "string",
-                "enum": [
-                  "multiple"
-                ]
-              }
-            }
-          },
-          {
             "title": "Geometry Type",
             "description": "Routes by the geometry family a feature belongs to: point, curve, surface, triangle or solid.",
             "type": "object",
@@ -5510,6 +5639,22 @@
                 ]
               }
             }
+          },
+          {
+            "title": "Detailed Geometry Type",
+            "description": "Routes by the exact geometry type rather than the family, so a face, a surface mesh and a multi-surface each leave by their own port.",
+            "type": "object",
+            "required": [
+              "filterType"
+            ],
+            "properties": {
+              "filterType": {
+                "type": "string",
+                "enum": [
+                  "detailedGeometryType"
+                ]
+              }
+            }
           }
         ]
       },
@@ -5520,17 +5665,24 @@
       "outputPorts": [
         "unfiltered",
         "none",
-        "contains",
-        "solid",
-        "multiSurface",
-        "compositeSurface",
+        "point",
+        "curve",
         "surface",
         "triangle",
-        "multiCurve",
-        "curve",
-        "multiPoint",
-        "point",
-        "tin"
+        "solid",
+        "multi-point",
+        "point-cloud",
+        "line-string",
+        "multi-curve",
+        "polygon",
+        "multi-area",
+        "face",
+        "polygon-mesh",
+        "triangular-mesh",
+        "multi-surface",
+        "csg",
+        "multi-solid",
+        "aggregate"
       ],
       "categories": [
         "Geometry"
@@ -5660,37 +5812,13 @@
         "description": "Configure how multi-part geometries are split into individual features.",
         "type": "object",
         "properties": {
-          "splitLevel": {
-            "title": "Split Level",
-            "description": "How far to split CityGML geometry. Applies only to CityGML; other geometry types are always split into their individual parts.",
-            "default": "element",
-            "allOf": [
-              {
-                "$ref": "#/definitions/SplitLevel"
-              }
-            ]
-          }
-        },
-        "definitions": {
-          "SplitLevel": {
-            "description": "Split level for CityGML geometry",
-            "oneOf": [
-              {
-                "title": "Element",
-                "description": "Splits by surface element, such as a roof surface or a wall surface.",
-                "type": "string",
-                "enum": [
-                  "element"
-                ]
-              },
-              {
-                "title": "Polygon",
-                "description": "Splits further, down to the individual polygons within each surface element.",
-                "type": "string",
-                "enum": [
-                  "polygon"
-                ]
-              }
+          "groupBy": {
+            "title": "Group By",
+            "description": "Attribute key to group split members by. Members sharing the same value for this attribute are kept together in a single output feature instead of being split into separate ones; members lacking the attribute are still emitted individually.",
+            "default": null,
+            "type": [
+              "string",
+              "null"
             ]
           }
         }
@@ -5717,15 +5845,6 @@
         "description": "Configure which validation checks to perform on feature geometries.",
         "type": "object",
         "properties": {
-          "validationTypes": {
-            "title": "Validation Types",
-            "description": "Checks to run against each feature's geometry. Empty by default, which passes every feature that has geometry.",
-            "default": [],
-            "type": "array",
-            "items": {
-              "$ref": "#/definitions/ValidationType"
-            }
-          },
           "disabledOptionalChecks": {
             "title": "Disabled Optional Checks",
             "description": "Advisory checks to disable. Disabled checks do not run and are treated as passing; core validity checks always run. Empty by default, so every optional check runs.",
@@ -5774,69 +5893,6 @@
           }
         },
         "definitions": {
-          "ValidationType": {
-            "oneOf": [
-              {
-                "title": "Duplicate Points",
-                "description": "Flags coordinates that repeat anywhere in the geometry, using exact equality.",
-                "type": "string",
-                "enum": [
-                  "duplicatePoints"
-                ]
-              },
-              {
-                "title": "Duplicate Consecutive Points",
-                "description": "Flags neighbouring coordinates closer together than the given tolerance.",
-                "type": "object",
-                "required": [
-                  "duplicateConsecutivePoints"
-                ],
-                "properties": {
-                  "duplicateConsecutivePoints": {
-                    "type": "number",
-                    "format": "double"
-                  }
-                },
-                "additionalProperties": false
-              },
-              {
-                "title": "Corrupt Geometry",
-                "description": "Flags structurally invalid geometry. Takes an optional tolerance for interior/exterior ring intersection.",
-                "type": "object",
-                "required": [
-                  "corruptGeometry"
-                ],
-                "properties": {
-                  "corruptGeometry": {
-                    "type": [
-                      "number",
-                      "null"
-                    ],
-                    "format": "double"
-                  }
-                },
-                "additionalProperties": false
-              },
-              {
-                "title": "Self-Intersection",
-                "description": "Flags geometry that crosses itself. Omitting the tolerance, or setting it to 0.0, checks for exact intersections; a larger value ignores intersections within that distance.",
-                "type": "object",
-                "required": [
-                  "selfIntersection"
-                ],
-                "properties": {
-                  "selfIntersection": {
-                    "type": [
-                      "number",
-                      "null"
-                    ],
-                    "format": "double"
-                  }
-                },
-                "additionalProperties": false
-              }
-            ]
-          },
           "OptionalCheck": {
             "description": "An advisory (optional) validation check that can be individually disabled. A disabled check does not run and is treated as passing. Only checks that the geometry crate classifies as optional are listed here; core validity checks always run and cannot be disabled.",
             "oneOf": [
@@ -8032,7 +8088,7 @@
     {
       "name": "Line On Line Overlayer",
       "type": "processor",
-      "description": "Intersection points are turned into point features that can contain the merged list of attributes of the original intersected lines.",
+      "description": "Splits lines where they cross and turns each intersection into a point feature carrying the merged attributes of the lines that meet there. Inputs must be flat 2D geometries sharing one coordinate frame; place a Two Dimension Forcer or a Coordinate Frame Reprojector upstream to flatten or unify them.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Line On Line Overlayer Parameters",
@@ -12771,7 +12827,8 @@
         "features"
       ],
       "outputPorts": [
-        "features"
+        "features",
+        "rejected"
       ],
       "categories": [
         "Geometry"
@@ -13299,6 +13356,25 @@
             "default": true,
             "type": "boolean"
           },
+          "featureClassAttribute": {
+            "title": "Feature Class Attribute",
+            "description": "Attribute key to store the EXT_structural_metadata class name under, for each split feature. If unset, the class name is not added as an attribute.",
+            "default": null,
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "featureGranularity": {
+            "title": "Feature Granularity",
+            "description": "What one output feature represents. `mesh` (the default) emits one feature per glTF mesh. `featureId` splits each mesh into one feature per EXT_mesh_features feature ID, attaching that object's EXT_structural_metadata properties; files without EXT_mesh_features still yield one feature per mesh.",
+            "default": "mesh",
+            "allOf": [
+              {
+                "$ref": "#/definitions/FeatureGranularity"
+              }
+            ]
+          },
           "dataset": {
             "title": "File Path",
             "description": "Expression that returns the path to the input file, either a literal path or a variable reference.",
@@ -13348,6 +13424,28 @@
                 "type": "string"
               }
             }
+          }
+        },
+        "definitions": {
+          "FeatureGranularity": {
+            "title": "Feature Granularity",
+            "description": "Controls what one output feature represents.",
+            "oneOf": [
+              {
+                "description": "One feature per glTF mesh (or per node instance). Structural-metadata properties are not surfaced, because they are per object, not per mesh.",
+                "type": "string",
+                "enum": [
+                  "mesh"
+                ]
+              },
+              {
+                "description": "One feature per `EXT_mesh_features` feature ID, each carrying that object's `EXT_structural_metadata` properties. Files without `EXT_mesh_features` still yield one feature per mesh.",
+                "type": "string",
+                "enum": [
+                  "featureId"
+                ]
+              }
+            ]
           }
         }
       },
