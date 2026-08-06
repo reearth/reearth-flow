@@ -10,6 +10,14 @@ use schemars::{
 use serde::{Deserialize, Serialize};
 use std::fmt::Write as _;
 
+// The new-world geometry walk lives in a sibling file, declared here as a child
+// module so it reaches this module's config types via `super::`.
+#[cfg(feature = "new-geometry")]
+#[path = "writer_geometry_next.rs"]
+mod writer_geometry_next;
+#[cfg(feature = "new-geometry")]
+pub use writer_geometry_next::{export_geometry, extract_coordinates};
+
 /// # Geometry Export Configuration
 /// Configure how geometry data is written to CSV columns
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -171,6 +179,7 @@ pub fn get_geometry_column_names(config: &GeometryExportConfig) -> Vec<String> {
 }
 
 /// Export geometry to column values based on configuration
+#[cfg(not(feature = "new-geometry"))]
 pub fn export_geometry(
     geometry: &Geometry,
     config: &GeometryExportConfig,
@@ -441,6 +450,7 @@ fn geometry_3d_to_wkt(geom: &Geometry3D) -> Result<String, GeometryExportError> 
 
 /// Extract X, Y, Z coordinates from Point geometries
 /// Returns (x, y, optional z)
+#[cfg(not(feature = "new-geometry"))]
 pub fn extract_coordinates(
     geometry: &Geometry,
 ) -> Result<(f64, f64, Option<f64>), GeometryExportError> {
