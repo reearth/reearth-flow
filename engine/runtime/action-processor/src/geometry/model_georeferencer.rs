@@ -960,11 +960,19 @@ mod tests {
             panic!("expected a collection, got {geometry:?}");
         };
         assert_eq!(c.members().len(), 2, "both members survive");
-        assert_eq!(
-            c.member_attributes().len(),
-            2,
-            "per-member attributes survive"
-        );
+        let member_attrs = c.member_attributes();
+        assert_eq!(member_attrs.len(), 2, "per-member attributes survive");
+        for (i, attrs) in member_attrs.iter().enumerate() {
+            // `AttributeValue` derives no `PartialEq`, so match its actual
+            // value rather than compare the count alone: a wiped-then-refilled
+            // slot of the right length would otherwise pass silently.
+            match attrs.get(&Attribute::new("gmlId")) {
+                Some(AttributeValue::String(s)) => {
+                    assert_eq!(s, "a", "member {i}'s gmlId value survives placement")
+                }
+                other => panic!("member {i} lost its gmlId attribute: {other:?}"),
+            }
+        }
         for m in c.members() {
             let Euclidean3DGeometry::TriangularMesh(mesh) = m else {
                 panic!("expected a mesh member, got {m:?}");
