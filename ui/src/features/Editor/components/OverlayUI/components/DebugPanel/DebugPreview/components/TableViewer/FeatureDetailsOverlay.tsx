@@ -22,30 +22,23 @@ import {
   Input,
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
-import type { AppearanceSummary } from "@flow/lib/intermediateData";
 import {
   isLargeValue,
   summarizeValue,
   toSearchableString,
 } from "@flow/utils/valueSummary";
 
-import AppearanceSection from "./AppearanceSection";
 import RawJsonViewer from "./RawJsonViewer";
 
 type Props = {
   feature: any;
   onClose: () => void;
   handleShowFeatureDetails?: (feature: any) => void;
-  detectedGeometryType?: string | null;
 };
 
 const FeatureDetailsOverlay: React.FC<Props> = ({ feature, onClose }) => {
   const t = useT();
   const [searchTerm, setSearchTerm] = useState<string>("");
-
-  // Carried on the row under underscored keys, so they are not listed among
-  // the feature's own fields; see useDataColumnizer.
-  const appearance: AppearanceSummary | undefined = feature?._appearance;
 
   // The record as the engine wrote it. The fields listed below are derived for
   // the map and drop what it does not need — face holes, themes, UV sets, a
@@ -301,11 +294,6 @@ const FeatureDetailsOverlay: React.FC<Props> = ({ feature, onClose }) => {
             tooltipText={t("Back to table")}
           />
           <div className="flex items-center gap-2">
-            {/* {detectedGeometryType && (
-              <span className="text-xs text-muted-foreground">
-                {detectedGeometryType}
-              </span>
-            )} */}
             <h3 className="text-sm">
               {t("Feature ID: ")} {processedFeature.id}
             </h3>
@@ -382,10 +370,6 @@ const FeatureDetailsOverlay: React.FC<Props> = ({ feature, onClose }) => {
                 })}
               </div>
             </div>
-          )}
-          {/* Appearance */}
-          {appearance && !searchTerm && (
-            <AppearanceSection appearance={appearance} />
           )}
           {/* Attributes */}
           {Object.keys(filteredFeature?.attributes || {}).length > 0 && (

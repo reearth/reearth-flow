@@ -1,11 +1,7 @@
-import { afterEach, describe, expect, test } from "vitest";
-
-import { clearRasterStore } from "@flow/lib/intermediateData";
+import { describe, expect, test } from "vitest";
 
 import { intermediateDataTransform } from "./transformIntermediateData";
 import { hasGeoJsonForm, transformNextFeature } from "./transformNextFeature";
-
-const OWNER = "https://example.test/node.out.jsonl.zst";
 
 const feature = (
   geometry: unknown,
@@ -16,8 +12,6 @@ const feature = (
   geometry,
 });
 
-afterEach(() => clearRasterStore());
-
 describe("2D geometry becomes GeoJSON", () => {
   test("point", () => {
     const result = transformNextFeature(
@@ -26,7 +20,6 @@ describe("2D geometry becomes GeoJSON", () => {
           Point: { frame: { Crs: 4326 }, position: [35.6, 139.7] },
         },
       }),
-      { owner: OWNER },
     );
 
     expect(result.geometry).toEqual({
@@ -50,7 +43,6 @@ describe("2D geometry becomes GeoJSON", () => {
           },
         },
       }),
-      { owner: OWNER },
     );
 
     expect(result.geometry).toMatchObject({
@@ -84,7 +76,6 @@ describe("2D geometry becomes GeoJSON", () => {
           },
         },
       }),
-      { owner: OWNER },
     );
 
     const geometry = result.geometry as { coordinates: number[][][] };
@@ -113,7 +104,6 @@ describe("2D geometry becomes GeoJSON", () => {
           },
         },
       }),
-      { owner: OWNER },
     );
     expect(mesh.geometry).toMatchObject({ type: "MultiPolygon" });
 
@@ -132,7 +122,6 @@ describe("2D geometry becomes GeoJSON", () => {
           },
         },
       }),
-      { owner: OWNER },
     );
     const geometry = triangles.geometry as { coordinates: number[][][][] };
     expect(geometry.coordinates[0][0]).toHaveLength(4);
@@ -158,7 +147,6 @@ describe("2D geometry becomes GeoJSON", () => {
           },
         },
       }),
-      { owner: OWNER },
     );
 
     expect(result.geometry).toMatchObject({
@@ -178,7 +166,6 @@ describe("2D geometry becomes GeoJSON", () => {
             Point: { frame: { Crs: epsg }, position: [35.6, 139.7] },
           },
         }),
-        { owner: OWNER },
       );
 
       expect(result.geometry).toMatchObject({ coordinates: [139.7, 35.6] });
@@ -206,7 +193,6 @@ describe("2D geometry becomes GeoJSON", () => {
     for (const [, frame] of cases) {
       const result = transformNextFeature(
         feature({ Euclidean2D: { Point: { frame, position: [100, 200] } } }),
-        { owner: OWNER },
       );
 
       expect(result.geometry).toMatchObject({ coordinates: [100, 200] });
@@ -228,7 +214,6 @@ describe("2D geometry becomes GeoJSON", () => {
           },
         },
       }),
-      { owner: OWNER },
     );
 
     expect(result.geometry).toMatchObject({
@@ -255,7 +240,6 @@ describe("2D geometry becomes GeoJSON", () => {
           },
         },
       }),
-      { owner: OWNER },
     );
 
     // Same member type, so the collection collapses to one MultiPoint — but
@@ -297,7 +281,6 @@ describe("2D geometry becomes GeoJSON", () => {
           },
         },
       }),
-      { owner: OWNER },
     );
 
     // A GeoJSON MultiLineString arrives as a collection of polylines; keeping it
@@ -336,7 +319,6 @@ describe("2D geometry becomes GeoJSON", () => {
           },
         },
       }),
-      { owner: OWNER },
     );
 
     const geometry = result.geometry as {
@@ -368,7 +350,6 @@ describe("2D geometry becomes GeoJSON", () => {
           },
         },
       }),
-      { owner: OWNER },
     );
 
     expect(result.geometry).toMatchObject({ type: "GeometryCollection" });
@@ -397,7 +378,6 @@ describe("2D geometry becomes GeoJSON", () => {
           },
         },
       }),
-      { owner: OWNER },
     );
 
     expect(result.geometry).toMatchObject({
@@ -419,7 +399,6 @@ describe("2D geometry becomes GeoJSON", () => {
           },
         },
       }),
-      { owner: OWNER },
     );
 
     expect(result.geometry).toMatchObject({
@@ -444,7 +423,6 @@ describe("2D geometry becomes GeoJSON", () => {
           },
         },
       }),
-      { owner: OWNER },
     );
 
     expect(result.geometry).toMatchObject({
@@ -464,7 +442,6 @@ describe("3D geometry becomes a summary", () => {
           },
         },
       }),
-      { owner: OWNER },
     );
 
     expect(result.geometry).toMatchObject({
@@ -482,7 +459,6 @@ describe("3D geometry becomes a summary", () => {
           Point: { frame: { Crs: 4979 }, position: [35.6, 139.7, 40] },
         },
       }),
-      { owner: OWNER },
     );
 
     expect(result.geometry).toMatchObject({
@@ -504,7 +480,6 @@ describe("3D geometry becomes a summary", () => {
           },
         },
       }),
-      { owner: OWNER },
     );
 
     expect(result.geometry).toMatchObject({
@@ -551,7 +526,6 @@ describe("3D geometry becomes a summary", () => {
           },
         },
       }),
-      { owner: OWNER },
     );
 
     const geometry = result.geometry as {
@@ -586,7 +560,6 @@ describe("3D geometry becomes a summary", () => {
           },
         },
       }),
-      { owner: OWNER },
     );
 
     expect(result.geometry).toMatchObject({
@@ -608,7 +581,6 @@ describe("3D geometry becomes a summary", () => {
           },
         },
       }),
-      { owner: OWNER },
     );
     expect(cloud.geometry).toEqual({
       type: "Point cloud",
@@ -618,7 +590,6 @@ describe("3D geometry becomes a summary", () => {
 
     const csg = transformNextFeature(
       feature({ Euclidean3D: { Csg: { Union: [] } } }),
-      { owner: OWNER },
     );
     expect(csg.geometry).toMatchObject({ type: "Boolean combination" });
   });
@@ -651,7 +622,6 @@ describe("3D geometry becomes a summary", () => {
           },
         },
       }),
-      { owner: OWNER },
     );
 
     expect(result.geometry).toMatchObject({
@@ -663,7 +633,6 @@ describe("3D geometry becomes a summary", () => {
   test("names the boolean operation of a CSG geometry", () => {
     const result = transformNextFeature(
       feature({ Euclidean3D: { Csg: { Difference: [] } } }),
-      { owner: OWNER },
     );
 
     expect(result.geometry).toMatchObject({
@@ -672,41 +641,81 @@ describe("3D geometry becomes a summary", () => {
     });
   });
 
-  test("reports textures on the appearance, not inside the geometry", () => {
-    const result = transformNextFeature(
-      feature({
-        Euclidean3D: {
-          Polygon: {
-            frame: { Crs: 4979 },
-            exterior: [],
-            appearance: {
-              materials: [
-                {
-                  Pbr: {
-                    base_color_map: {
-                      raster: {
-                        InMemory: {
-                          mime_type: "image/png",
-                          bytes: [1, 2, 3, 4],
-                        },
+  test("replaces an inline texture's bytes with a note of what it was", () => {
+    const parsed = feature({
+      Euclidean3D: {
+        Polygon: {
+          frame: { Crs: 4979 },
+          exterior: [],
+          appearance: {
+            materials: [
+              {
+                Pbr: {
+                  base_color_map: {
+                    raster: {
+                      InMemory: {
+                        mime_type: "image/png",
+                        bytes: [1, 2, 3, 4],
                       },
                     },
                   },
                 },
-              ],
-              themes: [],
-              default_theme: "default",
-            },
+              },
+            ],
+            themes: [],
+            default_theme: "default",
           },
         },
-      }),
-      { owner: OWNER },
-    );
+      },
+    });
 
-    expect(result.geometry).not.toHaveProperty("textures");
-    expect(result.appearance?.textures).toHaveLength(1);
-    expect(result.appearance?.materials[0].textures[0].slot).toBe(
-      "base_color_map",
+    transformNextFeature(parsed);
+
+    const raster = (parsed.geometry as any).Euclidean3D.Polygon.appearance
+      .materials[0].Pbr.base_color_map.raster;
+    expect(raster.InMemory).toEqual({
+      mime_type: "image/png",
+      byteLength: 4,
+    });
+  });
+
+  test("leaves an external texture's uri alone", () => {
+    const parsed = feature({
+      Euclidean3D: {
+        Polygon: {
+          frame: { Crs: 4979 },
+          exterior: [],
+          appearance: {
+            materials: [
+              { Phong: { diffuse_map: { raster: { Uri: "file:///t.jpg" } } } },
+            ],
+            themes: [],
+            default_theme: "default",
+          },
+        },
+      },
+    });
+
+    transformNextFeature(parsed);
+
+    expect(
+      (parsed.geometry as any).Euclidean3D.Polygon.appearance.materials[0].Phong
+        .diffuse_map.raster,
+    ).toEqual({ Uri: "file:///t.jpg" });
+  });
+
+  test("does not walk into coordinate bulk looking for images", () => {
+    // A ring long enough that a naive walk would be obvious in a profile, and
+    // whose numbers must survive untouched.
+    const exterior = Array.from({ length: 50_000 }, (_, i) => [i, i, 0]);
+    const parsed = feature({
+      Euclidean3D: { Polygon: { frame: { Crs: 4979 }, exterior } },
+    });
+
+    transformNextFeature(parsed);
+
+    expect((parsed.geometry as any).Euclidean3D.Polygon.exterior).toHaveLength(
+      50_000,
     );
   });
 });
@@ -715,7 +724,6 @@ describe("features without drawable geometry", () => {
   test("an absent geometry yields attributes only", () => {
     const result = transformNextFeature(
       feature("None", { name: "attributes only" }),
-      { owner: OWNER },
     );
 
     expect(result).toEqual({
@@ -728,7 +736,6 @@ describe("features without drawable geometry", () => {
   test("a geometry collection reports its member count", () => {
     const result = transformNextFeature(
       feature({ GeometryCollection: { members: ["None", "None"] } }),
-      { owner: OWNER },
     );
 
     expect(result.geometry).toMatchObject({ type: "Geometry collection" });
@@ -772,7 +779,7 @@ function cityGmlFeature(levels: number[]) {
 
 describe("a CityGML feature's per-LOD collection", () => {
   test("draws, rather than falling back to a summary", () => {
-    const result = transformNextFeature(cityGmlFeature([2]), { owner: OWNER });
+    const result = transformNextFeature(cityGmlFeature([2]));
 
     // Before, a top-level collection was never converted and the map got
     // nothing at all.
@@ -783,9 +790,7 @@ describe("a CityGML feature's per-LOD collection", () => {
   });
 
   test("draws one level of detail, not all of them stacked", () => {
-    const result = transformNextFeature(cityGmlFeature([1, 2, 3]), {
-      owner: OWNER,
-    });
+    const result = transformNextFeature(cityGmlFeature([1, 2, 3]));
 
     const geometry = result.geometry as {
       coordinates: unknown[];
@@ -798,15 +803,13 @@ describe("a CityGML feature's per-LOD collection", () => {
   });
 
   test("falls back to the highest level available", () => {
-    const result = transformNextFeature(cityGmlFeature([2, 3]), {
-      owner: OWNER,
-    });
+    const result = transformNextFeature(cityGmlFeature([2, 3]));
 
     expect(result.geometry).toMatchObject({ lod: 2 });
   });
 
   test("swaps member axes through the collection", () => {
-    const result = transformNextFeature(cityGmlFeature([1]), { owner: OWNER });
+    const result = transformNextFeature(cityGmlFeature([1]));
 
     const geometry = result.geometry as { coordinates: number[][][][] };
     // EPSG:6697 is north-first, so the member's [lat, lon, z] comes out
@@ -832,7 +835,6 @@ describe("a CityGML feature's per-LOD collection", () => {
           ],
         },
       }),
-      { owner: OWNER },
     );
 
     expect(result.geometry).toMatchObject({ type: "MultiPoint" });
@@ -869,7 +871,6 @@ describe("a CityGML feature's per-LOD collection", () => {
           attrs: [{ lod: 2 }],
         },
       }),
-      { owner: OWNER },
     );
 
     expect(result.geometry).toMatchObject({
@@ -882,7 +883,6 @@ describe("a CityGML feature's per-LOD collection", () => {
   test("still summarizes a collection with nothing drawable in it", () => {
     const result = transformNextFeature(
       feature({ GeometryCollection: { members: ["None", "None"] } }),
-      { owner: OWNER },
     );
 
     expect(result.geometry).toMatchObject({ type: "Geometry collection" });
@@ -895,7 +895,6 @@ describe("geometry the schema does not know", () => {
       feature({
         Euclidean3D: { Nurbs: { frame: { Crs: 6697 }, degree: 3 } },
       }),
-      { owner: OWNER },
     );
 
     // A newer engine can emit a variant this build has never seen; the table
@@ -939,7 +938,6 @@ describe("coordinate sharing", () => {
       feature({
         Euclidean2D: { LineString: { frame: { Crs: 3857 }, coords } },
       }),
-      { owner: OWNER },
     );
 
     const emitted = (result.geometry as { coordinates: number[][] })
@@ -953,7 +951,6 @@ describe("coordinate sharing", () => {
       feature({
         Euclidean2D: { LineString: { frame: { Crs: 4326 }, coords } },
       }),
-      { owner: OWNER },
     );
 
     const emitted = (result.geometry as { coordinates: number[][] })
@@ -986,7 +983,6 @@ describe("intermediateDataTransform dispatch", () => {
       feature({
         Euclidean2D: { Point: { frame: { Crs: 4326 }, position: [2, 1] } },
       }),
-      { owner: OWNER },
     );
 
     expect(result.geometry).toMatchObject({

@@ -12,17 +12,13 @@
  * Two things come out of it. The titles are the names the engine intends a UI
  * to show ("Point (2D)", not "Point2D"), which exist only in the schema — the
  * `schemars(title = ...)` attributes are compiled out of the serde path, so no
- * JSONL line carries them. The rest is structure: which definition a property
- * or enum variant resolves to, and which definitions can reach an image at
- * all, both of which the appearance walk in `rasters.ts` follows.
+ * JSONL line carries them. The other is the shape of the tagged enums, so a
+ * geometry's type can be read off its discriminant key rather than guessed at.
  */
 import rawSchema from "./feature-intermediate.schema.json";
 
 /** Loosely typed schema node; the shapes are checked as they are read. */
 type SchemaNode = Record<string, any>;
-
-/** The definition holding encoded image bytes; see {@link CONTAINS_RASTER}. */
-const RASTER_DEFINITION = "RasterData";
 
 const DEF_PREFIX = "#/definitions/";
 
@@ -76,10 +72,11 @@ function directRefs(node: unknown, found = new Set<string>()): Set<string> {
 }
 
 /**
- * The definition a node resolves to, when it resolves to exactly one. Used for
- * both properties and enum payloads, so a variant that wraps its target in an
- * array or a tuple — `Csg::Union` is a two-element tuple of `ThreeDimensional`
- * — resolves the way a plain `$ref` does instead of dead-ending the walk.
+ * The definition an enum variant's payload resolves to, when it resolves to
+ * exactly one. Going through `directRefs` rather than reading `$ref` straight
+ * off means a variant that wraps its target in an array or a tuple — `Csg::Union`
+ * is a two-element tuple of `ThreeDimensional` — resolves the way a plain
+ * `$ref` does instead of dead-ending.
  */
 function soleTarget(node: unknown): string | null {
   const reachable = [...directRefs(node)];
@@ -96,29 +93,11 @@ export type EnumSchema = {
 /** Human-facing name per definition, e.g. Point2D -> "Point (2D)". */
 export const DEFINITION_TITLES: Record<string, string> = {};
 
-/** Property labels per definition, e.g. Polygon3D.exterior -> "Exterior ring". */
-export const PROPERTY_TITLES: Record<string, Record<string, string>> = {};
-
-/** Property -> the single definition it resolves to, per definition. */
-export const PROPERTY_TARGETS: Record<string, Record<string, string>> = {};
-
 /** Externally-tagged enums, keyed by definition name. */
 export const ENUMS: Record<string, EnumSchema> = {};
 
 for (const [name, definition] of Object.entries(definitions)) {
   if (definition.title) DEFINITION_TITLES[name] = definition.title;
-
-  const titles: Record<string, string> = {};
-  const targets: Record<string, string> = {};
-  for (const [property, node] of Object.entries<SchemaNode>(
-    definition.properties ?? {},
-  )) {
-    if (node.title) titles[property] = node.title;
-    const target = soleTarget(node);
-    if (target) targets[property] = target;
-  }
-  if (Object.keys(titles).length) PROPERTY_TITLES[name] = titles;
-  if (Object.keys(targets).length) PROPERTY_TARGETS[name] = targets;
 
   if (Array.isArray(definition.oneOf)) {
     const variants: Record<string, string | null> = {};
@@ -135,33 +114,3 @@ for (const [name, definition] of Object.entries(definitions)) {
     ENUMS[name] = { variants, units };
   }
 }
-
-/**
- * Definitions that can transitively hold encoded image bytes, found by walking
- * the reverse reference graph out from the raster definition. A walk hunting
- * for images can skip any node whose definition is absent here — which is most
- * of a feature's bulk: coordinate rings, point-cloud segments, UV sets.
- */
-export const CONTAINS_RASTER: ReadonlySet<string> = (() => {
-  const edges = new Map<string, Set<string>>();
-  for (const [name, definition] of Object.entries(definitions)) {
-    edges.set(name, directRefs(definition));
-  }
-
-  const reaching = new Set<string>([RASTER_DEFINITION]);
-  let grew = true;
-  while (grew) {
-    grew = false;
-    for (const [name, targets] of edges) {
-      if (reaching.has(name)) continue;
-      for (const target of targets) {
-        if (reaching.has(target)) {
-          reaching.add(name);
-          grew = true;
-          break;
-        }
-      }
-    }
-  }
-  return reaching;
-})();

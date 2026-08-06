@@ -17,17 +17,13 @@ import { isNextFormat } from "@flow/lib/intermediateData";
 import { transformLegacyFeature } from "./transformLegacyFeature";
 import {
   transformNextFeature,
-  type NextTransformOptions,
   type TransformedFeature,
 } from "./transformNextFeature";
 
 export type { TransformedFeature } from "./transformNextFeature";
 
-export function intermediateDataTransform(
-  parsedData: any,
-  options?: Partial<NextTransformOptions>,
-): TransformedFeature {
+export function intermediateDataTransform(parsedData: any): TransformedFeature {
   return isNextFormat(parsedData)
-    ? transformNextFeature(parsedData, { owner: options?.owner ?? "" })
+    ? transformNextFeature(parsedData)
     : transformLegacyFeature(parsedData);
 }

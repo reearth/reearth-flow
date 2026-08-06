@@ -4,7 +4,6 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import {
   describeGeometry,
   isNextFormat,
-  releaseOwner,
   type GeometryDescription,
 } from "@flow/lib/intermediateData";
 import { streamDecompressZstdJsonl } from "@flow/utils/compression";
@@ -294,10 +293,6 @@ function manageCacheSize(queryClient: QueryClient) {
 
     queriesToRemove.forEach(({ query }) => {
       console.log("Removing old streaming cache for:", query.queryKey[1]);
-      // The features go with the query, but their images are held outside the
-      // React tree and have to be released explicitly.
-      const dataUrl = query.queryKey[1];
-      if (typeof dataUrl === "string") releaseOwner(dataUrl);
       queryClient.removeQueries({ queryKey: query.queryKey });
     });
   }
@@ -409,12 +404,10 @@ export const useStreamingDebugRunQuery = (
 
               const transformedData = dataToAdd.map((feature) => {
                 try {
-                  const transformed = intermediateDataTransform(feature, {
-                    owner: dataUrl,
-                  });
-                  // Keep the engine's own record for raw inspection; its
-                  // embedded images have already been lifted out, so this
-                  // retains no pixels.
+                  const transformed = intermediateDataTransform(feature);
+                  // Keep the engine's own record for raw inspection; its inline
+                  // image bytes have already been dropped, so this retains no
+                  // pixels.
                   transformed.source = feature;
                   return transformed;
                 } catch (error) {
@@ -478,12 +471,10 @@ export const useStreamingDebugRunQuery = (
 
               const transformedData = dataToAdd.map((feature) => {
                 try {
-                  const transformed = intermediateDataTransform(feature, {
-                    owner: dataUrl,
-                  });
-                  // Keep the engine's own record for raw inspection; its
-                  // embedded images have already been lifted out, so this
-                  // retains no pixels.
+                  const transformed = intermediateDataTransform(feature);
+                  // Keep the engine's own record for raw inspection; its inline
+                  // image bytes have already been dropped, so this retains no
+                  // pixels.
                   transformed.source = feature;
                   return transformed;
                 } catch (error) {

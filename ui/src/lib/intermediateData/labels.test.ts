@@ -1,12 +1,6 @@
 import { describe, expect, test } from "vitest";
 
-import {
-  canContainRaster,
-  definitionLabel,
-  describeGeometry,
-  isNextFormat,
-  propertyLabel,
-} from "./labels";
+import { definitionLabel, describeGeometry, isNextFormat } from "./labels";
 
 describe("describeGeometry", () => {
   test("reads a 2D leaf's type from its discriminant key", () => {
@@ -108,49 +102,11 @@ describe("isNextFormat", () => {
 describe("labels", () => {
   test("prefers the schema title over the raw definition name", () => {
     expect(definitionLabel("TriangularMesh2D")).toBe("Triangle mesh (2D)");
-    expect(definitionLabel("RasterData")).toBe("Raster data");
+    expect(definitionLabel("Solid")).toBe("Solid");
   });
 
   test("falls back to the raw name for definitions the schema does not title", () => {
     expect(definitionLabel("NotADefinition")).toBe("NotADefinition");
     expect(definitionLabel(null)).toBe("");
-  });
-
-  test("labels properties per owning definition", () => {
-    expect(propertyLabel("Polygon3D", "exterior")).toBe("Exterior ring");
-    expect(propertyLabel("RasterData", "bytes")).toBe("Image bytes");
-    expect(propertyLabel("Polygon3D", "nope")).toBe("nope");
-  });
-});
-
-describe("canContainRaster", () => {
-  test("includes every path that reaches a texture", () => {
-    for (const definition of [
-      "Geometry",
-      "Euclidean3DGeometry",
-      "Solid",
-      "Shell",
-      "Csg",
-      "Collection2D",
-      "PolygonMesh3DData",
-      "Appearance",
-      "Texture",
-    ]) {
-      expect(canContainRaster(definition)).toBe(true);
-    }
-  });
-
-  test("excludes the bulky leaves a raster walk should prune", () => {
-    for (const definition of [
-      "Point2D",
-      "LineString3D",
-      "PointCloud",
-      "Segment",
-      "FaceUv",
-      "TexMatrix",
-      "CoordinateFrame",
-    ]) {
-      expect(canContainRaster(definition)).toBe(false);
-    }
   });
 });

@@ -1,18 +1,19 @@
 import { renderHook } from "@testing-library/react";
-import { afterEach, describe, expect, test } from "vitest";
+import { describe, expect, test } from "vitest";
 
-import { clearRasterStore } from "@flow/lib/intermediateData";
 import { intermediateDataTransform } from "@flow/utils/jsonl/transformIntermediateData";
 
 import useDataColumnizer from "./useDataColumnizer";
 
-const OWNER = "https://example.test/node.out.jsonl.zst";
-
 /** Run raw JSONL lines through the transform the streaming hook applies. */
 function columnize(lines: unknown[]) {
-  const features = lines.map((line) =>
-    intermediateDataTransform(line, { owner: OWNER }),
-  );
+  const features = lines.map((line) => {
+    const transformed = intermediateDataTransform(line);
+    // The streaming hook attaches the parsed record for raw inspection; do the
+    // same here, so what reaches the table is what reaches it in the app.
+    transformed.source = line;
+    return transformed;
+  });
 
   // Built once, outside the render callback: the hook re-runs its effect
   // whenever `parsedData` changes identity, and the real caller hands it a
@@ -28,8 +29,6 @@ function columnize(lines: unknown[]) {
     rows: result.current.tableData as any[],
   };
 }
-
-afterEach(() => clearRasterStore());
 
 describe("new-format features reach the table", () => {
   test("a 2D feature contributes geometry and attribute columns", () => {
@@ -120,12 +119,10 @@ describe("new-format features reach the table", () => {
       },
     ]);
 
-    // Textures belong to the appearance, not the geometry columns.
-    expect(rows[0].geometrytextures).toBeUndefined();
-    // Whatever else is in the row, the pixels are not.
-    for (const value of Object.values(rows[0])) {
-      expect(String(value).length).toBeLessThan(200);
-    }
+    // The whole row, serialized, must not carry the 200k byte values —
+    // `_source` holds the parsed record, which the transform strips in place.
+    expect(JSON.stringify(rows[0]).length).toBeLessThan(2000);
+    expect(JSON.stringify(rows[0])).toContain("byteLength");
   });
 
   test("a feature with no geometry still lists its attributes", () => {
@@ -201,7 +198,7 @@ describe("new-format features reach the table", () => {
       },
     };
 
-    const features = [intermediateDataTransform(line, { owner: OWNER })];
+    const features = [intermediateDataTransform(line)];
     features[0].source = line;
     const parsedData = { type: "FeatureCollection", features };
     const { result } = renderHook(() =>

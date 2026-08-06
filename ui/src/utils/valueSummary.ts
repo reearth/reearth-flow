@@ -2,18 +2,11 @@
  * Describing arbitrary feature values without serializing all of them.
  *
  * Intermediate-data features carry values with no useful upper bound — mesh
- * face lists, point-cloud segments, per-corner UV, and (from a glTF read) whole
- * encoded images. Anything that reaches for `JSON.stringify` on every value it
- * is handed will eventually be handed one of those, so the entry points here
- * measure first and summarize when measuring says to.
+ * face lists, point-cloud segments, per-corner UV. Anything that reaches for
+ * `JSON.stringify` on every value it is handed will eventually be handed one of
+ * those, so the entry points here measure first and summarize when measuring
+ * says to.
  */
-import {
-  isRasterHandle,
-  getRasterInfo,
-  RASTER_REF,
-} from "@flow/lib/intermediateData";
-
-import { formatFileSize } from "./fileSize";
 
 /** Leaf count past which a value is summarized rather than serialized. */
 export const LARGE_VALUE_THRESHOLD = 100;
@@ -44,19 +37,6 @@ export function resolveValue(value: unknown): unknown {
 }
 
 /**
- * One-line description of an image the raster store is holding, so a table
- * cell or a search string says "image/png · 512 KB" instead of dragging the
- * pixels back through `JSON.stringify`.
- */
-export function describeRasterHandle(value: unknown): string | null {
-  if (!isRasterHandle(value)) return null;
-  const info = getRasterInfo(value[RASTER_REF]);
-  const mime = info?.mime ?? value.mime_type;
-  const bytes = info?.byteLength ?? value.byteLength;
-  return `${mime} · ${formatFileSize(bytes)}`;
-}
-
-/**
  * Estimate the number of leaf nodes in a value, stopping once it is clearly
  * large.
  *
@@ -69,8 +49,6 @@ export function estimateSize(
   value: unknown,
   seen = new WeakSet<object>(),
 ): number {
-  if (isRasterHandle(value)) return 1;
-
   const resolved = resolveValue(value);
   if (resolved == null || typeof resolved !== "object") return 1;
   if (seen.has(resolved)) return 1;
@@ -110,9 +88,6 @@ export function stringifyItem(
   indent: string,
   depth = 0,
 ): string {
-  const raster = describeRasterHandle(item);
-  if (raster) return raster;
-
   if (item == null) return "null";
   if (typeof item !== "object") {
     return typeof item === "string" ? JSON.stringify(item) : String(item);
@@ -142,9 +117,6 @@ export function stringifyItem(
 
 /** Build a lightweight summary string for a large value without JSON.stringify. */
 export function summarizeValue(value: unknown): string {
-  const raster = describeRasterHandle(value);
-  if (raster) return raster;
-
   const resolved = resolveValue(value);
   if (Array.isArray(resolved)) {
     const len = resolved.length;
@@ -174,9 +146,6 @@ export function summarizeValue(value: unknown): string {
 
 /** A string safe to run a substring search over, whatever the value's size. */
 export function toSearchableString(value: unknown): string {
-  const raster = describeRasterHandle(value);
-  if (raster) return raster;
-
   if (typeof value !== "object" || value === null) return String(value);
   if (isLargeValue(value)) return summarizeValue(value);
   try {
@@ -195,9 +164,6 @@ export function toSearchableString(value: unknown): string {
 export function safeSerialize(value: unknown): string {
   if (value === undefined) return "-";
   if (value === null) return "null";
-
-  const raster = describeRasterHandle(value);
-  if (raster) return raster;
 
   if (typeof value === "object" && isLargeValue(value)) {
     return summarizeValue(value);

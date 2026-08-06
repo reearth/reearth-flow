@@ -5,12 +5,7 @@
  * type — no sniffing the payload to guess what a geometry is. The generated
  * maps turn those keys into the names the engine intends a UI to show.
  */
-import {
-  CONTAINS_RASTER,
-  DEFINITION_TITLES,
-  ENUMS,
-  PROPERTY_TITLES,
-} from "./schema";
+import { DEFINITION_TITLES, ENUMS } from "./schema";
 
 /** Top-level geometry enum, as the schema names it. */
 const GEOMETRY = "Geometry";
@@ -65,20 +60,6 @@ function stepInto(
 export function definitionLabel(definition: string | null): string {
   if (!definition) return "";
   return DEFINITION_TITLES[definition] ?? definition;
-}
-
-/** Display name for a property, falling back to the raw key. */
-export function propertyLabel(
-  definition: string | null,
-  property: string,
-): string {
-  if (!definition) return property;
-  return PROPERTY_TITLES[definition]?.[property] ?? property;
-}
-
-/** Whether a definition can transitively hold encoded image bytes. */
-export function canContainRaster(definition: string | null): boolean {
-  return definition ? CONTAINS_RASTER.has(definition) : false;
 }
 
 /**

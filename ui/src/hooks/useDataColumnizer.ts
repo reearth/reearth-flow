@@ -83,9 +83,8 @@ export default ({
         // as a summary instead. Truncation happens only in the cell renderer.
         const tableData = features.map((feature: any, index: number) => ({
           id: JSON.stringify(feature.id || index),
-          // Underscored keys are carried for the details panel, which filters
-          // them out of the fields it lists.
-          _appearance: feature.appearance,
+          // Underscored key, so the details panel can reach the engine's own
+          // record without it being listed among the feature's fields.
           _source: feature.source,
           ...Object.fromEntries(
             Array.from(allGeometry).map((geometry) => [

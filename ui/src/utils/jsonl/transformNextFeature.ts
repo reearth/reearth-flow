@@ -18,17 +18,10 @@
  */
 import {
   describeGeometry,
-  extractAppearance,
-  type AppearanceSummary,
   type GeometryDescription,
 } from "@flow/lib/intermediateData";
 
 type Position = number[];
-
-export type NextTransformOptions = {
-  /** Data URL of the file being read; owns any images lifted out of it. */
-  owner: string;
-};
 
 export type TransformedFeature = {
   id: string;
@@ -36,15 +29,9 @@ export type TransformedFeature = {
   properties: Record<string, unknown>;
   geometry?: unknown;
   /**
-   * Materials and their texture maps. Held beside the geometry rather than
-   * inside it so the table does not grow a column per material, and so the
-   * details panel can show the images themselves.
-   */
-  appearance?: AppearanceSummary;
-  /**
-   * The parsed JSONL record as the engine wrote it, images excepted. The
-   * details panel shows this rather than the derived geometry, so debugging
-   * sees the engine's own structure.
+   * The parsed JSONL record as the engine wrote it, inline image bytes
+   * excepted. The details panel shows this rather than the derived geometry,
+   * so debugging sees the engine's own structure.
    */
   source?: unknown;
 };
@@ -528,24 +515,84 @@ function toSummaryGeometry(
   };
 }
 
+/** Discriminant `Raster` uses for an image that travelled inside the feature. */
+const INLINE_RASTER = "InMemory";
+
+/**
+ * Whether a value is bulk coordinate data — a nested array bottoming out in
+ * numbers.
+ *
+ * Decided by descending first elements only, so pruning a mesh's `triangles`
+ * (a `number[][][]` of every vertex it has) costs three property reads rather
+ * than a walk over the whole thing.
+ */
+function isCoordinateData(value: unknown): boolean {
+  let node = value;
+  for (let depth = 0; depth < 4; depth++) {
+    if (typeof node === "number") return depth > 0;
+    if (!Array.isArray(node) || node.length === 0) return false;
+    node = node[0];
+  }
+  return false;
+}
+
+/**
+ * Replace every inline image in a parsed feature with a note of what it was.
+ *
+ * A glTF read embeds encoded images in the feature it emits
+ * (`Raster::InMemory`), and serde writes those bytes as a JSON array of
+ * integers — so after `JSON.parse` a 2 MB texture is a two-million-element JS
+ * number array. The reader splits a GLB by `EXT_mesh_features` into one feature
+ * per building and re-serializes the texture on each, and the debug panel holds
+ * up to 2000 features, so left in place a single textured GLB exhausts the tab.
+ *
+ * Nothing renders these today, so they are described rather than decoded.
+ * Engine PR #2303 left the encoding deliberately open ("UI needs to eagerly
+ * decode this to an image, or we need to come up with an alternative"); when
+ * that is settled this becomes the place that reads it.
+ *
+ * Mutates its argument: the feature has just come out of `JSON.parse` and is
+ * owned by the caller, and copying it would mean copying the very arrays this
+ * exists to drop.
+ */
+function stripInlineRasters(node: unknown): void {
+  if (!node || typeof node !== "object") return;
+
+  if (Array.isArray(node)) {
+    if (isCoordinateData(node)) return;
+    for (const item of node) stripInlineRasters(item);
+    return;
+  }
+
+  const record = node as Record<string, unknown>;
+
+  // At a `Raster`, whose sole key is its variant.
+  const inline = record[INLINE_RASTER] as Record<string, unknown> | undefined;
+  if (inline && Array.isArray(inline.bytes)) {
+    record[INLINE_RASTER] = {
+      mime_type: inline.mime_type,
+      byteLength: inline.bytes.length,
+    };
+    return;
+  }
+
+  for (const value of Object.values(record)) stripInlineRasters(value);
+}
+
 /**
  * Transform one parsed new-format JSONL line.
  *
- * The geometry is mutated in place to remove embedded image bytes before
- * anything else looks at it; see `extractAppearance`.
+ * The geometry is mutated in place to drop embedded image bytes before anything
+ * else looks at it; see {@link stripInlineRasters}.
  */
-export function transformNextFeature(
-  parsed: any,
-  options: NextTransformOptions,
-): TransformedFeature {
+export function transformNextFeature(parsed: any): TransformedFeature {
   const transformed: TransformedFeature = {
     id: parsed.id,
     type: "Feature",
     properties: { ...parsed.attributes },
   };
 
-  const appearance = extractAppearance(parsed.geometry, options.owner);
-  if (appearance.materials.length > 0) transformed.appearance = appearance;
+  stripInlineRasters(parsed.geometry);
 
   const described = describeGeometry(parsed.geometry);
 
