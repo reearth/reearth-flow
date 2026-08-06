@@ -81,6 +81,11 @@ graphs:
                     gml_city_code = id_map.get("uro:city_code") or id_map.get("uro:city");
                   }
                   gml_city_code or env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5]
+            - attribute: baseCityCode
+              method: create
+              value:
+                type: flowExpr
+                value: env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5]
 
       - id: 9f2a7c4e-3b5d-4c8f-a1e0-6d9b2f5a8c31
         name: AttributeConversionTableForWardName
@@ -94,6 +99,21 @@ graphs:
               featureTo: "cityNameEn"
               conversionTableKeys: ["ward_code"]
               conversionTableTo: "ward_name_en"
+            - featureFroms: ["city_code"]
+              featureTo: "__wardParentCode"
+              conversionTableKeys: ["ward_code"]
+              conversionTableTo: "city_code"
+
+      - id: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
+        name: CityCodeBoundaryFilter
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: attributes["city_code"] == attributes["baseCityCode"] or attributes["__wardParentCode"] == attributes["baseCityCode"]
+              outputPort: features
 
       - id: 16247597-565a-40df-a8d4-7445468978fd
         name: GeometrySplitterByLod
@@ -195,9 +215,8 @@ graphs:
                 type: flowExpr
                 value: |
                   city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
-                  base_city_code = env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5];
                   suffix = "";
-                  if attributes["city_code"] != base_city_code {
+                  if attributes["city_code"] != attributes["baseCityCode"] {
                     suffix = "_" + attributes["city_code"] + "_" + attributes["cityNameEn"];
                   }
                   city_gml + suffix
@@ -434,6 +453,11 @@ graphs:
         toPort: features
       - id: 5c7d9e1f-4a6b-4c8d-9e0f-2a3b5c7d9e1a
         from: 9f2a7c4e-3b5d-4c8f-a1e0-6d9b2f5a8c31
+        to: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
+        fromPort: features
+        toPort: features
+      - id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+        from: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
         to: 16247597-565a-40df-a8d4-7445468978fd
         fromPort: features
         toPort: features
