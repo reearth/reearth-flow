@@ -2,10 +2,12 @@
  * The engine's intermediate-data schema, read directly and reduced to the few
  * maps the UI needs.
  *
- * `engine/schema/feature-intermediate.schema.json` is generated engine-side by
- * `reearth-flow schema-feature` and kept honest by `cargo make check-schema`.
- * Importing it means there is nothing to regenerate here and no second copy to
- * drift; the reductions below run once at module load over ~54 definitions.
+ * `feature-intermediate.schema.json` beside this file is generated, not written
+ * by hand. `cargo make schema-feature` emits it here and to
+ * `engine/schema/`, and `cargo make check-schema` fails on either copy going
+ * stale. It lives here rather than being imported from `engine/` because the
+ * production image builds with `context: ui` and so has no engine tree at all.
+ * The reductions below run once at module load over ~54 definitions.
  *
  * Two things come out of it. The titles are the names the engine intends a UI
  * to show ("Point (2D)", not "Point2D"), which exist only in the schema — the
@@ -14,7 +16,7 @@
  * or enum variant resolves to, and which definitions can reach an image at
  * all, both of which the appearance walk in `rasters.ts` follows.
  */
-import rawSchema from "../../../../engine/schema/feature-intermediate.schema.json";
+import rawSchema from "./feature-intermediate.schema.json";
 
 /** Loosely typed schema node; the shapes are checked as they are read. */
 type SchemaNode = Record<string, any>;

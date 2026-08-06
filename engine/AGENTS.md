@@ -24,7 +24,17 @@ cargo run --package reearth-flow-cli -- run --workflow path/to/workflow.yml
 # Action schema generation (run in order when adding/modifying actions)
 cargo make schema-base        # generates actions.json + syncs i18n skeletons
 cargo make schema-translated  # generates actions_{lang}.json + docs from i18n files
+
+# Intermediate-data schema (run after changing any geometry leaf's wire form)
+cargo make schema-feature     # writes schema/feature-intermediate.schema.json
+                              # AND the UI's copy under ui/src/lib/intermediateData/
+cargo make check-schema       # regenerates all of the above; fails on any diff
 ```
+
+`schema-feature` deliberately writes outside `engine/`. The UI reads this schema
+to label and walk intermediate data, but its production image builds with
+`context: ui`, so it cannot import the engine copy — the second write is what
+keeps that possible. Commit both.
 
 ## Development Dependencies
 

@@ -56,6 +56,21 @@ Four-layer state strategy:
 - Run `yarn gql` after any server schema change
 - Feature-specific API modules with TanStack Query hooks
 
+## Engine Schema Integration
+
+`src/lib/intermediateData/` reads the intermediate-data JSONL format through the
+engine's own generated schema, `feature-intermediate.schema.json`. That file is
+generated engine-side and **written into `src/` by the engine**, not imported
+across the package boundary: the production image builds with `context: ui` (see
+`build_deploy_ui.yml`), so nothing outside `ui/` resolves at build time.
+
+- There is no UI-side command. `cargo make schema-feature` (run from `engine/`)
+  writes both the engine copy and this one; `cargo make check-schema` fails on
+  either being stale
+- Never edit `src/lib/intermediateData/feature-intermediate.schema.json` by hand
+- Nothing under `src/` may import from `engine/` or `server/`. If the UI needs a
+  generated artifact from either, have that side write it into `src/`
+
 ## Testing
 
 - **Vitest** with jsdom environment for unit tests
