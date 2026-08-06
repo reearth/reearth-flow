@@ -2492,6 +2492,35 @@
       }
     },
     {
+      "name": "Model Georeferencer",
+      "parameterI18n": {
+        "": {
+          "title": "モデルジオリファレンサーのパラメータ",
+          "description": "モデル空間の座標を、どの向きで地球上のどこに配置するかを制御します。"
+        },
+        "placement": {
+          "title": "配置方法",
+          "description": "モデルを地球上のどこに配置するかを指定します。"
+        },
+        "upAxis": {
+          "title": "上方向の軸",
+          "description": "元のモデルの鉛直方向の軸です。"
+        }
+      },
+      "enumI18n": {
+        "UpAxis": {
+          "y": {
+            "title": "Y軸が上",
+            "description": "モデルの鉛直方向の軸が Y です。glTF および一般的な OBJ の慣例です。"
+          },
+          "z": {
+            "title": "Z軸が上",
+            "description": "モデルの鉛直方向の軸がすでに Z のため、回転は適用されません。"
+          }
+        }
+      }
+    },
+    {
       "name": "Neighbor Finder",
       "description": "空間的な近接性に基づいて、各基本地物に対して最も近い候補地物を見つける",
       "parameterI18n": {

@@ -2492,6 +2492,35 @@
       }
     },
     {
+      "name": "Model Georeferencer",
+      "parameterI18n": {
+        "": {
+          "title": "模型地理配准器参数",
+          "description": "控制模型空间坐标在地球上的朝向与位置。"
+        },
+        "placement": {
+          "title": "放置方式",
+          "description": "模型在地球上的定位方式。"
+        },
+        "upAxis": {
+          "title": "上方向轴",
+          "description": "源模型的竖直轴。"
+        }
+      },
+      "enumI18n": {
+        "UpAxis": {
+          "y": {
+            "title": "Y 轴向上",
+            "description": "模型的竖直轴为 Y，这是 glTF 以及 OBJ 的常见约定。"
+          },
+          "z": {
+            "title": "Z 轴向上",
+            "description": "模型的竖直轴已经是 Z，因此不应用旋转。"
+          }
+        }
+      }
+    },
+    {
       "name": "Neighbor Finder",
       "description": "基于空间邻近性，为每个基础要素找到最近的候选要素",
       "parameterI18n": {

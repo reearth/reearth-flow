@@ -8471,6 +8471,218 @@
       ]
     },
     {
+      "name": "Model Georeferencer",
+      "type": "processor",
+      "description": "Assigns a coordinate reference system to model-space 3D geometry, optionally anchoring it at a given latitude and longitude.",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "模型地理配准器参数",
+        "description": "控制模型空间坐标在地球上的朝向与位置。",
+        "type": "object",
+        "required": [
+          "placement"
+        ],
+        "properties": {
+          "placement": {
+            "title": "放置方式",
+            "description": "模型在地球上的定位方式。",
+            "allOf": [
+              {
+                "$ref": "#/definitions/Placement"
+              }
+            ]
+          },
+          "upAxis": {
+            "title": "上方向轴",
+            "description": "源模型的竖直轴。",
+            "default": "y",
+            "allOf": [
+              {
+                "$ref": "#/definitions/UpAxis"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "Placement": {
+            "description": "How the model is positioned on the globe.",
+            "oneOf": [
+              {
+                "title": "Declare CRS",
+                "description": "Treats the coordinates as already being in the given coordinate reference system and tags them without moving them.",
+                "type": "object",
+                "required": [
+                  "epsgCode",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "declareCrs"
+                    ]
+                  },
+                  "epsgCode": {
+                    "title": "EPSG Code",
+                    "description": "EPSG code the coordinates are already expressed in. Must use linear units, because model coordinates are distances rather than angles.",
+                    "type": "integer",
+                    "format": "uint16",
+                    "minimum": 0.0
+                  }
+                }
+              },
+              {
+                "title": "Anchor",
+                "description": "Places a local model at a geographic position, aligning it to the local east/north/up directions there.",
+                "type": "object",
+                "required": [
+                  "latitude",
+                  "longitude",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "anchor"
+                    ]
+                  },
+                  "latitude": {
+                    "title": "Latitude",
+                    "description": "Latitude of the anchor in degrees.",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "longitude": {
+                    "title": "Longitude",
+                    "description": "Longitude of the anchor in degrees.",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "height": {
+                    "title": "Height",
+                    "description": "Height of the anchor in metres above the ellipsoid.",
+                    "default": null,
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "heading": {
+                    "title": "Heading",
+                    "description": "Rotation of the model about its vertical axis, in degrees clockwise from north.",
+                    "default": null,
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          },
+          "UpAxis": {
+            "description": "The source model's up axis.",
+            "oneOf": [
+              {
+                "title": "Y 轴向上",
+                "description": "模型的竖直轴为 Y，这是 glTF 以及 OBJ 的常见约定。",
+                "type": "string",
+                "enum": [
+                  "y"
+                ]
+              },
+              {
+                "title": "Z 轴向上",
+                "description": "模型的竖直轴已经是 Z，因此不应用旋转。",
+                "type": "string",
+                "enum": [
+                  "z"
+                ]
+              }
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features",
+        "rejected"
+      ],
+      "categories": [
+        "Geometry"
+      ],
+      "tags": [
+        "coordinate-system",
+        "3d"
+      ]
+    },
+    {
       "name": "Neighbor Finder",
       "type": "processor",
       "description": "基于空间邻近性，为每个基础要素找到最近的候选要素",

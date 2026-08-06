@@ -2492,6 +2492,35 @@
       }
     },
     {
+      "name": "Model Georeferencer",
+      "parameterI18n": {
+        "": {
+          "title": "Parámetros del Georreferenciador de Modelos",
+          "description": "Controla cómo se orientan y se sitúan sobre el globo las coordenadas del espacio del modelo."
+        },
+        "placement": {
+          "title": "Ubicación",
+          "description": "Cómo se sitúa el modelo sobre el globo."
+        },
+        "upAxis": {
+          "title": "Eje Vertical",
+          "description": "El eje vertical del modelo de origen."
+        }
+      },
+      "enumI18n": {
+        "UpAxis": {
+          "y": {
+            "title": "Y Arriba",
+            "description": "El eje vertical del modelo es Y, la convención de glTF y la habitual en OBJ."
+          },
+          "z": {
+            "title": "Z Arriba",
+            "description": "El eje vertical del modelo ya es Z, por lo que no se aplica ninguna rotación."
+          }
+        }
+      }
+    },
+    {
       "name": "Neighbor Finder",
       "description": "Encuentra las entidades candidatas más cercanas para cada entidad base basándose en proximidad espacial",
       "parameterI18n": {
