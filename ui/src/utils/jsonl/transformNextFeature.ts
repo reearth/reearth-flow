@@ -484,8 +484,10 @@ function summarize(variant: string | null, value: unknown): string | undefined {
   switch (variant) {
     case "Point":
       return "1 position";
-    case "PointCloud":
-      return `${countPointCloud(leaf).toLocaleString()} points`;
+    case "PointCloud": {
+      const count = countPointCloud(leaf);
+      return `${count.toLocaleString()} point${count === 1 ? "" : "s"}`;
+    }
     case "LineString":
       return `${count("coords")} vertices`;
     case "Polygon":

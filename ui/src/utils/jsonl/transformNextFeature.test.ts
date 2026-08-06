@@ -622,7 +622,7 @@ describe("3D geometry becomes a summary", () => {
     expect(cloud.geometry).toEqual({
       type: "Point cloud",
       frame: "EPSG:4979",
-      summary: "1 points",
+      summary: "1 point",
     });
 
     const csg = transformNextFeature(
