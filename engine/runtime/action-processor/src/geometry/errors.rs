@@ -191,6 +191,10 @@ pub(super) enum GeometryProcessorError {
     NeighborFinderFactory(String),
     #[error("NeighborFinder error: {0}")]
     NeighborFinder(String),
+    #[error("ModelGeoreferencer Factory error: {0}")]
+    ModelGeoreferencerFactory(String),
+    #[error("ModelGeoreferencer error: {0}")]
+    ModelGeoreferencer(String),
 }
 
 pub(super) type Result<T, E = GeometryProcessorError> = std::result::Result<T, E>;
