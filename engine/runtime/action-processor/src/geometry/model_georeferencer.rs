@@ -22,7 +22,7 @@ use reearth_flow_runtime::{
     forwarder::ProcessorChannelForwarder,
     node::{Port, Processor, ProcessorFactory, FEATURES_PORT},
 };
-use reearth_flow_types::{Code, CodeType, Feature};
+use reearth_flow_types::{Code, CodeType, CompiledCode, Feature};
 use schemars::JsonSchema;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -81,6 +81,69 @@ enum Placement {
         #[serde(default)]
         heading: Option<Code<{ CodeType::FlowExpr as u32 }>>,
     },
+}
+
+/// [`Placement`], resolved for a built processor: `anchor`'s expression
+/// parameters are precompiled once here (mirroring
+/// `coordinate_frame_reprojector.rs`'s `BasePointSource`, which compiles its
+/// `base_point` expression once in `build()` and stores the `CompiledCode`),
+/// rather than re-parsed on every feature `process()` handles.
+#[derive(Debug, Clone)]
+enum ResolvedPlacement {
+    DeclareCrs { epsg_code: u16 },
+    // Boxed: `CompiledCode` is large enough that an unboxed `Anchor` variant
+    // would make every `ResolvedPlacement` (including the far smaller
+    // `DeclareCrs`) pay for its size (`clippy::large_enum_variant`).
+    Anchor(Box<ResolvedAnchor>),
+}
+
+/// The precompiled `anchor` expression parameters, boxed out of
+/// [`ResolvedPlacement::Anchor`] to keep that enum small.
+#[derive(Debug, Clone)]
+struct ResolvedAnchor {
+    latitude: CompiledCode,
+    longitude: CompiledCode,
+    height: Option<CompiledCode>,
+    heading: Option<CompiledCode>,
+}
+
+/// Compile an `anchor` placement expression parameter at build time. `name`
+/// identifies the parameter (`"latitude"`, `"longitude"`, `"height"`, or
+/// `"heading"`) in the error message on a syntax error.
+fn compile_anchor_expr(
+    code: &Code<{ CodeType::FlowExpr as u32 }>,
+    name: &'static str,
+) -> Result<CompiledCode, BoxedError> {
+    code.compile().map_err(|e| {
+        Box::new(GeometryProcessorError::ModelGeoreferencerFactory(format!(
+            "failed to compile anchor `{name}` expression: {e:?}"
+        ))) as BoxedError
+    })
+}
+
+impl Placement {
+    /// Resolve into [`ResolvedPlacement`], compiling `anchor`'s expression
+    /// parameters.
+    fn resolve(self) -> Result<ResolvedPlacement, BoxedError> {
+        match self {
+            Placement::DeclareCrs { epsg_code } => Ok(ResolvedPlacement::DeclareCrs { epsg_code }),
+            Placement::Anchor {
+                latitude,
+                longitude,
+                height,
+                heading,
+            } => Ok(ResolvedPlacement::Anchor(Box::new(ResolvedAnchor {
+                latitude: compile_anchor_expr(&latitude, "latitude")?,
+                longitude: compile_anchor_expr(&longitude, "longitude")?,
+                height: height
+                    .map(|code| compile_anchor_expr(&code, "height"))
+                    .transpose()?,
+                heading: heading
+                    .map(|code| compile_anchor_expr(&code, "heading"))
+                    .transpose()?,
+            }))),
+        }
+    }
 }
 
 /// # Model Georeferencer Parameters
@@ -155,7 +218,7 @@ impl ProcessorFactory for ModelGeoreferencerFactory {
         };
 
         Ok(Box::new(ModelGeoreferencer {
-            placement: params.placement,
+            placement: params.placement.resolve()?,
             up_axis: params.up_axis,
         }))
     }
@@ -165,7 +228,7 @@ impl ProcessorFactory for ModelGeoreferencerFactory {
 /// from the source model's up axis onto Z first.
 #[derive(Debug, Clone)]
 pub struct ModelGeoreferencer {
-    placement: Placement,
+    placement: ResolvedPlacement,
     up_axis: UpAxis,
 }
 
@@ -179,25 +242,20 @@ impl ModelGeoreferencer {
         env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> Result<(), BoxedError> {
         let (affine, target) = match &self.placement {
-            Placement::DeclareCrs { epsg_code } => {
+            ResolvedPlacement::DeclareCrs { epsg_code } => {
                 let epsg = EpsgCode::new(*epsg_code);
                 validate_declared_crs(epsg)?;
                 (axis_affine(&self.up_axis), CoordinateFrame::Crs(epsg))
             }
-            Placement::Anchor {
-                latitude,
-                longitude,
-                height,
-                heading,
-            } => {
-                let lat = eval_expr_f64(latitude, feature, env_vars.clone())?;
-                let lon = eval_expr_f64(longitude, feature, env_vars.clone())?;
-                let height_m = match height {
-                    Some(code) => eval_expr_f64(code, feature, env_vars.clone())?,
+            ResolvedPlacement::Anchor(anchor) => {
+                let lat = eval_expr_f64(&anchor.latitude, "latitude", feature, env_vars.clone())?;
+                let lon = eval_expr_f64(&anchor.longitude, "longitude", feature, env_vars.clone())?;
+                let height_m = match &anchor.height {
+                    Some(code) => eval_expr_f64(code, "height", feature, env_vars.clone())?,
                     None => 0.0,
                 };
-                let heading_deg = match heading {
-                    Some(code) => eval_expr_f64(code, feature, env_vars.clone())?,
+                let heading_deg = match &anchor.heading {
+                    Some(code) => eval_expr_f64(code, "heading", feature, env_vars.clone())?,
                     None => 0.0,
                 };
                 (
@@ -212,30 +270,27 @@ impl ModelGeoreferencer {
     }
 }
 
-/// Evaluate an `anchor` placement expression parameter to an `f64`, the same
-/// way `coordinate_frame_reprojector.rs` evaluates its `base_point` expression:
-/// compile, evaluate against the feature, and treat any failure -- to compile,
-/// to evaluate, or to coerce the result to a number -- as an evaluation
-/// failure rather than a panic, surfaced to the caller as an error so the
-/// feature is routed to the `rejected` port.
+/// Evaluate an already-compiled `anchor` placement expression parameter to an
+/// `f64` against `feature`, the same way `coordinate_frame_reprojector.rs`
+/// evaluates its precompiled `base_point` expression: evaluate, and treat any
+/// failure -- to evaluate, or to coerce the result to a number -- as an
+/// evaluation failure rather than a panic, surfaced to the caller as an error
+/// so the feature is routed to the `rejected` port. `name` identifies which
+/// anchor parameter (`"latitude"`, `"longitude"`, `"height"`, or `"heading"`)
+/// failed, for the error message.
 fn eval_expr_f64(
-    code: &Code<{ CodeType::FlowExpr as u32 }>,
+    code: &CompiledCode,
+    name: &'static str,
     feature: &Feature,
     env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
 ) -> Result<f64, BoxedError> {
-    let compiled = code.compile().map_err(|e| {
-        Box::new(GeometryProcessorError::ModelGeoreferencer(format!(
-            "failed to compile anchor expression: {e:?}"
-        ))) as BoxedError
-    })?;
-    compiled
-        .eval(feature, env_vars)
+    code.eval(feature, env_vars)
         .ok()
         .and_then(|v| v.as_f64())
         .ok_or_else(|| {
-            Box::new(GeometryProcessorError::ModelGeoreferencer(
-                "anchor expression did not evaluate to a number".to_string(),
-            )) as BoxedError
+            Box::new(GeometryProcessorError::ModelGeoreferencer(format!(
+                "anchor `{name}` expression did not evaluate to a number"
+            ))) as BoxedError
         })
 }
 
@@ -442,6 +497,17 @@ mod tests {
         )))
     }
 
+    /// Build a `ModelGeoreferencer` from a `Placement` the way the factory's
+    /// `build()` does (via `Placement::resolve()`), so tests keep expressing
+    /// intent in terms of the parameter-facing `Placement` even though the
+    /// processor stores the precompiled `ResolvedPlacement`.
+    fn processor_from(placement: Placement, up_axis: UpAxis) -> ModelGeoreferencer {
+        ModelGeoreferencer {
+            placement: placement.resolve().unwrap(),
+            up_axis,
+        }
+    }
+
     /// Drive `ModelGeoreferencer::process` end to end through a real
     /// `ExecutorContext` / `ProcessorChannelForwarder`, mirroring how
     /// `center_point_replacer.rs` and `coordinate_extractor.rs` drive their
@@ -519,10 +585,7 @@ mod tests {
             Attributes::new(),
             euclidean_mesh(vec![[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]),
         );
-        let mut processor = ModelGeoreferencer {
-            placement: Placement::DeclareCrs { epsg_code: 4978 },
-            up_axis: UpAxis::Z,
-        };
+        let mut processor = processor_from(Placement::DeclareCrs { epsg_code: 4978 }, UpAxis::Z);
 
         let (features, ports) = run_processor(&feature, &mut processor);
 
@@ -546,10 +609,7 @@ mod tests {
         );
         let feature =
             Feature::new_with_attributes_and_geometry(Attributes::new(), geometry.clone());
-        let mut processor = ModelGeoreferencer {
-            placement: Placement::DeclareCrs { epsg_code: 6677 },
-            up_axis: UpAxis::Y,
-        };
+        let mut processor = processor_from(Placement::DeclareCrs { epsg_code: 6677 }, UpAxis::Y);
 
         let (features, ports) = run_processor(&feature, &mut processor);
 
@@ -574,10 +634,7 @@ mod tests {
         )));
         let feature =
             Feature::new_with_attributes_and_geometry(Attributes::new(), geometry.clone());
-        let mut processor = ModelGeoreferencer {
-            placement: Placement::DeclareCrs { epsg_code: 6677 },
-            up_axis: UpAxis::Y,
-        };
+        let mut processor = processor_from(Placement::DeclareCrs { epsg_code: 6677 }, UpAxis::Y);
 
         let (features, ports) = run_processor(&feature, &mut processor);
 
@@ -608,10 +665,7 @@ mod tests {
         ])));
         let feature =
             Feature::new_with_attributes_and_geometry(Attributes::new(), geometry.clone());
-        let mut processor = ModelGeoreferencer {
-            placement: Placement::DeclareCrs { epsg_code: 6677 },
-            up_axis: UpAxis::Y,
-        };
+        let mut processor = processor_from(Placement::DeclareCrs { epsg_code: 6677 }, UpAxis::Y);
 
         let (features, ports) = run_processor(&feature, &mut processor);
 
@@ -662,23 +716,110 @@ mod tests {
     fn anchor_maps_model_up_to_local_up() {
         let (lat, lon) = (35.908, 140.102);
         let a = anchor_affine(lat, lon, 0.0, 0.0, &UpAxis::Z);
-        // 100 m up the model's Z must land approximately 100 m further from the
-        // earth's centre. "up" is the WGS 84 ellipsoid normal at this latitude,
-        // which is exactly radial only at the equator and the poles; away from
-        // those, ellipsoidal flattening tilts it slightly off-radial (by up to
-        // ~0.17 degrees at mid-latitudes), so the geocentric radius grows by
-        // very nearly, but not exactly, the height moved along it. At 35.908
-        // degrees that shortfall is ~5e-4 m per 100 m of height, so the
-        // tolerance below is loosened from a geometric identity (which would
-        // only hold on a sphere) to what WGS 84's flattening actually permits.
+        // The load-bearing property: moving 100 m along the model's Z moves
+        // 100 m along the WGS 84 ellipsoid normal at (lat, lon) -- the
+        // direction is exactly `[cosφcosλ, cosφsinλ, sinφ]`, componentwise.
+        // (Checking only the geocentric *radius* grew by ~100 would pass for a
+        // sphere's radial "up" too -- and would just as happily accept a wrong
+        // implementation that used the geocentric radial direction instead of
+        // the ellipsoid normal, since those coincide only at the equator and
+        // poles. The direction check below is exact and catches that.)
         let base = a.apply([0.0, 0.0, 0.0]);
         let up = a.apply([0.0, 0.0, 100.0]);
+        let displacement = [up[0] - base[0], up[1] - base[1], up[2] - base[2]];
+        let mag = (displacement[0] * displacement[0]
+            + displacement[1] * displacement[1]
+            + displacement[2] * displacement[2])
+            .sqrt();
+        assert!((mag - 100.0).abs() < 1e-9, "displacement length was {mag}");
+
+        let (lat_r, lon_r) = (lat.to_radians(), lon.to_radians());
+        let normal = [
+            lat_r.cos() * lon_r.cos(),
+            lat_r.cos() * lon_r.sin(),
+            lat_r.sin(),
+        ];
+        for i in 0..3 {
+            assert!(
+                (displacement[i] / 100.0 - normal[i]).abs() < 1e-9,
+                "axis {i}: displacement direction {:?} vs ellipsoid normal {normal:?}",
+                [
+                    displacement[0] / 100.0,
+                    displacement[1] / 100.0,
+                    displacement[2] / 100.0
+                ]
+            );
+        }
+
+        // Secondary sanity check: the geocentric radius grows by very nearly,
+        // but not exactly, 100 m too -- WGS 84's ellipsoid normal is radial
+        // only at the equator and poles, so away from those it is tilted by
+        // up to ~0.192 degrees (at +-45 deg latitude), leaving a ~5e-4 m
+        // shortfall per 100 m of height at this latitude. This is not the
+        // load-bearing assertion; the direction check above is.
         let r = |p: [f64; 3]| (p[0] * p[0] + p[1] * p[1] + p[2] * p[2]).sqrt();
         assert!(
             (r(up) - r(base) - 100.0).abs() < 1e-3,
             "radius grew by {}",
             r(up) - r(base)
         );
+    }
+
+    #[test]
+    fn anchor_composes_the_y_up_flip_before_the_enu_placement() {
+        // `UpAxis` DEFAULTS to `Y` (the glTF/OBJ convention this action exists
+        // to serve), yet every other anchor test above uses `UpAxis::Z`, where
+        // `axis_affine` is the identity and both composition orders
+        // (`enu.compose(&axis_affine(..))` vs. `axis_affine(..).compose(&enu)`)
+        // are indistinguishable. This test pins the Y-up case specifically, so
+        // the composition order is actually exercised.
+        let (lat, lon, height) = (35.908, 140.102, 10.0);
+        let a = anchor_affine(lat, lon, height, 0.0, &UpAxis::Y);
+
+        // (a) The model origin still lands exactly at the anchor, regardless
+        // of the axis flip (a pure rotation fixes the origin).
+        let origin = a.apply([0.0, 0.0, 0.0]);
+        let expected = geodetic_to_ecef(lat, lon, height);
+        for i in 0..3 {
+            assert!(
+                (origin[i] - expected[i]).abs() < 1e-6,
+                "axis {i}: {origin:?} vs {expected:?}"
+            );
+        }
+
+        // (b) The model's +Y (its "up", under the Y-up convention) must map
+        // to local up: a point 100 m up model-Y lands 100 m along the
+        // ellipsoid normal from the origin, the same exact property checked
+        // for `UpAxis::Z`'s +Z in `anchor_maps_model_up_to_local_up`.
+        let up_point = a.apply([0.0, 100.0, 0.0]);
+        let displacement = [
+            up_point[0] - origin[0],
+            up_point[1] - origin[1],
+            up_point[2] - origin[2],
+        ];
+        let mag = (displacement[0] * displacement[0]
+            + displacement[1] * displacement[1]
+            + displacement[2] * displacement[2])
+            .sqrt();
+        assert!((mag - 100.0).abs() < 1e-9, "displacement length was {mag}");
+
+        let (lat_r, lon_r) = (lat.to_radians(), lon.to_radians());
+        let normal = [
+            lat_r.cos() * lon_r.cos(),
+            lat_r.cos() * lon_r.sin(),
+            lat_r.sin(),
+        ];
+        for i in 0..3 {
+            assert!(
+                (displacement[i] / 100.0 - normal[i]).abs() < 1e-9,
+                "axis {i}: displacement direction {:?} vs ellipsoid normal {normal:?}",
+                [
+                    displacement[0] / 100.0,
+                    displacement[1] / 100.0,
+                    displacement[2] / 100.0
+                ]
+            );
+        }
     }
 
     #[test]
@@ -708,15 +849,15 @@ mod tests {
         let (lat, lon) = (35.908, 140.102);
         let geometry = euclidean_mesh(vec![[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]);
         let feature = Feature::new_with_attributes_and_geometry(Attributes::new(), geometry);
-        let mut processor = ModelGeoreferencer {
-            placement: Placement::Anchor {
+        let mut processor = processor_from(
+            Placement::Anchor {
                 latitude: flow_expr(lat),
                 longitude: flow_expr(lon),
                 height: None,
                 heading: None,
             },
-            up_axis: UpAxis::Z,
-        };
+            UpAxis::Z,
+        );
 
         let (features, ports) = run_processor(&feature, &mut processor);
 
@@ -739,22 +880,27 @@ mod tests {
 
     #[test]
     fn process_rejects_a_feature_whose_anchor_expression_fails_to_evaluate() {
-        // A malformed expression must not panic; it must route to `rejected`.
+        // A syntactically valid expression that evaluates to a non-number must
+        // not panic; it must route to `rejected`. (A syntax error is instead
+        // caught at `build()` time now that anchor expressions are precompiled
+        // -- see `anchor_with_a_malformed_expression_fails_to_resolve` below --
+        // so this test exercises the remaining evaluate-time failure mode:
+        // successful compile and eval, but a result that isn't a number.)
         let geometry = euclidean_mesh(vec![[0.0, 0.0, 0.0], [0.0, 0.0, 0.0], [0.0, 0.0, 0.0]]);
         let feature =
             Feature::new_with_attributes_and_geometry(Attributes::new(), geometry.clone());
-        let mut processor = ModelGeoreferencer {
-            placement: Placement::Anchor {
+        let mut processor = processor_from(
+            Placement::Anchor {
                 latitude: Code {
                     ty: CodeType::FlowExpr,
-                    value: "this is not a valid expression [[[".to_string(),
+                    value: "\"not-a-number\"".to_string(),
                 },
                 longitude: flow_expr(140.102),
                 height: None,
                 heading: None,
             },
-            up_axis: UpAxis::Z,
-        };
+            UpAxis::Z,
+        );
 
         let (features, ports) = run_processor(&feature, &mut processor);
 
@@ -763,5 +909,24 @@ mod tests {
             *features[0].geometry, geometry,
             "geometry must be untouched on evaluation failure"
         );
+    }
+
+    #[test]
+    fn anchor_with_a_malformed_expression_fails_to_resolve() {
+        // A syntax error in an anchor expression is a configuration error, not
+        // per-feature data, so it must surface at `build()`/`resolve()` time
+        // (mirroring `coordinate_frame_reprojector.rs`'s `base_point.compile()`
+        // in `build()`), rather than compiling per feature and rejecting late.
+        let result = Placement::Anchor {
+            latitude: Code {
+                ty: CodeType::FlowExpr,
+                value: "this is not a valid expression [[[".to_string(),
+            },
+            longitude: flow_expr(140.102),
+            height: None,
+            heading: None,
+        }
+        .resolve();
+        assert!(result.is_err());
     }
 }
