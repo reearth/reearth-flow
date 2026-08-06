@@ -321,8 +321,8 @@ fn write_2d(geometry: &Euclidean2DGeometry) -> Result<WrittenWkt, GeometryExport
         Point(p) => Ok(point(p.frame(), p.position())),
         LineString(l) => Ok(curve(l.frame(), l.coords())),
         Polygon(p) => Ok(area(p.frame(), p.exterior(), p.interiors())),
-        PolygonMesh(m) => write_faces((**m).clone(), geometry),
-        TriangularMesh(m) => write_faces((**m).clone(), geometry),
+        PolygonMesh(m) => write_faces((**m).clone(), "PolygonMesh"),
+        TriangularMesh(m) => write_faces((**m).clone(), "TriangularMesh"),
         Collection(c) => Parts::of(c.members(), write_2d, || {
             GeometryExportError::UnsupportedGeometryCollection
         })
@@ -336,24 +336,30 @@ fn write_3d(geometry: &Euclidean3DGeometry) -> Result<WrittenWkt, GeometryExport
         Point(p) => Ok(point(p.frame(), p.position())),
         LineString(l) => Ok(curve(l.frame(), l.coords())),
         Polygon(p) => Ok(area(p.frame(), p.exterior(), p.interiors())),
-        PolygonMesh(m) => write_faces((**m).clone(), geometry),
-        TriangularMesh(m) => write_faces((**m).clone(), geometry),
+        PolygonMesh(m) => write_faces((**m).clone(), "PolygonMesh"),
+        TriangularMesh(m) => write_faces((**m).clone(), "TriangularMesh"),
         Collection(c) => Parts::of(c.members(), write_3d, || {
             GeometryExportError::UnsupportedGeometryCollection
         })
         .map(Parts::into_one_geometry),
         // WKT has no volume, nor the boolean tree built from volumes. A PointCloud
         // could fill a MULTIPOINT, but that would emit a position per sample.
-        Solid(_) | Csg(_) | PointCloud(_) => Err(unsupported(geometry)),
+        Solid(_) => Err(unsupported("Solid")),
+        Csg(_) => Err(unsupported("Csg")),
+        PointCloud(_) => Err(unsupported("PointCloud")),
     }
 }
 
 /// A mesh writes as its faces, folding into a `MULTIPOLYGON` the way a collection
 /// writes as its members.
 ///
-/// The `Split` op takes `&mut self`, hence the mesh is passed by value; splitting a
-/// mesh reads it rather than emptying it, so the geometry it came from is left
-/// intact. `geometry` names the mesh in the error when its faces cannot be read.
+/// `Split::split` takes `&mut self`, and its contract permits it to empty the
+/// receiver of the members it yields; the current mesh impls happen to read
+/// rather than empty, but that is not a guarantee this function can rely on. The
+/// mesh is therefore passed by value — `write_2d`/`write_3d` clone it first — so
+/// the feature's geometry is left intact regardless of what a given `Split` impl
+/// actually does. `kind` names the mesh kind in the error when its faces cannot
+/// be read.
 ///
 /// A building-sized mesh becomes one cell holding hundreds of rings. That is the
 /// same output the GeoJSON writer produces, but CSV is opened in spreadsheet tools
@@ -363,12 +369,12 @@ fn write_3d(geometry: &Euclidean3DGeometry) -> Result<WrittenWkt, GeometryExport
 /// must leave byte-identical.
 fn write_faces(
     mut mesh: impl Split,
-    geometry: &impl std::fmt::Debug,
+    kind: &'static str,
 ) -> Result<WrittenWkt, GeometryExportError> {
     let mut faces = Vec::new();
     mesh.split(&mut |face, _| faces.push(face))
-        .map_err(|_| unsupported(geometry))?;
-    Parts::of(&faces, write_geometry, || unsupported(geometry)).map(Parts::into_one_geometry)
+        .map_err(|_| unsupported(kind))?;
+    Parts::of(&faces, write_geometry, || unsupported(kind)).map(Parts::into_one_geometry)
 }
 
 // The 2D and 3D leaves differ only in how long a position is, so what turns one
@@ -494,8 +500,18 @@ fn closed_ring<const N: usize>(ring: &[[f64; N]]) -> Vec<[f64; N]> {
     ring
 }
 
-fn unsupported(geometry: &impl std::fmt::Debug) -> GeometryExportError {
-    GeometryExportError::UnsupportedGeometryType(format!("{geometry:?}"))
+/// Build the error for a geometry kind WKT cannot express, naming it by a short,
+/// stable label rather than by its `Debug` output.
+///
+/// A PLATEAU `lod2Solid` parses to a `Euclidean3DGeometry::Solid`, whose `Debug`
+/// prints every shell, mesh and vertex; `csv.rs` logs this error once per
+/// feature, so a full dump here would turn a CityGML-to-CSV export into
+/// gigabytes of log output for a single warning. The label keeps the message a
+/// fixed, small size no matter how large the geometry it stands in for is, and
+/// (as a side effect) lets `warn_omitted`'s message-based dedup collapse many
+/// unwritable parts of one container into a single log line.
+fn unsupported(kind: &'static str) -> GeometryExportError {
+    GeometryExportError::UnsupportedGeometryType(kind.to_string())
 }
 
 /// Warn that a WKT cell holds coordinates from more than one reference system.
@@ -538,9 +554,26 @@ mod tests {
         point::{Point2D, Point3D},
         point_cloud::PointCloud,
         polygon::{Polygon2D, Polygon3D},
-        triangular_mesh::TriangularMesh3D,
+        solid::Solid,
+        triangular_mesh::{TriangularMesh3D, TriangularMesh3DData},
         Euclidean2DGeometry, Euclidean3DGeometry, Geometry, GeometryCollection,
     };
+
+    /// Assert that `result` is `Err(GeometryExportError::UnsupportedGeometryType(label))`
+    /// for exactly the given `label`, rather than the wildcard match the type alone
+    /// allows: pinning the payload catches a regression back to dumping the whole
+    /// geometry's `Debug` output into the message.
+    fn assert_unsupported_geometry_type<T>(result: Result<T, GeometryExportError>, label: &str)
+    where
+        T: std::fmt::Debug,
+    {
+        match result {
+            Err(GeometryExportError::UnsupportedGeometryType(actual)) => {
+                assert_eq!(actual, label);
+            }
+            other => panic!("expected Err(UnsupportedGeometryType({label:?})), got {other:?}"),
+        }
+    }
 
     fn wkt_of(geometry: &Geometry) -> String {
         geometry_to_wkt(geometry).expect("geometry expected to write")
@@ -979,26 +1012,42 @@ mod tests {
     // which unwraps) is used directly: an unwritable geometry is an `Err` at this
     // layer, matching `an_empty_collection_cannot_be_written` above; `csv.rs` is
     // what turns that `Err` into the empty cell the row ends up with.
+    // The label pinned here is the mesh kind (`write_faces`'s `Parts::of` empty
+    // fallback), not a `Debug` dump of the mesh.
     #[test]
     fn an_empty_mesh_writes_an_empty_cell() {
         let mesh = TriangularMesh3D::from_soup(euclidean(), Vec::<[f64; 3]>::new());
         let geometry = Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(Box::new(mesh)));
-        assert!(matches!(
-            geometry_to_wkt(&geometry),
-            Err(GeometryExportError::UnsupportedGeometryType(_))
-        ));
+        assert_unsupported_geometry_type(geometry_to_wkt(&geometry), "TriangularMesh");
     }
 
     // WKT has no volume, and a PointCloud would emit a position per sample even
     // though a MULTIPOINT could hold one. Both match the GeoJSON writer's
     // refusals, which are also `Err` at this layer (see the comment above).
+    //
+    // The label is pinned rather than wildcard-matched: `PointCloud`'s `Debug`
+    // prints every sample, so a regression back to `format!("{geometry:?}")`
+    // would not be caught by a wildcard `UnsupportedGeometryType(_)`.
     #[test]
     fn a_point_cloud_writes_an_empty_cell() {
         let cloud = PointCloud::from_positions(euclidean(), [[0.0, 0.0, 0.0]]);
         let geometry = Geometry::Euclidean3D(Euclidean3DGeometry::PointCloud(Box::new(cloud)));
-        assert!(matches!(
-            geometry_to_wkt(&geometry),
-            Err(GeometryExportError::UnsupportedGeometryType(_))
-        ));
+        assert_unsupported_geometry_type(geometry_to_wkt(&geometry), "PointCloud");
+    }
+
+    // WKT has no volume, nor the boolean tree built from volumes. A PLATEAU
+    // `lod1Solid`/`lod2Solid` parses to exactly this variant, and `Solid`'s
+    // `Debug` prints every shell, mesh and vertex, so this is the case the label
+    // fix matters most for.
+    #[test]
+    fn a_solid_writes_an_empty_cell() {
+        let shell = TriangularMesh3DData::from_parts(
+            vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
+            [0u32, 1, 2],
+        )
+        .expect("triangle soup expected to build a valid mesh");
+        let solid = Solid::from_exterior(euclidean(), shell);
+        let geometry = Geometry::Euclidean3D(Euclidean3DGeometry::Solid(Box::new(solid)));
+        assert_unsupported_geometry_type(geometry_to_wkt(&geometry), "Solid");
     }
 }
