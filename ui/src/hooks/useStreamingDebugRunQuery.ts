@@ -5,9 +5,11 @@ import {
   describeGeometry,
   isNextFormat,
   releaseOwner,
+  type GeometryDescription,
 } from "@flow/lib/intermediateData";
 import { streamDecompressZstdJsonl } from "@flow/utils/compression";
 import { intermediateDataTransform } from "@flow/utils/jsonl/transformIntermediateData";
+import { hasGeoJsonForm } from "@flow/utils/jsonl/transformNextFeature";
 import { streamJsonl } from "@flow/utils/streaming";
 import type { StreamingProgress } from "@flow/utils/streaming";
 
@@ -30,6 +32,17 @@ type UseStreamingDebugRunQueryOptions = {
   displayLimit?: number;
   onProgress?: (progress: StreamingProgress) => void;
   onError?: (error: Error) => void;
+};
+
+/**
+ * Readable names for the legacy geometry types, so a legacy file and a
+ * new-format one — which reads its names from the engine's schema — do not
+ * label the same header in two different styles.
+ */
+const LEGACY_TYPE_LABELS: Record<string, string> = {
+  FlowGeometry2D: "2D geometry",
+  FlowGeometry3D: "3D geometry",
+  CityGmlGeometry: "CityGML geometry",
 };
 
 function detectGeometryType(feature: any): GeometryType {
@@ -60,18 +73,81 @@ function detectGeometryType(feature: any): GeometryType {
   return "Unknown";
 }
 
+/** The most common entry, or null when there are none. */
+function predominant(values: string[]): string | null {
+  const counts = new Map<string, number>();
+  for (const value of values) counts.set(value, (counts.get(value) ?? 0) + 1);
+
+  let best: string | null = null;
+  let bestCount = 0;
+  for (const [value, count] of counts) {
+    if (count > bestCount) {
+      best = value;
+      bestCount = count;
+    }
+  }
+  return best;
+}
+
 /**
- * Which viewer, if any, can draw new-format geometry.
+ * The dimension a geometry actually draws in, or null when nothing does.
  *
- * Only 2D, and only the 2D map: the transform turns 2D into GeoJSON, while 3D
- * becomes a summary because the engine renders 3D itself into a glb or a
- * tileset. Claiming a 3D viewer here would open an empty globe.
+ * Descends into a collection's members: a CityGML feature is a collection of
+ * per-LOD members, so judging it by its own kind would conclude the file has
+ * nothing to draw.
  */
-function nextVisualizerType(features: any[]): VisualizerType {
-  const twoDimensional = features.some(
-    (feature) => describeGeometry(feature?.geometry).kind === "2d",
+function drawableKind(described: GeometryDescription): "2d" | "3d" | null {
+  if (described.kind === "2d" || described.kind === "3d") {
+    return hasGeoJsonForm(described.variant) ? described.kind : null;
+  }
+
+  if (described.kind === "collection") {
+    const members = ((described.value as { members?: unknown[] } | undefined)
+      ?.members ?? []) as unknown[];
+    for (const member of members) {
+      const kind = drawableKind(describeGeometry(member));
+      if (kind) return kind;
+    }
+  }
+
+  return null;
+}
+
+/**
+ * Predominant type and viewer for new-format data.
+ *
+ * The transform emits GeoJSON for every leaf that has one, in both embedding
+ * dimensions, so the viewer choice is just which map. A point cloud or a CSG
+ * tree yields only a summary, and a file of nothing but those gets no viewer
+ * rather than an empty globe.
+ */
+function analyzeNextFormat(sample: any[]): {
+  geometryType: GeometryType;
+  visualizerType: VisualizerType;
+} {
+  const described = sample.map((feature) =>
+    describeGeometry(feature?.geometry),
   );
-  return twoDimensional ? "2d-map" : null;
+
+  const labels = described
+    .filter((entry) => entry.kind !== "none" && entry.kind !== "unknown")
+    .map((entry) => entry.label || entry.variant || "Unknown");
+
+  const drawable = described
+    .map(drawableKind)
+    .filter((kind): kind is "2d" | "3d" => kind !== null);
+
+  if (drawable.length === 0) {
+    return { geometryType: predominant(labels), visualizerType: null };
+  }
+
+  // 3D coordinates carry an altitude the 2D map drops, so a predominantly 3D
+  // file gets the globe.
+  const threeD = drawable.filter((kind) => kind === "3d").length;
+  return {
+    geometryType: predominant(labels),
+    visualizerType: threeD * 2 >= drawable.length ? "3d-map" : "2d-map",
+  };
 }
 
 function analyzeDataType(features: any[]): {
@@ -85,13 +161,7 @@ function analyzeDataType(features: any[]): {
   const sampleSize = Math.min(10, features.length);
   const sample = features.slice(0, sampleSize);
 
-  if (sample.some(isNextFormat)) {
-    const labels = sample.map(detectGeometryType).filter(Boolean);
-    return {
-      geometryType: labels.length ? (labels[0] as GeometryType) : null,
-      visualizerType: nextVisualizerType(sample),
-    };
-  }
+  if (sample.some(isNextFormat)) return analyzeNextFormat(sample);
 
   const typeCounts: Record<string, number> = {};
   let hasObjGltfSource = false;
@@ -139,7 +209,12 @@ function analyzeDataType(features: any[]): {
     visualizerType = hasObjGltfSource ? "3d-model" : "3d-map";
   }
 
-  return { geometryType: predominantType, visualizerType };
+  return {
+    geometryType: predominantType
+      ? (LEGACY_TYPE_LABELS[predominantType] ?? predominantType)
+      : predominantType,
+    visualizerType,
+  };
 }
 
 // Smart cache management to prevent memory issues with multiple files
@@ -292,10 +367,15 @@ export const useStreamingDebugRunQuery = (
               const firstRow = streamData.length;
               const transformedData = dataToAdd.map((feature, offset) => {
                 try {
-                  return intermediateDataTransform(feature, {
+                  const transformed = intermediateDataTransform(feature, {
                     owner: dataUrl,
                     rowIndex: firstRow + offset,
                   });
+                  // Keep the engine's own record for raw inspection; its
+                  // embedded images have already been lifted out, so this
+                  // retains no pixels.
+                  transformed.source = feature;
+                  return transformed;
                 } catch (error) {
                   console.warn("Failed to transform feature:", error, feature);
                   return feature;
@@ -358,10 +438,15 @@ export const useStreamingDebugRunQuery = (
               const firstRow = streamData.length;
               const transformedData = dataToAdd.map((feature, offset) => {
                 try {
-                  return intermediateDataTransform(feature, {
+                  const transformed = intermediateDataTransform(feature, {
                     owner: dataUrl,
                     rowIndex: firstRow + offset,
                   });
+                  // Keep the engine's own record for raw inspection; its
+                  // embedded images have already been lifted out, so this
+                  // retains no pixels.
+                  transformed.source = feature;
+                  return transformed;
                 } catch (error) {
                   console.warn(
                     "Failed to transform streaming feature:",

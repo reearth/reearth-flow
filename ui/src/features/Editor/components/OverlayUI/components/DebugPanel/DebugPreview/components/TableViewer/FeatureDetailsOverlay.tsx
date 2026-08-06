@@ -47,9 +47,16 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
   const t = useT();
   const [searchTerm, setSearchTerm] = useState<string>("");
 
-  // Carried on the row under an underscored key, so it is not listed among the
-  // feature's own fields; see useDataColumnizer.
+  // Carried on the row under underscored keys, so they are not listed among
+  // the feature's own fields; see useDataColumnizer.
   const appearance: AppearanceSummary | undefined = feature?._appearance;
+
+  // The record as the engine wrote it. The fields listed below are derived for
+  // the map and drop what it does not need — face holes, themes, UV sets, a
+  // tangent frame's basis — so raw inspection reads this instead.
+  const source: unknown = feature?._source;
+  const sourceGeometry = (source as { geometry?: unknown } | undefined)
+    ?.geometry;
 
   // Process feature properties for display
   const processedFeature = useMemo(() => {
@@ -314,7 +321,10 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
             type="button"
             className="flex h-7 items-center gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
             onClick={() =>
-              openRaw(`${t("Feature")} ${processedFeature.id}`, feature)
+              openRaw(
+                `${t("Feature")} ${processedFeature.id}`,
+                source ?? feature,
+              )
             }>
             <BracketsCurlyIcon size={12} />
             {t("View all raw")}
@@ -344,9 +354,23 @@ const FeatureDetailsOverlay: React.FC<Props> = ({
           {/* Geometry */}
           {Object.keys(filteredFeature?.geometry || {}).length > 0 && (
             <div>
-              <h4 className="mb-3 text-sm font-medium text-muted-foreground">
-                {t("Geometry")}
-              </h4>
+              <div className="mb-3 flex items-center justify-between">
+                <h4 className="text-sm font-medium text-muted-foreground">
+                  {t("Geometry")}
+                </h4>
+                {sourceGeometry != null && (
+                  <Button
+                    variant="ghost"
+                    type="button"
+                    className="flex h-5 items-center gap-1 px-1 text-xs text-muted-foreground hover:text-foreground"
+                    onClick={() =>
+                      openRaw(t("Geometry (as written)"), sourceGeometry)
+                    }>
+                    <BracketsCurlyIcon size={12} />
+                    {t("View structure")}
+                  </Button>
+                )}
+              </div>
               <div className="space-y-3">
                 {Object.entries(
                   (filteredFeature?.geometry ?? {}) as Record<string, unknown>,

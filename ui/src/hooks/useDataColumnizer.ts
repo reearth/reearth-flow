@@ -89,6 +89,7 @@ export default ({
           // feature (`Selection::Row`).
           _rowIndex: feature.rowIndex ?? index,
           _appearance: feature.appearance,
+          _source: feature.source,
           ...Object.fromEntries(
             Array.from(allGeometry).map((geometry) => [
               `geometry${geometry}`,

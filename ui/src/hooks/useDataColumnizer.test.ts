@@ -39,7 +39,8 @@ describe("new-format features reach the table", () => {
         attributes: { name: "Shibuya", gml_id: "bldg-1" },
         geometry: {
           Euclidean2D: {
-            Point: { frame: { Crs: 4326 }, position: [139.7, 35.6] },
+            // Latitude first, as the engine writes it under EPSG:4326.
+            Point: { frame: { Crs: 4326 }, position: [35.6, 139.7] },
           },
         },
       },
@@ -61,7 +62,7 @@ describe("new-format features reach the table", () => {
     });
   });
 
-  test("a 3D feature shows its type and extent instead of coordinates", () => {
+  test("a 3D feature renders as geometry with its frame", () => {
     const { headers, rows } = columnize([
       {
         id: "0195f3a0-0000-7000-8000-000000000002",
@@ -78,11 +79,10 @@ describe("new-format features reach the table", () => {
       },
     ]);
 
-    expect(headers).toContain("geometry.summary");
+    expect(headers).not.toContain("geometry.summary");
     expect(rows[0]).toMatchObject({
-      geometrytype: '"Solid"',
+      geometrytype: '"MultiPolygon"',
       geometryframe: '"EPSG:4979"',
-      geometrysummary: '"1 exterior shell, 0 voids"',
     });
   });
 
@@ -120,8 +120,9 @@ describe("new-format features reach the table", () => {
       },
     ]);
 
-    // The count reaches the table; the pixels do not.
-    expect(rows[0].geometrytextures).toBe("1");
+    // Textures belong to the appearance, not the geometry columns.
+    expect(rows[0].geometrytextures).toBeUndefined();
+    // Whatever else is in the row, the pixels are not.
     for (const value of Object.values(rows[0])) {
       expect(String(value).length).toBeLessThan(200);
     }
@@ -168,6 +169,59 @@ describe("new-format features reach the table", () => {
         "attributes.b",
       ]),
     );
+  });
+
+  test("a row carries the engine's own record for raw inspection", () => {
+    const line = {
+      id: "0195f3a0-0000-7000-8000-000000000005",
+      attributes: { name: "Shibuya" },
+      geometry: {
+        Euclidean3D: {
+          PolygonMesh: {
+            frame: { Crs: 6697 },
+            faces: [
+              {
+                exterior: [
+                  [35.6, 139.7, 0],
+                  [35.7, 139.7, 0],
+                  [35.7, 139.8, 0],
+                ],
+                // Dropped by the derived GeoJSON; must survive here.
+                holes: [
+                  [
+                    [35.62, 139.72, 0],
+                    [35.63, 139.72, 0],
+                    [35.63, 139.73, 0],
+                  ],
+                ],
+              },
+            ],
+          },
+        },
+      },
+    };
+
+    const features = [intermediateDataTransform(line, { owner: OWNER })];
+    features[0].source = line;
+    const parsedData = { type: "FeatureCollection", features };
+    const { result } = renderHook(() =>
+      useDataColumnizer({ parsedData, type: "geojson" }),
+    );
+
+    const row = (result.current.tableData as any[])[0];
+    const source = row._source as typeof line;
+
+    // The engine's nested shape, not the flattened GeoJSON projection.
+    expect(source.geometry.Euclidean3D.PolygonMesh.faces[0].holes).toHaveLength(
+      1,
+    );
+    expect(source.geometry.Euclidean3D.PolygonMesh.frame).toEqual({
+      Crs: 6697,
+    });
+    // Underscored, so it does not become a column.
+    expect(
+      (result.current.tableColumns as any[]).map((c) => c.header),
+    ).not.toContain("_source");
   });
 
   test("each row carries the line it came from, for view selection", () => {
