@@ -159,7 +159,10 @@ describe("2D geometry becomes GeoJSON", () => {
     // The engine stores coordinates in CRS authority order, which for
     // geographic CRSs is latitude first; GeoJSON is always longitude first.
     // Tokyo is 35.6N 139.7E.
-    for (const epsg of [4326, 4979, 6668, 6697, 6677, 2451]) {
+    // One per family the engine supports: WGS84 2D/3D, JGD2011 geographic,
+    // JGD2011 + height, and a plane-rectangular zone from each of the four
+    // ranges (JGD2011, JGD2000, Tokyo datum, and JGD2011 + vertical height).
+    for (const epsg of [4326, 4979, 6668, 6697, 6677, 2451, 30165, 10168]) {
       const result = transformNextFeature(
         feature({
           Euclidean2D: {
@@ -169,6 +172,40 @@ describe("2D geometry becomes GeoJSON", () => {
       );
 
       expect(result.geometry).toMatchObject({ coordinates: [139.7, 35.6] });
+    }
+  });
+
+  test("covers every CRS the engine supports, or names it east-first", () => {
+    // The engine's supported set is the WKT1_ESRI table in
+    // engine/runtime/action-sink/src/file/shapefile/crs.rs. Web Mercator is the
+    // only entry that is genuinely east-first; everything else is a Japanese
+    // geographic or plane-rectangular system and must be swapped. Without this,
+    // a code the engine gains silently renders transposed.
+    const EAST_FIRST = new Set([3857]);
+    const engineSupported = [
+      4326,
+      4979,
+      3857,
+      6668,
+      6697,
+      ...Array.from({ length: 19 }, (_, i) => 2443 + i), // JGD2000 I-XIX
+      ...Array.from({ length: 19 }, (_, i) => 6669 + i), // JGD2011 I-XIX
+      ...Array.from({ length: 19 }, (_, i) => 30161 + i), // Tokyo I-XIX
+      ...Array.from({ length: 13 }, (_, i) => 10162 + i), // JGD2011 + height I-XIII
+    ];
+
+    for (const epsg of engineSupported) {
+      const result = transformNextFeature(
+        feature({
+          Euclidean2D: {
+            Point: { frame: { Crs: epsg }, position: [35.6, 139.7] },
+          },
+        }),
+      );
+
+      expect(result.geometry).toMatchObject({
+        coordinates: EAST_FIRST.has(epsg) ? [35.6, 139.7] : [139.7, 35.6],
+      });
     }
   });
 

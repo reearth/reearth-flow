@@ -59,19 +59,28 @@ function describeFrame(frame: unknown): string | undefined {
  * and for the Japan Plane Rectangular systems is northing first. GeoJSON is
  * always `[longitude, latitude]`, so those need swapping on the way out.
  *
- * The engine resolves this through PROJ, which the browser has no equivalent
- * of, so this is a list of the systems Flow actually reads. Anything not named
- * here passes through east-first, which is the common case (Web Mercator, UTM,
- * and every projected CRS outside Japan).
+ * The engine resolves this through PROJ (`ops/reproject/ffi.rs`,
+ * `axis_order_sign`), which the browser has no equivalent of. So this mirrors
+ * the CRSs the engine actually supports rather than trying to be general: the
+ * authoritative list is the 75-entry `WKT1_ESRI` table in
+ * `engine/runtime/action-sink/src/file/shapefile/crs.rs`, and every code in it
+ * is covered below or is deliberately east-first (EPSG:3857 Web Mercator).
+ *
+ * This is not a Japan-only restriction on principle — it is the engine's
+ * current reach. When the engine gains a CRS, add it here: anything unlisted
+ * passes through east-first, which is right for Web Mercator and UTM but would
+ * silently transpose a north-first system.
  */
 function isNorthFirst(epsg: number): boolean {
   // Geographic CRSs: WGS 84, JGD2000 and JGD2011, with their 3D forms.
   // EPSG:6697 (JGD2011 + height) is what PLATEAU CityGML carries.
   if ([4326, 4979, 4612, 6667, 6668, 6697].includes(epsg)) return true;
-  // Japan Plane Rectangular CS zones I-XIX, whose axes are (X = north, Y = east).
-  if (epsg >= 2443 && epsg <= 2461) return true; // JGD2000
-  if (epsg >= 6669 && epsg <= 6687) return true; // JGD2011
-  if (epsg >= 30161 && epsg <= 30179) return true; // Tokyo datum
+  // Japan Plane Rectangular CS, whose axes are (X = north, Y = east).
+  if (epsg >= 2443 && epsg <= 2461) return true; // JGD2000, zones I-XIX
+  if (epsg >= 6669 && epsg <= 6687) return true; // JGD2011, zones I-XIX
+  if (epsg >= 30161 && epsg <= 30179) return true; // Tokyo datum, zones I-XIX
+  // Same, compounded with JGD2011 vertical height. Only zones I-XIII exist.
+  if (epsg >= 10162 && epsg <= 10174) return true;
   return false;
 }
 
@@ -333,11 +342,11 @@ function geoJsonOfDescribed(
 }
 
 /**
- * Frame for a collection, taken from the first member that has one.
+ * Frame for a collection, gathered from whichever members carry one.
  *
  * No collection carries a frame — `Collection2D`, `Collection3D` and the
  * top-level `GeometryCollection` all hold only `members` and `attrs`, because
- * members may sit in different frames. Reporting the first is better than
+ * members may sit in different frames. Reporting the members' is better than
  * reporting none: it is right whenever they agree, which is the usual case, and
  * the raw view shows the truth when they do not.
  *
