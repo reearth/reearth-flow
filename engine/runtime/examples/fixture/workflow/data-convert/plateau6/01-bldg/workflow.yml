@@ -18,7 +18,7 @@ graphs:
             value: |
               [
                 {
-                  "city_gml_path": env["cityGmlPath"],
+                  "city_gml_path": variables["cityGmlPath"],
                 },
               ]
 
@@ -80,7 +80,7 @@ graphs:
                   if id_map {
                     gml_city_code = id_map.get("uro:city_code") or id_map.get("uro:city");
                   }
-                  gml_city_code or env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5]
+                  gml_city_code or variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5]
 
       - id: 9f2a7c4e-3b5d-4c8f-a1e0-6d9b2f5a8c31
         name: AttributeConversionTableForWardName
@@ -192,8 +192,8 @@ graphs:
               value:
                 type: flowExpr
                 value: |
-                  city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
-                  base_city_code = env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5];
+                  city_gml = variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
+                  base_city_code = variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5];
                   suffix = "";
                   if attributes["city_code"] != base_city_code {
                     suffix = "_" + attributes["city_code"] + "_" + attributes["cityNameEn"];

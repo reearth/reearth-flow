@@ -23,7 +23,7 @@ describe("isInsideAttributeAccessor", () => {
   });
 
   test("does not match outside an attributes accessor", () => {
-    expect(isInsideAttributeAccessor('env["VA')).toBe(false);
+    expect(isInsideAttributeAccessor('variables["VA')).toBe(false);
     expect(isInsideAttributeAccessor("attributes")).toBe(false);
     expect(isInsideAttributeAccessor("")).toBe(false);
   });

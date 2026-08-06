@@ -149,7 +149,7 @@ graphs:
       conditions:
       - expr:
           type: flowExpr
-          value: env.get("exceptSplit", false)
+          value: variables.get("exceptSplit", false)
         outputPort: exceptSplit
   - id: 8fe1a102-e3f3-40dd-b235-66e9c148830f
     name: GeometrySplitter
@@ -291,10 +291,10 @@ graphs:
         value: |
           [
             {
-              "cityGmlPath": env["cityGmlPath"],
-              "cityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
-              "codelists": env.get("codelistsPath") or env.get("codelists"),
-              "schemas": env.get("schemasPath") or env.get("schemas"),
+              "cityGmlPath": variables["cityGmlPath"],
+              "cityCode": variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5],
+              "codelists": variables.get("codelistsPath") or variables.get("codelists"),
+              "schemas": variables.get("schemasPath") or variables.get("schemas"),
             },
           ]
   - id: a1bbd1f8-aa6e-44d7-b307-65b491def483
@@ -321,7 +321,7 @@ graphs:
       conditions:
       - expr:
           type: flowExpr
-          value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
+          value: not variables["targetPackages"] or attributes["package"] in variables["targetPackages"]
         outputPort: features
   - id: 7bd12def-bc00-4340-adf5-1a2d68995dd7
     name: AttributeManagerPreFlattener
@@ -446,7 +446,7 @@ graphs:
         value: '"gen_" + attributes["__gml_name_code"] + "_lod" + attributes["__lod"]'
       compressOutput:
         type: flowExpr
-        value: env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_gen") + "_gen_" + attributes["__gml_name_code"] + "_mvt_lod" + attributes["__lod"] + ".zip"
+        value: variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_gen") + "_gen_" + attributes["__gml_name_code"] + "_mvt_lod" + attributes["__lod"] + ".zip"
       skipUnexposedAttributes: true
       colonToUnderscore: true
   edges:

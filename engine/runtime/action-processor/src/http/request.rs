@@ -145,7 +145,7 @@ mod tests {
             value_ast: {
                 let value_ast: Code = Code {
                     ty: CodeType::FlowExpr,
-                    value: r#"env["id"]"#.to_string(),
+                    value: r#"variables["id"]"#.to_string(),
                 };
                 value_ast.compile().unwrap()
             },

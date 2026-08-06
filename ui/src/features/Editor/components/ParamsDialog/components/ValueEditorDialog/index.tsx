@@ -112,7 +112,7 @@ const ValueEditorDialog: React.FC<Props> = ({
   const fieldType = getFieldTypeDisplay(fieldContext.schema);
 
   const handleWorkflowVariableSet = useCallback((variable: any) => {
-    const v = `env.get("${variable.name}")`;
+    const v = `variables.get("${variable.name}")`;
     setValue(v);
   }, []);
 

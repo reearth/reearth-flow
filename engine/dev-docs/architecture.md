@@ -12,7 +12,7 @@
 - Uses **Flow Expression Language** (FlowExpr) for dynamic parameter evaluation
 - Available in action parameters and workflow variables
 - Python users can get started quickly with similar basic operators and semantics
-- Access feature attributes with `attributes[key]` and environment variables with `env[key]`
+- Access feature attributes with `attributes[key]` and workflow variables with `variables[key]`
 
 ## Environment Variables
 

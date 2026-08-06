@@ -103,7 +103,7 @@ struct FeatureTransformerParam {
 #[serde(rename_all = "camelCase")]
 struct Transform {
     /// # Expression
-    /// Expression over `attributes` and `env` returning a map that becomes the feature's complete
+    /// Expression over `attributes` and `variables` returning a map that becomes the feature's complete
     /// attribute set. A result that is not a map, or an expression that fails to evaluate, leaves
     /// the attributes unchanged.
     expr: Code<{ CodeType::FlowExpr as u32 }>,

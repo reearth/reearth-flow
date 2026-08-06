@@ -218,7 +218,7 @@ mod tests {
             .compile_body(&RequestBody::Text {
                 content: Code {
                     ty: CodeType::FlowExpr,
-                    value: r#"env["message"]"#.to_string(),
+                    value: r#"variables["message"]"#.to_string(),
                 },
                 content_type: Some("text/plain".to_string()),
             })
@@ -246,7 +246,7 @@ mod tests {
                 source: BinarySource::Base64 {
                     data: Code {
                         ty: CodeType::FlowExpr,
-                        value: r#"env["data"]"#.to_string(),
+                        value: r#"variables["data"]"#.to_string(),
                     },
                 },
                 content_type: Some("application/octet-stream".to_string()),
@@ -276,14 +276,14 @@ mod tests {
                         name: "username".to_string(),
                         value: Code {
                             ty: CodeType::FlowExpr,
-                            value: r#"env["user"]"#.to_string(),
+                            value: r#"variables["user"]"#.to_string(),
                         },
                     },
                     FormField {
                         name: "password".to_string(),
                         value: Code {
                             ty: CodeType::FlowExpr,
-                            value: r#"env["pass"]"#.to_string(),
+                            value: r#"variables["pass"]"#.to_string(),
                         },
                     },
                 ],
@@ -322,7 +322,7 @@ mod tests {
                     name: "username".to_string(),
                     value: Code {
                         ty: CodeType::FlowExpr,
-                        value: r#"env["name"]"#.to_string(),
+                        value: r#"variables["name"]"#.to_string(),
                     },
                 }],
             })

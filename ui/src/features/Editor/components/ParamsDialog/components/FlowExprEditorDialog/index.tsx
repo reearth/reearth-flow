@@ -124,7 +124,7 @@ const FlowExprEditorDialog: React.FC<Props> = ({
 
   const handleVariableSelect = useCallback(
     (variableName: string) => {
-      insertAtCursor(`env["${variableName}"]`);
+      insertAtCursor(`variables["${variableName}"]`);
     },
     [insertAtCursor],
   );
@@ -248,7 +248,9 @@ const FlowExprEditorDialog: React.FC<Props> = ({
                 value={codeValue}
                 onChange={setCodeValue}
                 attributeSuggestions={attributeSuggestions}
-                placeholder={t('e.g. Url(env.get("BASE_DIR")) / "filename"')}
+                placeholder={t(
+                  'e.g. Url(variables.get("BASE_DIR")) / "filename"',
+                )}
               />
             </TabsContent>
             <TabsContent
@@ -268,7 +270,7 @@ const FlowExprEditorDialog: React.FC<Props> = ({
               {codeType === "flowExpr" ? (
                 <span>
                   {t(
-                    'FlowExpr: env["VAR"], attributes["attr"], Url(...), math.sin(...). API is still stabilising.',
+                    'FlowExpr: variables["VAR"], attributes["attr"], Url(...), math.sin(...). API is still stabilising.',
                   )}
                 </span>
               ) : (

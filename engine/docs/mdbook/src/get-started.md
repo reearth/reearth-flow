@@ -49,7 +49,7 @@ graphs:
     action: FilePathExtractor
     with:
       sourceDataset: |
-        env.get("cityGmlPath")
+        variables.get("cityGmlPath")
       extractArchive: true
   - id: b1a91180-ab88-4c1a-aab5-48c242a218cb
     name: FeatureFilter01
@@ -58,7 +58,7 @@ graphs:
     with:
       conditions:
       - expr: |
-          env.get("__value").extension == "gml"
+          variables.get("__value").extension == "gml"
         outputPort: default
   - id: b1a91180-ab88-4c1a-aab5-48c242a218cc
     name: PLATEAU3.UDXFolderExtractor-01
@@ -66,7 +66,7 @@ graphs:
     action: PLATEAU3.UDXFolderExtractor
     with:
       cityGmlPath: |
-        env.get("__value")["path"]
+        variables.get("__value")["path"]
   - id: b1a91180-ab88-4c1a-aab5-48c242a218cd
     name: FeatureFilter02
     type: action
@@ -74,7 +74,7 @@ graphs:
     with:
       conditions:
       - expr: |
-          (env.get("targetPackages") ?? []).is_empty() || env.get("__value")["package"] in env.get("targetPackages")
+          (variables.get("targetPackages") ?? []).is_empty() || variables.get("__value")["package"] in variables.get("targetPackages")
         outputPort: default
   - id: b1a91180-ab88-4c1a-aab5-48c242a218ce
     name: FeatureCounter01

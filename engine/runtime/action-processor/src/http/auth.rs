@@ -110,11 +110,11 @@ mod tests {
             .compile_auth(&Authentication::Basic {
                 username: Code {
                     ty: CodeType::FlowExpr,
-                    value: r#"env["username"]"#.to_string(),
+                    value: r#"variables["username"]"#.to_string(),
                 },
                 password: Code {
                     ty: CodeType::FlowExpr,
-                    value: r#"env["password"]"#.to_string(),
+                    value: r#"variables["password"]"#.to_string(),
                 },
             })
             .unwrap();
@@ -140,7 +140,7 @@ mod tests {
             .compile_auth(&Authentication::Bearer {
                 token: Code {
                     ty: CodeType::FlowExpr,
-                    value: r#"env["token"]"#.to_string(),
+                    value: r#"variables["token"]"#.to_string(),
                 },
             })
             .unwrap();
@@ -167,7 +167,7 @@ mod tests {
                 key_name: "X-API-Key".to_string(),
                 key_value: Code {
                     ty: CodeType::FlowExpr,
-                    value: r#"env["api_key"]"#.to_string(),
+                    value: r#"variables["api_key"]"#.to_string(),
                 },
                 location: ApiKeyLocation::Header,
             })
@@ -195,7 +195,7 @@ mod tests {
                 key_name: "apikey".to_string(),
                 key_value: Code {
                     ty: CodeType::FlowExpr,
-                    value: r#"env["api_key"]"#.to_string(),
+                    value: r#"variables["api_key"]"#.to_string(),
                 },
                 location: ApiKeyLocation::Query,
             })

@@ -89,8 +89,8 @@ fn eval_with_feature(
         );
         env_bind(
             env,
-            "env",
-            ExprValue::object(EnvObject(Arc::clone(env_vars))),
+            "variables",
+            ExprValue::object(VariablesObject(Arc::clone(env_vars))),
         );
         reearth_flow_expr::eval::<FlowValue>(expr, env).map(|FlowValue(v)| v)
     })
@@ -104,8 +104,8 @@ fn eval_with_vars(
         env_remove(env, "attributes");
         env_bind(
             env,
-            "env",
-            ExprValue::object(EnvObject(Arc::clone(env_vars))),
+            "variables",
+            ExprValue::object(VariablesObject(Arc::clone(env_vars))),
         );
         reearth_flow_expr::eval::<FlowValue>(expr, env).map(|FlowValue(v)| v)
     })
@@ -340,7 +340,7 @@ impl CompiledCode {
         }
     }
 
-    /// Evaluate with only `env` in scope (no `attributes`), returning an AttributeValue.
+    /// Evaluate with only `variables` in scope (no `attributes`), returning an AttributeValue.
     pub fn eval_env_only(
         &self,
         env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
@@ -351,7 +351,7 @@ impl CompiledCode {
         }
     }
 
-    /// Evaluate as string with only `env` in scope (no `attributes`).
+    /// Evaluate as string with only `variables` in scope (no `attributes`).
     /// Use this in finish-time contexts where no current feature exists.
     pub fn eval_string_env_only(
         &self,
@@ -482,18 +482,18 @@ impl reearth_flow_expr::ImmutableObject for AttributesObject {
 }
 
 #[derive(Debug)]
-struct EnvObject(Arc<serde_json::Map<String, serde_json::Value>>);
+struct VariablesObject(Arc<serde_json::Map<String, serde_json::Value>>);
 
-impl EnvObject {
+impl VariablesObject {
     fn get_value(&self, name: &str) -> Option<ExprValue> {
         self.0.get(name).cloned().map(json_to_value)
     }
 }
 
-impl reearth_flow_expr::ImmutableObject for EnvObject {
+impl reearth_flow_expr::ImmutableObject for VariablesObject {
     fn type_object(&self) -> Rc<ExprTypeValue> {
         thread_local! {
-            static TY: Rc<ExprTypeValue> = Rc::new(ExprTypeValue::new("Env", None));
+            static TY: Rc<ExprTypeValue> = Rc::new(ExprTypeValue::new("Variables", None));
         }
         TY.with(Rc::clone)
     }
@@ -501,21 +501,21 @@ impl reearth_flow_expr::ImmutableObject for EnvObject {
     fn call_method(&self, method: &str, args: &[ExprValue]) -> ExprResult<ExprValue> {
         match method {
             "__getitem__" => {
-                expect_arity("Env.__getitem__", args, 1, 1)?;
+                expect_arity("Variables.__getitem__", args, 1, 1)?;
                 let ExprValue::String(name) = &args[0] else {
                     return Err(eval_error(format!(
-                        "env index must be a string, got {}",
+                        "variables index must be a string, got {}",
                         args[0].type_name()
                     )));
                 };
                 self.get_value(name)
-                    .ok_or_else(|| eval_error(format!("env var '{name}' not found")))
+                    .ok_or_else(|| eval_error(format!("workflow variable '{name}' not found")))
             }
             "get" => {
-                expect_arity("Env.get", args, 1, 2)?;
+                expect_arity("Variables.get", args, 1, 2)?;
                 let ExprValue::String(name) = &args[0] else {
                     return Err(eval_error(format!(
-                        "Env.get() key must be a string, got {}",
+                        "Variables.get() key must be a string, got {}",
                         args[0].type_name()
                     )));
                 };
@@ -524,7 +524,7 @@ impl reearth_flow_expr::ImmutableObject for EnvObject {
                     .get_value(name)
                     .unwrap_or_else(|| fallback.cloned().unwrap_or(ExprValue::Null)))
             }
-            m => Err(eval_error(format!("Env has no method '{m}'"))),
+            m => Err(eval_error(format!("Variables has no method '{m}'"))),
         }
     }
 }
@@ -575,7 +575,7 @@ mod tests {
 
         let expr: Code = Code {
             ty: CodeType::FlowExpr,
-            value: r#"env["key"]"#.to_string(),
+            value: r#"variables["key"]"#.to_string(),
         };
         assert_eq!(
             expr.compile()

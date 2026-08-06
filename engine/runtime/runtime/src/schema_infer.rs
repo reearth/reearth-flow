@@ -150,7 +150,7 @@ pub fn infer_and_validate(dag: &DagSchemas) -> Result<InferResult, crate::errors
 ///
 /// `vars` are the workflow's global `with:` variables (already merged with any
 /// CLI `--var` overrides). They seed the expression engine used while sampling,
-/// so a source `dataset` expression like `env.get("path")` resolves to the same
+/// so a source `dataset` expression like `variables.get("path")` resolves to the same
 /// value it would under `run`.
 pub fn infer_with_sampling(
     dag: &DagSchemas,
@@ -160,7 +160,7 @@ pub fn infer_with_sampling(
     // Build the expression engine from the workflow's global `with:` vars,
     // exactly as the runtime does in `Orchestrator`
     // (`Engine::with_vars(workflow.with...)`). Threading it into the source
-    // sampling below lets `dataset` expressions such as `env.get("path")`
+    // sampling below lets `dataset` expressions such as `variables.get("path")`
     // resolve during sampling — the same way `run` resolves them.
     let env_vars = std::sync::Arc::new(vars);
     let graph = dag.graph();

@@ -718,8 +718,9 @@ mod tests {
     #[test]
     fn build_fails_when_output_expression_references_missing_env_var() {
         let ctx = NodeContext::default();
-        let with =
-            make_with(json!({"type": "flowExpr", "value": "env[\"nonexistent_output_dir\"]"}));
+        let with = make_with(
+            json!({"type": "flowExpr", "value": "variables[\"nonexistent_output_dir\"]"}),
+        );
         let result = GltfWriterSinkFactory.build(
             ctx,
             EventHub::new(10),

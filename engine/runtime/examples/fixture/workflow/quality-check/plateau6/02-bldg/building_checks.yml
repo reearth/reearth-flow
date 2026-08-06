@@ -101,7 +101,7 @@ nodes:
         value: "6697"
       targetEpsgCode:
         type: flowExpr
-        value: env.get("prcs")
+        value: variables.get("prcs")
 
   - id: 012f23c6-65e1-4759-ab04-f20ebecbadfc
     name: PLATEAU3.LodSplitterWithDM
@@ -268,7 +268,7 @@ nodes:
         value: 02_建築物_LOD0面の交差.csv
 
   # GeoJSON error-detail output for the same check. Coordinates stay in the
-  # inspection CRS (env "prcs"); the intersection-area polygon from
+  # inspection CRS (variable "prcs"); the intersection-area polygon from
   # AreaOnAreaOverlayer is the error geometry itself.
   - id: e3e0a17b-e034-4a68-86df-ccf0f88264b6
     name: AttributeMapperLod0SurfaceIntersectionGeoJson
@@ -1216,7 +1216,7 @@ nodes:
   # GeoJSON error-detail output for the LOD2/LOD3 boundary-surface check.
   # The CityGML reader already emits each con:*Surface (wall/roof/ground) as its
   # own feature, so the geometry pinpoints the offending boundary surface rather
-  # than the whole building. Coordinates stay in the inspection CRS (env "prcs");
+  # than the whole building. Coordinates stay in the inspection CRS (variable "prcs");
   # the validator rotates near-horizontal surfaces by ~identity, so the emitted
   # ground-surface geometry matches the real-world footprint. LOD2 and LOD3 share
   # one writer and merge into a single GeoJSON, mirroring the combined CSV.
@@ -2526,7 +2526,7 @@ nodes:
       meshType: 3
       epsgCode:
         type: flowExpr
-        value: env.get("prcs")
+        value: variables.get("prcs")
       meshcodeAttr: "meshcode"
 
   - id: c1b00071-0000-4000-8000-000000000071
