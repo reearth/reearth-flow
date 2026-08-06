@@ -32,7 +32,7 @@ impl ProcessorFactory for TwoDimensionForcerFactory {
     }
 
     fn description(&self) -> &str {
-        "Force 3D Geometry to 2D by Removing Z-Coordinates"
+        "Removes Z-coordinates from 3D geometries to produce 2D output."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -44,7 +44,7 @@ impl ProcessorFactory for TwoDimensionForcerFactory {
     }
 
     fn tags(&self) -> &[&'static str] {
-        &["2d"]
+        &[]
     }
 
     fn get_input_ports(&self) -> Vec<Port> {

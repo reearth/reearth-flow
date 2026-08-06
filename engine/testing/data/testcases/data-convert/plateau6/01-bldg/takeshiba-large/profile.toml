@@ -1,0 +1,6 @@
+# Temporary run-only profile: full udx/bldg from the Takeshiba CityGML 3.0
+# sample (16 gml files, 16,508 buildings, mixed LOD1-3 with heavy textures) —
+# large enough to exercise target_tile_size merging/same-tile splitting on a
+# real, non-uniform dataset. No truth/ dir, run stage only ("r").
+
+citygml_zip_name = "13999_tokyo_udx-mlit_2023_citygml_2_sample-takeshiba_op_bldg.zip"
