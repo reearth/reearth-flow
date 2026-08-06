@@ -1329,6 +1329,10 @@
         "output": {
           "title": "Output",
           "description": "Path (or expression evaluated per feature) of the GeoJSON file to write. Features sharing a resolved path are written to the same file, so the expression can split features across files by attribute value."
+        },
+        "writeCrs": {
+          "title": "Write CRS",
+          "description": "Whether to declare the coordinate reference system of the written coordinates in a legacy GeoJSON 2008 `crs` member. Defaults to false; enable it when the coordinates are not WGS84 longitude / latitude and the consumer reads that member."
         }
       }
     },
@@ -1578,6 +1582,10 @@
         "output": {
           "title": "出力ファイル",
           "description": "作成するGeoJSONファイルの出力パスまたは式"
+        },
+        "writeCrs": {
+          "title": "Write CRS",
+          "description": "Whether to declare the coordinate reference system of the written coordinates in a legacy GeoJSON 2008 `crs` member. Defaults to false; enable it when the coordinates are not WGS84 longitude / latitude and the consumer reads that member."
         }
       }
     },
@@ -1788,25 +1796,25 @@
     },
     {
       "name": "Geometry Replacer",
-      "description": "地物のジオメトリを新しいジオメトリで置き換える",
+      "description": "属性に格納された圧縮ジオメトリで地物のジオメトリを置き換える",
       "parameterI18n": {
         "": {
-          "title": "GeometryReplacer パラメータ",
-          "description": "フィーチャーの現在のジオメトリを置き換えるジオメトリデータを含む属性を設定する"
+          "title": "Geometry Replacer パラメータ",
+          "description": "地物の現在のジオメトリを置き換えるジオメトリを保持する属性を設定する"
         },
         "sourceAttribute": {
           "title": "ソース属性",
-          "description": "新しいジオメトリとして使用する圧縮ジオメトリデータを含む属性名"
+          "description": "Geometry Extractor が書き込んだ、適用する圧縮ジオメトリを保持する属性。ジオメトリの適用後にこの属性は削除され、属性を持たない地物はそのまま通過する。保持されたジオメトリをデコードできない地物は rejected ポートに送られる"
         }
       }
     },
     {
       "name": "Geometry Splitter",
-      "description": "ジオメトリをタイプ別に分割する",
+      "description": "マルチパートジオメトリを単一ジオメトリの地物に分割する",
       "parameterI18n": {
         "": {
-          "title": "ジオメトリスプリッターのパラメーター",
-          "description": "ジオメトリスプリッターのパラメーター"
+          "title": "Geometry Splitter パラメータ",
+          "description": "マルチパートジオメトリを個々の地物に分割する方法を設定する"
         },
         "groupBy": {
           "title": "グループ化キー",
@@ -1816,39 +1824,62 @@
     },
     {
       "name": "Geometry Validator",
-      "description": "地物のジオメトリを検証する",
+      "description": "重複点、破損ジオメトリ、自己交差などの問題について地物のジオメトリを検証する",
       "parameterI18n": {
         "": {
-          "title": "GeometryValidator パラメータ",
-          "description": "フィーチャージオメトリに対して実行する検証チェックを設定する"
+          "title": "Geometry Validator パラメータ",
+          "description": "地物のジオメトリに対して実行する検証チェックを設定する"
         },
         "degenerateThresholds": {
-          "title": "Degeneracy Thresholds",
-          "description": "Minimum length / area / volume below which the degeneracy check flags a geometry, per dimension. Each defaults to zero, flagging only an exactly-zero measure. Values are in the coordinate unit (the frame's linear unit, e.g. metres)."
+          "title": "縮退しきい値",
+          "description": "縮退チェックがジオメトリを検出する最小の長さ・面積・体積を次元ごとに指定する。各値のデフォルトはゼロで、厳密にゼロの値のみを検出する。値は座標の単位（座標系の線形単位、例: メートル）で指定する"
         },
         "disabledOptionalChecks": {
-          "title": "Disabled Optional Checks",
-          "description": "Advisory checks to disable. Disabled checks do not run and are treated as passing; core validity checks always run. Empty by default, so every optional check runs. Applies only under the new geometry backend."
+          "title": "無効化する任意チェック",
+          "description": "無効化する補助チェック。無効化されたチェックは実行されず、合格として扱われる。コアの妥当性チェックは常に実行される。デフォルトは空で、すべての任意チェックが実行される"
         },
         "duplicateTolerance": {
-          "title": "Duplicate Point Tolerance",
-          "description": "Optional distance within which two coordinates count as duplicates for the duplicate-points check. Omitted (the default) means exact-equality detection."
+          "title": "重複点の許容誤差",
+          "description": "重複点チェックで2つの座標を重複とみなす距離。省略した場合（デフォルト）は完全一致で判定する"
         },
         "planarityThreshold": {
-          "title": "Planarity Threshold",
-          "description": "Optional override for how the planarity check bounds a face's out-of-plane deviation: a scale-invariant `ratio` (the default), or an absolute `maxHeight` in the frame's linear unit (linear-unit frames only). Applies only under the new geometry backend."
+          "title": "平面性しきい値",
+          "description": "平面性チェックが面の平面外のずれをどう制限するかの上書き。スケール不変の ratio（デフォルト）、または座標系の線形単位による絶対値 maxHeight（線形単位の座標系のみ）"
         }
       },
       "definitionI18n": {
         "DegenerateThresholds": {
           "minArea": {
-            "description": "Minimum area of a 2D geometry (face / ring)."
+            "title": "最小面積",
+            "description": "2D ジオメトリ（面またはリング）が検出されない最小の面積"
           },
           "minLength": {
-            "description": "Minimum length of a 1D geometry (line / ring edge)."
+            "title": "最小長さ",
+            "description": "1D ジオメトリ（線またはリングの辺）が検出されない最小の長さ"
           },
           "minVolume": {
-            "description": "Minimum volume of a 3D geometry (solid)."
+            "title": "最小体積",
+            "description": "3D ジオメトリ（ソリッド）が検出されない最小の体積"
+          }
+        }
+      },
+      "enumI18n": {
+        "OptionalCheck": {
+          "duplicatePoints": {
+            "title": "重複点",
+            "description": "ジオメトリ内で繰り返される座標の検出"
+          },
+          "orientable": {
+            "title": "配向可能性",
+            "description": "面に一貫した向きを与えられないサーフェスの検出"
+          },
+          "orientation": {
+            "title": "リングの向き",
+            "description": "誤った方向に巻かれたリングの検出"
+          },
+          "shellOrientation": {
+            "title": "シェルの向き",
+            "description": "面が誤った方向を向くソリッドシェルの検出"
           }
         }
       }
@@ -1859,22 +1890,23 @@
     },
     {
       "name": "Grid Divider",
-      "description": "ポリゴンを規則的なグリッドセルに分割する",
+      "description": "ポリゴンジオメトリを等サイズのセルからなる規則的なグリッドに分割する",
       "parameterI18n": {
         "": {
-          "title": "GridDivider パラメータ"
+          "title": "Grid Divider パラメータ",
+          "description": "グリッドセルのサイズと、地物を共通のグリッドにグループ化する方法を設定する"
+        },
+        "cellSize": {
+          "title": "セルサイズ",
+          "description": "各グリッドセルの辺の長さ。ジオメトリ座標と同じ単位で指定する。ゼロより大きい値が必要"
+        },
+        "completeCellsOnly": {
+          "title": "完全なセルのみ",
+          "description": "グリッドがジオメトリの端に達したときに生じる不完全なセルを破棄し、完全なセルのみを出力するかどうか。デフォルトは false"
         },
         "groupBy": {
           "title": "グループ化属性",
-          "description": "フィーチャーをグループ化する属性。各グループは独自のグリッド原点を持つ。"
-        },
-        "keepSquareOnly": {
-          "title": "完全なグリッドのみ保持",
-          "description": "true の場合、完全なグリッドセルのみ出力する（端のピースを破棄）。デフォルト: false"
-        },
-        "unitSquareSize": {
-          "title": "グリッドセルサイズ",
-          "description": "各グリッドセルの辺の長さ（ジオメトリ座標と同じ単位）"
+          "description": "値が一致する地物をグループ化する属性。各グループは、そのグループ全体の範囲から求めたグリッド原点で分割される"
         }
       }
     },
@@ -2222,19 +2254,19 @@
     },
     {
       "name": "Horizontal Reprojector",
-      "description": "地物のジオメトリを指定された座標系に水平再投影する",
+      "description": "EPSG コードを用いて地物のジオメトリを別の水平座標系に再投影する",
       "parameterI18n": {
         "": {
-          "title": "HorizontalReprojector パラメータ",
+          "title": "Horizontal Reprojector パラメータ",
           "description": "ジオメトリ再投影の入力・出力座標系を設定する"
         },
         "sourceEpsgCode": {
           "title": "入力 EPSG コード",
-          "description": "入力座標系の EPSG コード式。指定しない場合はジオメトリの EPSG コードを使用する。後方互換性のため任意だが、明示的に指定することを推奨。定数値（例: \"4326\"）またはフィーチャー属性を参照する式で指定可能。"
+          "description": "再投影元の EPSG コード。定数または式で指定する。デフォルトはジオメトリが保持する EPSG コードのため、ジオメトリに EPSG コードがない場合や誤っている場合にのみ指定すればよい"
         },
         "targetEpsgCode": {
           "title": "出力 EPSG コード",
-          "description": "再投影先の座標系 EPSG コード式。定数値（例: WGS84 は \"4326\"、NZTM2000 は \"2193\"、Web Mercator は \"3857\"）またはフィーチャー属性を参照する式で指定可能。"
+          "description": "再投影先の EPSG コード。\"4326\" のような定数、または地物の属性を参照する式で指定する"
         }
       }
     },
@@ -3270,7 +3302,7 @@
     },
     {
       "name": "Polygon Normal Extractor",
-      "description": "ポリゴン地物の法線ベクトルおよびその他のプロパティを抽出する"
+      "description": "ポリゴン地物から法線ベクトル、符号付き2D面積、傾斜、方位角を抽出し、属性として格納する"
     },
     {
       "name": "Python Script Processor",
@@ -3302,67 +3334,82 @@
       "description": "レイとジオメトリの交差点を計算する",
       "parameterI18n": {
         "": {
-          "title": "RayIntersector パラメータ",
-          "description": "レイとジオメトリの交差計算を設定する"
+          "title": "Ray Intersector パラメータ",
+          "description": "レイとジオメトリを対応付ける方法と、交差結果の出力方法を設定する"
         },
         "closestIntersectionOnly": {
-          "description": "true（デフォルト）の場合、レイ-ジオメトリペアごとに最も近い交差点のみを返す。false の場合、すべての交差点を返す。"
+          "title": "最近傍の交差のみ",
+          "description": "レイ上のすべての交差ではなく、最も近い交差のみを残すかどうか。デフォルトは true"
         },
         "geomId": {
-          "description": "ジオメトリフィーチャーに評価されて ID 文字列を抽出する式。設定すると、交差フィーチャーにヒットしたジオメトリを識別する `geom_id` 属性が含まれる。"
+          "title": "ジオメトリ ID",
+          "description": "各ジオメトリ地物にラベルを付けるために評価される式。設定すると、各交差にヒットしたジオメトリを示す geom_id 属性が付与される"
         },
         "includeRayOrigin": {
-          "description": "true（デフォルト）の場合、レイの原点での交差を含める。false の場合、t < 許容誤差の交差を除外する。"
+          "title": "レイ原点を含める",
+          "description": "レイの原点上の交差を有効な交差とみなすかどうか。false の場合、許容誤差より近い交差は破棄される。デフォルトは true"
         },
         "outputGeometryType": {
-          "description": "交差結果として出力するジオメトリのタイプ。- \"pointOfIntersection\"（デフォルト）: 交差位置に点を出力 - \"lineSegmentToIntersection\": レイの原点から交差点までの線分を出力"
+          "title": "出力ジオメトリタイプ",
+          "description": "各交差に対して出力するジオメトリ"
         },
         "pairId": {
-          "description": "レイとジオメトリをグループ化するためのペア ID（int または string）に評価される式。一致する pairId を持つレイとジオメトリのみが互いにテストされる。"
+          "title": "ペア ID",
+          "description": "レイとジオメトリを対応付けるキーを生成する式。キーが一致するレイとジオメトリのみが互いに判定される。省略した場合、すべてのレイがすべてのジオメトリと判定される"
         },
         "ray": {
-          "description": "フィーチャー属性からレイデータを抽出する方法を定義する"
+          "title": "レイ",
+          "description": "レイの原点と方向を保持する、レイ地物側の属性"
         },
         "tolerance": {
-          "description": "交差計算の許容誤差（f64 に評価される）。指定しない場合はデフォルトの許容誤差が使用される。"
+          "title": "許容誤差",
+          "description": "交差がレイの原点と一致しているとみなす距離。デフォルトは 1e-10"
         }
       },
       "definitionI18n": {
         "RayDefinition": {
           "dirX": {
-            "description": "レイの方向 X 成分を含む属性"
+            "title": "方向 X 属性",
+            "description": "レイの方向の X 成分を保持する属性"
           },
           "dirY": {
-            "description": "レイの方向 Y 成分を含む属性"
+            "title": "方向 Y 属性",
+            "description": "レイの方向の Y 成分を保持する属性"
           },
           "dirZ": {
-            "description": "レイの方向 Z 成分を含む属性"
+            "title": "方向 Z 属性",
+            "description": "レイの方向の Z 成分を保持する属性"
           },
           "posX": {
-            "description": "レイの原点 X 座標を含む属性"
+            "title": "原点 X 属性",
+            "description": "レイの原点の X 座標を保持する属性"
           },
           "posY": {
-            "description": "レイの原点 Y 座標を含む属性"
+            "title": "原点 Y 属性",
+            "description": "レイの原点の Y 座標を保持する属性"
           },
           "posZ": {
-            "description": "レイの原点 Z 座標を含む属性"
+            "title": "原点 Z 属性",
+            "description": "レイの原点の Z 座標を保持する属性"
           }
         }
       },
       "enumI18n": {
         "OutputGeometryType": {
           "lineSegmentToIntersection": {
-            "description": "レイの原点から交差点までの線分を出力する"
+            "title": "交差点までの線分",
+            "description": "レイの原点から交差点まで伸びる線を出力する"
           },
           "pointOfIntersection": {
-            "description": "交差位置に点を出力する（デフォルト動作）"
+            "title": "交差点",
+            "description": "レイがジオメトリと交わる位置に点を出力する"
           }
         }
       }
     },
     {
       "name": "Refiner",
-      "description": "ジオメトリを精緻化する"
+      "description": "複雑なジオメトリタイプをより単純なプリミティブに分解する"
     },
     {
       "name": "Rotator 3D",
@@ -3617,19 +3664,19 @@
     },
     {
       "name": "Three Dimension Forcer",
-      "description": "Z座標（高度）を追加して2Dジオメトリを3Dに変換する",
+      "description": "2D ジオメトリに Z 座標を追加して 3D 出力を生成する",
       "parameterI18n": {
         "": {
-          "title": "ThreeDimensionForcer パラメータ",
-          "description": "Z 座標を追加して 2D ジオメトリを 3D に変換する方法を設定する"
+          "title": "Three Dimension Forcer パラメータ",
+          "description": "2D ジオメトリに適用する標高と、既存の Z 値の扱いを設定する"
         },
         "elevation": {
           "title": "標高",
-          "description": "すべての点に追加する Z 座標（標高）値。定数値または式で指定可能。指定しない場合のデフォルトは 0.0。"
+          "description": "すべての点に適用する Z 座標。定数または式で指定する。デフォルトは 0.0"
         },
         "preserveExistingZ": {
           "title": "既存の Z 値を保持",
-          "description": "true の場合、すでに 3D のジオメトリはそのまま通過する。false の場合、既存の Z 値は指定された標高で置き換えられる。デフォルトは false。"
+          "description": "すでに 3D のジオメトリをそのまま通過させるかどうか。デフォルトは true で、既存の Z 値は保持される。false にすると、すべての Z 値が標高で上書きされる"
         }
       }
     },
@@ -3677,7 +3724,7 @@
     },
     {
       "name": "Two Dimension Forcer",
-      "description": "ジオメトリを2次元に強制する"
+      "description": "3D ジオメトリから Z 座標を削除して 2D 出力を生成する"
     },
     {
       "name": "Vertex Counter",
@@ -3699,15 +3746,23 @@
     },
     {
       "name": "Vertical Reprojector",
-      "description": "地物のジオメトリを指定された座標系に垂直再投影する",
+      "description": "地物のジオメトリの垂直座標を垂直データム間で再投影する",
       "parameterI18n": {
         "": {
-          "title": "VerticalReprojector パラメータ",
-          "description": "適用する垂直データム変換のタイプを設定する"
+          "title": "Vertical Reprojector パラメータ",
+          "description": "適用する垂直データム変換を設定する"
         },
         "reprojectorType": {
           "title": "再投影タイプ",
-          "description": "適用する垂直座標変換のタイプ"
+          "description": "各ジオメトリの Z 座標に適用する垂直データム変換"
+        }
+      },
+      "enumI18n": {
+        "VerticalReprojectorType": {
+          "jgd2011ToWgs84": {
+            "title": "JGD2011 から WGS 84",
+            "description": "日本のジオイドモデルを用いて JGD2011 の標高を WGS 84 の楕円体高に変換する"
+          }
         }
       }
     },

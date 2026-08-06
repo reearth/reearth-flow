@@ -21,7 +21,6 @@ pub static ROUTING_PARAM_KEY: &str = "routingPort";
 pub static INPUT_ROUTING_ACTION: &str = "Input Router";
 pub static OUTPUT_ROUTING_ACTION: &str = "Output Router";
 pub static FEATURE_FILTER_ACTION: &str = "Feature Filter";
-pub static REMAIN_PORT: Lazy<Port> = Lazy::new(|| Port::new("remain"));
 
 pub static SYSTEM_ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
     let factories: Vec<Box<dyn ProcessorFactory>> = vec![
