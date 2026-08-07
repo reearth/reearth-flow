@@ -121,7 +121,6 @@ const TableViewer: React.FC<Props> = memo(
         {detailsOverlayOpen && (
           <FeatureDetailsOverlay
             feature={detailsFeature}
-            detectedGeometryType={detectedGeometryType}
             onClose={() => onShowFeatureDetailsOverlay(false)}
           />
         )}
