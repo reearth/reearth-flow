@@ -26,20 +26,14 @@ func NewWebsocket(client interfaces.WebsocketClient, projectRepo repo.Project, p
 	}
 }
 
-// authorize checks action against the workspace owning docID's project. Fails
-// closed at every step, so a malformed id cannot skip the check.
+// authorize checks action against the project's owning workspace. projectID is
+// the project the document belongs to. Fails closed at every step.
 //
-// The resource is ResourceProject, NOT ResourceProjectDocument. Cerbos loads its
-// policies from a store this repo does not publish to, and denies any action on
-// a resource it has never seen — so #2341 shipped code depending on a policy
-// that was never deployed, which denied every document operation for every user
-// including owners. ResourceProject's rules are already deployed.
-//
-// TODO(reearth/reearth-flow#2360): move back to ResourceProjectDocument once its
-// policy is published. That model is better: it lets writers mutate a document
-// without also granting them project rename/reconfigure.
-func (i *Websocket) authorize(ctx context.Context, docID string, action string) error {
-	pid, err := id.ProjectIDFrom(docID)
+// ResourceProject, not ResourceProjectDocument: Cerbos denies actions on
+// resources absent from its policy store, and projectDocument was never
+// published there. TODO(reearth/reearth-flow#2360): move back once it is.
+func (i *Websocket) authorize(ctx context.Context, projectID string, action string) error {
+	pid, err := id.ProjectIDFrom(projectID)
 	if err != nil {
 		return rerror.ErrNotFound
 	}
@@ -103,9 +97,8 @@ func (i *Websocket) Rollback(ctx context.Context, docID string, version int) (*w
 	return i.client.Rollback(ctx, docID, version)
 }
 
-// FlushToGCS backs saveSnapshot, the editor's save action. ActionAny rather than
-// ActionEdit because flow:project's edit is maintainer/owner, which would stop
-// WRITERS saving their work. It persists state the caller can already read.
+// FlushToGCS backs the editor's save action. ActionAny, not ActionEdit, which is
+// maintainer/owner and would stop writers saving.
 func (i *Websocket) FlushToGCS(ctx context.Context, docID string) error {
 	if err := i.authorize(ctx, docID, rbac.ActionAny); err != nil {
 		return err
@@ -113,7 +106,7 @@ func (i *Websocket) FlushToGCS(ctx context.Context, docID string) error {
 	return i.client.FlushToGCS(ctx, docID)
 }
 
-// CreateSnapshot backs previewSnapshot and only materializes state, so it reads.
+// CreateSnapshot backs previewSnapshot; it materializes state without writing.
 func (i *Websocket) CreateSnapshot(ctx context.Context, docID string, version int, name string) (*ws.Document, error) {
 	if err := i.authorize(ctx, docID, rbac.ActionAny); err != nil {
 		return nil, err
@@ -121,7 +114,7 @@ func (i *Websocket) CreateSnapshot(ctx context.Context, docID string, version in
 	return i.client.CreateSnapshot(ctx, docID, version, name)
 }
 
-// CopyDocument needs edit on the destination and read on the source.
+// CopyDocument needs write on the destination and access to the source.
 func (i *Websocket) CopyDocument(ctx context.Context, docID string, source string) error {
 	if err := i.authorize(ctx, docID, rbac.ActionEdit); err != nil {
 		return err

@@ -19,15 +19,9 @@ func actionsFor(t *testing.T, resource string) map[string]generator.ActionRule {
 	return nil
 }
 
-// TestProjectPolicyCoversTheDocumentActions is the check whose absence caused a
-// production break.
-//
-// Cerbos denies any action with no matching rule, so an action the code checks
-// but the policy does not declare is denied for EVERYONE, owners included. The
-// interactor tests cannot catch it: they use a mock checker, so they only prove
-// the right action is requested, never that it can be granted.
-//
-// interactor.Websocket checks ResourceProject with these actions.
+// TestProjectPolicyCoversTheDocumentActions: an action with no rule is denied for
+// everyone, owners included. The interactor tests use a mock checker, so they
+// prove the action is requested but never that the policy grants it.
 func TestProjectPolicyCoversTheDocumentActions(t *testing.T) {
 	actions := actionsFor(t, ResourceProject)
 
@@ -50,9 +44,8 @@ func TestProjectPolicyCoversTheDocumentActions(t *testing.T) {
 		"if a read rule is added here, revisit interactor.Websocket, which avoids ActionRead precisely because there is none")
 }
 
-// TestProjectDocumentPolicyStaysDeclared: the resource is kept so that once the
-// policy store is refreshed from generated output, moving back to it is a
-// one-line change. See the TODO in interactor.Websocket.
+// TestProjectDocumentPolicyStaysDeclared keeps the target model intact so the
+// move back is one line. See the TODO in interactor.Websocket.
 func TestProjectDocumentPolicyStaysDeclared(t *testing.T) {
 	actions := actionsFor(t, ResourceProjectDocument)
 	assert.Contains(t, actions, ActionRead)
