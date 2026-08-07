@@ -11,8 +11,7 @@ use super::{
     file_path_info_extractor::AttributeFilePathInfoExtractorFactory,
     flattener::AttributeFlattenerFactory, manager::AttributeManagerFactory,
     mapper::AttributeMapperFactory, null_attribute_mapper::NullAttributeMapperFactory,
-    range_mapper::AttributeRangeMapperFactory,
-    statistics_calculator::StatisticsCalculatorFactory,
+    range_mapper::AttributeRangeMapperFactory, statistics_calculator::StatisticsCalculatorFactory,
     table_extractor::AttributeTableExtractorFactory,
 };
 
