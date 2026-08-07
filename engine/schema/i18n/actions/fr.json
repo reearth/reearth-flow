@@ -381,23 +381,19 @@
     },
     {
       "name": "Attribute Table Extractor",
-      "description": "Extrait les valeurs d'attributs de type map ou liste imbriqués vers de nouveaux attributs de premier niveau, en suivant une table de chemins indexée par un attribut de type d'entité, en écrivant éventuellement aussi chaque valeur résolue sous forme d'un attribut de résumé JSON unique",
+      "description": "Déplace des valeurs entre des chemins d'attributs de type map ou liste imbriqués, en suivant une table de paires de chemins source/destination indexée par un attribut de type d'entité. Un chemin de destination à plusieurs segments crée des cartes imbriquées si nécessaire",
       "parameterI18n": {
         "": {
           "title": "Paramètres Attribute Table Extractor",
-          "description": "Configure la table de chemins utilisée pour extraire les valeurs d'attributs imbriqués vers le premier niveau"
+          "description": "Configure la table de paires de chemins source/destination utilisée pour déplacer des valeurs d'attributs imbriqués"
         },
         "dataset": {
           "title": "URI du Jeu de Données",
-          "description": "Chemin ou URI du fichier de table d'aplatissement. Fournissez ceci ou des données en ligne"
+          "description": "Chemin ou URI du fichier de table d'extraction. Fournissez ceci ou des données en ligne"
         },
         "inline": {
           "title": "Table en Ligne",
-          "description": "Contenu de la table d'aplatissement fourni directement en JSON. Utilisé lorsqu'aucune URI de jeu de données n'est fournie"
-        },
-        "summaryAttribute": {
-          "title": "Attribut de Résumé",
-          "description": "Lorsqu'il est défini, écrit également un objet sérialisé en JSON de chaque paire attribut/valeur résolue lors de cette exécution dans cet attribut"
+          "description": "Contenu de la table d'extraction fourni directement en JSON. Utilisé lorsqu'aucune URI de jeu de données n'est fournie"
         },
         "typeAttribute": {
           "title": "Attribut de Type d'Entité",

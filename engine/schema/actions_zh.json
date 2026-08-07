@@ -998,16 +998,16 @@
     {
       "name": "Attribute Table Extractor",
       "type": "processor",
-      "description": "根据以要素类型属性为键的路径表，从嵌套的map或list属性中提取值到新的顶层属性，也可选择将本次解析出的所有值写入一个JSON汇总属性",
+      "description": "根据以要素类型属性为键的源/目标路径对照表，在嵌套的map或list属性路径之间移动值。当目标路径包含多个片段时，会按需创建嵌套map",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Attribute Table Extractor 参数",
-        "description": "配置用于将嵌套属性值提取到顶层的路径表",
+        "description": "配置用于移动嵌套属性值的源/目标路径对照表",
         "type": "object",
         "properties": {
           "dataset": {
             "title": "数据集URI",
-            "description": "展平表文件的路径或URI。提供此项或内联数据二选一",
+            "description": "抽取表文件的路径或URI。提供此项或内联数据二选一",
             "type": [
               "object",
               "null"
@@ -1032,19 +1032,11 @@
           },
           "inline": {
             "title": "内联表",
-            "description": "直接以JSON形式提供的展平表内容。在未提供数据集URI时使用"
+            "description": "直接以JSON形式提供的抽取表内容。在未提供数据集URI时使用"
           },
           "typeAttribute": {
             "title": "要素类型属性",
             "description": "其值用于选择表中应用于该要素的规则集的属性。默认为`__citygml_feature_type`",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "summaryAttribute": {
-            "title": "汇总属性",
-            "description": "设置后，还会将本次运行解析出的每个属性/值对以JSON序列化对象的形式写入此属性名",
             "type": [
               "string",
               "null"

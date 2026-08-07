@@ -381,23 +381,19 @@
     },
     {
       "name": "Attribute Table Extractor",
-      "description": "Extrae valores de atributos de tipo mapa o lista anidados hacia nuevos atributos de nivel superior, siguiendo una tabla de rutas indexada por un atributo de tipo de entidad, escribiendo opcionalmente también cada valor resuelto como un único atributo de resumen JSON",
+      "description": "Mueve valores entre rutas de atributos de tipo mapa o lista anidados, siguiendo una tabla de pares de rutas origen/destino indexada por un atributo de tipo de entidad. Una ruta de destino con más de un segmento crea mapas anidados según sea necesario",
       "parameterI18n": {
         "": {
           "title": "Parámetros de Attribute Table Extractor",
-          "description": "Configura la tabla de rutas usada para extraer valores de atributos anidados al nivel superior"
+          "description": "Configura la tabla de pares de rutas origen/destino usada para mover valores de atributos anidados"
         },
         "dataset": {
           "title": "URI del Conjunto de Datos",
-          "description": "Ruta o URI del archivo de tabla de aplanado. Proporcione esto o datos en línea"
+          "description": "Ruta o URI del archivo de tabla de extracción. Proporcione esto o datos en línea"
         },
         "inline": {
           "title": "Tabla en Línea",
-          "description": "Contenido de la tabla de aplanado proporcionado directamente como JSON. Se usa cuando no se proporciona una URI de conjunto de datos"
-        },
-        "summaryAttribute": {
-          "title": "Atributo de Resumen",
-          "description": "Cuando se establece, también escribe un objeto serializado en JSON de cada par atributo/valor resuelto en esta ejecución en este nombre de atributo"
+          "description": "Contenido de la tabla de extracción proporcionado directamente como JSON. Se usa cuando no se proporciona una URI de conjunto de datos"
         },
         "typeAttribute": {
           "title": "Atributo de Tipo de Entidad",

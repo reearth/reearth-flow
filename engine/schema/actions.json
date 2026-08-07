@@ -998,16 +998,16 @@
     {
       "name": "Attribute Table Extractor",
       "type": "processor",
-      "description": "Extracts values from nested map or list attributes into new top-level attributes, following a table of paths keyed by a feature type attribute, optionally also writing every resolved value as one JSON summary attribute.",
+      "description": "Moves values between nested map/list attribute paths, following a table of source/destination path pairs keyed by a feature type attribute. A destination path with more than one segment creates nested maps as needed.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Attribute Table Extractor Parameters",
-        "description": "Configures the table of paths used to pull nested attribute values to the top level.",
+        "description": "Configures the table of source/destination path pairs used to move nested attribute values.",
         "type": "object",
         "properties": {
           "dataset": {
             "title": "Dataset URI",
-            "description": "Path or URI of the flatten table file. Provide either this or inline data.",
+            "description": "Path or URI of the extraction table file. Provide either this or inline data.",
             "type": [
               "object",
               "null"
@@ -1032,19 +1032,11 @@
           },
           "inline": {
             "title": "Inline Table",
-            "description": "Flatten table content provided directly as JSON. Used when no dataset URI is given."
+            "description": "Extraction table content provided directly as JSON. Used when no dataset URI is given."
           },
           "typeAttribute": {
             "title": "Feature Type Attribute",
             "description": "Attribute whose value selects which rule set in the table applies to the feature. Defaults to `__citygml_feature_type`.",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "summaryAttribute": {
-            "title": "Summary Attribute",
-            "description": "When set, also writes a JSON-serialized object of every attribute/value pair this run resolved to this attribute name.",
             "type": [
               "string",
               "null"

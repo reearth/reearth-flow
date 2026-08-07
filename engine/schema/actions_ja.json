@@ -998,16 +998,16 @@
     {
       "name": "Attribute Table Extractor",
       "type": "processor",
-      "description": "地物タイプ属性をキーとするパステーブルに従い、ネストされたマップまたはリスト属性から値を抽出して新しいトップレベル属性にする。オプションで、解決した値をすべて1つのJSONサマリー属性として書き込むこともできる",
+      "description": "地物タイプ属性をキーとする移動元・移動先パスの対応表に従い、ネストされたマップまたはリスト属性の間で値を移動する。移動先パスのセグメントが2つ以上の場合、必要に応じてネストしたマップを作成する",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "Attribute Table Extractor パラメータ",
-        "description": "ネストされた属性値をトップレベルに引き上げるために使うパステーブルを設定する",
+        "description": "ネストされた属性値を移動するために使う移動元・移動先パスの対応表を設定する",
         "type": "object",
         "properties": {
           "dataset": {
             "title": "データセットURI",
-            "description": "フラット化テーブルファイルのパスまたはURI。これかインラインデータのいずれかを指定する",
+            "description": "抽出テーブルファイルのパスまたはURI。これかインラインデータのいずれかを指定する",
             "type": [
               "object",
               "null"
@@ -1032,19 +1032,11 @@
           },
           "inline": {
             "title": "インラインテーブル",
-            "description": "フラット化テーブルの内容をJSONとして直接指定する。データセットURIを指定しない場合に使う"
+            "description": "抽出テーブルの内容をJSONとして直接指定する。データセットURIを指定しない場合に使う"
           },
           "typeAttribute": {
             "title": "地物タイプ属性",
             "description": "テーブル内のどのルールセットを地物に適用するかを選ぶ属性の値。デフォルトは`__citygml_feature_type`",
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "summaryAttribute": {
-            "title": "サマリー属性",
-            "description": "設定すると、この実行で解決したすべての属性・値ペアをJSONシリアライズしたオブジェクトとしてこの属性名にも書き込む",
             "type": [
               "string",
               "null"
