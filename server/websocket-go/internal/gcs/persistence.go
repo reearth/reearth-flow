@@ -8,12 +8,6 @@ import (
 	"github.com/reearth/ygo/persistence"
 )
 
-var (
-	_ persistence.VersionedPersistence = (*Adapter)(nil)
-	_ persistence.CrashInjector        = (*Adapter)(nil)
-	_ persistence.Reopener             = (*Adapter)(nil)
-)
-
 // ceilingName is the durable rollback ceiling. PruneAfter writes it (= target)
 // before deleting future updates, so a crash mid-prune still hides any update >
 // target from ListVersions/GetUpdate/Load. AppendUpdate clears it.
@@ -595,6 +589,8 @@ func (a *Adapter) Delete(ctx context.Context, room string) error {
 		a.layout.StateVectorName(room, oid),
 		a.layout.OIDIndexName(room),
 		a.ceilingName(room),
+		// NB: SnapNextIDName is deliberately NOT here — see the deferred delete
+		// after the prefix sweep below.
 	}
 	for _, n := range names {
 		if n == "" {
@@ -604,7 +600,9 @@ func (a *Adapter) Delete(ctx context.Context, room string) error {
 			return err
 		}
 	}
-	for _, prefix := range []string{a.layout.UpdatePrefix(room, oid), a.snapshotPrefix(room)} {
+	// Snapshot objects (SnapshotStore) and the id counter are room data too: the
+	// documented contract is "removes all data for room".
+	for _, prefix := range []string{a.layout.UpdatePrefix(room, oid), a.snapshotPrefix(room), a.layout.SnapVersionPrefix(room)} {
 		objs, err := a.store.list(ctx, prefix)
 		if err != nil {
 			return err
@@ -613,6 +611,16 @@ func (a *Adapter) Delete(ctx context.Context, room string) error {
 			if err := a.store.delete(ctx, n); err != nil {
 				return err
 			}
+		}
+	}
+	// The id counter goes LAST, after the snapshots it numbers. These deletes are
+	// sequential and unlocked, so a cancelled context can stop this loop partway;
+	// removing the counter first would leave live snapshots with no counter, and
+	// the next SaveSnapshot would then reuse ids and overwrite them. Ordering it
+	// last means a partial delete leaks a counter (harmless) instead.
+	if n := a.layout.SnapNextIDName(room); n != "" {
+		if err := a.store.delete(ctx, n); err != nil {
+			return err
 		}
 	}
 	a.mu.Lock()
@@ -637,6 +645,7 @@ func (a *Adapter) deleteLegacyRoot(ctx context.Context, room DocID) error {
 		leg.StateVectorName(room, oid),
 		leg.OIDIndexName(room),
 		legacyCeilingName(room),
+		// SnapNextIDName deferred to after the sweep, as in the Phase-1 path.
 	}
 	for _, n := range names {
 		if n == "" {
@@ -646,7 +655,7 @@ func (a *Adapter) deleteLegacyRoot(ctx context.Context, room DocID) error {
 			return err
 		}
 	}
-	for _, prefix := range []string{leg.UpdatePrefix(room, oid), legacySnapshotPrefix(room)} {
+	for _, prefix := range []string{leg.UpdatePrefix(room, oid), legacySnapshotPrefix(room), leg.SnapVersionPrefix(room)} {
 		objs, err := a.store.list(ctx, prefix)
 		if err != nil {
 			return err
@@ -655,6 +664,13 @@ func (a *Adapter) deleteLegacyRoot(ctx context.Context, room DocID) error {
 			if err := a.store.delete(ctx, n); err != nil {
 				return err
 			}
+		}
+	}
+	// Counter last: same reasoning as the Phase-1 path — a cancelled delete must
+	// not strand live snapshots without the counter that keeps their ids unique.
+	if n := leg.SnapNextIDName(room); n != "" {
+		if err := a.store.delete(ctx, n); err != nil {
+			return err
 		}
 	}
 	return nil

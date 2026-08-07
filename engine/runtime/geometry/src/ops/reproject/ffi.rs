@@ -9,12 +9,13 @@ use std::sync::OnceLock;
 use parking_lot::RwLock;
 
 use crate::coordinate::{EpsgCode, MissingTwoDimensionalForm};
+use crate::ops::reproject::grids;
 use proj_sys::{
-    proj_context_create, proj_context_destroy, proj_context_errno, proj_context_errno_string,
-    proj_create, proj_create_crs_to_crs_from_pj, proj_crs_demote_to_2D,
-    proj_crs_get_coordinate_system, proj_crs_get_sub_crs, proj_cs_get_axis_count,
-    proj_cs_get_axis_info, proj_cs_get_type, proj_destroy, proj_errno, proj_errno_reset,
-    proj_get_id_auth_name, proj_get_id_code, proj_get_type, proj_trans, PJ, PJ_CONTEXT, PJ_COORD,
+    proj_context_destroy, proj_context_errno, proj_context_errno_string, proj_create,
+    proj_create_crs_to_crs_from_pj, proj_crs_demote_to_2D, proj_crs_get_coordinate_system,
+    proj_crs_get_sub_crs, proj_cs_get_axis_count, proj_cs_get_axis_info, proj_cs_get_type,
+    proj_destroy, proj_errno, proj_errno_reset, proj_get_id_auth_name, proj_get_id_code,
+    proj_get_type, proj_trans, PJ, PJ_CONTEXT, PJ_COORD,
     PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_CARTESIAN,
     PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_ELLIPSOIDAL,
     PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_SPHERICAL, PJ_DIRECTION_PJ_FWD,
@@ -118,17 +119,13 @@ impl Entry {
     /// transform time instead. PROJ can only ballpark when a required grid is
     /// absent or the build cannot read it.
     fn build(from: EpsgCode, to: EpsgCode) -> Result<Self> {
+        let ctx = grids::create_context()?;
         // SAFETY: each PROJ object is null-checked before use; errno is read
         // while the context is still alive; on any failure all objects created
         // so far are freed before returning. The source and target CRS objects
         // are only needed to build the transformation and are freed once it is
         // created.
         unsafe {
-            let ctx = proj_context_create();
-            if ctx.is_null() {
-                return Err(Error::projection("proj_context_create returned null"));
-            }
-
             let c_from = CString::new(format!("EPSG:{from}")).map_err(Error::projection)?;
             let c_to = CString::new(format!("EPSG:{to}")).map_err(Error::projection)?;
 
@@ -154,19 +151,46 @@ impl Entry {
             let options = [allow_ballpark.as_ptr(), ptr::null()];
             let pj =
                 proj_create_crs_to_crs_from_pj(ctx, src, dst, ptr::null_mut(), options.as_ptr());
-            proj_destroy(src);
-            proj_destroy(dst);
             if pj.is_null() {
                 let msg = ctx_errno_string(ctx);
+                let approximate = ballpark_path_exists(ctx, src, dst);
+                proj_destroy(src);
+                proj_destroy(dst);
                 proj_context_destroy(ctx);
-                return Err(Error::projection(format!(
-                    "failed to create transform EPSG:{from}->EPSG:{to}: {msg}"
-                )));
+                return Err(Error::projection(if approximate {
+                    format!(
+                        "failed to create transform EPSG:{from}->EPSG:{to}: {msg}. PROJ can \
+                         relate them only by a ballpark operation, which is refused because it \
+                         would omit the datum shift: either a required grid is absent ({}), or \
+                         the EPSG registry publishes no accurate transformation between these \
+                         datums",
+                        grids::supply_hint()
+                    )
+                } else {
+                    format!(
+                        "failed to create transform EPSG:{from}->EPSG:{to}: {msg}. PROJ has no \
+                         operation between these CRSs at all, so no grid can supply one"
+                    )
+                }));
             }
+            proj_destroy(src);
+            proj_destroy(dst);
 
             Ok(Self { from, to, ctx, pj })
         }
     }
+}
+
+/// Whether PROJ can relate `src` and `dst` once ballpark operations are allowed,
+/// which tells a missing grid apart from a datum pair with no accurate path.
+// SAFETY: `ctx`, `src` and `dst` must be valid, non-null PROJ objects.
+unsafe fn ballpark_path_exists(ctx: *mut PJ_CONTEXT, src: *const PJ, dst: *const PJ) -> bool {
+    let pj = proj_create_crs_to_crs_from_pj(ctx, src, dst, ptr::null_mut(), ptr::null());
+    if pj.is_null() {
+        return false;
+    }
+    proj_destroy(pj);
+    true
 }
 
 /// Format a PROJ `errno` into its message string.
@@ -213,14 +237,11 @@ pub(crate) fn axis_order_sign(epsg: EpsgCode) -> Result<i8> {
 /// Compute the orientation sign of `epsg` directly from PROJ, without consulting
 /// or populating the cache.
 fn axis_order_sign_uncached(epsg: EpsgCode) -> Result<i8> {
+    let ctx = grids::create_context()?;
     // SAFETY: each PROJ object is null-checked before use and every path frees
     // the objects it created; the axis-direction strings are owned by `cs` and
     // read while it is alive.
     unsafe {
-        let ctx = proj_context_create();
-        if ctx.is_null() {
-            return Err(Error::projection("proj_context_create returned null"));
-        }
         let def = CString::new(format!("EPSG:{epsg}")).map_err(Error::projection)?;
         let crs = proj_create(ctx, def.as_ptr());
         if crs.is_null() {
@@ -357,12 +378,9 @@ pub(crate) fn crs_is_linear(epsg: EpsgCode) -> Result<bool> {
 /// Determine `epsg`'s horizontal-axis unit kind directly from PROJ, without the
 /// cache.
 fn crs_is_linear_uncached(epsg: EpsgCode) -> Result<bool> {
+    let ctx = grids::create_context()?;
     // SAFETY: every PROJ object is null-checked and freed on all paths.
     unsafe {
-        let ctx = proj_context_create();
-        if ctx.is_null() {
-            return Err(Error::projection("proj_context_create returned null"));
-        }
         let def = CString::new(format!("EPSG:{epsg}")).map_err(Error::projection)?;
         let crs = proj_create(ctx, def.as_ptr());
         if crs.is_null() {
@@ -485,12 +503,9 @@ pub(crate) fn crs_demote_to_2d(epsg: EpsgCode) -> Result<TwoDimensionalCrs, Stri
 /// this code, which may be.
 fn lookup_demotion(epsg: EpsgCode) -> Result<CachedDemotion, String> {
     let def = CString::new(format!("EPSG:{epsg}")).map_err(|e| e.to_string())?;
+    let ctx = grids::create_context().map_err(|e| e.to_string())?;
     // SAFETY: every PROJ object is null-checked and freed on all paths.
     unsafe {
-        let ctx = proj_context_create();
-        if ctx.is_null() {
-            return Err("proj_context_create returned null".to_string());
-        }
         let crs = proj_create(ctx, def.as_ptr());
         let outcome = if crs.is_null() {
             Err(format!(
@@ -637,25 +652,38 @@ mod tests {
     }
 
     #[test]
-    fn dutch_vertical_is_corrected_or_rejected_never_silently_wrong() {
+    fn dutch_vertical_is_corrected_never_silently_wrong() {
         // EPSG:7415 (Amersfoort / RD New + NAP height) carries an orthometric
-        // height; converting to WGS84 3D must add the ~46 m NL geoid separation.
-        // With the grid present the height is corrected; without it PROJ can only
-        // ballpark, which is disallowed so the transform errors. The one outcome
-        // that must never happen is silently returning the input height as if it
-        // were ellipsoidal.
+        // height; converting to WGS84 3D must add the ~46 m NL geoid separation,
+        // never return the input height as if it were ellipsoidal.
         let mut cache = ReprojectionCache::new();
-        match cache.transform(
-            EpsgCode::new(7415),
-            EpsgCode::new(4979),
-            [204000.0, 325300.0, 95.0],
-        ) {
-            Ok([_, _, z]) => assert!(
-                z > 130.0,
-                "expected a geoid-corrected ellipsoidal height (~140 m), got {z}"
-            ),
-            Err(e) => assert!(e.to_string().contains("7415"), "unexpected error: {e}"),
-        }
+        let [_, _, z] = cache
+            .transform(
+                EpsgCode::new(7415),
+                EpsgCode::new(4979),
+                [204000.0, 325300.0, 95.0],
+            )
+            .unwrap();
+        assert!(
+            z > 130.0,
+            "expected a geoid-corrected ellipsoidal height (~140 m), got {z}"
+        );
+    }
+
+    #[test]
+    fn a_pair_with_only_a_ballpark_path_says_so_rather_than_blaming_a_grid() {
+        // EPSG registers NAD83(CSRS) to WGS 84 only as a ballpark offset, so no
+        // grid makes EPSG:6649 -> 4979 accurate and none should be blamed.
+        let mut cache = ReprojectionCache::new();
+        let err = cache
+            .transform(
+                EpsgCode::new(6649),
+                EpsgCode::new(4979),
+                [45.5, -73.6, 50.0],
+            )
+            .unwrap_err()
+            .to_string();
+        assert!(err.contains("ballpark"), "unexpected error: {err}");
     }
 
     fn demote(code: u16) -> TwoDimensionalCrs {

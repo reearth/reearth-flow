@@ -28,6 +28,14 @@ type ProjectSnapshotMetadata {
   version: Int!
 }
 
+# A labelled snapshot in a project's version history.
+type NamedSnapshot {
+  snapshotNumber: Int!
+  label: String!
+  timestamp: DateTime!
+  size: FileSize!
+}
+
 # Mutation
 
 extend type Mutation {
@@ -36,6 +44,7 @@ extend type Mutation {
   rollbackProject(projectId: ID!, version: Int!): ProjectDocument
   copyProject(projectId: ID!, source: ID!): Boolean!
   importProject(projectId: ID!, data: Bytes!): Boolean!
+  saveNamedSnapshot(projectId: ID!, label: String!): NamedSnapshot!
 }
 
 # Query
@@ -44,4 +53,5 @@ extend type Query {
   latestProjectSnapshot(projectId: ID!): ProjectDocument
   projectHistory(projectId: ID!): [ProjectSnapshotMetadata!]!
   projectSnapshot(projectId: ID!, version: Int!): ProjectSnapshot!
+  projectNamedSnapshots(projectId: ID!): [NamedSnapshot!]!
 }

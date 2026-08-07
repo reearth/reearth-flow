@@ -16,6 +16,7 @@ import {
 } from "@flow/components";
 import { toast } from "@flow/features/NotificationSystem/useToast";
 import { useT } from "@flow/lib/i18n";
+import { resolveValue } from "@flow/utils/valueSummary";
 
 type Props = {
   label: string;
@@ -42,18 +43,6 @@ type FlatNode = {
   expanded: boolean;
   closingBracket?: boolean;
 };
-
-function resolveValue(value: unknown): unknown {
-  if (typeof value === "string") {
-    try {
-      const parsed = JSON.parse(value);
-      if (typeof parsed === "object" && parsed !== null) return parsed;
-    } catch {
-      // Not valid JSON, keep the original string
-    }
-  }
-  return value;
-}
 
 function kindOf(value: unknown): NodeKind {
   if (Array.isArray(value)) return "array";

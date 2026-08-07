@@ -5,7 +5,7 @@ import {
   FileIcon,
   CircleIcon,
 } from "@phosphor-icons/react";
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 
 import {
   Button,
@@ -34,6 +34,7 @@ import { useCurrentProject } from "@flow/stores";
 import { Asset } from "@flow/types";
 
 import { FieldContext } from "../../utils/fieldUtils";
+import { toVariableAutocompleteSuggestions } from "../ValueEditorDialog/components/variableAutocomplete";
 import FlowExprCodeEditor, {
   type FlowExprCodeEditorRef,
 } from "../ValueEditorDialog/components/FlowExprCodeEditor";
@@ -90,6 +91,10 @@ const FlowExprEditorDialog: React.FC<Props> = ({
   const [currentProject] = useCurrentProject();
   const { useGetWorkflowVariables } = useWorkflowVariables();
   const { workflowVariables } = useGetWorkflowVariables(currentProject?.id);
+  const variableSuggestions = useMemo(
+    () => toVariableAutocompleteSuggestions(workflowVariables),
+    [workflowVariables],
+  );
 
   const insertAtCursor = useCallback(
     (text: string) => {
@@ -104,22 +109,18 @@ const FlowExprEditorDialog: React.FC<Props> = ({
 
   const handleAssetSelect = useCallback(
     (asset: Asset) => {
-      // In FlowExpr, wrap asset URLs with Url(...) in expression mode
-      const snippet =
-        codeType === "flowExpr" ? `Url("${asset.url}")` : asset.url;
-      insertAtCursor(snippet);
+      insertAtCursor(asset.url);
       setShowDialog(undefined);
     },
-    [codeType, insertAtCursor],
+    [insertAtCursor],
   );
 
   const handleCmsItemValue = useCallback(
     (url: string) => {
-      const snippet = codeType === "flowExpr" ? `Url("${url}")` : url;
-      insertAtCursor(snippet);
+      insertAtCursor(url);
       setShowDialog(undefined);
     },
-    [codeType, insertAtCursor],
+    [insertAtCursor],
   );
 
   const handleVariableSelect = useCallback(
@@ -248,6 +249,7 @@ const FlowExprEditorDialog: React.FC<Props> = ({
                 value={codeValue}
                 onChange={setCodeValue}
                 attributeSuggestions={attributeSuggestions}
+                variableSuggestions={variableSuggestions}
                 placeholder={t(
                   'e.g. Url(variables.get("BASE_DIR")) / "filename"',
                 )}

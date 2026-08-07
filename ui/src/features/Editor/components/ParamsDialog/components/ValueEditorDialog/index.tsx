@@ -6,7 +6,7 @@ import {
   FileIcon,
 } from "@phosphor-icons/react";
 import { QuestionIcon } from "@phosphor-icons/react/dist/ssr";
-import { useCallback, useState, useRef } from "react";
+import { useCallback, useMemo, useState, useRef } from "react";
 
 import {
   Button,
@@ -34,6 +34,7 @@ import { Asset } from "@flow/types";
 
 import { FieldContext } from "../../utils/fieldUtils";
 
+import { toVariableAutocompleteSuggestions } from "./components/variableAutocomplete";
 import FlowExprCodeEditor, {
   type FlowExprCodeEditorRef,
 } from "./components/FlowExprCodeEditor";
@@ -70,6 +71,10 @@ const ValueEditorDialog: React.FC<Props> = ({
   const { useGetWorkflowVariables } = useWorkflowVariables();
 
   const { workflowVariables } = useGetWorkflowVariables(currentProject?.id);
+  const variableSuggestions = useMemo(
+    () => toVariableAutocompleteSuggestions(workflowVariables),
+    [workflowVariables],
+  );
 
   const handleSubmit = useCallback(() => {
     if (!onValueSubmit) return;
@@ -220,6 +225,7 @@ const ValueEditorDialog: React.FC<Props> = ({
                 placeholder={t("Enter expression...")}
                 value={value}
                 onChange={setValue}
+                variableSuggestions={variableSuggestions}
                 data-testid="value-editor-textarea"
                 aria-label={t("Expression Editor")}
                 data-placeholder={t("Enter expression...")}
