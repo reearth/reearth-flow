@@ -281,7 +281,16 @@ fn write_records<W: std::io::Write>(
                     // including ones raised deep inside the geometry module
                     // (e.g. `warn_omitted`, `warn_mixed_frames`) that have no
                     // access to the feature or the destination themselves.
-                    let _span = tracing::info_span!(
+                    // WARN-level so the span stays enabled (and thus current,
+                    // and thus attached to those warnings) under a
+                    // WARN-filtered subscriber, which is how `cargo make
+                    // test-qc` and production workers commonly run; an
+                    // `info_span!` would be compiled out under that filter
+                    // and the warnings would carry no context at all. Only
+                    // entered inside this `if let Some(config) = ...` block,
+                    // so a CSV written with no geometry parameter creates no
+                    // span at all.
+                    let _span = tracing::warn_span!(
                         "csv_geometry_export",
                         feature_id = %feature.id,
                         output = %output,
