@@ -11,8 +11,9 @@ use super::{
     file_path_info_extractor::AttributeFilePathInfoExtractorFactory,
     flattener::AttributeFlattenerFactory, manager::AttributeManagerFactory,
     mapper::AttributeMapperFactory, null_attribute_mapper::NullAttributeMapperFactory,
-    path_flattener::AttributePathFlattenerFactory, range_mapper::AttributeRangeMapperFactory,
+    range_mapper::AttributeRangeMapperFactory,
     statistics_calculator::StatisticsCalculatorFactory,
+    table_extractor::AttributeTableExtractorFactory,
 };
 
 pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
@@ -30,7 +31,7 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
         Box::<AttributeRangeMapperFactory>::default(),
         Box::<NullAttributeMapperFactory>::default(),
         Box::<DateTimeConverterFactory>::default(),
-        Box::<AttributePathFlattenerFactory>::default(),
+        Box::<AttributeTableExtractorFactory>::default(),
     ];
     factories
         .into_iter()

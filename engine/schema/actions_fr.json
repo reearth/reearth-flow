@@ -996,6 +996,77 @@
       "tags": []
     },
     {
+      "name": "Attribute Table Extractor",
+      "type": "processor",
+      "description": "Extrait les valeurs d'attributs de type map ou liste imbriqués vers de nouveaux attributs de premier niveau, en suivant une table de chemins indexée par un attribut de type d'entité, en écrivant éventuellement aussi chaque valeur résolue sous forme d'un attribut de résumé JSON unique",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Paramètres Attribute Table Extractor",
+        "description": "Configure la table de chemins utilisée pour extraire les valeurs d'attributs imbriqués vers le premier niveau",
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "title": "URI du Jeu de Données",
+            "description": "Chemin ou URI du fichier de table d'aplatissement. Fournissez ceci ou des données en ligne",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "inline": {
+            "title": "Table en Ligne",
+            "description": "Contenu de la table d'aplatissement fourni directement en JSON. Utilisé lorsqu'aucune URI de jeu de données n'est fournie"
+          },
+          "typeAttribute": {
+            "title": "Attribut de Type d'Entité",
+            "description": "Attribut dont la valeur sélectionne quel ensemble de règles de la table s'applique à l'entité. Par défaut `__citygml_feature_type`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "summaryAttribute": {
+            "title": "Attribut de Résumé",
+            "description": "Lorsqu'il est défini, écrit également un objet sérialisé en JSON de chaque paire attribut/valeur résolue lors de cette exécution dans cet attribut",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Attribute"
+      ],
+      "tags": [
+        "mapping"
+      ]
+    },
+    {
       "name": "Boundary Extractor",
       "type": "processor",
       "description": "Extrait la limite des géométries. Pour les solides/maillages, retourne les surfaces limites ; pour les surfaces, retourne les arêtes limites ; pour les surfaces fermées, retourne une géométrie vide",
@@ -3557,11 +3628,14 @@
             "default": false,
             "type": "boolean"
           },
-          "flattenMeasureTypes": {
-            "title": "Aplatir les Types de Mesure",
-            "description": "Lorsque vrai, les éléments avec un seul attribut `uom` et un contenu textuel numérique sont convertis en valeur numérique, l'unité étant stockée comme clé sœur `{name}_uom`. Par défaut à false.",
-            "default": false,
-            "type": "boolean"
+          "flattenLeafAttributes": {
+            "title": "Aplatir les Attributs Feuille",
+            "description": "Noms d'attributs (par ex. `uom`) marquant une feuille à regrouper : un élément possédant exactement un de ces attributs XML, sans éléments enfants et avec un contenu textuel numérique est converti en valeur numérique, la valeur de l'attribut étant stockée comme clé sœur `{name}_{attribute}`. Vide (par défaut) désactive cette fonctionnalité.",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "cityGmlAttributesKey": {
             "title": "Clé des Attributs CityGML",

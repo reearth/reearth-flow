@@ -972,6 +972,74 @@ Map attribute values to ranges and assign corresponding output values
 ### Category
 * Attribute
 
+## Attribute Table Extractor
+### Type
+* processor
+### Description
+Extracts values from nested map or list attributes into new top-level attributes, following a table of paths keyed by a feature type attribute, optionally also writing every resolved value as one JSON summary attribute.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Attribute Table Extractor Parameters",
+  "description": "Configures the table of paths used to pull nested attribute values to the top level.",
+  "type": "object",
+  "properties": {
+    "dataset": {
+      "title": "Dataset URI",
+      "description": "Path or URI of the flatten table file. Provide either this or inline data.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "inline": {
+      "title": "Inline Table",
+      "description": "Flatten table content provided directly as JSON. Used when no dataset URI is given."
+    },
+    "typeAttribute": {
+      "title": "Feature Type Attribute",
+      "description": "Attribute whose value selects which rule set in the table applies to the feature. Defaults to `__citygml_feature_type`.",
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "summaryAttribute": {
+      "title": "Summary Attribute",
+      "description": "When set, also writes a JSON-serialized object of every attribute/value pair this run resolved to this attribute name.",
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* features
+### Category
+* Attribute
+
 ## Boundary Extractor
 ### Type
 * processor
@@ -3473,11 +3541,14 @@ Reads CityGML 3.0 files: resolves gml:id references and xlink:href links across 
       "default": false,
       "type": "boolean"
     },
-    "flattenMeasureTypes": {
-      "title": "Flatten Measure Types",
-      "description": "When true, elements with a single `uom` attribute and numeric text content are converted to a number value, with the unit stored as a sibling `{name}_uom` key. Defaults to false.",
-      "default": false,
-      "type": "boolean"
+    "flattenLeafAttributes": {
+      "title": "Flatten Leaf Attributes",
+      "description": "Attribute names (e.g. `uom`) that mark a leaf for collapsing: an element with exactly one XML attribute in this list, no child elements, and numeric text content is converted to a number value, with the attribute's value stored as a sibling `{name}_{attribute}` key. Empty (the default) disables this.",
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "cityGmlAttributesKey": {
       "title": "City GML Attributes Key",

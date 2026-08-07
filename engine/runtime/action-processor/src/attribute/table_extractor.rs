@@ -17,11 +17,11 @@ use serde_json::Value;
 use super::errors::AttributeProcessorError;
 
 #[derive(Debug, Clone, Default)]
-pub(super) struct AttributePathFlattenerFactory;
+pub(super) struct AttributeTableExtractorFactory;
 
-impl ProcessorFactory for AttributePathFlattenerFactory {
+impl ProcessorFactory for AttributeTableExtractorFactory {
     fn name(&self) -> &str {
-        "Attribute Path Flattener"
+        "Attribute Table Extractor"
     }
 
     fn description(&self) -> &str {
@@ -29,7 +29,7 @@ impl ProcessorFactory for AttributePathFlattenerFactory {
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
-        Some(schemars::schema_for!(AttributePathFlattenerParam))
+        Some(schemars::schema_for!(AttributeTableExtractorParam))
     }
 
     fn categories(&self) -> &[&'static str] {
@@ -55,19 +55,19 @@ impl ProcessorFactory for AttributePathFlattenerFactory {
         _action: String,
         with: Option<HashMap<String, Value>>,
     ) -> Result<Box<dyn Processor>, BoxedError> {
-        let params: AttributePathFlattenerParam = if let Some(with) = with {
+        let params: AttributeTableExtractorParam = if let Some(with) = with {
             let value: Value = serde_json::to_value(with).map_err(|e| {
-                AttributeProcessorError::PathFlattenerFactory(format!(
+                AttributeProcessorError::TableExtractorFactory(format!(
                     "Failed to serialize `with` parameter: {e}"
                 ))
             })?;
             serde_json::from_value(value).map_err(|e| {
-                AttributeProcessorError::PathFlattenerFactory(format!(
+                AttributeProcessorError::TableExtractorFactory(format!(
                     "Failed to deserialize `with` parameter: {e}"
                 ))
             })?
         } else {
-            return Err(AttributeProcessorError::PathFlattenerFactory(
+            return Err(AttributeProcessorError::TableExtractorFactory(
                 "Missing required parameter `with`".to_string(),
             )
             .into());
@@ -78,43 +78,43 @@ impl ProcessorFactory for AttributePathFlattenerFactory {
             let input_path = dataset
                 .compile()
                 .map_err(|e| {
-                    AttributeProcessorError::PathFlattenerFactory(format!(
+                    AttributeProcessorError::TableExtractorFactory(format!(
                         "Failed to compile dataset expression: {e:?}"
                     ))
                 })?
                 .eval_string_env_only(ctx.env_vars.clone())
                 .map_err(|e| {
-                    AttributeProcessorError::PathFlattenerFactory(format!(
+                    AttributeProcessorError::TableExtractorFactory(format!(
                         "Failed to evaluate dataset expression: {e}"
                     ))
                 })?;
             let input_path = Uri::from_str(input_path.as_str())
-                .map_err(|e| AttributeProcessorError::PathFlattenerFactory(format!("{e:?}")))?;
+                .map_err(|e| AttributeProcessorError::TableExtractorFactory(format!("{e:?}")))?;
             let storage = storage_resolver
                 .resolve(&input_path)
-                .map_err(|e| AttributeProcessorError::PathFlattenerFactory(format!("{e:?}")))?;
+                .map_err(|e| AttributeProcessorError::TableExtractorFactory(format!("{e:?}")))?;
             let bytes: Bytes = storage
                 .get_sync(input_path.path().as_path())
-                .map_err(|e| AttributeProcessorError::PathFlattenerFactory(format!("{e:?}")))?;
+                .map_err(|e| AttributeProcessorError::TableExtractorFactory(format!("{e:?}")))?;
             serde_json::from_slice(&bytes).map_err(|e| {
-                AttributeProcessorError::PathFlattenerFactory(format!(
+                AttributeProcessorError::TableExtractorFactory(format!(
                     "Failed to parse flatten table: {e}"
                 ))
             })?
         } else if let Some(inline) = params.inline.clone() {
             serde_json::from_value(inline).map_err(|e| {
-                AttributeProcessorError::PathFlattenerFactory(format!(
+                AttributeProcessorError::TableExtractorFactory(format!(
                     "Failed to parse flatten table: {e}"
                 ))
             })?
         } else {
-            return Err(AttributeProcessorError::PathFlattenerFactory(
+            return Err(AttributeProcessorError::TableExtractorFactory(
                 "Missing required parameter `dataset` or `inline`".to_string(),
             )
             .into());
         };
 
-        let process = AttributePathFlattener {
+        let process = AttributeTableExtractor {
             type_attribute: params
                 .type_attribute
                 .unwrap_or_else(|| "__citygml_feature_type".to_string()),
@@ -125,11 +125,11 @@ impl ProcessorFactory for AttributePathFlattenerFactory {
     }
 }
 
-/// # Attribute Path Flattener Parameters
+/// # Attribute Table Extractor Parameters
 /// Configures the table of paths used to pull nested attribute values to the top level.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-struct AttributePathFlattenerParam {
+struct AttributeTableExtractorParam {
     /// # Dataset URI
     /// Path or URI of the flatten table file. Provide either this or inline data.
     dataset: Option<Code>,
@@ -169,13 +169,13 @@ enum FlattenDataType {
 }
 
 #[derive(Debug, Clone)]
-struct AttributePathFlattener {
+struct AttributeTableExtractor {
     type_attribute: String,
     summary_attribute: Option<String>,
     table: HashMap<String, Vec<FlattenRule>>,
 }
 
-impl Processor for AttributePathFlattener {
+impl Processor for AttributeTableExtractor {
     fn process(
         &mut self,
         ctx: ExecutorContext,
@@ -226,7 +226,7 @@ impl Processor for AttributePathFlattener {
     }
 
     fn name(&self) -> &str {
-        "Attribute Path Flattener"
+        "Attribute Table Extractor"
     }
 }
 

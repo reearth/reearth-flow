@@ -996,6 +996,77 @@
       "tags": []
     },
     {
+      "name": "Attribute Table Extractor",
+      "type": "processor",
+      "description": "根据以要素类型属性为键的路径表，从嵌套的map或list属性中提取值到新的顶层属性，也可选择将本次解析出的所有值写入一个JSON汇总属性",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Attribute Table Extractor 参数",
+        "description": "配置用于将嵌套属性值提取到顶层的路径表",
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "title": "数据集URI",
+            "description": "展平表文件的路径或URI。提供此项或内联数据二选一",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "inline": {
+            "title": "内联表",
+            "description": "直接以JSON形式提供的展平表内容。在未提供数据集URI时使用"
+          },
+          "typeAttribute": {
+            "title": "要素类型属性",
+            "description": "其值用于选择表中应用于该要素的规则集的属性。默认为`__citygml_feature_type`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "summaryAttribute": {
+            "title": "汇总属性",
+            "description": "设置后，还会将本次运行解析出的每个属性/值对以JSON序列化对象的形式写入此属性名",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Attribute"
+      ],
+      "tags": [
+        "mapping"
+      ]
+    },
+    {
       "name": "Boundary Extractor",
       "type": "processor",
       "description": "提取几何体的边界。对于实体/网格返回边界面，对于面返回边界边，对于封闭面返回空几何体",
@@ -3557,11 +3628,14 @@
             "default": false,
             "type": "boolean"
           },
-          "flattenMeasureTypes": {
-            "title": "展平度量类型",
-            "description": "为true时，具有单个`uom`属性和数值文本内容的元素将被转换为数值，单位以兄弟键`{name}_uom`存储。默认为false。",
-            "default": false,
-            "type": "boolean"
+          "flattenLeafAttributes": {
+            "title": "展平叶属性",
+            "description": "标记可折叠叶节点的属性名（例如`uom`）：只含此列表中一个XML属性、没有子元素且文本内容为数值的元素会被转换为数值，该属性的值存储为兄弟键`{name}_{attribute}`。默认为空，表示禁用此功能。",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "cityGmlAttributesKey": {
             "title": "CityGML属性键",

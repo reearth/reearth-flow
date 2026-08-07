@@ -56,9 +56,9 @@ graphs:
             - uom
 
       - id: 6a1b3c5d-7e9f-4a1b-8c3d-5e7f9a1b3c5d
-        name: AttributePathFlattener
+        name: AttributeTableExtractor
         type: action
-        action: Attribute Path Flattener
+        action: Attribute Table Extractor
         with:
           inline: !include ../../../../config/plateau6_bldg_flatten_attributes.json
           summaryAttribute: attributes
