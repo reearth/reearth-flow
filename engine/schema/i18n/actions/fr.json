@@ -380,6 +380,28 @@
       }
     },
     {
+      "name": "Attribute Table Extractor",
+      "description": "Déplace des valeurs entre des chemins d'attributs de type map ou liste imbriqués, en suivant une table de paires de chemins source/destination indexée par un attribut de type d'entité. Un chemin de destination à plusieurs segments crée des cartes imbriquées si nécessaire",
+      "parameterI18n": {
+        "": {
+          "title": "Paramètres Attribute Table Extractor",
+          "description": "Configure la table de paires de chemins source/destination utilisée pour déplacer des valeurs d'attributs imbriqués"
+        },
+        "dataset": {
+          "title": "URI du Jeu de Données",
+          "description": "Chemin ou URI du fichier de table d'extraction. Fournissez ceci ou des données en ligne"
+        },
+        "inline": {
+          "title": "Table en Ligne",
+          "description": "Contenu de la table d'extraction fourni directement en JSON. Utilisé lorsqu'aucune URI de jeu de données n'est fournie"
+        },
+        "typeAttribute": {
+          "title": "Attribut de Type d'Entité",
+          "description": "Attribut dont la valeur sélectionne quel ensemble de règles de la table s'applique à l'entité. Par défaut `__citygml_feature_type`"
+        }
+      }
+    },
+    {
       "name": "Boundary Extractor",
       "description": "Extrait la limite des géométries. Pour les solides/maillages, retourne les surfaces limites ; pour les surfaces, retourne les arêtes limites ; pour les surfaces fermées, retourne une géométrie vide",
       "parameterI18n": {
@@ -1195,9 +1217,9 @@
           "title": "Extraire les Balises",
           "description": "Noms de types d'entité à aplatir en entités individuelles. Accepte la forme qualifiée (`bldg:Building`), locale (`Building`) ou la notation Clark (`{http://…}Building`). Vide signifie émettre tous les objets urbains de niveau supérieur sans modification."
         },
-        "flattenMeasureTypes": {
-          "title": "Aplatir les Types de Mesure",
-          "description": "Lorsque vrai, les éléments avec un seul attribut `uom` et un contenu textuel numérique sont convertis en valeur numérique, l'unité étant stockée comme clé sœur `{name}_uom`. Par défaut à false."
+        "flattenLeafAttributes": {
+          "title": "Aplatir les Attributs Feuille",
+          "description": "Noms d'attributs (par ex. `uom`) marquant une feuille à regrouper : un élément possédant exactement un de ces attributs XML, sans éléments enfants et avec un contenu textuel numérique est converti en valeur numérique, la valeur de l'attribut étant stockée comme clé sœur `{name}_{attribute}`. Vide (par défaut) désactive cette fonctionnalité."
         },
         "flattenSingleChildObjects": {
           "title": "Aplatir les Nœuds Objet à Enfant Unique",

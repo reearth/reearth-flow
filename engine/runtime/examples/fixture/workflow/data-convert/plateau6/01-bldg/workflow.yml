@@ -51,6 +51,34 @@ graphs:
           dataset:
             type: flowExpr
             value: attributes["path"]
+          cityGmlAttributesKey: cityGmlAttributes
+          flattenLeafAttributes:
+            - uom
+
+      - id: 6a1b3c5d-7e9f-4a1b-8c3d-5e7f9a1b3c5d
+        name: AttributeTableExtractor
+        type: action
+        action: Attribute Table Extractor
+        with:
+          inline: !include ../../../../config/plateau6_bldg_flatten_attributes.json
+
+      - id: 1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c6e
+        name: AttributeFlattenerForCesiumProperties
+        type: action
+        action: Attribute Flattener
+        with:
+          attributes:
+            - attributes
+
+      - id: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6f
+        name: FeatureMergerForFlattenedAttributes
+        type: action
+        action: Feature Merger
+        with:
+          requestorAttribute:
+            - __citygml_gml_id
+          supplierAttribute:
+            - __citygml_gml_id
 
       - id: 3d0e8b1f-6a2c-4e0b-9f5d-7c1a8b4e2f60
         name: AttributeManager
@@ -63,24 +91,17 @@ graphs:
               value:
                 type: flowExpr
                 value: |
-                  ade_of_building = attributes.get("bldg:adeOfAbstractBuilding");
-                  entries = [];
-                  if type(ade_of_building) == list {
-                    entries = ade_of_building;
-                  } else if type(ade_of_building) == dict {
-                    entries = [ade_of_building];
-                  }
-                  id_map = null;
-                  for entry in entries {
-                    if entry.get("uro:BuildingIDAttribute") {
-                      id_map = entry.get("uro:BuildingIDAttribute");
-                    }
-                  }
-                  gml_city_code = null;
-                  if id_map {
-                    gml_city_code = id_map.get("uro:city_code") or id_map.get("uro:city");
-                  }
-                  gml_city_code or env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5]
+                  attributes.get("uro:BuildingIDAttribute_uro:city_code") or env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5]
+            - attribute: __baseCityCode
+              method: create
+              value:
+                type: flowExpr
+                value: env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5]
+            - attribute: attributes
+              method: convert
+              value:
+                type: flowExpr
+                value: json.dumps(attributes["attributes"])
 
       - id: 9f2a7c4e-3b5d-4c8f-a1e0-6d9b2f5a8c31
         name: AttributeConversionTableForWardName
@@ -94,6 +115,21 @@ graphs:
               featureTo: "cityNameEn"
               conversionTableKeys: ["ward_code"]
               conversionTableTo: "ward_name_en"
+            - featureFroms: ["city_code"]
+              featureTo: "__wardParentCode"
+              conversionTableKeys: ["ward_code"]
+              conversionTableTo: "city_code"
+
+      - id: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
+        name: CityCodeBoundaryFilter
+        type: action
+        action: Feature Filter
+        with:
+          conditions:
+            - expr:
+                type: flowExpr
+                value: attributes["city_code"] == attributes["__baseCityCode"] or attributes["__wardParentCode"] == attributes["__baseCityCode"]
+              outputPort: features
 
       - id: 16247597-565a-40df-a8d4-7445468978fd
         name: GeometrySplitterByLod
@@ -189,15 +225,14 @@ graphs:
               value:
                 type: flowExpr
                 value: attributes["__citygml_gml_id"]
-            - attribute: _output_base
+            - attribute: __output_base
               method: create
               value:
                 type: flowExpr
                 value: |
                   city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
-                  base_city_code = env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5];
                   suffix = "";
-                  if attributes["city_code"] != base_city_code {
+                  if attributes["city_code"] != attributes["__baseCityCode"] {
                     suffix = "_" + attributes["city_code"] + "_" + attributes["cityNameEn"];
                   }
                   city_gml + suffix
@@ -256,9 +291,10 @@ graphs:
           schemaKey: __citygml_feature_type
           targetTileSize: 1048576
           attachTexture: false
+          skipUnexposedAttributes: true
           output:
             type: flowExpr
-            value: attributes["_output_base"] + "_bldg_3dtiles_lod1.zip"
+            value: attributes["__output_base"] + "_bldg_3dtiles_lod1.zip"
 
       # --- LOD2 branch ---
       - id: acf7b926-7c8b-4448-9a3d-af4a1d1aa2cd
@@ -317,9 +353,10 @@ graphs:
           schemaKey: __citygml_feature_type
           targetTileSize: 1048576
           attachTexture: true
+          skipUnexposedAttributes: true
           output:
             type: flowExpr
-            value: attributes["_output_base"] + "_bldg_3dtiles_lod2.zip"
+            value: attributes["__output_base"] + "_bldg_3dtiles_lod2.zip"
 
       - id: 0beef7bf-acac-4661-b325-fb8adea8739a
         name: Cesium3DTilesWriterLod2NoTexture
@@ -329,9 +366,10 @@ graphs:
           schemaKey: __citygml_feature_type
           targetTileSize: 1048576
           textureCodec: Untextured
+          skipUnexposedAttributes: true
           output:
             type: flowExpr
-            value: attributes["_output_base"] + "_bldg_3dtiles_lod2_no_texture.zip"
+            value: attributes["__output_base"] + "_bldg_3dtiles_lod2_no_texture.zip"
 
       # --- LOD3 branch ---
       - id: acd88b8a-708a-4adf-ad6e-b471d934191d
@@ -390,9 +428,10 @@ graphs:
           schemaKey: __citygml_feature_type
           targetTileSize: 1048576
           attachTexture: true
+          skipUnexposedAttributes: true
           output:
             type: flowExpr
-            value: attributes["_output_base"] + "_bldg_3dtiles_lod3.zip"
+            value: attributes["__output_base"] + "_bldg_3dtiles_lod3.zip"
 
       - id: cfca323d-02e2-49a2-a327-d928746657a1
         name: Cesium3DTilesWriterLod3NoTexture
@@ -402,9 +441,10 @@ graphs:
           schemaKey: __citygml_feature_type
           targetTileSize: 1048576
           textureCodec: Untextured
+          skipUnexposedAttributes: true
           output:
             type: flowExpr
-            value: attributes["_output_base"] + "_bldg_3dtiles_lod3_no_texture.zip"
+            value: attributes["__output_base"] + "_bldg_3dtiles_lod3_no_texture.zip"
 
     edges:
       - id: b312699e-9e9f-48e9-9624-512c788bdbe1
@@ -424,8 +464,28 @@ graphs:
         toPort: features
       - id: a2631c5e-f7e9-40c1-bec2-ddddee56257c
         from: 25d2c806-4c6f-47dc-bfe9-e99c2f951f0a
-        to: 3d0e8b1f-6a2c-4e0b-9f5d-7c1a8b4e2f60
+        to: 6a1b3c5d-7e9f-4a1b-8c3d-5e7f9a1b3c5d
         fromPort: features
+        toPort: features
+      - id: b4c6d8e0-2a4c-4e6a-8c0e-2a4c6e8a0b2c
+        from: 6a1b3c5d-7e9f-4a1b-8c3d-5e7f9a1b3c5d
+        to: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6f
+        fromPort: features
+        toPort: requestor
+      - id: c5d6e7f8-7a8b-4c9d-ae0f-2a3b4c5d6e70
+        from: 6a1b3c5d-7e9f-4a1b-8c3d-5e7f9a1b3c5d
+        to: 1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c6e
+        fromPort: features
+        toPort: features
+      - id: d6e7f8a9-8b9c-4dae-bf10-3a4b5c6d7e81
+        from: 1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c6e
+        to: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6f
+        fromPort: features
+        toPort: supplier
+      - id: e7f8a9b0-9c0d-4ebf-a021-4b5c6d7e8f92
+        from: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6f
+        to: 3d0e8b1f-6a2c-4e0b-9f5d-7c1a8b4e2f60
+        fromPort: merged
         toPort: features
       - id: 8b3e5c1a-2f4d-4a6b-9c8e-1d0f3a5b7c9e
         from: 3d0e8b1f-6a2c-4e0b-9f5d-7c1a8b4e2f60
@@ -434,6 +494,11 @@ graphs:
         toPort: features
       - id: 5c7d9e1f-4a6b-4c8d-9e0f-2a3b5c7d9e1a
         from: 9f2a7c4e-3b5d-4c8f-a1e0-6d9b2f5a8c31
+        to: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
+        fromPort: features
+        toPort: features
+      - id: a1b2c3d4-e5f6-4a7b-8c9d-0e1f2a3b4c5d
+        from: f1a2b3c4-d5e6-4f7a-8b9c-0d1e2f3a4b5c
         to: 16247597-565a-40df-a8d4-7445468978fd
         fromPort: features
         toPort: features

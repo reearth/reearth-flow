@@ -140,13 +140,12 @@ export default () => {
     (selectedFeature: any) => {
       if (!selectedFeature) return;
 
-      // Get the current geometry type
-      const currentDetectedGeometryType = streamingQuery.detectedGeometryType;
-
-      // Determine which viewer to use based on detected geometry type
+      // Which viewer is on screen, rather than which geometry type produced
+      // it: the type is a display label that differs between the legacy and
+      // new formats, while the viewer choice already encodes the dimension.
       const is3D =
-        currentDetectedGeometryType === "CityGmlGeometry" ||
-        currentDetectedGeometryType === "FlowGeometry3D";
+        streamingQuery.visualizerType === "3d-map" ||
+        streamingQuery.visualizerType === "3d-model";
 
       if (cesiumViewerRef.current) {
         const cesiumViewer = cesiumViewerRef.current?.cesiumElement;
@@ -220,7 +219,7 @@ export default () => {
         }
       }
     },
-    [streamingQuery.detectedGeometryType, cesiumViewerRef],
+    [streamingQuery.visualizerType, cesiumViewerRef],
   );
 
   const formattedData = useDataColumnizer({
