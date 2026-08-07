@@ -11,8 +11,8 @@ use super::{
     file_path_info_extractor::AttributeFilePathInfoExtractorFactory,
     flattener::AttributeFlattenerFactory, manager::AttributeManagerFactory,
     mapper::AttributeMapperFactory, null_attribute_mapper::NullAttributeMapperFactory,
-    path_flattener::AttributePathFlattenerFactory,
-    range_mapper::AttributeRangeMapperFactory, statistics_calculator::StatisticsCalculatorFactory,
+    path_flattener::AttributePathFlattenerFactory, range_mapper::AttributeRangeMapperFactory,
+    statistics_calculator::StatisticsCalculatorFactory,
 };
 
 pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {

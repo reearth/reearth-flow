@@ -88,12 +88,11 @@ impl ProcessorFactory for AttributePathFlattenerFactory {
                         "Failed to evaluate dataset expression: {e}"
                     ))
                 })?;
-            let input_path = Uri::from_str(input_path.as_str()).map_err(|e| {
-                AttributeProcessorError::PathFlattenerFactory(format!("{e:?}"))
-            })?;
-            let storage = storage_resolver.resolve(&input_path).map_err(|e| {
-                AttributeProcessorError::PathFlattenerFactory(format!("{e:?}"))
-            })?;
+            let input_path = Uri::from_str(input_path.as_str())
+                .map_err(|e| AttributeProcessorError::PathFlattenerFactory(format!("{e:?}")))?;
+            let storage = storage_resolver
+                .resolve(&input_path)
+                .map_err(|e| AttributeProcessorError::PathFlattenerFactory(format!("{e:?}")))?;
             let bytes: Bytes = storage
                 .get_sync(input_path.path().as_path())
                 .map_err(|e| AttributeProcessorError::PathFlattenerFactory(format!("{e:?}")))?;
@@ -205,10 +204,9 @@ impl Processor for AttributePathFlattener {
         }
 
         if let Some(summary_attribute) = &self.summary_attribute {
-            let json = serde_json::to_string(&serde_json::Value::from(AttributeValue::Map(
-                resolved,
-            )))
-            .unwrap_or_else(|_| "{}".to_string());
+            let json =
+                serde_json::to_string(&serde_json::Value::from(AttributeValue::Map(resolved)))
+                    .unwrap_or_else(|_| "{}".to_string());
             feature.insert(
                 Attribute::new(summary_attribute.clone()),
                 AttributeValue::String(json),

@@ -220,6 +220,7 @@ mod build_next {
     /// Resolve every pending feature into emitted `Feature`s: one per top-level city object when
     /// `extract_tags` is empty, or the hoisted sub-features otherwise, each with its geometry
     /// attached.
+    #[allow(clippy::too_many_arguments)]
     fn assemble_features(
         pending: Vec<parser::PendingFeature>,
         raw_registry: &RawRegistry,
