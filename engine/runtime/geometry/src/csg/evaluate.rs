@@ -890,7 +890,6 @@ fn classify(fragment: &Polygon, other: &IndexedSurface<'_>, arena: &Arena) -> Fr
 mod tests {
     use super::*;
     use crate::coordinate::EpsgCode;
-    #[cfg(feature = "new-geometry")]
     /// An axis-aligned cube as a 12-triangle shell with outward winding.
     fn cube_shell(min: [f64; 3], max: [f64; 3]) -> TriangularMesh3DData {
         let corner = |i: usize| {
