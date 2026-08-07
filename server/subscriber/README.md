@@ -172,7 +172,7 @@ graphs:
         action: JSON Writer
         with:
           output: |
-            file::join_path(env.get("workerArtifactPath"), env.get("outputPath"))
+            file::join_path(variables.get("workerArtifactPath"), variables.get("outputPath"))
 
     edges:
       - id: c064cf52-705f-443a-b2de-6795266c540d

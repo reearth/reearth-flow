@@ -421,7 +421,7 @@ impl Processor for FeatureMerger {
                 let feature = &ctx.feature;
                 let requestor_attribute_value = fetch_attribute_value(
                     feature,
-                    ctx.env_vars.clone(),
+                    ctx.variables.clone(),
                     &self.params.requestor_attribute,
                     &self.params.requestor_attribute_value,
                 );
@@ -444,7 +444,7 @@ impl Processor for FeatureMerger {
                             self.requestor_complete.insert(prev, true);
                             self.change_group(
                                 Context {
-                                    env_vars: ctx.env_vars.clone(),
+                                    variables: ctx.variables.clone(),
                                     storage_resolver: ctx.storage_resolver.clone(),
                                     kv_store: ctx.kv_store.clone(),
                                     event_hub: ctx.event_hub.clone(),
@@ -463,7 +463,7 @@ impl Processor for FeatureMerger {
                 let feature = &ctx.feature;
                 let supplier_attribute_value = fetch_attribute_value(
                     feature,
-                    ctx.env_vars.clone(),
+                    ctx.variables.clone(),
                     &self.params.supplier_attribute,
                     &self.params.supplier_attribute_value,
                 );
@@ -486,7 +486,7 @@ impl Processor for FeatureMerger {
                             self.supplier_complete.insert(prev, true);
                             self.change_group(
                                 Context {
-                                    env_vars: ctx.env_vars.clone(),
+                                    variables: ctx.variables.clone(),
                                     storage_resolver: ctx.storage_resolver.clone(),
                                     kv_store: ctx.kv_store.clone(),
                                     event_hub: ctx.event_hub.clone(),

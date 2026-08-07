@@ -6,5 +6,6 @@ pub mod json_object_key_order;
 pub mod mvt_lines;
 pub mod mvt_points;
 pub mod mvt_polygons;
+pub mod output_files;
 pub mod raster;
 pub mod raster3d;

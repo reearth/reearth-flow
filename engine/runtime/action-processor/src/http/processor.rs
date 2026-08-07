@@ -137,9 +137,9 @@ impl HttpCallerProcessor {
         };
 
         let feature = &ctx.feature;
-        let env_vars = ctx.env_vars.clone();
+        let variables = ctx.variables.clone();
 
-        let url = match self.url_ast.eval_string(feature, env_vars.clone()) {
+        let url = match self.url_ast.eval_string(feature, variables.clone()) {
             Ok(url) => url,
             Err(e) => {
                 let error_msg = format!("Failed to evaluate URL expression: {e:?}");
@@ -155,7 +155,7 @@ impl HttpCallerProcessor {
             match super::body::build_request_body(
                 body_config,
                 feature,
-                env_vars.clone(),
+                variables.clone(),
                 &ctx.storage_resolver,
             ) {
                 Ok(body) => Some(body),
@@ -169,7 +169,7 @@ impl HttpCallerProcessor {
         };
 
         let builder = match builder
-            .with_headers(&self.compiled_headers, feature, env_vars.clone())
+            .with_headers(&self.compiled_headers, feature, variables.clone())
             .and_then(|b| {
                 b.with_content_type(
                     built_body
@@ -179,7 +179,7 @@ impl HttpCallerProcessor {
                 )
             })
             .and_then(|b| {
-                b.with_query_params(&self.compiled_query_params, feature, env_vars.clone())
+                b.with_query_params(&self.compiled_query_params, feature, variables.clone())
             })
             .and_then(|b| b.with_body(built_body.map(|b| b.content)))
         {
@@ -196,7 +196,7 @@ impl HttpCallerProcessor {
             if let Err(e) = super::auth::apply_authentication(
                 auth,
                 feature,
-                env_vars.clone(),
+                variables.clone(),
                 &mut headers,
                 &mut query_params,
             ) {
@@ -245,7 +245,7 @@ impl HttpCallerProcessor {
         metrics: RequestMetrics,
     ) {
         let mut new_feature = ctx.feature.clone();
-        let env_vars = ctx.env_vars.clone();
+        let variables = ctx.variables.clone();
 
         let response_config = self.params.response.as_ref();
         let encoding = response_config.and_then(|r| r.response_encoding.clone());
@@ -256,7 +256,7 @@ impl HttpCallerProcessor {
                 .and_then(|r| r.auto_detect_encoding)
                 .unwrap_or(true),
             max_size: response_config.and_then(|r| r.max_response_size),
-            env_vars,
+            variables,
             storage_resolver: &ctx.storage_resolver,
             response_body_attr: response_config
                 .map(|r| r.response_body_attribute.as_str())

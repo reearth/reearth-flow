@@ -147,7 +147,7 @@ impl Processor for ThreeDimensionForcer {
 
         let elevation_value = if let Some(ref elevation_ast) = self.elevation {
             elevation_ast
-                .eval_float(feature, ctx.env_vars.clone())
+                .eval_float(feature, ctx.variables.clone())
                 .map_err(|e| {
                     GeometryProcessorError::ThreeDimensionForcer(format!(
                         "Failed to evaluate elevation expression: {e:?}"

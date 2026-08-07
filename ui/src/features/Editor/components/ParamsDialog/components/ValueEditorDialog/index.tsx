@@ -34,10 +34,10 @@ import { Asset } from "@flow/types";
 
 import { FieldContext } from "../../utils/fieldUtils";
 
-import { toEnvAutocompleteSuggestions } from "./components/envAutocomplete";
 import FlowExprCodeEditor, {
   type FlowExprCodeEditorRef,
 } from "./components/FlowExprCodeEditor";
+import { toVariableAutocompleteSuggestions } from "./components/variableAutocomplete";
 
 type Props = {
   open: boolean;
@@ -71,8 +71,8 @@ const ValueEditorDialog: React.FC<Props> = ({
   const { useGetWorkflowVariables } = useWorkflowVariables();
 
   const { workflowVariables } = useGetWorkflowVariables(currentProject?.id);
-  const envSuggestions = useMemo(
-    () => toEnvAutocompleteSuggestions(workflowVariables),
+  const variableSuggestions = useMemo(
+    () => toVariableAutocompleteSuggestions(workflowVariables),
     [workflowVariables],
   );
 
@@ -117,7 +117,7 @@ const ValueEditorDialog: React.FC<Props> = ({
   const fieldType = getFieldTypeDisplay(fieldContext.schema);
 
   const handleWorkflowVariableSet = useCallback((variable: any) => {
-    const v = `env.get("${variable.name}")`;
+    const v = `variables.get("${variable.name}")`;
     setValue(v);
   }, []);
 
@@ -225,7 +225,7 @@ const ValueEditorDialog: React.FC<Props> = ({
                 placeholder={t("Enter expression...")}
                 value={value}
                 onChange={setValue}
-                envSuggestions={envSuggestions}
+                variableSuggestions={variableSuggestions}
                 data-testid="value-editor-textarea"
                 aria-label={t("Expression Editor")}
                 data-placeholder={t("Enter expression...")}

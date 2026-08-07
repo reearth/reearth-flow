@@ -84,7 +84,7 @@ Suggestions in `flowExprConstants.ts` use `{{cursor}}` as a placeholder in `inse
 - **Bracket matching** — tracks `(`, `[`, `{` on a stack; reports unmatched or mismatched brackets
 - **Unclosed strings** — detects `"` with no closing `"` on the same line (FlowExpr strings are single-line)
 
-It does **not** type-check, evaluate, or validate identifiers — it cannot know the workflow context (feature attributes, env vars, available actions). Do not add semantic validation here.
+It does **not** type-check, evaluate, or validate identifiers — it cannot know the workflow context (feature attributes, workflow variables, available actions). Do not add semantic validation here.
 
 Validation runs on a 300 ms debounce after each change.
 

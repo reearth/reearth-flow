@@ -176,7 +176,7 @@ impl Processor for JSONFragmenter {
                             "Failed to compile path expression: {e:?}"
                         ))
                     })?
-                    .eval_string(feature, ctx.env_vars.clone())
+                    .eval_string(feature, ctx.variables.clone())
                     .map_err(|e| {
                         FeatureProcessorError::JSONFragmenter(format!(
                             "Failed to evaluate path expression: {e:?}"
