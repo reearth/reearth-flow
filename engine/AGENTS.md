@@ -24,21 +24,6 @@ cargo run --package reearth-flow-cli -- run --workflow path/to/workflow.yml
 # Action schema generation (run in order when adding/modifying actions)
 cargo make schema-base        # generates actions.json + syncs i18n skeletons
 cargo make schema-translated  # generates actions_{lang}.json + docs from i18n files
-
-# Intermediate-data schema (run after changing any geometry leaf's wire form)
-cargo make schema-feature     # generates schema/feature-intermediate.schema.json
-cargo make check-schema       # regenerates all of the above; fails on any diff
-```
-
-`schema/` is a shared artifact: consumers pull from it, and nothing here writes
-outside `engine/`. The API deploy uploads `schema/actions*.json` to GCS, and the
-UI keeps a committed copy of `feature-intermediate.schema.json` (it builds with
-`context: ui`, so it cannot import this tree). **After changing that schema, the
-UI's copy needs refreshing in the same PR** — `ci_ui.yml` fails otherwise:
-
-```bash
-cp engine/schema/feature-intermediate.schema.json \
-   ui/src/lib/intermediateData/feature-intermediate.schema.json
 ```
 
 ## Development Dependencies

@@ -149,12 +149,6 @@ cargo run --package reearth-flow-cli -- scaffold-i18n --dir "$PWD/schema/i18n/ac
 
 # Generates the production intermediate-data (feature) JSON schema.
 # Run after changing any geometry leaf's wire form, and commit the result.
-#
-# The UI keeps its own copy of this file, because it cannot import across the
-# package boundary: the web image builds with `context: ui`, so nothing outside
-# `ui/` exists at build time. That copy is the consumer's to refresh, the same
-# way the API deploy pulls `schema/actions*.json` from here — this task writes
-# only inside `engine/`. `ci_ui.yml` fails if the two drift.
 [tasks.schema-feature]
 script = [
   '''
