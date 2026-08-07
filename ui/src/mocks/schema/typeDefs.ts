@@ -721,7 +721,7 @@ export const typeDefs = `
     latestProjectSnapshot(projectId: ID!): ProjectDocument
     projectSnapshot(projectId: ID!, version: String!): ProjectSnapshot!
     projectHistory(projectId: ID!, pagination: PageBasedPagination!): [ProjectSnapshotMetadata!]!
-    projectSnapshots(projectId: ID!): [NamedSnapshot!]!
+    projectNamedSnapshots(projectId: ID!): [NamedSnapshot!]!
 
     # Trigger queries
     triggers(workspaceId: ID!, pagination: PageBasedPagination!): TriggerConnection!

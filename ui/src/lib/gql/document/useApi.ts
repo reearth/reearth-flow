@@ -42,7 +42,7 @@ export const useDocument = () => {
     };
   };
 
-  const useGetProjectSnapshots = (projectId: string) => {
+  const useGetProjectNamedSnapshots = (projectId: string) => {
     const { snapshots, ...rest } = useProjectSnapshotsQuery(projectId);
     return {
       snapshots,
@@ -127,7 +127,7 @@ export const useDocument = () => {
     useGetLatestProjectSnapshot,
     useGetProjectSnapshot,
     useGetProjectHistory,
-    useGetProjectSnapshots,
+    useGetProjectNamedSnapshots,
     useGetPreviewProjectSnapshot,
     useRollbackProject,
     useSaveSnapshot,

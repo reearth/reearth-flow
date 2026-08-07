@@ -24,9 +24,10 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
   const t = useT();
   const dialogRef = useRef<HTMLDivElement>(null);
   const [animate, setAnimate] = useState<boolean>(false);
-  const { snapshots, latestProjectSnapshotVersion, isFetching } = useHooks({
-    projectId: project?.id ?? "",
-  });
+  const { snapshots, latestProjectSnapshotVersion, isFetching, isError } =
+    useHooks({
+      projectId: project?.id ?? "",
+    });
 
   const handleDialogClose = useCallback(() => {
     setAnimate(false);
@@ -96,6 +97,7 @@ const VersionDialog: React.FC<Props> = ({ project, yDoc, onDialogClose }) => {
                 <VersionHistoryList
                   latestProjectSnapshotVersion={latestProjectSnapshotVersion}
                   snapshots={snapshots}
+                  isError={isError}
                 />
               )}
             </div>

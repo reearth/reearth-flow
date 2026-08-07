@@ -29,8 +29,10 @@ import { useDocument } from "@flow/lib/gql/document/useApi";
 // endpoint) would let normal-mode preview/revert work correctly; that is
 // tracked separately and not yet implemented.
 export default ({ projectId }: { projectId: string }) => {
-  const { useGetProjectSnapshots, useGetLatestProjectSnapshot } = useDocument();
-  const { snapshots, isFetching } = useGetProjectSnapshots(projectId);
+  const { useGetProjectNamedSnapshots, useGetLatestProjectSnapshot } =
+    useDocument();
+  const { snapshots, isFetching, isError } =
+    useGetProjectNamedSnapshots(projectId);
   const { projectDocument } = useGetLatestProjectSnapshot(projectId);
   const latestProjectSnapshotVersion = projectDocument;
 
@@ -38,5 +40,6 @@ export default ({ projectId }: { projectId: string }) => {
     snapshots,
     latestProjectSnapshotVersion,
     isFetching,
+    isError,
   };
 };

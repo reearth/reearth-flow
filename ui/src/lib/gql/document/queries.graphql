@@ -22,9 +22,9 @@ query GetProjectHistory($projectId: ID!) {
   }
 }
 
-query GetProjectSnapshots($projectId: ID!) {
-  projectSnapshots(projectId: $projectId) {
-    id
+query GetProjectNamedSnapshots($projectId: ID!) {
+  projectNamedSnapshots(projectId: $projectId) {
+    snapshotNumber
     label
     timestamp
     size

@@ -3,7 +3,6 @@ import React, { memo, useCallback, useEffect, useRef, useState } from "react";
 import * as Y from "yjs";
 
 import { Button, LoadingSplashscreen, LoadingSkeleton } from "@flow/components";
-import { useEditorContext } from "@flow/features/Editor/editorContext";
 import { useT } from "@flow/lib/i18n";
 import type { Project } from "@flow/types";
 
@@ -38,7 +37,11 @@ const ProjectRecoveryDialog: React.FC<Props> = ({
   onErrorReset,
 }) => {
   const t = useT();
-  const { isLocked } = useEditorContext();
+  // No useEditorContext here: this dialog renders from the route's
+  // errorComponent, which replaces the whole route subtree, so it is mounted
+  // OUTSIDE any EditorProvider and the hook would throw on open. isLocked is
+  // meaningless in this flow anyway, since a project that will not open cannot
+  // be usefully edit-locked.
   const dialogRef = useRef<HTMLDivElement>(null);
   const [animate, setAnimate] = useState<boolean>(false);
   const {
@@ -164,8 +167,7 @@ const ProjectRecoveryDialog: React.FC<Props> = ({
                 disabled={
                   !selectedProjectSnapshotVersion ||
                   isLoadingPreview ||
-                  isCorruptedVersion ||
-                  isLocked
+                  isCorruptedVersion
                 }
                 variant={"ghost"}
                 onClick={() => setOpenVersionConfirmationDialog(true)}>

@@ -14,7 +14,7 @@ export enum DocumentQueryKeys {
   GetLatestProjectSnapshot = "getLatestProjectSnapshot",
   GetProjectSnapshot = "getProjectSnapshot",
   GetProjectHistory = "getProjectHistory",
-  GetProjectSnapshots = "getProjectSnapshots",
+  GetProjectNamedSnapshots = "getProjectNamedSnapshots",
 }
 
 export const useQueries = () => {
@@ -74,11 +74,13 @@ export const useQueries = () => {
   // panel: it has one entry per flush.
   const useProjectSnapshotsQuery = (projectId?: string) => {
     const { data, ...rest } = useQuery({
-      queryKey: [DocumentQueryKeys.GetProjectSnapshots, projectId],
+      queryKey: [DocumentQueryKeys.GetProjectNamedSnapshots, projectId],
       queryFn: async (): Promise<NamedSnapshot[]> => {
         if (!projectId) return [];
-        const data = await graphQLContext?.GetProjectSnapshots({ projectId });
-        return data?.projectSnapshots ?? [];
+        const data = await graphQLContext?.GetProjectNamedSnapshots({
+          projectId,
+        });
+        return data?.projectNamedSnapshots ?? [];
       },
       enabled: !!projectId,
     });

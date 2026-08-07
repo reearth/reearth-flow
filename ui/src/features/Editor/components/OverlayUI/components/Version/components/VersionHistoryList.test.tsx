@@ -8,13 +8,13 @@ import VersionHistoryList from "./VersionHistoryList";
 describe("VersionHistoryList", () => {
   const snapshots = [
     {
-      id: 1,
+      snapshotNumber: 1,
       label: "",
       timestamp: "2026-07-30T09:00:00Z",
       size: 100,
     },
     {
-      id: 2,
+      snapshotNumber: 2,
       label: "before migration",
       timestamp: "2026-07-30T10:00:00Z",
       size: 120,
@@ -44,24 +44,62 @@ describe("VersionHistoryList", () => {
     ).toBeGreaterThanOrEqual(1);
   });
 
-  test("renders no click affordance for snapshot rows", () => {
-    render(<VersionHistoryList snapshots={snapshots} />);
+  test("snapshot rows carry no interactive affordance", () => {
+    const { container } = render(<VersionHistoryList snapshots={snapshots} />);
 
-    // NamedSnapshot.id and the update-log `version` that
-    // previewSnapshot/rollbackProject expect are different, backend-assigned
-    // ID spaces with no correct client-side mapping (see ../hooks.ts).
-    // Snapshot rows must therefore stay purely informational: no
-    // interactive/clickable element should exist for them. If a click
-    // handler is reintroduced here, this must start failing.
+    // snapshotNumber and the update-log `version` that previewSnapshot and
+    // rollbackProject expect are unrelated id spaces, and rollback deletes every
+    // update above the number it is given. Rows therefore stay informational.
+    //
+    // Asserting queryAllByRole("button") is NOT enough on its own: a plain
+    // <div onClick> has no button role, so that check passes with a click
+    // handler present. Verified — it did. These assertions target what a
+    // clickable row would actually add.
+    const rows = container.querySelectorAll('[class*="justify-between"]');
+    expect(rows.length).toBeGreaterThan(0);
+    rows.forEach((row) => {
+      expect(row.className).not.toContain("cursor-pointer");
+      expect(row).not.toHaveAttribute("tabindex");
+      expect(row).not.toHaveAttribute("role");
+      // onClick shows up as a React prop key on the DOM node's fiber; the class
+      // and attribute checks above are the observable proxy for it.
+    });
     expect(screen.queryAllByRole("button")).toHaveLength(0);
+  });
 
-    // Clicking the row text must not throw and must not do anything
-    // observable — there is no callback prop for it to invoke.
-    expect(() => screen.getByText("before migration").click()).not.toThrow();
+  test('treats the "auto" label as unnamed and shows the timestamp', () => {
+    // Every automatically captured version arrives labelled "auto" (ygo stamps
+    // it), so rendering the label verbatim would fill the panel with identical
+    // rows reading "auto". Production shape, not a hypothetical one.
+    render(
+      <VersionHistoryList
+        snapshots={[
+          {
+            snapshotNumber: 3,
+            label: "auto",
+            timestamp: "2026-07-30T12:00:00Z",
+            size: 10,
+          },
+        ]}
+      />,
+    );
+
+    expect(screen.queryByText("auto")).not.toBeInTheDocument();
+    expect(
+      screen.getAllByText(formatDate("2026-07-30T12:00:00Z")).length,
+    ).toBeGreaterThanOrEqual(1);
   });
 
   test("shows an empty state when there are no snapshots", () => {
     render(<VersionHistoryList snapshots={[]} />);
     expect(screen.getByText(/no versions/i)).toBeInTheDocument();
+  });
+
+  test("distinguishes a failed load from an empty history", () => {
+    // "No versions yet" on a failed query tells the user their history does not
+    // exist, when in fact it could not be loaded.
+    render(<VersionHistoryList snapshots={[]} isError />);
+    expect(screen.queryByText(/no versions yet/i)).not.toBeInTheDocument();
+    expect(screen.getByText(/could not load/i)).toBeInTheDocument();
   });
 });

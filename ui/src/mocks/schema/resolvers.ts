@@ -540,7 +540,7 @@ export const resolvers = {
       return paginateResults(history, args.pagination).nodes;
     },
 
-    projectSnapshots: (_: any, _args: { projectId: string }) => {
+    projectNamedSnapshots: (_: any, _args: { projectId: string }) => {
       // Several distinct, labelled snapshots so local dev reflects real
       // behaviour: auto-versioning keeps appending entries, not just one.
       return [
