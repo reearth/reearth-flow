@@ -80,7 +80,7 @@ jobs:
         with:
           files: |
             ui/**
-            engine/schema/**
+            engine/schema/feature-intermediate.schema.json
             .github/workflows/ci.yml
             .github/workflows/ci_ui.yml
             .github/workflows/build_deploy_ui.yml
