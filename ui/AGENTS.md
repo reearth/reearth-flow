@@ -59,17 +59,23 @@ Four-layer state strategy:
 ## Engine Schema Integration
 
 `src/lib/intermediateData/` reads the intermediate-data JSONL format through the
-engine's own generated schema, `feature-intermediate.schema.json`. That file is
-generated engine-side and **written into `src/` by the engine**, not imported
-across the package boundary: the production image builds with `context: ui` (see
-`build_deploy_ui.yml`), so nothing outside `ui/` resolves at build time.
+engine's generated schema, `feature-intermediate.schema.json`. The original lives
+at `engine/schema/`; `src/lib/intermediateData/` holds a **committed copy**.
 
-- There is no UI-side command. `cargo make schema-feature` (run from `engine/`)
-  writes both the engine copy and this one; `cargo make check-schema` fails on
-  either being stale
-- Never edit `src/lib/intermediateData/feature-intermediate.schema.json` by hand
+It is copied rather than imported because the production image builds with
+`context: ui` (see `build_deploy_ui.yml`), so nothing outside `ui/` resolves at
+build time. The engine owns the original and never writes outside `engine/` —
+the same arrangement as the API deploy, which pulls `schema/actions*.json` from
+there.
+
+- Refresh it by hand when the engine's schema changes, in the same PR:
+  `cp ../engine/schema/feature-intermediate.schema.json src/lib/intermediateData/`
+- `ci_ui.yml` fails when the two drift, and `engine/schema/**` is in the UI's
+  change-detection so that check runs on an engine-only change
+- Never hand-edit the copy — regenerate with `cargo make schema-feature` from
+  `engine/`, then copy
 - Nothing under `src/` may import from `engine/` or `server/`. If the UI needs a
-  generated artifact from either, have that side write it into `src/`
+  generated artifact from either, vendor a copy in as above
 
 ## Testing
 

@@ -12,9 +12,9 @@ yarn.lock
 src/lib/gql/__gen__
 src/routeTree.gen.ts
 
-# Written by the engine's `cargo make schema-feature`. Without this, `yarn
-# format:check` fails on it, and a `format:write` would reformat it into a
-# permanent diff against the engine's copy under `cargo make check-schema`.
+# Copied verbatim from engine/schema. Without this, `yarn format:check` fails on
+# it, and a `format:write` would reformat it into a permanent mismatch against
+# the original — which `ci_ui.yml` compares byte for byte.
 src/lib/intermediateData/feature-intermediate.schema.json
 
 public/mockServiceWorker.js

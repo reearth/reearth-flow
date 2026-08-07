@@ -2,12 +2,14 @@
  * The engine's intermediate-data schema, read directly and reduced to the few
  * maps the UI needs.
  *
- * `feature-intermediate.schema.json` beside this file is generated, not written
- * by hand. `cargo make schema-feature` emits it here and to
- * `engine/schema/`, and `cargo make check-schema` fails on either copy going
- * stale. It lives here rather than being imported from `engine/` because the
- * production image builds with `context: ui` and so has no engine tree at all.
- * The reductions below run once at module load over ~54 definitions.
+ * `feature-intermediate.schema.json` beside this file is a committed copy of
+ * `engine/schema/feature-intermediate.schema.json`, which `cargo make
+ * schema-feature` generates. Do not hand-edit it; copy the original across when
+ * the engine's changes, which `ci_ui.yml` fails the build over if forgotten.
+ *
+ * It is copied rather than imported because the production image builds with
+ * `context: ui` and so has no engine tree at all. The reductions below run once
+ * at module load over ~54 definitions.
  *
  * Two things come out of it. The titles are the names the engine intends a UI
  * to show ("Point (2D)", not "Point2D"), which exist only in the schema — the

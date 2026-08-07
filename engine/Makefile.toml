@@ -150,12 +150,11 @@ cargo run --package reearth-flow-cli -- scaffold-i18n --dir "$PWD/schema/i18n/ac
 # Generates the production intermediate-data (feature) JSON schema.
 # Run after changing any geometry leaf's wire form, and commit the result.
 #
-# Written twice. The UI reads this schema to label and walk intermediate data,
-# but it cannot import across the package boundary: the web image builds with
-# `context: ui` (see .github/workflows/build_deploy_ui.yml), so nothing outside
-# `ui/` exists at build time. Both copies are committed, and `check-schema`
-# diffs the whole tree, so a stale UI copy fails the same check as a stale
-# engine one.
+# The UI keeps its own copy of this file, because it cannot import across the
+# package boundary: the web image builds with `context: ui`, so nothing outside
+# `ui/` exists at build time. That copy is the consumer's to refresh, the same
+# way the API deploy pulls `schema/actions*.json` from here — this task writes
+# only inside `engine/`. `ci_ui.yml` fails if the two drift.
 [tasks.schema-feature]
 script = [
   '''
@@ -163,7 +162,6 @@ script = [
 out=$(mktemp)
 trap 'rm -f "$out"' EXIT
 cargo run --package reearth-flow-cli --features schema -- schema-feature > "$out"
-cp "$out" ../ui/src/lib/intermediateData/feature-intermediate.schema.json
 mv "$out" ./schema/feature-intermediate.schema.json
 trap - EXIT
 ''',
