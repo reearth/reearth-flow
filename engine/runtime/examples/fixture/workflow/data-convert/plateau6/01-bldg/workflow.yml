@@ -61,7 +61,24 @@ graphs:
         action: Attribute Table Extractor
         with:
           inline: !include ../../../../config/plateau6_bldg_flatten_attributes.json
-          summaryAttribute: attributes
+
+      - id: 1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c6e
+        name: AttributeFlattenerForCesiumProperties
+        type: action
+        action: Attribute Flattener
+        with:
+          attributes:
+            - attributes
+
+      - id: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6f
+        name: FeatureMergerForFlattenedAttributes
+        type: action
+        action: Feature Merger
+        with:
+          requestorAttribute:
+            - __citygml_gml_id
+          supplierAttribute:
+            - __citygml_gml_id
 
       - id: 3d0e8b1f-6a2c-4e0b-9f5d-7c1a8b4e2f60
         name: AttributeManager
@@ -80,6 +97,11 @@ graphs:
               value:
                 type: flowExpr
                 value: env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5]
+            - attribute: attributes
+              method: convert
+              value:
+                type: flowExpr
+                value: json.dumps(attributes["attributes"])
 
       - id: 9f2a7c4e-3b5d-4c8f-a1e0-6d9b2f5a8c31
         name: AttributeConversionTableForWardName
@@ -447,8 +469,23 @@ graphs:
         toPort: features
       - id: b4c6d8e0-2a4c-4e6a-8c0e-2a4c6e8a0b2c
         from: 6a1b3c5d-7e9f-4a1b-8c3d-5e7f9a1b3c5d
-        to: 3d0e8b1f-6a2c-4e0b-9f5d-7c1a8b4e2f60
+        to: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6f
         fromPort: features
+        toPort: requestor
+      - id: c5d6e7f8-7a8b-4c9d-ae0f-2a3b4c5d6e70
+        from: 6a1b3c5d-7e9f-4a1b-8c3d-5e7f9a1b3c5d
+        to: 1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c6e
+        fromPort: features
+        toPort: features
+      - id: d6e7f8a9-8b9c-4dae-bf10-3a4b5c6d7e81
+        from: 1a2b3c4d-5e6f-4a7b-8c9d-0e1f2a3b4c6e
+        to: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6f
+        fromPort: features
+        toPort: supplier
+      - id: e7f8a9b0-9c0d-4ebf-a021-4b5c6d7e8f92
+        from: 2b3c4d5e-6f7a-4b8c-9d0e-1f2a3b4c5d6f
+        to: 3d0e8b1f-6a2c-4e0b-9f5d-7c1a8b4e2f60
+        fromPort: merged
         toPort: features
       - id: 8b3e5c1a-2f4d-4a6b-9c8e-1d0f3a5b7c9e
         from: 3d0e8b1f-6a2c-4e0b-9f5d-7c1a8b4e2f60

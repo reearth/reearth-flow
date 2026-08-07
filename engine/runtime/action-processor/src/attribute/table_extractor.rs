@@ -25,7 +25,7 @@ impl ProcessorFactory for AttributeTableExtractorFactory {
     }
 
     fn description(&self) -> &str {
-        "Extracts values from nested map or list attributes into new top-level attributes, following a table of paths keyed by a feature type attribute, optionally also writing every resolved value as one JSON summary attribute."
+        "Moves values between nested map/list attribute paths, following a table of source/destination path pairs keyed by a feature type attribute. A destination path with more than one segment creates nested maps as needed."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -73,7 +73,7 @@ impl ProcessorFactory for AttributeTableExtractorFactory {
             .into());
         };
 
-        let table: HashMap<String, Vec<FlattenRule>> = if let Some(dataset) = &params.dataset {
+        let table: HashMap<String, Vec<ExtractRule>> = if let Some(dataset) = &params.dataset {
             let storage_resolver = &ctx.storage_resolver;
             let input_path = dataset
                 .compile()
@@ -98,13 +98,13 @@ impl ProcessorFactory for AttributeTableExtractorFactory {
                 .map_err(|e| AttributeProcessorError::TableExtractorFactory(format!("{e:?}")))?;
             serde_json::from_slice(&bytes).map_err(|e| {
                 AttributeProcessorError::TableExtractorFactory(format!(
-                    "Failed to parse flatten table: {e}"
+                    "Failed to parse extraction table: {e}"
                 ))
             })?
         } else if let Some(inline) = params.inline.clone() {
             serde_json::from_value(inline).map_err(|e| {
                 AttributeProcessorError::TableExtractorFactory(format!(
-                    "Failed to parse flatten table: {e}"
+                    "Failed to parse extraction table: {e}"
                 ))
             })?
         } else {
@@ -118,7 +118,6 @@ impl ProcessorFactory for AttributeTableExtractorFactory {
             type_attribute: params
                 .type_attribute
                 .unwrap_or_else(|| "__citygml_feature_type".to_string()),
-            summary_attribute: params.summary_attribute,
             table,
         };
         Ok(Box::new(process))
@@ -126,40 +125,39 @@ impl ProcessorFactory for AttributeTableExtractorFactory {
 }
 
 /// # Attribute Table Extractor Parameters
-/// Configures the table of paths used to pull nested attribute values to the top level.
+/// Configures the table of source/destination path pairs used to move nested attribute values.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct AttributeTableExtractorParam {
     /// # Dataset URI
-    /// Path or URI of the flatten table file. Provide either this or inline data.
+    /// Path or URI of the extraction table file. Provide either this or inline data.
     dataset: Option<Code>,
     /// # Inline Table
-    /// Flatten table content provided directly as JSON. Used when no dataset URI is given.
+    /// Extraction table content provided directly as JSON. Used when no dataset URI is given.
     inline: Option<Value>,
     /// # Feature Type Attribute
     /// Attribute whose value selects which rule set in the table applies to the feature. Defaults to `__citygml_feature_type`.
     type_attribute: Option<String>,
-    /// # Summary Attribute
-    /// When set, also writes a JSON-serialized object of every attribute/value pair this run resolved to this attribute name.
-    summary_attribute: Option<String>,
 }
 
-/// One extraction rule for a single feature type in the flatten table.
+/// One extraction rule for a single feature type in the extraction table.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-struct FlattenRule {
-    /// Name of the top-level attribute the extracted value is written to.
+struct ExtractRule {
+    /// Space-separated chain of keys naming where the extracted value is written. A single
+    /// segment writes a top-level attribute; multiple segments write into a nested map,
+    /// creating it (or any missing intermediate map) as needed.
     attribute: String,
     /// Space-separated chain of nested keys to walk from the feature's top level down to the value.
     json_path: String,
     /// Optional coercion applied to the extracted value before it is written.
     #[serde(default)]
-    data_type: Option<FlattenDataType>,
+    data_type: Option<ExtractDataType>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone, Copy, JsonSchema)]
 #[serde(rename_all = "camelCase")]
-enum FlattenDataType {
+enum ExtractDataType {
     /// # Integer
     /// Parses a string value as an integer.
     Int,
@@ -171,8 +169,7 @@ enum FlattenDataType {
 #[derive(Debug, Clone)]
 struct AttributeTableExtractor {
     type_attribute: String,
-    summary_attribute: Option<String>,
-    table: HashMap<String, Vec<FlattenRule>>,
+    table: HashMap<String, Vec<ExtractRule>>,
 }
 
 impl Processor for AttributeTableExtractor {
@@ -186,31 +183,17 @@ impl Processor for AttributeTableExtractor {
             .get(&self.type_attribute)
             .and_then(|v| v.as_string());
 
-        let mut resolved: HashMap<String, AttributeValue> = HashMap::new();
-
         if let Some(feature_type) = feature_type {
             if let Some(rules) = self.table.get(&feature_type) {
                 for rule in rules {
-                    let segments: Vec<&str> = rule.json_path.split(' ').collect();
-                    if let Some(value) = resolve_path(&feature, &segments) {
+                    let src_segments: Vec<&str> = rule.json_path.split(' ').collect();
+                    if let Some(value) = resolve_path(&feature, &src_segments) {
                         let value = coerce(value, rule.data_type);
-                        feature.insert(Attribute::new(rule.attribute.clone()), value.clone());
-                        if self.summary_attribute.is_some() {
-                            resolved.insert(rule.attribute.clone(), value);
-                        }
+                        let dst_segments: Vec<&str> = rule.attribute.split(' ').collect();
+                        write_path(&mut feature, &dst_segments, value);
                     }
                 }
             }
-        }
-
-        if let Some(summary_attribute) = &self.summary_attribute {
-            let json =
-                serde_json::to_string(&serde_json::Value::from(AttributeValue::Map(resolved)))
-                    .unwrap_or_else(|_| "{}".to_string());
-            feature.insert(
-                Attribute::new(summary_attribute.clone()),
-                AttributeValue::String(json),
-            );
         }
 
         fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
@@ -252,17 +235,55 @@ fn get_from_value(value: &AttributeValue, key: &str) -> Option<AttributeValue> {
     }
 }
 
-fn coerce(value: AttributeValue, data_type: Option<FlattenDataType>) -> AttributeValue {
+/// Writes `value` at a space-separated chain of keys under the feature's top level, creating
+/// (or replacing, if not already a map) any missing intermediate map along the way.
+fn write_path(feature: &mut Feature, segments: &[&str], value: AttributeValue) {
+    let (first, rest) = segments
+        .split_first()
+        .expect("segments is never empty: json split(' ') always yields at least one element");
+    if rest.is_empty() {
+        feature.insert(Attribute::new(*first), value);
+        return;
+    }
+    let mut top = feature
+        .get(*first)
+        .cloned()
+        .unwrap_or_else(|| AttributeValue::Map(HashMap::new()));
+    set_nested(&mut top, rest, value);
+    feature.insert(Attribute::new(*first), top);
+}
+
+fn set_nested(current: &mut AttributeValue, segments: &[&str], value: AttributeValue) {
+    let (first, rest) = segments
+        .split_first()
+        .expect("segments is never empty: caller only recurses while rest is non-empty");
+    if !matches!(current, AttributeValue::Map(_)) {
+        *current = AttributeValue::Map(HashMap::new());
+    }
+    let AttributeValue::Map(map) = current else {
+        unreachable!()
+    };
+    if rest.is_empty() {
+        map.insert((*first).to_string(), value);
+    } else {
+        let child = map
+            .entry((*first).to_string())
+            .or_insert_with(|| AttributeValue::Map(HashMap::new()));
+        set_nested(child, rest, value);
+    }
+}
+
+fn coerce(value: AttributeValue, data_type: Option<ExtractDataType>) -> AttributeValue {
     let AttributeValue::String(s) = &value else {
         return value;
     };
     match data_type {
-        Some(FlattenDataType::Int) => s
+        Some(ExtractDataType::Int) => s
             .trim()
             .parse::<i64>()
             .map(|n| AttributeValue::Number(n.into()))
             .unwrap_or(value),
-        Some(FlattenDataType::Float) => s
+        Some(ExtractDataType::Float) => s
             .trim()
             .parse::<f64>()
             .ok()
@@ -333,5 +354,45 @@ mod tests {
     fn missing_path_yields_none() {
         let feature = feature_with(HashMap::new());
         assert_eq!(resolve_path(&feature, &["bldg:class"]), None);
+    }
+
+    #[test]
+    fn write_path_creates_nested_map() {
+        let mut feature = feature_with(HashMap::new());
+        write_path(
+            &mut feature,
+            &["attributes", "bldg:usage"],
+            AttributeValue::String("office".to_string()),
+        );
+        write_path(
+            &mut feature,
+            &["attributes", "bldg:class"],
+            AttributeValue::String("residential".to_string()),
+        );
+        let AttributeValue::Map(nested) = feature.get("attributes").unwrap() else {
+            panic!("expected a map");
+        };
+        assert_eq!(
+            nested.get("bldg:usage"),
+            Some(&AttributeValue::String("office".to_string()))
+        );
+        assert_eq!(
+            nested.get("bldg:class"),
+            Some(&AttributeValue::String("residential".to_string()))
+        );
+    }
+
+    #[test]
+    fn write_path_single_segment_writes_top_level() {
+        let mut feature = feature_with(HashMap::new());
+        write_path(
+            &mut feature,
+            &["bldg:class"],
+            AttributeValue::String("residential".to_string()),
+        );
+        assert_eq!(
+            feature.get("bldg:class"),
+            Some(&AttributeValue::String("residential".to_string()))
+        );
     }
 }
