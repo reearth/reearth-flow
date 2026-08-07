@@ -382,6 +382,8 @@ mod build_next {
                 &srs_by_file,
                 &ns_registry,
                 &tags,
+                None,
+                &[],
             )
         }
 
