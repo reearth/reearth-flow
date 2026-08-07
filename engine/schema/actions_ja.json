@@ -4675,7 +4675,7 @@
             "properties": {
               "expr": {
                 "title": "式",
-                "description": "attributes と env を参照し、地物の属性全体となるマップを返す式。マップ以外を返した場合や評価に失敗した場合、属性は変更されない",
+                "description": "attributes と variables を参照し、地物の属性全体となるマップを返す式。マップ以外を返した場合や評価に失敗した場合、属性は変更されない",
                 "type": "object",
                 "format": "code",
                 "required": [

@@ -32,12 +32,12 @@ graphs:
             value: |
               [
                 {
-                  "cityGmlPath": env["cityGmlPath"],
-                  "cityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
-                  "baseCityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
-                  "objectListsPath": env.get("objectListsPath") or env.get("objectLists"),
-                  "schemas": env.get("schemasPath") or env.get("schemas"),
-                  "codelists": env.get("codelistsPath") or env.get("codelists"),
+                  "cityGmlPath": variables["cityGmlPath"],
+                  "cityCode": variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "baseCityCode": variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "objectListsPath": variables.get("objectListsPath") or variables.get("objectLists"),
+                  "schemas": variables.get("schemasPath") or variables.get("schemas"),
+                  "codelists": variables.get("codelistsPath") or variables.get("codelists"),
                 },
               ]
 
@@ -110,7 +110,7 @@ graphs:
           conditions:
           - expr:
               type: flowExpr
-              value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
+              value: not variables["targetPackages"] or attributes["package"] in variables["targetPackages"]
             outputPort: features
 
       - id: 80f7b3d8-201b-4985-b512-c4b94690c16d
@@ -143,7 +143,7 @@ graphs:
         with:
           targetEpsgCode:
             type: flowExpr
-            value: env["prcs"]
+            value: variables["prcs"]
 
       - id: 52f504c2-5c79-421c-b14d-8ac661b3b15f
         name: PLATEAU3.LodSplitterWithDM
@@ -723,7 +723,7 @@ graphs:
             value: '[]'
           output:
             type: flowExpr
-            value: 'env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result_ok"'
+            value: 'variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result_ok"'
 
       # ZipFileWriter - Bundle all output files
       - id: be482ba8-ca60-40fb-8e52-8b15460b17cc
@@ -733,7 +733,7 @@ graphs:
         with:
           output:
             type: flowExpr
-            value: 'env["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result.zip"'
+            value: 'variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip") + "_qc_result.zip"'
 
     edges:
       # Data preparation flow

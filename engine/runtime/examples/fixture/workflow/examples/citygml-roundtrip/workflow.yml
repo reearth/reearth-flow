@@ -25,10 +25,10 @@ graphs:
             value: |
               [
                 {
-                  "cityGmlPath": env["cityGmlPath"],
-                  "cityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
-                  "codelists": env.get("codelistsPath") or env.get("codelists"),
-                  "schemas": env.get("schemasPath") or env.get("schemas"),
+                  "cityGmlPath": variables["cityGmlPath"],
+                  "cityCode": variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "codelists": variables.get("codelistsPath") or variables.get("codelists"),
+                  "schemas": variables.get("schemasPath") or variables.get("schemas"),
                 },
               ]
 

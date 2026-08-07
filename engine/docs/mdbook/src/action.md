@@ -4559,7 +4559,7 @@ Replaces each feature's attributes with the map returned by one or more expressi
       "properties": {
         "expr": {
           "title": "Expression",
-          "description": "Expression over `attributes` and `env` returning a map that becomes the feature's complete attribute set. A result that is not a map, or an expression that fails to evaluate, leaves the attributes unchanged.",
+          "description": "Expression over `attributes` and `variables` returning a map that becomes the feature's complete attribute set. A result that is not a map, or an expression that fails to evaluate, leaves the attributes unchanged.",
           "type": "object",
           "format": "code",
           "required": [

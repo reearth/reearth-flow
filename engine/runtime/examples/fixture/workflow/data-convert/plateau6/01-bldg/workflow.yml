@@ -18,7 +18,7 @@ graphs:
             value: |
               [
                 {
-                  "city_gml_path": env["cityGmlPath"],
+                  "city_gml_path": variables["cityGmlPath"],
                 },
               ]
 
@@ -91,12 +91,12 @@ graphs:
               value:
                 type: flowExpr
                 value: |
-                  attributes.get("uro:BuildingIDAttribute_uro:city_code") or env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5]
+                  attributes.get("uro:BuildingIDAttribute_uro:city_code") or variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5]
             - attribute: __baseCityCode
               method: create
               value:
                 type: flowExpr
-                value: env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5]
+                value: variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5]
             - attribute: attributes
               method: convert
               value:
@@ -230,7 +230,7 @@ graphs:
               value:
                 type: flowExpr
                 value: |
-                  city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
+                  city_gml = variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_bldg");
                   suffix = "";
                   if attributes["city_code"] != attributes["__baseCityCode"] {
                     suffix = "_" + attributes["city_code"] + "_" + attributes["cityNameEn"];

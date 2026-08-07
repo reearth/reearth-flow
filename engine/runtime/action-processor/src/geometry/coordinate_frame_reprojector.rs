@@ -307,7 +307,7 @@ impl Processor for CoordinateFrameReprojector {
                 let feature = ctx.feature.clone();
                 if ctx.port != *BASE_POINT_PORT {
                     let base_point = code
-                        .eval(&ctx.feature, ctx.env_vars.clone())
+                        .eval(&ctx.feature, ctx.variables.clone())
                         .ok()
                         .as_ref()
                         .and_then(attribute_value_to_xyz);
@@ -328,7 +328,7 @@ impl Processor for CoordinateFrameReprojector {
             BasePointSource::FromPort { key } => {
                 let feature = &ctx.feature;
                 let matched_key = key
-                    .eval(feature, ctx.env_vars.clone())
+                    .eval(feature, ctx.variables.clone())
                     .ok()
                     .map(|v| v.to_string());
                 if ctx.port == *BASE_POINT_PORT {

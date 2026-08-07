@@ -15,7 +15,7 @@ pub(crate) struct ResponseProcessorConfig<'a> {
     pub encoding: &'a Option<ResponseEncoding>,
     pub auto_detect: bool,
     pub max_size: Option<u64>,
-    pub env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+    pub variables: Arc<serde_json::Map<String, serde_json::Value>>,
     pub storage_resolver: &'a Arc<StorageResolver>,
     pub response_body_attr: &'a str,
     pub status_code_attr: &'a str,
@@ -74,7 +74,7 @@ pub(crate) fn process_response(
             path_attribute,
         } => {
             let output_path = path_ast
-                .eval_string(feature, config.env_vars.clone())
+                .eval_string(feature, config.variables.clone())
                 .map_err(|e| {
                     HttpProcessorError::Response(format!("Failed to evaluate output path: {e:?}"))
                 })?;
@@ -195,7 +195,7 @@ mod tests {
             encoding: &None,
             auto_detect: true,
             max_size: Some(500),
-            env_vars: make_env(),
+            variables: make_env(),
             storage_resolver: &storage_resolver,
             response_body_attr: "_response",
             status_code_attr: "_status",

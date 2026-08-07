@@ -181,7 +181,7 @@ graphs:
       format: tsv
       dataset:
         type: flowExpr
-        value: env["dailySunDataPath"]
+        value: variables["dailySunDataPath"]
   - id: b2c3d4e5-f6a7-4b8c-9d0e-1f2a3b4c5d6e
     name: ParseDateAndCalcDayTime
     type: action
@@ -243,7 +243,7 @@ graphs:
       headerRows: 2
       dataset:
         type: flowExpr
-        value: env["monthlyWeatherDataPath"]
+        value: variables["monthlyWeatherDataPath"]
   - id: e5f6a7b8-c9d0-4e1f-2a3b-4c5d6e7f8a9b
     name: PrepareWeatherDataForMerge
     type: action
@@ -427,7 +427,7 @@ graphs:
     with:
       dataset:
         type: flowExpr
-        value: env.get("restrictAreaPath1")
+        value: variables.get("restrictAreaPath1")
       allowEmptyPath: true
   - id: 00000007-0000-0000-0000-000000000002
     name: RestrictZone1Reprojector
@@ -436,7 +436,7 @@ graphs:
     with:
       targetEpsgCode:
         type: flowExpr
-        value: env["prcs"]
+        value: variables["prcs"]
   - id: 00000007-0000-0000-0000-000000000004
     name: RestrictZone1SpatialFilter
     type: action
@@ -481,7 +481,7 @@ graphs:
     with:
       dataset:
         type: flowExpr
-        value: env.get("restrictAreaPath2")
+        value: variables.get("restrictAreaPath2")
       allowEmptyPath: true
   - id: 00000007-0000-0000-0000-000000000012
     name: RestrictZone2Reprojector
@@ -490,7 +490,7 @@ graphs:
     with:
       targetEpsgCode:
         type: flowExpr
-        value: env["prcs"]
+        value: variables["prcs"]
   - id: 00000007-0000-0000-0000-000000000014
     name: RestrictZone2SpatialFilter
     type: action
@@ -535,7 +535,7 @@ graphs:
     with:
       dataset:
         type: flowExpr
-        value: env.get("restrictAreaPath3")
+        value: variables.get("restrictAreaPath3")
       allowEmptyPath: true
   - id: 00000007-0000-0000-0000-000000000022
     name: RestrictZone3Reprojector
@@ -544,7 +544,7 @@ graphs:
     with:
       targetEpsgCode:
         type: flowExpr
-        value: env["prcs"]
+        value: variables["prcs"]
   - id: 00000007-0000-0000-0000-000000000024
     name: RestrictZone3SpatialFilter
     type: action
@@ -589,7 +589,7 @@ graphs:
     with:
       dataset:
         type: flowExpr
-        value: env.get("snowDepthShapefilePath")
+        value: variables.get("snowDepthShapefilePath")
       allowEmptyPath: true
   - id: 00000007-0000-0000-0000-000000000031
     name: SnowShapefileReprojector
@@ -598,7 +598,7 @@ graphs:
     with:
       targetEpsgCode:
         type: flowExpr
-        value: env["prcs"]
+        value: variables["prcs"]
   - id: 00000007-0000-0000-0000-000000000033
     name: SnowSpatialFilter
     type: action
@@ -627,7 +627,7 @@ graphs:
         value:
           type: flowExpr
           value: |
-            thresh = env.get("solarRadiationThreshold", 0.0);
+            thresh = variables.get("solarRadiationThreshold", 0.0);
             rad = attributes.get("totalSolarRadiation", -1.0);
             if thresh <= 0.0 or rad < 0.0 { "-" }
             else if rad < thresh { "×" } else { "○" }
@@ -636,7 +636,7 @@ graphs:
         value:
           type: flowExpr
           value: |
-            pct = env.get("lowerPercent", 0.0);
+            pct = variables.get("lowerPercent", 0.0);
             rad = attributes.get("totalSolarRadiation", -1.0);
             if pct <= 0.0 or rad < 0.0 { "-" } else {
               rank = attributes.get("solarRank", 0);
@@ -648,7 +648,7 @@ graphs:
         value:
           type: flowExpr
           value: |
-            m = env.get("bldgStructureToExclude");
+            m = variables.get("bldgStructureToExclude");
             if m == null { "-" } else {
               any_active = m.get("木造・土蔵造") or m.get("鉄骨鉄筋コンクリート造") or m.get("鉄筋コンクリート造") or m.get("鉄骨造") or m.get("軽量鉄骨造") or m.get("レンガ造等") or m.get("非木造") or m.get("不明");
               if not any_active { "-" } else {
@@ -670,8 +670,8 @@ graphs:
         value:
           type: flowExpr
           value: |
-            lb = env.get("floorsBelow", -1);
-            ub = env.get("upperFloors", -1);
+            lb = variables.get("floorsBelow", -1);
+            ub = variables.get("upperFloors", -1);
             fc = attributes.get("floorCount", -1);
             if (lb == -1 and ub == -1) or fc < 0 { "-" }
             else if lb != -1 and fc <= lb { "×" }
@@ -682,7 +682,7 @@ graphs:
         value:
           type: flowExpr
           value: |
-            if not env.get("enableTsunamiCheck", false) { "-" } else {
+            if not variables.get("enableTsunamiCheck", false) { "-" } else {
               h = attributes.get("bldgHeight", -1.0);
               th = attributes.get("tsunamiHeight", 0.0);
               if h < 0.0 or th <= 0.0 { "-" }
@@ -693,7 +693,7 @@ graphs:
         value:
           type: flowExpr
           value: |
-            if not env.get("enableFloodCheck", false) { "-" } else {
+            if not variables.get("enableFloodCheck", false) { "-" } else {
               h = attributes.get("bldgHeight", -1.0);
               fd = attributes.get("floodDepth", 0.0);
               if h < 0.0 or fd <= 0.0 { "-" }
@@ -704,7 +704,7 @@ graphs:
         value:
           type: flowExpr
           value: |
-            if not env.get("enableLandslideCheck", false) { "-" } else {
+            if not variables.get("enableLandslideCheck", false) { "-" } else {
               flag = attributes.get("landslideFlag", false);
               if flag { "×" } else { "○" }
             }
@@ -713,18 +713,18 @@ graphs:
         value:
           type: flowExpr
           value: |
-            path = env.get("snowDepthShapefilePath");
+            path = variables.get("snowDepthShapefilePath");
             if path == null { "-" } else {
               depth_cm = attributes.get("snow_G02_058");
               if depth_cm == null { "-" } else {
                 depth = depth_cm / 100.0;
-                s = env.get("snowLoad", 0.0);
+                s = variables.get("snowLoad", 0.0);
                 if s > 0.0 {
-                  dp = env.get("snowUnitWeight", 0.0);
+                  dp = variables.get("snowUnitWeight", 0.0);
                   load = depth * dp / 9.80665;
                   if load >= s { "×" } else { "○" }
                 } else {
-                  thresh = env.get("snowDepthThreshold", -1.0);
+                  thresh = variables.get("snowDepthThreshold", -1.0);
                   if thresh > 0.0 and depth >= thresh { "×" } else { "○" }
                 }
               }
@@ -734,14 +734,14 @@ graphs:
         value:
           type: flowExpr
           value: |
-            path = env.get("restrictAreaPath1");
-            hThresh = env.get("restrictHeight1", -1.0);
+            path = variables.get("restrictAreaPath1");
+            hThresh = variables.get("restrictHeight1", -1.0);
             if path == null or hThresh == -1.0 { "-" } else {
               inZone = attributes.get("inZone1", 0);
               if inZone == 0 { "○" } else {
                 h = attributes.get("bldgHeight", -1.0);
                 if h >= 0.0 and h < hThresh { "○" } else {
-                  dir = env.get("restrictDirection1", -1.0);
+                  dir = variables.get("restrictDirection1", -1.0);
                   if dir < 0.0 { "×" } else {
                     sm = attributes.get("dirMatchSum1", 0);
                     if sm > 0 { "×" } else { "○" }
@@ -754,14 +754,14 @@ graphs:
         value:
           type: flowExpr
           value: |
-            path = env.get("restrictAreaPath2");
-            hThresh = env.get("restrictHeight2", -1.0);
+            path = variables.get("restrictAreaPath2");
+            hThresh = variables.get("restrictHeight2", -1.0);
             if path == null or hThresh == -1.0 { "-" } else {
               inZone = attributes.get("inZone2", 0);
               if inZone == 0 { "○" } else {
                 h = attributes.get("bldgHeight", -1.0);
                 if h >= 0.0 and h < hThresh { "○" } else {
-                  dir = env.get("restrictDirection2", -1.0);
+                  dir = variables.get("restrictDirection2", -1.0);
                   if dir < 0.0 { "×" } else {
                     sm = attributes.get("dirMatchSum2", 0);
                     if sm > 0 { "×" } else { "○" }
@@ -774,14 +774,14 @@ graphs:
         value:
           type: flowExpr
           value: |
-            path = env.get("restrictAreaPath3");
-            hThresh = env.get("restrictHeight3", -1.0);
+            path = variables.get("restrictAreaPath3");
+            hThresh = variables.get("restrictHeight3", -1.0);
             if path == null or hThresh == -1.0 { "-" } else {
               inZone = attributes.get("inZone3", 0);
               if inZone == 0 { "○" } else {
                 h = attributes.get("bldgHeight", -1.0);
                 if h >= 0.0 and h < hThresh { "○" } else {
-                  dir = env.get("restrictDirection3", -1.0);
+                  dir = variables.get("restrictDirection3", -1.0);
                   if dir < 0.0 { "×" } else {
                     sm = attributes.get("dirMatchSum3", 0);
                     if sm > 0 { "×" } else { "○" }
@@ -874,7 +874,7 @@ graphs:
       - newAttribute: totalSolarPower
         expr:
           type: flowExpr
-          value: attributes.get("radiationPerMonth", 0.0) * env["photovoltaicConversionEfficiency"] * env["lossConstant"]
+          value: attributes.get("radiationPerMonth", 0.0) * variables["photovoltaicConversionEfficiency"] * variables["lossConstant"]
       - newAttribute: dirMatchSum1
         expr:
           type: flowExpr
@@ -898,7 +898,7 @@ graphs:
         value:
           type: flowExpr
           value: |
-            thresh = env.get("solarRadiationThreshold", 0.0);
+            thresh = variables.get("solarRadiationThreshold", 0.0);
             rad = attributes.get("totalSolarRadiation", -1.0);
             if thresh <= 0.0 or rad < 0.0 { "-" }
             else if rad < thresh { "×" } else { "○" }
@@ -932,7 +932,7 @@ graphs:
         value:
           type: flowExpr
           value: |
-            if not env.get("enableLandslideCheck", false) { "-" } else {
+            if not variables.get("enableLandslideCheck", false) { "-" } else {
               flag = attributes.get("landslideFlag", false);
               if flag { "×" } else { "○" }
             }
@@ -941,18 +941,18 @@ graphs:
         value:
           type: flowExpr
           value: |
-            path = env.get("snowDepthShapefilePath");
+            path = variables.get("snowDepthShapefilePath");
             if path == null { "-" } else {
               depth_cm = attributes.get("snow_G02_058");
               if depth_cm == null { "-" } else {
                 depth = depth_cm / 100.0;
-                s = env.get("snowLoad", 0.0);
+                s = variables.get("snowLoad", 0.0);
                 if s > 0.0 {
-                  dp = env.get("snowUnitWeight", 0.0);
+                  dp = variables.get("snowUnitWeight", 0.0);
                   load = depth * dp / 9.80665;
                   if load >= s { "×" } else { "○" }
                 } else {
-                  thresh = env.get("snowDepthThreshold", -1.0);
+                  thresh = variables.get("snowDepthThreshold", -1.0);
                   if thresh > 0.0 and depth >= thresh { "×" } else { "○" }
                 }
               }
@@ -962,12 +962,12 @@ graphs:
         value:
           type: flowExpr
           value: |
-            path = env.get("restrictAreaPath1");
-            hThresh = env.get("restrictHeight1", -1.0);
+            path = variables.get("restrictAreaPath1");
+            hThresh = variables.get("restrictHeight1", -1.0);
             if path == null or hThresh == -1.0 { "-" } else {
               inZone = attributes.get("inZone1", 0);
               if inZone == 0 { "○" } else {
-                dir = env.get("restrictDirection1", -1.0);
+                dir = variables.get("restrictDirection1", -1.0);
                 if dir < 0.0 { "×" } else {
                   sm = attributes.get("dirMatchSum1", 0);
                   if sm > 0 { "×" } else { "○" }
@@ -979,12 +979,12 @@ graphs:
         value:
           type: flowExpr
           value: |
-            path = env.get("restrictAreaPath2");
-            hThresh = env.get("restrictHeight2", -1.0);
+            path = variables.get("restrictAreaPath2");
+            hThresh = variables.get("restrictHeight2", -1.0);
             if path == null or hThresh == -1.0 { "-" } else {
               inZone = attributes.get("inZone2", 0);
               if inZone == 0 { "○" } else {
-                dir = env.get("restrictDirection2", -1.0);
+                dir = variables.get("restrictDirection2", -1.0);
                 if dir < 0.0 { "×" } else {
                   sm = attributes.get("dirMatchSum2", 0);
                   if sm > 0 { "×" } else { "○" }
@@ -996,12 +996,12 @@ graphs:
         value:
           type: flowExpr
           value: |
-            path = env.get("restrictAreaPath3");
-            hThresh = env.get("restrictHeight3", -1.0);
+            path = variables.get("restrictAreaPath3");
+            hThresh = variables.get("restrictHeight3", -1.0);
             if path == null or hThresh == -1.0 { "-" } else {
               inZone = attributes.get("inZone3", 0);
               if inZone == 0 { "○" } else {
-                dir = env.get("restrictDirection3", -1.0);
+                dir = variables.get("restrictDirection3", -1.0);
                 if dir < 0.0 { "×" } else {
                   sm = attributes.get("dirMatchSum3", 0);
                   if sm > 0 { "×" } else { "○" }
@@ -1584,11 +1584,11 @@ graphs:
         value: |
           [
             {
-              "cityGmlPath": env.get("bldgCityGmlPath"),
-              "cityCode": env.get("cityCode") or env.get("bldgCityGmlPath").rsplit("/", 1)[-1][:5],
-              "baseCityCode": env.get("cityCode") or env.get("bldgCityGmlPath").rsplit("/", 1)[-1][:5],
-              "codelists": env.get("codelistsPath") or env.get("codelists"),
-              "schemas": env.get("schemasPath") or env.get("schemas"),
+              "cityGmlPath": variables.get("bldgCityGmlPath"),
+              "cityCode": variables.get("cityCode") or variables.get("bldgCityGmlPath").rsplit("/", 1)[-1][:5],
+              "baseCityCode": variables.get("cityCode") or variables.get("bldgCityGmlPath").rsplit("/", 1)[-1][:5],
+              "codelists": variables.get("codelistsPath") or variables.get("codelists"),
+              "schemas": variables.get("schemasPath") or variables.get("schemas"),
             },
           ]
   - id: 00000001-0000-0000-0000-000000000111
@@ -1605,11 +1605,11 @@ graphs:
         value: |
           [
             {
-              "cityGmlPath": env.get("demCityGmlPath"),
-              "cityCode": env.get("cityCode") or env.get("demCityGmlPath").rsplit("/", 1)[-1][:5],
-              "baseCityCode": env.get("cityCode") or env.get("demCityGmlPath").rsplit("/", 1)[-1][:5],
-              "codelists": env.get("codelistsPath") or env.get("codelists"),
-              "schemas": env.get("schemasPath") or env.get("schemas"),
+              "cityGmlPath": variables.get("demCityGmlPath"),
+              "cityCode": variables.get("cityCode") or variables.get("demCityGmlPath").rsplit("/", 1)[-1][:5],
+              "baseCityCode": variables.get("cityCode") or variables.get("demCityGmlPath").rsplit("/", 1)[-1][:5],
+              "codelists": variables.get("codelistsPath") or variables.get("codelists"),
+              "schemas": variables.get("schemasPath") or variables.get("schemas"),
             },
           ]
   - id: 00000002-0000-0000-0000-000000000002
@@ -1658,7 +1658,7 @@ graphs:
       errorAttribute: _validation_error
       epsgCode:
         type: flowExpr
-        value: env["prcs"]
+        value: variables["prcs"]
   - id: 00000001-0000-0000-0000-000000000002
     name: CityGmlReader
     type: action
@@ -1721,7 +1721,7 @@ graphs:
     with:
       targetEpsgCode:
         type: flowExpr
-        value: env["prcs"]
+        value: variables["prcs"]
   - id: 00000004-0000-0000-0000-000000000001
     name: RoofFilterShapefileReader
     type: action
@@ -1729,7 +1729,7 @@ graphs:
     with:
       dataset:
         type: flowExpr
-        value: env.get("roofFilterShapefilePath")
+        value: variables.get("roofFilterShapefilePath")
       force2D: true
       allowEmptyPath: true
   - id: 00000004-0000-0000-0000-000000000002
@@ -1739,10 +1739,10 @@ graphs:
     with:
       sourceEpsgCode:
         type: flowExpr
-        value: env["roofFilterEpsgCode"]
+        value: variables["roofFilterEpsgCode"]
       targetEpsgCode:
         type: flowExpr
-        value: env["prcs"]
+        value: variables["prcs"]
   - id: 00000004-0000-0000-0000-000000000003
     name: AreaSpatialFilter
     type: action
@@ -1801,17 +1801,17 @@ graphs:
       type: duration
       start:
         type: flowExpr
-        value: env["startTime"]
+        value: variables["startTime"]
       end:
         type: flowExpr
-        value: env["endTime"]
+        value: variables["endTime"]
       step:
         type: flowExpr
         value: 1
       stepUnit: hour
       sourceEpsg:
         type: flowExpr
-        value: env["prcs"]
+        value: variables["prcs"]
       outputType: both
   - id: 00000001-0000-0000-0000-000000000040
     name: ConvertDateTimeToIntegers
@@ -1939,7 +1939,7 @@ graphs:
       format: csv
       dataset:
         type: flowExpr
-        value: env["snowDepthDataPath"]
+        value: variables["snowDepthDataPath"]
       offset: 1
       headerRows: 0
   - id: 00000003-0000-0000-0000-000000000002
@@ -2012,19 +2012,19 @@ graphs:
         value:
           type: flowExpr
           value: |
-            p = env["monthlyTransmissivity"][attributes["month"] - 1];
+            p = variables["monthlyTransmissivity"][attributes["month"] - 1];
             h_rad = attributes["solarAltitude"] * math.pi / 180.0;
             m = 1.0 / math.sin(h_rad);
             beta_m = p ** m;
-            DT = env["directNormalIrradianceFactor"] * beta_m * attributes["cosTheta"] * attributes["cellArea"];
+            DT = variables["directNormalIrradianceFactor"] * beta_m * attributes["cosTheta"] * attributes["cellArea"];
 
             dN = 1 - beta_m;
             dD = 1 - 1.4 * math.log(p);
-            SH = env["directNormalIrradianceFactor"] * math.sin(h_rad) * (dN / dD) * 0.5;
+            SH = variables["directNormalIrradianceFactor"] * math.sin(h_rad) * (dN / dD) * 0.5;
             tilt_rad = attributes["slope"] * math.pi / 180.0;
             ST = SH * (1 + math.cos(tilt_rad)) / 2;
 
-            TH = env["directNormalIrradianceFactor"] * math.sin(h_rad) + SH;
+            TH = variables["directNormalIrradianceFactor"] * math.sin(h_rad) + SH;
             RT = TH * (1 - math.cos(tilt_rad)) / 2 * attributes["groundReflectivity"];
 
             DT + ST + RT
@@ -2033,19 +2033,19 @@ graphs:
         value:
           type: flowExpr
           value: |
-            p = 1.0 - env["monthlyTransmissivity"][attributes["month"] - 1];
+            p = 1.0 - variables["monthlyTransmissivity"][attributes["month"] - 1];
             h_rad = attributes["solarAltitude"] * math.pi / 180.0;
             m = 1.0 / math.sin(h_rad);
             beta_m = p ** m;
-            DT = env["directNormalIrradianceFactor"] * beta_m * attributes["cosTheta"] * attributes["cellArea"];
+            DT = variables["directNormalIrradianceFactor"] * beta_m * attributes["cosTheta"] * attributes["cellArea"];
 
             dN = 1 - beta_m;
             dD = 1 - 1.4 * math.log(p);
-            SH = env["directNormalIrradianceFactor"] * math.sin(h_rad) * (dN / dD) * 0.5;
+            SH = variables["directNormalIrradianceFactor"] * math.sin(h_rad) * (dN / dD) * 0.5;
             tilt_rad = attributes["slope"] * math.pi / 180.0;
             ST = SH * (1 + math.cos(tilt_rad)) / 2;
 
-            TH = env["directNormalIrradianceFactor"] * math.sin(h_rad) + SH;
+            TH = variables["directNormalIrradianceFactor"] * math.sin(h_rad) + SH;
             RT = TH * (1 - math.cos(tilt_rad)) / 2 * attributes["groundReflectivity"];
 
             DT + ST + RT
@@ -2122,7 +2122,7 @@ graphs:
       - newAttribute: totalSolarPower
         expr:
           type: flowExpr
-          value: attributes.get("radiationPerMonth", 0.0) * env["photovoltaicConversionEfficiency"] * env["lossConstant"]
+          value: attributes.get("radiationPerMonth", 0.0) * variables["photovoltaicConversionEfficiency"] * variables["lossConstant"]
   - id: 00000001-0000-0000-0000-000000000074
     name: SurfaceRadiationAggregator
     type: action
@@ -2139,7 +2139,7 @@ graphs:
       - newAttribute: totalSolarPower
         expr:
           type: flowExpr
-          value: attributes.get("radiationPerMonth", 0.0) * env["photovoltaicConversionEfficiency"] * env["lossConstant"]
+          value: attributes.get("radiationPerMonth", 0.0) * variables["photovoltaicConversionEfficiency"] * variables["lossConstant"]
       - newAttribute: dirMatchSum1
         expr:
           type: flowExpr
@@ -2181,12 +2181,12 @@ graphs:
         method: create
         value:
           type: flowExpr
-          value: env["startTime"]
+          value: variables["startTime"]
       - attribute: シミュレーション終了日時
         method: create
         value:
           type: flowExpr
-          value: env["endTime"]
+          value: variables["endTime"]
   - id: 00000001-0000-0000-0000-000000000070
     name: NormalizeRadiationForColorMapping
     type: action
@@ -2198,7 +2198,7 @@ graphs:
         value:
           type: flowExpr
           value: |
-            start_str = env["startTime"];
+            start_str = variables["startTime"];
             s_date_parts = start_str.split("-");
             s_year = float(s_date_parts[0]);
             s_month = float(s_date_parts[1]);
@@ -2207,7 +2207,7 @@ graphs:
             s_y = s_year + 4800.0 - s_a;
             s_m = s_month + 12.0 * s_a - 3.0;
             s_jdn = s_day_val + math.floor((153.0 * s_m + 2.0) / 5.0) + 365.0 * s_y + math.floor(s_y / 4.0) - math.floor(s_y / 100.0) + math.floor(s_y / 400.0) - 32045.0;
-            end_str = env["endTime"];
+            end_str = variables["endTime"];
             e_date_parts = end_str.split("-");
             e_year = float(e_date_parts[0]);
             e_month = float(e_date_parts[1]);
@@ -2219,7 +2219,7 @@ graphs:
             num_days_raw = e_jdn - s_jdn;
             if num_days_raw <= 0.0 { num_days = 1.0 } else { num_days = num_days_raw };
             dt = attributes.get("totalSolarRadiation", 0.0);
-            max_rad = env.get("maxRadiationPerDay", 7.5);
+            max_rad = variables.get("maxRadiationPerDay", 7.5);
             t_raw = dt / num_days / max_rad;
             if t_raw < 0.0 { 0.0 } else if t_raw > 1.0 { 1.0 } else { t_raw }
   - id: 00000001-0000-0000-0000-00000000005f
@@ -2316,7 +2316,7 @@ graphs:
     with:
       sourceEpsgCode:
         type: flowExpr
-        value: env["prcs"]
+        value: variables["prcs"]
       targetEpsgCode:
         type: flowExpr
         value: 6697
@@ -2377,7 +2377,7 @@ graphs:
       conditions:
       - expr:
           type: flowExpr
-          value: env["outputReflection"] == true or env["outputReflection"] == "true"
+          value: variables["outputReflection"] == true or variables["outputReflection"] == "true"
         outputPort: features
   - id: 00000001-0000-0000-0000-000000000013
     name: ComputeReflection
@@ -2504,7 +2504,7 @@ graphs:
       - newAttribute: totalSolarPower
         expr:
           type: flowExpr
-          value: attributes.get("radiationPerMonth", 0.0) * env["photovoltaicConversionEfficiency"] * env["lossConstant"]
+          value: attributes.get("radiationPerMonth", 0.0) * variables["photovoltaicConversionEfficiency"] * variables["lossConstant"]
       - newAttribute: dirMatchSum1
         expr:
           type: flowExpr
@@ -2828,7 +2828,7 @@ graphs:
         value: roof_radiation_texture.png
       sourceEpsg:
         type: flowExpr
-        value: env["prcs"]
+        value: variables["prcs"]
   - id: 00000001-0000-0000-0000-0000000000e1
     name: CityGmlZipFileWriter
     type: action
@@ -2911,7 +2911,7 @@ graphs:
       conditions:
       - expr:
           type: flowExpr
-          value: env["considerDEM"] == true
+          value: variables["considerDEM"] == true
         outputPort: features
   - id: 00000002-0000-0000-0000-000000000007
     name: DEMGeometrySplitter
@@ -2940,7 +2940,7 @@ graphs:
     with:
       targetEpsgCode:
         type: flowExpr
-        value: env["prcs"]
+        value: variables["prcs"]
   - id: 00000005-0000-0000-0000-000000000020
     name: AzimuthDirectionFlags
     type: action
@@ -2952,7 +2952,7 @@ graphs:
         value:
           type: flowExpr
           value: |
-            dir = env.get("restrictDirection1", -1.0);
+            dir = variables.get("restrictDirection1", -1.0);
             if dir < 0.0 { 0 } else {
               pne = attributes.get("azimuth", 0.0);
               geo = (180.0 - pne + 360.0) % 360.0;
@@ -2965,7 +2965,7 @@ graphs:
         value:
           type: flowExpr
           value: |
-            dir = env.get("restrictDirection2", -1.0);
+            dir = variables.get("restrictDirection2", -1.0);
             if dir < 0.0 { 0 } else {
               pne = attributes.get("azimuth", 0.0);
               geo = (180.0 - pne + 360.0) % 360.0;
@@ -2978,7 +2978,7 @@ graphs:
         value:
           type: flowExpr
           value: |
-            dir = env.get("restrictDirection3", -1.0);
+            dir = variables.get("restrictDirection3", -1.0);
             if dir < 0.0 { 0 } else {
               pne = attributes.get("azimuth", 0.0);
               geo = (180.0 - pne + 360.0) % 360.0;

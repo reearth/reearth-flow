@@ -39,9 +39,9 @@ type Props = {
   // Per-node attribute-name suggestions, shown when the cursor is inside an
   // `attributes["…"]` accessor. Sourced from probed reader schemas.
   attributeSuggestions?: AutocompleteSuggestion[];
-  // Workflow-variable names, shown when the cursor is inside an `env["…"]`
+  // Workflow-variable names, shown when the cursor is inside an `variables["…"]`
   // lookup. Sourced from the project's workflow variables.
-  envSuggestions?: AutocompleteSuggestion[];
+  variableSuggestions?: AutocompleteSuggestion[];
 };
 
 const TYPE_PRIORITY: Record<string, number> = {
@@ -63,7 +63,7 @@ const FlowExprAutocomplete = forwardRef<FlowExprAutocompleteRef, Props>(
       onSuggestionSelect,
       onDismiss,
       attributeSuggestions,
-      envSuggestions,
+      variableSuggestions,
     },
     ref,
   ) => {
@@ -131,12 +131,12 @@ const FlowExprAutocomplete = forwardRef<FlowExprAutocompleteRef, Props>(
 
       if (context.kind === "general") return getGeneralSuggestions(context);
 
-      // Quoted-key accessors: `attributes["…"]` and `env["…"]` behave the same
+      // Quoted-key accessors: `attributes["…"]` and `variables["…"]` behave the same
       // way, differing only in where the candidate names come from.
       const candidates =
         (context.kind === "attribute"
           ? attributeSuggestions
-          : envSuggestions) ?? [];
+          : variableSuggestions) ?? [];
       const prefix = context.prefix.toLowerCase();
       // An empty prefix right after the opening quote lists every candidate.
       return prefix.length === 0
@@ -148,7 +148,7 @@ const FlowExprAutocomplete = forwardRef<FlowExprAutocompleteRef, Props>(
       open,
       context,
       attributeSuggestions,
-      envSuggestions,
+      variableSuggestions,
       getGeneralSuggestions,
     ]);
 

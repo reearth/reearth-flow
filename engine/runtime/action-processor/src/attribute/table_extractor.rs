@@ -82,7 +82,7 @@ impl ProcessorFactory for AttributeTableExtractorFactory {
                         "Failed to compile dataset expression: {e:?}"
                     ))
                 })?
-                .eval_string_env_only(ctx.env_vars.clone())
+                .eval_string_variables_only(ctx.variables.clone())
                 .map_err(|e| {
                     AttributeProcessorError::TableExtractorFactory(format!(
                         "Failed to evaluate dataset expression: {e}"
