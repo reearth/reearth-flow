@@ -216,6 +216,18 @@ fi
 ''',
 ]
 
+# The attribution notice for the embedded grids is a rendering of their
+# manifest. Pass `-- --check` to verify the committed file instead of rewriting
+# it. The manifest is checked against the grid files themselves by the geometry
+# crate's build script.
+[tasks.proj-grids-notice]
+script = [
+  '''
+#!/usr/bin/env bash -eu
+python3 runtime/geometry/grids/render_notice.py ${@:-}
+''',
+]
+
 [tasks.doc-workflow]
 script = ['''
 #!/usr/bin/env bash -eux
