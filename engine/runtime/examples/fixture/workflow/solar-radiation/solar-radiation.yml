@@ -2932,7 +2932,7 @@ graphs:
         method: create
         value:
           type: flowExpr
-          value: '"land_" + str(attributes.get("_relief_index", attributes.get("_split_index", 0)))'
+          value: '"land_" + str(attributes.get("_relief_index", attributes.get("__split_idx", 0)))'
   - id: 00000002-0000-0000-0000-000000000009
     name: DEMTriangleReprojector
     type: action

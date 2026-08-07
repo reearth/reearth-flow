@@ -380,6 +380,28 @@
       }
     },
     {
+      "name": "Attribute Table Extractor",
+      "description": "地物タイプ属性をキーとする移動元・移動先パスの対応表に従い、ネストされたマップまたはリスト属性の間で値を移動する。移動先パスのセグメントが2つ以上の場合、必要に応じてネストしたマップを作成する",
+      "parameterI18n": {
+        "": {
+          "title": "Attribute Table Extractor パラメータ",
+          "description": "ネストされた属性値を移動するために使う移動元・移動先パスの対応表を設定する"
+        },
+        "dataset": {
+          "title": "データセットURI",
+          "description": "抽出テーブルファイルのパスまたはURI。これかインラインデータのいずれかを指定する"
+        },
+        "inline": {
+          "title": "インラインテーブル",
+          "description": "抽出テーブルの内容をJSONとして直接指定する。データセットURIを指定しない場合に使う"
+        },
+        "typeAttribute": {
+          "title": "地物タイプ属性",
+          "description": "テーブル内のどのルールセットを地物に適用するかを選ぶ属性の値。デフォルトは`__citygml_feature_type`"
+        }
+      }
+    },
+    {
       "name": "Boundary Extractor",
       "description": "ジオメトリの境界を抽出する。ソリッド/メッシュは境界サーフェスを、サーフェスは境界エッジを、閉じたサーフェスは空のジオメトリを返す",
       "parameterI18n": {
@@ -1195,9 +1217,9 @@
           "title": "タグの抽出",
           "description": "個別フィーチャーとして展開するフィーチャータイプ名。修飾名（`bldg:Building`）、ローカル名（`Building`）、またはClark記法（`{http://…}Building`）で指定可能。空の場合はすべてのトップレベル都市オブジェクトをそのまま出力する。"
         },
-        "flattenMeasureTypes": {
-          "title": "計測タイプのフラット化",
-          "description": "trueの場合、単一の`uom`属性と数値テキストコンテンツを持つ要素は数値に変換され、単位は兄弟キー`{name}_uom`として格納される。デフォルトはfalse。"
+        "flattenLeafAttributes": {
+          "title": "リーフ属性のフラット化",
+          "description": "折りたたみ対象のリーフを示す属性名（例: `uom`）。このリストの属性を1つだけ持ち、子要素を持たず、数値のテキスト内容を持つ要素は数値に変換され、その属性の値は兄弟キー`{name}_{attribute}`として格納される。空（デフォルト）の場合はこの機能を無効にする。"
         },
         "flattenSingleChildObjects": {
           "title": "単一子オブジェクトノードのフラット化",

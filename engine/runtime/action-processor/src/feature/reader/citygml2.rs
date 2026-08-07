@@ -211,6 +211,14 @@ impl Processor for FeatureCityGml2Reader {
         ctx: NodeContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
+        // This reader's own param stays a simple bool; the shared pipeline
+        // function takes a caller-declared attribute-name list, so translate
+        // at the boundary rather than changing this reader's exposed shape.
+        let flatten_leaf_attributes: Vec<String> = if self.flatten_measure_types {
+            vec!["uom".to_string()]
+        } else {
+            Vec::new()
+        };
         for feature in build_features(
             std::mem::replace(&mut self.parser, Parser::new(CityGmlVersion::V2)),
             &self.extract_tags,
@@ -218,7 +226,7 @@ impl Processor for FeatureCityGml2Reader {
             self.city_gml_attributes_key.as_deref(),
             self.keep_attributes,
             self.flatten_single_child_objects,
-            self.flatten_measure_types,
+            &flatten_leaf_attributes,
         ) {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,
