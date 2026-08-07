@@ -4212,7 +4212,7 @@ checksum = "b4596b6d070b27117e987119b4dac604f3c58cfb0b191112e24771b2faeac1a6"
 
 [[package]]
 name = "plateau-tiles-test"
-version = "0.2.108"
+version = "0.2.110"
 dependencies = [
  "bytes",
  "glam 0.30.10",
@@ -5168,6 +5168,7 @@ dependencies = [
  "bvh",
  "bytes",
  "clipper-sys",
+ "directories",
  "earcut",
  "enum_dispatch",
  "flatgeom",
@@ -5175,6 +5176,7 @@ dependencies = [
  "geo-buffer",
  "geo-types",
  "geojson",
+ "hex",
  "i_overlay",
  "indexmap 2.13.0",
  "kiddo",
@@ -5191,9 +5193,11 @@ dependencies = [
  "schemars",
  "serde",
  "serde_json",
+ "sha2",
  "smallvec",
  "spade",
  "strum_macros",
+ "tempfile",
  "thiserror 2.0.18",
 ]
 
@@ -8225,7 +8229,7 @@ dependencies = [
 
 [[package]]
 name = "workflow-tests"
-version = "0.1.298"
+version = "0.1.300"
 dependencies = [
  "anyhow",
  "csv",

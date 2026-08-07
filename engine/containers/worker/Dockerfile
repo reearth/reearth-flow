@@ -54,7 +54,8 @@ RUN \
     apt-get install -y \
     ca-certificates \
     python3 \
-    libproj25 && \
+    libtiff6 \
+    libstdc++6 && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --chmod=0755 --from=builder /tmp/reearth-flow-worker /bin
