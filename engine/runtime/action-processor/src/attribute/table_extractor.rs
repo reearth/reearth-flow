@@ -186,11 +186,13 @@ impl Processor for AttributeTableExtractor {
         if let Some(feature_type) = feature_type {
             if let Some(rules) = self.table.get(&feature_type) {
                 for rule in rules {
-                    let src_segments: Vec<&str> = rule.json_path.split(' ').collect();
+                    let src_segments: Vec<&str> = rule.json_path.split_whitespace().collect();
                     if let Some(value) = resolve_path(&feature, &src_segments) {
                         let value = coerce(value, rule.data_type);
-                        let dst_segments: Vec<&str> = rule.attribute.split(' ').collect();
-                        write_path(&mut feature, &dst_segments, value);
+                        let dst_segments: Vec<&str> = rule.attribute.split_whitespace().collect();
+                        if !dst_segments.is_empty() {
+                            write_path(&mut feature, &dst_segments, value);
+                        }
                     }
                 }
             }
@@ -240,7 +242,7 @@ fn get_from_value(value: &AttributeValue, key: &str) -> Option<AttributeValue> {
 fn write_path(feature: &mut Feature, segments: &[&str], value: AttributeValue) {
     let (first, rest) = segments
         .split_first()
-        .expect("segments is never empty: json split(' ') always yields at least one element");
+        .expect("segments is never empty: caller only calls with a non-empty path");
     if rest.is_empty() {
         feature.insert(Attribute::new(*first), value);
         return;

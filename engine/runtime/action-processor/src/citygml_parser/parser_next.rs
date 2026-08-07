@@ -303,8 +303,7 @@ pub fn to_feature(
 /// the attribute's value carried on a sibling `{name}_{attribute}` key, instead
 /// of the generic `{"@uom": ..., "$": ...}` shape. Caller-declared, so this
 /// asserts nothing about CityGML/measure semantics — it is purely a structural
-/// shape match. Mirrors the legacy parser's `is_measure_node` (`parser.rs`),
-/// generalized from a hardcoded `uom` check to a caller-supplied name list.
+/// shape match. Mirrors the legacy parser's `flatten_leaf_node` (`parser.rs`).
 fn flatten_leaf_node(
     node: &XmlNode,
     flatten_leaf_attributes: &[String],

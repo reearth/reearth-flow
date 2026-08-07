@@ -34,9 +34,6 @@ pub fn build_features(
     flatten_single_child_objects: bool,
     flatten_leaf_attributes: &[String],
 ) -> Vec<Feature> {
-    // The legacy parser's measure-flattening is hardcoded to `uom`; any
-    // non-empty list enables it, matching this module's simpler bool knob.
-    let flatten_measure_types = !flatten_leaf_attributes.is_empty();
     let (pending, raw_registry, ns_registry) = parser.finish();
     let mut codelist_resolver = codespace::CodelistResolver::new();
     let mut out = Vec::new();
@@ -51,7 +48,7 @@ pub fn build_features(
                 citygml_attribute_key,
                 keep_attributes,
                 flatten_single_child_objects,
-                flatten_measure_types,
+                flatten_leaf_attributes,
             );
             if let Some(base) = base {
                 feature.extend(base.clone());
@@ -66,7 +63,7 @@ pub fn build_features(
                     citygml_attribute_key,
                     keep_attributes,
                     flatten_single_child_objects,
-                    flatten_measure_types,
+                    flatten_leaf_attributes,
                 );
                 if let Some(id) = parent_id {
                     feature.insert(CITYGML_PARENT_GML_ID_KEY, AttributeValue::String(id));
@@ -90,7 +87,7 @@ fn build_feature(
     citygml_attribute_key: Option<&str>,
     keep_attributes: bool,
     flatten_single_child_objects: bool,
-    flatten_measure_types: bool,
+    flatten_leaf_attributes: &[String],
 ) -> Feature {
     let (stripped, raw_geoms) = geometry::extract_geometries(node);
     let mut feature = parser::to_feature(
@@ -98,7 +95,7 @@ fn build_feature(
         citygml_attribute_key,
         keep_attributes,
         flatten_single_child_objects,
-        flatten_measure_types,
+        flatten_leaf_attributes,
     );
     if !raw_geoms.is_empty() {
         *feature.geometry_mut() = Geometry::with_value(GeometryValue::CityGmlGeometry(
