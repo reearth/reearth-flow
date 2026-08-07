@@ -26,7 +26,8 @@ RUN  \
     pkg-config \
     clang \
     libdbus-1-dev \
-    libproj-dev
+    libproj-dev \
+    sqlite3
 
 RUN echo "ja_JP UTF-8" > /etc/locale.gen && locale-gen
 
@@ -51,7 +52,8 @@ RUN \
     apt-get install -y \
     ca-certificates \
     python3 \
-    libproj25 && \
+    libtiff6 \
+    libstdc++6 && \
     rm -rf /var/lib/apt/lists/*
 
 COPY --chmod=0755 --from=builder /tmp/reearth-flow /bin

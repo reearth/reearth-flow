@@ -5,6 +5,7 @@ use crate::error::{Error, Result};
 use crate::Geometry;
 
 mod ffi;
+pub(crate) mod grids;
 
 pub use ffi::ReprojectionCache;
 pub(crate) use ffi::{axis_order_sign, crs_demote_to_2d, crs_is_linear, TwoDimensionalCrs};

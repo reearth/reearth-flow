@@ -10,6 +10,7 @@ use serde::{Deserialize, Serialize};
 use super::solid::Solid;
 
 mod constructor;
+mod evaluate;
 mod ops;
 #[cfg(feature = "new-geometry")]
 mod validation;
