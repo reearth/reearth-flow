@@ -12,6 +12,7 @@ use super::{
     flattener::AttributeFlattenerFactory, manager::AttributeManagerFactory,
     mapper::AttributeMapperFactory, null_attribute_mapper::NullAttributeMapperFactory,
     range_mapper::AttributeRangeMapperFactory, statistics_calculator::StatisticsCalculatorFactory,
+    table_extractor::AttributeTableExtractorFactory,
 };
 
 pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Lazy::new(|| {
@@ -29,6 +30,7 @@ pub(crate) static ACTION_FACTORY_MAPPINGS: Lazy<HashMap<String, NodeKind>> = Laz
         Box::<AttributeRangeMapperFactory>::default(),
         Box::<NullAttributeMapperFactory>::default(),
         Box::<DateTimeConverterFactory>::default(),
+        Box::<AttributeTableExtractorFactory>::default(),
     ];
     factories
         .into_iter()

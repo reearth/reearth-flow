@@ -996,6 +996,69 @@
       "tags": []
     },
     {
+      "name": "Attribute Table Extractor",
+      "type": "processor",
+      "description": "Mueve valores entre rutas de atributos de tipo mapa o lista anidados, siguiendo una tabla de pares de rutas origen/destino indexada por un atributo de tipo de entidad. Una ruta de destino con más de un segmento crea mapas anidados según sea necesario",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Parámetros de Attribute Table Extractor",
+        "description": "Configura la tabla de pares de rutas origen/destino usada para mover valores de atributos anidados",
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "title": "URI del Conjunto de Datos",
+            "description": "Ruta o URI del archivo de tabla de extracción. Proporcione esto o datos en línea",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "inline": {
+            "title": "Tabla en Línea",
+            "description": "Contenido de la tabla de extracción proporcionado directamente como JSON. Se usa cuando no se proporciona una URI de conjunto de datos"
+          },
+          "typeAttribute": {
+            "title": "Atributo de Tipo de Entidad",
+            "description": "Atributo cuyo valor selecciona qué conjunto de reglas de la tabla se aplica a la entidad. Por defecto `__citygml_feature_type`",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Attribute"
+      ],
+      "tags": [
+        "mapping"
+      ]
+    },
+    {
       "name": "Boundary Extractor",
       "type": "processor",
       "description": "Extrae el límite de geometrías. Para sólidos/mallas devuelve superficies delimitadoras, para superficies devuelve aristas de límite, para superficies cerradas devuelve geometría vacía",
@@ -3557,11 +3620,14 @@
             "default": false,
             "type": "boolean"
           },
-          "flattenMeasureTypes": {
-            "title": "Aplanar Tipos de Medida",
-            "description": "Cuando es verdadero, los elementos con un único atributo `uom` y contenido de texto numérico se convierten a un valor numérico, con la unidad almacenada como clave hermana `{name}_uom`. Por defecto es false.",
-            "default": false,
-            "type": "boolean"
+          "flattenLeafAttributes": {
+            "title": "Aplanar Atributos Hoja",
+            "description": "Nombres de atributos (p. ej. `uom`) que marcan una hoja para colapsar: un elemento con exactamente uno de estos atributos XML, sin elementos hijos y con contenido de texto numérico se convierte en un valor numérico, y el valor del atributo se almacena como clave hermana `{name}_{attribute}`. Vacío (el valor por defecto) desactiva esto.",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "cityGmlAttributesKey": {
             "title": "Clave de Atributos CityGML",
