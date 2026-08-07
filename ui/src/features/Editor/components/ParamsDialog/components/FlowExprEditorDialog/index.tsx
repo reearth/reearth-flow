@@ -34,11 +34,11 @@ import { useCurrentProject } from "@flow/stores";
 import { Asset } from "@flow/types";
 
 import { FieldContext } from "../../utils/fieldUtils";
-import { toVariableAutocompleteSuggestions } from "../ValueEditorDialog/components/variableAutocomplete";
 import FlowExprCodeEditor, {
   type FlowExprCodeEditorRef,
 } from "../ValueEditorDialog/components/FlowExprCodeEditor";
 import { AutocompleteSuggestion } from "../ValueEditorDialog/components/flowExprConstants";
+import { toVariableAutocompleteSuggestions } from "../ValueEditorDialog/components/variableAutocomplete";
 
 export type CodeValue = {
   type: "flowExpr" | "string";

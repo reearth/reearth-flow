@@ -34,10 +34,10 @@ import { Asset } from "@flow/types";
 
 import { FieldContext } from "../../utils/fieldUtils";
 
-import { toVariableAutocompleteSuggestions } from "./components/variableAutocomplete";
 import FlowExprCodeEditor, {
   type FlowExprCodeEditorRef,
 } from "./components/FlowExprCodeEditor";
+import { toVariableAutocompleteSuggestions } from "./components/variableAutocomplete";
 
 type Props = {
   open: boolean;
