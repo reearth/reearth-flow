@@ -19,6 +19,7 @@ import (
 	redisrepo "github.com/reearth/reearth-flow/api/internal/infrastructure/redis"
 	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
+	"github.com/reearth/reearth-flow/api/pkg/circuitbreaker"
 	"github.com/reearth/reearthx/account/accountinfrastructure/accountmongo"
 	"github.com/reearth/reearthx/account/accountusecase/accountgateway"
 	"github.com/reearth/reearthx/account/accountusecase/accountrepo"
@@ -285,6 +286,25 @@ func initCMS(ctx context.Context, conf *config.Config) gateway.CMS {
 		return nil
 	}
 
-	log.Infofc(ctx, "CMS enabled: endpoint=%s", conf.CMS_Endpoint)
-	return cmsClient
+	if conf.CMS_CircuitBreakerDisabled {
+		log.Infofc(ctx, "CMS enabled: endpoint=%s (circuit breaker disabled)", conf.CMS_Endpoint)
+		return cmsClient
+	}
+
+	cbCfg := circuitbreaker.DefaultConfig("cms")
+	if conf.CMS_CircuitBreakerConsecutiveFailures > 0 {
+		cbCfg.ConsecutiveFailures = conf.CMS_CircuitBreakerConsecutiveFailures
+	}
+	if conf.CMS_CircuitBreakerTimeout > 0 {
+		cbCfg.Timeout = conf.CMS_CircuitBreakerTimeout
+	}
+	if conf.CMS_CircuitBreakerInterval > 0 {
+		cbCfg.Interval = conf.CMS_CircuitBreakerInterval
+	}
+
+	log.Infofc(ctx,
+		"CMS enabled: endpoint=%s (circuit breaker: trip=%d, timeout=%s, interval=%s)",
+		conf.CMS_Endpoint, cbCfg.ConsecutiveFailures, cbCfg.Timeout, cbCfg.Interval,
+	)
+	return cms.NewCircuitBreakerCMS(cmsClient, cbCfg)
 }
