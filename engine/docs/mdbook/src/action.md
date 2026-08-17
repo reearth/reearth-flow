@@ -5457,21 +5457,42 @@ Coerces and converts feature geometries to specified target geometry types
   ],
   "properties": {
     "targetType": {
-      "description": "Target geometry type to coerce features to (e.g., LineString)",
+      "title": "Target Type",
+      "description": "Geometry type to re-represent each feature as. A feature the target does not apply to passes through unchanged.",
       "allOf": [
         {
-          "$ref": "#/definitions/CoerceTarget"
+          "$ref": "#/definitions/CoercionTarget"
         }
       ]
     }
   },
   "definitions": {
-    "CoerceTarget": {
-      "type": "string",
-      "enum": [
-        "lineString",
-        "polygon",
-        "triangularMesh"
+    "CoercionTarget": {
+      "oneOf": [
+        {
+          "title": "Line String",
+          "description": "Replaces every face with the polylines of its boundary rings, holes included.",
+          "type": "string",
+          "enum": [
+            "lineString"
+          ]
+        },
+        {
+          "title": "Polygon",
+          "description": "Rebuilds faces: a closed line string becomes the face it bounds, and a surface or a solid becomes the individual faces it is built from.",
+          "type": "string",
+          "enum": [
+            "polygon"
+          ]
+        },
+        {
+          "title": "Triangular Mesh",
+          "description": "Tessellates a face or a surface into triangles. A solid stays a solid, with its boundary triangulated.",
+          "type": "string",
+          "enum": [
+            "triangularMesh"
+          ]
+        }
       ]
     }
   }

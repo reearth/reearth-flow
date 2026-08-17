@@ -5605,21 +5605,42 @@
         ],
         "properties": {
           "targetType": {
-            "description": "フィーチャーを強制変換するターゲットジオメトリタイプ（例: LineString）",
+            "title": "ターゲットタイプ",
+            "description": "各地物を再表現するジオメトリタイプ。ターゲットが適用できない地物はそのまま通過する",
             "allOf": [
               {
-                "$ref": "#/definitions/CoerceTarget"
+                "$ref": "#/definitions/CoercionTarget"
               }
             ]
           }
         },
         "definitions": {
-          "CoerceTarget": {
-            "type": "string",
-            "enum": [
-              "lineString",
-              "polygon",
-              "triangularMesh"
+          "CoercionTarget": {
+            "oneOf": [
+              {
+                "title": "ラインストリング",
+                "description": "各面を、その境界リング（ホールを含む）のポリラインに置き換える",
+                "type": "string",
+                "enum": [
+                  "lineString"
+                ]
+              },
+              {
+                "title": "ポリゴン",
+                "description": "面を組み立て直す。閉じたラインストリングはそれが囲む面になり、サーフェスやソリッドは構成する個々の面になる",
+                "type": "string",
+                "enum": [
+                  "polygon"
+                ]
+              },
+              {
+                "title": "三角形メッシュ",
+                "description": "面やサーフェスを三角形に分割する。ソリッドはソリッドのまま、境界だけが三角形化される",
+                "type": "string",
+                "enum": [
+                  "triangularMesh"
+                ]
+              }
             ]
           }
         }
@@ -5634,7 +5655,9 @@
       "categories": [
         "Geometry"
       ],
-      "tags": []
+      "tags": [
+        "3d"
+      ]
     },
     {
       "name": "Geometry Extractor",
