@@ -380,6 +380,28 @@
       }
     },
     {
+      "name": "Attribute Table Extractor",
+      "description": "Mueve valores entre rutas de atributos de tipo mapa o lista anidados, siguiendo una tabla de pares de rutas origen/destino indexada por un atributo de tipo de entidad. Una ruta de destino con más de un segmento crea mapas anidados según sea necesario",
+      "parameterI18n": {
+        "": {
+          "title": "Parámetros de Attribute Table Extractor",
+          "description": "Configura la tabla de pares de rutas origen/destino usada para mover valores de atributos anidados"
+        },
+        "dataset": {
+          "title": "URI del Conjunto de Datos",
+          "description": "Ruta o URI del archivo de tabla de extracción. Proporcione esto o datos en línea"
+        },
+        "inline": {
+          "title": "Tabla en Línea",
+          "description": "Contenido de la tabla de extracción proporcionado directamente como JSON. Se usa cuando no se proporciona una URI de conjunto de datos"
+        },
+        "typeAttribute": {
+          "title": "Atributo de Tipo de Entidad",
+          "description": "Atributo cuyo valor selecciona qué conjunto de reglas de la tabla se aplica a la entidad. Por defecto `__citygml_feature_type`"
+        }
+      }
+    },
+    {
       "name": "Boundary Extractor",
       "description": "Extrae el límite de geometrías. Para sólidos/mallas devuelve superficies delimitadoras, para superficies devuelve aristas de límite, para superficies cerradas devuelve geometría vacía",
       "parameterI18n": {
@@ -1195,9 +1217,9 @@
           "title": "Extraer Etiquetas",
           "description": "Nombres de tipos de entidad a aplanar como entidades individuales. Acepta forma calificada (`bldg:Building`), local (`Building`) o notación Clark (`{http://…}Building`). Vacío significa emitir todos los objetos urbanos de nivel superior sin cambios."
         },
-        "flattenMeasureTypes": {
-          "title": "Aplanar Tipos de Medida",
-          "description": "Cuando es verdadero, los elementos con un único atributo `uom` y contenido de texto numérico se convierten a un valor numérico, con la unidad almacenada como clave hermana `{name}_uom`. Por defecto es false."
+        "flattenLeafAttributes": {
+          "title": "Aplanar Atributos Hoja",
+          "description": "Nombres de atributos (p. ej. `uom`) que marcan una hoja para colapsar: un elemento con exactamente uno de estos atributos XML, sin elementos hijos y con contenido de texto numérico se convierte en un valor numérico, y el valor del atributo se almacena como clave hermana `{name}_{attribute}`. Vacío (el valor por defecto) desactiva esto."
         },
         "flattenSingleChildObjects": {
           "title": "Aplanar Nodos de Objeto con Hijo Único",
@@ -1484,7 +1506,7 @@
         "Transform": {
           "expr": {
             "title": "Expression",
-            "description": "Expression over `attributes` and `env` returning a map that becomes the feature's complete attribute set. A result that is not a map, or an expression that fails to evaluate, leaves the attributes unchanged."
+            "description": "Expression over `attributes` and `variables` returning a map that becomes the feature's complete attribute set. A result that is not a map, or an expression that fails to evaluate, leaves the attributes unchanged."
           }
         }
       }

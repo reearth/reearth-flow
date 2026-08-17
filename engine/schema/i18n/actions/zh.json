@@ -380,6 +380,28 @@
       }
     },
     {
+      "name": "Attribute Table Extractor",
+      "description": "根据以要素类型属性为键的源/目标路径对照表，在嵌套的map或list属性路径之间移动值。当目标路径包含多个片段时，会按需创建嵌套map",
+      "parameterI18n": {
+        "": {
+          "title": "Attribute Table Extractor 参数",
+          "description": "配置用于移动嵌套属性值的源/目标路径对照表"
+        },
+        "dataset": {
+          "title": "数据集URI",
+          "description": "抽取表文件的路径或URI。提供此项或内联数据二选一"
+        },
+        "inline": {
+          "title": "内联表",
+          "description": "直接以JSON形式提供的抽取表内容。在未提供数据集URI时使用"
+        },
+        "typeAttribute": {
+          "title": "要素类型属性",
+          "description": "其值用于选择表中应用于该要素的规则集的属性。默认为`__citygml_feature_type`"
+        }
+      }
+    },
+    {
       "name": "Boundary Extractor",
       "description": "提取几何体的边界。对于实体/网格返回边界面，对于面返回边界边，对于封闭面返回空几何体",
       "parameterI18n": {
@@ -1195,9 +1217,9 @@
           "title": "提取标签",
           "description": "要展开为独立要素的要素类型名称。接受限定形式（`bldg:Building`）、本地形式（`Building`）或Clark记法（`{http://…}Building`）。留空表示原样输出所有顶级城市对象。"
         },
-        "flattenMeasureTypes": {
-          "title": "展平度量类型",
-          "description": "为true时，具有单个`uom`属性和数值文本内容的元素将被转换为数值，单位以兄弟键`{name}_uom`存储。默认为false。"
+        "flattenLeafAttributes": {
+          "title": "展平叶属性",
+          "description": "标记可折叠叶节点的属性名（例如`uom`）：只含此列表中一个XML属性、没有子元素且文本内容为数值的元素会被转换为数值，该属性的值存储为兄弟键`{name}_{attribute}`。默认为空，表示禁用此功能。"
         },
         "flattenSingleChildObjects": {
           "title": "展平单子对象节点",
@@ -1484,7 +1506,7 @@
         "Transform": {
           "expr": {
             "title": "Expression",
-            "description": "Expression over `attributes` and `env` returning a map that becomes the feature's complete attribute set. A result that is not a map, or an expression that fails to evaluate, leaves the attributes unchanged."
+            "description": "Expression over `attributes` and `variables` returning a map that becomes the feature's complete attribute set. A result that is not a map, or an expression that fails to evaluate, leaves the attributes unchanged."
           }
         }
       }

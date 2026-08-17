@@ -370,7 +370,7 @@ async fn read_obj(
 
         if let Some(ref material_file) = params.material_file {
             let external_mtl = material_file
-                .eval_string_env_only(ctx.env_vars.clone())
+                .eval_string_variables_only(ctx.variables.clone())
                 .map_err(|e| {
                     SourceError::ObjReader(format!("Failed to evaluate material_file: {e:?}"))
                 })?;

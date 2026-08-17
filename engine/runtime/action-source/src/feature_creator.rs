@@ -73,7 +73,7 @@ impl SourceFactory for FeatureCreatorFactory {
             .map_err(|e| {
                 SourceError::FeatureCreatorFactory(format!("Failed to compile params: {e:?}"))
             })?
-            .eval_env_only(ctx.env_vars.clone())
+            .eval_variables_only(ctx.variables.clone())
             .map_err(|e| {
                 SourceError::FeatureCreatorFactory(format!("Failed to evaluate creator: {e:?}"))
             })?;

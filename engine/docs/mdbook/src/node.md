@@ -8,7 +8,7 @@
   with:
     conditions:
     - expr: |
-        env.get("__value").extension == "gml"
+        attributes["extension"] == "gml"
     outputPort: default
 
 - id: d3773442-1ba8-47c1-b7c1-0bafa23adec9

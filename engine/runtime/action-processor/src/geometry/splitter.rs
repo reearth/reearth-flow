@@ -388,7 +388,7 @@ impl GeometrySplitter {
         new_feature.set_geometry(member);
         new_feature.extend(attributes);
         new_feature.insert(
-            "_split_index",
+            "__split_idx",
             AttributeValue::Number(serde_json::Number::from(index)),
         );
         fw.send(ExecutorContext::new_with_context_feature_and_port(
@@ -415,7 +415,7 @@ impl GeometrySplitter {
                 for (index, polygon) in polygons.into_iter().enumerate() {
                     let mut new_feature = ctx.feature.clone();
                     new_feature.insert(
-                        Attribute::new("_split_index"),
+                        Attribute::new("__split_idx"),
                         AttributeValue::Number((index + 1).into()),
                     );
                     new_feature.geometry_mut().value =
@@ -430,7 +430,7 @@ impl GeometrySplitter {
                 for (index, line_string) in line_strings.into_iter().enumerate() {
                     let mut new_feature = ctx.feature.clone();
                     new_feature.insert(
-                        Attribute::new("_split_index"),
+                        Attribute::new("__split_idx"),
                         AttributeValue::Number((index + 1).into()),
                     );
                     new_feature.geometry_mut().value =
@@ -460,7 +460,7 @@ impl GeometrySplitter {
                 for (index, polygon) in polygons.into_iter().enumerate() {
                     let mut new_feature = ctx.feature.clone();
                     new_feature.insert(
-                        Attribute::new("_split_index"),
+                        Attribute::new("__split_idx"),
                         AttributeValue::Number((index + 1).into()),
                     );
                     new_feature.geometry_mut().value =
@@ -475,7 +475,7 @@ impl GeometrySplitter {
                 for (index, line_string) in line_strings.into_iter().enumerate() {
                     let mut new_feature = ctx.feature.clone();
                     new_feature.insert(
-                        Attribute::new("_split_index"),
+                        Attribute::new("__split_idx"),
                         AttributeValue::Number((index + 1).into()),
                     );
                     new_feature.geometry_mut().value =
@@ -522,7 +522,7 @@ impl GeometrySplitter {
                 let polygon = Polygon3D::new(ring, vec![]);
                 let mut new_feature = ctx.feature.clone();
                 new_feature.insert(
-                    Attribute::new("_split_index"),
+                    Attribute::new("__split_idx"),
                     AttributeValue::Number(serde_json::Number::from(index + 1)),
                 );
                 new_feature.geometry_mut().value =
@@ -544,7 +544,7 @@ impl GeometrySplitter {
             let polygon = Polygon3D::new(ring, vec![]);
             let mut new_feature = ctx.feature.clone();
             new_feature.insert(
-                Attribute::new("_split_index"),
+                Attribute::new("__split_idx"),
                 AttributeValue::Number(serde_json::Number::from(index + 1)),
             );
             new_feature.geometry_mut().value =
