@@ -183,6 +183,18 @@ impl Sink for MVTWriter {
         "MVT Writer"
     }
 
+    #[cfg(feature = "new-geometry")]
+    fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
+        self.process_new_geometry(&ctx)?;
+        Ok(())
+    }
+
+    #[cfg(feature = "new-geometry")]
+    fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {
+        self.finish_new_geometry(ctx)?;
+        Ok(())
+    }
+
     #[cfg(not(feature = "new-geometry"))]
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         if ctx.port == *SCHEMA_PORT {
