@@ -56,6 +56,10 @@ impl ProcessorFactory for GeometryCoercerFactory {
         &["Geometry"]
     }
 
+    fn tags(&self) -> &[&'static str] {
+        &["3d"]
+    }
+
     fn get_input_ports(&self) -> Vec<Port> {
         vec![FEATURES_PORT.clone()]
     }
@@ -94,8 +98,17 @@ impl ProcessorFactory for GeometryCoercerFactory {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 enum CoercionTarget {
+    /// # Line String
+    /// Replaces every face with the polylines of its boundary rings, holes
+    /// included.
     LineString,
+    /// # Polygon
+    /// Rebuilds faces: a closed line string becomes the face it bounds, and a
+    /// surface or a solid becomes the individual faces it is built from.
     Polygon,
+    /// # Triangular Mesh
+    /// Tessellates a face or a surface into triangles. A solid stays a solid,
+    /// with its boundary triangulated.
     TriangularMesh,
 }
 
@@ -116,7 +129,9 @@ impl From<&CoercionTarget> for ops::CoercionTarget {
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
 #[serde(rename_all = "camelCase")]
 struct GeometryCoercer {
-    /// Target geometry type to coerce features to (e.g., LineString)
+    /// # Target Type
+    /// Geometry type to re-represent each feature as. A feature the target does
+    /// not apply to passes through unchanged.
     target_type: CoercionTarget,
 }
 
@@ -130,8 +145,8 @@ impl Processor for GeometryCoercer {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        // Coerced on a copy: a partly-coerced collection leaves the geometry
-        // moved-from, and the input must stay intact to pass through unchanged.
+        // The geometry sits behind a shared `Arc`, so it cannot be borrowed mutably
+        // the way coercion needs. Work on a local copy instead.
         let mut geometry = (*ctx.feature.geometry).clone();
         let target: ops::CoercionTarget = (&self.target_type).into();
         let coerced =

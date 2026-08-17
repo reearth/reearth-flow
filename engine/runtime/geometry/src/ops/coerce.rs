@@ -27,8 +27,9 @@ pub enum CoercionTarget {
 
 /// Re-represent a geometry as [`CoercionTarget`].
 ///
-/// Coordinates are carried over verbatim: a ring is never re-wound and never
-/// closed, so a chain that was not a ring in the source does not become one here.
+/// Coordinates are carried over verbatim: a ring is never re-wound, and an open
+/// chain is never closed. The exception is a mesh triangle, whose implicitly
+/// closed boundary is written out with the first vertex repeated.
 ///
 /// [`UnsupportedOperation`] means **nothing changed** — the geometry already is
 /// the target type, or its coordinates do not satisfy what the target needs (an
@@ -40,8 +41,8 @@ pub enum CoercionTarget {
 /// cannot be coerced stays as it is, and the container reports "nothing changed"
 /// only when no member did.
 ///
-/// A curve carries no appearance, so coercing a face to
-/// [`CoercionTarget::LineString`] drops its materials and UV.
+/// Only [`CoercionTarget::TriangularMesh`] keeps appearance; the other targets
+/// drop materials and UV.
 #[enum_dispatch::enum_dispatch]
 pub trait Coerce {
     /// Re-represent this geometry as `target`. The default body reports nothing
