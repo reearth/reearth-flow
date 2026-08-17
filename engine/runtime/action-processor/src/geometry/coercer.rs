@@ -137,8 +137,8 @@ struct GeometryCoercer {
 
 impl Processor for GeometryCoercer {
     /// Geometry the target does not apply to leaves via `features` with the type
-    /// it arrived with, matching FME's GeometryCoercer. A multi-part geometry is
-    /// coerced member by member, so one feature in is always one feature out.
+    /// it arrived with. A multi-part geometry is coerced member by member, so one
+    /// feature in is always one feature out.
     #[cfg(feature = "new-geometry")]
     fn process(
         &mut self,
@@ -305,7 +305,7 @@ mod tests {
 
     // The target may simply not apply — the geometry already is that type, or
     // has no such counterpart. Either way the feature carries on unchanged
-    // rather than stopping the node, as FME's GeometryCoercer does.
+    // rather than stopping the node.
     #[test]
     fn geometry_the_target_does_not_apply_to_passes_through_unchanged() {
         for geometry in [
