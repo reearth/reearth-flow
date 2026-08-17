@@ -5,19 +5,24 @@ import ProjectRecoveryDialog from "./RecoveryDialog";
 
 // recoveryHooks reaches the network and the yjs document; neither is under test
 // here. What is under test is that the dialog can MOUNT.
+// Mirrors what the dialog destructures. previewDocRef matters: handleDialogClose
+// dereferences .current, so a missing ref would throw rather than fail clearly.
 vi.mock("./recoveryHooks", () => ({
   default: () => ({
     history: [],
-    isFetching: false,
     latestProjectSnapshotVersion: undefined,
-    selectedProjectSnapshotVersion: undefined,
-    previewedProjectSnapshotVersion: undefined,
+    previewDocRef: { current: null },
+    previewDocYWorkflows: null,
+    selectedProjectSnapshotVersion: null,
+    isFetching: false,
     isLoadingPreview: false,
+    isReverting: false,
     isCorruptedVersion: false,
     openVersionConfirmationDialog: false,
     setOpenVersionConfirmationDialog: vi.fn(),
-    handleProjectSnapshotSelect: vi.fn(),
-    handleProjectRollback: vi.fn(),
+    onProjectRollback: vi.fn(),
+    onVersionSelection: vi.fn(),
+    onWorkflowCorruption: vi.fn(),
   }),
 }));
 

@@ -103,7 +103,6 @@ export default ({
 
       if (!updates || !updates.length || !yDoc) {
         console.error("No updates found or yDoc not available");
-        setIsReverting(false);
         return;
       }
 
@@ -135,8 +134,11 @@ export default ({
         ),
         variant: "destructive",
       });
+    } finally {
+      // finally, not a trailing statement: the catch above returns, and so do
+      // the guards, so any of them would otherwise leave this stuck true.
+      setIsReverting(false);
     }
-    setIsReverting(false);
   }, [
     projectId,
     yDoc,
@@ -183,7 +185,6 @@ export default ({
         const updates = previewData.previewSnapshot?.updates;
         if (!updates || !updates.length) {
           console.error("No updates found in snapshot");
-          setIsLoadingPreview(false);
           return;
         }
 
@@ -211,8 +212,9 @@ export default ({
           ),
           variant: "destructive",
         });
+      } finally {
+        setIsLoadingPreview(false);
       }
-      setIsLoadingPreview(false);
     },
     [
       useGetPreviewProjectSnapshot,

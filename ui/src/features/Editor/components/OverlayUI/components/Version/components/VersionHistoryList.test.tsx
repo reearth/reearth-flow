@@ -22,14 +22,16 @@ describe("VersionHistoryList", () => {
   ];
 
   test("renders every snapshot, newest first", () => {
-    const { container } = render(<VersionHistoryList snapshots={snapshots} />);
+    render(<VersionHistoryList snapshots={snapshots} />);
 
-    const labels = Array.from(
-      container.querySelectorAll("p.flex-2.self-center"),
-    ).map((el) => el.textContent);
-    // Newest (id 2, later timestamp) should be rendered before the older one.
-    expect(labels).toHaveLength(2);
-    expect(labels[0]).toBe("before migration");
+    // Assert on visible text order rather than CSS selectors: restyling must not
+    // break this, and a real ordering regression must not hide behind markup.
+    // snapshotNumber 2 is newer, so its label comes before the older row's date.
+    const newest = screen.getByText("before migration");
+    const oldest = screen.getAllByText(formatDate(snapshots[0].timestamp))[0];
+    expect(
+      newest.compareDocumentPosition(oldest) & Node.DOCUMENT_POSITION_FOLLOWING,
+    ).toBeTruthy();
   });
 
   test("falls back to a formatted timestamp when the label is empty", () => {

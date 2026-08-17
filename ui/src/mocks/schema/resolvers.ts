@@ -545,19 +545,19 @@ export const resolvers = {
       // behaviour: auto-versioning keeps appending entries, not just one.
       return [
         {
-          id: 3,
+          snapshotNumber: 3,
           label: "before migration",
           timestamp: "2024-01-28T12:00:00Z",
           size: 4096,
         },
         {
-          id: 2,
+          snapshotNumber: 2,
           label: "auto",
           timestamp: "2024-01-15T09:30:00Z",
           size: 3072,
         },
         {
-          id: 1,
+          snapshotNumber: 1,
           label: "initial import",
           timestamp: "2024-01-01T10:00:00Z",
           size: 2048,

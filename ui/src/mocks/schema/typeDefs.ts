@@ -200,6 +200,7 @@ export const typeDefs = `
     debug: Boolean
     id: ID!
     workerLogsURL: String
+    userFacingLogsURL: String
     outputURLs: [String!]
     startedAt: DateTime!
     status: JobStatus!
@@ -277,7 +278,7 @@ export const typeDefs = `
   }
 
   type NamedSnapshot {
-    id: Int!
+    snapshotNumber: Int!
     label: String!
     timestamp: DateTime!
     size: Int!
