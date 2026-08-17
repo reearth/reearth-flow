@@ -8,11 +8,13 @@
 //! chains through to the concrete leaf. `GeometryCollection` and the per-frame
 //! `Collection`s recurse by hand over their children.
 
+pub mod coerce;
 pub mod hole;
 pub mod reproject;
 pub mod split;
 pub mod triangulation;
 
+pub use coerce::{Coerce, CoercionTarget};
 pub(crate) use hole::{area_2d, emit_face_2d, emit_face_3d, emit_triangles_3d};
 pub use hole::{CountHoles, ExtractHoles, ExtractedPart};
 pub(crate) use reproject::{

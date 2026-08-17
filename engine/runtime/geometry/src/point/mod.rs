@@ -78,3 +78,8 @@ crate::unsupported!(Point3D: CountHoles);
 // A point bounds no area, so there is nothing to take apart.
 crate::unsupported!(Point2D: ExtractHoles);
 crate::unsupported!(Point3D: ExtractHoles);
+
+// A single position is none of the coercion targets, and has no vertices to
+// re-arrange into one.
+crate::unsupported!(Point2D: Coerce);
+crate::unsupported!(Point3D: Coerce);

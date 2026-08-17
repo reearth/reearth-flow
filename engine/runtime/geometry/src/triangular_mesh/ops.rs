@@ -317,6 +317,112 @@ impl RemoveAppearance for TriangularMesh3D {
     }
 }
 
+use crate::line_string::{LineString2D, LineString3D};
+use crate::ops::coerce::{triangle_ring, unchanged, wrap_2d, wrap_3d};
+use crate::ops::triangulation::Cache;
+use crate::ops::{Coerce, CoercionTarget};
+
+impl Coerce for TriangularMesh2D {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        _cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        let vertices = self.vertices();
+        let frame = self.frame();
+        let elevation = self.elevation();
+        match target {
+            CoercionTarget::TriangularMesh => Err(unchanged::<Self>()),
+            CoercionTarget::LineString => {
+                let parts = self
+                    .triangles()
+                    .map(|triangle| {
+                        let ring = triangle_ring(vertices, triangle);
+                        match elevation {
+                            None => Euclidean2DGeometry::LineString(LineString2D::from_coords(
+                                frame.clone(),
+                                ring,
+                            )),
+                            Some(elevation) => Euclidean2DGeometry::LineString(
+                                LineString2D::from_coords_at_elevation(
+                                    frame.clone(),
+                                    ring,
+                                    elevation,
+                                ),
+                            ),
+                        }
+                    })
+                    .collect();
+                wrap_2d(parts).ok_or_else(unchanged::<Self>)
+            }
+            CoercionTarget::Polygon => {
+                let no_holes = Vec::<Vec<[f64; 2]>>::new();
+                let parts =
+                    self.triangles()
+                        .map(|triangle| {
+                            let ring = triangle_ring(vertices, triangle);
+                            match elevation {
+                                None => Euclidean2DGeometry::Polygon(Box::new(
+                                    Polygon2D::from_rings(frame.clone(), ring, no_holes.clone()),
+                                )),
+                                Some(elevation) => Euclidean2DGeometry::Polygon(Box::new(
+                                    Polygon2D::from_rings_at_elevation(
+                                        frame.clone(),
+                                        ring,
+                                        no_holes.clone(),
+                                        elevation,
+                                    ),
+                                )),
+                            }
+                        })
+                        .collect();
+                wrap_2d(parts).ok_or_else(unchanged::<Self>)
+            }
+        }
+    }
+}
+
+impl Coerce for TriangularMesh3D {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        _cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        let vertices = self.vertices();
+        let frame = self.frame();
+        match target {
+            CoercionTarget::TriangularMesh => Err(unchanged::<Self>()),
+            CoercionTarget::LineString => {
+                let parts = self
+                    .triangles()
+                    .map(|triangle| {
+                        let ring = triangle_ring(vertices, triangle);
+                        Euclidean3DGeometry::LineString(LineString3D::from_coords(
+                            frame.clone(),
+                            ring,
+                        ))
+                    })
+                    .collect();
+                wrap_3d(parts).ok_or_else(unchanged::<Self>)
+            }
+            CoercionTarget::Polygon => {
+                let parts = self
+                    .triangles()
+                    .map(|triangle| {
+                        let ring = triangle_ring(vertices, triangle);
+                        Euclidean3DGeometry::Polygon(Box::new(Polygon3D::from_rings(
+                            frame.clone(),
+                            ring,
+                            Vec::<Vec<[f64; 3]>>::new(),
+                        )))
+                    })
+                    .collect();
+                wrap_3d(parts).ok_or_else(unchanged::<Self>)
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
