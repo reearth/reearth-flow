@@ -1,7 +1,7 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
-use indexmap::IndexMap;
-use reearth_flow_types::{Attribute, AttributeValue};
+use reearth_flow_types::Attributes;
 use tinymvt::geometry::GeometryEncoder;
 use tinymvt::tag::TagsEncoder;
 use tinymvt::vector_tile;
@@ -18,7 +18,7 @@ pub(super) enum SlicedGeom {
 pub(super) struct SlicedFeature {
     pub(super) layer_name: String,
     pub(super) geom: SlicedGeom,
-    pub(super) properties: IndexMap<Attribute, AttributeValue>,
+    pub(super) properties: Arc<Attributes>,
 }
 
 #[derive(Default)]
@@ -31,24 +31,9 @@ fn quantize(points: &[[f64; 2]], extent: i32) -> Vec<[i32; 2]> {
     points
         .iter()
         .map(|&[x, y]| {
-            [
-                (x * extent as f64 + 0.5) as i32,
-                (y * extent as f64 + 0.5) as i32,
-            ]
+            [(x * extent as f64).round() as i32, (y * extent as f64).round() as i32]
         })
         .collect()
-}
-
-// Positive = clockwise (tinymvt/MVT convention); degenerate rings area to 0.
-fn signed_area(ring: &[[i32; 2]]) -> i64 {
-    let n = ring.len();
-    let mut area = 0i64;
-    for i in 0..n {
-        let a = ring[i];
-        let b = ring[(i + 1) % n];
-        area += a[0] as i64 * b[1] as i64 - b[0] as i64 * a[1] as i64;
-    }
-    area
 }
 
 fn collinear(a: [i32; 2], b: [i32; 2], c: [i32; 2]) -> bool {
@@ -91,13 +76,13 @@ pub(super) fn make_tile(extent: i32, feats: &[SlicedFeature]) -> crate::errors::
             SlicedGeom::Polygon(parts) => {
                 for PolygonPart { exterior, holes } in parts {
                     let ring = simplify(&quantize(exterior, extent), true);
-                    if ring.len() < 3 || signed_area(&ring) <= 0 {
+                    if ring.len() < 3 {
                         continue;
                     }
                     geom_enc.add_ring(ring);
                     for hole in holes {
                         let ring = simplify(&quantize(hole, extent), true);
-                        if ring.len() >= 3 && signed_area(&ring) > 0 {
+                        if ring.len() >= 3 {
                             geom_enc.add_ring(ring);
                         }
                     }
@@ -125,7 +110,7 @@ pub(super) fn make_tile(extent: i32, feats: &[SlicedFeature]) -> crate::errors::
         }
 
         let layer = layers.entry(feature.layer_name.clone()).or_default();
-        for (key, value) in &feature.properties {
+        for (key, value) in feature.properties.iter() {
             convert_properties(&mut layer.tags_enc, &key.inner().to_string(), value);
         }
         layer.features.push(vector_tile::tile::Feature {

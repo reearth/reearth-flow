@@ -162,7 +162,7 @@ fn to_sliced_feature(layer_name: &str, geom: TiledGeom, feature: &Feature) -> Sl
     SlicedFeature {
         layer_name: layer_name.to_string(),
         geom,
-        properties: (*feature.attributes).clone(),
+        properties: feature.attributes.clone(),
     }
 }
 

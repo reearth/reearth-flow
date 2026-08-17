@@ -162,15 +162,16 @@ fn ring_area(ring: &[[f64; 2]]) -> f64 {
     area / 2.0
 }
 
-// Exterior negative, holes positive; the emit-time area filter in tile.rs expects this.
 fn normalize_winding(mut rings: Vec<Ring>) -> (Ring, Vec<Ring>) {
     let mut holes = rings.split_off(1);
     let mut exterior = rings.remove(0);
     if ring_area(&exterior) > 0.0 {
+        tracing::error!("MVT Writer: polygon exterior ring is not CCW as required; fixing winding");
         exterior.reverse();
     }
     for hole in &mut holes {
         if ring_area(hole) < 0.0 {
+            tracing::error!("MVT Writer: polygon hole ring is not CW as required; fixing winding");
             hole.reverse();
         }
     }
