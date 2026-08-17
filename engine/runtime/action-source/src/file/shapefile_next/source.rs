@@ -175,8 +175,6 @@ async fn read_shapefile(
     let mut archive = archive::open(content, &params.encoding)?;
     let converter = ShapeConverter::new(archive.epsg, params.force_2d);
 
-    // Records are converted and sent one at a time rather than collected first,
-    // so the whole table never has to be held at once.
     let mut features = Vec::new();
     for record in archive.records() {
         let (shape, record) = record.map_err(|e| {
