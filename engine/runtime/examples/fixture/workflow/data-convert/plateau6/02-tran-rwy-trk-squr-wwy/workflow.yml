@@ -69,7 +69,9 @@ graphs:
           minZoom: 8
           maxZoom: 16
           extent: 65536
-          output: tran
+          output:
+            type: string
+            value: tran
 
     edges:
       - id: 70e3d5c3-bb1e-4528-ac75-778a502fbf83

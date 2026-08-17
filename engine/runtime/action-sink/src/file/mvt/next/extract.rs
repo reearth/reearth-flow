@@ -1,6 +1,6 @@
 use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
 use reearth_flow_geometry::ops::reproject::transform_coords_3d;
-use reearth_flow_geometry::ops::ReprojectionCache;
+use reearth_flow_geometry::ops::{ReprojectionCache, Split};
 use reearth_flow_geometry::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
 const WGS84_2D: EpsgCode = EpsgCode::new(4326);
@@ -112,6 +112,17 @@ fn collect_2d(g: &Euclidean2DGeometry, cache: &mut ReprojectionCache, out: &mut 
         Euclidean2DGeometry::Collection(c) => {
             for member in c.members() {
                 collect_2d(member, cache, out);
+            }
+        }
+        Euclidean2DGeometry::PolygonMesh(mesh) => {
+            let mut faces = Euclidean2DGeometry::PolygonMesh(mesh.clone());
+            let mut emitted = Vec::new();
+            if faces.split(&mut |geom, _attrs| emitted.push(geom)).is_err() {
+                tracing::warn!("MVT Writer: failed to split polygon mesh into faces, skipping");
+                return;
+            }
+            for face in &emitted {
+                collect(face, cache, out);
             }
         }
         other => tracing::warn!("MVT Writer: unsupported 2D geometry, skipping: {other:?}"),
