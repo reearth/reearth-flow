@@ -6,10 +6,11 @@ use tinymvt::geometry::GeometryEncoder;
 use tinymvt::tag::TagsEncoder;
 use tinymvt::vector_tile;
 
+use super::slice::PolygonPart;
 use crate::file::mvt::tags::convert_properties;
 
 pub(super) enum SlicedGeom {
-    Polygon(Vec<(Vec<[f64; 2]>, Vec<Vec<[f64; 2]>>)>),
+    Polygon(Vec<PolygonPart>),
     LineString(Vec<Vec<[f64; 2]>>),
     Point(Vec<[f64; 2]>),
 }
@@ -88,7 +89,7 @@ pub(super) fn make_tile(extent: i32, feats: &[SlicedFeature]) -> crate::errors::
         let mut geom_enc = GeometryEncoder::new();
         let geom_type = match &feature.geom {
             SlicedGeom::Polygon(parts) => {
-                for (exterior, holes) in parts {
+                for PolygonPart { exterior, holes } in parts {
                     let ring = simplify(&quantize(exterior, extent), true);
                     if ring.len() < 3 || signed_area(&ring) <= 0 {
                         continue;

@@ -67,7 +67,11 @@ fn to_lnglat_3d(
         tracing::warn!("MVT Writer: failed to reproject to WGS84: {e:?}");
         return None;
     }
-    Some(pts.into_iter().map(|[lat, lon, _height]| [lon, lat]).collect())
+    Some(
+        pts.into_iter()
+            .map(|[lat, lon, _height]| [lon, lat])
+            .collect(),
+    )
 }
 
 // Well-formed rings are closed (first == last); an unclosed ring is corrupt
@@ -94,8 +98,8 @@ fn collect_2d(g: &Euclidean2DGeometry, cache: &mut ReprojectionCache, out: &mut 
             }
         }
         Euclidean2DGeometry::Polygon(poly) => {
-            let Some(exterior) = to_lnglat_2d(poly.frame(), poly.exterior(), cache)
-                .and_then(require_closed)
+            let Some(exterior) =
+                to_lnglat_2d(poly.frame(), poly.exterior(), cache).and_then(require_closed)
             else {
                 return;
             };
@@ -142,8 +146,8 @@ fn collect_3d(g: &Euclidean3DGeometry, cache: &mut ReprojectionCache, out: &mut 
             }
         }
         Euclidean3DGeometry::Polygon(poly) => {
-            let Some(exterior) = to_lnglat_3d(poly.frame(), poly.exterior(), cache)
-                .and_then(require_closed)
+            let Some(exterior) =
+                to_lnglat_3d(poly.frame(), poly.exterior(), cache).and_then(require_closed)
             else {
                 return;
             };

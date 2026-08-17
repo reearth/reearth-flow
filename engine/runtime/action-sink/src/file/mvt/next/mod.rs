@@ -17,7 +17,7 @@ use super::sink::{MVTWriter, MVTWriterCompiledParam};
 use super::tileid::TileIdMethod;
 use super::tiling::{TileContent, TileMetadata, VectorLayer};
 use extract::extract;
-use slice::{slice_leaves, PolygonPart, TiledGeom, TileKey};
+use slice::{slice_leaves, TileKey, TiledGeom};
 use tile::{make_tile, SlicedFeature, SlicedGeom};
 
 const MAX_DETAIL: u32 = 12;
@@ -134,9 +134,18 @@ fn write_tileset(
     accum
         .by_tile
         .par_iter()
-        .try_for_each(|(&(zoom, x, y), feats)| write_tile(ctx, output, zoom, x, y, feats, default_extent))?;
+        .try_for_each(|(&(zoom, x, y), feats)| {
+            write_tile(ctx, output, zoom, x, y, feats, default_extent)
+        })?;
 
-    write_tilejson(ctx, output, min_zoom, max_zoom, &accum.content, &accum.layer_names)?;
+    write_tilejson(
+        ctx,
+        output,
+        min_zoom,
+        max_zoom,
+        &accum.content,
+        &accum.layer_names,
+    )?;
 
     if let Some(compress_rel) = compress_output {
         compress_tileset(ctx, output, compress_rel)?;
@@ -146,12 +155,7 @@ fn write_tileset(
 
 fn to_sliced_feature(layer_name: &str, geom: TiledGeom, feature: &Feature) -> SlicedFeature {
     let geom = match geom {
-        TiledGeom::Polygon(parts) => SlicedGeom::Polygon(
-            parts
-                .into_iter()
-                .map(|PolygonPart { exterior, holes }| (exterior, holes))
-                .collect(),
-        ),
+        TiledGeom::Polygon(parts) => SlicedGeom::Polygon(parts),
         TiledGeom::LineString(lines) => SlicedGeom::LineString(lines),
         TiledGeom::Point(points) => SlicedGeom::Point(points),
     };
@@ -218,8 +222,14 @@ fn write_tilejson(
             fields: HashMap::new(),
         })
         .collect();
-    let metadata =
-        TileMetadata::from_tile_content(basename, min_zoom, max_zoom, content, tiles, vector_layers);
+    let metadata = TileMetadata::from_tile_content(
+        basename,
+        min_zoom,
+        max_zoom,
+        content,
+        tiles,
+        vector_layers,
+    );
 
     let metadata = serde_json::to_string_pretty(&metadata)
         .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;

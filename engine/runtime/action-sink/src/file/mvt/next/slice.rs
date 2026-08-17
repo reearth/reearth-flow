@@ -220,10 +220,9 @@ fn clip_ring_band(ring: &Ring, axis: usize, k1: f64, k2: f64) -> Ring {
 }
 
 fn ring_bounds(ring: &Ring, axis: usize) -> (f64, f64) {
-    ring.iter()
-        .fold((f64::MAX, f64::MIN), |(lo, hi), c| {
-            (lo.min(c[axis]), hi.max(c[axis]))
-        })
+    ring.iter().fold((f64::MAX, f64::MIN), |(lo, hi), c| {
+        (lo.min(c[axis]), hi.max(c[axis]))
+    })
 }
 
 fn clip_polygon(
@@ -278,7 +277,11 @@ fn clip_polygon(
             }
             let part_holes: Vec<Ring> = clipped.filter(|h| h.len() >= 3).collect();
 
-            let key: TileKey = (zoom, xi.rem_euclid(1 << zoom) as u32, yi.rem_euclid(1 << zoom) as u32);
+            let key: TileKey = (
+                zoom,
+                xi.rem_euclid(1 << zoom) as u32,
+                yi.rem_euclid(1 << zoom) as u32,
+            );
             out.entry(key).or_default().push(PolygonPart {
                 exterior: part_exterior,
                 holes: part_holes,
@@ -326,7 +329,11 @@ fn clip_line_string(
                 .map(|&[x, y]| [x * z_scale - xi as f64, y * z_scale - yi as f64])
                 .collect();
 
-            let key: TileKey = (zoom, xi.rem_euclid(1 << zoom) as u32, yi.rem_euclid(1 << zoom) as u32);
+            let key: TileKey = (
+                zoom,
+                xi.rem_euclid(1 << zoom) as u32,
+                yi.rem_euclid(1 << zoom) as u32,
+            );
             out.entry(key).or_default().push(local);
         }
     }
