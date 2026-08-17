@@ -833,7 +833,7 @@ describe("a CityGML feature's per-LOD collection", () => {
       coordinates: unknown[];
       lod: number;
     };
-    // Lowest level wins, matching the legacy CityGML renderer's preference.
+    // LOD1, matching the legacy CityGML renderer's preference.
     expect(geometry.lod).toBe(1);
     // One member's worth of polygons, not three.
     expect(geometry.coordinates).toHaveLength(1);
@@ -843,6 +843,56 @@ describe("a CityGML feature's per-LOD collection", () => {
     const result = transformNextFeature(cityGmlFeature([2, 3]));
 
     expect(result.geometry).toMatchObject({ lod: 2 });
+  });
+
+  test("skips a footprint in favour of a solid", () => {
+    // LOD0 is a footprint — one flat surface at ground level. Preferring it
+    // because it is the smallest draws a city as flat polygons instead of as
+    // buildings, and with heights normalized to the ground they are all but
+    // invisible. The legacy renderer asked for LOD1 first, and so does this.
+    expect(
+      transformNextFeature(cityGmlFeature([0, 1, 2])).geometry,
+    ).toMatchObject({ lod: 1 });
+    expect(transformNextFeature(cityGmlFeature([0, 2])).geometry).toMatchObject(
+      {
+        lod: 2,
+      },
+    );
+  });
+
+  test("holds the finest level for the on-select upgrade", () => {
+    // The map draws LOD1 and swaps in the finest level when a feature is
+    // selected, as legacy did — legacy could, because it held the engine's
+    // whole record. This holds the one extra level that needs, and no more.
+    const result = transformNextFeature(cityGmlFeature([0, 1, 2, 3]));
+
+    expect(result.geometry).toMatchObject({ lod: 1 });
+    expect(result.lodDetail).toMatchObject({ lod: 3 });
+    expect((result.lodDetail?.geometry as { type: string }).type).toBe(
+      "MultiPolygon",
+    );
+  });
+
+  test("holds nothing extra when the drawn level is already the finest", () => {
+    expect(transformNextFeature(cityGmlFeature([1])).lodDetail).toBeUndefined();
+    expect(transformNextFeature(cityGmlFeature([2])).lodDetail).toBeUndefined();
+  });
+
+  test("keeps the finer level off the geometry, so it is not a column", () => {
+    // `useDataColumnizer` builds a column per geometry key; a second blob of
+    // coordinates there is noise in the table.
+    const result = transformNextFeature(cityGmlFeature([1, 2]));
+
+    expect(result.geometry).not.toHaveProperty("lodDetail");
+    expect(result.lodDetail).toBeDefined();
+  });
+
+  test("still draws a file that has nothing but footprints", () => {
+    // Nothing preferred is present, so the lowest declared level is drawn
+    // rather than nothing at all.
+    expect(transformNextFeature(cityGmlFeature([0])).geometry).toMatchObject({
+      lod: 0,
+    });
   });
 
   test("swaps member axes through the collection", () => {
@@ -915,6 +965,185 @@ describe("a CityGML feature's per-LOD collection", () => {
       frame: "EPSG:6697",
       lod: 2,
     });
+  });
+
+  test("carries appearance through as the renderer's colour fields", () => {
+    // Legacy got `materials` and `polygonMaterials` for free, by passing the
+    // engine's record through. The new model keeps appearance per leaf, so it
+    // is projected onto the same two fields — otherwise every building falls
+    // back to the roof/wall/floor heuristic and a coloured file looks wrong.
+    const result = transformNextFeature(
+      feature({
+        Euclidean3D: {
+          PolygonMesh: {
+            frame: { Crs: 6697 },
+            faces: [
+              {
+                exterior: [
+                  [35.6, 139.7, 0],
+                  [35.6, 139.8, 0],
+                  [35.7, 139.8, 9],
+                ],
+              },
+              {
+                exterior: [
+                  [35.6, 139.7, 0],
+                  [35.6, 139.8, 0],
+                  [35.7, 139.8, 3],
+                ],
+              },
+            ],
+            appearance: {
+              materials: [
+                {
+                  Phong: {
+                    diffuse: [0.8, 0.2, 0.1],
+                    transparency: 0.25,
+                    specular: [0, 0, 0],
+                    emissive: [0, 0, 0],
+                    ambient_intensity: 0.2,
+                    shininess: 0.2,
+                  },
+                },
+              ],
+              themes: [{ theme: "rgbTexture", front: { PerFace: [0, null] } }],
+              default_theme: "rgbTexture",
+            },
+          },
+        },
+      }),
+    );
+
+    expect(result.geometry).toMatchObject({
+      materials: [{ diffuseColor: [0.8, 0.2, 0.1], transparency: 0.25 }],
+      // One entry per surface; the second face is unbound.
+      polygonMaterials: [0, null],
+    });
+  });
+
+  test("reads the default theme's binding, not just the first", () => {
+    const result = transformNextFeature(
+      feature({
+        Euclidean3D: {
+          Polygon: {
+            frame: { Crs: 6697 },
+            exterior: [
+              [35.6, 139.7, 0],
+              [35.6, 139.8, 0],
+              [35.7, 139.8, 0],
+            ],
+            appearance: {
+              materials: [
+                { Phong: { diffuse: [1, 0, 0], transparency: 0 } },
+                { Pbr: { base_color: [0, 0, 1, 0.5] } },
+              ],
+              themes: [
+                { theme: "other", front: { Uniform: 0 } },
+                { theme: "chosen", front: { Uniform: 1 } },
+              ],
+              default_theme: "chosen",
+            },
+          },
+        },
+      }),
+    );
+
+    // The PBR material, and its alpha read as CityGML transparency.
+    expect(result.geometry).toMatchObject({
+      polygonMaterials: [1],
+      materials: [
+        { diffuseColor: [1, 0, 0] },
+        { diffuseColor: [0, 0, 1], transparency: 0.5 },
+      ],
+    });
+  });
+
+  test("rebases material indices when members are merged", () => {
+    // Each member indexes its own palette; concatenating the palettes without
+    // shifting the indices would colour the second member from the first's.
+    const member = (diffuse: number[]) => ({
+      Euclidean3D: {
+        Polygon: {
+          frame: { Crs: 6697 },
+          exterior: [
+            [35.6, 139.7, 0],
+            [35.6, 139.8, 0],
+            [35.7, 139.8, 0],
+          ],
+          appearance: {
+            materials: [{ Phong: { diffuse, transparency: 0 } }],
+            themes: [{ theme: "t", front: { Uniform: 0 } }],
+            default_theme: "t",
+          },
+        },
+      },
+    });
+
+    const result = transformNextFeature(
+      feature({
+        GeometryCollection: {
+          members: [member([1, 0, 0]), member([0, 1, 0])],
+          attrs: [{ lod: 2 }, { lod: 2 }],
+        },
+      }),
+    );
+
+    expect(result.geometry).toMatchObject({
+      polygonMaterials: [0, 1],
+      materials: [{ diffuseColor: [1, 0, 0] }, { diffuseColor: [0, 1, 0] }],
+    });
+  });
+
+  test("keeps unbound surfaces aligned when only some members are painted", () => {
+    const bare = {
+      Euclidean3D: {
+        Polygon: {
+          frame: { Crs: 6697 },
+          exterior: [
+            [35.6, 139.7, 0],
+            [35.6, 139.8, 0],
+            [35.7, 139.8, 0],
+          ],
+        },
+      },
+    };
+    const painted = {
+      Euclidean3D: {
+        Polygon: {
+          frame: { Crs: 6697 },
+          exterior: [
+            [35.6, 139.7, 0],
+            [35.6, 139.8, 0],
+            [35.7, 139.8, 0],
+          ],
+          appearance: {
+            materials: [{ Phong: { diffuse: [0, 0, 1], transparency: 0 } }],
+            themes: [{ theme: "t", front: { Uniform: 0 } }],
+            default_theme: "t",
+          },
+        },
+      },
+    };
+
+    const result = transformNextFeature(
+      feature({
+        GeometryCollection: {
+          members: [bare, painted],
+          attrs: [{ lod: 2 }, { lod: 2 }],
+        },
+      }),
+    );
+
+    // The bare member still advances the binding by its own surface, or the
+    // painted one's index would land on the wrong surface.
+    expect(result.geometry).toMatchObject({ polygonMaterials: [null, 0] });
+  });
+
+  test("emits no colour fields when a leaf carries no appearance", () => {
+    const result = transformNextFeature(cityGmlFeature([1]));
+
+    expect(result.geometry).not.toHaveProperty("materials");
+    expect(result.geometry).not.toHaveProperty("polygonMaterials");
   });
 
   test("still summarizes a collection with nothing drawable in it", () => {
