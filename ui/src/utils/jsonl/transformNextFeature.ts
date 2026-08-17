@@ -28,29 +28,21 @@ export type TransformedFeature = {
   type: "Feature";
   properties: Record<string, unknown>;
   geometry?: unknown;
-  /**
-   * The parsed JSONL record as the engine wrote it, inline image bytes
-   * excepted. The details panel shows this rather than the derived geometry,
-   * so debugging sees the engine's own structure — which is the point, since
-   * the derived form drops the unselected LODs, appearance themes, UV sets and
-   * a tangent frame's basis, and those are usually what a geometry bug is in.
-   *
-   * Possible performance issue, so measure before assuming it is fine. Over
-   * 2000 features (the panel's `displayLimit`) shaped like PLATEAU CityGML — a
-   * `GeometryCollection` of three LODs in EPSG:6697 — the derived features
-   * alone retain ~35 MB and retaining this as well takes it to ~123 MB. Most
-   * of that gap is LOD: the derived form keeps the one it draws, this keeps all
-   * three. It costs far less elsewhere, ~1.15x on an east-first CRS, where
-   * `toPosition` returns the source array instead of copying it.
-   *
-   * Nothing walks it — it is not a column, and the table's global filter runs
-   * over columns — so the cost is memory, not time. The worst case is a session
-   * holding several files at once: `MAX_CACHED_FILES` is 8, so nine open node
-   * outputs sit near 1 GB rather than ~280 MB. If that shows up, drop this
-   * field (assigned in `useStreamingDebugRunQuery`) or lower that cap.
-   */
-  source?: unknown;
 };
+
+/**
+ * What the derived form drops, for whoever needs it back.
+ *
+ * This carries only what GeoJSON has a place for. The engine's record also
+ * holds the unselected LODs, appearance themes, UV sets and a tangent frame's
+ * basis, and a geometry bug is usually in one of those — but keeping every
+ * parsed record alongside every derived one cost ~3.5x memory (~35 MB to
+ * ~123 MB over the panel's 2000-feature `displayLimit`, shaped like PLATEAU
+ * CityGML), which is a bad trade for a debugging path nobody had asked for.
+ *
+ * If it is wanted again, fetch the one selected feature's line on demand
+ * rather than retaining all of them.
+ */
 
 /** Human-readable coordinate frame, since the EPSG is no longer feature-level. */
 function describeFrame(frame: unknown): string | undefined {
@@ -115,9 +107,11 @@ function needsAxisSwap(frame: unknown): boolean {
  * Put one coordinate into GeoJSON order, appending the leaf's single elevation
  * if it carries one. Every coordinate this module emits goes through here.
  *
- * When neither applies the original array is returned rather than copied. The
- * feature keeps its source geometry for raw inspection, so a copy here would
- * mean holding every coordinate twice; nothing downstream mutates these.
+ * When neither applies the original array is returned rather than copied —
+ * an allocation per position, on files that are nothing but positions, for no
+ * gain. The parsed record is discarded once the transform returns, so this
+ * keeps alive only the coordinates themselves, which are the data being kept
+ * either way; nothing downstream mutates them.
  */
 function toPosition(coord: Position, swap: boolean, z: unknown): Position {
   if (!swap && typeof z !== "number") return coord;

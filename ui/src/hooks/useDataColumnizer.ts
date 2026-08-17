@@ -79,13 +79,22 @@ export default ({
         ];
 
         // Store serialized strings as accessor values so global filtering can
-        // match any part of the data; values too large to serialize are stored
-        // as a summary instead. Truncation happens only in the cell renderer.
+        // match any part of the data; values too large to serialize whole are
+        // stored as a bounded preview of their leading content, which for
+        // geometry means the first coordinates rather than a count and a
+        // shape. Truncation happens only in the cell renderer.
         const tableData = features.map((feature: any, index: number) => ({
           id: JSON.stringify(feature.id || index),
-          // Underscored key, so the details panel can reach the engine's own
-          // record without it being listed among the feature's fields.
-          _source: feature.source,
+          // The values behind the serialized columns, for the details panel to
+          // format properly — a cell string is cut to fit a cell, and past
+          // `LARGE_VALUE_THRESHOLD` it is a bounded preview that no longer
+          // parses back. Underscored, so it does not become a column. These are
+          // references to objects the parsed feature already holds, so nothing
+          // is retained that was not retained already.
+          _values: {
+            geometry: feature.geometry ?? {},
+            attributes: feature.properties ?? {},
+          },
           ...Object.fromEntries(
             Array.from(allGeometry).map((geometry) => [
               `geometry${geometry}`,

@@ -965,8 +965,8 @@ describe("hasGeoJsonForm", () => {
 
 describe("coordinate sharing", () => {
   test("reuses the source arrays when no reordering is needed", () => {
-    // The feature keeps its source geometry for raw inspection, so an
-    // east-first frame must not pay for a second copy of every coordinate.
+    // An east-first frame needs no reordering, so it must not pay an
+    // allocation per position on a file that is nothing but positions.
     const coords = [
       [100, 200],
       [300, 400],
@@ -993,7 +993,8 @@ describe("coordinate sharing", () => {
     const emitted = (result.geometry as { coordinates: number[][] })
       .coordinates;
     expect(emitted[0]).toEqual([139.7, 35.6]);
-    // Source untouched, so raw inspection still shows what the engine wrote.
+    // The parsed record is the caller's; a swap copies rather than reorders
+    // it in place.
     expect(coords[0]).toEqual([35.6, 139.7]);
   });
 });
