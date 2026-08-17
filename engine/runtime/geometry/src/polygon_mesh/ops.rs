@@ -660,6 +660,49 @@ impl Coerce for PolygonMesh3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+use crate::ops::{Footprint, FootprintError, FootprintSink};
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for PolygonMesh2D {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        sink.enter(self.frame())?;
+        let (face_indices, face_offsets, interior_offsets) = self.csr_buffers();
+        super::faces::for_each_face_coords(
+            self.vertices(),
+            face_indices,
+            face_offsets,
+            interior_offsets,
+            |rings| sink.push_face_2d(rings.iter().map(Vec::as_slice), self.elevation()),
+        );
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for PolygonMesh3D {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        sink.enter(self.frame())?;
+        self.data().footprint_faces(sink);
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl PolygonMesh3DData {
+    /// Push every face into an entered `sink`.
+    pub(crate) fn footprint_faces(&self, sink: &mut FootprintSink<'_>) {
+        let (face_indices, face_offsets, interior_offsets) = self.csr_buffers();
+        super::faces::for_each_face_coords(
+            self.vertices(),
+            face_indices,
+            face_offsets,
+            interior_offsets,
+            |rings| sink.push_face_3d(rings.iter().map(Vec::as_slice)),
+        );
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
