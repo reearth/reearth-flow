@@ -1762,7 +1762,24 @@
           "description": "Configuration for coercing geometries to specific target types."
         },
         "targetType": {
-          "description": "Target geometry type to coerce features to (e.g., LineString)"
+          "title": "Target Type",
+          "description": "Geometry type to re-represent each feature as. A feature the target does not apply to passes through unchanged."
+        }
+      },
+      "enumI18n": {
+        "CoercionTarget": {
+          "lineString": {
+            "title": "Line String",
+            "description": "Replaces every face with the polylines of its boundary rings, holes included."
+          },
+          "polygon": {
+            "title": "Polygon",
+            "description": "Rebuilds faces: a closed line string becomes the face it bounds, and a surface or a solid becomes the individual faces it is built from."
+          },
+          "triangularMesh": {
+            "title": "Triangular Mesh",
+            "description": "Tessellates a face or a surface into triangles. A solid stays a solid, with its boundary triangulated."
+          }
         }
       }
     },

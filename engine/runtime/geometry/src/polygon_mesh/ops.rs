@@ -609,6 +609,57 @@ impl RemoveAppearance for PolygonMesh3D {
     }
 }
 
+use crate::ops::coerce::{push_face_lines_2d, push_face_lines_3d, unchanged, wrap_2d, wrap_3d};
+use crate::ops::{Coerce, CoercionTarget};
+
+impl Coerce for PolygonMesh2D {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        match target {
+            CoercionTarget::TriangularMesh => self.triangulate(cache),
+            CoercionTarget::Polygon => {
+                let mut faces = Vec::new();
+                self.for_each_face_polygon(|face| {
+                    faces.push(Euclidean2DGeometry::Polygon(Box::new(face)))
+                });
+                wrap_2d(faces).ok_or_else(unchanged::<Self>)
+            }
+            CoercionTarget::LineString => {
+                let mut lines = Vec::new();
+                self.for_each_face_polygon(|face| push_face_lines_2d(&face, &mut lines));
+                wrap_2d(lines).ok_or_else(unchanged::<Self>)
+            }
+        }
+    }
+}
+
+impl Coerce for PolygonMesh3D {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        match target {
+            CoercionTarget::TriangularMesh => self.triangulate(cache),
+            CoercionTarget::Polygon => {
+                let mut faces = Vec::new();
+                self.for_each_face_polygon(|face| {
+                    faces.push(Euclidean3DGeometry::Polygon(Box::new(face)))
+                });
+                wrap_3d(faces).ok_or_else(unchanged::<Self>)
+            }
+            CoercionTarget::LineString => {
+                let mut lines = Vec::new();
+                self.for_each_face_polygon(|face| push_face_lines_3d(&face, &mut lines));
+                wrap_3d(lines).ok_or_else(unchanged::<Self>)
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

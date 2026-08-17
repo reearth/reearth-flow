@@ -182,5 +182,6 @@ crate::unsupported!(
     ForceTwoDimension,
     RemoveAppearance,
     CountHoles,
-    ExtractHoles
+    ExtractHoles,
+    Coerce
 );
