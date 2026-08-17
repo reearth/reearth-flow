@@ -12,9 +12,23 @@ version.workspace = true
 
 publish = false
 
+[features]
+# Temporary migration flag for the new-geometry migration. Runs the same tests
+# against the new geometry world.
+new-geometry = [
+  "reearth-flow-action-plateau-processor/new-geometry",
+  "reearth-flow-action-processor/new-geometry",
+  "reearth-flow-action-python-processor/new-geometry",
+  "reearth-flow-action-sink/new-geometry",
+  "reearth-flow-action-source/new-geometry",
+  "reearth-flow-types/new-geometry",
+]
+
 [dev-dependencies]
 reearth-flow-action-log.workspace = true
+reearth-flow-action-plateau-processor.workspace = true
 reearth-flow-action-processor.workspace = true
+reearth-flow-action-python-processor.workspace = true
 reearth-flow-action-sink.workspace = true
 reearth-flow-action-source.workspace = true
 reearth-flow-common.workspace = true
@@ -33,6 +47,7 @@ once_cell.workspace = true
 regex.workspace = true
 rust-embed = "8.11.0"
 serde.workspace = true
+shapefile.workspace = true
 serde_json.workspace = true
 serde_yaml.workspace = true
 tempfile.workspace = true

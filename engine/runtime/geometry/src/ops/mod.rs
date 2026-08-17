@@ -24,6 +24,7 @@ pub use hole::{CountHoles, ExtractHoles, ExtractedPart};
 pub(crate) use reproject::{
     axis_order_sign, crs_demote_to_2d, crs_is_linear, lift_coords, TwoDimensionalCrs,
 };
+pub use reproject::{esri_wkt1, identify_epsg};
 pub use reproject::{Reproject, ReprojectionCache};
 pub use split::Split;
 

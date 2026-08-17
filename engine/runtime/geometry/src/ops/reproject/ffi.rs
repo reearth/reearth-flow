@@ -11,15 +11,16 @@ use parking_lot::RwLock;
 use crate::coordinate::{EpsgCode, MissingTwoDimensionalForm};
 use crate::ops::reproject::grids;
 use proj_sys::{
-    proj_context_destroy, proj_context_errno, proj_context_errno_string, proj_create,
-    proj_create_crs_to_crs_from_pj, proj_crs_demote_to_2D, proj_crs_get_coordinate_system,
-    proj_crs_get_sub_crs, proj_cs_get_axis_count, proj_cs_get_axis_info, proj_cs_get_type,
-    proj_destroy, proj_errno, proj_errno_reset, proj_get_id_auth_name, proj_get_id_code,
-    proj_get_type, proj_trans, PJ, PJ_CONTEXT, PJ_COORD,
-    PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_CARTESIAN,
+    proj_as_wkt, proj_context_create, proj_context_destroy, proj_context_errno,
+    proj_context_errno_string, proj_create, proj_create_crs_to_crs_from_pj, proj_create_from_wkt,
+    proj_crs_demote_to_2D, proj_crs_get_coordinate_system, proj_crs_get_sub_crs,
+    proj_cs_get_axis_count, proj_cs_get_axis_info, proj_cs_get_type, proj_destroy, proj_errno,
+    proj_errno_reset, proj_get_id_auth_name, proj_get_id_code, proj_get_type, proj_identify,
+    proj_int_list_destroy, proj_list_destroy, proj_list_get, proj_list_get_count, proj_trans, PJ,
+    PJ_CONTEXT, PJ_COORD, PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_CARTESIAN,
     PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_ELLIPSOIDAL,
-    PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_SPHERICAL, PJ_DIRECTION_PJ_FWD,
-    PJ_TYPE_PJ_TYPE_GEOCENTRIC_CRS, PJ_XYZT,
+    PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_SPHERICAL, PJ_DIRECTION_PJ_FWD, PJ_OBJ_LIST,
+    PJ_TYPE_PJ_TYPE_GEOCENTRIC_CRS, PJ_WKT_TYPE_PJ_WKT1_ESRI, PJ_XYZT,
 };
 
 use crate::error::{Error, Result};
@@ -603,6 +604,127 @@ fn canonical_axis(direction: &str) -> Option<(usize, f64)> {
     }
 }
 
+/// The EPSG code the CRS definition `wkt` denotes, or `None` when it denotes none
+/// unambiguously.
+pub fn identify_epsg(wkt: &str) -> Option<EpsgCode> {
+    let wkt = CString::new(wkt).ok()?;
+    let authority = CString::new("EPSG").ok()?;
+
+    // SAFETY: every PROJ object is null-checked before use and freed on every path.
+    unsafe {
+        let ctx = proj_context_create();
+        if ctx.is_null() {
+            return None;
+        }
+        let crs = proj_create_from_wkt(
+            ctx,
+            wkt.as_ptr(),
+            ptr::null_mut(),
+            ptr::null_mut(),
+            ptr::null_mut(),
+        );
+        if crs.is_null() {
+            proj_context_destroy(ctx);
+            return None;
+        }
+
+        // A dialect carrying its authority code needs no search, and searching for
+        // it anyway finds it only weakly: PROJ rates a definition it exported
+        // itself 25 when the code it states is ignored.
+        let result = match epsg_identifier(crs) {
+            Some(declared) => Some(declared),
+            None => {
+                let mut confidences: *mut c_int = ptr::null_mut();
+                let candidates =
+                    proj_identify(ctx, crs, authority.as_ptr(), ptr::null(), &mut confidences);
+                let matched = exact_match(ctx, candidates, confidences);
+                if !confidences.is_null() {
+                    proj_int_list_destroy(confidences);
+                }
+                if !candidates.is_null() {
+                    proj_list_destroy(candidates);
+                }
+                matched
+            }
+        };
+
+        proj_destroy(crs);
+        proj_context_destroy(ctx);
+        result
+    }
+}
+
+/// The EPSG code of the candidate PROJ matched exactly, if there is one.
+///
+// SAFETY: `ctx` must be valid; `candidates` and `confidences` must be the pair
+// `proj_identify` returned, `confidences` holding one entry per candidate.
+unsafe fn exact_match(
+    ctx: *mut PJ_CONTEXT,
+    candidates: *mut PJ_OBJ_LIST,
+    confidences: *mut c_int,
+) -> Option<EpsgCode> {
+    if candidates.is_null() || confidences.is_null() {
+        return None;
+    }
+    for i in 0..proj_list_get_count(candidates) {
+        if *confidences.offset(i as isize) != 100 {
+            continue;
+        }
+        let candidate = proj_list_get(ctx, candidates, i);
+        if candidate.is_null() {
+            continue;
+        }
+        let code = epsg_identifier(candidate);
+        proj_destroy(candidate);
+        if code.is_some() {
+            return code;
+        }
+    }
+    None
+}
+
+/// The ESRI WKT1 form of `epsg`, as PROJ's database defines it.
+pub fn esri_wkt1(epsg: EpsgCode) -> Result<String> {
+    // SAFETY: every PROJ object is null-checked before use and freed on every
+    // path; the WKT string is owned by `crs` and copied while it is alive.
+    unsafe {
+        let ctx = proj_context_create();
+        if ctx.is_null() {
+            return Err(Error::projection("proj_context_create returned null"));
+        }
+        let def = CString::new(format!("EPSG:{epsg}")).map_err(Error::projection)?;
+        let crs = proj_create(ctx, def.as_ptr());
+        if crs.is_null() {
+            let msg = ctx_errno_string(ctx);
+            proj_context_destroy(ctx);
+            return Err(Error::projection(format!(
+                "failed to create CRS EPSG:{epsg}: {msg}"
+            )));
+        }
+
+        let single_line = CString::new("MULTILINE=NO").map_err(Error::projection)?;
+        let options = [single_line.as_ptr(), ptr::null()];
+        let wkt = proj_as_wkt(
+            ctx,
+            crs,
+            PJ_WKT_TYPE_PJ_WKT1_ESRI,
+            options.as_ptr() as *mut *const c_char,
+        );
+        let result = if wkt.is_null() {
+            Err(Error::projection(format!(
+                "EPSG:{epsg} has no ESRI WKT1 form: {}",
+                ctx_errno_string(ctx)
+            )))
+        } else {
+            Ok(CStr::from_ptr(wkt).to_string_lossy().into_owned())
+        };
+
+        proj_destroy(crs);
+        proj_context_destroy(ctx);
+        result
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -717,6 +839,39 @@ mod tests {
                 TwoDimensionalCrs::None(MissingTwoDimensionalForm::Geocentric)
             );
         }
+    }
+
+    /// The ESRI dialect a `.prj` is written in states no authority code, so the
+    /// CRS is recognised from the definition itself.
+    #[test]
+    fn an_esri_definition_is_identified_from_its_definition() {
+        let wkt = r#"PROJCS["JGD_2011_Japan_Zone_9",GEOGCS["GCS_JGD_2011",DATUM["D_JGD_2011",SPHEROID["GRS_1980",6378137.0,298.257222101]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Transverse_Mercator"],PARAMETER["False_Easting",0.0],PARAMETER["False_Northing",0.0],PARAMETER["Central_Meridian",139.833333333333],PARAMETER["Scale_Factor",0.9999],PARAMETER["Latitude_Of_Origin",36.0],UNIT["Meter",1.0]]"#;
+        assert_eq!(identify_epsg(wkt), Some(EpsgCode::new(6677)));
+    }
+
+    /// A definition stating its own code is taken at its word. Searching for it
+    /// instead finds it only weakly, so the declared code has to win.
+    #[test]
+    fn a_declared_authority_code_is_taken_at_its_word() {
+        let wkt = esri_wkt1(EpsgCode::new(6677)).unwrap();
+        let gdal = wkt.replace("]]", r#"],AUTHORITY["EPSG","6677"]]"#);
+        assert_eq!(identify_epsg(&gdal), Some(EpsgCode::new(6677)));
+    }
+
+    /// A definition PROJ can only match inexactly is left unidentified.
+    #[test]
+    fn a_definition_matching_only_inexactly_identifies_nothing() {
+        let wkt = r#"PROJCS["MyLocalGrid",GEOGCS["GCS_JGD_2011",DATUM["D_JGD_2011",SPHEROID["GRS_1980",6378137.0,298.257222101]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]],PROJECTION["Transverse_Mercator"],PARAMETER["False_Easting",0.0],PARAMETER["False_Northing",0.0],PARAMETER["Central_Meridian",139.833333333333],PARAMETER["Scale_Factor",0.9999],PARAMETER["Latitude_Of_Origin",36.0],UNIT["Meter",1.0]]"#;
+        assert_eq!(identify_epsg(wkt), None);
+    }
+
+    #[test]
+    fn a_crs_exports_the_esri_dialect_a_prj_is_written_in() {
+        let wkt = esri_wkt1(EpsgCode::new(4326)).unwrap();
+        assert_eq!(
+            wkt,
+            r#"GEOGCS["GCS_WGS_1984",DATUM["D_WGS_1984",SPHEROID["WGS_1984",6378137.0,298.257223563]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]]"#
+        );
     }
 
     #[test]
