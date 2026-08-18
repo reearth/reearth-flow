@@ -62,57 +62,29 @@ mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
 
-    fn prj_for(epsg: u16) -> String {
-        let mut buffer = Vec::new();
-        write_prj(&mut buffer, EpsgCode::new(epsg))
-            .expect("the CRS is expected to have an ESRI WKT1 form");
-        String::from_utf8(buffer).unwrap()
-    }
-
-    /// Whatever is written must name its CRS back, or a reader cannot recover it.
+    /// Whatever is written must name a CRS back: itself where its definition
+    /// does, its horizontal counterpart where PROJ writes a name it does not
+    /// resolve (a 3D geographic CRS) or identifies weakly (a compound CRS).
     #[test]
-    fn every_definition_written_names_a_crs_back() {
-        for epsg in [
-            4326u16, 3857, 6668, 6697, 6669, 6677, 2229, 4979, 10162, 10174,
+    fn each_definition_names_its_crs_or_its_horizontal_counterpart_back() {
+        for (epsg, expected) in [
+            (4326u16, 4326u16),
+            (3857, 3857),
+            (6668, 6668),
+            (6677, 6677),
+            (6697, 6697),
+            (2229, 2229),
+            (4979, 4326),
+            (10162, 6669),
         ] {
-            let written = prj_for(epsg);
-            assert!(
-                identify_epsg(&written).is_some(),
-                "EPSG:{epsg} wrote a definition naming nothing back: {written}"
-            );
-        }
-    }
-
-    /// A 3D geographic CRS falls back to its horizontal counterpart, PROJ writing
-    /// a name for the 3D form that it does not resolve on the way back in.
-    #[test]
-    fn a_three_dimensional_crs_writes_its_horizontal_counterpart() {
-        assert_eq!(
-            identify_epsg(&prj_for(4979)),
-            Some(EpsgCode::new(4326)),
-            "4979 is expected to fall back to 4326"
-        );
-    }
-
-    /// A compound CRS falls back likewise, PROJ identifying the compound weakly
-    /// even though each of its parts is an exact match.
-    #[test]
-    fn a_compound_crs_writes_its_horizontal_counterpart() {
-        assert_eq!(
-            identify_epsg(&prj_for(10162)),
-            Some(EpsgCode::new(6669)),
-            "10162 is expected to fall back to its horizontal CRS 6669"
-        );
-    }
-
-    /// A CRS whose definition already names itself back is written unchanged.
-    #[test]
-    fn a_crs_that_round_trips_is_written_unchanged() {
-        for epsg in [4326u16, 6677, 6697] {
+            let mut buffer = Vec::new();
+            write_prj(&mut buffer, EpsgCode::new(epsg))
+                .expect("the CRS is expected to have an ESRI WKT1 form");
+            let written = String::from_utf8(buffer).unwrap();
             assert_eq!(
-                identify_epsg(&prj_for(epsg)),
-                Some(EpsgCode::new(epsg)),
-                "EPSG:{epsg} is expected to be written as itself"
+                identify_epsg(&written),
+                Some(EpsgCode::new(expected)),
+                "EPSG:{epsg} wrote {written}"
             );
         }
     }

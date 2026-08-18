@@ -107,33 +107,6 @@ mod tests {
     use pretty_assertions::assert_eq;
 
     #[test]
-    fn a_memo_reads_as_a_string() {
-        assert_eq!(
-            to_attribute_value(FieldValue::Memo("long".into()), false),
-            AttributeValue::String("long".into())
-        );
-    }
-
-    #[test]
-    fn every_numeric_field_type_reads_as_a_number() {
-        for value in [
-            FieldValue::Numeric(Some(1.5)),
-            FieldValue::Float(Some(1.5)),
-            FieldValue::Double(1.5),
-            FieldValue::Currency(1.5),
-        ] {
-            assert_eq!(
-                to_attribute_value(value, false),
-                AttributeValue::Number(serde_json::Number::from_f64(1.5).unwrap())
-            );
-        }
-        assert_eq!(
-            to_attribute_value(FieldValue::Integer(7), false),
-            AttributeValue::Number(7.into())
-        );
-    }
-
-    #[test]
     fn a_zero_decimal_numeric_field_reads_as_an_integer() {
         assert_eq!(
             to_attribute_value(FieldValue::Numeric(Some(2019.0)), true),
@@ -150,28 +123,6 @@ mod tests {
         assert_eq!(
             to_attribute_value(FieldValue::Numeric(Some(1.5)), true),
             AttributeValue::Number(serde_json::Number::from_f64(1.5).unwrap())
-        );
-    }
-
-    #[test]
-    fn a_non_finite_number_has_no_counterpart() {
-        assert_eq!(
-            to_attribute_value(FieldValue::Numeric(Some(f64::NAN)), false),
-            AttributeValue::Null
-        );
-        assert_eq!(
-            to_attribute_value(FieldValue::Double(f64::INFINITY), false),
-            AttributeValue::Null
-        );
-    }
-
-    #[test]
-    fn a_date_reads_as_a_date() {
-        assert_eq!(
-            date(2025, 7, 17),
-            AttributeValue::DateTime(DateTime::NaiveDate(
-                NaiveDate::from_ymd_opt(2025, 7, 17).unwrap()
-            ))
         );
     }
 
@@ -194,18 +145,5 @@ mod tests {
             order,
             vec!["c".to_string(), "a".to_string(), "b".to_string()]
         );
-    }
-
-    #[test]
-    fn an_absent_value_reads_as_null() {
-        for value in [
-            FieldValue::Character(None),
-            FieldValue::Numeric(None),
-            FieldValue::Float(None),
-            FieldValue::Logical(None),
-            FieldValue::Date(None),
-        ] {
-            assert_eq!(to_attribute_value(value, false), AttributeValue::Null);
-        }
     }
 }

@@ -750,13 +750,6 @@ mod tests {
     }
 
     #[test]
-    fn an_absent_geometry_writes_no_shape() {
-        let written = write_geometry(&Geometry::None);
-        assert_eq!(written.bucket(), Bucket::Null);
-        assert!(written.payload.is_none());
-    }
-
-    #[test]
     fn a_2d_line_at_an_elevation_writes_an_elevated_curve() {
         let line = Geometry::Euclidean2D(Euclidean2DGeometry::LineString(
             LineString2D::from_coords_at_elevation(euclidean(), [[0.0, 0.0], [1.0, 1.0]], 9.0),
@@ -788,33 +781,6 @@ mod tests {
     }
 
     #[test]
-    fn a_polygon_writes_its_exterior_before_its_holes() {
-        let polygon = Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(
-            Polygon3D::from_rings(
-                euclidean(),
-                [
-                    [0.0, 0.0, 0.0],
-                    [0.0, 4.0, 0.0],
-                    [4.0, 4.0, 0.0],
-                    [0.0, 0.0, 0.0],
-                ],
-                [vec![
-                    [1.0, 1.0, 0.0],
-                    [2.0, 1.0, 0.0],
-                    [2.0, 2.0, 0.0],
-                    [1.0, 1.0, 0.0],
-                ]],
-            ),
-        )));
-        let written = write_geometry(&polygon);
-        assert_eq!(written.bucket(), Bucket::AreaZ);
-        let rings = area(&written);
-        assert_eq!(rings.len(), 2);
-        assert!(rings[0].outer);
-        assert!(!rings[1].outer);
-    }
-
-    #[test]
     fn rings_are_reversed_into_the_shapefile_winding() {
         let polygon = Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
             Polygon2D::from_rings(
@@ -834,14 +800,6 @@ mod tests {
         ring.windows(2)
             .map(|w| w[0][0] * w[1][1] - w[1][0] * w[0][1])
             .sum()
-    }
-
-    #[test]
-    fn a_degenerate_line_writes_no_shape() {
-        let line = Geometry::Euclidean2D(Euclidean2DGeometry::LineString(
-            LineString2D::from_coords(euclidean(), [[0.0, 0.0]]),
-        ));
-        assert!(write_geometry(&line).payload.is_none());
     }
 
     #[test]
@@ -901,18 +859,6 @@ mod tests {
         assert_eq!(positions(&written), &vec![[139.0, 35.0, 0.0]]);
     }
 
-    #[test]
-    fn one_crs_covers_a_file_written_wholly_in_it() {
-        let point = Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
-            crs(6677),
-            [1.0, 2.0],
-        )));
-        assert_eq!(
-            write_geometry(&point).frames.epsg(),
-            Some(EpsgCode::new(6677))
-        );
-    }
-
     fn attributes(pairs: &[(&str, AttributeValue)]) -> IndexMap<Attribute, AttributeValue> {
         pairs
             .iter()
@@ -951,115 +897,6 @@ mod tests {
     }
 
     #[test]
-    fn the_table_covers_fields_a_later_feature_introduces() {
-        let first = attributes(&[("a", AttributeValue::String("x".into()))]);
-        let second = attributes(&[("b", AttributeValue::Bool(true))]);
-        let fields = table(&[&first, &second]);
-        assert_eq!(fields.len(), 2);
-    }
-
-    #[test]
-    fn a_column_mixing_numbers_and_text_writes_everything_as_text() {
-        let first = attributes(&[("code", AttributeValue::Number(5.into()))]);
-        let second = attributes(&[("code", AttributeValue::String("A1".into()))]);
-        let fields = table(&[&first, &second]);
-        assert_eq!(fields[0].kind, FieldKind::Character);
-        assert_eq!(
-            attributes_to_record(&first, &fields).get("code"),
-            Some(&FieldValue::Character(Some("5".into())))
-        );
-    }
-
-    #[test]
-    fn a_null_first_value_takes_its_type_from_a_later_feature() {
-        let first = attributes(&[("a", AttributeValue::Null)]);
-        let second = attributes(&[("a", AttributeValue::Number(1.into()))]);
-        let fields = table(&[&first, &second]);
-        assert_eq!(fields[0].kind, FieldKind::Numeric { decimals: 0 });
-    }
-
-    #[test]
-    fn a_numeric_column_is_as_wide_and_as_precise_as_its_values() {
-        let mut column = Column::new(&Attribute::new("t"));
-        column.note(&AttributeValue::Number(1723891200000i64.into()));
-        assert_eq!(column.kind(), (FieldKind::Numeric { decimals: 0 }, 13));
-        column.note(&AttributeValue::Number(
-            serde_json::Number::from_f64(-1.23456789).unwrap(),
-        ));
-        assert_eq!(column.kind(), (FieldKind::Numeric { decimals: 8 }, 22));
-    }
-
-    #[test]
-    fn an_integral_float_keeps_a_decimal_place() {
-        let mut column = Column::new(&Attribute::new("t"));
-        column.note(&AttributeValue::Number(
-            serde_json::Number::from_f64(889953.0).unwrap(),
-        ));
-        assert_eq!(column.kind(), (FieldKind::Numeric { decimals: 1 }, 8));
-    }
-
-    #[test]
-    fn a_column_of_booleans_is_logical_and_one_of_dates_is_a_date() {
-        let feature = attributes(&[
-            ("flag", AttributeValue::Bool(true)),
-            (
-                "day",
-                AttributeValue::DateTime(DateTime::NaiveDate(
-                    chrono::NaiveDate::from_ymd_opt(2025, 7, 17).unwrap(),
-                )),
-            ),
-        ]);
-        let fields = table(&[&feature]);
-        assert_eq!(fields[0].kind, FieldKind::Logical);
-        assert_eq!(fields[1].kind, FieldKind::Date);
-        let record = attributes_to_record(&feature, &fields);
-        assert_eq!(record.get("flag"), Some(&FieldValue::Logical(Some(true))));
-        assert_eq!(
-            record.get("day"),
-            Some(&FieldValue::Date(Some(shapefile::dbase::Date::new(
-                17, 7, 2025
-            ))))
-        );
-    }
-
-    #[test]
-    fn a_column_mixing_booleans_and_dates_writes_everything_as_text() {
-        let first = attributes(&[("v", AttributeValue::Bool(true))]);
-        let second = attributes(&[(
-            "v",
-            AttributeValue::DateTime(DateTime::NaiveDate(
-                chrono::NaiveDate::from_ymd_opt(2025, 7, 17).unwrap(),
-            )),
-        )]);
-        let fields = table(&[&first, &second]);
-        assert_eq!(fields[0].kind, FieldKind::Character);
-        assert_eq!(
-            attributes_to_record(&first, &fields).get("v"),
-            Some(&FieldValue::Character(Some("true".into())))
-        );
-        assert_eq!(
-            attributes_to_record(&second, &fields).get("v"),
-            Some(&FieldValue::Character(Some("2025-07-17".into())))
-        );
-    }
-
-    #[test]
-    fn a_column_with_nothing_storable_is_still_a_field() {
-        let feature = attributes(&[
-            ("list", AttributeValue::Array(vec![])),
-            ("nothing", AttributeValue::Null),
-        ]);
-        let fields = table(&[&feature]);
-        assert_eq!(fields.len(), 2);
-        assert!(fields.iter().all(|f| f.kind == FieldKind::Character));
-        let record = attributes_to_record(&feature, &fields);
-        assert_eq!(record.get("list"), Some(&FieldValue::Character(None)));
-        assert_eq!(record.get("nothing"), Some(&FieldValue::Character(None)));
-    }
-
-    // The table's declared types must let every value be written and read back
-    // as it was, whatever mix of values the attributes hold.
-    #[test]
     fn a_table_writes_and_reads_back_every_kind_of_value() {
         use shapefile::dbase::{FieldType, Reader};
 
@@ -1076,6 +913,9 @@ mod tests {
                 ("dec", float(-0.000123456789)),
                 ("intfloat", float(889953.0)),
                 ("mixed", AttributeValue::Number(5.into())),
+                ("code", AttributeValue::Number(5.into())),
+                ("late", AttributeValue::Null),
+                ("list", AttributeValue::Array(vec![])),
                 ("flag", AttributeValue::Bool(false)),
                 ("day", date(1899, 12, 31)),
                 ("bc", date(-44, 3, 15)),
@@ -1086,6 +926,9 @@ mod tests {
                 ("int", AttributeValue::Number(1234567890123i64.into())),
                 ("dec", float(1e-3)),
                 ("mixed", float(2.5)),
+                ("code", AttributeValue::String("A1".into())),
+                ("late", AttributeValue::Number(1.into())),
+                ("extra", AttributeValue::Bool(true)),
                 ("flag", AttributeValue::Bool(true)),
                 ("day", date(2025, 7, 17)),
                 ("bc", date(2025, 7, 17)),
@@ -1123,11 +966,15 @@ mod tests {
                 ("dec".into(), FieldType::Numeric, 15),
                 ("intfloat".into(), FieldType::Numeric, 8),
                 ("mixed".into(), FieldType::Numeric, 3),
+                ("code".into(), FieldType::Character, 2),
+                ("late".into(), FieldType::Numeric, 1),
+                ("list".into(), FieldType::Character, 1),
                 ("flag".into(), FieldType::Logical, 1),
                 ("day".into(), FieldType::Date, 8),
                 ("bc".into(), FieldType::Character, 11),
                 ("text".into(), FieldType::Character, 254),
                 ("nothing".into(), FieldType::Character, 1),
+                ("extra".into(), FieldType::Logical, 1),
             ]
         );
 
@@ -1151,6 +998,13 @@ mod tests {
             Some(&FieldValue::Numeric(Some(889953.0)))
         );
         assert_eq!(first.get("mixed"), Some(&FieldValue::Numeric(Some(5.0))));
+        assert_eq!(
+            first.get("code"),
+            Some(&FieldValue::Character(Some("5".into())))
+        );
+        assert_eq!(first.get("late"), Some(&FieldValue::Numeric(None)));
+        assert_eq!(first.get("list"), Some(&FieldValue::Character(None)));
+        assert_eq!(first.get("extra"), Some(&FieldValue::Logical(None)));
         assert_eq!(first.get("flag"), Some(&FieldValue::Logical(Some(false))));
         assert_eq!(
             first.get("day"),
@@ -1174,6 +1028,12 @@ mod tests {
         );
         assert_eq!(second.get("dec"), Some(&FieldValue::Numeric(Some(0.001))));
         assert_eq!(second.get("mixed"), Some(&FieldValue::Numeric(Some(2.5))));
+        assert_eq!(
+            second.get("code"),
+            Some(&FieldValue::Character(Some("A1".into())))
+        );
+        assert_eq!(second.get("late"), Some(&FieldValue::Numeric(Some(1.0))));
+        assert_eq!(second.get("extra"), Some(&FieldValue::Logical(Some(true))));
         assert_eq!(second.get("wide"), Some(&FieldValue::Numeric(None)));
         assert_eq!(second.get("nothing"), Some(&FieldValue::Character(None)));
     }

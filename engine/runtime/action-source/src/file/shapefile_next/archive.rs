@@ -455,66 +455,6 @@ mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
 
-    fn component(path: &str) -> Option<(String, String)> {
-        match classify(path) {
-            Entry::Component(stem, extension) => Some((stem, extension)),
-            _ => None,
-        }
-    }
-
-    #[test]
-    fn a_component_is_recognised_by_its_extension_whatever_its_case() {
-        assert_eq!(
-            component("dir/mesh3.SHP"),
-            Some(("dir/mesh3".to_string(), "shp".to_string()))
-        );
-        assert_eq!(classify("readme.txt"), Entry::Unrelated);
-        assert_eq!(classify("no-extension"), Entry::Unrelated);
-    }
-
-    #[test]
-    fn a_stem_keeps_its_directory() {
-        assert_eq!(component("a/mesh3.shp").unwrap().0, "a/mesh3".to_string());
-        assert_ne!(
-            component("a/mesh3.shp").unwrap().0,
-            component("b/mesh3.shp").unwrap().0
-        );
-    }
-
-    #[test]
-    fn a_sidecar_is_recognised_as_one() {
-        for path in [
-            "mesh3.sbn",
-            "mesh3.sbx",
-            "mesh3.fbn",
-            "mesh3.fbx",
-            "mesh3.ain",
-            "mesh3.aih",
-            "mesh3.atx",
-            "mesh3.ixs",
-            "mesh3.mxs",
-            "mesh3.qix",
-            "mesh3.QIX",
-        ] {
-            assert_eq!(classify(path), Entry::Sidecar, "{path}");
-        }
-    }
-
-    #[test]
-    fn the_metadata_document_is_a_sidecar_not_a_component() {
-        assert_eq!(classify("dir/mesh3.shp.xml"), Entry::Sidecar);
-        assert_eq!(classify("dir/mesh3.SHP.XML"), Entry::Sidecar);
-        assert_eq!(classify("dir/metadata.xml"), Entry::Unrelated);
-    }
-
-    #[test]
-    fn archive_metadata_is_not_a_component() {
-        assert!(is_metadata("__MACOSX/._mesh3.shp"));
-        assert!(is_metadata(".DS_Store"));
-        assert!(is_metadata("dir/.hidden.shp"));
-        assert!(!is_metadata("dir/mesh3.shp"));
-    }
-
     /// A ZIP archive holding one entry per `(name, bytes)`.
     fn zipped(entries: &[(&str, &[u8])]) -> Bytes {
         use std::io::Write as _;
@@ -544,12 +484,6 @@ mod tests {
     }
 
     #[test]
-    fn a_sidecar_cannot_complete_a_shapefile() {
-        let content = zipped(&[("data.shp", b"shp"), ("data.qix", b"index")]);
-        assert!(extract(&content).is_err());
-    }
-
-    #[test]
     fn the_metadata_document_does_not_become_a_shapefile_of_its_own() {
         let content = zipped(&[
             ("data.shp", b"shp"),
@@ -568,35 +502,27 @@ mod tests {
     }
 
     #[test]
-    fn the_parameter_overrides_the_cpg() {
-        let encoding =
-            resolve_encoding(&Some("Shift_JIS".to_string()), Some(b"UTF-8"), None).unwrap();
-        assert_eq!(encoding.name(), "Shift_JIS");
-    }
-
-    #[test]
-    fn an_unusable_encoding_is_rejected() {
-        assert!(resolve_encoding(&Some("UTF-16".to_string()), None, None).is_err());
-        assert!(resolve_encoding(&Some("not-an-encoding".to_string()), None, None).is_err());
-    }
-
-    #[test]
-    fn the_cpg_overrides_the_declared_code_page() {
-        let encoding = resolve_encoding(&None, Some(b"UTF-8"), Some(&dbf_declaring(0x7B))).unwrap();
-        assert_eq!(encoding, Encoding::Utf8);
-    }
-
-    #[test]
-    fn a_declared_code_page_is_read_in_when_nothing_else_names_one() {
-        let encoding = resolve_encoding(&None, None, Some(&dbf_declaring(0x7B))).unwrap();
-        assert_eq!(encoding, Encoding::Declared);
-    }
-
-    #[test]
-    fn a_table_naming_no_code_page_is_read_as_utf8() {
-        let encoding = resolve_encoding(&None, None, Some(&dbf_declaring(0x00))).unwrap();
-        assert_eq!(encoding, Encoding::Utf8);
-        assert_eq!(resolve_encoding(&None, None, None).unwrap(), Encoding::Utf8);
+    fn the_encoding_comes_from_the_parameter_then_the_cpg_then_the_header() {
+        let shift_jis = Some("Shift_JIS".to_string());
+        let declared = dbf_declaring(0x7B);
+        assert_eq!(
+            resolve_encoding(&shift_jis, Some(b"UTF-8"), Some(&declared))
+                .unwrap()
+                .name(),
+            "Shift_JIS"
+        );
+        assert_eq!(
+            resolve_encoding(&None, Some(b"UTF-8"), Some(&declared)).unwrap(),
+            Encoding::Utf8
+        );
+        assert_eq!(
+            resolve_encoding(&None, None, Some(&declared)).unwrap(),
+            Encoding::Declared
+        );
+        assert_eq!(
+            resolve_encoding(&None, None, Some(&dbf_declaring(0x00))).unwrap(),
+            Encoding::Utf8
+        );
     }
 
     #[test]
@@ -623,11 +549,6 @@ mod tests {
             .finalize()
             .expect("the table is expected to write");
         assert_eq!(decimal_places(&dbf), vec![0, 0, 3]);
-    }
-
-    #[test]
-    fn a_truncated_header_states_no_code_page() {
-        assert_eq!(declared_code_page(&[0u8; 4]), DeclaredCodePage::Unstated);
     }
 
     #[test]

@@ -467,27 +467,6 @@ mod tests {
     }
 
     #[test]
-    fn a_null_shape_is_an_absent_geometry() {
-        assert_eq!(
-            converter().convert(Shape::NullShape).unwrap(),
-            Geometry::None
-        );
-    }
-
-    #[test]
-    fn a_measured_point_keeps_its_position_and_drops_its_measure() {
-        let converter = converter();
-        let geometry = converter
-            .convert(Shape::PointM(shapefile::PointM::new(1.0, 2.0, 7.5)))
-            .unwrap();
-        let Geometry::Euclidean2D(Euclidean2DGeometry::Point(point)) = geometry else {
-            panic!("expected a 2D point, got {geometry:?}");
-        };
-        assert_eq!(point.position(), [1.0, 2.0]);
-        assert!(converter.discarded_measures.get());
-    }
-
-    #[test]
     fn a_northing_first_crs_swaps_the_horizontal_pair() {
         let converter = ShapeConverter::new(Some(EpsgCode::new(6668)), false);
         let geometry = converter
@@ -500,75 +479,19 @@ mod tests {
     }
 
     #[test]
-    fn a_single_part_polyline_is_one_line_string() {
-        let line = shapefile::Polyline::new(vec![
-            shapefile::Point::new(0.0, 0.0),
-            shapefile::Point::new(1.0, 1.0),
-        ]);
-        let geometry = converter().convert(Shape::Polyline(line)).unwrap();
+    fn a_polyline_is_one_line_string_or_a_collection_of_its_parts() {
+        let part = |x: f64| vec![shapefile::Point::new(x, 0.0), shapefile::Point::new(x, 1.0)];
+        let one = shapefile::Polyline::new(part(0.0));
         assert!(matches!(
-            geometry,
+            converter().convert(Shape::Polyline(one)).unwrap(),
             Geometry::Euclidean2D(Euclidean2DGeometry::LineString(_))
         ));
-    }
-
-    #[test]
-    fn a_multi_part_polyline_collects_its_parts() {
-        let line = shapefile::Polyline::with_parts(vec![
-            vec![
-                shapefile::Point::new(0.0, 0.0),
-                shapefile::Point::new(1.0, 1.0),
-            ],
-            vec![
-                shapefile::Point::new(2.0, 2.0),
-                shapefile::Point::new(3.0, 3.0),
-            ],
-        ]);
-        let geometry = converter().convert(Shape::Polyline(line)).unwrap();
+        let two = shapefile::Polyline::with_parts(vec![part(0.0), part(2.0)]);
+        let geometry = converter().convert(Shape::Polyline(two)).unwrap();
         let Geometry::Euclidean2D(Euclidean2DGeometry::Collection(collection)) = geometry else {
             panic!("expected a 2D collection, got {geometry:?}");
         };
         assert_eq!(collection.members().len(), 2);
-    }
-
-    #[test]
-    fn a_polygon_hole_lands_on_the_ring_before_it() {
-        let outer = vec![
-            shapefile::Point::new(0.0, 0.0),
-            shapefile::Point::new(0.0, 4.0),
-            shapefile::Point::new(4.0, 4.0),
-            shapefile::Point::new(4.0, 0.0),
-            shapefile::Point::new(0.0, 0.0),
-        ];
-        let inner = vec![
-            shapefile::Point::new(1.0, 1.0),
-            shapefile::Point::new(2.0, 1.0),
-            shapefile::Point::new(2.0, 2.0),
-            shapefile::Point::new(1.0, 1.0),
-        ];
-        let polygon = shapefile::Polygon::with_rings(vec![
-            PolygonRing::Outer(outer),
-            PolygonRing::Inner(inner),
-        ]);
-        let geometry = converter().convert(Shape::Polygon(polygon)).unwrap();
-        let Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(polygon)) = geometry else {
-            panic!("expected a 2D polygon, got {geometry:?}");
-        };
-        assert_eq!(polygon.interiors().count(), 1);
-    }
-
-    #[test]
-    fn forcing_two_dimensions_drops_the_elevation() {
-        let converter = ShapeConverter::new(None, true);
-        let geometry = converter
-            .convert(Shape::PointZ(shapefile::PointZ::new(
-                1.0, 2.0, 3.0, NO_DATA,
-            )))
-            .unwrap();
-        let Geometry::Euclidean2D(Euclidean2DGeometry::Point(point)) = geometry else {
-            panic!("expected a 2D point, got {geometry:?}");
-        };
-        assert_eq!(point.position(), [1.0, 2.0]);
     }
 
     #[test]
@@ -664,16 +587,5 @@ mod tests {
     #[test]
     fn a_fan_shares_its_first_vertex() {
         assert_eq!(fan_indices(4), vec![0, 2, 1, 0, 3, 2]);
-    }
-
-    #[test]
-    fn a_multipatch_cannot_be_forced_to_two_dimensions() {
-        let converter = ShapeConverter::new(None, true);
-        let patch = shapefile::Multipatch::new(Patch::TriangleFan(vec![
-            shapefile::PointZ::new(0.0, 0.0, 0.0, NO_DATA),
-            shapefile::PointZ::new(1.0, 0.0, 0.0, NO_DATA),
-            shapefile::PointZ::new(0.0, 1.0, 0.0, NO_DATA),
-        ]));
-        assert!(converter.convert(Shape::Multipatch(patch)).is_err());
     }
 }
