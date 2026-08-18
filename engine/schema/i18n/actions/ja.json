@@ -380,6 +380,28 @@
       }
     },
     {
+      "name": "Attribute Table Extractor",
+      "description": "地物タイプ属性をキーとする移動元・移動先パスの対応表に従い、ネストされたマップまたはリスト属性の間で値を移動する。移動先パスのセグメントが2つ以上の場合、必要に応じてネストしたマップを作成する",
+      "parameterI18n": {
+        "": {
+          "title": "Attribute Table Extractor パラメータ",
+          "description": "ネストされた属性値を移動するために使う移動元・移動先パスの対応表を設定する"
+        },
+        "dataset": {
+          "title": "データセットURI",
+          "description": "抽出テーブルファイルのパスまたはURI。これかインラインデータのいずれかを指定する"
+        },
+        "inline": {
+          "title": "インラインテーブル",
+          "description": "抽出テーブルの内容をJSONとして直接指定する。データセットURIを指定しない場合に使う"
+        },
+        "typeAttribute": {
+          "title": "地物タイプ属性",
+          "description": "テーブル内のどのルールセットを地物に適用するかを選ぶ属性の値。デフォルトは`__citygml_feature_type`"
+        }
+      }
+    },
+    {
       "name": "Boundary Extractor",
       "description": "ジオメトリの境界を抽出する。ソリッド/メッシュは境界サーフェスを、サーフェスは境界エッジを、閉じたサーフェスは空のジオメトリを返す",
       "parameterI18n": {
@@ -1203,9 +1225,9 @@
           "title": "タグの抽出",
           "description": "個別フィーチャーとして展開するフィーチャータイプ名。修飾名（`bldg:Building`）、ローカル名（`Building`）、またはClark記法（`{http://…}Building`）で指定可能。空の場合はすべてのトップレベル都市オブジェクトをそのまま出力する。"
         },
-        "flattenMeasureTypes": {
-          "title": "計測タイプのフラット化",
-          "description": "trueの場合、単一の`uom`属性と数値テキストコンテンツを持つ要素は数値に変換され、単位は兄弟キー`{name}_uom`として格納される。デフォルトはfalse。"
+        "flattenLeafAttributes": {
+          "title": "リーフ属性のフラット化",
+          "description": "折りたたみ対象のリーフを示す属性名（例: `uom`）。このリストの属性を1つだけ持ち、子要素を持たず、数値のテキスト内容を持つ要素は数値に変換され、その属性の値は兄弟キー`{name}_{attribute}`として格納される。空（デフォルト）の場合はこの機能を無効にする。"
         },
         "flattenSingleChildObjects": {
           "title": "単一子オブジェクトノードのフラット化",
@@ -1492,7 +1514,7 @@
         "Transform": {
           "expr": {
             "title": "式",
-            "description": "attributes と env を参照し、地物の属性全体となるマップを返す式。マップ以外を返した場合や評価に失敗した場合、属性は変更されない"
+            "description": "attributes と variables を参照し、地物の属性全体となるマップを返す式。マップ以外を返した場合や評価に失敗した場合、属性は変更されない"
           }
         }
       }
@@ -1555,7 +1577,17 @@
     },
     {
       "name": "Footprint Replacer",
-      "description": "地物の 3D ジオメトリを、XY 平面に投影した 2D フットプリントに置き換える"
+      "description": "地物のジオメトリをフットプリント（面を水平面または任意の平面に投影して融合したもの）に置き換える",
+      "parameterI18n": {
+        "": {
+          "title": "Footprint Replacer パラメータ",
+          "description": "ジオメトリを投影する平面を設定する。ジオメトリはユークリッド座標系または長さ単位の座標参照系でなければならない。投影後の面積が 1e-6 平方単位未満の面は除外される。"
+        },
+        "projectionPlane": {
+          "title": "投影平面",
+          "description": "ジオメトリを投影する平面。省略時は水平面。"
+        }
+      }
     },
     {
       "name": "GeoJSON Reader",
@@ -1748,7 +1780,24 @@
           "description": "ジオメトリを特定のターゲットタイプに強制変換する設定"
         },
         "targetType": {
-          "description": "フィーチャーを強制変換するターゲットジオメトリタイプ（例: LineString）"
+          "title": "ターゲットタイプ",
+          "description": "各地物を再表現するジオメトリタイプ。ターゲットが適用できない地物はそのまま通過する"
+        }
+      },
+      "enumI18n": {
+        "CoercionTarget": {
+          "lineString": {
+            "title": "ラインストリング",
+            "description": "各面を、その境界リング（ホールを含む）のポリラインに置き換える"
+          },
+          "polygon": {
+            "title": "ポリゴン",
+            "description": "面を組み立て直す。閉じたラインストリングはそれが囲む面になり、サーフェスやソリッドは構成する個々の面になる"
+          },
+          "triangularMesh": {
+            "title": "三角形メッシュ",
+            "description": "面やサーフェスを三角形に分割する。ソリッドはソリッドのまま、境界だけが三角形化される"
+          }
         }
       }
     },
@@ -3469,7 +3518,7 @@
         },
         "encoding": {
           "title": "文字エンコーディング",
-          "description": "DBF ファイルの属性データの文字エンコーディング（例: \"UTF-8\"、\"Shift-JIS\"、\"Windows-1252\"）。ラベルは大文字小文字を区別しない。未指定時は .cpg ファイルがあればそれに従い、なければ UTF-8（UTF-16 は非対応）"
+          "description": "DBF ファイルの属性データの文字エンコーディング（例: \"UTF-8\"、\"Shift-JIS\"、\"Windows-1252\"）。ラベルは大文字小文字を区別しない。未指定時は .cpg ファイルがあればそれに従い、なければ .dbf ヘッダーが宣言するコードページ、それもなければ UTF-8（UTF-16 は非対応）"
         },
         "force2D": {
           "title": "2D に強制",
@@ -3488,6 +3537,10 @@
         "": {
           "title": "ShapefileWriter パラメータ",
           "description": "地物をESRI Shapefile形式に書き出す設定"
+        },
+        "compressOutput": {
+          "title": "圧縮出力ディレクトリ",
+          "description": "各ShapefileをZIPアーカイブとして書き出すディレクトリ（任意）。アーカイブには対象Shapefileの.shp、.shx、.dbf、.cpg、.prjが含まれます。未設定の場合は非圧縮のファイル群として書き出します"
         },
         "groupBy": {
           "title": "グループ化属性",

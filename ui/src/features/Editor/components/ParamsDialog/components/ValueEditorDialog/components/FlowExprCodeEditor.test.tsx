@@ -22,14 +22,16 @@ const attribute = (label: string): AutocompleteSuggestion => ({
 
 const ATTRIBUTES = ["alpha", "beta", "gamma"].map(attribute);
 
-const envVariable = (label: string): AutocompleteSuggestion => ({
+const workflowVariable = (label: string): AutocompleteSuggestion => ({
   label,
   insertText: label,
   type: "variable",
   detail: "text",
 });
 
-const ENV_VARIABLES = ["BASE_DIR", "BASE_URL", "OUTPUT_PATH"].map(envVariable);
+const WORKFLOW_VARIABLES = ["BASE_DIR", "BASE_URL", "OUTPUT_PATH"].map(
+  workflowVariable,
+);
 
 /**
  * Mirrors the real Editor: `buildReaderAttributeSuggestions` returns a new
@@ -58,7 +60,7 @@ const Harness = ({
         attributeSuggestions={
           freshArrayEachRender ? attributeLabels.map(attribute) : ATTRIBUTES
         }
-        envSuggestions={ENV_VARIABLES}
+        variableSuggestions={WORKFLOW_VARIABLES}
       />
     </div>
   );
@@ -345,11 +347,11 @@ describe("FlowExprCodeEditor autocomplete", () => {
   });
 });
 
-describe("FlowExprCodeEditor env autocomplete", () => {
-  test('lists the project\'s workflow variables inside env[""]', () => {
+describe("FlowExprCodeEditor variables autocomplete", () => {
+  test('lists the project\'s workflow variables inside variables[""]', () => {
     render(<Harness />);
     const textarea = editor();
-    type(textarea, 'env["');
+    type(textarea, 'variables["');
 
     expect(labels()).toEqual(["BASE_DIR", "BASE_URL", "OUTPUT_PATH"]);
   });
@@ -357,75 +359,75 @@ describe("FlowExprCodeEditor env autocomplete", () => {
   test("narrows on the typed prefix and completes", () => {
     render(<Harness />);
     const textarea = editor();
-    type(textarea, 'env["BASE_U');
+    type(textarea, 'variables["BASE_U');
 
     expect(labels()).toEqual(["BASE_URL"]);
     fireEvent.keyDown(textarea, { key: "Enter" });
-    expect(textarea.value).toBe('env["BASE_URL');
+    expect(textarea.value).toBe('variables["BASE_URL');
   });
 
-  test("arrow keys select among env variables", () => {
+  test("arrow keys select among workflow variables", () => {
     render(<Harness />);
     const textarea = editor();
-    type(textarea, 'env["BASE');
+    type(textarea, 'variables["BASE');
     expect(labels()).toEqual(["BASE_DIR", "BASE_URL"]);
 
     fireEvent.keyDown(textarea, { key: "ArrowDown" });
     fireEvent.keyDown(textarea, { key: "Enter" });
-    expect(textarea.value).toBe('env["BASE_URL');
+    expect(textarea.value).toBe('variables["BASE_URL');
   });
 
-  test("chains from the env accessor straight into the variable list", () => {
+  test("chains from the variables accessor straight into the variable list", () => {
     render(<Harness />);
     const textarea = editor();
-    type(textarea, "env");
-    expect(labels()).toContain("env");
+    type(textarea, "variables");
+    expect(labels()).toContain("variables");
 
     fireEvent.keyDown(textarea, { key: "Enter" });
-    expect(textarea.value).toBe('env[""]');
-    expect(textarea.selectionStart).toBe(5);
+    expect(textarea.value).toBe('variables[""]');
+    expect(textarea.selectionStart).toBe(11);
     // Caret is between the quotes — variables are offered immediately.
     expect(labels()).toEqual(["BASE_DIR", "BASE_URL", "OUTPUT_PATH"]);
 
     fireEvent.keyDown(textarea, { key: "Enter" });
-    expect(textarea.value).toBe('env["BASE_DIR"]');
+    expect(textarea.value).toBe('variables["BASE_DIR"]');
     // Picking a key ends the chain.
     expect(labels()).toEqual([]);
   });
 
   test("completing mid-key replaces the whole key", () => {
-    render(<Harness initial={'env["SE_DIR"]'} />);
+    render(<Harness initial={'variables["SE_DIR"]'} />);
     const textarea = editor();
-    moveCaret(textarea, 5);
-    type(textarea, "A"); // -> env["ASE_DIR"], caret after "A"
+    moveCaret(textarea, 11);
+    type(textarea, "A"); // -> variables["ASE_DIR"], caret after "A"
 
     expect(labels()).toEqual([]);
-    moveCaret(textarea, 5);
-    type(textarea, "B"); // -> env["BASE_DIR"], caret after "B"
+    moveCaret(textarea, 11);
+    type(textarea, "B"); // -> variables["BASE_DIR"], caret after "B"
     expect(labels()).toEqual(["BASE_DIR", "BASE_URL"]);
 
     fireEvent.keyDown(textarea, { key: "Enter" });
-    expect(textarea.value).toBe('env["BASE_DIR"]');
+    expect(textarea.value).toBe('variables["BASE_DIR"]');
   });
 
   test("each accessor offers only its own names", () => {
-    render(<Harness initial={'attributes[""] + env[""]'} />);
+    render(<Harness initial={'attributes[""] + variables[""]'} />);
     const textarea = editor();
 
     // Inside attributes["|"] -> attribute names only.
     moveCaret(textarea, 12);
     type(textarea, "a");
-    expect(textarea.value).toBe('attributes["a"] + env[""]');
+    expect(textarea.value).toBe('attributes["a"] + variables[""]');
     expect(labels()).toEqual(["alpha"]);
 
-    // Inside env["|"] -> workflow variables only.
-    moveCaret(textarea, 23);
+    // Inside variables["|"] -> workflow variables only.
+    moveCaret(textarea, 29);
     type(textarea, "B");
-    expect(textarea.value).toBe('attributes["a"] + env["B"]');
+    expect(textarea.value).toBe('attributes["a"] + variables["B"]');
     expect(labels()).toEqual(["BASE_DIR", "BASE_URL"]);
   });
 
-  test("env names are not offered outside an accessor", () => {
+  test("variable names are not offered outside an accessor", () => {
     render(<Harness />);
     const textarea = editor();
     type(textarea, "BASE");

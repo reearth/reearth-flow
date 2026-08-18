@@ -186,6 +186,88 @@ impl LineString2D {
     }
 }
 
+use crate::ops::coerce::{closes_a_ring, unchanged};
+use crate::ops::triangulation::Cache;
+use crate::ops::{Coerce, CoercionTarget};
+use crate::polygon::{Polygon2D, Polygon3D};
+
+impl Coerce for LineString2D {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        _cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        match target {
+            // A curve already is one, and bounds no area to tessellate.
+            CoercionTarget::LineString | CoercionTarget::TriangularMesh => Err(unchanged::<Self>()),
+            CoercionTarget::Polygon => {
+                if !closes_a_ring(&self.coords) {
+                    return Err(unchanged::<Self>());
+                }
+                let ring = Vec::from(std::mem::take(&mut self.coords));
+                let no_holes = Vec::<Vec<[f64; 2]>>::new();
+                let face = match self.z.take() {
+                    None => Polygon2D::from_rings(self.frame.clone(), ring, no_holes),
+                    Some(elevation) => Polygon2D::from_rings_at_elevation(
+                        self.frame.clone(),
+                        ring,
+                        no_holes,
+                        elevation,
+                    ),
+                };
+                Ok(Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(
+                    Box::new(face),
+                )))
+            }
+        }
+    }
+}
+
+impl Coerce for LineString3D {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        _cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        match target {
+            // A curve already is one, and bounds no area to tessellate.
+            CoercionTarget::LineString | CoercionTarget::TriangularMesh => Err(unchanged::<Self>()),
+            CoercionTarget::Polygon => {
+                if !closes_a_ring(&self.coords) {
+                    return Err(unchanged::<Self>());
+                }
+                let ring = Vec::from(std::mem::take(&mut self.coords));
+                let face =
+                    Polygon3D::from_rings(self.frame.clone(), ring, Vec::<Vec<[f64; 3]>>::new());
+                Ok(Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(
+                    Box::new(face),
+                )))
+            }
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+use crate::ops::{Footprint, FootprintError, FootprintSink};
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for LineString2D {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        sink.enter(self.frame())?;
+        sink.push_curve_2d(self.coords(), self.elevation());
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for LineString3D {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        sink.enter(self.frame())?;
+        sink.push_curve_3d(self.coords());
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

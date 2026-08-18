@@ -84,7 +84,7 @@ impl ProcessorFactory for FeatureCityGml3ReaderFactory {
             extract_tags,
             keep_attributes: params.keep_attributes,
             flatten_single_child_objects: params.flatten_single_child_objects,
-            flatten_measure_types: params.flatten_measure_types,
+            flatten_leaf_attributes: params.flatten_leaf_attributes,
             city_gml_attributes_key: params.city_gml_attributes_key,
             parser: Parser::new(CityGmlVersion::V3),
             base_attributes: HashMap::new(),
@@ -116,11 +116,13 @@ pub struct FeatureCityGml3ReaderParam {
     /// false.
     #[serde(default)]
     flatten_single_child_objects: bool,
-    /// # Flatten Measure Types
-    /// When true, elements with a single `uom` attribute and numeric text content are converted to
-    /// a number value, with the unit stored as a sibling `{name}_uom` key. Defaults to false.
+    /// # Flatten Leaf Attributes
+    /// Attribute names (e.g. `uom`) that mark a leaf for collapsing: an element with exactly one
+    /// XML attribute in this list, no child elements, and numeric text content is converted to a
+    /// number value, with the attribute's value stored as a sibling `{name}_{attribute}` key.
+    /// Empty (the default) disables this.
     #[serde(default)]
-    flatten_measure_types: bool,
+    flatten_leaf_attributes: Vec<String>,
     /// # City GML Attributes Key
     /// When set, parsed CityGML attributes are nested under this key in the output feature.
     /// When null, attributes are emitted at the top level. Defaults to null.
@@ -137,7 +139,7 @@ pub struct FeatureCityGml3Reader {
     extract_tags: HashSet<String>,
     keep_attributes: bool,
     flatten_single_child_objects: bool,
-    flatten_measure_types: bool,
+    flatten_leaf_attributes: Vec<String>,
     city_gml_attributes_key: Option<String>,
     parser: Parser,
     /// Input feature attributes keyed by resolved source file URL, merged into parsed features.
@@ -159,7 +161,7 @@ impl Clone for FeatureCityGml3Reader {
             extract_tags: self.extract_tags.clone(),
             keep_attributes: self.keep_attributes,
             flatten_single_child_objects: self.flatten_single_child_objects,
-            flatten_measure_types: self.flatten_measure_types,
+            flatten_leaf_attributes: self.flatten_leaf_attributes.clone(),
             city_gml_attributes_key: self.city_gml_attributes_key.clone(),
             parser: Parser::new(CityGmlVersion::V3),
             base_attributes: HashMap::new(),
@@ -179,7 +181,7 @@ impl Processor for FeatureCityGml3Reader {
     ) -> Result<(), BoxedError> {
         let path = self
             .dataset
-            .eval_string(&ctx.feature, ctx.env_vars.clone())
+            .eval_string(&ctx.feature, ctx.variables.clone())
             .map_err(|e| {
                 FeatureProcessorError::FileCityGml3Reader(format!("Failed to eval dataset: {e:?}"))
             })?;
@@ -218,7 +220,7 @@ impl Processor for FeatureCityGml3Reader {
             self.city_gml_attributes_key.as_deref(),
             self.keep_attributes,
             self.flatten_single_child_objects,
-            self.flatten_measure_types,
+            &self.flatten_leaf_attributes,
         ) {
             fw.send(ExecutorContext::new_with_node_context_feature_and_port(
                 &ctx,

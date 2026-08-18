@@ -1,7 +1,7 @@
 /**
  * Matches when the text before the cursor ends inside an open
  * `<name>["…` / `<name>['…` string literal (no closing quote yet). The leading
- * guard keeps `myenv["` from reading as an `env` accessor.
+ * guard keeps `myvariables["` from reading as a `variables` accessor.
  */
 const accessorRe = (name: string) =>
   new RegExp(`(?:^|[^a-zA-Z0-9_$])${name}\\s*\\[\\s*["'][^"']*$`);
@@ -10,10 +10,10 @@ const accessorPrefixRe = (name: string) =>
   new RegExp(`(?:^|[^a-zA-Z0-9_$])${name}\\s*\\[\\s*["']([^"']*)$`);
 
 export const ATTRIBUTE_ACCESSOR_RE = accessorRe("attributes");
-export const ENV_ACCESSOR_RE = accessorRe("env");
+export const VARIABLE_ACCESSOR_RE = accessorRe("variables");
 
 const ATTRIBUTE_ACCESSOR_PREFIX_RE = accessorPrefixRe("attributes");
-const ENV_ACCESSOR_PREFIX_RE = accessorPrefixRe("env");
+const VARIABLE_ACCESSOR_PREFIX_RE = accessorPrefixRe("variables");
 
 const IDENTIFIER_RE = /[a-zA-Z0-9_:.]/;
 /** As above, minus the separators — used to find the end of a single segment. */
@@ -22,11 +22,11 @@ const IDENTIFIER_SEGMENT_RE = /[a-zA-Z0-9_]/;
 export const isInsideAttributeAccessor = (textBeforeCursor: string): boolean =>
   ATTRIBUTE_ACCESSOR_RE.test(textBeforeCursor);
 
-export const isInsideEnvAccessor = (textBeforeCursor: string): boolean =>
-  ENV_ACCESSOR_RE.test(textBeforeCursor);
+export const isInsideVariableAccessor = (textBeforeCursor: string): boolean =>
+  VARIABLE_ACCESSOR_RE.test(textBeforeCursor);
 
 export type CompletionContext = {
-  kind: "attribute" | "env" | "general";
+  kind: "attribute" | "variables" | "general";
   prefix: string;
   start: number;
   end: number;
@@ -42,7 +42,7 @@ export const getCompletionContext = (
 
   const accessors = [
     { kind: "attribute", re: ATTRIBUTE_ACCESSOR_PREFIX_RE },
-    { kind: "env", re: ENV_ACCESSOR_PREFIX_RE },
+    { kind: "variables", re: VARIABLE_ACCESSOR_PREFIX_RE },
   ] as const;
 
   for (const { kind, re } of accessors) {

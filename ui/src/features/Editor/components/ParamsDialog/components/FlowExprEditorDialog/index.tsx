@@ -34,11 +34,11 @@ import { useCurrentProject } from "@flow/stores";
 import { Asset } from "@flow/types";
 
 import { FieldContext } from "../../utils/fieldUtils";
-import { toEnvAutocompleteSuggestions } from "../ValueEditorDialog/components/envAutocomplete";
 import FlowExprCodeEditor, {
   type FlowExprCodeEditorRef,
 } from "../ValueEditorDialog/components/FlowExprCodeEditor";
 import { AutocompleteSuggestion } from "../ValueEditorDialog/components/flowExprConstants";
+import { toVariableAutocompleteSuggestions } from "../ValueEditorDialog/components/variableAutocomplete";
 
 export type CodeValue = {
   type: "flowExpr" | "string";
@@ -91,8 +91,8 @@ const FlowExprEditorDialog: React.FC<Props> = ({
   const [currentProject] = useCurrentProject();
   const { useGetWorkflowVariables } = useWorkflowVariables();
   const { workflowVariables } = useGetWorkflowVariables(currentProject?.id);
-  const envSuggestions = useMemo(
-    () => toEnvAutocompleteSuggestions(workflowVariables),
+  const variableSuggestions = useMemo(
+    () => toVariableAutocompleteSuggestions(workflowVariables),
     [workflowVariables],
   );
 
@@ -125,7 +125,7 @@ const FlowExprEditorDialog: React.FC<Props> = ({
 
   const handleVariableSelect = useCallback(
     (variableName: string) => {
-      insertAtCursor(`env["${variableName}"]`);
+      insertAtCursor(`variables["${variableName}"]`);
     },
     [insertAtCursor],
   );
@@ -249,8 +249,10 @@ const FlowExprEditorDialog: React.FC<Props> = ({
                 value={codeValue}
                 onChange={setCodeValue}
                 attributeSuggestions={attributeSuggestions}
-                envSuggestions={envSuggestions}
-                placeholder={t('e.g. Url(env.get("BASE_DIR")) / "filename"')}
+                variableSuggestions={variableSuggestions}
+                placeholder={t(
+                  'e.g. Url(variables.get("BASE_DIR")) / "filename"',
+                )}
               />
             </TabsContent>
             <TabsContent
@@ -270,7 +272,7 @@ const FlowExprEditorDialog: React.FC<Props> = ({
               {codeType === "flowExpr" ? (
                 <span>
                   {t(
-                    'FlowExpr: env["VAR"], attributes["attr"], Url(...), math.sin(...). API is still stabilising.',
+                    'FlowExpr: variables["VAR"], attributes["attr"], Url(...), math.sin(...). API is still stabilising.',
                   )}
                 </span>
               ) : (

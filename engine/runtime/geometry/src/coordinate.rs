@@ -296,9 +296,152 @@ pub struct TangentPlane {
     pub v: [f64; 3],
 }
 
+/// Why a [`TangentPlane`] could not be built from the given vectors.
+#[derive(Clone, Debug, PartialEq)]
+pub enum TangentPlaneError {
+    /// The normal has (near) zero length.
+    ZeroNormal,
+    /// The requested in-plane x axis is (near) parallel to the normal, so it
+    /// has no in-plane component.
+    XAxisParallelToNormal,
+    /// `u` and `v` are not orthonormal.
+    NotOrthonormal,
+}
+
+impl core::fmt::Display for TangentPlaneError {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        match self {
+            TangentPlaneError::ZeroNormal => write!(f, "plane normal has zero length"),
+            TangentPlaneError::XAxisParallelToNormal => {
+                write!(f, "plane x axis is parallel to the normal")
+            }
+            TangentPlaneError::NotOrthonormal => {
+                write!(f, "plane axes are not orthonormal")
+            }
+        }
+    }
+}
+
+impl std::error::Error for TangentPlaneError {}
+
+use crate::predicates::kernel::{cross3, dot3, sub3};
+
+/// Tolerance for the orthonormality checks on plane axes.
+const AXIS_TOLERANCE: f64 = 1e-9;
+
+impl TangentPlane {
+    /// The plane through `origin` with unit normal along `normal`, oriented so
+    /// that `u x v` points along `normal`.
+    ///
+    /// `x_axis`, when given, fixes `u` as its component within the plane.
+    /// Otherwise `v` is the in-plane direction closest to the base frame's third
+    /// axis (up), so a vertical plane's `v` points up; for a horizontal plane
+    /// `u` follows the base frame's first axis instead.
+    pub fn from_normal(
+        base: BaseFrame,
+        origin: [f64; 3],
+        normal: [f64; 3],
+        x_axis: Option<[f64; 3]>,
+    ) -> Result<Self, TangentPlaneError> {
+        let n = unit(normal).ok_or(TangentPlaneError::ZeroNormal)?;
+        let (u, v) = match x_axis {
+            Some(x) => {
+                let u = unit(reject(x, n)).ok_or(TangentPlaneError::XAxisParallelToNormal)?;
+                (u, cross3(n, u))
+            }
+            None => match unit(reject([0.0, 0.0, 1.0], n)) {
+                Some(v) => (cross3(v, n), v),
+                None => {
+                    let u = [1.0, 0.0, 0.0];
+                    (u, cross3(n, u))
+                }
+            },
+        };
+        Ok(Self { base, origin, u, v })
+    }
+
+    /// The unit normal `u x v`.
+    pub fn normal(&self) -> [f64; 3] {
+        cross3(self.u, self.v)
+    }
+
+    /// Whether `u` and `v` are unit length and perpendicular.
+    pub fn is_orthonormal(&self) -> bool {
+        (dot3(self.u, self.u) - 1.0).abs() <= AXIS_TOLERANCE
+            && (dot3(self.v, self.v) - 1.0).abs() <= AXIS_TOLERANCE
+            && dot3(self.u, self.v).abs() <= AXIS_TOLERANCE
+    }
+
+    /// The in-plane `(x, y)` of a base-frame position: its offset from `origin`
+    /// resolved along `u` and `v`, dropping the component along the normal.
+    #[inline]
+    pub fn project(&self, position: [f64; 3]) -> [f64; 2] {
+        let d = sub3(position, self.origin);
+        [dot3(d, self.u), dot3(d, self.v)]
+    }
+}
+
+/// `a` scaled to unit length, or `None` when it is (near) zero.
+fn unit(a: [f64; 3]) -> Option<[f64; 3]> {
+    let len = dot3(a, a).sqrt();
+    (len > AXIS_TOLERANCE).then(|| [a[0] / len, a[1] / len, a[2] / len])
+}
+
+/// The component of `a` perpendicular to the unit vector `n`.
+fn reject(a: [f64; 3], n: [f64; 3]) -> [f64; 3] {
+    let along = dot3(a, n);
+    [
+        a[0] - along * n[0],
+        a[1] - along * n[1],
+        a[2] - along * n[2],
+    ]
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    fn close(a: [f64; 3], b: [f64; 3]) -> bool {
+        a.iter().zip(b).all(|(x, y)| (x - y).abs() < 1e-12)
+    }
+
+    #[test]
+    fn from_normal_builds_a_right_handed_orthonormal_plane() {
+        // A vertical plane facing +x: v is up, u = v x n = +y.
+        let plane =
+            TangentPlane::from_normal(BaseFrame::Euclidean, [1.0, 2.0, 3.0], [2.0, 0.0, 0.0], None)
+                .unwrap();
+        assert!(plane.is_orthonormal());
+        assert!(close(plane.normal(), [1.0, 0.0, 0.0]));
+        assert!(close(plane.u, [0.0, 1.0, 0.0]));
+        assert!(close(plane.v, [0.0, 0.0, 1.0]));
+        assert_eq!(plane.project([1.0, 5.0, 7.0]), [3.0, 4.0]);
+        // A horizontal plane keeps the base frame's x as u; facing down flips v.
+        let up = TangentPlane::from_normal(BaseFrame::Euclidean, [0.0; 3], [0.0, 0.0, 1.0], None)
+            .unwrap();
+        assert!(close(up.u, [1.0, 0.0, 0.0]) && close(up.v, [0.0, 1.0, 0.0]));
+        let down =
+            TangentPlane::from_normal(BaseFrame::Euclidean, [0.0; 3], [0.0, 0.0, -1.0], None)
+                .unwrap();
+        assert!(close(down.u, [1.0, 0.0, 0.0]) && close(down.v, [0.0, -1.0, 0.0]));
+        assert!(close(down.normal(), [0.0, 0.0, -1.0]));
+    }
+
+    #[test]
+    fn from_normal_honours_a_requested_x_axis() {
+        // The requested axis is not in the plane; its in-plane component is.
+        let plane = TangentPlane::from_normal(
+            BaseFrame::Euclidean,
+            [0.0; 3],
+            [0.0, 0.0, 1.0],
+            Some([0.0, 3.0, 4.0]),
+        )
+        .unwrap();
+        assert!(plane.is_orthonormal());
+        assert!(close(plane.u, [0.0, 1.0, 0.0]));
+        assert!(close(plane.v, [-1.0, 0.0, 0.0]));
+        assert!(close(plane.normal(), [0.0, 0.0, 1.0]));
+    }
 
     #[test]
     fn unit_kind_classifies_frames() {
