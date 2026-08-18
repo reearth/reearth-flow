@@ -11,13 +11,13 @@ use parking_lot::RwLock;
 use crate::coordinate::{EpsgCode, MissingTwoDimensionalForm};
 use crate::ops::reproject::grids;
 use proj_sys::{
-    proj_as_wkt, proj_context_create, proj_context_destroy, proj_context_errno,
-    proj_context_errno_string, proj_create, proj_create_crs_to_crs_from_pj, proj_create_from_wkt,
-    proj_crs_demote_to_2D, proj_crs_get_coordinate_system, proj_crs_get_sub_crs,
-    proj_cs_get_axis_count, proj_cs_get_axis_info, proj_cs_get_type, proj_destroy, proj_errno,
-    proj_errno_reset, proj_get_id_auth_name, proj_get_id_code, proj_get_type, proj_identify,
-    proj_int_list_destroy, proj_list_destroy, proj_list_get, proj_list_get_count, proj_trans, PJ,
-    PJ_CONTEXT, PJ_COORD, PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_CARTESIAN,
+    proj_as_wkt, proj_context_destroy, proj_context_errno, proj_context_errno_string, proj_create,
+    proj_create_crs_to_crs_from_pj, proj_create_from_wkt, proj_crs_demote_to_2D,
+    proj_crs_get_coordinate_system, proj_crs_get_sub_crs, proj_cs_get_axis_count,
+    proj_cs_get_axis_info, proj_cs_get_type, proj_destroy, proj_errno, proj_errno_reset,
+    proj_get_id_auth_name, proj_get_id_code, proj_get_type, proj_identify, proj_int_list_destroy,
+    proj_list_destroy, proj_list_get, proj_list_get_count, proj_trans, PJ, PJ_CONTEXT, PJ_COORD,
+    PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_CARTESIAN,
     PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_ELLIPSOIDAL,
     PJ_COORDINATE_SYSTEM_TYPE_PJ_CS_TYPE_SPHERICAL, PJ_DIRECTION_PJ_FWD, PJ_OBJ_LIST,
     PJ_TYPE_PJ_TYPE_GEOCENTRIC_CRS, PJ_WKT_TYPE_PJ_WKT1_ESRI, PJ_XYZT,
@@ -612,10 +612,7 @@ pub fn identify_epsg(wkt: &str) -> Option<EpsgCode> {
 
     // SAFETY: every PROJ object is null-checked before use and freed on every path.
     unsafe {
-        let ctx = proj_context_create();
-        if ctx.is_null() {
-            return None;
-        }
+        let ctx = grids::create_context().ok()?;
         let crs = proj_create_from_wkt(
             ctx,
             wkt.as_ptr(),
@@ -688,10 +685,7 @@ pub fn esri_wkt1(epsg: EpsgCode) -> Result<String> {
     // SAFETY: every PROJ object is null-checked before use and freed on every
     // path; the WKT string is owned by `crs` and copied while it is alive.
     unsafe {
-        let ctx = proj_context_create();
-        if ctx.is_null() {
-            return Err(Error::projection("proj_context_create returned null"));
-        }
+        let ctx = grids::create_context()?;
         let def = CString::new(format!("EPSG:{epsg}")).map_err(Error::projection)?;
         let crs = proj_create(ctx, def.as_ptr());
         if crs.is_null() {

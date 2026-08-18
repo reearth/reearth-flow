@@ -146,7 +146,7 @@ impl Sink for ShapefileWriter {
     }
 
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
-        let feature = &ctx.feature;
+        let feature = ctx.feature;
 
         let key = if let Some(group_by) = &self.group_by {
             if group_by.is_empty() {
@@ -161,7 +161,7 @@ impl Sink for ShapefileWriter {
         } else {
             AttributeValue::Null
         };
-        self.buffer.entry(key).or_default().push(feature.clone());
+        self.buffer.entry(key).or_default().push(feature);
         Ok(())
     }
     fn finish(&self, ctx: NodeContext) -> Result<(), BoxedError> {

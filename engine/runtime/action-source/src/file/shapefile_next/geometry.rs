@@ -142,7 +142,7 @@ impl ShapeConverter {
     }
 
     /// The geometry `shape` converts to. Errors on a `Multipatch` when elevations
-    /// are being dropped, and on a polygon with no outer ring.
+    /// are being dropped, and on a polygon with no ring.
     pub(super) fn convert(&self, shape: Shape) -> Result<Geometry, SourceError> {
         Ok(match shape {
             Shape::NullShape => Geometry::None,
@@ -233,13 +233,13 @@ impl ShapeConverter {
     /// reversed.
     fn area<P: Position>(&self, rings: &[PolygonRing<P>]) -> Result<Geometry, SourceError> {
         let faces = group_rings(rings)?;
-        let polygons = faces.into_iter().map(|(exterior, holes)| {
+        let polygons = faces.into_iter().map(|face| {
             Euclidean2DGeometry::Polygon(Box::new(Polygon2D::from_rings(
                 self.frame_2d.clone(),
-                exterior.iter().rev().map(|p| self.xy(p)),
-                holes
+                face.exterior.into_iter().map(|p| self.xy(p)),
+                face.holes
                     .into_iter()
-                    .map(|hole| hole.iter().rev().map(|p| self.xy(p)).collect::<Vec<_>>()),
+                    .map(|hole| hole.into_iter().map(|p| self.xy(p)).collect::<Vec<_>>()),
             )))
         });
         Ok(Geometry::Euclidean2D(one_or_collection_2d(polygons)))
@@ -251,13 +251,13 @@ impl ShapeConverter {
             return self.area(rings);
         }
         let faces = group_rings(rings)?;
-        let polygons = faces.into_iter().map(|(exterior, holes)| {
+        let polygons = faces.into_iter().map(|face| {
             Euclidean3DGeometry::Polygon(Box::new(Polygon3D::from_rings(
                 self.frame_3d.clone(),
-                exterior.iter().rev().map(|p| self.xyz(p)),
-                holes
+                face.exterior.into_iter().map(|p| self.xyz(p)),
+                face.holes
                     .into_iter()
-                    .map(|hole| hole.iter().rev().map(|p| self.xyz(p)).collect::<Vec<_>>()),
+                    .map(|hole| hole.into_iter().map(|p| self.xyz(p)).collect::<Vec<_>>()),
             )))
         });
         Ok(Geometry::Euclidean3D(one_or_collection_3d(polygons)))
@@ -369,34 +369,56 @@ impl ShapeConverter {
     }
 }
 
-/// The rings grouped into `(exterior, holes)` faces in file order; holes before
-/// the first outer ring belong to it. Errors when there is no outer ring.
-#[allow(clippy::type_complexity)]
-fn group_rings<P: Position>(
-    rings: &[PolygonRing<P>],
-) -> Result<Vec<(&[P], Vec<&[P]>)>, SourceError> {
+/// One face of a polygon, its rings in the geometry's winding.
+struct Face<'a, P> {
+    exterior: Vec<&'a P>,
+    holes: Vec<Vec<&'a P>>,
+}
+
+/// The rings grouped into faces in file order, each reversed into the geometry's
+/// winding; holes before the first outer ring belong to it. A polygon with no
+/// outer ring is wound backwards throughout: each ring is then a face, kept as
+/// stored. Errors when there is no ring.
+fn group_rings<P: Position>(rings: &[PolygonRing<P>]) -> Result<Vec<Face<'_, P>>, SourceError> {
     if rings.is_empty() {
         return Err(ShapefileError::PolygonNoRings.into());
     }
+    if !rings
+        .iter()
+        .any(|ring| matches!(ring, PolygonRing::Outer(_)))
+    {
+        tracing::warn!(
+            "a polygon has no ring wound as an outer ring; reading each of its rings as one"
+        );
+        return Ok(rings
+            .iter()
+            .map(|ring| Face {
+                exterior: ring.points().iter().collect(),
+                holes: Vec::new(),
+            })
+            .collect());
+    }
 
-    let mut faces: Vec<(&[P], Vec<&[P]>)> = Vec::new();
-    let mut leading_holes: Vec<&[P]> = Vec::new();
+    let mut faces: Vec<Face<'_, P>> = Vec::new();
+    let mut leading_holes: Vec<Vec<&P>> = Vec::new();
     for ring in rings {
         match ring {
-            PolygonRing::Outer(points) => {
-                faces.push((points.as_slice(), std::mem::take(&mut leading_holes)))
-            }
+            PolygonRing::Outer(points) => faces.push(Face {
+                exterior: reversed(points),
+                holes: std::mem::take(&mut leading_holes),
+            }),
             PolygonRing::Inner(points) => match faces.last_mut() {
-                Some((_, holes)) => holes.push(points.as_slice()),
-                None => leading_holes.push(points.as_slice()),
+                Some(face) => face.holes.push(reversed(points)),
+                None => leading_holes.push(reversed(points)),
             },
         }
     }
-
-    if faces.is_empty() {
-        return Err(ShapefileError::PolygonNoOuterRings.into());
-    }
     Ok(faces)
+}
+
+/// `points` in the opposite order.
+fn reversed<P>(points: &[P]) -> Vec<&P> {
+    points.iter().rev().collect()
 }
 
 /// The triangle indices of a strip of `n` vertices, each triangle wound opposite
@@ -548,6 +570,18 @@ mod tests {
             panic!("expected a 2D polygon, got {geometry:?}");
         };
         assert_eq!(polygon.interiors().count(), 1);
+    }
+
+    #[test]
+    fn a_polygon_wound_backwards_throughout_still_reads() {
+        let ring = vec![
+            shapefile::Point::new(0.0, 0.0),
+            shapefile::Point::new(4.0, 0.0),
+            shapefile::Point::new(4.0, 4.0),
+            shapefile::Point::new(0.0, 0.0),
+        ];
+        let polygon = shapefile::Polygon::with_rings(vec![PolygonRing::Inner(ring)]);
+        assert!(converter().convert(Shape::Polygon(polygon)).is_ok());
     }
 
     #[test]

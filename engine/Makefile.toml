@@ -54,7 +54,7 @@ cargo test --workspace --all-targets --no-default-features \
 # not ported yet, which fail outright with the feature on. Add each case here as
 # its action is migrated, and drop the filter once none are left.
 cargo test -p reearth-flow-tests --all-targets --features new-geometry \
-  file::writer::shapefile ${@:-}
+  file::reader::shapefile ${@:-}
 ''']
 
 # Runs in the new-geometry world. Every test case whose `workflow_test.json`

@@ -125,8 +125,11 @@ pub(super) fn open(content: &Bytes, encoding: &Option<String>) -> Result<Archive
     }
 
     let shp = Cursor::new(components.shp.expect("a complete shapefile has a .shp"));
-    let dbf = components.dbf.expect("a complete shapefile has a .dbf");
+    let mut dbf = components.dbf.expect("a complete shapefile has a .dbf");
     let decimal_places = decimal_places(&dbf);
+    if encoding != Encoding::Declared {
+        unmark_code_page(&mut dbf);
+    }
     let dbf = Cursor::new(dbf);
 
     let shapes = match components.shx {
@@ -336,6 +339,14 @@ enum DeclaredCodePage {
     Undecodable(shapefile::dbase::CodePageMark),
     /// A header naming no code page.
     Unstated,
+}
+
+/// Clear the code page mark of a `.dbf` header, which `dbase` refuses to open
+/// when it names a page it cannot decode, whatever encoding is then set.
+fn unmark_code_page(dbf: &mut [u8]) {
+    if let Some(mark) = dbf.get_mut(CODE_PAGE_MARK_OFFSET) {
+        *mark = 0x00;
+    }
 }
 
 /// The code page a `.dbf` header declares; only the pages the web encodings

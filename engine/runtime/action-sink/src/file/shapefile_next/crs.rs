@@ -1,6 +1,10 @@
 //! The `.prj` sidecar naming a shapefile's CRS.
 
+use std::collections::HashMap;
 use std::io::Write;
+use std::sync::OnceLock;
+
+use parking_lot::RwLock;
 
 use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
 use reearth_flow_geometry::ops::{esri_wkt1, identify_epsg};
@@ -18,9 +22,25 @@ pub(super) fn write_prj(mut writer: impl Write, epsg: EpsgCode) -> Result<(), st
     writer.flush()
 }
 
+/// The definitions settled on, by CRS.
+fn definition_cache() -> &'static RwLock<HashMap<EpsgCode, Result<String, String>>> {
+    static CACHE: OnceLock<RwLock<HashMap<EpsgCode, Result<String, String>>>> = OnceLock::new();
+    CACHE.get_or_init(|| RwLock::new(HashMap::new()))
+}
+
 /// The definition to write for `epsg`: its own where PROJ identifies that back
 /// to it, else its horizontal counterpart's.
 fn definition_for(epsg: EpsgCode) -> Result<String, String> {
+    if let Some(cached) = definition_cache().read().get(&epsg) {
+        return cached.clone();
+    }
+    let definition = definition_for_uncached(epsg);
+    definition_cache().write().insert(epsg, definition.clone());
+    definition
+}
+
+/// [`definition_for`], asked of PROJ.
+fn definition_for_uncached(epsg: EpsgCode) -> Result<String, String> {
     let definition = esri_wkt1(epsg).map_err(|e| e.to_string())?;
     if identify_epsg(&definition) == Some(epsg) {
         return Ok(definition);

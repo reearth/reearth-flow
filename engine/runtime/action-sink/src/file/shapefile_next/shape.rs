@@ -82,7 +82,6 @@ impl Payload {
     }
 
     /// Whether two payloads can be written as one shape; a surface takes areas in.
-    #[cfg(feature = "new-geometry")]
     pub(super) fn same_kind(&self, other: &Self) -> bool {
         matches!(
             (self, other),
@@ -96,7 +95,6 @@ impl Payload {
     }
 
     /// Absorb `other`'s positions; both must be of the [`same_kind`](Self::same_kind).
-    #[cfg(feature = "new-geometry")]
     pub(super) fn absorb(&mut self, other: Self) {
         match (self, other) {
             (Payload::Points(a), Payload::Points(b)) => a.extend(b),
@@ -164,11 +162,15 @@ impl Frames {
         Self::One(frame.clone())
     }
 
-    /// The frames of two parts together.
+    /// The frames of two parts together; CRSs sharing a horizontal CRS count as it.
     pub(super) fn and(self, other: Self) -> Self {
         match (self, other) {
             (Self::Nothing, frames) | (frames, Self::Nothing) => frames,
             (Self::One(a), Self::One(b)) if a == b => Self::One(a),
+            (Self::One(a), Self::One(b)) => match (a.demote_to_2d(), b.demote_to_2d()) {
+                (Ok(a), Ok(b)) if a == b && epsg_code(&a).is_some() => Self::One(a),
+                _ => Self::Mixed,
+            },
             _ => Self::Mixed,
         }
     }
