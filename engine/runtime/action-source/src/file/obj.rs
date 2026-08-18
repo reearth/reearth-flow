@@ -103,7 +103,7 @@ impl SourceFactory for ObjReaderFactory {
                 })?,
             triangulate: params.triangulate,
             merge_groups: params.merge_groups,
-            _include_texcoords: params.include_texcoords,
+            include_texcoords: params.include_texcoords,
         };
         Ok(Box::new(ObjReader { params: compiled }))
     }
@@ -116,7 +116,10 @@ pub(super) struct ObjReaderCompiledParam {
     pub(super) material_file: Option<CompiledCode>,
     pub(super) triangulate: bool,
     pub(super) merge_groups: bool,
-    pub(super) _include_texcoords: bool,
+    // Only read by the new-geometry path (`obj_next::face_uv`); the
+    // not(new-geometry) world does not carry UVs onto the geometry.
+    #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
+    pub(super) include_texcoords: bool,
 }
 
 #[derive(Debug, Clone)]
@@ -1084,7 +1087,7 @@ f 1 2 3 4
             material_file: None,
             triangulate: true,
             merge_groups: false,
-            _include_texcoords: true,
+            include_texcoords: true,
         };
 
         let geometry = create_geometry_from_faces(&obj_data, &obj_data.faces, &params).unwrap();
@@ -1125,7 +1128,7 @@ f -4 -3 -2 -1
             material_file: None,
             triangulate: false,
             merge_groups: false,
-            _include_texcoords: true,
+            include_texcoords: true,
         };
 
         let geometry = create_geometry_from_faces(&obj_data, &obj_data.faces, &params).unwrap();

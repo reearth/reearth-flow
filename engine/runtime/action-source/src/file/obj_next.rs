@@ -195,7 +195,7 @@ fn face_uv(
     face: &Face,
     params: &ObjReaderCompiledParam,
 ) -> Option<Box<[[f64; 2]]>> {
-    if !params._include_texcoords {
+    if !params.include_texcoords {
         return None;
     }
     let mut uv = Vec::with_capacity(face.vertices.len());
@@ -340,7 +340,7 @@ fn test_params() -> ObjReaderCompiledParam {
         material_file: None,
         triangulate: false,
         merge_groups: false,
-        _include_texcoords: true,
+        include_texcoords: true,
         common: FileReaderCompiledParam {
             dataset: None,
             inline: None,
