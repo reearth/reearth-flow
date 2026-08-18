@@ -5240,7 +5240,7 @@
     {
       "name": "GeoPackage Reader",
       "type": "source",
-      "description": "Lit les entités géographiques à partir de fichiers GeoPackage (.gpkg) avec prise en charge des entités vectorielles, des tuiles et des métadonnées",
+      "description": "Lit les entités vectorielles depuis des fichiers GeoPackage (.gpkg), ou les systèmes de référence spatiale et les métadonnées d'extensions du fichier.",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "GeoPackage Reader Parameters",
@@ -5259,54 +5259,17 @@
           },
           "layerName": {
             "title": "Layer Name",
-            "description": "Name of the layer to read. When omitted, the first available layer is used.",
+            "description": "Name of the layer to read. When omitted, every feature layer in the file is read.",
             "type": [
               "string",
               "null"
             ]
-          },
-          "includeMetadata": {
-            "default": false,
-            "type": "boolean"
-          },
-          "tileFormat": {
-            "title": "Tile Format",
-            "description": "Image format to decode when reading raster tiles. Defaults to PNG.",
-            "default": "png",
-            "allOf": [
-              {
-                "$ref": "#/definitions/TileFormat"
-              }
-            ]
-          },
-          "attributeFilter": {
-            "default": null,
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "batchSize": {
-            "default": null,
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "uint",
-            "minimum": 0.0
           },
           "force2D": {
             "title": "Force 2D",
-            "description": "If true, forces all geometries to be 2D (ignoring Z values).",
+            "description": "Drops the Z value from every geometry, producing 2D output.",
             "default": false,
             "type": "boolean"
-          },
-          "spatialFilter": {
-            "default": null,
-            "type": [
-              "string",
-              "null"
-            ]
           },
           "dataset": {
             "title": "File Path",
@@ -5364,62 +5327,18 @@
             "oneOf": [
               {
                 "title": "Features",
-                "description": "Reads vector features (geometry and attributes).",
+                "description": "Reads vector features, each carrying its geometry and attributes.",
                 "type": "string",
                 "enum": [
                   "features"
                 ]
               },
               {
-                "title": "Tiles",
-                "description": "Reads raster tiles.",
-                "type": "string",
-                "enum": [
-                  "tiles"
-                ]
-              },
-              {
-                "title": "All",
-                "description": "Reads both vector features and raster tiles.",
-                "type": "string",
-                "enum": [
-                  "all"
-                ]
-              },
-              {
                 "title": "Metadata Only",
-                "description": "Reads only the file's metadata, without features or tiles.",
+                "description": "Reads the file's spatial reference systems and registered extensions instead of its features. Emits one feature per metadata record.",
                 "type": "string",
                 "enum": [
                   "metadataOnly"
-                ]
-              }
-            ]
-          },
-          "TileFormat": {
-            "oneOf": [
-              {
-                "title": "PNG",
-                "description": "Decodes tiles as PNG images.",
-                "type": "string",
-                "enum": [
-                  "png"
-                ]
-              },
-              {
-                "title": "JPEG",
-                "description": "Decodes tiles as JPEG images.",
-                "type": "string",
-                "enum": [
-                  "jpeg"
-                ]
-              },
-              {
-                "title": "WebP",
-                "description": "Decodes tiles as WebP images.",
-                "type": "string",
-                "enum": [
-                  "webp"
                 ]
               }
             ]

@@ -5240,7 +5240,7 @@
     {
       "name": "GeoPackage Reader",
       "type": "source",
-      "description": "GeoPackage（.gpkg）ファイルから地理地物を読み取る。ベクター地物、タイル、メタデータに対応",
+      "description": "GeoPackage（.gpkg）ファイルからベクター地物、またはファイルの空間参照系と拡張機能のメタデータを読み取る",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "GeoPackage Reader パラメータ",
@@ -5259,54 +5259,17 @@
           },
           "layerName": {
             "title": "レイヤー名",
-            "description": "読み取るレイヤーの名前。省略時は最初に利用可能なレイヤーを使用する",
+            "description": "読み取るレイヤーの名前。省略時はファイル内のすべての地物レイヤーを読み取る",
             "type": [
               "string",
               "null"
             ]
-          },
-          "includeMetadata": {
-            "default": false,
-            "type": "boolean"
-          },
-          "tileFormat": {
-            "title": "タイル形式",
-            "description": "ラスタータイルを読み取る際にデコードする画像形式。デフォルトは PNG",
-            "default": "png",
-            "allOf": [
-              {
-                "$ref": "#/definitions/TileFormat"
-              }
-            ]
-          },
-          "attributeFilter": {
-            "default": null,
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "batchSize": {
-            "default": null,
-            "type": [
-              "integer",
-              "null"
-            ],
-            "format": "uint",
-            "minimum": 0.0
           },
           "force2D": {
             "title": "2D に強制",
-            "description": "true の場合、すべてのジオメトリを 2D に強制する（Z 値を無視）",
+            "description": "すべてのジオメトリから Z 値を除去し、2D として出力する",
             "default": false,
             "type": "boolean"
-          },
-          "spatialFilter": {
-            "default": null,
-            "type": [
-              "string",
-              "null"
-            ]
           },
           "dataset": {
             "title": "ファイルパス",
@@ -5364,62 +5327,18 @@
             "oneOf": [
               {
                 "title": "地物",
-                "description": "ベクター地物（ジオメトリと属性）を読み取る",
+                "description": "ジオメトリと属性を持つベクター地物を読み取る",
                 "type": "string",
                 "enum": [
                   "features"
                 ]
               },
               {
-                "title": "タイル",
-                "description": "ラスタータイルを読み取る",
-                "type": "string",
-                "enum": [
-                  "tiles"
-                ]
-              },
-              {
-                "title": "すべて",
-                "description": "ベクター地物とラスタータイルの両方を読み取る",
-                "type": "string",
-                "enum": [
-                  "all"
-                ]
-              },
-              {
                 "title": "メタデータのみ",
-                "description": "地物やタイルを読み取らず、ファイルのメタデータのみを読み取る",
+                "description": "地物の代わりに、ファイルの空間参照系と登録済み拡張機能を読み取る。メタデータレコードごとに1つの地物を出力する",
                 "type": "string",
                 "enum": [
                   "metadataOnly"
-                ]
-              }
-            ]
-          },
-          "TileFormat": {
-            "oneOf": [
-              {
-                "title": "PNG",
-                "description": "タイルを PNG 画像としてデコードする",
-                "type": "string",
-                "enum": [
-                  "png"
-                ]
-              },
-              {
-                "title": "JPEG",
-                "description": "タイルを JPEG 画像としてデコードする",
-                "type": "string",
-                "enum": [
-                  "jpeg"
-                ]
-              },
-              {
-                "title": "WebP",
-                "description": "タイルを WebP 画像としてデコードする",
-                "type": "string",
-                "enum": [
-                  "webp"
                 ]
               }
             ]

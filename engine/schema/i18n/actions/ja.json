@@ -1613,72 +1613,42 @@
     },
     {
       "name": "GeoPackage Reader",
-      "description": "GeoPackage（.gpkg）ファイルから地理地物を読み取る。ベクター地物、タイル、メタデータに対応",
+      "description": "GeoPackage（.gpkg）ファイルからベクター地物、またはファイルの空間参照系と拡張機能のメタデータを読み取る",
       "parameterI18n": {
         "": {
           "title": "GeoPackage Reader パラメータ",
           "description": "GeoPackage ファイルから読み取る内容と、ジオメトリの生成方法を設定する"
         },
-        "attributeFilter": {},
-        "batchSize": {},
         "dataset": {
           "title": "ファイルパス",
           "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）"
         },
         "force2D": {
           "title": "2D に強制",
-          "description": "true の場合、すべてのジオメトリを 2D に強制する（Z 値を無視）"
+          "description": "すべてのジオメトリから Z 値を除去し、2D として出力する"
         },
-        "includeMetadata": {},
         "inline": {
           "title": "インラインコンテンツ",
           "description": "ファイルパスから読み込む代わりに、ファイル内容をテキストで返す式"
         },
         "layerName": {
           "title": "レイヤー名",
-          "description": "読み取るレイヤーの名前。省略時は最初に利用可能なレイヤーを使用する"
+          "description": "読み取るレイヤーの名前。省略時はファイル内のすべての地物レイヤーを読み取る"
         },
         "readMode": {
           "title": "読み取りモード",
           "description": "GeoPackage ファイルから読み取る内容。デフォルトはベクター地物の読み取り"
-        },
-        "spatialFilter": {},
-        "tileFormat": {
-          "title": "タイル形式",
-          "description": "ラスタータイルを読み取る際にデコードする画像形式。デフォルトは PNG"
         }
       },
       "enumI18n": {
         "GeoPackageReadMode": {
-          "all": {
-            "title": "すべて",
-            "description": "ベクター地物とラスタータイルの両方を読み取る"
-          },
           "features": {
             "title": "地物",
-            "description": "ベクター地物（ジオメトリと属性）を読み取る"
+            "description": "ジオメトリと属性を持つベクター地物を読み取る"
           },
           "metadataOnly": {
             "title": "メタデータのみ",
-            "description": "地物やタイルを読み取らず、ファイルのメタデータのみを読み取る"
-          },
-          "tiles": {
-            "title": "タイル",
-            "description": "ラスタータイルを読み取る"
-          }
-        },
-        "TileFormat": {
-          "jpeg": {
-            "title": "JPEG",
-            "description": "タイルを JPEG 画像としてデコードする"
-          },
-          "png": {
-            "title": "PNG",
-            "description": "タイルを PNG 画像としてデコードする"
-          },
-          "webp": {
-            "title": "WebP",
-            "description": "タイルを WebP 画像としてデコードする"
+            "description": "地物の代わりに、ファイルの空間参照系と登録済み拡張機能を読み取る。メタデータレコードごとに1つの地物を出力する"
           }
         }
       }
