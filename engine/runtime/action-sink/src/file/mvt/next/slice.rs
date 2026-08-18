@@ -194,16 +194,17 @@ fn interp(a: [f64; 2], b: [f64; 2], axis: usize, k: f64) -> [f64; 2] {
     p
 }
 
-// Clip an open, wraparound-closed ring to the band [k1, k2] on axis (0 = x, 1 = y).
-fn clip_ring_band(ring: &Ring, axis: usize, k1: f64, k2: f64) -> Ring {
-    let n = ring.len();
+// Sutherland-Hodgman clip against the band [k1, k2] on axis (0 = x, 1 = y).
+fn clip_band(points: &Ring, axis: usize, k1: f64, k2: f64, wraparound: bool) -> Ring {
+    let n = points.len();
     if n == 0 {
         return Ring::new();
     }
     let mut out = Vec::with_capacity(n + 2);
-    for i in 0..n {
-        let a = ring[i];
-        let b = ring[(i + 1) % n];
+    let edges = if wraparound { n } else { n - 1 };
+    for i in 0..edges {
+        let a = points[i];
+        let b = points[(i + 1) % n];
         let (av, bv) = (a[axis], b[axis]);
 
         if av < k1 {
@@ -222,6 +223,12 @@ fn clip_ring_band(ring: &Ring, axis: usize, k1: f64, k2: f64) -> Ring {
             out.push(interp(a, b, axis, k1));
         } else if bv > k2 && av < k2 {
             out.push(interp(a, b, axis, k2));
+        }
+    }
+    if !wraparound {
+        let last = points[n - 1];
+        if last[axis] >= k1 && last[axis] <= k2 {
+            out.push(last);
         }
     }
     out
@@ -255,7 +262,7 @@ fn clip_polygon(
         let k2 = ((yi + 1) as f64 + buf_width) / z_scale;
         let y_sliced: Vec<Ring> = rings
             .iter()
-            .map(|ring| clip_ring_band(ring, 1, k1, k2))
+            .map(|ring| clip_band(ring, 1, k1, k2, true))
             .collect();
         if y_sliced[0].is_empty() {
             continue;
@@ -270,7 +277,7 @@ fn clip_polygon(
             let k2 = ((xi + 1) as f64 + buf_width) / z_scale;
 
             let mut clipped = y_sliced.iter().map(|ring| {
-                let ring = clip_ring_band(ring, 0, k1, k2);
+                let ring = clip_band(ring, 0, k1, k2, true);
                 let mut local: Ring = ring
                     .iter()
                     .map(|&[x, y]| [x * z_scale - xi as f64, y * z_scale - yi as f64])
@@ -315,7 +322,7 @@ fn clip_line_string(
     for yi in y_lo..y_hi {
         let k1 = (yi as f64 - buf_width) / z_scale;
         let k2 = ((yi + 1) as f64 + buf_width) / z_scale;
-        let y_sliced = clip_open_chain(line, 1, k1, k2);
+        let y_sliced = clip_band(line, 1, k1, k2, false);
         if y_sliced.is_empty() {
             continue;
         }
@@ -328,7 +335,7 @@ fn clip_line_string(
             let k1 = (xi as f64 - buf_width) / z_scale;
             let k2 = ((xi + 1) as f64 + buf_width) / z_scale;
 
-            let clipped = clip_open_chain(&y_sliced, 0, k1, k2);
+            let clipped = clip_band(&y_sliced, 0, k1, k2, false);
             if clipped.len() < 2 {
                 continue;
             }
@@ -345,39 +352,6 @@ fn clip_line_string(
             out.entry(key).or_default().push(local);
         }
     }
-}
-
-// Like clip_ring_band, but an open (non-wraparound) chain.
-fn clip_open_chain(chain: &Ring, axis: usize, k1: f64, k2: f64) -> Ring {
-    let mut out = Vec::with_capacity(chain.len());
-    for w in chain.windows(2) {
-        let [a, b] = [w[0], w[1]];
-        let (av, bv) = (a[axis], b[axis]);
-
-        if av < k1 {
-            if bv > k1 {
-                out.push(interp(a, b, axis, k1));
-            }
-        } else if av > k2 {
-            if bv < k2 {
-                out.push(interp(a, b, axis, k2));
-            }
-        } else {
-            out.push(a);
-        }
-
-        if bv < k1 && av > k1 {
-            out.push(interp(a, b, axis, k1));
-        } else if bv > k2 && av < k2 {
-            out.push(interp(a, b, axis, k2));
-        }
-    }
-    if let Some(&last) = chain.last() {
-        if last[axis] >= k1 && last[axis] <= k2 {
-            out.push(last);
-        }
-    }
-    out
 }
 
 #[cfg(test)]
