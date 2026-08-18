@@ -72,11 +72,7 @@ pub(super) fn slice_leaves(
                     let z_scale = (1u64 << zoom) as f64;
                     let xi = (mx * z_scale).floor() as i64;
                     let yi = (my * z_scale).floor() as i64;
-                    let key: TileKey = (
-                        zoom,
-                        xi.rem_euclid(1 << zoom) as u32,
-                        yi.rem_euclid(1 << zoom) as u32,
-                    );
+                    let key = tile_key(zoom, xi, yi);
                     let tx = mx * z_scale - xi as f64;
                     let ty = my * z_scale - yi as f64;
                     tiled_points.entry(key).or_default().push([tx, ty]);
@@ -132,7 +128,14 @@ fn project_ring(ring: &[[f64; 2]], content: &mut TileContent) -> Ring {
         .collect()
 }
 
-// Shoelace formula, open/wraparound ring; positive = clockwise, matching tinymvt.
+fn tile_key(zoom: u8, xi: i64, yi: i64) -> TileKey {
+    (
+        zoom,
+        xi.rem_euclid(1 << zoom) as u32,
+        yi.rem_euclid(1 << zoom) as u32,
+    )
+}
+
 fn ring_area(ring: &[[f64; 2]]) -> f64 {
     let n = ring.len();
     if n < 3 {
@@ -275,11 +278,7 @@ fn clip_polygon(
             }
             let part_holes: Vec<Ring> = clipped.filter(|h| h.len() >= 3).collect();
 
-            let key: TileKey = (
-                zoom,
-                xi.rem_euclid(1 << zoom) as u32,
-                yi.rem_euclid(1 << zoom) as u32,
-            );
+            let key = tile_key(zoom, xi, yi);
             out.entry(key).or_default().push(PolygonPart {
                 exterior: part_exterior,
                 holes: part_holes,
@@ -327,11 +326,7 @@ fn clip_line_string(
                 .map(|&[x, y]| [x * z_scale - xi as f64, y * z_scale - yi as f64])
                 .collect();
 
-            let key: TileKey = (
-                zoom,
-                xi.rem_euclid(1 << zoom) as u32,
-                yi.rem_euclid(1 << zoom) as u32,
-            );
+            let key = tile_key(zoom, xi, yi);
             out.entry(key).or_default().push(local);
         }
     }
