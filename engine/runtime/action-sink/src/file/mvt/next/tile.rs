@@ -294,19 +294,19 @@ pub(super) fn make_tile(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use super::super::slice::Ring;
+    use super::super::slice::Point;
 
     #[test]
     fn drops_least_detailed_feature_to_fit_the_size_cap() {
         let extent = 4096;
         let n = 32;
-        let big_ring: Ring = (0..n)
+        let big_ring: Vec<Point> = (0..n)
             .map(|i| {
                 let a = std::f64::consts::TAU * i as f64 / n as f64;
                 [0.5 + 0.4 * a.cos(), 0.5 + 0.4 * a.sin()]
             })
             .collect();
-        let small_ring: Ring = vec![[0.1, 0.1], [0.2, 0.1], [0.15, 0.2]];
+        let small_ring: Vec<Point> = vec![[0.1, 0.1], [0.2, 0.1], [0.15, 0.2]];
 
         let big_feature = SlicedFeature {
             layer_name: "layer".to_string(),
@@ -372,7 +372,7 @@ mod tests {
         // Each vertex rounds to the extent grid independently, so a ring with positive
         // (pre-quantization) area can end up with negative area purely as a rounding artifact.
         let extent = 1;
-        let exterior: Ring = vec![[0.0, 0.0], [100.0, 0.51], [50.0, 0.49]];
+        let exterior: Vec<Point> = vec![[0.0, 0.0], [100.0, 0.51], [50.0, 0.49]];
         assert!(shoelace_f64(&exterior) > 0.0);
         let quantized = simplify(&quantize(&exterior, extent), true);
         assert_eq!(quantized.len(), 3);

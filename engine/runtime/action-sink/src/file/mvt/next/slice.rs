@@ -5,19 +5,19 @@ use tinymvt::webmercator::lnglat_to_web_mercator;
 use super::extract::Leaf;
 use crate::file::mvt::tiling::TileContent;
 
-pub(super) type Ring = Vec<[f64; 2]>;
+pub(super) type Point = [f64; 2];
 pub(super) type TileKey = (u8, u32, u32);
 
 pub(super) struct PolygonPart {
-    pub(super) exterior: Ring,
-    pub(super) holes: Vec<Ring>,
+    pub(super) exterior: Vec<Point>,
+    pub(super) holes: Vec<Vec<Point>>,
 }
 
 pub(super) enum TiledGeom {
     Polygon(Vec<PolygonPart>),
     /// Separate line paths landing in the same tile.
-    LineString(Vec<Ring>),
-    Point(Vec<[f64; 2]>),
+    LineString(Vec<Vec<Point>>),
+    Point(Vec<Point>),
 }
 
 pub(super) struct TiledLeaf {
@@ -33,8 +33,8 @@ pub(super) fn slice_leaves(
     buffer_pixels: u32,
 ) -> (TileContent, Vec<TiledLeaf>) {
     let mut tiled_polys: HashMap<TileKey, Vec<PolygonPart>> = HashMap::new();
-    let mut tiled_lines: HashMap<TileKey, Vec<Ring>> = HashMap::new();
-    let mut tiled_points: HashMap<TileKey, Vec<[f64; 2]>> = HashMap::new();
+    let mut tiled_lines: HashMap<TileKey, Vec<Vec<Point>>> = HashMap::new();
+    let mut tiled_points: HashMap<TileKey, Vec<Point>> = HashMap::new();
     let mut content = TileContent::default();
 
     let extent = 1 << max_detail;
@@ -43,7 +43,7 @@ pub(super) fn slice_leaves(
     for leaf in leaves {
         match leaf {
             Leaf::Polygon(rings) => {
-                let mercator: Vec<Ring> = rings
+                let mercator: Vec<Vec<Point>> = rings
                     .iter()
                     .map(|ring| project_ring(ring, &mut content))
                     .collect();
@@ -115,7 +115,7 @@ pub(super) fn slice_leaves(
 
 // Extends `content`'s lng/lat bounds and projects to the normalized [0,1]
 // Web Mercator space tile math uses.
-fn project_ring(ring: &[[f64; 2]], content: &mut TileContent) -> Ring {
+fn project_ring(ring: &[Point], content: &mut TileContent) -> Vec<Point> {
     ring.iter()
         .map(|&[lng, lat]| {
             content.min_lng = content.min_lng.min(lng);
@@ -136,7 +136,7 @@ fn tile_key(zoom: u8, xi: i64, yi: i64) -> TileKey {
     )
 }
 
-fn ring_area(ring: &[[f64; 2]]) -> f64 {
+fn ring_area(ring: &[Point]) -> f64 {
     let n = ring.len();
     if n < 3 {
         return 0.0;
@@ -150,7 +150,7 @@ fn ring_area(ring: &[[f64; 2]]) -> f64 {
     area / 2.0
 }
 
-fn normalize_winding(mut rings: Vec<Ring>) -> Option<(Ring, Vec<Ring>)> {
+fn normalize_winding(mut rings: Vec<Vec<Point>>) -> Option<(Vec<Point>, Vec<Vec<Point>>)> {
     let holes = rings.split_off(1);
     let exterior = rings.remove(0);
     if ring_area(&exterior) > 0.0 {
@@ -171,7 +171,7 @@ fn normalize_winding(mut rings: Vec<Ring>) -> Option<(Ring, Vec<Ring>)> {
     Some((exterior, holes))
 }
 
-fn interp(a: [f64; 2], b: [f64; 2], axis: usize, k: f64) -> [f64; 2] {
+fn interp(a: Point, b: Point, axis: usize, k: f64) -> Point {
     let other = 1 - axis;
     let t = (k - a[axis]) / (b[axis] - a[axis]);
     let mut p = [0.0; 2];
@@ -181,10 +181,10 @@ fn interp(a: [f64; 2], b: [f64; 2], axis: usize, k: f64) -> [f64; 2] {
 }
 
 // Sutherland-Hodgman clip against the band [k1, k2] on axis (0 = x, 1 = y).
-fn clip_band(points: &Ring, axis: usize, k1: f64, k2: f64, wraparound: bool) -> Ring {
+fn clip_band(points: &[Point], axis: usize, k1: f64, k2: f64, wraparound: bool) -> Vec<Point> {
     let n = points.len();
     if n == 0 {
-        return Ring::new();
+        return Vec::new();
     }
     let mut out = Vec::with_capacity(n + 2);
     let edges = if wraparound { n } else { n - 1 };
@@ -220,15 +220,15 @@ fn clip_band(points: &Ring, axis: usize, k1: f64, k2: f64, wraparound: bool) -> 
     out
 }
 
-fn ring_bounds(ring: &Ring, axis: usize) -> (f64, f64) {
+fn ring_bounds(ring: &[Point], axis: usize) -> (f64, f64) {
     ring.iter().fold((f64::MAX, f64::MIN), |(lo, hi), c| {
         (lo.min(c[axis]), hi.max(c[axis]))
     })
 }
 
 fn clip_polygon(
-    exterior: &Ring,
-    holes: &[Ring],
+    exterior: &[Point],
+    holes: &[Vec<Point>],
     zoom: u8,
     extent: u32,
     buffer: u32,
@@ -237,8 +237,6 @@ fn clip_polygon(
     let z_scale = (1u64 << zoom) as f64;
     let buf_width = buffer as f64 / extent as f64;
 
-    let rings: Vec<&Ring> = std::iter::once(exterior).chain(holes.iter()).collect();
-
     let (min_y, max_y) = ring_bounds(exterior, 1);
     let y_lo = (min_y * z_scale).floor() as i64;
     let y_hi = (max_y * z_scale).ceil() as i64;
@@ -246,15 +244,16 @@ fn clip_polygon(
     for yi in y_lo..y_hi {
         let k1 = (yi as f64 - buf_width) / z_scale;
         let k2 = ((yi + 1) as f64 + buf_width) / z_scale;
-        let y_sliced: Vec<Ring> = rings
+        let y_sliced_exterior = clip_band(exterior, 1, k1, k2, true);
+        if y_sliced_exterior.is_empty() {
+            continue;
+        }
+        let y_sliced_holes: Vec<Vec<Point>> = holes
             .iter()
             .map(|ring| clip_band(ring, 1, k1, k2, true))
             .collect();
-        if y_sliced[0].is_empty() {
-            continue;
-        }
 
-        let (min_x, max_x) = ring_bounds(&y_sliced[0], 0);
+        let (min_x, max_x) = ring_bounds(&y_sliced_exterior, 0);
         let x_lo = (min_x * z_scale).floor() as i64;
         let x_hi = (max_x * z_scale).ceil() as i64;
 
@@ -262,22 +261,26 @@ fn clip_polygon(
             let k1 = (xi as f64 - buf_width) / z_scale;
             let k2 = ((xi + 1) as f64 + buf_width) / z_scale;
 
-            let mut clipped = y_sliced.iter().map(|ring| {
+            let to_local = |ring: &[Point]| {
                 let ring = clip_band(ring, 0, k1, k2, true);
-                let mut local: Ring = ring
+                let mut local: Vec<Point> = ring
                     .iter()
                     .map(|&[x, y]| [x * z_scale - xi as f64, y * z_scale - yi as f64])
                     .collect();
                 // MVT requires clockwise winding.
                 local.reverse();
                 local
-            });
+            };
 
-            let part_exterior = clipped.next().expect("exterior always present");
+            let part_exterior = to_local(&y_sliced_exterior);
             if part_exterior.len() < 3 {
                 continue;
             }
-            let part_holes: Vec<Ring> = clipped.filter(|h| h.len() >= 3).collect();
+            let part_holes: Vec<Vec<Point>> = y_sliced_holes
+                .iter()
+                .map(to_local)
+                .filter(|h| h.len() >= 3)
+                .collect();
 
             let key = tile_key(zoom, xi, yi);
             out.entry(key).or_default().push(PolygonPart {
@@ -289,11 +292,11 @@ fn clip_polygon(
 }
 
 fn clip_line_string(
-    line: &Ring,
+    line: &[Point],
     zoom: u8,
     extent: u32,
     buffer: u32,
-    out: &mut HashMap<TileKey, Vec<Ring>>,
+    out: &mut HashMap<TileKey, Vec<Vec<Point>>>,
 ) {
     let z_scale = (1u64 << zoom) as f64;
     let buf_width = buffer as f64 / extent as f64;
@@ -322,7 +325,7 @@ fn clip_line_string(
             if clipped.len() < 2 {
                 continue;
             }
-            let local: Ring = clipped
+            let local: Vec<Point> = clipped
                 .iter()
                 .map(|&[x, y]| [x * z_scale - xi as f64, y * z_scale - yi as f64])
                 .collect();
