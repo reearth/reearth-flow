@@ -1,12 +1,12 @@
 use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
-use reearth_flow_geometry::ops::reproject::transform_coords_3d;
+use reearth_flow_geometry::ops::reproject::{transform_coords_2d, transform_coords_3d};
 use reearth_flow_geometry::ops::{ReprojectionCache, Split};
 use reearth_flow_geometry::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
-const WGS84_2D: EpsgCode = EpsgCode::new(4326);
-const WGS84_3D: EpsgCode = EpsgCode::new(4979);
+const WEB_MERCATOR: EpsgCode = EpsgCode::new(3857);
 
 pub(super) enum Leaf {
+    /// Web Mercator (EPSG:3857) meters.
     Point([f64; 2]),
     LineString(Vec<[f64; 2]>),
     /// Exterior ring first, then holes.
@@ -42,36 +42,32 @@ fn source_crs(frame: &CoordinateFrame) -> Option<EpsgCode> {
     }
 }
 
-fn to_lnglat_2d(
+fn to_mercator_2d(
     frame: &CoordinateFrame,
     coords: &[[f64; 2]],
     cache: &mut ReprojectionCache,
 ) -> Option<Vec<[f64; 2]>> {
     let epsg = source_crs(frame)?;
-    let mut lifted: Vec<[f64; 3]> = coords.iter().map(|&[x, y]| [x, y, 0.0]).collect();
-    if let Err(e) = transform_coords_3d(cache, epsg, WGS84_2D, &mut lifted) {
-        tracing::warn!("MVT Writer: failed to reproject to WGS84: {e:?}");
+    let mut pts = coords.to_vec();
+    if let Err(e) = transform_coords_2d(cache, epsg, WEB_MERCATOR, &mut pts) {
+        tracing::warn!("MVT Writer: failed to reproject to Web Mercator: {e:?}");
         return None;
     }
-    Some(lifted.into_iter().map(|[lat, lon, _]| [lon, lat]).collect())
+    Some(pts)
 }
 
-fn to_lnglat_3d(
+fn to_mercator_3d(
     frame: &CoordinateFrame,
     coords: &[[f64; 3]],
     cache: &mut ReprojectionCache,
 ) -> Option<Vec<[f64; 2]>> {
     let epsg = source_crs(frame)?;
     let mut pts = coords.to_vec();
-    if let Err(e) = transform_coords_3d(cache, epsg, WGS84_3D, &mut pts) {
-        tracing::warn!("MVT Writer: failed to reproject to WGS84: {e:?}");
+    if let Err(e) = transform_coords_3d(cache, epsg, WEB_MERCATOR, &mut pts) {
+        tracing::warn!("MVT Writer: failed to reproject to Web Mercator: {e:?}");
         return None;
     }
-    Some(
-        pts.into_iter()
-            .map(|[lat, lon, _height]| [lon, lat])
-            .collect(),
-    )
+    Some(pts.into_iter().map(|[x, y, _height]| [x, y]).collect())
 }
 
 // Well-formed rings are closed (first == last); an unclosed ring is corrupt
@@ -88,25 +84,25 @@ fn require_closed(mut ring: Vec<[f64; 2]>) -> Option<Vec<[f64; 2]>> {
 fn collect_2d(g: &Euclidean2DGeometry, cache: &mut ReprojectionCache, out: &mut Vec<Leaf>) {
     match g {
         Euclidean2DGeometry::Point(p) => {
-            if let Some(mut ll) = to_lnglat_2d(p.frame(), &[p.position()], cache) {
+            if let Some(mut ll) = to_mercator_2d(p.frame(), &[p.position()], cache) {
                 out.push(Leaf::Point(ll.remove(0)));
             }
         }
         Euclidean2DGeometry::LineString(ls) => {
-            if let Some(ll) = to_lnglat_2d(ls.frame(), ls.coords(), cache) {
+            if let Some(ll) = to_mercator_2d(ls.frame(), ls.coords(), cache) {
                 out.push(Leaf::LineString(ll));
             }
         }
         Euclidean2DGeometry::Polygon(poly) => {
             let Some(exterior) =
-                to_lnglat_2d(poly.frame(), poly.exterior(), cache).and_then(require_closed)
+                to_mercator_2d(poly.frame(), poly.exterior(), cache).and_then(require_closed)
             else {
                 return;
             };
             let mut rings = vec![exterior];
             for interior in poly.interiors() {
                 if let Some(hole) =
-                    to_lnglat_2d(poly.frame(), interior, cache).and_then(require_closed)
+                    to_mercator_2d(poly.frame(), interior, cache).and_then(require_closed)
                 {
                     rings.push(hole);
                 }
@@ -136,25 +132,25 @@ fn collect_2d(g: &Euclidean2DGeometry, cache: &mut ReprojectionCache, out: &mut 
 fn collect_3d(g: &Euclidean3DGeometry, cache: &mut ReprojectionCache, out: &mut Vec<Leaf>) {
     match g {
         Euclidean3DGeometry::Point(p) => {
-            if let Some(mut ll) = to_lnglat_3d(p.frame(), &[p.position()], cache) {
+            if let Some(mut ll) = to_mercator_3d(p.frame(), &[p.position()], cache) {
                 out.push(Leaf::Point(ll.remove(0)));
             }
         }
         Euclidean3DGeometry::LineString(ls) => {
-            if let Some(ll) = to_lnglat_3d(ls.frame(), ls.coords(), cache) {
+            if let Some(ll) = to_mercator_3d(ls.frame(), ls.coords(), cache) {
                 out.push(Leaf::LineString(ll));
             }
         }
         Euclidean3DGeometry::Polygon(poly) => {
             let Some(exterior) =
-                to_lnglat_3d(poly.frame(), poly.exterior(), cache).and_then(require_closed)
+                to_mercator_3d(poly.frame(), poly.exterior(), cache).and_then(require_closed)
             else {
                 return;
             };
             let mut rings = vec![exterior];
             for interior in poly.interiors() {
                 if let Some(hole) =
-                    to_lnglat_3d(poly.frame(), interior, cache).and_then(require_closed)
+                    to_mercator_3d(poly.frame(), interior, cache).and_then(require_closed)
                 {
                     rings.push(hole);
                 }
