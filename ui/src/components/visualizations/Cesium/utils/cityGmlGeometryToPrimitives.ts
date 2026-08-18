@@ -9,7 +9,6 @@ import {
   PerInstanceColorAppearance,
   PolygonGeometry,
   PolygonHierarchy,
-  PolygonOutlineGeometry,
   Primitive,
   PrimitiveCollection,
   ShowGeometryInstanceAttribute,
@@ -17,8 +16,16 @@ import {
 
 // ── Types ────────────────────────────────────────────────────────────────────
 
+/**
+ * The geometry the batched renderer reads.
+ *
+ * `type` is `"CityGmlGeometry"` from the legacy transform and `"MultiPolygon"`
+ * from the new-geometry one, which keeps the GeoJSON projection for the table
+ * and attaches the levels of detail alongside it. `gmlGeometries` is the field
+ * that matters here, and both transforms write it.
+ */
 type CityGmlGeometry = {
-  type: "CityGmlGeometry";
+  type: string;
   [key: string]: any;
 };
 
@@ -161,6 +168,101 @@ function isDemFeature(properties: Record<string, any>): boolean {
   );
 }
 
+/**
+ * One coordinate as `[longitude, latitude, height]`, or null if unreadable.
+ *
+ * The legacy transform passes the engine's `{ x, y, z }` records through; the
+ * new-geometry one emits GeoJSON positions, `[lon, lat, z]`. Everything that
+ * reads a coordinate has to accept both.
+ */
+export function readCoord(coord: any): [number, number, number] | null {
+  if (Array.isArray(coord)) {
+    const [x, y, z] = coord;
+    if (typeof x !== "number" || typeof y !== "number") return null;
+    return [x, y, typeof z === "number" ? z : 0];
+  }
+  if (typeof coord?.x === "number" && typeof coord?.y === "number") {
+    return [coord.x, coord.y, typeof coord.z === "number" ? coord.z : 0];
+  }
+  return null;
+}
+
+/**
+ * Height from either coordinate form.
+ *
+ * Read on its own by the surface-type heuristic and the ground-level scan; on
+ * a new-format file a `coord.z` there returns 0 for every position, which
+ * flattens every building and colours the lot as floor.
+ */
+export function coordZ(coord: any): number {
+  return readCoord(coord)?.[2] ?? 0;
+}
+
+/**
+ * Whether a feature's geometry is CityGML, in either format.
+ *
+ * Legacy says so in its type. The new-geometry transform emits a MultiPolygon
+ * like anything else and marks it with the level of detail it chose — which it
+ * writes only for a collection whose members declared one, and only the
+ * CityGML pipeline does that.
+ *
+ * Shared, because getting this wrong in one place is invisible: the split in
+ * `Cesium/index.tsx` decides whether a feature is drawn as batched primitives
+ * or as one entity per surface, and the branch in the debug panel's
+ * `handleFlyToSelectedFeature` decides whether the camera can find it at all.
+ */
+export function isCityGmlGeometry(geometry: any): boolean {
+  return (
+    geometry?.type === "CityGmlGeometry" || typeof geometry?.lod === "number"
+  );
+}
+
+/**
+ * The rings of each surface, when the geometry is a GeoJSON polygon form.
+ *
+ * `coordinates` is already one entry per surface, each `[exterior, ...holes]`.
+ */
+function polygonRingsOf(geometry: CityGmlGeometry): any[][] | null {
+  const { type, coordinates } = geometry;
+  if (!Array.isArray(coordinates)) return null;
+  if (type === "MultiPolygon") return coordinates;
+  if (type === "Polygon") return [coordinates];
+  return null;
+}
+
+/**
+ * The per-level surface lists to draw from.
+ *
+ * The legacy transform hands over the engine's own `gmlGeometries`, grouped by
+ * level of detail and indexed into the appearance arrays by `pos`. The
+ * new-geometry transform has already chosen a level and flattened it to a
+ * MultiPolygon of one polygon per surface, so its rings are read straight off
+ * `coordinates`.
+ *
+ * Reading them rather than having the transform emit a second copy is the
+ * whole point: a CityGML file is mostly coordinates, and holding them twice —
+ * or holding every level when only one is drawn — is what exhausts the tab.
+ * The wrappers built here live only for this call.
+ */
+export function gmlGeometriesOf(geometry: CityGmlGeometry): any[] | null {
+  const stored =
+    geometry.gmlGeometries || geometry.value?.cityGmlGeometry?.gmlGeometries;
+  if (Array.isArray(stored)) return stored;
+
+  const rings = polygonRingsOf(geometry);
+  if (!rings) return null;
+
+  // Holes are dropped, as they are on the legacy path — `PolygonHierarchy` is
+  // built from the outer ring alone below.
+  return [
+    {
+      lod: typeof geometry.lod === "number" ? geometry.lod : undefined,
+      pos: 0,
+      polygons: rings.map((surface) => ({ exterior: surface[0] })),
+    },
+  ];
+}
+
 function coordsToPositions(coordinates: any[]): Cartesian3[] {
   return coordinates
     .filter((coord) => coord != null)
@@ -189,7 +291,7 @@ function getSurfaceTypeColor(polygon: any, globalMinZ: number): Color {
   let minZ = Infinity;
   let maxZ = -Infinity;
   for (const coord of exterior) {
-    const z = coord.z || 0;
+    const z = coordZ(coord);
     if (z < minZ) minZ = z;
     if (z > maxZ) maxZ = z;
   }
@@ -255,9 +357,8 @@ export function convertFeatureCollectionToPrimitives(
 
     if (!featureId) continue;
 
-    const gmlGeometries =
-      geometry.gmlGeometries || geometry.value?.cityGmlGeometry?.gmlGeometries;
-    if (!gmlGeometries || !Array.isArray(gmlGeometries)) continue;
+    const gmlGeometries = gmlGeometriesOf(geometry);
+    if (!gmlGeometries) continue;
 
     const entry: FeatureInstanceData = {
       feature,
@@ -362,7 +463,7 @@ export function convertFeatureCollectionToPrimitives(
       let globalMinZ = Infinity;
       for (const p of allPolygons) {
         for (const c of p.exterior || []) {
-          const z = c.z || 0;
+          const z = coordZ(c);
           if (z < globalMinZ) globalMinZ = z;
         }
       }
@@ -487,133 +588,4 @@ export function convertFeatureCollectionToPrimitives(
       : null;
 
   return { absolutePrimitive, groundPrimitive, featureMap, boundingSphere };
-}
-
-/**
- * Create a LOD-upgrade Primitive Collection for a single feature using LOD3 (fallback LOD2) geometry.
- * Returns null if no higher-LOD data is available.
- */
-export function createLodUpgradePrimitiveCollection(
-  feature: CityGmlFeature,
-  typeConfig?: CityGmlTypeConfig,
-): PrimitiveCollection | null {
-  const { geometry } = feature;
-  const featureId: string = feature.properties?._originalId || feature.id || "";
-
-  const gmlGeometries =
-    geometry.gmlGeometries || geometry.value?.cityGmlGeometry?.gmlGeometries;
-  if (!gmlGeometries || !Array.isArray(gmlGeometries)) return null;
-
-  // LOD3 first, fallback to LOD2
-  let lodGeometries = gmlGeometries.filter(
-    (geom: any) =>
-      geom.lod === 3 ||
-      geom.gml_trait?.property?.includes("Lod3") ||
-      geom.gml_trait?.property?.includes("LOD3"),
-  );
-  if (lodGeometries.length === 0) {
-    lodGeometries = gmlGeometries.filter(
-      (geom: any) =>
-        geom.lod === 2 ||
-        geom.gml_trait?.property?.includes("Lod2") ||
-        geom.gml_trait?.property?.includes("LOD2"),
-    );
-  }
-
-  if (lodGeometries.length === 0) return null;
-
-  const allPolygons: any[] = [];
-  for (const geom of lodGeometries) {
-    if (geom.polygons && Array.isArray(geom.polygons)) {
-      const baseIndex: number = geom.pos ?? 0;
-      geom.polygons.forEach((polygon: any, localIdx: number) => {
-        allPolygons.push({ ...polygon, _globalIndex: baseIndex + localIdx });
-      });
-    }
-  }
-
-  if (allPolygons.length === 0) return null;
-
-  let globalMinZ = Infinity;
-  for (const p of allPolygons) {
-    for (const c of p.exterior || []) {
-      const z = c.z || 0;
-      if (z < globalMinZ) globalMinZ = z;
-    }
-  }
-
-  if (globalMinZ === Infinity) return null;
-
-  const fillInstances: GeometryInstance[] = [];
-  const outlineInstances: GeometryInstance[] = [];
-
-  allPolygons.forEach((polygon, idx) => {
-    if (!polygon.exterior || !Array.isArray(polygon.exterior)) return;
-    const rawPositions = coordsToPositions(polygon.exterior);
-    if (rawPositions.length < 3) return;
-
-    const positions = rawPositions.map((pos) => {
-      const carto = Cartographic.fromCartesian(pos);
-      carto.height = (carto.height || 0) - globalMinZ;
-      return Cartographic.toCartesian(carto);
-    });
-
-    const globalIdx: number = polygon._globalIndex ?? -1;
-    const defaultColor = typeConfig?.useSurfaceTypeColors
-      ? getSurfaceTypeColor(polygon, globalMinZ)
-      : (typeConfig?.color ?? Color.GRAY.withAlpha(0.8));
-    const color = resolveAppearanceColor(globalIdx, geometry, defaultColor);
-
-    fillInstances.push(
-      new GeometryInstance({
-        id: { featureId, instanceId: `${featureId}_fill_lod_${idx}` },
-        geometry: new PolygonGeometry({
-          polygonHierarchy: new PolygonHierarchy(positions),
-          perPositionHeight: true,
-        }),
-        attributes: {
-          color: ColorGeometryInstanceAttribute.fromColor(color),
-          show: new ShowGeometryInstanceAttribute(true),
-        },
-      }),
-    );
-
-    outlineInstances.push(
-      new GeometryInstance({
-        id: { featureId, instanceId: `${featureId}_outline_lod_${idx}` },
-        geometry: new PolygonOutlineGeometry({
-          polygonHierarchy: new PolygonHierarchy(positions),
-          perPositionHeight: true,
-        }),
-        attributes: {
-          color: ColorGeometryInstanceAttribute.fromColor(
-            Color.BLACK.withAlpha(0.8),
-          ),
-          show: new ShowGeometryInstanceAttribute(true),
-        },
-      }),
-    );
-  });
-
-  if (fillInstances.length === 0 || outlineInstances.length === 0) return null;
-  const fillPrimitive = new Primitive({
-    geometryInstances: fillInstances,
-    appearance: new PerInstanceColorAppearance({
-      flat: true,
-      translucent: true,
-    }),
-  });
-
-  const outlinePrimitive = new Primitive({
-    geometryInstances: outlineInstances,
-    appearance: new PerInstanceColorAppearance({
-      flat: true,
-      translucent: true,
-    }),
-  });
-
-  const primitiveCollection = new PrimitiveCollection();
-  primitiveCollection.add(fillPrimitive);
-  primitiveCollection.add(outlinePrimitive);
-  return primitiveCollection;
 }

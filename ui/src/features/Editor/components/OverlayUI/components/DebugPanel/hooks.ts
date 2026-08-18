@@ -15,6 +15,7 @@ import {
 } from "react";
 
 import { zoomToBoundingSphere } from "@flow/components/visualizations/Cesium/utils/cesiumFunctions";
+import { isCityGmlGeometry } from "@flow/components/visualizations/Cesium/utils/cityGmlGeometryToPrimitives";
 import useDataColumnizer from "@flow/hooks/useDataColumnizer";
 import { useStreamingDebugRunQuery } from "@flow/hooks/useStreamingDebugRunQuery";
 import { useJob } from "@flow/lib/gql/job";
@@ -157,7 +158,11 @@ export default () => {
 
             const geometry = selectedFeature.geometry;
 
-            if (geometry?.type === "CityGmlGeometry") {
+            // CityGML in either format is drawn as batched primitives, so
+            // there is no entity for the entity search below to find; it has
+            // to go through the bounding sphere. The check used to be on the
+            // legacy type name, which a new-format feature does not carry.
+            if (isCityGmlGeometry(geometry)) {
               zoomToBoundingSphere(geometry, cesiumViewerRef, 1.5);
             } else {
               // Non-CityGML 3D (e.g. FlowGeometry3D) — entity-based flyTo

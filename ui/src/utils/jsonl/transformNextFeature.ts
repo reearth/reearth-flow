@@ -16,6 +16,7 @@
  * arrives as a `GeometryCollection` of per-LOD members and judging it by its
  * own kind would conclude there is nothing to draw.
  */
+import i18n from "@flow/lib/i18n/i18n";
 import {
   describeGeometry,
   type GeometryDescription,
@@ -23,34 +24,57 @@ import {
 
 type Position = number[];
 
+/**
+ * The finest level of detail a CityGML feature carries, kept for the map to
+ * swap in when the feature is selected.
+ *
+ * The map draws one level — see {@link LOD_PREFERENCE} — because stacking a
+ * coarse box inside a detailed one draws neither well. Legacy did the same and
+ * upgraded the selected feature to its finest level
+ * (`useLodWorker.prepareWorkerInput`: LOD3, else LOD2), which it could do
+ * because it held the engine's whole record. This holds the one extra level
+ * that upgrade needs, and nothing else.
+ *
+ * Two levels rather than all of them is the difference between ~154 MB and
+ * ~870 MB over the panel's 2000-feature limit, on CityGML shaped like PLATEAU;
+ * `DISPLAY_POSITION_LIMIT` in `useStreamingDebugRunQuery` counts this too, so a
+ * file dense enough for even two levels to matter yields fewer features rather
+ * than a dead tab.
+ */
+export type LodDetail = {
+  lod: number;
+  geometry: Record<string, unknown>;
+};
+
 export type TransformedFeature = {
   id: string;
   type: "Feature";
   properties: Record<string, unknown>;
   geometry?: unknown;
   /**
-   * The parsed JSONL record as the engine wrote it, inline image bytes
-   * excepted. The details panel shows this rather than the derived geometry,
-   * so debugging sees the engine's own structure — which is the point, since
-   * the derived form drops the unselected LODs, appearance themes, UV sets and
-   * a tangent frame's basis, and those are usually what a geometry bug is in.
-   *
-   * Possible performance issue, so measure before assuming it is fine. Over
-   * 2000 features (the panel's `displayLimit`) shaped like PLATEAU CityGML — a
-   * `GeometryCollection` of three LODs in EPSG:6697 — the derived features
-   * alone retain ~35 MB and retaining this as well takes it to ~123 MB. Most
-   * of that gap is LOD: the derived form keeps the one it draws, this keeps all
-   * three. It costs far less elsewhere, ~1.15x on an east-first CRS, where
-   * `toPosition` returns the source array instead of copying it.
-   *
-   * Nothing walks it — it is not a column, and the table's global filter runs
-   * over columns — so the cost is memory, not time. The worst case is a session
-   * holding several files at once: `MAX_CACHED_FILES` is 8, so nine open node
-   * outputs sit near 1 GB rather than ~280 MB. If that shows up, drop this
-   * field (assigned in `useStreamingDebugRunQuery`) or lower that cap.
+   * Not part of the drawn geometry, and deliberately not on it: the table
+   * builds a column per geometry key, and a second coordinate blob there is
+   * noise. Only `useLodWorker` reads it.
    */
-  source?: unknown;
+  lodDetail?: LodDetail;
 };
+
+/**
+ * What the derived form drops, for whoever needs it back.
+ *
+ * This carries what the map draws from: GeoJSON coordinates, the frame, the
+ * chosen level of detail and the one finer level behind it, and appearance
+ * flattened to one colour per surface. The engine's record holds more — the
+ * levels between those two, every theme rather than the default one, textures,
+ * UV sets, a tangent frame's basis — and a geometry bug is often in one of
+ * those.
+ *
+ * None of it is retained, because keeping every parsed record alongside every
+ * derived one cost ~3.5x memory (~35 MB to ~123 MB over the panel's
+ * 2000-feature `displayLimit`, shaped like PLATEAU CityGML). If it is wanted
+ * again, fetch the one selected feature's line on demand rather than retaining
+ * all of them.
+ */
 
 /** Human-readable coordinate frame, since the EPSG is no longer feature-level. */
 function describeFrame(frame: unknown): string | undefined {
@@ -115,9 +139,11 @@ function needsAxisSwap(frame: unknown): boolean {
  * Put one coordinate into GeoJSON order, appending the leaf's single elevation
  * if it carries one. Every coordinate this module emits goes through here.
  *
- * When neither applies the original array is returned rather than copied. The
- * feature keeps its source geometry for raw inspection, so a copy here would
- * mean holding every coordinate twice; nothing downstream mutates these.
+ * When neither applies the original array is returned rather than copied —
+ * an allocation per position, on files that are nothing but positions, for no
+ * gain. The parsed record is discarded once the transform returns, so this
+ * keeps alive only the coordinates themselves, which are the data being kept
+ * either way; nothing downstream mutates them.
  */
 function toPosition(coord: Position, swap: boolean, z: unknown): Position {
   if (!swap && typeof z !== "number") return coord;
@@ -181,12 +207,168 @@ export function hasGeoJsonForm(variant: string | null): boolean {
 }
 
 /**
+ * One material in the form the CityGML renderer reads.
+ *
+ * `resolveAppearanceColor` in `cityGmlGeometryToPrimitives` takes a
+ * `diffuseColor` triple and a `transparency`, which is what the legacy record
+ * carried; the new appearance model is richer, so this is the lossy projection
+ * onto what `PerInstanceColorAppearance` can actually draw. Textures are not
+ * part of it — that appearance has no texture support, and legacy dropped them
+ * for the same reason.
+ */
+type RendererMaterial = { diffuseColor: number[]; transparency: number };
+
+/**
+ * Surface-to-material binding for one converted geometry, under the field names
+ * the renderer already reads.
+ */
+type Shading = {
+  materials: (RendererMaterial | null)[];
+  /** One entry per emitted surface, indexing `materials`; null = unbound. */
+  polygonMaterials: (number | null)[];
+};
+
+/** Project a `Material` onto a flat colour. Null when it is neither shading model. */
+function toRendererMaterial(material: unknown): RendererMaterial | null {
+  const record = (material ?? {}) as Record<string, unknown>;
+
+  const phong = record.Phong as Record<string, unknown> | undefined;
+  if (phong) {
+    return {
+      diffuseColor: (phong.diffuse as number[]) ?? [1, 1, 1],
+      transparency:
+        typeof phong.transparency === "number" ? phong.transparency : 0,
+    };
+  }
+
+  const pbr = record.Pbr as Record<string, unknown> | undefined;
+  if (pbr) {
+    // `base_color` carries alpha as its fourth element; the renderer wants the
+    // inverse, as CityGML states it.
+    const base = (pbr.base_color as number[]) ?? [1, 1, 1, 1];
+    return {
+      diffuseColor: base.slice(0, 3),
+      transparency: 1 - (typeof base[3] === "number" ? base[3] : 1),
+    };
+  }
+
+  return null;
+}
+
+/**
+ * A leaf's appearance, flattened to one material index per surface.
+ *
+ * The engine binds faces to materials per theme, and a leaf always names a
+ * default theme for "a single-theme consumer to render" — which is what the
+ * map is. So this reads that theme's front binding and ignores the rest; the
+ * unused themes, the back bindings and the UV sets are not something a flat
+ * per-instance colour can express.
+ */
+function shadingOf(appearance: unknown, surfaces: number): Shading | null {
+  const record = appearance as Record<string, unknown> | null | undefined;
+  if (!record || !Array.isArray(record.materials)) return null;
+
+  const themes = record.themes;
+  if (!Array.isArray(themes) || themes.length === 0) return null;
+
+  const theme =
+    themes.find(
+      (entry) =>
+        (entry as Record<string, unknown>)?.theme === record.default_theme,
+    ) ?? themes[0];
+  const front = (theme as Record<string, unknown>)?.front as
+    | Record<string, unknown>
+    | undefined;
+  if (!front) return null;
+
+  let polygonMaterials: (number | null)[];
+  if (typeof front.Uniform === "number") {
+    polygonMaterials = new Array(surfaces).fill(front.Uniform);
+  } else if (Array.isArray(front.PerFace)) {
+    const perFace = front.PerFace as unknown[];
+    polygonMaterials = Array.from({ length: surfaces }, (_, index) =>
+      typeof perFace[index] === "number" ? (perFace[index] as number) : null,
+    );
+  } else {
+    return null;
+  }
+
+  return {
+    materials: record.materials.map(toRendererMaterial),
+    polygonMaterials,
+  };
+}
+
+/** Spread a leaf's shading onto its converted geometry, or nothing when it has none. */
+function shadingFields(
+  appearance: unknown,
+  surfaces: number,
+): Record<string, unknown> {
+  const shading = shadingOf(appearance, surfaces);
+  return shading ?? {};
+}
+
+/** Surfaces a converted geometry emitted, for lining bindings up with them. */
+function surfaceCountOf(geometry: Record<string, unknown>): number {
+  if (geometry.type === "MultiPolygon") {
+    return Array.isArray(geometry.coordinates)
+      ? geometry.coordinates.length
+      : 0;
+  }
+  return geometry.type === "Polygon" ? 1 : 0;
+}
+
+/**
+ * Concatenate the members' shading, rebasing each one's indices onto the
+ * combined palette.
+ *
+ * A member with no appearance still has to advance the binding by its own
+ * surface count, or every index after it points at the wrong material.
+ */
+function mergeShading(
+  geometries: Record<string, unknown>[],
+): Record<string, unknown> {
+  if (
+    !geometries.some((geometry) => Array.isArray(geometry.polygonMaterials))
+  ) {
+    return {};
+  }
+
+  const materials: unknown[] = [];
+  const polygonMaterials: (number | null)[] = [];
+
+  for (const geometry of geometries) {
+    const own = geometry.polygonMaterials as (number | null)[] | undefined;
+    const palette = geometry.materials as unknown[] | undefined;
+
+    if (Array.isArray(own) && Array.isArray(palette)) {
+      const offset = materials.length;
+      materials.push(...palette);
+      polygonMaterials.push(
+        ...own.map((index) => (index === null ? null : index + offset)),
+      );
+    } else {
+      for (let i = 0; i < surfaceCountOf(geometry); i++) {
+        polygonMaterials.push(null);
+      }
+    }
+  }
+
+  return { materials, polygonMaterials };
+}
+
+/**
  * Convert a geometry leaf to GeoJSON.
  *
  * 2D and 3D leaves use the same field names and differ only in coordinate
  * arity, and a GeoJSON position takes an optional third element, so one
  * conversion serves both. Meshes and solids flatten to a MultiPolygon — one
  * polygon per face or triangle — which is what Cesium draws.
+ *
+ * A leaf that carries an appearance also emits `materials` and
+ * `polygonMaterials`, the two fields the CityGML renderer colours from. Legacy
+ * got those by passing the engine's record through untouched; the new model
+ * keeps appearance per leaf, so it is projected here.
  */
 function toGeoJson(
   variant: string | null,
@@ -221,6 +403,7 @@ function toGeoJson(
           toRing(exterior, swap, z),
           ...interiors.map((ring) => toRing(ring, swap, z)),
         ],
+        ...shadingFields(leaf.appearance, 1),
       };
     }
     case "PolygonMesh": {
@@ -228,6 +411,7 @@ function toGeoJson(
       return {
         type: "MultiPolygon",
         coordinates: faces.map((face) => ringsOfFace(face, swap, z)),
+        ...shadingFields(leaf.appearance, faces.length),
       };
     }
     case "TriangularMesh": {
@@ -235,18 +419,32 @@ function toGeoJson(
       return {
         type: "MultiPolygon",
         coordinates: triangles.map((triangle) => [toRing(triangle, swap, z)]),
+        ...shadingFields(leaf.appearance, triangles.length),
       };
     }
     case "Solid": {
       // Appearance lives on each shell's mesh, and the shells are frameless —
-      // they borrow the solid's frame.
+      // they borrow the solid's frame. Each shell is converted on its own so
+      // its own appearance lines up with its own surfaces, then merged.
       const shells = [
         leaf.exterior,
         ...((leaf.interiors ?? []) as unknown[]),
       ].filter(Boolean);
+      const converted = shells.map((shell) => {
+        const coordinates = polygonsOfShell(shell, swap);
+        return {
+          type: "MultiPolygon",
+          coordinates,
+          ...shadingFields(appearanceOfShell(shell), coordinates.length),
+        };
+      });
+
       return {
         type: "MultiPolygon",
-        coordinates: shells.flatMap((shell) => polygonsOfShell(shell, swap)),
+        coordinates: converted.flatMap(
+          (shell) => shell.coordinates as Position[][][],
+        ),
+        ...mergeShading(converted),
       };
     }
     case "Collection": {
@@ -305,6 +503,9 @@ function mergeMembers(
       return {
         type: multi,
         coordinates: geometries.map((geometry) => geometry.coordinates),
+        // A `Polygon` member is one surface, so its binding needs no rebasing
+        // beyond the palette offset — the same merge serves both branches.
+        ...mergeShading(geometries),
       };
     }
 
@@ -316,6 +517,7 @@ function mergeMembers(
         coordinates: geometries.flatMap(
           (geometry) => geometry.coordinates as unknown[],
         ),
+        ...mergeShading(geometries),
       };
     }
   }
@@ -334,7 +536,33 @@ type SelectedCollection = {
   geometry: Record<string, unknown> | null;
   /** Present when the members declared a level and one was chosen. */
   lod?: number;
+  /** The finest level, when that is not the one drawn. See {@link LodDetail}. */
+  detail?: LodDetail;
 };
+
+/**
+ * Which level of detail to draw, in order of preference.
+ *
+ * LOD1 first, exactly as the legacy CityGML renderer chose it
+ * (`convertFeatureCollectionToPrimitives`: `lod === 1`, then 2, then 3). The
+ * order is not "coarsest first" — LOD0 is a *footprint*, a single flat surface
+ * at ground level, so preferring it draws a city as flat polygons rather than
+ * as buildings. LOD1 is the coarsest level that is still a solid.
+ *
+ * Anything not listed falls back to the lowest declared level, which keeps a
+ * file of nothing but LOD0 drawable.
+ */
+const LOD_PREFERENCE = [1, 2, 3];
+
+function preferredLod(levels: (number | undefined)[]): number | undefined {
+  const declared = levels.filter(
+    (level): level is number => level !== undefined,
+  );
+  if (declared.length === 0) return undefined;
+
+  const preferred = LOD_PREFERENCE.find((level) => declared.includes(level));
+  return preferred ?? Math.min(...declared);
+}
 
 /**
  * Convert a whole `Geometry` rather than a single leaf.
@@ -403,8 +631,7 @@ function frameOfCollection(
  * property, with the level in the collection's parallel `attrs`
  * (`citygml_parser/pipeline.rs`, "so downstream sinks can select a single
  * LOD"). Drawing every member would stack a coarse box model inside a detailed
- * one, so the lowest level present wins — the same preference the legacy
- * CityGML renderer applied.
+ * one, so one level is chosen — by {@link LOD_PREFERENCE}.
  */
 function collectionToGeoJson(value: unknown): SelectedCollection {
   const collection = (value ?? {}) as Record<string, unknown>;
@@ -416,11 +643,19 @@ function collectionToGeoJson(value: unknown): SelectedCollection {
     return typeof lod === "number" ? lod : undefined;
   });
 
-  const declared = levels.filter(
-    (level): level is number => level !== undefined,
-  );
-  const lod = declared.length ? Math.min(...declared) : undefined;
+  const lod = preferredLod(levels);
+  const geometry = convertLevel(members, levels, lod);
+  if (!geometry) return { geometry: null, lod };
 
+  return { geometry, lod, detail: finestLevel(members, levels, lod) };
+}
+
+/** Convert the members at one level, merged as a single geometry. */
+function convertLevel(
+  members: unknown[],
+  levels: (number | undefined)[],
+  lod: number | undefined,
+): Record<string, unknown> | null {
   const selected =
     lod === undefined
       ? members
@@ -431,15 +666,46 @@ function collectionToGeoJson(value: unknown): SelectedCollection {
     .map(geoJsonOfDescribed)
     .filter(Boolean) as Record<string, unknown>[];
 
-  if (geometries.length === 0) return { geometry: null, lod };
+  if (geometries.length === 0) return null;
 
   return {
-    geometry: {
-      ...mergeMembers(geometries),
-      ...frameOfCollection(described, geometries),
-    },
-    lod,
+    ...mergeMembers(geometries),
+    ...frameOfCollection(described, geometries),
   };
+}
+
+/**
+ * The finest level declared, when the map is not already drawing it.
+ *
+ * Legacy upgraded a selected feature to LOD3, else LOD2; taking the maximum
+ * reaches the same member without hard-coding which levels exist. Returns
+ * nothing when the drawn level is already the finest, so a single-level file
+ * costs nothing.
+ */
+function finestLevel(
+  members: unknown[],
+  levels: (number | undefined)[],
+  drawn: number | undefined,
+): LodDetail | undefined {
+  const declared = levels.filter(
+    (level): level is number => level !== undefined,
+  );
+  if (declared.length === 0) return undefined;
+
+  const finest = Math.max(...declared);
+  if (finest === drawn) return undefined;
+
+  const geometry = convertLevel(members, levels, finest);
+  return geometry ? { lod: finest, geometry } : undefined;
+}
+
+/** A shell's appearance, which sits on the mesh inside it rather than on the shell. */
+function appearanceOfShell(shell: unknown): unknown {
+  const record = (shell ?? {}) as Record<string, unknown>;
+  const mesh = (record.PolygonMesh ?? record.TriangularMesh) as
+    | Record<string, unknown>
+    | undefined;
+  return mesh?.appearance;
 }
 
 /** One shell of a solid as GeoJSON polygons. Shells carry no frame of their own. */
@@ -475,7 +741,11 @@ function countPointCloud(leaf: Record<string, unknown>): number {
   }, 0);
 }
 
-/** Short "what is in here" line for geometry the UI does not draw itself. */
+/** A count, grouped for the active language — `1,234` and `1.234` differ. */
+function num(value: number): string {
+  return value.toLocaleString(i18n.language);
+}
+
 function summarize(variant: string | null, value: unknown): string | undefined {
   const leaf = (value ?? {}) as Record<string, unknown>;
   const count = (key: string) =>
@@ -483,25 +753,30 @@ function summarize(variant: string | null, value: unknown): string | undefined {
 
   switch (variant) {
     case "Point":
-      return "1 position";
-    case "PointCloud": {
-      const count = countPointCloud(leaf);
-      return `${count.toLocaleString()} point${count === 1 ? "" : "s"}`;
-    }
+      return i18n.t("Positions: {{n}}", { n: num(1) });
+    case "PointCloud":
+      return i18n.t("Points: {{n}}", { n: num(countPointCloud(leaf)) });
     case "LineString":
-      return `${count("coords")} vertices`;
+      return i18n.t("Vertices: {{n}}", { n: num(count("coords")) });
     case "Polygon":
-      return `${count("exterior")} vertices, ${count("interiors")} holes`;
+      return i18n.t("Vertices: {{n}}, Holes: {{holes}}", {
+        n: num(count("exterior")),
+        holes: num(count("interiors")),
+      });
     case "PolygonMesh":
-      return `${count("faces")} faces`;
+      return i18n.t("Faces: {{n}}", { n: num(count("faces")) });
     case "TriangularMesh":
-      return `${count("triangles")} triangles`;
+      return i18n.t("Triangles: {{n}}", { n: num(count("triangles")) });
     case "Solid":
-      return `1 exterior shell, ${count("interiors")} voids`;
+      return i18n.t("Shells: {{n}}, Voids: {{voids}}", {
+        n: num(1),
+        voids: num(count("interiors")),
+      });
     case "Collection":
-      return `${count("members")} members`;
+      return i18n.t("Members: {{n}}", { n: num(count("members")) });
     case "Csg":
-      return Object.keys(leaf)[0] ?? "boolean combination";
+      // The engine's own discriminant — `Union`, `Difference` — not prose.
+      return Object.keys(leaf)[0] ?? i18n.t("Boolean combination");
     default:
       return undefined;
   }
@@ -638,12 +913,13 @@ export function transformNextFeature(parsed: any): TransformedFeature {
   }
 
   if (described.kind === "collection") {
-    const { geometry, lod } = collectionToGeoJson(described.value);
+    const { geometry, lod, detail } = collectionToGeoJson(described.value);
     // The chosen level is real data the engine wrote, and without it a row
     // gives no clue which of several models the map is drawing.
     transformed.geometry = geometry
       ? { ...geometry, ...(lod !== undefined ? { lod } : {}) }
       : toSummaryGeometry(described);
+    if (geometry && detail) transformed.lodDetail = detail;
     return transformed;
   }
 

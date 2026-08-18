@@ -4,24 +4,36 @@
  * Intermediate-data features carry values with no useful upper bound — mesh
  * face lists, point-cloud segments, per-corner UV. Anything that reaches for
  * `JSON.stringify` on every value it is handed will eventually be handed one of
- * those, so the entry points here measure first and summarize when measuring
- * says to.
+ * those, so the entry points here measure first and print under a budget when
+ * measuring says to.
+ *
+ * Two printers, because the two places that show a value want opposite things:
+ * {@link previewSerialize} produces one compact line for a table cell, and
+ * {@link formatStructured} produces an indented block for the details panel.
+ * Both keep a coordinate — an array of numbers — on a single line, since the
+ * point of looking at geometry is reading positions, and a printer that breaks
+ * `[139.7, 35.6, 10]` across three lines buries them.
+ *
  */
+import i18n from "@flow/lib/i18n/i18n";
 
-/** Leaf count past which a value is summarized rather than serialized. */
+/** Leaf count past which a value is previewed rather than serialized whole. */
 export const LARGE_VALUE_THRESHOLD = 100;
 
-/** How many array items the inline preview expands. */
-const ARRAY_PREVIEW_ITEMS = 1;
+/** Nesting depth past which either printer reports a shape instead of descending. */
+const MAX_DEPTH = 12;
 
-/** Nesting depth beyond which `stringifyItem` collapses to a shape note. */
-const MAX_STRINGIFY_DEPTH = 3;
+/** Characters {@link previewSerialize} may emit — a cell's accessor string. */
+const PREVIEW_BUDGET = 400;
 
-/** Array items rendered at any one depth by `stringifyItem`. */
-const MAX_ARRAY_ITEMS = 3;
+/** Characters {@link formatStructured} may emit — a scrollable detail block. */
+const BLOCK_BUDGET = 20_000;
 
-/** Object keys previewed by `summarizeValue`. */
-const OBJECT_PREVIEW_KEYS = 8;
+/** Numbers shown before an inlined coordinate list is elided. */
+const INLINE_NUMBERS = 12;
+
+/** Array items, or object keys, shown per level by {@link formatStructured}. */
+const BLOCK_ENTRIES = 40;
 
 /** Resolve a value that might be a JSON string into its parsed form. */
 export function resolveValue(value: unknown): unknown {
@@ -78,76 +90,169 @@ export function isLargeValue(value: unknown): boolean {
   return estimateSize(value) > LARGE_VALUE_THRESHOLD;
 }
 
-/**
- * Stringify a value with depth limiting (used for representative items in
- * previews). Beyond maxDepth, nested structures are shown as `Array(N)` /
- * `Object(N keys)`.
- */
-export function stringifyItem(
-  item: unknown,
-  indent: string,
-  depth = 0,
-): string {
-  if (item == null) return "null";
-  if (typeof item !== "object") {
-    return typeof item === "string" ? JSON.stringify(item) : String(item);
-  }
-  if (Array.isArray(item)) {
-    if (item.length === 0) return "[]";
-    if (depth >= MAX_STRINGIFY_DEPTH) return `Array(${item.length})`;
-    const shown = item.slice(0, MAX_ARRAY_ITEMS);
-    const inner = shown
-      .map((el) => `${indent}  ${stringifyItem(el, indent + "  ", depth + 1)}`)
-      .join(",\n");
-    const remaining = item.length - MAX_ARRAY_ITEMS;
-    const suffix = remaining > 0 ? `,\n${indent}  ... (${remaining} more)` : "";
-    return `[\n${inner}${suffix}\n${indent}]`;
-  }
-  const entries = Object.entries(item);
-  if (entries.length === 0) return "{}";
-  if (depth >= MAX_STRINGIFY_DEPTH) return `Object(${entries.length} keys)`;
-  const inner = entries
-    .map(
-      ([k, v]) =>
-        `${indent}  ${k}: ${stringifyItem(v, indent + "  ", depth + 1)}`,
-    )
-    .join(",\n");
-  return `{\n${inner}\n${indent}}`;
+/** A single coordinate, which reads as a line rather than as a column. */
+function isNumberArray(value: unknown[]): boolean {
+  return value.length > 0 && value.every((item) => typeof item === "number");
 }
 
-/** Build a lightweight summary string for a large value without JSON.stringify. */
-export function summarizeValue(value: unknown): string {
-  const resolved = resolveValue(value);
-  if (Array.isArray(resolved)) {
-    const len = resolved.length;
-    if (len === 0) return "[] (empty array)";
-    // Show first item fully expanded so the user sees the complete schema
-    const preview = resolved
-      .slice(0, ARRAY_PREVIEW_ITEMS)
-      .map((item) => stringifyItem(item, "  "))
-      .join(",\n  ");
-    const remaining = len - ARRAY_PREVIEW_ITEMS;
-    const suffix = remaining > 0 ? `,\n  ... (${remaining} more items)` : "";
-    return `Array(${len}) [\n  ${preview}${suffix}\n]`;
+function scalarText(value: unknown): string {
+  if (value === null) return "null";
+  if (value === undefined) return "undefined";
+  if (typeof value === "string") return JSON.stringify(value);
+  return String(value);
+}
+
+function elided(count: number): string {
+  return `… +${count.toLocaleString(i18n.language)}`;
+}
+
+function shapeText(value: object): string {
+  return Array.isArray(value)
+    ? `Array(${value.length})`
+    : `Object(${Object.keys(value).length})`;
+}
+
+/** Remaining characters a printer may emit. Also what bounds a cyclic value. */
+type Budget = { left: number };
+
+function writeCompact(value: unknown, budget: Budget, depth: number): string {
+  if (value === null || typeof value !== "object") {
+    const text = scalarText(value);
+    budget.left -= text.length;
+    return text;
   }
-  if (typeof resolved === "object" && resolved !== null) {
-    const entries = Object.entries(resolved);
-    if (entries.length === 0) return "{} (empty object)";
-    const preview = entries
-      .slice(0, OBJECT_PREVIEW_KEYS)
-      .map(([k, v]) => `  ${k}: ${stringifyItem(v, "  ")}`)
-      .join(",\n");
-    const remaining = entries.length - OBJECT_PREVIEW_KEYS;
-    const suffix = remaining > 0 ? `,\n  ... (${remaining} more keys)` : "";
-    return `Object(${entries.length} keys) {\n${preview}${suffix}\n}`;
+
+  budget.left -= 2; // The brackets, which also guarantees a cycle runs out.
+  if (depth >= MAX_DEPTH) return shapeText(value);
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) return "[]";
+
+    // A single coordinate goes out whole even if that overruns the budget:
+    // stopping halfway through one reads as a wrong position, not a cut-off
+    // list, and the overrun is a few characters.
+    if (isNumberArray(value) && value.length <= INLINE_NUMBERS) {
+      const text = `[${value.join(", ")}]`;
+      budget.left -= text.length;
+      return text;
+    }
+
+    const parts: string[] = [];
+    for (const item of value) {
+      if (budget.left <= 0) break;
+      if (parts.length > 0) budget.left -= 2; // ", "
+      parts.push(writeCompact(item, budget, depth + 1));
+    }
+    if (parts.length < value.length) {
+      parts.push(elided(value.length - parts.length));
+    }
+    return `[${parts.join(", ")}]`;
   }
-  return String(resolved);
+
+  const entries = Object.entries(value as Record<string, unknown>);
+  if (entries.length === 0) return "{}";
+
+  const parts: string[] = [];
+  for (const [key, item] of entries) {
+    if (budget.left <= 0) break;
+    budget.left -= key.length + (parts.length > 0 ? 4 : 2); // `, key: `
+    parts.push(`${key}: ${writeCompact(item, budget, depth + 1)}`);
+  }
+  if (parts.length < entries.length) {
+    parts.push(elided(entries.length - parts.length));
+  }
+  return `{${parts.join(", ")}}`;
+}
+
+/**
+ * One compact line describing a value, cut off once it has spent its budget.
+ *
+ * Emits real JSON-ish content — numbers as numbers — for as far as the budget
+ * reaches, rather than a count and a shape. A table cell shows the first ~100
+ * characters of this, and for geometry those characters should be coordinates.
+ */
+export function previewSerialize(
+  value: unknown,
+  budget: number = PREVIEW_BUDGET,
+): string {
+  return writeCompact(value, { left: budget }, 0);
+}
+
+function writeBlock(
+  value: unknown,
+  budget: Budget,
+  indent: string,
+  depth: number,
+): string {
+  if (value === null || typeof value !== "object") {
+    const text = scalarText(value);
+    budget.left -= text.length;
+    return text;
+  }
+
+  budget.left -= 2;
+  if (depth >= MAX_DEPTH) return shapeText(value);
+
+  if (Array.isArray(value)) {
+    if (value.length === 0) return "[]";
+
+    // A coordinate stays on one line; everything else opens a block.
+    if (isNumberArray(value)) {
+      const shown = value.slice(0, INLINE_NUMBERS);
+      const rest = value.length - shown.length;
+      const text = `[${shown.join(", ")}${rest > 0 ? `, ${elided(rest)}` : ""}]`;
+      budget.left -= text.length;
+      return text;
+    }
+
+    const lines: string[] = [];
+    for (const item of value) {
+      if (budget.left <= 0 || lines.length >= BLOCK_ENTRIES) break;
+      budget.left -= indent.length + 3; // The indent, and ",\n"
+      lines.push(
+        `${indent}  ${writeBlock(item, budget, indent + "  ", depth + 1)}`,
+      );
+    }
+    const rest = value.length - lines.length;
+    if (rest > 0) lines.push(`${indent}  ${elided(rest)}`);
+    return `[\n${lines.join(",\n")}\n${indent}]`;
+  }
+
+  const entries = Object.entries(value as Record<string, unknown>);
+  if (entries.length === 0) return "{}";
+
+  const lines: string[] = [];
+  for (const [key, item] of entries) {
+    if (budget.left <= 0 || lines.length >= BLOCK_ENTRIES) break;
+    budget.left -= indent.length + key.length + 5; // The indent, `key: ` and ",\n"
+    lines.push(
+      `${indent}  ${key}: ${writeBlock(item, budget, indent + "  ", depth + 1)}`,
+    );
+  }
+  const rest = entries.length - lines.length;
+  if (rest > 0) lines.push(`${indent}  ${elided(rest)}`);
+  return `{\n${lines.join(",\n")}\n${indent}}`;
+}
+
+/**
+ * An indented block describing a value, cut off once it has spent its budget.
+ *
+ * This is what the details panel renders, for values of any size — the budget
+ * is what makes a 300-face mesh safe to hand it, so there is no separate path
+ * for large values to fall down. The full value stays reachable through the
+ * raw viewer.
+ */
+export function formatStructured(
+  value: unknown,
+  budget: number = BLOCK_BUDGET,
+): string {
+  return writeBlock(value, { left: budget }, "", 0);
 }
 
 /** A string safe to run a substring search over, whatever the value's size. */
 export function toSearchableString(value: unknown): string {
   if (typeof value !== "object" || value === null) return String(value);
-  if (isLargeValue(value)) return summarizeValue(value);
+  if (isLargeValue(value)) return previewSerialize(value);
   try {
     return JSON.stringify(value);
   } catch {
@@ -158,15 +263,15 @@ export function toSearchableString(value: unknown): string {
 /**
  * Serialize a value for a table cell's accessor. Small values are serialized
  * whole so a global filter can match anywhere inside them; large ones fall
- * back to a summary, which is the only thing that keeps a file full of meshes
- * or embedded textures from stalling the table.
+ * back to a bounded preview, which is the only thing that keeps a file full of
+ * meshes or embedded textures from stalling the table.
  */
 export function safeSerialize(value: unknown): string {
   if (value === undefined) return "-";
   if (value === null) return "null";
 
   if (typeof value === "object" && isLargeValue(value)) {
-    return summarizeValue(value);
+    return previewSerialize(value);
   }
 
   try {
