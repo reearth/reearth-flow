@@ -1822,7 +1822,17 @@ Writes features to CSV or TSV files.
             }
           }
         }
-      ]
+      ],
+      "properties": {
+        "epsgColumn": {
+          "title": "EPSG Column Name",
+          "description": "Optional name of a column to write the geometry's EPSG code into. Left empty when the geometry does not resolve to a single EPSG code (no coordinate reference system, or more than one).",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
     }
   }
 }

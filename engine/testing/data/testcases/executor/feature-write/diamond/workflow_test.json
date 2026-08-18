@@ -1,6 +1,5 @@
 {
   "description": "Test feature writing with diamond dependency: two different subgraphs (A and B) sharing the same child subgraph, with different routing of its outputs",
-  "skipNewGeometry": true,
   "workflowPath": "executor-testing/feature-write/diamond.yml",
   "expectedOutput": {
     "expectedFile": "output.csv"
