@@ -8,6 +8,9 @@
 //! - [`overlay()`] and its [`union()`] / [`intersection()`] / [`difference()`]
 //!   / [`xor()`] shorthands: areal boolean overlay, backed by the `i_overlay`
 //!   pure-Rust backend.
+//! - [`dissolve()`]: one areal geometry's own leaves merged into each other,
+//!   the unary case of a union, with optional vertex snapping to close the
+//!   gaps left where boundaries meant to coincide do not quite.
 //! - [`clip()`]: the portion of a set of polylines inside (or, inverted,
 //!   outside) an areal geometry.
 //! - [`segment_intersections()`]: the pairwise segment × segment
@@ -53,6 +56,7 @@
 
 mod segments;
 mod shapes;
+mod snap;
 #[cfg(test)]
 mod tests;
 
@@ -68,7 +72,7 @@ use crate::ops::Aabb;
 use crate::polygon::Polygon2D;
 use crate::predicates::relate::relate_leaves;
 use crate::predicates::view::{flatten_2d, require_common_frame_leaves, Leaf2D};
-use crate::predicates::{flatten_2d_pair, PredicateError, Result};
+use crate::predicates::{flatten_2d_pair, flatten_2d_single, PredicateError, Result};
 use crate::{Euclidean2DGeometry, Geometry};
 
 pub use crate::predicates::kernel::SegmentIntersection;
@@ -137,6 +141,25 @@ pub fn overlay_2d(
     overlay_leaves(&a_leaves, &b_leaves, op)
 }
 
+/// The union of `g`'s own leaves, as disjoint polygons in their common frame
+/// (empty when `g` encloses no area).
+///
+/// Vertices closer together than `tolerance` are snapped onto one position
+/// before the union, closing sliver gaps where boundaries nearly coincide; a
+/// non-positive tolerance snaps nothing. Only vertices move, so a gap between
+/// two edges with no vertices facing each other stays open.
+pub fn dissolve(g: &Geometry, tolerance: f64) -> Result<Vec<Polygon2D>> {
+    let leaves = flatten_2d_single(g)?;
+    dissolve_leaves(&leaves, tolerance)
+}
+
+/// [`dissolve`] over a 2D geometry.
+pub fn dissolve_2d(g: &Euclidean2DGeometry, tolerance: f64) -> Result<Vec<Polygon2D>> {
+    let mut leaves = Vec::new();
+    flatten_2d(g, &mut leaves);
+    dissolve_leaves(&leaves, tolerance)
+}
+
 /// The portion of the polylines of `lines` inside the areal geometry `area`,
 /// or, with `invert`, the portion outside it. Points exactly on `area`'s
 /// boundary count as inside either way.
@@ -183,9 +206,8 @@ pub fn segment_intersections_2d(
 /// Dissolve `shapes`, each a list of rings (outer contour first, then holes,
 /// every ring wound to Flow's convention and implicitly closed), into disjoint
 /// polygons in `frame` under the non-zero fill rule.
-#[cfg(feature = "new-geometry")]
 pub(crate) fn dissolve_shapes(
-    shapes: Vec<Vec<Vec<[f64; 2]>>>,
+    shapes: Vec<shapes::Shape>,
     frame: &CoordinateFrame,
 ) -> Vec<Polygon2D> {
     let empty: Vec<shapes::Shape> = Vec::new();
@@ -205,20 +227,13 @@ fn overlay_leaves(a: &[Leaf2D<'_>], b: &[Leaf2D<'_>], op: OverlayOp) -> Result<V
     let Some(frame) = common_frame(a, b) else {
         return Ok(Vec::new());
     };
-    let dissolve = |shapes: &Vec<shapes::Shape>| {
-        let empty: Vec<shapes::Shape> = Vec::new();
-        shapes::shapes_to_polygons(
-            shapes.overlay(&empty, OverlayRule::Union, FillRule::NonZero),
-            frame,
-        )
-    };
     match exact_plan(a, b, op) {
         Plan::Empty => Ok(Vec::new()),
-        Plan::DissolveA => Ok(dissolve(&subject)),
-        Plan::DissolveB => Ok(dissolve(&clip)),
+        Plan::DissolveA => Ok(dissolve_shapes(subject, frame)),
+        Plan::DissolveB => Ok(dissolve_shapes(clip, frame)),
         Plan::DissolveBoth => {
-            let mut out = dissolve(&subject);
-            out.extend(dissolve(&clip));
+            let mut out = dissolve_shapes(subject, frame);
+            out.extend(dissolve_shapes(clip, frame));
             Ok(out)
         }
         Plan::Run(op) => {
@@ -226,6 +241,18 @@ fn overlay_leaves(a: &[Leaf2D<'_>], b: &[Leaf2D<'_>], op: OverlayOp) -> Result<V
             Ok(shapes::shapes_to_polygons(result, frame))
         }
     }
+}
+
+fn dissolve_leaves(leaves: &[Leaf2D<'_>], tolerance: f64) -> Result<Vec<Polygon2D>> {
+    require_common_frame_leaves(leaves, &[])?;
+    let mut shapes = shapes::areal_shapes(leaves).map_err(|_| PredicateError::Unsupported {
+        geometry: operand_name(leaves, is_areal),
+    })?;
+    let Some(frame) = leaves.first().map(Leaf2D::frame) else {
+        return Ok(Vec::new());
+    };
+    snap::snap_shapes(&mut shapes, tolerance);
+    Ok(dissolve_shapes(shapes, frame))
 }
 
 // --- exactness gate --------------------------------------------------------
