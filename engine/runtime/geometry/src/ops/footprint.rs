@@ -13,10 +13,7 @@ use crate::line_string::LineString2D;
 use crate::ops::UnsupportedOperation;
 use crate::overlay::dissolve_shapes;
 use crate::point::Point2D;
-use crate::polygon::Polygon2D;
-use crate::validation_next::{
-    open_ring, signed_area_2d, DegenerateThresholds, Validate, ValidationParams,
-};
+use crate::validation_next::{open_ring, signed_area_2d};
 use crate::{Euclidean2DGeometry, Geometry};
 
 /// The plane a footprint is cast onto. Every variant needs the geometry in a
@@ -140,19 +137,13 @@ impl<T: Footprint + ?Sized> Footprint for Box<T> {
     }
 }
 
-/// The smallest area, in the frame's linear unit squared, a projected face
-/// must have to take part in the footprint.
+/// The smallest area, in the frame's linear unit squared, a projected ring must
+/// have to take part in the footprint. Applied per ring.
 const MIN_FACE_AREA: f64 = 1e-6;
 
-/// The thresholds under which a projected face counts as degenerate.
-fn degenerate_params() -> ValidationParams {
-    ValidationParams {
-        degenerate: DegenerateThresholds {
-            min_area: MIN_FACE_AREA,
-            ..DegenerateThresholds::default()
-        },
-        ..ValidationParams::default()
-    }
+/// The area a projected open ring encloses, signed by its winding.
+fn ring_area(ring: &[[f64; 2]]) -> f64 {
+    signed_area_2d(ring) / 2.0
 }
 
 /// The projection in effect once the first leaf has fixed the base frame.
@@ -171,8 +162,6 @@ pub struct FootprintSink<'a> {
     projection: Option<Projection>,
     /// The output frame, fixed by the first leaf.
     frame: Option<CoordinateFrame>,
-    /// Thresholds for the degeneracy check on projected faces.
-    degenerate: ValidationParams,
     /// Projected faces awaiting dissolution: each a ring list, outer first,
     /// wound to Flow's convention.
     shapes: Vec<Vec<Vec<[f64; 2]>>>,
@@ -187,7 +176,6 @@ impl<'a> FootprintSink<'a> {
             plane,
             projection: None,
             frame: None,
-            degenerate: degenerate_params(),
             shapes: Vec::new(),
             curves: Vec::new(),
             points: Vec::new(),
@@ -196,11 +184,10 @@ impl<'a> FootprintSink<'a> {
 
     /// Dissolve the projected faces and assemble the footprint: the single part
     /// when there is exactly one, otherwise a [`Collection2D`] of the parts
-    /// (areas first, then curves, then points). A face whose projection is
-    /// [`Degenerate`](crate::validation_next::ValidationType::Degenerate) below
-    /// `1e-6` square units (such as a wall onto the horizontal plane) was
-    /// dropped on entry, so a geometry of nothing but such faces is
-    /// [`FootprintError::Empty`].
+    /// (areas first, then curves, then points). A face whose exterior projected
+    /// to under [`MIN_FACE_AREA`] square units (such as a wall onto the
+    /// horizontal plane) was dropped on entry, so a geometry of nothing but such
+    /// faces is [`FootprintError::Empty`].
     pub fn finish(self) -> Result<Geometry, FootprintError> {
         let Some(frame) = self.frame else {
             return Err(FootprintError::Empty);
@@ -327,28 +314,35 @@ impl<'a> FootprintSink<'a> {
         self.push_face(projected);
     }
 
-    /// Add one face from its projected open rings, wound to Flow's convention
-    /// (outer CCW, holes CW), unless it is degenerate.
-    fn push_face(&mut self, mut rings: Vec<Vec<[f64; 2]>>) {
-        rings.retain(|ring| ring.len() >= 3);
-        let Some(outer) = rings.first() else {
+    /// Add one face from its projected open rings, outer first, each wound to
+    /// Flow's convention (outer CCW, holes CW). A ring under [`MIN_FACE_AREA`]
+    /// is dropped: the whole face when it is the exterior, that hole alone
+    /// otherwise.
+    fn push_face(&mut self, rings: Vec<Vec<[f64; 2]>>) {
+        let mut rings = rings.into_iter();
+        let Some(mut outer) = rings.next() else {
             return;
         };
-        let frame = self.frame.as_ref().expect("a leaf was entered");
-        let face = Polygon2D::from_rings(
-            frame.clone(),
-            outer.iter().copied(),
-            rings[1..].iter().map(|ring| ring.iter().copied()),
-        );
-        if face.check_degenerate(&self.degenerate).problem_recorded() {
+        let outer_area = ring_area(&outer);
+        if outer_area.abs() <= MIN_FACE_AREA {
             return;
         }
-        if signed_area_2d(outer) < 0.0 {
-            for ring in &mut rings {
-                ring.reverse();
-            }
+        if outer_area < 0.0 {
+            outer.reverse();
         }
-        self.shapes.push(rings);
+        let mut face = Vec::with_capacity(rings.len() + 1);
+        face.push(outer);
+        for mut hole in rings {
+            let area = ring_area(&hole);
+            if area.abs() <= MIN_FACE_AREA {
+                continue;
+            }
+            if area > 0.0 {
+                hole.reverse();
+            }
+            face.push(hole);
+        }
+        self.shapes.push(face);
     }
 
     /// Add one 3D curve.
@@ -388,7 +382,7 @@ mod tests {
     use super::*;
     use crate::collection::Collection3D;
     use crate::coordinate::EpsgCode;
-    use crate::polygon::Polygon3D;
+    use crate::polygon::{Polygon2D, Polygon3D};
     use crate::predicates::test3d::{box_shell, e, g3, solid_geometry};
     use crate::solid::{Shell, Solid};
     use crate::Euclidean3DGeometry;
@@ -459,6 +453,77 @@ mod tests {
                 .unwrap(),
         );
         assert!((footprint.area() - 7.0).abs() < 1e-9);
+    }
+
+    /// A 10x10 face holed by a square of `side`, wound `hole_ccw`.
+    fn holed_face(side: f64, hole_ccw: bool) -> Geometry {
+        let outer = vec![
+            [0.0, 0.0, 4.0],
+            [10.0, 0.0, 4.0],
+            [10.0, 10.0, 4.0],
+            [0.0, 10.0, 4.0],
+            [0.0, 0.0, 4.0],
+        ];
+        let (lo, hi) = (5.0, 5.0 + side);
+        let mut hole = vec![
+            [lo, lo, 4.0],
+            [hi, lo, 4.0],
+            [hi, hi, 4.0],
+            [lo, hi, 4.0],
+            [lo, lo, 4.0],
+        ];
+        if !hole_ccw {
+            hole.reverse();
+        }
+        let face = Polygon3D::from_rings(e(), outer, [hole]);
+        g3(Euclidean3DGeometry::Polygon(Box::new(face)))
+    }
+
+    #[test]
+    fn a_degenerate_hole_drops_only_itself() {
+        let footprint = single_polygon(
+            holed_face(1e-3, false)
+                .footprint_on(&FootprintPlane::Horizontal)
+                .unwrap(),
+        );
+        assert_eq!(footprint.interiors().count(), 0);
+        assert!((footprint.area() - 100.0).abs() < 1e-9);
+    }
+
+    #[test]
+    fn a_hole_wound_like_its_exterior_is_still_cut_out() {
+        for hole_ccw in [true, false] {
+            let footprint = single_polygon(
+                holed_face(2.0, hole_ccw)
+                    .footprint_on(&FootprintPlane::Horizontal)
+                    .unwrap(),
+            );
+            assert_eq!(footprint.interiors().count(), 1, "hole_ccw = {hole_ccw}");
+            assert!(
+                (footprint.area() - 96.0).abs() < 1e-9,
+                "hole_ccw = {hole_ccw}"
+            );
+        }
+    }
+
+    #[test]
+    fn a_face_whose_exterior_is_degenerate_is_dropped_whole() {
+        // The hole must not be promoted to the exterior.
+        let outer = vec![[0.0, 0.0, 0.0], [1e-9, 0.0, 0.0], [0.0, 0.0, 0.0]];
+        let hole = vec![
+            [1.0, 1.0, 0.0],
+            [3.0, 1.0, 0.0],
+            [3.0, 3.0, 0.0],
+            [1.0, 3.0, 0.0],
+            [1.0, 1.0, 0.0],
+        ];
+        let face = g3(Euclidean3DGeometry::Polygon(Box::new(
+            Polygon3D::from_rings(e(), outer, [hole]),
+        )));
+        assert_eq!(
+            face.footprint_on(&FootprintPlane::Horizontal),
+            Err(FootprintError::Empty)
+        );
     }
 
     #[test]

@@ -221,10 +221,10 @@ impl FootprintReplacer {
             return Ok(FootprintPlane::Horizontal);
         };
         let eval = |name: &str, code: &CompiledCode| {
-            code.eval(&ctx.feature, ctx.variables.clone())
-                .ok()
-                .as_ref()
-                .and_then(attribute_value_to_xyz)
+            let value = code
+                .eval(&ctx.feature, ctx.variables.clone())
+                .map_err(|e| format!("`{name}` expression failed to evaluate: {e}"))?;
+            attribute_value_to_xyz(&value)
                 .ok_or_else(|| format!("`{name}` expression did not evaluate to [x, y, z]"))
         };
         Ok(FootprintPlane::Normal {
@@ -638,6 +638,34 @@ mod tests {
         for &[x, y] in footprint.exterior() {
             assert!((-1e-9..=3.0 + 1e-9).contains(&x) && (-1e-9..=2.0 + 1e-9).contains(&y));
         }
+    }
+
+    /// The reason `plane_for` gives when the `normal` expression is `expr`.
+    fn plane_failure(expr: &str) -> String {
+        let code: Code<{ CodeType::FlowExpr as u32 }> =
+            serde_json::from_value(json!({ "type": "flowExpr", "value": expr })).unwrap();
+        let replacer = FootprintReplacer {
+            plane: PlaneSource::Custom {
+                normal: code.compile().unwrap(),
+                origin: None,
+                x_axis: None,
+            },
+        };
+        let input = feature(box_solid(CoordinateFrame::Euclidean, [0.0; 3], [1.0; 3]));
+        replacer
+            .plane_for(&create_default_execute_context(&input))
+            .unwrap_err()
+    }
+
+    #[test]
+    fn a_failed_expression_is_told_apart_from_a_wrongly_shaped_one() {
+        let broken = plane_failure("no_such_function()");
+        assert!(broken.contains("failed to evaluate"), "{broken}");
+        assert!(
+            broken.contains("'no_such_function' is not defined"),
+            "{broken}"
+        );
+        assert!(plane_failure("\"not a vector\"").contains("did not evaluate to [x, y, z]"));
     }
 
     #[test]
