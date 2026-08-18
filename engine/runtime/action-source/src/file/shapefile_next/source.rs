@@ -160,7 +160,7 @@ impl Source for ShapefileReader {
     }
 }
 
-/// Read the shapefile in `content`, sending one feature per record.
+/// Read the shapefile in `content`, sending one feature per record as it is read.
 ///
 /// `content` must be a ZIP archive holding the shapefile's components; a bare
 /// `.shp` carries neither the attribute table nor the CRS.
@@ -175,21 +175,16 @@ async fn read_shapefile(
     let mut archive = archive::open(content, &params.encoding)?;
     let converter = ShapeConverter::new(archive.epsg, params.force_2d);
 
-    let mut features = Vec::new();
     let field_names = archive.field_names.clone();
     for record in archive.records() {
         let (shape, record) = record.map_err(|e| {
             SourceError::shapefile_reader(format!("Failed to read shape and record: {e}"))
         })?;
         let geometry = converter.convert(shape)?;
-        features.push(Feature::new_with_attributes_and_geometry(
+        let feature = Feature::new_with_attributes_and_geometry(
             record::to_attributes(record, &field_names),
             geometry,
-        ));
-    }
-    converter.report_discarded_measures();
-
-    for feature in features {
+        );
         sender
             .send((
                 FEATURES_PORT.clone(),
@@ -198,5 +193,6 @@ async fn read_shapefile(
             .await
             .map_err(|e| SourceError::shapefile_reader(format!("Failed to send feature: {e}")))?;
     }
+    converter.report_discarded_measures();
     Ok(())
 }
