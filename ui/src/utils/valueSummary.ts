@@ -13,7 +13,9 @@
  * Both keep a coordinate — an array of numbers — on a single line, since the
  * point of looking at geometry is reading positions, and a printer that breaks
  * `[139.7, 35.6, 10]` across three lines buries them.
+ *
  */
+import i18n from "@flow/lib/i18n/i18n";
 
 /** Leaf count past which a value is previewed rather than serialized whole. */
 export const LARGE_VALUE_THRESHOLD = 100;
@@ -100,16 +102,14 @@ function scalarText(value: unknown): string {
   return String(value);
 }
 
-/** How the printers say "there was more here", with the count that was cut. */
 function elided(count: number): string {
-  return `… ${count.toLocaleString()} more`;
+  return `… +${count.toLocaleString(i18n.language)}`;
 }
 
-/** Shape note for a value the printer stopped short of, at its depth limit. */
 function shapeText(value: object): string {
   return Array.isArray(value)
     ? `Array(${value.length})`
-    : `Object(${Object.keys(value).length} keys)`;
+    : `Object(${Object.keys(value).length})`;
 }
 
 /** Remaining characters a printer may emit. Also what bounds a cyclic value. */

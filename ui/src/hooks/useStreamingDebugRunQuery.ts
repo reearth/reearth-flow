@@ -427,16 +427,13 @@ export const useStreamingDebugRunQuery = (
             transformed = feature;
           }
 
+          const positions =
+            featurePositions((transformed as any).geometry) +
+            featurePositions((transformed as any).lodDetail?.geometry);
+          if (displayedPositions + positions > DISPLAY_POSITION_LIMIT) break;
           streamData.push(transformed);
+          displayedPositions += positions;
           added = true;
-          // The finer level held for the on-select upgrade is retained too, so
-          // it counts against the same budget.
-          displayedPositions +=
-            featurePositions(transformed.geometry) +
-            featurePositions(transformed.lodDetail?.geometry);
-          // Checked per feature, not per batch: one dense CityGML solid can be
-          // a large share of the budget on its own, so a batch-level check
-          // overshoots by however much a whole batch happens to carry.
           if (displayedPositions >= DISPLAY_POSITION_LIMIT) break;
         }
 

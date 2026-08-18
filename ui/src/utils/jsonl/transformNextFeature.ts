@@ -16,6 +16,7 @@
  * arrives as a `GeometryCollection` of per-LOD members and judging it by its
  * own kind would conclude there is nothing to draw.
  */
+import i18n from "@flow/lib/i18n/i18n";
 import {
   describeGeometry,
   type GeometryDescription,
@@ -740,7 +741,11 @@ function countPointCloud(leaf: Record<string, unknown>): number {
   }, 0);
 }
 
-/** Short "what is in here" line for geometry the UI does not draw itself. */
+/** A count, grouped for the active language — `1,234` and `1.234` differ. */
+function num(value: number): string {
+  return value.toLocaleString(i18n.language);
+}
+
 function summarize(variant: string | null, value: unknown): string | undefined {
   const leaf = (value ?? {}) as Record<string, unknown>;
   const count = (key: string) =>
@@ -748,25 +753,30 @@ function summarize(variant: string | null, value: unknown): string | undefined {
 
   switch (variant) {
     case "Point":
-      return "1 position";
-    case "PointCloud": {
-      const count = countPointCloud(leaf);
-      return `${count.toLocaleString()} point${count === 1 ? "" : "s"}`;
-    }
+      return i18n.t("Positions: {{n}}", { n: num(1) });
+    case "PointCloud":
+      return i18n.t("Points: {{n}}", { n: num(countPointCloud(leaf)) });
     case "LineString":
-      return `${count("coords")} vertices`;
+      return i18n.t("Vertices: {{n}}", { n: num(count("coords")) });
     case "Polygon":
-      return `${count("exterior")} vertices, ${count("interiors")} holes`;
+      return i18n.t("Vertices: {{n}}, Holes: {{holes}}", {
+        n: num(count("exterior")),
+        holes: num(count("interiors")),
+      });
     case "PolygonMesh":
-      return `${count("faces")} faces`;
+      return i18n.t("Faces: {{n}}", { n: num(count("faces")) });
     case "TriangularMesh":
-      return `${count("triangles")} triangles`;
+      return i18n.t("Triangles: {{n}}", { n: num(count("triangles")) });
     case "Solid":
-      return `1 exterior shell, ${count("interiors")} voids`;
+      return i18n.t("Shells: {{n}}, Voids: {{voids}}", {
+        n: num(1),
+        voids: num(count("interiors")),
+      });
     case "Collection":
-      return `${count("members")} members`;
+      return i18n.t("Members: {{n}}", { n: num(count("members")) });
     case "Csg":
-      return Object.keys(leaf)[0] ?? "boolean combination";
+      // The engine's own discriminant — `Union`, `Difference` — not prose.
+      return Object.keys(leaf)[0] ?? i18n.t("Boolean combination");
     default:
       return undefined;
   }

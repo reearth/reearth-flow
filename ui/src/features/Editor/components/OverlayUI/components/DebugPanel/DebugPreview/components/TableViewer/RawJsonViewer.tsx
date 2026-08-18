@@ -16,6 +16,7 @@ import {
 } from "@flow/components";
 import { toast } from "@flow/features/NotificationSystem/useToast";
 import { useT } from "@flow/lib/i18n";
+import i18n from "@flow/lib/i18n/i18n";
 import { resolveValue } from "@flow/utils/valueSummary";
 
 type Props = {
@@ -105,19 +106,36 @@ function flatten(root: unknown, expanded: Set<string>): FlatNode[] {
   return out;
 }
 
+/** A count, grouped for the active language — `1,234` and `1.234` differ. */
+function num(value: number): string {
+  return value.toLocaleString(i18n.language);
+}
+
 function formatPrimitive(value: unknown): string {
   if (value === null) return "null";
   if (value === undefined) return "undefined";
   const str = typeof value === "string" ? value : String(value);
   if (str.length > MAX_PRIMITIVE_PREVIEW) {
-    return `${str.slice(0, MAX_PRIMITIVE_PREVIEW)}… (${str.length.toLocaleString()} chars)`;
+    // The unit carries the meaning here — a bare number after an ellipsis
+    // could be anything — so unlike the collapsed-node count below, this one
+    // is a phrase and gets translated.
+    return `${str.slice(0, MAX_PRIMITIVE_PREVIEW)}… ${i18n.t("({{n}} chars)", {
+      n: num(str.length),
+    })}`;
   }
   return str;
 }
 
+/**
+ * What a collapsed container shows: its bracket and how many children it has.
+ *
+ * The words this used to carry — `3 items`, `5 keys` — said nothing the
+ * bracket does not, and both needed an English plural rule. A glyph and a
+ * count read the same in every language.
+ */
 function summarize(node: FlatNode): string {
-  if (node.kind === "array") return `[] ${node.childCount} items`;
-  return `{} ${node.childCount} keys`;
+  const bracket = node.kind === "array" ? "[]" : "{}";
+  return `${bracket} ${num(node.childCount)}`;
 }
 
 function filterTree(root: unknown, query: string): FlatNode[] {

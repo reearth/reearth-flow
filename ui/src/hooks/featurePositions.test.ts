@@ -72,7 +72,7 @@ describe("featurePositions", () => {
     expect(featurePositions(null)).toBe(0);
     // A point cloud gets a summary, with no coordinates at all.
     expect(
-      featurePositions({ type: "Point cloud", summary: "12,000 points" }),
+      featurePositions({ type: "Point cloud", summary: "Points: 12,000" }),
     ).toBe(0);
   });
 

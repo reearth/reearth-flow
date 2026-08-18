@@ -1,5 +1,7 @@
 import { describe, expect, test } from "vitest";
 
+import i18n from "@flow/lib/i18n/i18n";
+
 import { intermediateDataTransform } from "./transformIntermediateData";
 import { hasGeoJsonForm, transformNextFeature } from "./transformNextFeature";
 
@@ -622,7 +624,7 @@ describe("3D geometry becomes a summary", () => {
     expect(cloud.geometry).toEqual({
       type: "Point cloud",
       frame: "EPSG:4979",
-      summary: "1 point",
+      summary: "Points: 1",
     });
 
     const csg = transformNextFeature(
@@ -663,7 +665,7 @@ describe("3D geometry becomes a summary", () => {
 
     expect(result.geometry).toMatchObject({
       type: "Point cloud",
-      summary: "3 points",
+      summary: "Points: 3",
     });
   });
 
@@ -676,6 +678,44 @@ describe("3D geometry becomes a summary", () => {
       type: "Boolean combination",
       summary: "Difference",
     });
+  });
+
+  test("follows the UI language rather than being English-only", async () => {
+    const cloud = () =>
+      transformNextFeature(
+        feature({
+          Euclidean3D: {
+            PointCloud: {
+              frame: { Crs: 4979 },
+              segments: [
+                {
+                  positions: {
+                    F64: Array.from({ length: 12_000 }, () => [0, 0, 0]),
+                  },
+                },
+              ],
+            },
+          },
+        }),
+      ).geometry as { summary: string };
+
+    // English grouping, from the key itself — the catalogue leaves these empty.
+    expect(cloud().summary).toBe("Points: 12,000");
+
+    i18n.addResource("ja", "translation", "Points: {{n}}", "点群: {{n}}");
+    await i18n.changeLanguage("ja");
+    try {
+      // The label translates, and the count is grouped for the language it is
+      // read in — `12.000` and `12,000` are different numbers.
+      expect(cloud().summary).toBe("点群: 12,000");
+
+      // Spanish groups with a dot, and is one of the app's languages, so the
+      // number has to follow the UI rather than the browser.
+      await i18n.changeLanguage("es");
+      expect(cloud().summary).toBe("Points: 12.000");
+    } finally {
+      await i18n.changeLanguage("en");
+    }
   });
 
   test("replaces an inline texture's bytes with a note of what it was", () => {

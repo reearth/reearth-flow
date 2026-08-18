@@ -27,7 +27,7 @@ describe("safeSerialize", () => {
   test("previews a large array instead of serializing it", () => {
     const result = safeSerialize(Array.from({ length: 50_000 }, (_, i) => i));
 
-    expect(result).toContain("… 49,");
+    expect(result).toContain("… +49,");
     expect(result.length).toBeLessThan(600);
   });
 
@@ -39,7 +39,7 @@ describe("safeSerialize", () => {
     // have to be at the front — not a count and a shape.
     expect(result.slice(0, 100)).toContain("[139.7, 35.6, 10]");
     expect(result.slice(0, 100)).not.toContain("Array(");
-    expect(result).toContain("more");
+    expect(result).toContain("… +");
     expect(result.length).toBeLessThan(600);
   });
 
@@ -74,7 +74,7 @@ describe("formatStructured", () => {
     const result = formatStructured([ring(500)]);
 
     expect(result).toContain("[139.7, 35.6, 10],");
-    expect(result).toContain("… 460 more");
+    expect(result).toContain("… +460");
     expect(result.split("\n").length).toBeLessThan(60);
   });
 
@@ -82,6 +82,29 @@ describe("formatStructured", () => {
     const faces = Array.from({ length: 2_000 }, () => [ring(200)]);
 
     expect(formatStructured(faces).length).toBeLessThan(30_000);
+  });
+
+  test("says how much it cut without a word to translate", () => {
+    // The cut marker used to read "… 460 more". That string is written onto a
+    // table row by `safeSerialize` at load time, not rendered through a
+    // component, so an English word there survives a language change and shows
+    // up untranslated in a Japanese UI. Digits and symbols read the same
+    // everywhere.
+    const result = formatStructured(Array.from({ length: 5_000 }, (_, i) => i));
+
+    expect(result).toContain("…");
+    expect(result).toMatch(/^[\d\s,.\u2026+[\]-]+$/);
+  });
+
+  test("names a shape it stopped at without a word either", () => {
+    // Twelve wrappers puts the innermost object at MAX_DEPTH, where the
+    // printer stops descending and reports its shape instead.
+    let nested: unknown = { a: 1, b: 2, c: 3 };
+    for (let i = 0; i < 12; i++) nested = { down: nested };
+
+    const result = formatStructured(nested);
+    expect(result).toContain("Object(3)");
+    expect(result).not.toContain("keys");
   });
 
   test("renders scalars and empty containers plainly", () => {
