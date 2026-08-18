@@ -17,7 +17,6 @@ memory-stats = ["reearth-flow-common/memory-stats"]
 # TODO: Remove after migration.
 new-geometry = [
   "reearth-flow-action-sink/new-geometry",
-  "reearth-flow-geometry/new-geometry",
   "reearth-flow-types/new-geometry",
 ]
 

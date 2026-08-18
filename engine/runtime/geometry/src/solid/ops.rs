@@ -251,10 +251,8 @@ impl Coerce for Solid {
     }
 }
 
-#[cfg(feature = "new-geometry")]
 use crate::ops::{Footprint, FootprintError, FootprintSink};
 
-#[cfg(feature = "new-geometry")]
 impl Footprint for Solid {
     /// Push the faces of every shell, voids included.
     fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {

@@ -12,7 +12,6 @@ use crate::coordinate::CoordinateFrame;
 
 mod constructor;
 mod ops;
-#[cfg(feature = "new-geometry")]
 mod validation;
 
 /// A polyline in 2D space, lying at a single optional elevation (2.5D).

@@ -58,7 +58,6 @@ pub mod position3d;
 pub mod projection;
 pub mod ray;
 pub mod relate;
-#[cfg(feature = "new-geometry")]
 pub(crate) mod surface_intersection;
 #[cfg(test)]
 pub(crate) mod test3d;

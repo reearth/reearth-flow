@@ -19,7 +19,6 @@ mod constructor;
 #[cfg(not(feature = "debug-geom-feature-write"))]
 mod feature_write;
 mod ops;
-#[cfg(feature = "new-geometry")]
 mod validation;
 
 /// A triangle mesh in 2D space, lying at a single optional elevation.

@@ -11,10 +11,6 @@ rust-version.workspace = true
 version.workspace = true
 
 [features]
-# Temporary migration flag for the new-geometry migration.
-# TODO: Remove after migration.
-new-geometry = []
-
 # Debug-only intermediate-data form: the leaves keep their derived `serde`, which
 # writes the raw internal representation. Off by default, where each leaf's
 # `feature_write.rs` supplies the production form instead.

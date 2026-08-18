@@ -16,7 +16,6 @@ use crate::triangular_mesh::TriangularMesh3DData;
 
 mod constructor;
 mod ops;
-#[cfg(feature = "new-geometry")]
 mod validation;
 
 /// One closed boundary of a [`Solid`]: a general polygon mesh or a triangle

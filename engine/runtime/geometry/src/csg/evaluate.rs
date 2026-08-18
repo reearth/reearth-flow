@@ -1017,7 +1017,6 @@ mod tests {
         let a = cube([0.0; 3], [3.0; 3]);
         let b = cube([1.0; 3], [2.0; 3]);
         let result = Csg::difference(a, b).evaluate(1e-9).unwrap().unwrap();
-        #[cfg(feature = "new-geometry")]
         assert_eq!(result.interiors().len(), 1, "the removed cube is a void");
         assert!((shell_volume(result.exterior()) - 27.0).abs() < 1e-9);
         assert!(
@@ -1048,7 +1047,6 @@ mod tests {
         let a = cube([0.0, 0.0, 0.0], [1.0, 1.0, 1.0]);
         let b = cube([1.0, 0.0, 0.0], [2.0, 1.0, 1.0]);
         let union = Csg::union(a, b).evaluate(1e-9).unwrap().unwrap();
-        #[cfg(feature = "new-geometry")]
         assert!((volume(&union) - 2.0).abs() < 1e-9);
         let Shell::TriangularMesh(mesh) = union.exterior() else {
             panic!("expected a triangulated shell");

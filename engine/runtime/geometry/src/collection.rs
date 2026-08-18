@@ -19,9 +19,7 @@ use crate::ops::{
     Aabb, BoundingBox, Coerce, CoercionTarget, ForceTwoDimension, ForceTwoDimensionError,
     Reproject, ReprojectionCache, UnsupportedOperation,
 };
-#[cfg(feature = "new-geometry")]
 use crate::ops::{Footprint, FootprintError, FootprintSink};
-#[cfg(feature = "new-geometry")]
 use crate::validation_next::Validate;
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
@@ -428,14 +426,12 @@ impl ForceTwoDimension for Collection3D {
     }
 }
 
-#[cfg(feature = "new-geometry")]
 impl Footprint for Collection2D {
     fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
         self.members.iter().try_for_each(|m| m.footprint(sink))
     }
 }
 
-#[cfg(feature = "new-geometry")]
 impl Footprint for Collection3D {
     fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
         self.members.iter().try_for_each(|m| m.footprint(sink))
@@ -445,10 +441,8 @@ impl Footprint for Collection3D {
 // A collection validates by recursing into its members (see
 // `validation_next::validate`), so it declares no direct checks and inherits
 // every `Validate` default.
-#[cfg(feature = "new-geometry")]
 impl Validate for Collection2D {}
 
-#[cfg(feature = "new-geometry")]
 impl Validate for Collection3D {}
 
 impl Coerce for Collection2D {

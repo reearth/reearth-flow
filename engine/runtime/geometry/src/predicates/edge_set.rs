@@ -110,13 +110,11 @@ impl EdgeSet {
 
 /// One envelope with the index of the element it came from, so an rstar sweep
 /// can report candidate pairs by element index.
-#[cfg(feature = "new-geometry")]
 struct IndexedEnvelope<P: rstar::Point> {
     index: usize,
     envelope: rstar::AABB<P>,
 }
 
-#[cfg(feature = "new-geometry")]
 impl<P: rstar::Point> rstar::RTreeObject for IndexedEnvelope<P> {
     type Envelope = rstar::AABB<P>;
 
@@ -130,7 +128,6 @@ impl<P: rstar::Point> rstar::RTreeObject for IndexedEnvelope<P> {
 /// count), an rstar sweep above it. Both strategies visit a superset of the
 /// truly interacting pairs; callers decide each candidate with the exact
 /// kernel, so the strategy never changes an answer.
-#[cfg(feature = "new-geometry")]
 pub(crate) fn for_each_candidate_pair<P: rstar::Point + Copy>(
     envelopes: &[rstar::AABB<P>],
     mut visit: impl FnMut(usize, usize),
@@ -260,7 +257,6 @@ mod tests {
 
     /// Overlapping-interval envelopes: element `i` spans `[i, i + 1.5]` on the
     /// x axis, so each element's envelope intersects its neighbour's.
-    #[cfg(feature = "new-geometry")]
     fn interval_envelopes_2d(n: usize) -> Vec<rstar::AABB<[f64; 2]>> {
         (0..n)
             .map(|i| {
@@ -270,7 +266,6 @@ mod tests {
             .collect()
     }
 
-    #[cfg(feature = "new-geometry")]
     #[test]
     fn candidate_pairs_match_across_strategies() {
         // 10 envelopes stay under the index gate, 100 go over it; both must
@@ -294,7 +289,6 @@ mod tests {
         }
     }
 
-    #[cfg(feature = "new-geometry")]
     #[test]
     fn candidate_pairs_work_in_3d() {
         let envelopes: Vec<rstar::AABB<[f64; 3]>> = (0..80)

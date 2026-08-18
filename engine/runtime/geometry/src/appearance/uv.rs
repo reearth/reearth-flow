@@ -17,7 +17,7 @@
 //! glTF / image-storage convention, where `(0, 0)` is the first texel. Every
 //! producer and consumer inside the engine assumes it: a reader converts from
 //! its source convention at ingest (the CityGML reader flips its bottom-left
-//! `v`), and the texture atlas packer follows it under `new-geometry`. A sink
+//! `v`), and the texture atlas packer follows it. A sink
 //! whose format matches (glTF, 3D Tiles) writes coordinates through unchanged;
 //! one that differs converts at its own boundary rather than mutating this
 //! shared convention.
