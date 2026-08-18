@@ -268,6 +268,7 @@ fn clip_polygon(
                     .iter()
                     .map(|&[x, y]| [x * z_scale - xi as f64, y * z_scale - yi as f64])
                     .collect();
+                // MVT requires clockwise winding.
                 local.reverse();
                 local
             });
