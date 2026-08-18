@@ -8491,16 +8491,6 @@
                 "$ref": "#/definitions/Placement"
               }
             ]
-          },
-          "upAxis": {
-            "title": "上方向轴",
-            "description": "源模型的竖直轴。",
-            "default": "y",
-            "allOf": [
-              {
-                "$ref": "#/definitions/UpAxis"
-              }
-            ]
           }
         },
         "definitions": {
@@ -8640,27 +8630,6 @@
                     }
                   }
                 }
-              }
-            ]
-          },
-          "UpAxis": {
-            "description": "The source model's up axis.",
-            "oneOf": [
-              {
-                "title": "Y 轴向上",
-                "description": "模型的竖直轴为 Y，这是 glTF 以及 OBJ 的常见约定。",
-                "type": "string",
-                "enum": [
-                  "y"
-                ]
-              },
-              {
-                "title": "Z 轴向上",
-                "description": "模型的竖直轴已经是 Z，因此不应用旋转。",
-                "type": "string",
-                "enum": [
-                  "z"
-                ]
               }
             ]
           }

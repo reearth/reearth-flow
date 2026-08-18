@@ -4,9 +4,14 @@
 //! such as the Cesium 3D Tiles writer.
 //!
 //! `declareCrs` treats the model's coordinates as already expressed in a given
-//! CRS and simply tags them (after an optional up-axis flip). `anchor` places a
-//! local model at a geographic position, aligned to the local east/north/up
-//! directions there, via a local ENU basis on the WGS 84 ellipsoid.
+//! CRS and simply tags them. `anchor` places a local model at a geographic
+//! position, aligned to the local east/north/up directions there, via a local
+//! ENU basis on the WGS 84 ellipsoid.
+//!
+//! Neither placement rotates the model's own axes: a reader that emits
+//! model-space coordinates in a non-Z-up convention (e.g. glTF's mandated
+//! Y-up frame) is responsible for normalising to Z-up itself, since that is a
+//! property of the source format, not of how the model is placed.
 
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -32,19 +37,6 @@ use super::errors::GeometryProcessorError;
 /// Output port for features whose geometry could not be placed, or that
 /// arrived already tagged with a coordinate reference system.
 static REJECTED_PORT: Lazy<Port> = Lazy::new(|| Port::new("rejected"));
-
-/// The source model's up axis.
-#[derive(Serialize, Deserialize, Debug, Clone, PartialEq, Default, JsonSchema)]
-#[serde(rename_all = "camelCase")]
-enum UpAxis {
-    /// # Y Up
-    /// The model's vertical axis is Y, the glTF and common OBJ convention.
-    #[default]
-    Y,
-    /// # Z Up
-    /// The model's vertical axis is already Z, so no rotation is applied.
-    Z,
-}
 
 /// How the model is positioned on the globe.
 #[derive(Serialize, Deserialize, Debug, Clone, JsonSchema)]
@@ -154,10 +146,6 @@ pub struct ModelGeoreferencerParam {
     /// # Placement
     /// How the model is positioned on the globe.
     placement: Placement,
-    /// # Up Axis
-    /// The source model's vertical axis.
-    #[serde(default)]
-    up_axis: UpAxis,
 }
 
 #[derive(Debug, Clone, Default)]
@@ -219,17 +207,15 @@ impl ProcessorFactory for ModelGeoreferencerFactory {
 
         Ok(Box::new(ModelGeoreferencer {
             placement: params.placement.resolve()?,
-            up_axis: params.up_axis,
         }))
     }
 }
 
-/// Tags model-space geometry with a coordinate reference system, rotating it
-/// from the source model's up axis onto Z first.
+/// Tags model-space geometry with a coordinate reference system, optionally
+/// anchoring it at a geographic position via a local ENU basis.
 #[derive(Debug, Clone)]
 pub struct ModelGeoreferencer {
     placement: ResolvedPlacement,
-    up_axis: UpAxis,
 }
 
 impl ModelGeoreferencer {
@@ -245,7 +231,7 @@ impl ModelGeoreferencer {
             ResolvedPlacement::DeclareCrs { epsg_code } => {
                 let epsg = EpsgCode::new(*epsg_code);
                 validate_declared_crs(epsg)?;
-                (axis_affine(&self.up_axis), CoordinateFrame::Crs(epsg))
+                (Affine3::identity(), CoordinateFrame::Crs(epsg))
             }
             ResolvedPlacement::Anchor(anchor) => {
                 let lat = eval_expr_f64(&anchor.latitude, "latitude", feature, env_vars.clone())?;
@@ -269,7 +255,7 @@ impl ModelGeoreferencer {
                     None => 0.0,
                 };
                 (
-                    anchor_affine(lat, lon, height_m, heading_deg, &self.up_axis),
+                    anchor_affine(lat, lon, height_m, heading_deg),
                     CoordinateFrame::Crs(EpsgCode::new(4978)),
                 )
             }
@@ -387,18 +373,6 @@ impl Processor for ModelGeoreferencer {
     }
 }
 
-/// The rotation that brings the source model's up axis onto Z.
-fn axis_affine(up_axis: &UpAxis) -> Affine3 {
-    match up_axis {
-        // (x, y, z) -> (x, -z, y)
-        UpAxis::Y => Affine3::new(
-            [[1.0, 0.0, 0.0], [0.0, 0.0, -1.0], [0.0, 1.0, 0.0]],
-            [0.0; 3],
-        ),
-        UpAxis::Z => Affine3::identity(),
-    }
-}
-
 /// The WGS 84 ellipsoid's semi-major axis, in metres.
 const WGS84_A: f64 = 6378137.0;
 /// The WGS 84 ellipsoid's inverse flattening.
@@ -420,15 +394,8 @@ fn geodetic_to_ecef(lat_deg: f64, lon_deg: f64, height_m: f64) -> [f64; 3] {
 }
 
 /// The affine placing a Z-up local model at the anchor, aligned to local
-/// east/north/up and rotated `heading_deg` clockwise from north, composed after
-/// the source model's axis convention.
-fn anchor_affine(
-    lat_deg: f64,
-    lon_deg: f64,
-    height_m: f64,
-    heading_deg: f64,
-    up_axis: &UpAxis,
-) -> Affine3 {
+/// east/north/up and rotated `heading_deg` clockwise from north.
+fn anchor_affine(lat_deg: f64, lon_deg: f64, height_m: f64, heading_deg: f64) -> Affine3 {
     let (lat, lon) = (lat_deg.to_radians(), lon_deg.to_radians());
     let (sin_lat, cos_lat) = (lat.sin(), lat.cos());
     let (sin_lon, cos_lon) = (lon.sin(), lon.cos());
@@ -460,8 +427,7 @@ fn anchor_affine(
         [col_x[1], col_y[1], up[1]],
         [col_x[2], col_y[2], up[2]],
     ];
-    let enu = Affine3::new(rotation, geodetic_to_ecef(lat_deg, lon_deg, height_m));
-    enu.compose(&axis_affine(up_axis))
+    Affine3::new(rotation, geodetic_to_ecef(lat_deg, lon_deg, height_m))
 }
 
 /// Reject a declared CRS whose units are angular: model coordinates are metres.
@@ -580,10 +546,9 @@ mod tests {
     /// `build()` does (via `Placement::resolve()`), so tests keep expressing
     /// intent in terms of the parameter-facing `Placement` even though the
     /// processor stores the precompiled `ResolvedPlacement`.
-    fn processor_from(placement: Placement, up_axis: UpAxis) -> ModelGeoreferencer {
+    fn processor_from(placement: Placement) -> ModelGeoreferencer {
         ModelGeoreferencer {
             placement: placement.resolve().unwrap(),
-            up_axis,
         }
     }
 
@@ -609,38 +574,16 @@ mod tests {
     }
 
     #[test]
-    fn y_up_declare_crs_flips_axes_and_tags_the_frame() {
-        // The exact baked coordinate from the real PLATEAU content glb, which is
-        // Y-up ECEF. Flipped to Z-up it must resolve to Japan (lat ~35.9, lon ~140.1);
-        // unflipped it resolves to the Indian Ocean, so this pins the axis behaviour.
-        let mut geometry = euclidean_mesh(vec![
-            [-3958731.9, 3736419.1, -3309830.0],
-            [-3958731.9, 3736419.1, -3309830.0],
-            [-3958731.9, 3736419.1, -3309830.0],
-        ]);
-        let affine = axis_affine(&UpAxis::Y);
-        geometry
-            .place(&affine, &CoordinateFrame::Crs(EpsgCode::new(4978)))
-            .unwrap();
-
-        let v = match &geometry {
-            Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(m)) => m.vertices()[0],
-            other => panic!("expected a triangular mesh, got {other:?}"),
-        };
-        let lon = v[1].atan2(v[0]).to_degrees();
-        let lat = v[2].atan2((v[0] * v[0] + v[1] * v[1]).sqrt()).to_degrees();
-        assert!((lat - 35.908).abs() < 0.01, "latitude was {lat}");
-        assert!((lon - 140.102).abs() < 0.01, "longitude was {lon}");
-    }
-
-    #[test]
-    fn z_up_declare_crs_leaves_coordinates_unchanged() {
+    fn declare_crs_tags_coordinates_without_moving_them() {
+        // `declareCrs` never rotates the model's own axes -- it only tags the
+        // frame -- so the geometry's coordinates must survive verbatim. (The
+        // Y-up -> Z-up orientation pin this action used to carry lives in the
+        // glTF reader now, since that rotation is the reader's format
+        // convention, not this action's placement concern; see
+        // `gltf_next.rs`'s `y_up_to_z_up_resolves_the_pinned_plateau_coordinate_to_japan`.)
         let mut geometry = euclidean_mesh(vec![[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]);
         geometry
-            .place(
-                &axis_affine(&UpAxis::Z),
-                &CoordinateFrame::Crs(EpsgCode::new(4978)),
-            )
+            .place(&Affine3::identity(), &CoordinateFrame::Crs(EpsgCode::new(4978)))
             .unwrap();
         let m = match &geometry {
             Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(m)) => m,
@@ -664,7 +607,7 @@ mod tests {
             Attributes::new(),
             euclidean_mesh(vec![[1.0, 2.0, 3.0], [4.0, 5.0, 6.0], [7.0, 8.0, 9.0]]),
         );
-        let mut processor = processor_from(Placement::DeclareCrs { epsg_code: 4978 }, UpAxis::Z);
+        let mut processor = processor_from(Placement::DeclareCrs { epsg_code: 4978 });
 
         let (features, ports) = run_processor(&feature, &mut processor);
 
@@ -688,7 +631,7 @@ mod tests {
         );
         let feature =
             Feature::new_with_attributes_and_geometry(Attributes::new(), geometry.clone());
-        let mut processor = processor_from(Placement::DeclareCrs { epsg_code: 6677 }, UpAxis::Y);
+        let mut processor = processor_from(Placement::DeclareCrs { epsg_code: 6677 });
 
         let (features, ports) = run_processor(&feature, &mut processor);
 
@@ -713,7 +656,7 @@ mod tests {
         )));
         let feature =
             Feature::new_with_attributes_and_geometry(Attributes::new(), geometry.clone());
-        let mut processor = processor_from(Placement::DeclareCrs { epsg_code: 6677 }, UpAxis::Y);
+        let mut processor = processor_from(Placement::DeclareCrs { epsg_code: 6677 });
 
         let (features, ports) = run_processor(&feature, &mut processor);
 
@@ -744,7 +687,7 @@ mod tests {
         ])));
         let feature =
             Feature::new_with_attributes_and_geometry(Attributes::new(), geometry.clone());
-        let mut processor = processor_from(Placement::DeclareCrs { epsg_code: 6677 }, UpAxis::Y);
+        let mut processor = processor_from(Placement::DeclareCrs { epsg_code: 6677 });
 
         let (features, ports) = run_processor(&feature, &mut processor);
 
@@ -776,7 +719,7 @@ mod tests {
         )));
         let feature =
             Feature::new_with_attributes_and_geometry(Attributes::new(), geometry.clone());
-        let mut processor = processor_from(Placement::DeclareCrs { epsg_code: 6677 }, UpAxis::Y);
+        let mut processor = processor_from(Placement::DeclareCrs { epsg_code: 6677 });
 
         let (features, ports) = run_processor(&feature, &mut processor);
 
@@ -812,7 +755,7 @@ mod tests {
     #[test]
     fn anchor_places_the_model_origin_at_the_anchor() {
         let (lat, lon) = (35.908, 140.102);
-        let a = anchor_affine(lat, lon, 0.0, 0.0, &UpAxis::Z);
+        let a = anchor_affine(lat, lon, 0.0, 0.0);
         let origin = a.apply([0.0, 0.0, 0.0]);
         let expected = geodetic_to_ecef(lat, lon, 0.0);
         for i in 0..3 {
@@ -826,7 +769,7 @@ mod tests {
     #[test]
     fn anchor_maps_model_up_to_local_up() {
         let (lat, lon) = (35.908, 140.102);
-        let a = anchor_affine(lat, lon, 0.0, 0.0, &UpAxis::Z);
+        let a = anchor_affine(lat, lon, 0.0, 0.0);
         // The load-bearing property: moving 100 m along the model's Z moves
         // 100 m along the WGS 84 ellipsoid normal at (lat, lon) -- the
         // direction is exactly `[cosφcosλ, cosφsinλ, sinφ]`, componentwise.
@@ -877,75 +820,18 @@ mod tests {
     }
 
     #[test]
-    fn anchor_composes_the_y_up_flip_before_the_enu_placement() {
-        // `UpAxis` DEFAULTS to `Y` (the glTF/OBJ convention this action exists
-        // to serve), yet every other anchor test above uses `UpAxis::Z`, where
-        // `axis_affine` is the identity and both composition orders
-        // (`enu.compose(&axis_affine(..))` vs. `axis_affine(..).compose(&enu)`)
-        // are indistinguishable. This test pins the Y-up case specifically, so
-        // the composition order is actually exercised.
-        let (lat, lon, height) = (35.908, 140.102, 10.0);
-        let a = anchor_affine(lat, lon, height, 0.0, &UpAxis::Y);
-
-        // (a) The model origin still lands exactly at the anchor, regardless
-        // of the axis flip (a pure rotation fixes the origin).
-        let origin = a.apply([0.0, 0.0, 0.0]);
-        let expected = geodetic_to_ecef(lat, lon, height);
-        for i in 0..3 {
-            assert!(
-                (origin[i] - expected[i]).abs() < 1e-6,
-                "axis {i}: {origin:?} vs {expected:?}"
-            );
-        }
-
-        // (b) The model's +Y (its "up", under the Y-up convention) must map
-        // to local up: a point 100 m up model-Y lands 100 m along the
-        // ellipsoid normal from the origin, the same exact property checked
-        // for `UpAxis::Z`'s +Z in `anchor_maps_model_up_to_local_up`.
-        let up_point = a.apply([0.0, 100.0, 0.0]);
-        let displacement = [
-            up_point[0] - origin[0],
-            up_point[1] - origin[1],
-            up_point[2] - origin[2],
-        ];
-        let mag = (displacement[0] * displacement[0]
-            + displacement[1] * displacement[1]
-            + displacement[2] * displacement[2])
-            .sqrt();
-        assert!((mag - 100.0).abs() < 1e-9, "displacement length was {mag}");
-
-        let (lat_r, lon_r) = (lat.to_radians(), lon.to_radians());
-        let normal = [
-            lat_r.cos() * lon_r.cos(),
-            lat_r.cos() * lon_r.sin(),
-            lat_r.sin(),
-        ];
-        for i in 0..3 {
-            assert!(
-                (displacement[i] / 100.0 - normal[i]).abs() < 1e-9,
-                "axis {i}: displacement direction {:?} vs ellipsoid normal {normal:?}",
-                [
-                    displacement[0] / 100.0,
-                    displacement[1] / 100.0,
-                    displacement[2] / 100.0
-                ]
-            );
-        }
-    }
-
-    #[test]
     fn heading_rotates_the_model_about_its_up_axis() {
         let (lat, lon) = (0.0, 0.0);
         // At (0,0): east is +Y ECEF, north is +Z ECEF.
-        let north = anchor_affine(lat, lon, 0.0, 0.0, &UpAxis::Z).apply([0.0, 100.0, 0.0]);
-        let base = anchor_affine(lat, lon, 0.0, 0.0, &UpAxis::Z).apply([0.0, 0.0, 0.0]);
+        let north = anchor_affine(lat, lon, 0.0, 0.0).apply([0.0, 100.0, 0.0]);
+        let base = anchor_affine(lat, lon, 0.0, 0.0).apply([0.0, 0.0, 0.0]);
         assert!(
             (north[2] - base[2] - 100.0).abs() < 1e-6,
             "0 deg heading points north"
         );
 
         // 90 degrees clockwise from north is east.
-        let east = anchor_affine(lat, lon, 0.0, 90.0, &UpAxis::Z).apply([0.0, 100.0, 0.0]);
+        let east = anchor_affine(lat, lon, 0.0, 90.0).apply([0.0, 100.0, 0.0]);
         assert!(
             (east[1] - base[1] - 100.0).abs() < 1e-6,
             "90 deg heading points east"
@@ -967,7 +853,6 @@ mod tests {
                 height: None,
                 heading: None,
             },
-            UpAxis::Z,
         );
 
         let (features, ports) = run_processor(&feature, &mut processor);
@@ -1010,7 +895,6 @@ mod tests {
                 height: None,
                 heading: None,
             },
-            UpAxis::Z,
         );
 
         let (features, ports) = run_processor(&feature, &mut processor);
@@ -1040,7 +924,6 @@ mod tests {
                 height: None,
                 heading: None,
             },
-            UpAxis::Z,
         );
 
         let (features, ports) = run_processor(&feature, &mut processor);
@@ -1064,7 +947,6 @@ mod tests {
                 height: None,
                 heading: None,
             },
-            UpAxis::Z,
         );
 
         let (features, ports) = run_processor(&feature, &mut processor);
@@ -1138,7 +1020,7 @@ mod tests {
         let mut geometry = Geometry::Euclidean3D(Euclidean3DGeometry::Collection(collection));
 
         let target = CoordinateFrame::Crs(EpsgCode::new(4978));
-        geometry.place(&axis_affine(&UpAxis::Y), &target).unwrap();
+        geometry.place(&Affine3::identity(), &target).unwrap();
 
         let Geometry::Euclidean3D(Euclidean3DGeometry::Collection(c)) = &geometry else {
             panic!("expected a collection, got {geometry:?}");

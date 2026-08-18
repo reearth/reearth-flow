@@ -8491,16 +8491,6 @@
                 "$ref": "#/definitions/Placement"
               }
             ]
-          },
-          "upAxis": {
-            "title": "上方向の軸",
-            "description": "元のモデルの鉛直方向の軸です。",
-            "default": "y",
-            "allOf": [
-              {
-                "$ref": "#/definitions/UpAxis"
-              }
-            ]
           }
         },
         "definitions": {
@@ -8640,27 +8630,6 @@
                     }
                   }
                 }
-              }
-            ]
-          },
-          "UpAxis": {
-            "description": "The source model's up axis.",
-            "oneOf": [
-              {
-                "title": "Y軸が上",
-                "description": "モデルの鉛直方向の軸が Y です。glTF および一般的な OBJ の慣例です。",
-                "type": "string",
-                "enum": [
-                  "y"
-                ]
-              },
-              {
-                "title": "Z軸が上",
-                "description": "モデルの鉛直方向の軸がすでに Z のため、回転は適用されません。",
-                "type": "string",
-                "enum": [
-                  "z"
-                ]
               }
             ]
           }

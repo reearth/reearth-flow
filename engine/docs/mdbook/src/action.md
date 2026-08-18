@@ -8294,16 +8294,6 @@ Assigns a coordinate reference system to model-space 3D geometry, optionally anc
           "$ref": "#/definitions/Placement"
         }
       ]
-    },
-    "upAxis": {
-      "title": "Up Axis",
-      "description": "The source model's vertical axis.",
-      "default": "y",
-      "allOf": [
-        {
-          "$ref": "#/definitions/UpAxis"
-        }
-      ]
     }
   },
   "definitions": {
@@ -8443,27 +8433,6 @@ Assigns a coordinate reference system to model-space 3D geometry, optionally anc
               }
             }
           }
-        }
-      ]
-    },
-    "UpAxis": {
-      "description": "The source model's up axis.",
-      "oneOf": [
-        {
-          "title": "Y Up",
-          "description": "The model's vertical axis is Y, the glTF and common OBJ convention.",
-          "type": "string",
-          "enum": [
-            "y"
-          ]
-        },
-        {
-          "title": "Z Up",
-          "description": "The model's vertical axis is already Z, so no rotation is applied.",
-          "type": "string",
-          "enum": [
-            "z"
-          ]
         }
       ]
     }

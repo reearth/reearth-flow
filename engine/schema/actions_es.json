@@ -8491,16 +8491,6 @@
                 "$ref": "#/definitions/Placement"
               }
             ]
-          },
-          "upAxis": {
-            "title": "Eje Vertical",
-            "description": "El eje vertical del modelo de origen.",
-            "default": "y",
-            "allOf": [
-              {
-                "$ref": "#/definitions/UpAxis"
-              }
-            ]
           }
         },
         "definitions": {
@@ -8640,27 +8630,6 @@
                     }
                   }
                 }
-              }
-            ]
-          },
-          "UpAxis": {
-            "description": "The source model's up axis.",
-            "oneOf": [
-              {
-                "title": "Y Arriba",
-                "description": "El eje vertical del modelo es Y, la convención de glTF y la habitual en OBJ.",
-                "type": "string",
-                "enum": [
-                  "y"
-                ]
-              },
-              {
-                "title": "Z Arriba",
-                "description": "El eje vertical del modelo ya es Z, por lo que no se aplica ninguna rotación.",
-                "type": "string",
-                "enum": [
-                  "z"
-                ]
               }
             ]
           }

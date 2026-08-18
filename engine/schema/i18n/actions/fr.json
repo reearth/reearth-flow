@@ -2501,22 +2501,6 @@
         "placement": {
           "title": "Positionnement",
           "description": "Comment le modèle est positionné sur le globe."
-        },
-        "upAxis": {
-          "title": "Axe Vertical",
-          "description": "L'axe vertical du modèle source."
-        }
-      },
-      "enumI18n": {
-        "UpAxis": {
-          "y": {
-            "title": "Y vers le Haut",
-            "description": "L'axe vertical du modèle est Y, la convention glTF et celle couramment utilisée en OBJ."
-          },
-          "z": {
-            "title": "Z vers le Haut",
-            "description": "L'axe vertical du modèle est déjà Z, aucune rotation n'est donc appliquée."
-          }
         }
       }
     },

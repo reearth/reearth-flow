@@ -8491,16 +8491,6 @@
                 "$ref": "#/definitions/Placement"
               }
             ]
-          },
-          "upAxis": {
-            "title": "Axe Vertical",
-            "description": "L'axe vertical du modèle source.",
-            "default": "y",
-            "allOf": [
-              {
-                "$ref": "#/definitions/UpAxis"
-              }
-            ]
           }
         },
         "definitions": {
@@ -8640,27 +8630,6 @@
                     }
                   }
                 }
-              }
-            ]
-          },
-          "UpAxis": {
-            "description": "The source model's up axis.",
-            "oneOf": [
-              {
-                "title": "Y vers le Haut",
-                "description": "L'axe vertical du modèle est Y, la convention glTF et celle couramment utilisée en OBJ.",
-                "type": "string",
-                "enum": [
-                  "y"
-                ]
-              },
-              {
-                "title": "Z vers le Haut",
-                "description": "L'axe vertical du modèle est déjà Z, aucune rotation n'est donc appliquée.",
-                "type": "string",
-                "enum": [
-                  "z"
-                ]
               }
             ]
           }
