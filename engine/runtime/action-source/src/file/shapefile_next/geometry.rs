@@ -1,14 +1,8 @@
-//! Shapefile shape conversion. Builds `reearth_flow_geometry::Geometry` (per-leaf
-//! `CoordinateFrame`) from the shapes the `shapefile` crate yields.
+//! Conversion of `shapefile` shapes into `reearth_flow_geometry::Geometry`.
 //!
-//! A shapefile winds its outer rings clockwise and its holes counter-clockwise,
-//! and shows a multipatch surface's front to a viewer who sees its vertices go
-//! clockwise; a geometry winds each face the other way round, so every ring and
-//! triangle is reversed on the way in.
-//!
-//! Measures (the `M` channel) are not represented: an M-bearing shape converts to
-//! its unmeasured counterpart and the measures are discarded, reported once per
-//! read by [`ShapeConverter::report_discarded_measures`].
+//! Every ring and triangle is reversed on the way in: a shapefile winds outer
+//! rings clockwise and multipatch fronts clockwise, a geometry the other way
+//! round. Measures (M values) are discarded and reported once per read.
 
 use std::cell::Cell;
 
@@ -26,19 +20,19 @@ use shapefile::{Patch, PolygonRing, Shape, NO_DATA};
 
 use crate::errors::{ShapefileError, SourceError};
 
-/// A shapefile vertex's horizontal position, whatever optional channels it carries.
+/// A shapefile vertex's horizontal position.
 trait Position {
-    /// The stored `x`, an easting.
+    /// The stored `x` (easting).
     fn x(&self) -> f64;
-    /// The stored `y`, a northing.
+    /// The stored `y` (northing).
     fn y(&self) -> f64;
-    /// The measure, or [`NO_DATA`] for a vertex that carries none.
+    /// The measure, or [`NO_DATA`].
     fn m(&self) -> f64 {
         NO_DATA
     }
 }
 
-/// A shapefile vertex that also carries an elevation.
+/// A shapefile vertex carrying an elevation.
 trait Elevated: Position {
     /// The elevation.
     fn z(&self) -> f64;
@@ -83,26 +77,23 @@ impl Elevated for shapefile::PointZ {
     }
 }
 
-/// Converts the shapes of one shapefile into geometries, in the coordinate frame
-/// its `.prj` names.
+/// Converts the shapes of one shapefile into geometries in the frame `epsg`
+/// names.
 pub(super) struct ShapeConverter {
-    /// Frame for geometries keeping their elevation.
+    /// Frame for 3D geometries.
     frame_3d: CoordinateFrame,
-    /// Frame for geometries with no elevation: `frame_3d` with its vertical axis
-    /// dropped.
+    /// Frame for 2D geometries: `frame_3d` without its vertical axis.
     frame_2d: CoordinateFrame,
-    /// Whether the frame declares its horizontal axes as `(northing, easting)`, so
-    /// that shapefile's `(x, y)` must be swapped into the order the frame expects.
+    /// Whether the frame declares `(northing, easting)`, so `(x, y)` is swapped.
     swap: bool,
-    /// Whether to drop elevations, converting every shape into a 2D geometry.
+    /// Whether to drop elevations.
     force_2d: bool,
     /// Whether any converted shape carried a measure.
     discarded_measures: Cell<bool>,
 }
 
 impl ShapeConverter {
-    /// Build a converter for a shapefile whose `.prj` resolved to `epsg`, or for
-    /// one with no resolvable CRS when it is `None`.
+    /// A converter for a shapefile in `epsg`, or in no CRS when `None`.
     pub(super) fn new(epsg: Option<EpsgCode>, force_2d: bool) -> Self {
         let frame_3d = match epsg {
             Some(code) => CoordinateFrame::Crs(code),
@@ -140,7 +131,7 @@ impl ShapeConverter {
         }
     }
 
-    /// Report the measures dropped over this converter's lifetime, if any.
+    /// Warn once if any measure was discarded.
     pub(super) fn report_discarded_measures(&self) {
         if self.discarded_measures.get() {
             tracing::warn!(
@@ -150,10 +141,8 @@ impl ShapeConverter {
         }
     }
 
-    /// The geometry `shape` converts to.
-    ///
-    /// Errors on a shape whose kind has no counterpart, and on a `Multipatch` when
-    /// elevations are being dropped.
+    /// The geometry `shape` converts to. Errors on a `Multipatch` when elevations
+    /// are being dropped, and on a polygon with no outer ring.
     pub(super) fn convert(&self, shape: Shape) -> Result<Geometry, SourceError> {
         Ok(match shape {
             Shape::NullShape => Geometry::None,
@@ -173,7 +162,7 @@ impl ShapeConverter {
         })
     }
 
-    /// A stored `[x, y]`, in the order the frame declares.
+    /// `[x, y]` in the frame's axis order.
     fn xy(&self, p: &impl Position) -> [f64; 2] {
         self.note_measure(p);
         if self.swap {
@@ -183,13 +172,13 @@ impl ShapeConverter {
         }
     }
 
-    /// A stored `[x, y, z]`, its horizontal pair in the order the frame declares.
+    /// `[x, y, z]` in the frame's axis order.
     fn xyz(&self, p: &impl Elevated) -> [f64; 3] {
         let [x, y] = self.xy(p);
         [x, y, p.z()]
     }
 
-    /// Remember that a measure was seen, if `p` carries one.
+    /// Note whether `p` carries a measure.
     fn note_measure(&self, p: &impl Position) {
         if p.m() > NO_DATA {
             self.discarded_measures.set(true);
@@ -215,8 +204,7 @@ impl ShapeConverter {
         )))
     }
 
-    /// A polyline's parts: one `LineString` per part, collected when there is more
-    /// than one.
+    /// A polyline: one line string per part, collected when there are several.
     fn curve<P: Position>(&self, parts: &[Vec<P>]) -> Geometry {
         let lines = parts.iter().map(|part| {
             Euclidean2DGeometry::LineString(LineString2D::from_coords(
@@ -241,9 +229,8 @@ impl ShapeConverter {
         Geometry::Euclidean3D(one_or_collection_3d(lines))
     }
 
-    /// A polygon's rings, grouped into faces: each outer ring starts a face and the
-    /// inner rings around it are its holes. Every ring is reversed into the
-    /// winding a geometry expects.
+    /// A polygon: one face per outer ring with the holes following it, each ring
+    /// reversed.
     fn area<P: Position>(&self, rings: &[PolygonRing<P>]) -> Result<Geometry, SourceError> {
         let faces = group_rings(rings)?;
         let polygons = faces.into_iter().map(|(exterior, holes)| {
@@ -276,7 +263,7 @@ impl ShapeConverter {
         Ok(Geometry::Euclidean3D(one_or_collection_3d(polygons)))
     }
 
-    /// A multipoint's points as a collection, without their elevations.
+    /// A multipoint as a collection of points, without elevations.
     fn multipoint(&self, points: &[impl Position]) -> Geometry {
         Geometry::Euclidean2D(Euclidean2DGeometry::Collection(Collection2D::new(
             points.iter().map(|p| {
@@ -297,20 +284,17 @@ impl ShapeConverter {
         )))
     }
 
-    /// A multipatch's patches: the ring patches as one polygon mesh, each triangle
-    /// strip or fan as its own triangle mesh, collected when there is more than one.
-    /// Rings and triangles are reversed into the winding a geometry expects. A hole
-    /// patch preceding any outer ring becomes a face of its own.
-    ///
-    /// Errors when elevations are being dropped, a multipatch describing a surface
-    /// in space that a 2D geometry cannot stand in for.
+    /// A multipatch: its ring patches as one polygon mesh, its strips and fans as
+    /// one triangular mesh, every face reversed. Errors when elevations are being
+    /// dropped.
     fn multipatch(&self, patches: &[Patch]) -> Result<Geometry, SourceError> {
         if self.force_2d {
             return Err(ShapefileError::MultipatchNotTwoDimensional.into());
         }
 
-        let mut members: Vec<Euclidean3DGeometry> = Vec::new();
         let mut faces: Vec<Polygon3D> = Vec::new();
+        let mut triangle_vertices: Vec<[f64; 3]> = Vec::new();
+        let mut triangle_indices: Vec<u32> = Vec::new();
         let mut holes: Vec<Vec<[f64; 3]>> = Vec::new();
         let mut exterior: Option<Vec<[f64; 3]>> = None;
 
@@ -340,27 +324,19 @@ impl ShapeConverter {
                     }
                 }
                 Patch::TriangleStrip(points) | Patch::TriangleFan(points) => {
-                    let vertices: Vec<[f64; 3]> = points.iter().map(|p| self.xyz(p)).collect();
                     let indices = match patch {
-                        Patch::TriangleStrip(_) => strip_indices(vertices.len()),
-                        _ => fan_indices(vertices.len()),
+                        Patch::TriangleStrip(_) => strip_indices(points.len()),
+                        _ => fan_indices(points.len()),
                     };
-                    if indices.is_empty() {
-                        continue;
-                    }
-                    let mesh =
-                        TriangularMesh3D::from_parts(self.frame_3d.clone(), vertices, indices)
-                            .map_err(|e| {
-                                SourceError::shapefile_reader(format!(
-                                    "Failed to build a triangle mesh from a multipatch patch: {e}"
-                                ))
-                            })?;
-                    members.push(Euclidean3DGeometry::TriangularMesh(Box::new(mesh)));
+                    let offset = triangle_vertices.len() as u32;
+                    triangle_indices.extend(indices.into_iter().map(|i| i + offset));
+                    triangle_vertices.extend(points.iter().map(|p| self.xyz(p)));
                 }
             }
         }
         flush(&mut exterior, &mut holes, &mut faces);
 
+        let mut members: Vec<Euclidean3DGeometry> = Vec::new();
         if !faces.is_empty() {
             let mesh =
                 PolygonMesh3D::from_polygons(self.frame_3d.clone(), faces.iter()).map_err(|e| {
@@ -369,6 +345,19 @@ impl ShapeConverter {
                     ))
                 })?;
             members.push(Euclidean3DGeometry::PolygonMesh(Box::new(mesh)));
+        }
+        if !triangle_indices.is_empty() {
+            let mesh = TriangularMesh3D::from_parts(
+                self.frame_3d.clone(),
+                triangle_vertices,
+                triangle_indices,
+            )
+            .map_err(|e| {
+                SourceError::shapefile_reader(format!(
+                    "Failed to build a triangular mesh from a multipatch: {e}"
+                ))
+            })?;
+            members.push(Euclidean3DGeometry::TriangularMesh(Box::new(mesh)));
         }
 
         if members.is_empty() {
@@ -380,11 +369,8 @@ impl ShapeConverter {
     }
 }
 
-/// The rings of a polygon, grouped into `(exterior, holes)` faces in file order.
-/// A hole follows its outer ring, except that holes written before any outer ring
-/// belong to the first one.
-///
-/// Errors on a polygon with no ring at all, and on one whose rings are all holes.
+/// The rings grouped into `(exterior, holes)` faces in file order; holes before
+/// the first outer ring belong to it. Errors when there is no outer ring.
 #[allow(clippy::type_complexity)]
 fn group_rings<P: Position>(
     rings: &[PolygonRing<P>],
@@ -413,10 +399,8 @@ fn group_rings<P: Position>(
     Ok(faces)
 }
 
-/// The triangle index list of a strip of `n` vertices, every vertex after the first
-/// two completing a triangle with its two predecessors. Every other triangle is
-/// wound back so the strip keeps one orientation, and every triangle is wound
-/// opposite to the strip's own, which shows its front to a clockwise viewer.
+/// The triangle indices of a strip of `n` vertices, each triangle wound opposite
+/// to the strip's own.
 fn strip_indices(n: usize) -> Vec<u32> {
     (0..n.saturating_sub(2))
         .flat_map(|i| {
@@ -430,16 +414,15 @@ fn strip_indices(n: usize) -> Vec<u32> {
         .collect()
 }
 
-/// The triangle index list of a fan of `n` vertices, every vertex after the first
-/// two completing a triangle with its predecessor and the first vertex, wound
-/// opposite to the fan's own, which shows its front to a clockwise viewer.
+/// The triangle indices of a fan of `n` vertices, each triangle wound opposite to
+/// the fan's own.
 fn fan_indices(n: usize) -> Vec<u32> {
     (1..n.saturating_sub(1))
         .flat_map(|i| [0, i as u32 + 1, i as u32])
         .collect()
 }
 
-/// One geometry when `members` holds exactly one, a collection of them otherwise.
+/// The one member alone, or a collection of several.
 fn one_or_collection_2d(members: impl Iterator<Item = Euclidean2DGeometry>) -> Euclidean2DGeometry {
     let mut members: Vec<_> = members.collect();
     if members.len() == 1 {
@@ -448,7 +431,7 @@ fn one_or_collection_2d(members: impl Iterator<Item = Euclidean2DGeometry>) -> E
     Euclidean2DGeometry::Collection(Collection2D::new(members))
 }
 
-/// One geometry when `members` holds exactly one, a collection of them otherwise.
+/// The one member alone, or a collection of several.
 fn one_or_collection_3d(members: impl Iterator<Item = Euclidean3DGeometry>) -> Euclidean3DGeometry {
     let mut members: Vec<_> = members.collect();
     if members.len() == 1 {
@@ -517,6 +500,28 @@ mod tests {
             panic!("expected a 3D polygon mesh, got {geometry:?}");
         };
         assert_eq!(mesh.num_faces(), 1);
+    }
+
+    #[test]
+    fn strips_and_fans_build_one_triangular_mesh() {
+        let quad = |x: f64| {
+            vec![
+                shapefile::PointZ::new(x, 0.0, 0.0, NO_DATA),
+                shapefile::PointZ::new(x, 1.0, 0.0, NO_DATA),
+                shapefile::PointZ::new(x + 1.0, 0.0, 0.0, NO_DATA),
+                shapefile::PointZ::new(x + 1.0, 1.0, 0.0, NO_DATA),
+            ]
+        };
+        let patch = shapefile::Multipatch::with_parts(vec![
+            Patch::TriangleStrip(quad(0.0)),
+            Patch::TriangleFan(quad(5.0)),
+        ]);
+        let geometry = converter().convert(Shape::Multipatch(patch)).unwrap();
+        let Geometry::Euclidean3D(Euclidean3DGeometry::TriangularMesh(mesh)) = geometry else {
+            panic!("expected a 3D triangular mesh, got {geometry:?}");
+        };
+        assert_eq!(mesh.num_triangles(), 4);
+        assert_eq!(mesh.vertices().len(), 8);
     }
 
     #[test]

@@ -110,8 +110,7 @@ impl SinkFactory for ShapefileWriterFactory {
     }
 }
 
-/// The Shapefile Writer sink: gathers every feature it is given and writes them
-/// all when the workflow finishes.
+/// The Shapefile Writer sink.
 #[derive(Debug, Clone)]
 pub(crate) struct ShapefileWriter {
     /// The directory the file sets are written under.

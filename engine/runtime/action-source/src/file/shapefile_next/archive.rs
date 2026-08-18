@@ -1,9 +1,5 @@
-//! The ZIP archive a shapefile arrives in, and the sidecars describing how to
-//! read it.
-//!
-//! A shapefile is a set of files sharing a stem: the shapes (`.shp`), their index
-//! (`.shx`), the attribute table (`.dbf`), the CRS (`.prj`) and the table's
-//! encoding (`.cpg`).
+//! The ZIP archive a shapefile arrives in: its components (`.shp`, `.shx`,
+//! `.dbf`, `.prj`, `.cpg`) sharing one stem.
 
 use std::collections::BTreeMap;
 use std::io::{Cursor, Read};
@@ -17,8 +13,7 @@ use crate::errors::{ShapefileError, SourceError};
 /// Character encoding of a `.dbf`'s text fields.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(super) enum Encoding {
-    /// The code page the `.dbf` header states, for a table nothing else names an
-    /// encoding for.
+    /// The code page the `.dbf` header states.
     Declared,
     /// UTF-8 and its aliases.
     Utf8,
@@ -27,10 +22,7 @@ pub(super) enum Encoding {
 }
 
 impl Encoding {
-    /// The encoding `name` labels.
-    ///
-    /// Errors on a label no encoding matches, and on UTF-16, which the `dbase`
-    /// reader cannot decode.
+    /// The encoding `name` labels. Errors on an unknown label and on UTF-16.
     fn from_name(name: &str) -> Result<Self, ShapefileError> {
         let upper = name.to_uppercase();
         if matches!(upper.as_str(), "UTF-8" | "UTF8" | "UNICODE" | "UTF_8") {
@@ -60,8 +52,7 @@ impl Encoding {
 /// The files of one shapefile, as read out of the archive.
 #[derive(Default)]
 struct Components {
-    /// The stem as the archive spells it, for reporting; components are grouped
-    /// under a case-folded stem, which is nobody's file name.
+    /// The stem as the archive spells it.
     name: String,
     shp: Option<Vec<u8>>,
     dbf: Option<Vec<u8>>,
@@ -79,24 +70,23 @@ impl Components {
         }
     }
 
-    /// Whether both files a shapefile cannot be read without are present. The
-    /// format also calls for a `.shx`, which this reader does without.
+    /// Whether the `.shp` and `.dbf` are both present.
     fn is_complete(&self) -> bool {
         self.shp.is_some() && self.dbf.is_some()
     }
 }
 
-/// A shapefile opened for reading: its records, and what they are expressed in.
+/// A shapefile opened for reading.
 pub(super) struct Archive {
     reader: shapefile::Reader<Cursor<Vec<u8>>, Cursor<Vec<u8>>>,
-    /// The CRS the `.prj` names, or `None` when there is none to name it.
+    /// The CRS the `.prj` names, if any.
     pub(super) epsg: Option<EpsgCode>,
     /// The attribute table's fields, in the order the table declares them.
     pub(super) fields: Vec<Field>,
 }
 
 impl Archive {
-    /// Read the records, one at a time.
+    /// The records, one at a time.
     pub(super) fn records(
         &mut self,
     ) -> impl Iterator<Item = Result<(shapefile::Shape, shapefile::dbase::Record), shapefile::Error>> + '_
@@ -110,10 +100,9 @@ pub(super) fn is_zip(content: &Bytes) -> bool {
     content.starts_with(b"PK")
 }
 
-/// Open the shapefile inside the ZIP archive `content`.
-///
-/// `encoding` overrides the archive's `.cpg`. Errors when the archive holds no
-/// complete shapefile, and when the encoding to read the table in is unusable.
+/// Open the shapefile inside the ZIP archive `content`, reading its table in
+/// `encoding` when given. Errors when no complete shapefile is found or the
+/// encoding is unusable.
 pub(super) fn open(content: &Bytes, encoding: &Option<String>) -> Result<Archive, SourceError> {
     let components = extract(content)?;
 
@@ -172,11 +161,8 @@ pub(super) fn open(content: &Bytes, encoding: &Option<String>) -> Result<Archive
     })
 }
 
-/// The files of the archive's shapefile, keyed by extension. Components pair by
-/// their case-folded stem.
-///
-/// An archive holding more than one shapefile is read as the first by name, so
-/// that the same archive always yields the same shapefile.
+/// The components of the archive's shapefile, paired by case-folded stem. Of
+/// several shapefiles, the first by name is taken.
 fn extract(content: &Bytes) -> Result<Components, SourceError> {
     let mut archive = zip::ZipArchive::new(Cursor::new(content.as_ref()))
         .map_err(|e| SourceError::shapefile_reader(format!("Failed to read ZIP archive: {e}")))?;
@@ -251,36 +237,27 @@ fn is_metadata(path: &str) -> bool {
             .is_some_and(|name| name.starts_with('.'))
 }
 
-/// What a ZIP entry is, as far as reading a shapefile goes.
+/// What a ZIP entry is to a shapefile.
 #[derive(Debug, PartialEq, Eq)]
 enum Entry {
-    /// A file this reader takes something from: the shapefile's stem, then the
-    /// component's extension in lower case.
+    /// A component: the shapefile's stem and the lower-cased extension.
     Component(String, String),
-    /// A file a shapefile ships alongside its components that holds no feature
-    /// data, so there is nothing to read from it.
+    /// A derived index or metadata file holding no feature data.
     Sidecar,
-    /// A file that is no part of a shapefile.
+    /// No part of a shapefile.
     Unrelated,
 }
 
-/// Extensions of the components this reader takes something from.
+/// Extensions of the components read.
 const COMPONENTS: [&str; 5] = ["shp", "dbf", "shx", "prj", "cpg"];
 
-/// Extensions of the sidecars a shapefile ships with: derived spatial and
-/// attribute indices, every one of them rebuildable from the components.
-///
-/// Recognised so that an entry passed over deliberately can be told apart from one
-/// the reader does not know about. `.shp.xml`, the metadata document, is recognised
-/// by its double extension instead.
+/// Extensions of the index sidecars; the `.shp.xml` metadata document is
+/// recognised by its double extension instead.
 const SIDECARS: [&str; 10] = [
     "sbn", "sbx", "fbn", "fbx", "ain", "aih", "atx", "ixs", "mxs", "qix",
 ];
 
-/// What the ZIP entry `path` is.
-///
-/// A component's stem keeps the entry's directory, so shapefiles of the same name
-/// in different directories stay apart.
+/// What the ZIP entry `path` is; a component's stem keeps its directory.
 fn classify(path: &str) -> Entry {
     let Some((stem, extension)) = path.rsplit_once('.') else {
         return Entry::Unrelated;
@@ -298,8 +275,8 @@ fn classify(path: &str) -> Entry {
     Entry::Unrelated
 }
 
-/// The encoding to read the attribute table in: the parameter, else the `.cpg`,
-/// else the code page its own header declares, else UTF-8.
+/// The encoding to read the table in: the parameter, else the `.cpg`, else the
+/// header's code page, else UTF-8.
 fn resolve_encoding(
     parameter: &Option<String>,
     cpg: Option<&[u8]>,
@@ -329,8 +306,7 @@ fn resolve_encoding(
     Ok(Encoding::Utf8)
 }
 
-/// Offset in a `.dbf` header of the byte stating the code page its text is written
-/// in.
+/// Offset in a `.dbf` header of the code page mark.
 const CODE_PAGE_MARK_OFFSET: usize = 29;
 /// Offset in a `.dbf` of the first field descriptor.
 const FIELD_DESCRIPTORS_OFFSET: usize = 32;
@@ -342,9 +318,6 @@ const FIELD_DESCRIPTORS_TERMINATOR: u8 = 0x0D;
 const DECIMAL_COUNT_OFFSET: usize = 17;
 
 /// The decimal count each field descriptor of a `.dbf` declares, in table order.
-///
-/// `dbase` reads the count but does not expose it, and a numeric field's values
-/// cannot be told integer from decimal without it.
 fn decimal_places(dbf: &[u8]) -> Vec<u8> {
     dbf.get(FIELD_DESCRIPTORS_OFFSET..)
         .unwrap_or(&[])
@@ -354,7 +327,7 @@ fn decimal_places(dbf: &[u8]) -> Vec<u8> {
         .collect()
 }
 
-/// What a `.dbf` header's code page mark amounts to.
+/// What a `.dbf` header's code page mark says.
 #[derive(Debug, PartialEq, Eq)]
 enum DeclaredCodePage {
     /// A code page this build can decode.
@@ -365,11 +338,8 @@ enum DeclaredCodePage {
     Unstated,
 }
 
-/// The code page a `.dbf` header declares.
-///
-/// Only the pages the web encodings cover can be decoded here; the DOS pages they
-/// leave out are reported rather than delegated, `dbase` failing outright on a mark
-/// it cannot resolve.
+/// The code page a `.dbf` header declares; only the pages the web encodings
+/// cover are decodable.
 fn declared_code_page(dbf: &[u8]) -> DeclaredCodePage {
     use shapefile::dbase::CodePageMark::*;
 
@@ -384,19 +354,14 @@ fn declared_code_page(dbf: &[u8]) -> DeclaredCodePage {
     }
 }
 
-/// The encoding name a `.cpg` states, which is its first line.
+/// The encoding name a `.cpg` states on its first line.
 fn parse_cpg_encoding(cpg: &[u8]) -> Option<String> {
     let text = String::from_utf8_lossy(cpg);
     let name = text.lines().next()?.trim();
     (!name.is_empty()).then(|| name.to_string())
 }
 
-/// The EPSG code the `.prj` names, or `None` when nothing in PROJ's database
-/// matches it.
-///
-/// `.prj` holds a WKT CRS definition, usually in the ESRI dialect, which carries
-/// no authority code of its own, so the definition is matched against the
-/// database rather than its name being recognised here.
+/// The EPSG code PROJ's database matches the `.prj` definition to, if any.
 fn parse_prj_epsg(prj: &[u8]) -> Option<u16> {
     let wkt = String::from_utf8_lossy(prj);
     let wkt = wkt.trim().trim_start_matches('\u{feff}').trim_start();
@@ -412,11 +377,8 @@ fn parse_prj_epsg(prj: &[u8]) -> Option<u16> {
     }
 }
 
-/// A `dbase` reader decoding text with `encoding`.
-///
-/// [`Encoding::Declared`] leaves the choice to `dbase`, which takes it from the
-/// header's code page mark. Only a mark [`declared_code_page`] found decodable
-/// reaches here, so the mark cannot leave `dbase` without an encoding.
+/// A `dbase` reader decoding text with `encoding`. [`Encoding::Declared`] must
+/// only be passed for a mark [`declared_code_page`] found decodable.
 fn dbase_reader<T: Read + std::io::Seek>(
     source: T,
     encoding: Encoding,

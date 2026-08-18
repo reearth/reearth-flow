@@ -1,5 +1,4 @@
-//! Shapefile writing. Groups features by the shape they write and writes each
-//! group as its own file set.
+//! Writing features as shapefile file sets, one per shape type.
 
 use std::collections::BTreeMap;
 use std::io::BufWriter;
@@ -15,9 +14,9 @@ use shapefile::NO_DATA;
 use super::conversion::{attributes_to_record, make_table_builder, write_geometry, Field};
 use super::crs;
 use super::null_shape;
-use super::shape::{Bucket, Frames, Payload, Ring, WrittenShape};
+use super::shape::{Bucket, Frames, Patch, Payload, Ring, WrittenShape};
 
-/// The geometry of one written feature, and the attributes to write beside it.
+/// One feature to write.
 struct Record<'a> {
     /// What the feature's geometry writes to.
     shape: WrittenShape,
@@ -25,15 +24,9 @@ struct Record<'a> {
     attributes: &'a IndexMap<Attribute, AttributeValue>,
 }
 
-/// Write `upstream` as shapefiles under `base_path`, named after `key`.
-///
-/// A `.shp` holds records of one shape type, so features are grouped by the shape
-/// they write and each group becomes its own file set. A group filling one bucket
-/// is named after `key` alone; one filling several distinguishes its files by
-/// bucket.
-///
-/// With `compress_output` set, each file set is gathered into its own ZIP archive
-/// under that directory rather than left as loose files.
+/// Write `upstream` as shapefiles under `base_path`: one file set per bucket,
+/// named after `key` and, where there are several, the bucket. With
+/// `compress_output`, each file set becomes a ZIP archive under that directory.
 pub(super) fn pipeline(
     ctx: &Context,
     sandbox_root: &Uri,
@@ -112,11 +105,8 @@ pub(super) fn pipeline(
     Ok(())
 }
 
-/// Gather the file set `stem` names under `base_path` into
-/// `{compress_output}/{stem}.zip`, and take the loose files away.
-///
-/// The components sit at the archive's root, named after `stem`, which is the layout
-/// the Shapefile Reader takes.
+/// Move the file set `stem` under `base_path` into `{compress_output}/{stem}.zip`,
+/// its components at the archive's root.
 fn archive_file_set(
     sandbox_root: &Uri,
     base_path: &str,
@@ -167,9 +157,8 @@ fn archive_file_set(
     Ok(())
 }
 
-/// Write one bucket's records as a `.shp`, `.shx`, `.dbf`, `.cpg` and, where one
-/// CRS covers them and a `.prj` can describe it, a `.prj`. Returns the extensions
-/// it wrote.
+/// Write one bucket's records as `.shp`, `.shx`, `.dbf`, `.cpg` and, where one
+/// CRS covers them, `.prj`. Returns the extensions written.
 fn write_bucket(
     sandbox_root: &Uri,
     base_path: &str,
@@ -243,8 +232,8 @@ fn write_bucket(
     Ok(written)
 }
 
-/// Whether a point bucket writes multipoint records: one feature holding more than
-/// a single position settles it for the whole file.
+/// Whether a point bucket writes multipoint records: it does once any feature
+/// holds other than one position.
 fn bucket_is_multipoint(bucket: Bucket, records: &[Record<'_>]) -> bool {
     if !matches!(bucket, Bucket::Point | Bucket::PointZ) {
         return false;
@@ -255,8 +244,8 @@ fn bucket_is_multipoint(bucket: Bucket, records: &[Record<'_>]) -> bool {
     })
 }
 
-/// Write one record: `payload` as the shape type `bucket` and `multipoint` settle
-/// on, beside `record`.
+/// Write `payload` as the shape type `bucket` and `multipoint` settle on, beside
+/// `record`.
 fn write_shape<T: std::io::Write + std::io::Seek>(
     writer: &mut shapefile::Writer<T>,
     bucket: Bucket,
@@ -306,17 +295,20 @@ fn write_shape<T: std::io::Write + std::io::Seek>(
             ),
             record,
         ),
+        Payload::Surface(patches) => writer.write_shape_and_record(
+            &shapefile::Multipatch::with_parts(patches.iter().map(patch).collect()),
+            record,
+        ),
     }
     .map_err(to_sink_error)
 }
 
-/// A bucket holds at least one position per record, so an empty one cannot occur;
-/// the origin stands in for it rather than dropping the record's attributes.
+/// The first position, or the origin for none.
 fn first_position(positions: &[[f64; 3]]) -> [f64; 3] {
     positions.first().copied().unwrap_or([0.0, 0.0, 0.0])
 }
 
-/// Positions as shapefile points, their elevations dropped.
+/// Positions as shapefile points without elevation.
 fn points(positions: &[[f64; 3]]) -> Vec<shapefile::Point> {
     positions
         .iter()
@@ -324,7 +316,7 @@ fn points(positions: &[[f64; 3]]) -> Vec<shapefile::Point> {
         .collect()
 }
 
-/// Positions as elevated shapefile points carrying no measure.
+/// Positions as elevated shapefile points.
 fn points_z(positions: &[[f64; 3]]) -> Vec<shapefile::PointZ> {
     positions
         .iter()
@@ -341,10 +333,17 @@ fn polygon_ring<P>(ring: &Ring, points: Vec<P>) -> shapefile::PolygonRing<P> {
     }
 }
 
-/// Write a bucket of features carrying no geometry.
-///
-/// `shapefile::Writer` cannot write null records, so the `.dbf` is written through
-/// it with a placeholder shape per record and the `.shp` and `.shx` it produced are
+/// A patch as a multipatch part.
+fn patch(patch: &Patch) -> shapefile::Patch {
+    match patch {
+        Patch::Ring(ring) if ring.outer => shapefile::Patch::OuterRing(points_z(&ring.coords)),
+        Patch::Ring(ring) => shapefile::Patch::InnerRing(points_z(&ring.coords)),
+        Patch::Triangle(corners) => shapefile::Patch::TriangleStrip(points_z(corners)),
+    }
+}
+
+/// Write a bucket of features carrying no geometry: the `.dbf` through
+/// `shapefile::Writer` with placeholder shapes, then the `.shp` and `.shx`
 /// replaced with null-shape bytes.
 fn write_null_bucket(
     shp_out: &crate::SinkOutput,
@@ -383,13 +382,13 @@ fn write_null_bucket(
     Ok(())
 }
 
-/// Declare the `.dbf`'s encoding, which the table is written in.
+/// Write the `.cpg` declaring the table's encoding.
 fn write_cpg(mut writer: impl std::io::Write) -> std::io::Result<()> {
     writer.write_all(b"UTF-8")?;
     writer.flush()
 }
 
-/// A `shapefile` error as a sink error, an I/O error kept as one.
+/// A `shapefile` error as a sink error.
 fn to_sink_error(err: shapefile::Error) -> crate::errors::SinkError {
     match err {
         shapefile::Error::IoError(io_err) => crate::errors::SinkError::ShapefileWriterIo(io_err),

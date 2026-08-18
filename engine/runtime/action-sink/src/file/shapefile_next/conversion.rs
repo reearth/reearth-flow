@@ -1,16 +1,10 @@
-//! Shapefile shape conversion. Turns `reearth_flow_geometry::Geometry` (per-leaf
-//! `CoordinateFrame`) into the positions a shapefile record holds.
+//! Conversion of `reearth_flow_geometry::Geometry` into shapefile positions and
+//! DBF records.
 //!
-//! A `.shp` holds records of one shape type, so a geometry converts to a
-//! [`Payload`] plus the [`Bucket`](super::shape::Bucket) naming the file it
-//! belongs in; the concrete shape type is settled per file once every feature in
-//! it is known.
-//!
-//! A geometry winds a face's exterior counter-clockwise and its holes clockwise,
-//! where a shapefile winds them the other way round, so every ring is reversed on
-//! the way out.
-//!
-//! Measures (the `M` channel) have no geometry counterpart and are never written.
+//! A geometry converts to a [`Payload`] plus the [`Bucket`](super::shape::Bucket)
+//! naming the file it belongs in. Every ring and triangle is reversed on the way
+//! out: a geometry winds exteriors counter-clockwise, a shapefile clockwise.
+//! Measures (M values) are never written.
 
 use std::collections::HashSet;
 
@@ -29,12 +23,10 @@ use reearth_flow_common::datetime::DateTime;
 use reearth_flow_types::{Attribute, AttributeValue};
 use shapefile::dbase::{FieldName, FieldValue, Record, TableWriterBuilder};
 
-use super::shape::{epsg_code, Frames, Payload, Ring, WrittenShape};
+use super::shape::{epsg_code, Frames, Patch, Payload, Ring, WrittenShape};
 
-/// What `geometry` writes to. A part with no shapefile counterpart is dropped
-/// where it appears and warned about rather than failing the geometry around it;
-/// a geometry left with nothing writes no shape at all, so its feature still
-/// reaches the attribute table.
+/// What `geometry` writes to. Parts with no shapefile counterpart are dropped
+/// with a warning; a geometry left with nothing writes no shape.
 pub(super) fn write_geometry(geometry: &Geometry) -> WrittenShape {
     match write(geometry) {
         Ok(written) => {
@@ -59,11 +51,9 @@ pub(super) fn write_geometry(geometry: &Geometry) -> WrittenShape {
 enum Unwritable {
     #[error("an absent geometry writes no shape")]
     AbsentGeometry,
-    /// A shapefile record holds one kind of shape, so parts of different kinds
-    /// cannot be written together.
+    /// Parts of different kinds cannot share a record.
     #[error("a geometry mixing points, curves and areas has no shapefile counterpart")]
     MixedKinds,
-    /// A `MultipointZ` could hold one, but that would write a record per sample.
     #[error("a PointCloud has no shapefile counterpart")]
     PointCloud,
     #[error("a Csg tree has no shapefile counterpart")]
@@ -74,25 +64,22 @@ enum Unwritable {
     EmptyMesh,
     #[error("a solid with no boundary face has no shapefile counterpart")]
     EmptySolid,
-    /// A shapefile part holds at least two positions.
     #[error("a curve with fewer than two positions has no shapefile counterpart")]
     DegenerateCurve,
-    /// A shapefile ring holds at least three distinct positions.
     #[error("a ring with fewer than three positions has no shapefile counterpart")]
     DegenerateRing,
     #[error(transparent)]
     Unsplittable(#[from] UnsupportedOperation),
 }
 
-/// Report what the writer left out.
+/// Warn about what was left out.
 fn warn_omitted(omitted: &[Unwritable]) {
     for reason in omitted {
         tracing::warn!(%reason, "omitting a geometry from the shapefile output");
     }
 }
 
-/// What a geometry writes to, with the frames its positions came from and the
-/// reasons parts of it were left out.
+/// What a geometry writes to.
 struct Written {
     /// The positions to write.
     payload: Payload,
@@ -105,7 +92,7 @@ struct Written {
 }
 
 impl Written {
-    /// What a leaf writes to: one payload, in one frame, leaving nothing out.
+    /// What a leaf writes to.
     fn leaf(frame: &CoordinateFrame, elevated: bool, payload: Payload) -> Self {
         Self {
             payload,
@@ -115,7 +102,7 @@ impl Written {
         }
     }
 
-    /// What a face writes to: its rings, and the holes it left out.
+    /// What a face writes to.
     fn face(frame: &CoordinateFrame, elevated: bool, area: Area) -> Self {
         Self {
             payload: Payload::Area(area.rings),
@@ -136,7 +123,7 @@ fn write(geometry: &Geometry) -> Result<Written, Unwritable> {
     }
 }
 
-/// What a 2D geometry writes to; a leaf stating an elevation writes as elevated.
+/// What a 2D geometry writes to; a leaf at an elevation writes as elevated.
 fn write_2d(geometry: &Euclidean2DGeometry) -> Result<Written, Unwritable> {
     use Euclidean2DGeometry::*;
     match geometry {
@@ -189,8 +176,8 @@ fn write_3d(geometry: &Euclidean3DGeometry) -> Result<Written, Unwritable> {
             true,
             rings(p.frame(), p.exterior(), p.interiors(), None)?,
         )),
-        PolygonMesh(m) => write_faces((**m).clone()),
-        TriangularMesh(m) => write_faces((**m).clone()),
+        PolygonMesh(m) => write_polygon_mesh((**m).clone()),
+        TriangularMesh(m) => write_triangular_mesh(m),
         Solid(s) => write_solid(s),
         Collection(c) => merge(c.members().iter().map(write_3d)),
         Csg(_) => Err(Unwritable::Csg),
@@ -198,7 +185,7 @@ fn write_3d(geometry: &Euclidean3DGeometry) -> Result<Written, Unwritable> {
     }
 }
 
-/// A mesh writes as its faces, the way a collection writes as its members.
+/// What a 2D mesh writes to: its faces as areas, merged.
 fn write_faces(mut mesh: impl Split) -> Result<Written, Unwritable> {
     let mut faces = Vec::new();
     mesh.split(&mut |face, _| faces.push(face))?;
@@ -208,9 +195,71 @@ fn write_faces(mut mesh: impl Split) -> Result<Written, Unwritable> {
     merge(faces.iter().map(write))
 }
 
-/// A solid writes as the faces of its shells, exterior first. The distinction
-/// between bounding a volume and bounding a void is not preserved: a shapefile
-/// area has no counterpart to it.
+/// What a 3D polygon mesh writes to: a surface of ring patches. Errors when no
+/// face can be written.
+fn write_polygon_mesh(mut mesh: PolygonMesh3D) -> Result<Written, Unwritable> {
+    let frame = mesh.frame().clone();
+    let mut faces = Vec::new();
+    mesh.split(&mut |face, _| faces.push(face))?;
+    let mut patches = Vec::new();
+    let mut omitted = Vec::new();
+    for face in &faces {
+        let Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(polygon)) = face else {
+            continue;
+        };
+        match rings(
+            polygon.frame(),
+            polygon.exterior(),
+            polygon.interiors(),
+            None,
+        ) {
+            Ok(area) => {
+                patches.extend(area.rings.into_iter().map(Patch::Ring));
+                omitted.extend(area.omitted);
+            }
+            Err(reason) => omitted.push(reason),
+        }
+    }
+    if patches.is_empty() {
+        return Err(omitted.first().copied().unwrap_or(Unwritable::EmptyMesh));
+    }
+    Ok(Written {
+        payload: Payload::Surface(patches),
+        elevated: true,
+        frames: Frames::of(&frame),
+        omitted,
+    })
+}
+
+/// What a 3D triangular mesh writes to: a surface of triangles. Errors on a mesh
+/// with no triangle.
+fn write_triangular_mesh(mesh: &TriangularMesh3D) -> Result<Written, Unwritable> {
+    let swap = swaps_axes(mesh.frame());
+    let vertices = mesh.vertices();
+    let patches: Vec<Patch> = mesh
+        .triangles()
+        .map(|[a, b, c]| {
+            let corners = [
+                vertices[a as usize],
+                vertices[c as usize],
+                vertices[b as usize],
+            ];
+            let corners = positions(swap, corners.iter(), None);
+            Patch::Triangle([corners[0], corners[1], corners[2]])
+        })
+        .collect();
+    if patches.is_empty() {
+        return Err(Unwritable::EmptyMesh);
+    }
+    Ok(Written {
+        payload: Payload::Surface(patches),
+        elevated: true,
+        frames: Frames::of(mesh.frame()),
+        omitted: Vec::new(),
+    })
+}
+
+/// What a solid writes to: the faces of its shells, exterior first.
 fn write_solid(solid: &Solid) -> Result<Written, Unwritable> {
     let shells = std::iter::once(solid.exterior()).chain(solid.interiors());
     let written: Vec<Result<Written, Unwritable>> = shells
@@ -222,26 +271,21 @@ fn write_solid(solid: &Solid) -> Result<Written, Unwritable> {
     merge(written.into_iter())
 }
 
-/// A shell's faces, taking the frame the enclosing solid states.
+/// What a shell of a solid in `frame` writes to.
 fn write_shell(frame: &CoordinateFrame, shell: &Shell) -> Result<Written, Unwritable> {
     match shell {
-        Shell::PolygonMesh(data) => write_faces(PolygonMesh3D::new(frame.clone(), data.clone())),
+        Shell::PolygonMesh(data) => {
+            write_polygon_mesh(PolygonMesh3D::new(frame.clone(), data.clone()))
+        }
         Shell::TriangularMesh(data) => {
-            write_faces(TriangularMesh3D::new(frame.clone(), data.clone()))
+            write_triangular_mesh(&TriangularMesh3D::new(frame.clone(), data.clone()))
         }
     }
 }
 
-/// The parts written for a container, as one shape.
-///
-/// Parts of different kinds cannot share a record, so they are unwritable
-/// together. Parts that differ only in whether they carry an elevation are
-/// written as one elevated shape, those carrying none lying at `0.0` as they do
-/// when a 2D geometry is read in three dimensions.
-///
-/// `Err` once nothing is left, a container reduced to nothing being unwritable
-/// too. That error carries a dropped part's reason, or `EmptyCollection` when
-/// there were no parts to drop.
+/// The parts of a container as one shape: parts of the first kind seen, elevated
+/// if any is, the rest dropped. `Err` when nothing is left, carrying a dropped
+/// part's reason or `EmptyCollection`.
 fn merge(parts: impl Iterator<Item = Result<Written, Unwritable>>) -> Result<Written, Unwritable> {
     let mut merged: Option<Written> = None;
     let mut omitted = Vec::new();
@@ -281,8 +325,7 @@ fn merge(parts: impl Iterator<Item = Result<Written, Unwritable>>) -> Result<Wri
     }
 }
 
-/// A stored coordinate as a shapefile position, its height left where it is: a
-/// shapefile's `(x, y)` is `(easting, northing)` whatever the CRS declares, so a
+/// A stored coordinate as a shapefile position: `(easting, northing)`, so a
 /// frame declaring the reverse has its horizontal pair swapped.
 fn swapped<const N: usize>(frame: &CoordinateFrame, coordinate: [f64; N]) -> [f64; N] {
     let mut coordinate = coordinate;
@@ -292,12 +335,9 @@ fn swapped<const N: usize>(frame: &CoordinateFrame, coordinate: [f64; N]) -> [f6
     coordinate
 }
 
-/// Stored coordinates as shapefile positions, their horizontal pair swapped when
-/// `swap` says so, at the elevation `z` states or, when it states none, the one
-/// each coordinate carries (`0.0` for a 2D coordinate).
-///
-/// The generic `N` covers both embeddings: `z` supplies the elevation for 2D
-/// coordinates and is `None` for 3D ones, which carry their own.
+/// Stored coordinates as shapefile positions, the horizontal pair swapped when
+/// `swap`, at the elevation `z` or, when `None`, the coordinate's own (`0.0` in
+/// 2D).
 fn positions<'a, const N: usize>(
     swap: bool,
     coords: impl Iterator<Item = &'a [f64; N]>,
@@ -316,9 +356,7 @@ fn positions<'a, const N: usize>(
         .collect()
 }
 
-/// A line's positions as one shapefile part.
-///
-/// Errors on a line too short to be a part.
+/// A line as one shapefile part. Errors on fewer than two positions.
 fn curve<const N: usize>(
     frame: &CoordinateFrame,
     coords: &[[f64; N]],
@@ -330,7 +368,7 @@ fn curve<const N: usize>(
     Ok(positions(swaps_axes(frame), coords.iter(), z))
 }
 
-/// A face's rings as shapefile rings, and the holes left out for being too short.
+/// A face's shapefile rings.
 struct Area {
     /// The exterior ring, then the holes.
     rings: Vec<Ring>,
@@ -338,11 +376,8 @@ struct Area {
     omitted: Vec<Unwritable>,
 }
 
-/// A face's rings: its exterior, then its holes, each reversed into the winding a
-/// shapefile expects.
-///
-/// Errors on a face whose exterior is too short to be a ring; a hole too short to
-/// be one is left out.
+/// A face's rings, exterior first, each reversed. Errors on an exterior too
+/// short to be a ring; such a hole is left out.
 fn rings<'a, const N: usize>(
     frame: &CoordinateFrame,
     exterior: &'a [[f64; N]],
@@ -373,8 +408,7 @@ fn rings<'a, const N: usize>(
     Ok(area)
 }
 
-/// Whether `coords` can be a shapefile ring: three positions and the closing one,
-/// which is supplied on writing when it is missing.
+/// Whether `coords` holds at least three distinct positions.
 fn is_ring<const N: usize>(coords: &[[f64; N]]) -> bool {
     match coords.len() {
         0..=2 => false,
@@ -383,11 +417,8 @@ fn is_ring<const N: usize>(coords: &[[f64; N]]) -> bool {
     }
 }
 
-/// Whether a frame stores its horizontal axes reflected from `(East, North)`.
-///
-/// Only a CRS declares an axis order. A CRS whose order cannot be established is
-/// written as stored, which reverses its coordinates if it declares
-/// `(northing, easting)`.
+/// Whether a frame declares `(northing, easting)`; false where that cannot be
+/// established.
 fn swaps_axes(frame: &CoordinateFrame) -> bool {
     if epsg_code(frame).is_none() {
         return false;
@@ -411,11 +442,7 @@ const DATE_YEARS: std::ops::RangeInclusive<i32> = 0..=9999;
 /// The most decimal places a numeric column is declared with.
 const MAX_DECIMAL_PLACES: u8 = 15;
 
-/// One column of the DBF table: the attribute it takes its value from, and the
-/// type every value is written as.
-///
-/// A DBF field name is at most 11 bytes, so it can differ from the attribute's;
-/// the field is keyed by its own name and remembers the attribute's.
+/// One column of the DBF table.
 pub(super) struct Field {
     /// The name the table declares.
     name: String,
@@ -439,7 +466,7 @@ enum FieldKind {
 }
 
 impl FieldKind {
-    /// The kind a column holding values of both `self` and `other` is declared as.
+    /// The kind holding values of both `self` and `other`.
     fn join(self, other: Self) -> Self {
         match (self, other) {
             (a, b) if a == b => a,
@@ -452,7 +479,7 @@ impl FieldKind {
 }
 
 impl Field {
-    /// The value this column writes where the feature carries none it can store.
+    /// The value written where the feature carries none the column can store.
     fn default(&self) -> FieldValue {
         match self.kind {
             FieldKind::Character => FieldValue::Character(None),
@@ -463,8 +490,7 @@ impl Field {
     }
 }
 
-/// What the values of one attribute call for in a column: the kind every value
-/// so far fits, and how wide they are written out.
+/// What one attribute's values call for in a column.
 struct Column {
     /// The attribute the values come from.
     attribute: Attribute,
@@ -479,7 +505,7 @@ struct Column {
 }
 
 impl Column {
-    /// A column for `attribute` with no value taken into account yet.
+    /// A column for `attribute` with no value noted yet.
     fn new(attribute: &Attribute) -> Self {
         Self {
             attribute: attribute.clone(),
@@ -490,8 +516,7 @@ impl Column {
         }
     }
 
-    /// Take a value into account. A null says nothing about the column; a value
-    /// the table cannot store marks it as leaving something out.
+    /// Take a value into account.
     fn note(&mut self, value: &AttributeValue) {
         let (kind, text) = match value {
             AttributeValue::String(s) => (FieldKind::Character, s.clone()),
@@ -517,12 +542,8 @@ impl Column {
         self.text_width = self.text_width.max(text.len());
     }
 
-    /// The type the column is declared as, and its width, once every value is
-    /// taken into account. A column no value can be stored in is character, so
-    /// the attribute still has a field.
-    ///
-    /// A numeric column is as wide as its widest integer part and its decimal
-    /// places, and holds as many of those as its values need.
+    /// The type and width the column is declared with; character when no value
+    /// can be stored.
     fn kind(&self) -> (FieldKind, u8) {
         let kind = self.kind.unwrap_or(FieldKind::Character);
         let width = match kind {
@@ -536,8 +557,7 @@ impl Column {
     }
 }
 
-/// A date or time as the text a character column writes it in: a date alone as
-/// `YYYY-MM-DD`, an instant in RFC 3339.
+/// A date or time as text: `YYYY-MM-DD` for a date, RFC 3339 for an instant.
 fn datetime_text(d: &DateTime) -> String {
     match d {
         DateTime::NaiveDate(d) => d.to_string(),
@@ -545,9 +565,8 @@ fn datetime_text(d: &DateTime) -> String {
     }
 }
 
-/// A number as the shortest decimal text that reads back as the same number; a
-/// non-integer keeps at least one decimal place, so its column stays a decimal
-/// one.
+/// A number as the shortest decimal text reading back as itself; a float keeps
+/// at least one decimal place.
 fn number_text(n: &serde_json::Number) -> String {
     match n.as_f64().filter(|_| n.is_f64()) {
         Some(f) if f.fract() == 0.0 => format!("{f:.1}"),
@@ -556,14 +575,9 @@ fn number_text(n: &serde_json::Number) -> String {
     }
 }
 
-/// The table to write the attributes of `features` into, and its columns.
-///
-/// A column is declared for every attribute any feature carries, in the order
-/// first seen: one holding only numbers is numeric, wide enough for the widest,
-/// one holding only booleans is logical, one holding only dates is a date, and
-/// one holding anything else, or nothing storable, is character. Names are cut
-/// to the DBF limit and told apart where the cut makes two the same. Values with
-/// no DBF counterpart are left out and warned about.
+/// The table for the attributes of `features`, and its columns: one per
+/// attribute in order first seen, typed by the values it holds, named within the
+/// DBF limit.
 pub(super) fn make_table_builder<'a>(
     features: impl Iterator<Item = &'a IndexMap<Attribute, AttributeValue>>,
 ) -> crate::errors::Result<(TableWriterBuilder, Vec<Field>)> {
@@ -613,8 +627,7 @@ pub(super) fn make_table_builder<'a>(
     Ok((builder, fields))
 }
 
-/// `name` cut to the DBF limit and, where that cut is already `taken`, made
-/// distinct with a counter that fits within the limit.
+/// `name` cut to the DBF limit, with a counter where the cut is already `taken`.
 fn field_name(name: &str, taken: &HashSet<String>) -> String {
     let cut = trim_string_bytes(name.to_string(), FIELD_NAME_BYTES);
     if !taken.contains(&cut) {
@@ -630,13 +643,8 @@ fn field_name(name: &str, taken: &HashSet<String>) -> String {
         .expect("the counter is unbounded, so some name is free")
 }
 
-/// The DBF record for one feature: exactly the table's fields, taking each from
-/// `attributes` where it holds a value the column can store and from the column's
-/// default otherwise.
-///
-/// Every field the table declares must appear, so a feature missing one, or
-/// carrying a value with no DBF counterpart, still writes the field as its
-/// default.
+/// The DBF record for one feature: every field of the table, from `attributes`
+/// or the column's default.
 pub(super) fn attributes_to_record(
     attributes: &IndexMap<Attribute, AttributeValue>,
     fields: &[Field],
@@ -652,8 +660,7 @@ pub(super) fn attributes_to_record(
     record
 }
 
-/// The value an attribute writes as in a column of `kind`, or `None` for one the
-/// column cannot store.
+/// The value an attribute writes as in a column of `kind`, or `None`.
 fn to_field_value(value: &AttributeValue, kind: FieldKind) -> Option<FieldValue> {
     match kind {
         FieldKind::Numeric { .. } => match value {
@@ -719,6 +726,32 @@ mod tests {
         point::{Point2D, Point3D},
         polygon::{Polygon2D, Polygon3D},
     };
+
+    fn surface(written: &WrittenShape) -> &Vec<Patch> {
+        match written.payload.as_ref().expect("expected a shape") {
+            Payload::Surface(patches) => patches,
+            _ => panic!("expected a surface"),
+        }
+    }
+
+    fn square_face(z: f64) -> Polygon3D {
+        Polygon3D::from_rings(
+            euclidean(),
+            [
+                [0.0, 0.0, z],
+                [4.0, 0.0, z],
+                [4.0, 4.0, z],
+                [0.0, 4.0, z],
+                [0.0, 0.0, z],
+            ],
+            [vec![
+                [1.0, 1.0, z],
+                [1.0, 2.0, z],
+                [2.0, 2.0, z],
+                [1.0, 1.0, z],
+            ]],
+        )
+    }
 
     fn euclidean() -> CoordinateFrame {
         CoordinateFrame::Euclidean
@@ -800,6 +833,39 @@ mod tests {
         ring.windows(2)
             .map(|w| w[0][0] * w[1][1] - w[1][0] * w[0][1])
             .sum()
+    }
+
+    #[test]
+    fn meshes_write_a_multipatch_of_reversed_faces_taking_polygons_in() {
+        let mesh = PolygonMesh3D::from_polygons(euclidean(), [square_face(0.0)].iter()).unwrap();
+        let triangles = TriangularMesh3D::from_parts(
+            euclidean(),
+            vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [1.0, 1.0, 0.0]],
+            vec![0, 1, 2],
+        )
+        .unwrap();
+        let collection =
+            Geometry::Euclidean3D(Euclidean3DGeometry::Collection(Collection3D::new([
+                Euclidean3DGeometry::Polygon(Box::new(square_face(9.0))),
+                Euclidean3DGeometry::PolygonMesh(Box::new(mesh)),
+                Euclidean3DGeometry::TriangularMesh(Box::new(triangles)),
+            ])));
+        let written = write_geometry(&collection);
+        assert_eq!(written.bucket(), Bucket::Multipatch);
+        let patches = surface(&written);
+        assert_eq!(patches.len(), 5);
+        let (Patch::Ring(exterior), Patch::Ring(hole)) = (&patches[0], &patches[1]) else {
+            panic!("expected rings");
+        };
+        assert!(exterior.outer && signed_area(&exterior.coords) < 0.0);
+        assert!(!hole.outer && signed_area(&hole.coords) > 0.0);
+        let Patch::Triangle(corners) = &patches[4] else {
+            panic!("expected a triangle");
+        };
+        assert_eq!(
+            corners,
+            &[[0.0, 0.0, 0.0], [1.0, 1.0, 0.0], [1.0, 0.0, 0.0]]
+        );
     }
 
     #[test]

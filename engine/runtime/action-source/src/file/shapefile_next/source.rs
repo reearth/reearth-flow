@@ -166,10 +166,8 @@ impl Source for ShapefileReader {
     }
 }
 
-/// Read the shapefile in `content`, sending one feature per record as it is read.
-///
-/// `content` must be a ZIP archive holding the shapefile's components; a bare
-/// `.shp` carries neither the attribute table nor the CRS.
+/// Read the shapefile in the ZIP archive `content`, sending one feature per
+/// record as it is read.
 async fn read_shapefile(
     content: &Bytes,
     params: &ShapefileReaderCompiledParam,
@@ -212,8 +210,7 @@ mod tests {
     use shapefile::dbase::{FieldName, FieldValue, TableWriterBuilder};
     use std::io::{Cursor, Write as _};
 
-    /// A ZIP archive holding a one-record point shapefile whose table declares
-    /// every field type the writer can produce.
+    /// A one-record shapefile whose table declares every field type.
     fn every_field_type_zipped() -> Bytes {
         let name = |name: &str| FieldName::try_from(name).unwrap();
         let mut shp = Vec::new();

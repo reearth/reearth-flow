@@ -1,14 +1,12 @@
-//! The `.prj` sidecar describing what a shapefile's coordinates are expressed in.
+//! The `.prj` sidecar naming a shapefile's CRS.
 
 use std::io::Write;
 
 use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
 use reearth_flow_geometry::ops::{esri_wkt1, identify_epsg};
 
-/// Write the ESRI WKT1 definition of `epsg`, the dialect a `.prj` is read in.
-///
-/// The definition comes from PROJ's database. Errors when PROJ cannot resolve the
-/// code or has no ESRI WKT1 form for it, which is the case for a geocentric CRS.
+/// Write the ESRI WKT1 definition of `epsg`. Errors when PROJ has no such form
+/// for it.
 pub(super) fn write_prj(mut writer: impl Write, epsg: EpsgCode) -> Result<(), std::io::Error> {
     let definition = definition_for(epsg).map_err(|e| {
         std::io::Error::new(
@@ -20,16 +18,8 @@ pub(super) fn write_prj(mut writer: impl Write, epsg: EpsgCode) -> Result<(), st
     writer.flush()
 }
 
-/// The definition to write for `epsg`: its own where that names it back, and its
-/// horizontal counterpart's where it does not.
-///
-/// Not every CRS survives the trip out through ESRI WKT1 and back: PROJ writes a
-/// name for a 3D geographic CRS that it does not itself resolve, and identifies a
-/// compound CRS weakly even when both its parts are exact. Writing a definition
-/// that no longer names the CRS would leave a reader to guess, so the horizontal
-/// CRS is written instead, which does name itself back. The elevations are written
-/// either way; what is given up is the vertical CRS they are measured against,
-/// which a shapefile has nowhere to record.
+/// The definition to write for `epsg`: its own where PROJ identifies that back
+/// to it, else its horizontal counterpart's.
 fn definition_for(epsg: EpsgCode) -> Result<String, String> {
     let definition = esri_wkt1(epsg).map_err(|e| e.to_string())?;
     if identify_epsg(&definition) == Some(epsg) {
@@ -62,9 +52,8 @@ mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
 
-    /// Whatever is written must name a CRS back: itself where its definition
-    /// does, its horizontal counterpart where PROJ writes a name it does not
-    /// resolve (a 3D geographic CRS) or identifies weakly (a compound CRS).
+    /// What is written names the CRS back, or its horizontal counterpart for a
+    /// 3D geographic or compound CRS.
     #[test]
     fn each_definition_names_its_crs_or_its_horizontal_counterpart_back() {
         for (epsg, expected) in [

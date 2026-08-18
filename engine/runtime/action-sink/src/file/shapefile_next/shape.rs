@@ -1,16 +1,11 @@
-//! What a feature writes to a shapefile, before the concrete shape type of the
-//! file holding it is settled.
-//!
-//! A `.shp` holds records of one shape type, so features converting to different
-//! kinds of positions are written to different files. Both geometry worlds convert
-//! into the types here, leaving the pipeline one way to group and write features.
+//! What a feature writes to a shapefile, before the file's shape type is settled.
 
 use reearth_flow_geometry::coordinate::{CoordinateFrame, EpsgCode};
 
 /// The file a written feature belongs in.
 #[derive(Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord, Debug)]
 pub(super) enum Bucket {
-    /// Features writing no shape at all, carrying only their attributes.
+    /// Features writing no shape.
     Null,
     Point,
     PointZ,
@@ -18,11 +13,11 @@ pub(super) enum Bucket {
     CurveZ,
     Area,
     AreaZ,
+    Multipatch,
 }
 
 impl Bucket {
-    /// The name distinguishing this bucket's file from a sibling bucket's, used
-    /// only where one group of features fills more than one bucket.
+    /// The suffix naming this bucket's file beside a sibling bucket's.
     pub(super) fn suffix(&self) -> &'static str {
         match self {
             Bucket::Null => "null",
@@ -32,24 +27,35 @@ impl Bucket {
             Bucket::CurveZ => "polylinez",
             Bucket::Area => "polygon",
             Bucket::AreaZ => "polygonz",
+            Bucket::Multipatch => "multipatch",
         }
     }
 
     /// Whether this bucket's records carry an elevation.
     pub(super) fn elevated(&self) -> bool {
-        matches!(self, Bucket::PointZ | Bucket::CurveZ | Bucket::AreaZ)
+        matches!(
+            self,
+            Bucket::PointZ | Bucket::CurveZ | Bucket::AreaZ | Bucket::Multipatch
+        )
     }
 }
 
-/// One ring of an area, and whether it bounds the face or a hole in it.
+/// One ring of an area.
 pub(super) struct Ring {
     pub(super) outer: bool,
     pub(super) coords: Vec<[f64; 3]>,
 }
 
-/// The positions a feature writes, held as `[x, y, z]` whatever the geometry's
-/// embedding. [`WrittenShape::elevated`] says whether the third component carries
-/// an elevation the geometry stated or `0.0` stood in for it.
+/// One patch of a surface.
+pub(super) enum Patch {
+    /// A ring of a face.
+    Ring(Ring),
+    /// One triangle.
+    Triangle([[f64; 3]; 3]),
+}
+
+/// The positions a feature writes, as `[x, y, z]`; see [`WrittenShape::elevated`]
+/// for whether `z` is an elevation.
 pub(super) enum Payload {
     /// One position per point.
     Points(Vec<[f64; 3]>),
@@ -57,10 +63,12 @@ pub(super) enum Payload {
     Curve(Vec<Vec<[f64; 3]>>),
     /// Each face's exterior ring followed by its holes.
     Area(Vec<Ring>),
+    /// The patches of a surface in space, always elevated.
+    Surface(Vec<Patch>),
 }
 
 impl Payload {
-    /// The bucket this payload belongs in at the given elevation.
+    /// The bucket this payload belongs in.
     pub(super) fn bucket(&self, elevated: bool) -> Bucket {
         match (self, elevated) {
             (Payload::Points(_), false) => Bucket::Point,
@@ -69,29 +77,42 @@ impl Payload {
             (Payload::Curve(_), true) => Bucket::CurveZ,
             (Payload::Area(_), false) => Bucket::Area,
             (Payload::Area(_), true) => Bucket::AreaZ,
+            (Payload::Surface(_), _) => Bucket::Multipatch,
         }
     }
 
-    /// Whether two payloads hold the same kind of positions and can be written as
-    /// one shape.
+    /// Whether two payloads can be written as one shape; a surface takes areas in.
     #[cfg(feature = "new-geometry")]
     pub(super) fn same_kind(&self, other: &Self) -> bool {
         matches!(
             (self, other),
             (Payload::Points(_), Payload::Points(_))
                 | (Payload::Curve(_), Payload::Curve(_))
-                | (Payload::Area(_), Payload::Area(_))
+                | (
+                    Payload::Area(_) | Payload::Surface(_),
+                    Payload::Area(_) | Payload::Surface(_)
+                )
         )
     }
 
-    /// Absorb `other`'s positions. The caller must have established that both hold
-    /// the same kind via [`same_kind`](Self::same_kind).
+    /// Absorb `other`'s positions; both must be of the [`same_kind`](Self::same_kind).
     #[cfg(feature = "new-geometry")]
     pub(super) fn absorb(&mut self, other: Self) {
         match (self, other) {
             (Payload::Points(a), Payload::Points(b)) => a.extend(b),
             (Payload::Curve(a), Payload::Curve(b)) => a.extend(b),
             (Payload::Area(a), Payload::Area(b)) => a.extend(b),
+            (Payload::Surface(a), Payload::Surface(b)) => a.extend(b),
+            (Payload::Surface(a), Payload::Area(b)) => a.extend(b.into_iter().map(Patch::Ring)),
+            (this @ Payload::Area(_), Payload::Surface(b)) => {
+                let Payload::Area(a) = std::mem::replace(this, Payload::Surface(b)) else {
+                    unreachable!("this is an area");
+                };
+                let Payload::Surface(patches) = this else {
+                    unreachable!("this is now a surface");
+                };
+                patches.splice(0..0, a.into_iter().map(Patch::Ring));
+            }
             _ => unreachable!("payload kinds were checked before absorbing"),
         }
     }
@@ -99,16 +120,16 @@ impl Payload {
 
 /// What a feature's geometry writes to.
 pub(super) struct WrittenShape {
-    /// The positions to write, or `None` for a feature writing no shape.
+    /// The positions to write, or `None` for no shape.
     pub(super) payload: Option<Payload>,
     /// Whether the positions carry an elevation the geometry stated.
     pub(super) elevated: bool,
-    /// The coordinate frames the positions came from.
+    /// The frames the positions came from.
     pub(super) frames: Frames,
 }
 
 impl WrittenShape {
-    /// A feature writing no shape, carrying only its attributes.
+    /// A feature writing no shape.
     pub(super) fn none() -> Self {
         Self {
             payload: None,
@@ -126,26 +147,24 @@ impl WrittenShape {
     }
 }
 
-/// The coordinate frames the positions written for a shapefile came from.
-///
-/// Decides whether one CRS covers a file, and so whether a `.prj` can describe it.
+/// The frames a file's positions came from.
 #[derive(Clone, Debug, Default, PartialEq)]
 pub(super) enum Frames {
     /// Nothing carrying coordinates was written.
     #[default]
     Nothing,
     One(CoordinateFrame),
-    /// More than one frame, which no single `.prj` describes.
+    /// More than one frame.
     Mixed,
 }
 
 impl Frames {
-    /// The one frame a leaf's positions came from.
+    /// One frame.
     pub(super) fn of(frame: &CoordinateFrame) -> Self {
         Self::One(frame.clone())
     }
 
-    /// The frames of two written parts, together.
+    /// The frames of two parts together.
     pub(super) fn and(self, other: Self) -> Self {
         match (self, other) {
             (Self::Nothing, frames) | (frames, Self::Nothing) => frames,
@@ -154,7 +173,7 @@ impl Frames {
         }
     }
 
-    /// The EPSG code covering every written position, if one does.
+    /// The EPSG code covering every position, if one does.
     pub(super) fn epsg(&self) -> Option<EpsgCode> {
         match self {
             Self::One(frame) => epsg_code(frame),
@@ -163,8 +182,7 @@ impl Frames {
     }
 }
 
-/// The EPSG code a frame names. `Euclidean` names none, and a `Tangent` plane's
-/// in-plane coordinates are not its base CRS's.
+/// The EPSG code a frame names; `Euclidean` and `Tangent` name none.
 pub(super) fn epsg_code(frame: &CoordinateFrame) -> Option<EpsgCode> {
     match frame {
         CoordinateFrame::Crs(code) => Some(*code),

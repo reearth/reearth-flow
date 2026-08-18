@@ -1,25 +1,20 @@
-//! The `.dbf` attribute table: one record per shape, read as feature attributes.
+//! The `.dbf` attribute table, read as feature attributes.
 
 use indexmap::IndexMap;
 use reearth_flow_common::datetime::{DateTime, NaiveDate};
 use reearth_flow_types::{Attribute, AttributeValue};
 use shapefile::dbase::{FieldValue, Record};
 
-/// One field of the attribute table, as far as reading its values goes.
+/// One field of the attribute table.
 pub(super) struct Field {
     /// The name the table declares.
     pub(super) name: String,
-    /// Whether the field is numeric with no decimal places, so that its values
-    /// read as integers.
+    /// Whether the field is numeric with no decimal places.
     pub(super) integral: bool,
 }
 
-/// The attributes one record holds, in the order of `fields`, which is the order
-/// the table declares them in.
-///
-/// A field with no value, and one whose value the field type cannot represent,
-/// both read as [`AttributeValue::Null`] rather than being left out, so every
-/// feature carries the same attributes.
+/// The attributes one record holds, one per field in table order; a missing or
+/// unrepresentable value reads as [`AttributeValue::Null`].
 pub(super) fn to_attributes(
     mut record: Record,
     fields: &[Field],
@@ -37,7 +32,7 @@ pub(super) fn to_attributes(
 }
 
 /// The attribute value a field holds; a numeric one reads as an integer when the
-/// field is `integral` and the value has an integer counterpart.
+/// field is `integral`.
 fn to_attribute_value(value: FieldValue, integral: bool) -> AttributeValue {
     match value {
         FieldValue::Character(Some(s)) => AttributeValue::String(s),
@@ -60,11 +55,11 @@ fn to_attribute_value(value: FieldValue, integral: bool) -> AttributeValue {
     }
 }
 
-/// The largest magnitude every integer up to which an `f64` holds exactly.
+/// The magnitude up to which an `f64` holds every integer exactly.
 const EXACT_INTEGER_LIMIT: f64 = 9007199254740992.0;
 
-/// A zero-decimal numeric field's value: the integer it holds, or the number as
-/// read for a value that is not one, or too wide to be held exactly.
+/// A zero-decimal numeric field's value: an integer when it is one held exactly,
+/// else the number as read.
 fn integer(n: f64) -> AttributeValue {
     if n.fract() == 0.0 && n.abs() < EXACT_INTEGER_LIMIT {
         return AttributeValue::Number((n as i64).into());
@@ -72,8 +67,7 @@ fn integer(n: f64) -> AttributeValue {
     number(n)
 }
 
-/// A numeric field's value. A non-finite number has no attribute counterpart, so
-/// it reads as null rather than as some other number.
+/// A numeric field's value; a non-finite number reads as null.
 fn number(n: f64) -> AttributeValue {
     match serde_json::Number::from_f64(n) {
         Some(number) => AttributeValue::Number(number),
@@ -81,7 +75,7 @@ fn number(n: f64) -> AttributeValue {
     }
 }
 
-/// A date field's value, which states no time of day and so no instant.
+/// A date field's value, with no time of day.
 fn date(year: u32, month: u32, day: u32) -> AttributeValue {
     match i32::try_from(year)
         .ok()
@@ -92,8 +86,7 @@ fn date(year: u32, month: u32, day: u32) -> AttributeValue {
     }
 }
 
-/// A datetime field's value. The format states no zone, so the instant is read
-/// as UTC.
+/// A datetime field's value, read as UTC.
 fn datetime(value: shapefile::dbase::DateTime) -> AttributeValue {
     match reearth_flow_common::datetime::try_from_unix_s(value.to_unix_timestamp()) {
         Ok(utc) => AttributeValue::DateTime(DateTime::Utc(utc)),

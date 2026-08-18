@@ -1,7 +1,5 @@
-//! The `.shp` and `.shx` of a shapefile whose every record is a null shape.
-//!
-//! `shapefile::Writer` cannot write a null record, so a file of features carrying
-//! no geometry is assembled here instead.
+//! The `.shp` and `.shx` of a shapefile whose every record is a null shape,
+//! which `shapefile::Writer` cannot write.
 
 use std::io::{Result, Write};
 
@@ -13,16 +11,15 @@ const HEADER_BYTES: usize = 100;
 const FILE_CODE: u32 = 9994;
 /// The format version every header states.
 const VERSION: u32 = 1000;
-/// The shape type of a null shape, and of a file holding only null shapes.
+/// The null shape type.
 const NULL_SHAPE_TYPE: u32 = 0;
 /// The number of the first record.
 const FIRST_RECORD_NUMBER: u32 = 1;
-/// Bytes of one `.shp` record: an 8-byte record header, then a 4-byte shape type
-/// and no content beyond it.
+/// Bytes of one `.shp` null record: its header and shape type.
 const SHP_RECORD_BYTES: usize = 12;
-/// Bytes of one `.shx` index record: a file offset and a content length.
+/// Bytes of one `.shx` index record.
 const SHX_RECORD_BYTES: usize = 8;
-/// A null record's content length, in 16-bit words: the shape type alone.
+/// A null record's content length in 16-bit words.
 const NULL_CONTENT_WORDS: i32 = 2;
 
 /// Write a `.shp` holding `feature_count` null records.
@@ -36,7 +33,7 @@ pub(super) fn write_shp(mut writer: impl Write, feature_count: usize) -> Result<
     Ok(())
 }
 
-/// Write the `.shx` indexing the `.shp` [`write_shp`] produces for the same count.
+/// Write the `.shx` indexing the `.shp` of [`write_shp`] for the same count.
 pub(super) fn write_shx(mut writer: impl Write, feature_count: usize) -> Result<()> {
     write_header(&mut writer, HEADER_BYTES + feature_count * SHX_RECORD_BYTES)?;
     for i in 0..feature_count {
@@ -47,10 +44,8 @@ pub(super) fn write_shx(mut writer: impl Write, feature_count: usize) -> Result<
     Ok(())
 }
 
-/// The header both files share: the file code, five unused words, the file
-/// length, the version, the shape type, then a bounding box and Z and M ranges
-/// that a file of null records leaves at zero. `file_bytes` is the length of the
-/// file the header belongs to, which the two files do not share.
+/// Write the header of a file of `file_bytes`: file code, five unused words,
+/// length, version, shape type, then a zero bounding box and Z and M ranges.
 fn write_header(mut writer: impl Write, file_bytes: usize) -> Result<()> {
     writer.write_u32::<BigEndian>(FILE_CODE)?;
     for _ in 0..5 {
@@ -65,7 +60,7 @@ fn write_header(mut writer: impl Write, file_bytes: usize) -> Result<()> {
     Ok(())
 }
 
-/// A byte count as the 16-bit word count the format records lengths and offsets in.
+/// A byte count in 16-bit words.
 fn words(bytes: usize) -> i32 {
     (bytes / 2) as i32
 }
@@ -83,7 +78,7 @@ mod tests {
         (shp, shx)
     }
 
-    /// The length a header declares is the length of its own file, in 16-bit words.
+    /// A header declares its own file's length in 16-bit words.
     #[test]
     fn each_header_declares_the_length_of_its_own_file() {
         for count in [0, 1, 5] {
@@ -101,7 +96,7 @@ mod tests {
         }
     }
 
-    /// The files are well-formed enough for a reader to get the records back.
+    /// The files read back as null shapes.
     #[test]
     fn the_records_read_back_as_null_shapes() {
         let (shp, shx) = files(3);
