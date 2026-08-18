@@ -23,8 +23,8 @@ import {
 } from "@flow/components";
 import { useT } from "@flow/lib/i18n";
 import {
+  formatStructured,
   isLargeValue,
-  summarizeValue,
   toSearchableString,
 } from "@flow/utils/valueSummary";
 
@@ -40,36 +40,24 @@ const FeatureDetailsOverlay: React.FC<Props> = ({ feature, onClose }) => {
   const t = useT();
   const [searchTerm, setSearchTerm] = useState<string>("");
 
-  const sourceGeometry = (
-    feature?._source as { geometry?: unknown } | undefined
-  )?.geometry;
-
-  // Process feature properties for display
+  // Read the values behind the row rather than the row's own cell strings: a
+  // cell string is serialized to fit a cell, and a large one is a bounded
+  // preview that no longer parses back into the value it came from. See
+  // `_values` in `useDataColumnizer`.
   const processedFeature = useMemo(() => {
     if (!feature) return null;
 
-    const { ...properties } = feature;
-
-    // Filter out internal properties that aren't user-relevant
-    const filteredProperties = Object.fromEntries(
-      Object.entries(properties).filter(
-        ([key]) =>
-          !key.startsWith("_") && !key.startsWith("geometry") && key !== "id",
-      ),
-    );
-
-    // Filter out geometry properties
-    const filteredGeometry = Object.fromEntries(
-      Object.entries(properties).filter(
-        ([key]) =>
-          !key.startsWith("_") && key.startsWith("geometry") && key !== "id",
-      ),
-    );
+    const values = feature._values as
+      | {
+          geometry?: Record<string, unknown>;
+          attributes?: Record<string, unknown>;
+        }
+      | undefined;
 
     return {
       id: feature.id,
-      attributes: filteredProperties,
-      geometry: filteredGeometry,
+      attributes: values?.attributes ?? {},
+      geometry: values?.geometry ?? {},
     };
   }, [feature]);
 
@@ -157,19 +145,13 @@ const FeatureDetailsOverlay: React.FC<Props> = ({ feature, onClose }) => {
   const formatValue = (value: unknown): string => {
     if (value == null || value === undefined) return "—";
 
-    if (typeof value === "object") {
-      try {
-        return JSON.stringify(value, null, 2);
-      } catch {
-        return String(value);
-      }
-    }
+    if (typeof value === "object") return formatStructured(value);
 
     if (typeof value === "string") {
       try {
         const parsed = JSON.parse(value);
         if (typeof parsed === "object" && parsed !== null) {
-          return JSON.stringify(parsed, null, 2);
+          return formatStructured(parsed);
         }
       } catch {
         // Not valid JSON, return as-is
@@ -224,8 +206,11 @@ const FeatureDetailsOverlay: React.FC<Props> = ({ feature, onClose }) => {
         </div>
         {large ? (
           <div className="max-h-60 overflow-y-auto rounded-md bg-muted/30 p-2">
-            <pre className="text-xs break-all whitespace-pre-wrap">
-              {summarizeValue(value)}
+            {/* `wrap-break-word`, never `break-all`: the latter wraps mid-token,
+                which splits a coordinate across lines in the middle of a
+                number and makes the value unreadable. */}
+            <pre className="text-xs wrap-break-word whitespace-pre-wrap">
+              {formatValue(value)}
             </pre>
           </div>
         ) : valueType === "object" || valueType === "array" ? (
@@ -250,7 +235,7 @@ const FeatureDetailsOverlay: React.FC<Props> = ({ feature, onClose }) => {
             />
             <CollapsibleContent>
               <div className="mt-1 rounded-md bg-muted/30 p-2">
-                <pre className="text-xs break-all whitespace-pre-wrap">
+                <pre className="text-xs wrap-break-word whitespace-pre-wrap">
                   {formatValue(value)}
                 </pre>
               </div>
@@ -258,7 +243,7 @@ const FeatureDetailsOverlay: React.FC<Props> = ({ feature, onClose }) => {
           </Collapsible>
         ) : (
           <div className="rounded-md bg-muted/30 p-2">
-            <pre className="text-xs break-all whitespace-pre-wrap">
+            <pre className="text-xs wrap-break-word whitespace-pre-wrap">
               {formatValue(value)}
             </pre>
           </div>
@@ -302,7 +287,11 @@ const FeatureDetailsOverlay: React.FC<Props> = ({ feature, onClose }) => {
             type="button"
             className="flex h-7 items-center gap-1 px-2 text-xs text-muted-foreground hover:text-foreground"
             onClick={() =>
-              openRaw(`${t("Feature")} ${processedFeature.id}`, feature)
+              openRaw(`${t("Feature")} ${processedFeature.id}`, {
+                id: processedFeature.id,
+                geometry: processedFeature.geometry,
+                attributes: processedFeature.attributes,
+              })
             }>
             <BracketsCurlyIcon size={12} />
             {t("View all raw")}
@@ -336,32 +325,15 @@ const FeatureDetailsOverlay: React.FC<Props> = ({ feature, onClose }) => {
                 <h4 className="text-sm font-medium text-muted-foreground">
                   {t("Geometry")}
                 </h4>
-                {sourceGeometry != null && (
-                  <Button
-                    variant="ghost"
-                    type="button"
-                    className="flex h-5 items-center gap-1 px-1 text-xs text-muted-foreground hover:text-foreground"
-                    onClick={() =>
-                      openRaw(t("Geometry (as written)"), sourceGeometry)
-                    }>
-                    <BracketsCurlyIcon size={12} />
-                    {t("View structure")}
-                  </Button>
-                )}
               </div>
               <div className="space-y-3">
                 {Object.entries(
                   (filteredFeature?.geometry ?? {}) as Record<string, unknown>,
-                ).map(([key, value]) => {
-                  const valueType = getValueType(value);
-                  const geometryKey = key.replace(/^geometry/, "");
-
-                  return (
-                    <div key={key}>
-                      {renderEntry(geometryKey, value, valueType)}
-                    </div>
-                  );
-                })}
+                ).map(([key, value]) => (
+                  <div key={key}>
+                    {renderEntry(key, value, getValueType(value))}
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -377,16 +349,11 @@ const FeatureDetailsOverlay: React.FC<Props> = ({ feature, onClose }) => {
                     string,
                     unknown
                   >,
-                ).map(([key, value]) => {
-                  const valueType = getValueType(value);
-                  const attributeKey = key.replace(/^attributes/, "");
-
-                  return (
-                    <div key={key}>
-                      {renderEntry(attributeKey, value, valueType)}
-                    </div>
-                  );
-                })}
+                ).map(([key, value]) => (
+                  <div key={key}>
+                    {renderEntry(key, value, getValueType(value))}
+                  </div>
+                ))}
               </div>
             </div>
           )}
