@@ -852,9 +852,7 @@ mod tests {
         fn a_geometry_with_an_epsg_code_writes_it() {
             let geometry = Geometry {
                 epsg: Some(4326),
-                value: GeometryValue::FlowGeometry2D(Geometry2D::Point(Point2D::from([
-                    1.0, 2.0,
-                ]))),
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Point(Point2D::from([1.0, 2.0]))),
             };
             let columns =
                 export_geometry(&geometry, &config("epsg")).expect("geometry expected to export");
@@ -865,9 +863,7 @@ mod tests {
         fn a_geometry_with_no_epsg_code_writes_nothing() {
             let geometry = Geometry {
                 epsg: None,
-                value: GeometryValue::FlowGeometry2D(Geometry2D::Point(Point2D::from([
-                    1.0, 2.0,
-                ]))),
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Point(Point2D::from([1.0, 2.0]))),
             };
             let columns =
                 export_geometry(&geometry, &config("epsg")).expect("geometry expected to export");

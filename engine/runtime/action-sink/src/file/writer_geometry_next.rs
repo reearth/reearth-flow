@@ -242,7 +242,11 @@ pub fn export_geometry(
         GeometryExportMode::Wkt { column } => {
             let written = geometry_wkt(geometry)?;
             columns.insert(column.clone(), written.text);
-            insert_epsg_column(&mut columns, config, single_frame_epsg_code(&written.frames));
+            insert_epsg_column(
+                &mut columns,
+                config,
+                single_frame_epsg_code(&written.frames),
+            );
         }
         GeometryExportMode::Coordinates {
             x_column,
@@ -255,7 +259,11 @@ pub fn export_geometry(
             if let (Some(z), Some(z_column)) = (z, z_column.as_ref()) {
                 columns.insert(z_column.clone(), z.to_string());
             }
-            insert_epsg_column(&mut columns, config, point_frame(geometry).and_then(epsg_code));
+            insert_epsg_column(
+                &mut columns,
+                config,
+                point_frame(geometry).and_then(epsg_code),
+            );
         }
     }
 
