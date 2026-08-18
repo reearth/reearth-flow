@@ -27,10 +27,10 @@ graphs:
             value: |
               [
                 {
-                  "cityGmlPath": env["cityGmlPath"],
-                  "cityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
-                  "codelists": env.get("codelistsPath") or env.get("codelists"),
-                  "schemas": env.get("schemasPath") or env.get("schemas"),
+                  "cityGmlPath": variables["cityGmlPath"],
+                  "cityCode": variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "codelists": variables.get("codelistsPath") or variables.get("codelists"),
+                  "schemas": variables.get("schemasPath") or variables.get("schemas"),
                 },
               ]
 
@@ -63,7 +63,7 @@ graphs:
           conditions:
             - expr:
                 type: flowExpr
-                value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
+                value: not variables["targetPackages"] or attributes["package"] in variables["targetPackages"]
               outputPort: features
 
       - id: 3820b7e2-a1ca-436b-acb0-72b907c8b246
@@ -170,7 +170,7 @@ graphs:
           compressOutput:
             type: flowExpr
             value: |
-              city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip");
+              city_gml = variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip");
               city_gml.remove_suffix("_luse") + "_luse_mvt.zip"
 
       # LSLD processing branch
@@ -282,7 +282,7 @@ graphs:
           compressOutput:
             type: flowExpr
             value: |
-              city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip");
+              city_gml = variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip");
               city_gml.remove_suffix("_lsld") + "_lsld_mvt.zip"
 
     edges:

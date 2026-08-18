@@ -12,7 +12,7 @@
 - Uses **Flow Expression Language** (FlowExpr) for dynamic parameter evaluation
 - Available in action parameters and workflow variables
 - Python users can get started quickly with similar basic operators and semantics
-- Access feature attributes with `attributes[key]` and environment variables with `env[key]`
+- Access feature attributes with `attributes[key]` and workflow variables with `variables[key]`
 
 ## Environment Variables
 
@@ -30,6 +30,10 @@ Runtime behavior controlled by `FLOW_RUNTIME_*` variables.
 - `FLOW_RUNTIME_JOB_TEMP_ARTIFACT_DIRECTORY` - Optional override for the directory where job-scoped temporary artifacts are written. Defaults to a subdirectory under the working directory derived from `FLOW_RUNTIME_WORKING_DIRECTORY` and the project key.
 - `FLOW_RUNTIME_FEATURE_FLUSH_THRESHOLD` - Buffer size before writing features to disk (default: 512)
 - `FLOW_RUNTIME_FEATURE_WRITER_DISABLE` - Set to `"true"` to disable intermediate data capture (impacts debugging)
+
+### Geodetic Grids
+
+`FLOW_PROJ_GRID_DIR` and `FLOW_PROJ_GRID_CACHE_DIR` control where PROJ finds the geoid grids a vertical datum change needs. See [Geodetic grids](../runtime/geometry/grids/README.md#supplying-grids-at-runtime).
 
 ### Workflow Variables
 

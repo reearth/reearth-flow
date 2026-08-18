@@ -94,12 +94,12 @@ impl Orchestrator {
             sandbox_root,
             disposition_policy: disposition_policy.clone(),
         };
-        let env_vars = Arc::new(workflow.with.clone().unwrap_or_default());
+        let variables = Arc::new(workflow.with.clone().unwrap_or_default());
         let kv_store = Arc::new(create_kv_store());
 
         let dag_executor = executor
             .create_dag_executor(
-                env_vars.clone(),
+                variables.clone(),
                 storage_resolver.clone(),
                 kv_store.clone(),
                 workflow,
@@ -121,7 +121,7 @@ impl Orchestrator {
         let runtime_clone = self.runtime.clone();
         let pipeline_future = self.runtime.spawn_blocking(move || {
             run_dag_executor(
-                env_vars,
+                variables,
                 storage_resolver,
                 kv_store,
                 runtime_clone,

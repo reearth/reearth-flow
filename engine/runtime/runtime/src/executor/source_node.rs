@@ -46,7 +46,7 @@ pub struct SourceNode<F> {
     /// The runtime to run the source in.
     runtime: Arc<Handle>,
 
-    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+    variables: Arc<serde_json::Map<String, serde_json::Value>>,
     storage_resolver: Arc<StorageResolver>,
     kv_store: Arc<dyn KvStore>,
     sandbox_root: Uri,
@@ -79,7 +79,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
 
         for (index, source_runner) in source_runners.into_iter().enumerate() {
             let ctx = NodeContext::new(
-                Arc::clone(&self.env_vars),
+                Arc::clone(&self.variables),
                 Arc::clone(&self.storage_resolver),
                 Arc::clone(&self.kv_store),
                 self.event_hub.clone(),
@@ -170,7 +170,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
             {
                 Either::Left((_, _)) => {
                     let ctx = NodeContext::new(
-                        Arc::clone(&self.env_vars),
+                        Arc::clone(&self.variables),
                         Arc::clone(&self.storage_resolver),
                         Arc::clone(&self.kv_store),
                         self.event_hub.clone(),
@@ -204,7 +204,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                                 num_running_sources -= 1;
                                 if num_running_sources == 0 {
                                     let ctx = NodeContext::new(
-                                        Arc::clone(&self.env_vars),
+                                        Arc::clone(&self.variables),
                                         Arc::clone(&self.storage_resolver),
                                         Arc::clone(&self.kv_store),
                                         self.event_hub.clone(),
@@ -274,7 +274,7 @@ impl<F: Future + Unpin> Node for SourceNode<F> {
                             source.channel_manager.send_op(ExecutorContext::new(
                                 feature.clone(),
                                 port.clone(),
-                                Arc::clone(&self.env_vars),
+                                Arc::clone(&self.variables),
                                 Arc::clone(&self.storage_resolver),
                                 Arc::clone(&self.kv_store),
                                 self.event_hub.clone(),
@@ -420,7 +420,7 @@ pub async fn create_source_node<F>(
         receivers,
         shutdown,
         runtime,
-        env_vars: Arc::clone(&ctx.env_vars),
+        variables: Arc::clone(&ctx.variables),
         storage_resolver: Arc::clone(&ctx.storage_resolver),
         kv_store: Arc::clone(&ctx.kv_store),
         sandbox_root: ctx.sandbox_root.clone(),

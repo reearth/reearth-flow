@@ -82,6 +82,16 @@ Verb-first, present tense, third-person singular — start directly with the ver
 - No abbreviations except universally understood ones: `epsg`, `crs`, `url`, `id` are fine; `attr`, `cfg`, `val` are not
 - No redundant type prefixes: `stringValue` → `value`
 
+**Names must be accurate.** The accuracy rule that governs titles and descriptions applies to the parameter name itself: it must describe what the parameter actually controls, and it must not carry a meaning the implementation contradicts. Check the name against the term the operation is known by outside this project — OGC Simple Features, PostGIS, JTS — and prefer that term when one exists.
+
+| ✗ | ✓ | Why |
+|---|---|---|
+| `unitSquareSize` | `cellSize` | a "unit square" has side 1, so `unitSquareSize: 5.0` contradicts itself; the established term is cell (or edge) size |
+| `keepSquareOnly` | `completeCellsOnly` | every cell is a square — the real distinction is complete vs. partial |
+| `mode` | `overlapBehavior` | names the mechanism, not what is being decided |
+
+This is easy to miss because a name can satisfy every rule above and still be wrong. Read it the way a first-time user will, with no access to the implementation.
+
 ### 3.2 Required vs optional
 
 - A parameter is **required** if the action cannot produce meaningful output without it — it must appear in the schema's `required` array

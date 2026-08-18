@@ -61,7 +61,7 @@ pub struct ProcessorNode<F> {
     finish_feature_count: Arc<AtomicU64>,
     process_duration_us: Arc<AtomicU64>,
     process_duration_sq_us: Arc<AtomicU64>,
-    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+    variables: Arc<serde_json::Map<String, serde_json::Value>>,
     storage_resolver: Arc<StorageResolver>,
     kv_store: Arc<dyn KvStore>,
     event_hub: EventHub,
@@ -121,7 +121,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             "node.name" = node_name.as_str(),
         );
 
-        let env_vars = Arc::clone(&ctx.env_vars);
+        let variables = Arc::clone(&ctx.variables);
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
         let kv_store = Arc::clone(&ctx.kv_store);
         let sandbox_root = ctx.sandbox_root.clone();
@@ -161,7 +161,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
             finish_feature_count: Arc::new(AtomicU64::new(0)),
             process_duration_us: Arc::new(AtomicU64::new(0)),
             process_duration_sq_us: Arc::new(AtomicU64::new(0)),
-            env_vars,
+            variables,
             storage_resolver,
             kv_store,
             event_hub: dag.event_hub().clone(),
@@ -235,7 +235,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
         let init_result = processor
             .write()
             .initialize(NodeContext::new(
-                self.env_vars.clone(),
+                self.variables.clone(),
                 self.storage_resolver.clone(),
                 self.kv_store.clone(),
                 self.event_hub.clone(),
@@ -335,7 +335,7 @@ impl<F: Future + Unpin + Debug> ReceiverLoop for ProcessorNode<F> {
                     );
 
                     let mut finish_ctx = NodeContext::new(
-                        self.env_vars.clone(),
+                        self.variables.clone(),
                         self.storage_resolver.clone(),
                         self.kv_store.clone(),
                         self.event_hub.clone(),

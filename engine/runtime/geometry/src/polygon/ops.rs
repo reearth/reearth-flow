@@ -419,6 +419,69 @@ impl RemoveAppearance for Polygon3D {
     }
 }
 
+use crate::ops::coerce::{push_face_lines_2d, push_face_lines_3d, unchanged, wrap_2d, wrap_3d};
+use crate::ops::{Coerce, CoercionTarget};
+
+impl Coerce for Polygon2D {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        match target {
+            CoercionTarget::Polygon => Err(unchanged::<Self>()),
+            CoercionTarget::TriangularMesh => self.triangulate(cache),
+            CoercionTarget::LineString => {
+                let mut lines = Vec::new();
+                push_face_lines_2d(self, &mut lines);
+                wrap_2d(lines).ok_or_else(unchanged::<Self>)
+            }
+        }
+    }
+}
+
+impl Coerce for Polygon3D {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        match target {
+            CoercionTarget::Polygon => Err(unchanged::<Self>()),
+            CoercionTarget::TriangularMesh => self.triangulate(cache),
+            CoercionTarget::LineString => {
+                let mut lines = Vec::new();
+                push_face_lines_3d(self, &mut lines);
+                wrap_3d(lines).ok_or_else(unchanged::<Self>)
+            }
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+use crate::ops::{Footprint, FootprintError, FootprintSink};
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for Polygon2D {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        sink.enter(self.frame())?;
+        sink.push_face_2d(
+            std::iter::once(self.exterior()).chain(self.interiors()),
+            self.elevation(),
+        );
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for Polygon3D {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        sink.enter(self.frame())?;
+        sink.push_face_3d(std::iter::once(self.exterior()).chain(self.interiors()));
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

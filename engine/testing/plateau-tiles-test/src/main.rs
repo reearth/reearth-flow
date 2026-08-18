@@ -13,6 +13,7 @@ use plateau_tiles_test::tester::json_object_key_order::{self, KeyOrderConfig};
 use plateau_tiles_test::tester::mvt_lines::{self, MvtLinesConfig};
 use plateau_tiles_test::tester::mvt_points::{self, MvtPointsConfig};
 use plateau_tiles_test::tester::mvt_polygons::{self, MvtPolygonsConfig};
+use plateau_tiles_test::tester::output_files::{self, OutputFilesConfig};
 use plateau_tiles_test::tester::raster::{self, RasterConfig};
 use plateau_tiles_test::tester::raster3d::{self, Raster3dConfig};
 use serde::Deserialize;
@@ -72,6 +73,8 @@ struct Tests {
     raster: Option<HashMap<String, RasterConfig>>,
     #[serde(default)]
     raster3d: Option<HashMap<String, Raster3dConfig>>,
+    #[serde(default)]
+    output_files: Option<HashMap<String, OutputFilesConfig>>,
 }
 
 fn pack_inputs(
@@ -374,6 +377,15 @@ fn run_testcase(testcases_dir: &Path, results_dir: &Path, name: &str, stages: &s
         if let Some(cfg) = &tests.json_attributes_v2 {
             run_test("json_attributes_v2", &relative_path_display, || {
                 json_attributes_v2::test_json_attributes_v2(&output_dir, &test_path, cfg)
+            });
+        }
+
+        if let Some(cfg) = &tests.output_files {
+            run_test("output_files", &relative_path_display, || {
+                for entry in cfg.values() {
+                    output_files::test_output_files(&flow_source_dir, entry)?;
+                }
+                Ok(())
             });
         }
 

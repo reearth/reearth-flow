@@ -972,6 +972,66 @@ Map attribute values to ranges and assign corresponding output values
 ### Category
 * Attribute
 
+## Attribute Table Extractor
+### Type
+* processor
+### Description
+Moves values between nested map/list attribute paths, following a table of source/destination path pairs keyed by a feature type attribute. A destination path with more than one segment creates nested maps as needed.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Attribute Table Extractor Parameters",
+  "description": "Configures the table of source/destination path pairs used to move nested attribute values.",
+  "type": "object",
+  "properties": {
+    "dataset": {
+      "title": "Dataset URI",
+      "description": "Path or URI of the extraction table file. Provide either this or inline data.",
+      "type": [
+        "object",
+        "null"
+      ],
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "inline": {
+      "title": "Inline Table",
+      "description": "Extraction table content provided directly as JSON. Used when no dataset URI is given."
+    },
+    "typeAttribute": {
+      "title": "Feature Type Attribute",
+      "description": "Attribute whose value selects which rule set in the table applies to the feature. Defaults to `__citygml_feature_type`.",
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* features
+### Output Ports
+* features
+### Category
+* Attribute
+
 ## Boundary Extractor
 ### Type
 * processor
@@ -1762,7 +1822,17 @@ Writes features to CSV or TSV files.
             }
           }
         }
-      ]
+      ],
+      "properties": {
+        "epsgColumn": {
+          "title": "EPSG Column Name",
+          "description": "Optional name of a column to write the geometry's EPSG code into. Left empty when the geometry does not resolve to a single EPSG code (no coordinate reference system, or more than one).",
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
     }
   }
 }
@@ -2139,8 +2209,6 @@ Writes features to Cesium 3D Tiles format for 3D web visualization.
   "description": "Configuration for writing features to Cesium 3D Tiles.",
   "type": "object",
   "required": [
-    "maxZoom",
-    "minZoom",
     "output"
   ],
   "properties": {
@@ -2166,27 +2234,15 @@ Writes features to Cesium 3D Tiles format for 3D web visualization.
         }
       }
     },
-    "minZoom": {
-      "title": "Minimum Zoom Level",
-      "description": "Lowest zoom level to generate tiles for, from 0 to 24.",
-      "type": "integer",
-      "format": "uint8",
-      "minimum": 0.0
-    },
-    "maxZoom": {
-      "title": "Maximum Zoom Level",
-      "description": "Highest zoom level to generate tiles for, from 0 to 24.",
-      "type": "integer",
-      "format": "uint8",
-      "minimum": 0.0
-    },
-    "attachTexture": {
-      "title": "Attach Textures",
-      "description": "Whether to include texture information in the generated tiles.",
+    "targetTileSize": {
+      "title": "Target Tile Size",
+      "description": "Target content size per tile, in bytes. Tiles are split when they'd exceed it and merged with neighbours when they'd otherwise be smaller; a single feature that alone exceeds it is kept whole (features are never clipped). A value of 0 disables merging and splits every feature into its own content. Defaults to 1,048,576 (1 MiB).",
       "type": [
-        "boolean",
+        "integer",
         "null"
-      ]
+      ],
+      "format": "uint64",
+      "minimum": 0.0
     },
     "dracoCompression": {
       "title": "Draco Compression",
@@ -2264,31 +2320,6 @@ Writes features to Cesium 3D Tiles format for 3D web visualization.
         "string",
         "null"
       ]
-    },
-    "compressOutput": {
-      "title": "Compressed Output Path",
-      "description": "Optional path where a compressed archive of the tiles is also written.",
-      "type": [
-        "object",
-        "null"
-      ],
-      "format": "code",
-      "required": [
-        "type",
-        "value"
-      ],
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "flowExpr",
-            "string"
-          ]
-        },
-        "value": {
-          "type": "string"
-        }
-      }
     }
   },
   "definitions": {
@@ -2701,6 +2732,186 @@ Extracts coordinates from geometry vertices into feature attributes
 ```
 ### Input Ports
 * features
+### Output Ports
+* features
+* rejected
+### Category
+* Geometry
+
+## Coordinate Frame Reprojector
+### Type
+* processor
+### Description
+Reprojects geometry between coordinate reference systems and converts between a CRS and a Euclidean frame.
+### Parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Coordinate Frame Reprojector Parameters",
+  "description": "Reproject geometry across coordinate reference systems and convert between a CRS and a Euclidean frame. Converting across the Euclidean/CRS boundary reinterprets coordinates as-is: values and ring winding are left unchanged, so orientation follows the destination frame's axis order.\n\nReprojecting across coordinate reference systems takes 2D geometry lying at a single elevation into 3D.",
+  "type": "object",
+  "required": [
+    "destinationFrame"
+  ],
+  "properties": {
+    "destinationFrame": {
+      "title": "Destination Frame",
+      "description": "Coordinate frame to convert geometry into.",
+      "allOf": [
+        {
+          "$ref": "#/definitions/DestinationFrame"
+        }
+      ]
+    },
+    "epsgCode": {
+      "title": "EPSG Code",
+      "description": "EPSG code of the destination CRS. Required when the destination frame is a CRS.",
+      "default": null,
+      "type": [
+        "integer",
+        "null"
+      ],
+      "format": "uint16",
+      "minimum": 0.0
+    },
+    "basePointSource": {
+      "title": "Base Point",
+      "description": "How coordinates bridge the Euclidean/CRS boundary.",
+      "default": {
+        "type": "asIs"
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/BasePoint"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "DestinationFrame": {
+      "description": "The destination coordinate frame kind.",
+      "oneOf": [
+        {
+          "title": "CRS",
+          "description": "Reproject to a coordinate reference system identified by an EPSG code.",
+          "type": "string",
+          "enum": [
+            "crs"
+          ]
+        },
+        {
+          "title": "Euclidean",
+          "description": "Convert to a non-georeferenced Euclidean frame.",
+          "type": "string",
+          "enum": [
+            "euclidean"
+          ]
+        }
+      ]
+    },
+    "BasePoint": {
+      "description": "How coordinates bridge the Euclidean/CRS boundary, carrying the input each mode needs. Ignored for a pure CRS-to-CRS reprojection.",
+      "oneOf": [
+        {
+          "title": "As Is",
+          "description": "Reinterpret coordinate values unchanged across the boundary.",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "asIs"
+              ]
+            }
+          }
+        },
+        {
+          "title": "Value",
+          "description": "Offset by a base point given as an expression evaluating to `[x, y, z]`.",
+          "type": "object",
+          "required": [
+            "basePoint",
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "value"
+              ]
+            },
+            "basePoint": {
+              "title": "Base Point",
+              "description": "Expression evaluating to an `[x, y, z]` origin in CRS space, in the CRS's declared axis order.",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        },
+        {
+          "title": "From Port",
+          "description": "Offset by a base point taken from the base-point input port, matched to each feature by a key.",
+          "type": "object",
+          "required": [
+            "matchKey",
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "fromPort"
+              ]
+            },
+            "matchKey": {
+              "title": "Match Key",
+              "description": "Expression identifying which base-point feature applies to a given feature. Evaluated against both streams.",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
+### Input Ports
+* features
+* base-point
 ### Output Ports
 * features
 * rejected
@@ -3332,11 +3543,14 @@ Reads CityGML 3.0 files: resolves gml:id references and xlink:href links across 
       "default": false,
       "type": "boolean"
     },
-    "flattenMeasureTypes": {
-      "title": "Flatten Measure Types",
-      "description": "When true, elements with a single `uom` attribute and numeric text content are converted to a number value, with the unit stored as a sibling `{name}_uom` key. Defaults to false.",
-      "default": false,
-      "type": "boolean"
+    "flattenLeafAttributes": {
+      "title": "Flatten Leaf Attributes",
+      "description": "Attribute names (e.g. `uom`) that mark a leaf for collapsing: an element with exactly one XML attribute in this list, no child elements, and numeric text content is converted to a number value, with the attribute's value stored as a sibling `{name}_{attribute}` key. Empty (the default) disables this.",
+      "default": [],
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "cityGmlAttributesKey": {
       "title": "City GML Attributes Key",
@@ -3730,6 +3944,12 @@ Writes features to a GeoJSON file for each resolved output path.
           "type": "string"
         }
       }
+    },
+    "writeCrs": {
+      "title": "Write CRS",
+      "description": "Whether to declare the coordinate reference system of the written coordinates in a legacy GeoJSON 2008 `crs` member. Defaults to false; enable it when the coordinates are not WGS84 longitude / latitude and the consumer reads that member.",
+      "default": false,
+      "type": "boolean"
     }
   }
 }
@@ -4349,7 +4569,7 @@ Replaces each feature's attributes with the map returned by one or more expressi
       "properties": {
         "expr": {
           "title": "Expression",
-          "description": "Expression over `attributes` and `env` returning a map that becomes the feature's complete attribute set. A result that is not a map, or an expression that fails to evaluate, leaves the attributes unchanged.",
+          "description": "Expression over `attributes` and `variables` returning a map that becomes the feature's complete attribute set. A result that is not a map, or an expression that fails to evaluate, leaves the attributes unchanged.",
           "type": "object",
           "format": "code",
           "required": [
@@ -4727,9 +4947,141 @@ Inspects the file or directory at a path held in a feature attribute and adds it
 ### Type
 * processor
 ### Description
-Replaces a feature's 3D geometry with its 2D footprint projected onto the XY plane.
+Replaces a feature's geometry with its footprint: the dissolved projection of its faces onto the horizontal plane or a custom plane.
 ### Parameters
-* No parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Footprint Replacer Parameters",
+  "description": "Configure the plane the geometry is projected onto. The geometry must be in a Euclidean frame or a coordinate reference system in linear units; faces smaller than 1e-6 square units after projection are dropped.",
+  "type": "object",
+  "properties": {
+    "projectionPlane": {
+      "title": "Projection Plane",
+      "description": "Plane the geometry is projected onto. Defaults to the horizontal plane.",
+      "default": {
+        "type": "horizontal"
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProjectionPlane"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "ProjectionPlane": {
+      "description": "The plane the footprint is projected onto.",
+      "oneOf": [
+        {
+          "title": "Horizontal",
+          "description": "Projects along the vertical axis onto the horizontal plane, dropping height. The footprint stays in the geometry's horizontal coordinate system.",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "horizontal"
+              ]
+            }
+          }
+        },
+        {
+          "title": "Custom Plane",
+          "description": "Projects along a plane's normal onto that plane. The footprint is expressed in in-plane coordinates anchored at the plane origin.",
+          "type": "object",
+          "required": [
+            "normal",
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "custom"
+              ]
+            },
+            "normal": {
+              "title": "Normal",
+              "description": "Expression evaluating to the plane normal `[x, y, z]` in the geometry's coordinate frame; any non-zero length.",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            },
+            "origin": {
+              "title": "Origin",
+              "description": "Expression evaluating to the plane origin `[x, y, z]` in the geometry's coordinate frame. Defaults to `[0, 0, 0]`.",
+              "default": null,
+              "type": [
+                "object",
+                "null"
+              ],
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            },
+            "xAxis": {
+              "title": "X Axis",
+              "description": "Expression evaluating to a direction `[x, y, z]` whose in-plane component becomes the footprint's x axis. When omitted, the footprint's y axis is the in-plane direction closest to vertical.",
+              "default": null,
+              "type": [
+                "object",
+                "null"
+              ],
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
 ### Input Ports
 * features
 ### Output Ports
@@ -4858,6 +5210,12 @@ Writes features to GeoJSON files, optionally grouping them into separate files.
       "items": {
         "$ref": "#/definitions/Attribute"
       }
+    },
+    "writeCrs": {
+      "title": "Write CRS",
+      "description": "Whether to declare the coordinate reference system of the written coordinates in a legacy GeoJSON 2008 `crs` member. Defaults to false; enable it when the coordinates are not WGS84 longitude / latitude and the consumer reads that member.",
+      "default": false,
+      "type": "boolean"
     }
   },
   "definitions": {
@@ -5241,21 +5599,42 @@ Coerces and converts feature geometries to specified target geometry types
   ],
   "properties": {
     "targetType": {
-      "description": "Target geometry type to coerce features to (e.g., LineString)",
+      "title": "Target Type",
+      "description": "Geometry type to re-represent each feature as. A feature the target does not apply to passes through unchanged.",
       "allOf": [
         {
-          "$ref": "#/definitions/CoerceTarget"
+          "$ref": "#/definitions/CoercionTarget"
         }
       ]
     }
   },
   "definitions": {
-    "CoerceTarget": {
-      "type": "string",
-      "enum": [
-        "lineString",
-        "polygon",
-        "triangularMesh"
+    "CoercionTarget": {
+      "oneOf": [
+        {
+          "title": "Line String",
+          "description": "Replaces every face with the polylines of its boundary rings, holes included.",
+          "type": "string",
+          "enum": [
+            "lineString"
+          ]
+        },
+        {
+          "title": "Polygon",
+          "description": "Rebuilds faces: a closed line string becomes the face it bounds, and a surface or a solid becomes the individual faces it is built from.",
+          "type": "string",
+          "enum": [
+            "polygon"
+          ]
+        },
+        {
+          "title": "Triangular Mesh",
+          "description": "Tessellates a face or a surface into triangles. A solid stays a solid, with its boundary triangulated.",
+          "type": "string",
+          "enum": [
+            "triangularMesh"
+          ]
+        }
       ]
     }
   }
@@ -5337,22 +5716,6 @@ Filter Features by Geometry Type
       }
     },
     {
-      "title": "Multiple Geometries",
-      "description": "Separates the features whose geometry is a container that can hold more than one part.",
-      "type": "object",
-      "required": [
-        "filterType"
-      ],
-      "properties": {
-        "filterType": {
-          "type": "string",
-          "enum": [
-            "multiple"
-          ]
-        }
-      }
-    },
-    {
       "title": "Geometry Type",
       "description": "Routes by the geometry family a feature belongs to: point, curve, surface, triangle or solid.",
       "type": "object",
@@ -5367,6 +5730,22 @@ Filter Features by Geometry Type
           ]
         }
       }
+    },
+    {
+      "title": "Detailed Geometry Type",
+      "description": "Routes by the exact geometry type rather than the family, so a face, a surface mesh and a multi-surface each leave by their own port.",
+      "type": "object",
+      "required": [
+        "filterType"
+      ],
+      "properties": {
+        "filterType": {
+          "type": "string",
+          "enum": [
+            "detailedGeometryType"
+          ]
+        }
+      }
     }
   ]
 }
@@ -5376,17 +5755,24 @@ Filter Features by Geometry Type
 ### Output Ports
 * unfiltered
 * none
-* contains
-* solid
-* multiSurface
-* compositeSurface
+* point
+* curve
 * surface
 * triangle
-* multiCurve
-* curve
-* multiPoint
-* point
-* tin
+* solid
+* multi-point
+* point-cloud
+* line-string
+* multi-curve
+* polygon
+* multi-area
+* face
+* polygon-mesh
+* triangular-mesh
+* multi-surface
+* csg
+* multi-solid
+* aggregate
 ### Category
 * Geometry
 
@@ -5457,13 +5843,13 @@ Discards a feature's geometry, keeping its attributes.
 ### Type
 * processor
 ### Description
-Replace Feature Geometry from Attribute
+Replaces a feature's geometry with the compressed geometry data stored in a named attribute.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Geometry Replacer Parameters",
-  "description": "Configure which attribute contains the geometry data to replace the feature's current geometry",
+  "description": "Configure which attribute holds the geometry that replaces the feature's current geometry.",
   "type": "object",
   "required": [
     "sourceAttribute"
@@ -5471,7 +5857,7 @@ Replace Feature Geometry from Attribute
   "properties": {
     "sourceAttribute": {
       "title": "Source Attribute",
-      "description": "Name of the attribute containing the compressed geometry data to use as the new geometry",
+      "description": "Attribute holding the compressed geometry to apply, as written by Geometry Extractor. The attribute is removed once its geometry has been applied, and a feature that does not carry it passes through unchanged. A feature whose stored geometry cannot be decoded is sent to the rejected port.",
       "allOf": [
         {
           "$ref": "#/definitions/Attribute"
@@ -5490,6 +5876,7 @@ Replace Feature Geometry from Attribute
 * features
 ### Output Ports
 * features
+* rejected
 ### Category
 * Geometry
 
@@ -5497,43 +5884,22 @@ Replace Feature Geometry from Attribute
 ### Type
 * processor
 ### Description
-Split Multi-Geometries into Individual Features
+Splits multi-part geometries into individual single-geometry features.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "GeometrySplitterParam",
-  "description": "Parameters for GeometrySplitter",
+  "title": "Geometry Splitter Parameters",
+  "description": "Configure how multi-part geometries are split into individual features.",
   "type": "object",
   "properties": {
-    "splitLevel": {
-      "description": "Split level for CityGML geometry. - \"element\": Split by surface elements (RoofSurface, WallSurface, etc.) - default - \"polygon\": Split down to individual polygons within each element",
-      "default": "element",
-      "allOf": [
-        {
-          "$ref": "#/definitions/SplitLevel"
-        }
-      ]
-    }
-  },
-  "definitions": {
-    "SplitLevel": {
-      "description": "Split level for CityGML geometry",
-      "oneOf": [
-        {
-          "description": "Split by GmlGeometry elements (e.g., RoofSurface, WallSurface)",
-          "type": "string",
-          "enum": [
-            "element"
-          ]
-        },
-        {
-          "description": "Split down to individual polygons within each element",
-          "type": "string",
-          "enum": [
-            "polygon"
-          ]
-        }
+    "groupBy": {
+      "title": "Group By",
+      "description": "Attribute key to group split members by. Members sharing the same value for this attribute are kept together in a single output feature instead of being split into separate ones; members lacking the attribute are still emitted individually.",
+      "default": null,
+      "type": [
+        "string",
+        "null"
       ]
     }
   }
@@ -5550,23 +5916,15 @@ Split Multi-Geometries into Individual Features
 ### Type
 * processor
 ### Description
-Validate Feature Geometry Quality
+Validates feature geometry for issues such as duplicate points, corrupt geometry, or self-intersection.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Geometry Validator Parameters",
-  "description": "Configure which validation checks to perform on feature geometries",
+  "description": "Configure which validation checks to perform on feature geometries.",
   "type": "object",
   "properties": {
-    "validationTypes": {
-      "title": "Validation Types",
-      "default": [],
-      "type": "array",
-      "items": {
-        "$ref": "#/definitions/ValidationType"
-      }
-    },
     "disabledOptionalChecks": {
       "title": "Disabled Optional Checks",
       "description": "Advisory checks to disable. Disabled checks do not run and are treated as passing; core validity checks always run. Empty by default, so every optional check runs.",
@@ -5615,77 +5973,48 @@ Validate Feature Geometry Quality
     }
   },
   "definitions": {
-    "ValidationType": {
+    "OptionalCheck": {
+      "description": "An advisory (optional) validation check that can be individually disabled. A disabled check does not run and is treated as passing. Only checks that the geometry crate classifies as optional are listed here; core validity checks always run and cannot be disabled.",
       "oneOf": [
         {
+          "title": "Duplicate Points",
+          "description": "Detection of coordinates that repeat within the geometry.",
           "type": "string",
           "enum": [
             "duplicatePoints"
           ]
         },
         {
-          "type": "object",
-          "required": [
-            "duplicateConsecutivePoints"
-          ],
-          "properties": {
-            "duplicateConsecutivePoints": {
-              "type": "number",
-              "format": "double"
-            }
-          },
-          "additionalProperties": false
+          "title": "Orientable",
+          "description": "Detection of surfaces whose faces cannot be given a consistent orientation.",
+          "type": "string",
+          "enum": [
+            "orientable"
+          ]
         },
         {
-          "description": "Corrupt geometry check with optional tolerance for interior/exterior ring intersection.",
-          "type": "object",
-          "required": [
-            "corruptGeometry"
-          ],
-          "properties": {
-            "corruptGeometry": {
-              "type": [
-                "number",
-                "null"
-              ],
-              "format": "double"
-            }
-          },
-          "additionalProperties": false
+          "title": "Orientation",
+          "description": "Detection of rings wound in the wrong direction.",
+          "type": "string",
+          "enum": [
+            "orientation"
+          ]
         },
         {
-          "description": "Self-intersection check with optional tolerance. If tolerance is None or 0.0, exact intersection check is performed. If tolerance > 0.0, intersections within tolerance distance are ignored.",
-          "type": "object",
-          "required": [
-            "selfIntersection"
-          ],
-          "properties": {
-            "selfIntersection": {
-              "type": [
-                "number",
-                "null"
-              ],
-              "format": "double"
-            }
-          },
-          "additionalProperties": false
+          "title": "Shell Orientation",
+          "description": "Detection of solid shells whose faces point the wrong way.",
+          "type": "string",
+          "enum": [
+            "shellOrientation"
+          ]
         }
-      ]
-    },
-    "OptionalCheck": {
-      "description": "An advisory (optional) validation check that can be individually disabled. A disabled check does not run and is treated as passing. Only checks that the geometry crate classifies as optional are listed here; core validity checks always run and cannot be disabled.",
-      "type": "string",
-      "enum": [
-        "duplicatePoints",
-        "orientable",
-        "orientation",
-        "shellOrientation"
       ]
     },
     "PlanarityThreshold": {
       "description": "How the planarity check bounds a face's out-of-plane deviation.",
       "oneOf": [
         {
+          "title": "Ratio",
           "description": "Dimensionless ratio of the face's convex-hull minimum height to its diameter; scale-invariant.",
           "type": "object",
           "required": [
@@ -5700,6 +6029,7 @@ Validate Feature Geometry Quality
           "additionalProperties": false
         },
         {
+          "title": "Max Height",
           "description": "Absolute maximum out-of-plane height, in the coordinate unit (metres). Applied only in a linear-unit frame, where the planarity check runs.",
           "type": "object",
           "required": [
@@ -5720,19 +6050,22 @@ Validate Feature Geometry Quality
       "type": "object",
       "properties": {
         "minLength": {
-          "description": "Minimum length of a 1D geometry (line / ring edge).",
+          "title": "Minimum Length",
+          "description": "Shortest length a 1D geometry (line or ring edge) may have before it is flagged.",
           "default": 0.0,
           "type": "number",
           "format": "double"
         },
         "minArea": {
-          "description": "Minimum area of a 2D geometry (face / ring).",
+          "title": "Minimum Area",
+          "description": "Smallest area a 2D geometry (face or ring) may have before it is flagged.",
           "default": 0.0,
           "type": "number",
           "format": "double"
         },
         "minVolume": {
-          "description": "Minimum volume of a 3D geometry (solid).",
+          "title": "Minimum Volume",
+          "description": "Smallest volume a 3D geometry (solid) may have before it is flagged.",
           "default": 0.0,
           "type": "number",
           "format": "double"
@@ -5772,26 +6105,27 @@ Filter Features by Geometry Value Type
 ### Type
 * processor
 ### Description
-Divide Polygons into Regular Grid Cells
+Divides polygon geometries into a regular grid of equal-sized cells.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "GridDivider Parameters",
+  "title": "Grid Divider Parameters",
+  "description": "Configure the size of the grid cells and how features are grouped onto a shared grid.",
   "type": "object",
   "required": [
-    "unitSquareSize"
+    "cellSize"
   ],
   "properties": {
-    "unitSquareSize": {
-      "title": "Unit Square Size",
-      "description": "Side length of each grid cell (in the same units as the geometry coordinates)",
+    "cellSize": {
+      "title": "Cell Size",
+      "description": "Side length of each grid cell, in the same units as the geometry coordinates. Must be greater than zero.",
       "type": "number",
       "format": "double"
     },
-    "keepSquareOnly": {
-      "title": "Keep Square Only",
-      "description": "If true, only output complete grid squares (discard edge pieces). Default: false",
+    "completeCellsOnly": {
+      "title": "Complete Cells Only",
+      "description": "Whether to emit only cells that are whole, discarding the partial cells left where the grid meets the edge of a geometry. Defaults to false.",
       "type": [
         "boolean",
         "null"
@@ -5799,7 +6133,7 @@ Divide Polygons into Regular Grid Cells
     },
     "groupBy": {
       "title": "Group By Attributes",
-      "description": "Attributes used to group features - each group gets its own grid origin",
+      "description": "Attributes whose values group features together. Each group is divided on its own grid origin, derived from that group's combined bounds.",
       "type": [
         "array",
         "null"
@@ -7232,26 +7566,22 @@ Extract Polygon Holes as Separate Features
 ### Type
 * processor
 ### Description
-Reproject Geometry to Different Coordinate System
+Reprojects feature geometry from one horizontal coordinate system to another using EPSG codes.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Horizontal Reprojector Parameters",
-  "description": "Configure the source and target coordinate systems for geometry reprojection",
+  "description": "Configure the source and target coordinate systems for geometry reprojection.",
   "type": "object",
   "required": [
     "targetEpsgCode"
   ],
   "properties": {
-    "sourceEpsgCode": {
-      "title": "Source EPSG Code",
-      "description": "Source coordinate system EPSG code expression. If not provided, will use the EPSG code from the geometry. This is optional to maintain backward compatibility but recommended to be explicit. Can be a constant value (e.g., \"4326\") or an expression referencing feature attributes.",
-      "default": null,
-      "type": [
-        "object",
-        "null"
-      ],
+    "targetEpsgCode": {
+      "title": "Target EPSG Code",
+      "description": "EPSG code to reproject into, as a constant such as \"4326\" or an expression referencing feature attributes.",
+      "type": "object",
       "format": "code",
       "required": [
         "type",
@@ -7269,10 +7599,14 @@ Reproject Geometry to Different Coordinate System
         }
       }
     },
-    "targetEpsgCode": {
-      "title": "Target EPSG Code",
-      "description": "Target coordinate system EPSG code expression for the reprojection. Can be a constant value (e.g., \"4326\" for WGS84, \"2193\" for NZTM2000, \"3857\" for Web Mercator) or an expression referencing feature attributes.",
-      "type": "object",
+    "sourceEpsgCode": {
+      "title": "Source EPSG Code",
+      "description": "EPSG code to reproject from, as a constant or an expression. Defaults to the EPSG code carried on the geometry, so setting it is only necessary when the geometry has none or carries the wrong one.",
+      "default": null,
+      "type": [
+        "object",
+        "null"
+      ],
       "format": "code",
       "required": [
         "type",
@@ -10877,13 +11211,14 @@ Filter Features by Geometry Planarity
 ### Type
 * processor
 ### Description
-Extract normal vectors and other properties for polygon features
+Extracts the surface normal, signed 2D area, slope and azimuth from polygon features and stores them as attributes.
 ### Parameters
 * No parameters
 ### Input Ports
 * features
 ### Output Ports
 * features
+* rejected
 ### Category
 * Geometry
 
@@ -10982,21 +11317,21 @@ Execute Python Scripts with Geospatial Data Processing
 ### Type
 * processor
 ### Description
-Computes intersection points between rays and geometries
+Computes intersection points between rays and geometries.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "RayIntersectorParams",
-  "description": "RayIntersector Parameters",
+  "title": "Ray Intersector Parameters",
+  "description": "Configure how rays and geometries are paired and how intersection results are output.",
   "type": "object",
   "required": [
-    "pairId",
     "ray"
   ],
   "properties": {
     "ray": {
-      "description": "Defines how to extract ray data from feature attributes",
+      "title": "Ray",
+      "description": "Attributes on the ray features that hold the ray's origin and direction.",
       "allOf": [
         {
           "$ref": "#/definitions/RayDefinition"
@@ -11004,8 +11339,13 @@ Computes intersection points between rays and geometries
       ]
     },
     "pairId": {
-      "description": "Expression that evaluates to a pair ID (int or string) for grouping rays with geometries. Only rays and geometries with matching pairId values are tested against each other.",
-      "type": "object",
+      "title": "Pair ID",
+      "description": "Expression producing the key that pairs rays with geometries, so that only rays and geometries whose keys match are tested against each other. Omit it to test every ray against every geometry.",
+      "default": null,
+      "type": [
+        "object",
+        "null"
+      ],
       "format": "code",
       "required": [
         "type",
@@ -11024,7 +11364,30 @@ Computes intersection points between rays and geometries
       }
     },
     "closestIntersectionOnly": {
-      "description": "When true (default), return only the closest intersection point per ray-geometry pair. When false, return all intersection points.",
+      "title": "Closest Intersection Only",
+      "description": "Whether to keep only the nearest hit per ray rather than every hit along it. Defaults to true.",
+      "default": true,
+      "type": "boolean"
+    },
+    "includeRayOrigin": {
+      "title": "Include Ray Origin",
+      "description": "Whether an intersection at the ray's own origin counts as a hit. When false, intersections nearer than the tolerance are discarded. Defaults to true.",
+      "default": true,
+      "type": "boolean"
+    },
+    "outputGeometryType": {
+      "title": "Output Geometry Type",
+      "description": "Geometry to emit for each intersection.",
+      "default": "pointOfIntersection",
+      "allOf": [
+        {
+          "$ref": "#/definitions/OutputGeometryType"
+        }
+      ]
+    },
+    "geomId": {
+      "title": "Geometry ID",
+      "description": "Expression evaluated on each geometry feature to label it. When set, every intersection carries a `geom_id` attribute naming the geometry it hit.",
       "default": null,
       "type": [
         "object",
@@ -11048,90 +11411,17 @@ Computes intersection points between rays and geometries
       }
     },
     "tolerance": {
-      "description": "Tolerance for intersection calculations (evaluates to f64). If not specified, a default tolerance is used.",
-      "default": null,
-      "type": [
-        "object",
-        "null"
-      ],
-      "format": "code",
-      "required": [
-        "type",
-        "value"
-      ],
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "flowExpr"
-          ]
-        },
-        "value": {
-          "type": "string"
-        }
-      }
-    },
-    "includeRayOrigin": {
-      "description": "When true (default), include intersections at the ray origin. When false, exclude intersections where t < tolerance.",
-      "default": null,
-      "type": [
-        "object",
-        "null"
-      ],
-      "format": "code",
-      "required": [
-        "type",
-        "value"
-      ],
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "flowExpr"
-          ]
-        },
-        "value": {
-          "type": "string"
-        }
-      }
-    },
-    "outputGeometryType": {
-      "description": "Type of geometry to output for intersection results. - \"pointOfIntersection\" (default): Output a point at the intersection location - \"lineSegmentToIntersection\": Output a line segment from ray origin to intersection point",
-      "default": "pointOfIntersection",
-      "allOf": [
-        {
-          "$ref": "#/definitions/OutputGeometryType"
-        }
-      ]
-    },
-    "geomId": {
-      "description": "Expression evaluated on geometry features to extract an ID string. When set, intersection features will include a `geom_id` attribute identifying which geometry was hit.",
-      "default": null,
-      "type": [
-        "object",
-        "null"
-      ],
-      "format": "code",
-      "required": [
-        "type",
-        "value"
-      ],
-      "properties": {
-        "type": {
-          "type": "string",
-          "enum": [
-            "flowExpr"
-          ]
-        },
-        "value": {
-          "type": "string"
-        }
-      }
+      "title": "Tolerance",
+      "description": "Distance below which an intersection is treated as coincident with the ray's origin. Defaults to 1e-10.",
+      "default": 1e-10,
+      "type": "number",
+      "format": "double"
     }
   },
   "definitions": {
     "RayDefinition": {
-      "description": "Defines how ray data is extracted from feature attributes.",
+      "title": "Ray Definition",
+      "description": "Attributes that hold a ray's origin and direction.",
       "type": "object",
       "required": [
         "dirX",
@@ -11143,7 +11433,8 @@ Computes intersection points between rays and geometries
       ],
       "properties": {
         "posX": {
-          "description": "Attribute containing ray origin X coordinate",
+          "title": "Origin X Attribute",
+          "description": "Attribute holding the X coordinate of the ray's origin.",
           "allOf": [
             {
               "$ref": "#/definitions/Attribute"
@@ -11151,7 +11442,8 @@ Computes intersection points between rays and geometries
           ]
         },
         "posY": {
-          "description": "Attribute containing ray origin Y coordinate",
+          "title": "Origin Y Attribute",
+          "description": "Attribute holding the Y coordinate of the ray's origin.",
           "allOf": [
             {
               "$ref": "#/definitions/Attribute"
@@ -11159,7 +11451,8 @@ Computes intersection points between rays and geometries
           ]
         },
         "posZ": {
-          "description": "Attribute containing ray origin Z coordinate",
+          "title": "Origin Z Attribute",
+          "description": "Attribute holding the Z coordinate of the ray's origin.",
           "allOf": [
             {
               "$ref": "#/definitions/Attribute"
@@ -11167,7 +11460,8 @@ Computes intersection points between rays and geometries
           ]
         },
         "dirX": {
-          "description": "Attribute containing ray direction X component",
+          "title": "Direction X Attribute",
+          "description": "Attribute holding the X component of the ray's direction.",
           "allOf": [
             {
               "$ref": "#/definitions/Attribute"
@@ -11175,7 +11469,8 @@ Computes intersection points between rays and geometries
           ]
         },
         "dirY": {
-          "description": "Attribute containing ray direction Y component",
+          "title": "Direction Y Attribute",
+          "description": "Attribute holding the Y component of the ray's direction.",
           "allOf": [
             {
               "$ref": "#/definitions/Attribute"
@@ -11183,7 +11478,8 @@ Computes intersection points between rays and geometries
           ]
         },
         "dirZ": {
-          "description": "Attribute containing ray direction Z component",
+          "title": "Direction Z Attribute",
+          "description": "Attribute holding the Z component of the ray's direction.",
           "allOf": [
             {
               "$ref": "#/definitions/Attribute"
@@ -11199,14 +11495,16 @@ Computes intersection points between rays and geometries
       "description": "Output geometry type for ray intersection results",
       "oneOf": [
         {
-          "description": "Output a point at the intersection location (default behavior)",
+          "title": "Point of Intersection",
+          "description": "Emits a point at the location where the ray meets the geometry.",
           "type": "string",
           "enum": [
             "pointOfIntersection"
           ]
         },
         {
-          "description": "Output a line segment from ray origin to intersection point",
+          "title": "Line Segment to Intersection",
+          "description": "Emits a line running from the ray's origin to the intersection point.",
           "type": "string",
           "enum": [
             "lineSegmentToIntersection"
@@ -11222,7 +11520,7 @@ Computes intersection points between rays and geometries
 * geom
 ### Output Ports
 * intersection
-* no_intersection
+* no-intersection
 * rejected
 ### Category
 * Geometry
@@ -11231,14 +11529,13 @@ Computes intersection points between rays and geometries
 ### Type
 * processor
 ### Description
-Refine Complex Geometries into Simple Geometries
+Refines complex geometry types into simpler primitives.
 ### Parameters
 * No parameters
 ### Input Ports
 * features
 ### Output Ports
 * features
-* remain
 ### Category
 * Geometry
 
@@ -11610,7 +11907,7 @@ Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .
   "properties": {
     "encoding": {
       "title": "Character Encoding",
-      "description": "Character encoding for attribute data in the DBF file, such as \"UTF-8\", \"Shift-JIS\", or \"Windows-1252\"; labels are case-insensitive. When omitted, the encoding is taken from the .cpg file if present, otherwise UTF-8 (UTF-16 is not supported).",
+      "description": "Character encoding for attribute data in the DBF file, such as \"UTF-8\", \"Shift-JIS\", or \"Windows-1252\"; labels are case-insensitive. When omitted, the encoding is taken from the .cpg file if present, else from the code page the .dbf header declares, otherwise UTF-8 (UTF-16 is not supported).",
       "type": [
         "string",
         "null"
@@ -11707,6 +12004,31 @@ Writes features to ESRI Shapefile format, optionally grouping them into separate
       "title": "Output Directory",
       "description": "Output directory path or expression where the generated Shapefile files are written.",
       "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "compressOutput": {
+      "title": "Compressed Output Directory",
+      "description": "Optional directory where each Shapefile is written as its own ZIP archive, holding that Shapefile's .shp, .shx, .dbf, .cpg and .prj, instead of as loose files. Leave unset to write loose files.",
+      "type": [
+        "object",
+        "null"
+      ],
       "format": "code",
       "required": [
         "type",
@@ -12193,18 +12515,18 @@ Replace Geometry with 3D Box from Attributes
 ### Type
 * processor
 ### Description
-Convert 2D Geometry to 3D by Adding Z-Coordinates
+Adds Z-coordinates to 2D geometries to produce 3D output.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "ThreeDimensionForcer Parameters",
-  "description": "Configure how to convert 2D geometries to 3D by adding Z-coordinates",
+  "title": "Three Dimension Forcer Parameters",
+  "description": "Configure the elevation applied to 2D geometry and how existing Z values are treated.",
   "type": "object",
   "properties": {
     "elevation": {
       "title": "Elevation",
-      "description": "The Z-coordinate (elevation) value to add to all points. Can be a constant value or an expression. Defaults to 0.0 if not specified.",
+      "description": "Z-coordinate applied to every point, as a constant or an expression. Defaults to 0.0.",
       "type": [
         "object",
         "null"
@@ -12228,8 +12550,8 @@ Convert 2D Geometry to 3D by Adding Z-Coordinates
     },
     "preserveExistingZ": {
       "title": "Preserve Existing Z Values",
-      "description": "If true, geometries that are already 3D will pass through unchanged. If false, existing Z values will be replaced with the specified elevation. Defaults to false.",
-      "default": false,
+      "description": "Whether geometry that is already 3D passes through untouched. Defaults to true, so existing Z is kept. Set it to false to overwrite every Z value with the elevation.",
+      "default": true,
       "type": "boolean"
     }
   }
@@ -12440,13 +12762,14 @@ Rotate 3D Geometry Around Arbitrary Axis
 ### Type
 * processor
 ### Description
-Force 3D Geometry to 2D by Removing Z-Coordinates
+Removes Z-coordinates from 3D geometries to produce 2D output.
 ### Parameters
 * No parameters
 ### Input Ports
 * features
 ### Output Ports
 * features
+* rejected
 ### Category
 * Geometry
 
@@ -12509,13 +12832,13 @@ Remove Redundant Vertices from Geometry
 ### Type
 * processor
 ### Description
-Reproject Vertical Coordinates Between Datums
+Reprojects the vertical coordinate of feature geometry between vertical datums.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
   "title": "Vertical Reprojector Parameters",
-  "description": "Configure the type of vertical datum conversion to apply",
+  "description": "Configure which vertical datum conversion to apply.",
   "type": "object",
   "required": [
     "reprojectorType"
@@ -12523,7 +12846,7 @@ Reproject Vertical Coordinates Between Datums
   "properties": {
     "reprojectorType": {
       "title": "Reprojector Type",
-      "description": "The type of vertical coordinate transformation to apply",
+      "description": "Vertical datum conversion applied to each geometry's Z coordinate.",
       "allOf": [
         {
           "$ref": "#/definitions/VerticalReprojectorType"
@@ -12533,9 +12856,15 @@ Reproject Vertical Coordinates Between Datums
   },
   "definitions": {
     "VerticalReprojectorType": {
-      "type": "string",
-      "enum": [
-        "jgd2011ToWgs84"
+      "oneOf": [
+        {
+          "title": "JGD2011 to WGS 84",
+          "description": "Converts JGD2011 orthometric heights to WGS 84 ellipsoidal heights using the Japanese geoid model.",
+          "type": "string",
+          "enum": [
+            "jgd2011ToWgs84"
+          ]
+        }
       ]
     }
   }

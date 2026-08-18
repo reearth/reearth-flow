@@ -1,5 +1,6 @@
 mod citygml;
 mod csv;
+pub(super) mod geojson;
 mod json;
 
 use std::collections::HashMap;
@@ -237,7 +238,7 @@ impl Processor for FeatureWriter {
         let path = self
             .params
             .output()
-            .eval_string(feature, ctx.env_vars.clone())
+            .eval_string(feature, ctx.variables.clone())
             .map_err(|e| FeatureProcessorError::FeatureWriter(format!("{e:?}")))?;
         // Validation happens at flush time via SinkOutput::new; nothing to
         // pre-check here. The buffer is keyed by the raw relative-path string.
@@ -292,7 +293,7 @@ impl Processor for FeatureWriter {
                         output,
                         &param.converter,
                         &ctx.storage_resolver,
-                        ctx.env_vars.clone(),
+                        ctx.variables.clone(),
                         features,
                     )?;
                 }

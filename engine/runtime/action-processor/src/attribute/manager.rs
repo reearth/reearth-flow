@@ -213,8 +213,8 @@ impl Processor for AttributeManager {
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let env_vars = ctx.env_vars.clone();
-        let feature = process_feature(&ctx, &ctx.feature, &self.operations, env_vars);
+        let variables = ctx.variables.clone();
+        let feature = process_feature(&ctx, &ctx.feature, &self.operations, variables);
         fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
         Ok(())
     }
@@ -236,7 +236,7 @@ fn process_feature(
     ctx: &ExecutorContext,
     feature: &Feature,
     operations: &[Operate],
-    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+    variables: Arc<serde_json::Map<String, serde_json::Value>>,
 ) -> Feature {
     let mut result = feature.clone();
     for operation in operations {
@@ -246,7 +246,7 @@ fn process_feature(
                     continue;
                 }
                 if let Some(code) = code {
-                    match code.eval(feature, Arc::clone(&env_vars)) {
+                    match code.eval(feature, Arc::clone(&variables)) {
                         Ok(new_value) => {
                             result.insert(attribute.clone(), new_value);
                         }
@@ -261,7 +261,7 @@ fn process_feature(
             }
             Operate::Create { code, attribute } => {
                 if let Some(code) = code {
-                    match code.eval(feature, Arc::clone(&env_vars)) {
+                    match code.eval(feature, Arc::clone(&variables)) {
                         Ok(new_value) => {
                             result.insert(attribute.clone(), new_value);
                         }
@@ -278,7 +278,7 @@ fn process_feature(
                 if !feature.contains_key(attribute) {
                     continue;
                 }
-                match new_key.eval_string(feature, Arc::clone(&env_vars)) {
+                match new_key.eval_string(feature, Arc::clone(&variables)) {
                     Ok(new_key_str) => {
                         if feature.contains_key(&new_key_str) {
                             continue;
@@ -525,7 +525,7 @@ mod diagnostics_tests {
             attribute: "src".to_string(),
         }];
 
-        let result = process_feature(&ctx, &feature, &operations, ctx.env_vars.clone());
+        let result = process_feature(&ctx, &feature, &operations, ctx.variables.clone());
 
         // control-flow preservation: the feature keeps flowing, unchanged.
         assert_eq!(result.attributes, feature.attributes);
@@ -557,7 +557,7 @@ mod diagnostics_tests {
             attribute: "computed".to_string(),
         }];
 
-        let result = process_feature(&ctx, &feature, &operations, ctx.env_vars.clone());
+        let result = process_feature(&ctx, &feature, &operations, ctx.variables.clone());
 
         assert_eq!(result.attributes, feature.attributes);
 
@@ -588,7 +588,7 @@ mod diagnostics_tests {
             attribute: "src".to_string(),
         }];
 
-        let result = process_feature(&ctx, &feature, &operations, ctx.env_vars.clone());
+        let result = process_feature(&ctx, &feature, &operations, ctx.variables.clone());
 
         // rename never applied: source key is untouched.
         assert_eq!(result.attributes, feature.attributes);

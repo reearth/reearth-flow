@@ -1,7 +1,7 @@
-# (DRAFT) `attributes` and `env`
+# (DRAFT) `attributes` and `variables`
 
 reearth-flow injects two global objects into expressions,
-`attributes` and `env`.
+`attributes` and `variables`.
 
 ## `attributes`
 
@@ -28,18 +28,18 @@ Returns whether `key` names an attribute present on the current feature.
 
 Iterates the names of the feature's attributes.
 
-## `env`
+## `variables`
 
-Bound to the workflow's environment variables.
+Bound to the workflow's variables — the entries declared under `with:`.
 
 Unlike `attributes`, always bound, even when there is no current feature.
 
-### `env[key]`
+### `variables[key]`
 
-Returns the value of the environment variable named `key`. Errors if `key` is absent.
+Returns the value of the workflow variable named `key`. Errors if `key` is absent.
 
-### `env.get(key)`
+### `variables.get(key)`
 
-Returns the value of the environment variable named `key`, or `null` if `key` is absent.
+Returns the value of the workflow variable named `key`, or `null` if `key` is absent.
 
-`env.get(key, default)` returns `default` instead of `null` when `key` is absent.
+`variables.get(key, default)` returns `default` instead of `null` when `key` is absent.

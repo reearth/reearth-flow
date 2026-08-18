@@ -23,7 +23,7 @@ pub struct Executor;
 impl Executor {
     pub async fn create_dag_executor(
         self,
-        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+        variables: Arc<serde_json::Map<String, serde_json::Value>>,
         storage_resolver: Arc<StorageResolver>,
         kv_store: Arc<dyn KvStore>,
         workflow: Workflow,
@@ -33,7 +33,7 @@ impl Executor {
         let mut factories = factories.clone();
         factories.extend(SYSTEM_ACTION_FACTORY_MAPPINGS.clone());
         let executor = DagExecutor::new(
-            env_vars,
+            variables,
             storage_resolver,
             kv_store,
             workflow.entry_graph_id,
@@ -49,7 +49,7 @@ impl Executor {
 
 #[allow(clippy::too_many_arguments)]
 pub fn run_dag_executor(
-    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+    variables: Arc<serde_json::Map<String, serde_json::Value>>,
     storage_resolver: Arc<StorageResolver>,
     kv_store: Arc<dyn KvStore>,
     runtime: Arc<Handle>,
@@ -66,7 +66,7 @@ pub fn run_dag_executor(
     let mut join_handle = runtime.block_on(dag_executor.start(
         SharedFuture::new(Box::pin(shutdown_future)),
         runtime.clone(),
-        env_vars,
+        variables,
         storage_resolver,
         kv_store,
         ingress_state,

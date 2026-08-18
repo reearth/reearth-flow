@@ -136,7 +136,7 @@ graphs:
         with:
           output:
             type: flowExpr
-            value: 'env["outputFilePath"]'
+            value: 'variables["outputFilePath"]'
 
       # Write failed requests to separate file for debugging
       - id: 550e8400-e29b-41d4-a716-446655440050
@@ -146,7 +146,7 @@ graphs:
         with:
           output:
             type: flowExpr
-            value: 'env["errorFilePath"]'
+            value: 'variables["errorFilePath"]'
 
     edges:
       # Feature creator to HTTP caller

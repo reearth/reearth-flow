@@ -103,7 +103,7 @@ impl Sink for XmlWriter {
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         let path = self
             .output
-            .eval_string(&ctx.feature, ctx.env_vars.clone())
+            .eval_string(&ctx.feature, ctx.variables.clone())
             .map_err(|e| SinkError::XmlWriter(format!("{e:?}")))?;
         let feature = ctx.feature.clone();
         let node_ctx: NodeContext = ctx.into();

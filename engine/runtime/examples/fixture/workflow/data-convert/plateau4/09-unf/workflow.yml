@@ -27,10 +27,10 @@ graphs:
             value: |
               [
                 {
-                  "cityGmlPath": env["cityGmlPath"],
-                  "cityCode": env.get("cityCode") or env["cityGmlPath"].rsplit("/", 1)[-1][:5],
-                  "codelists": env.get("codelistsPath") or env.get("codelists"),
-                  "schemas": env.get("schemasPath") or env.get("schemas"),
+                  "cityGmlPath": variables["cityGmlPath"],
+                  "cityCode": variables.get("cityCode") or variables["cityGmlPath"].rsplit("/", 1)[-1][:5],
+                  "codelists": variables.get("codelistsPath") or variables.get("codelists"),
+                  "schemas": variables.get("schemasPath") or variables.get("schemas"),
                 },
               ]
 
@@ -59,7 +59,7 @@ graphs:
           conditions:
             - expr:
                 type: flowExpr
-                value: not env["targetPackages"] or attributes["package"] in env["targetPackages"]
+                value: not variables["targetPackages"] or attributes["package"] in variables["targetPackages"]
               outputPort: features
 
       # Dictionary branch
@@ -244,7 +244,7 @@ graphs:
             type: flowExpr
             value: |
               ft = attributes["feature_type"].split(":")[-1];
-              city_gml = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_" + attributes["package"]);
+              city_gml = variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_" + attributes["package"]);
               city_gml + "_" + attributes["package"] + "_" + ft + "_3dtiles_lod" + attributes["lod"] + ".zip"
 
       # DmGeometricAttribute processing
@@ -335,7 +335,7 @@ graphs:
           compressOutput:
             type: flowExpr
             value: |
-              stem = env["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
+              stem = variables["cityGmlPath"].split("/")[-1].remove_suffix(".zip").remove_suffix("_" + attributes["__package"]);
               ft = attributes["feature_type"].split(":")[1];
               stem + "_" + attributes["__package"] + "_" + ft + "_dm_geometric_attributes.zip"
           skipUnexposedAttributes: true

@@ -88,4 +88,5 @@ uuid.workspace = true
 
 [dev-dependencies]
 bytes.workspace = true
+pretty_assertions.workspace = true
 reearth-flow-action-processor.workspace = true

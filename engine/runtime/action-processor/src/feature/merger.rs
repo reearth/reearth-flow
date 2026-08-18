@@ -425,7 +425,7 @@ impl Processor for FeatureMerger {
                 let feature = &ctx.feature;
                 let requestor_attribute_value = fetch_attribute_value(
                     feature,
-                    ctx.env_vars.clone(),
+                    ctx.variables.clone(),
                     &self.params.requestor_attribute,
                     &self.params.requestor_attribute_value,
                 );
@@ -458,7 +458,7 @@ impl Processor for FeatureMerger {
                 let feature = &ctx.feature;
                 let supplier_attribute_value = fetch_attribute_value(
                     feature,
-                    ctx.env_vars.clone(),
+                    ctx.variables.clone(),
                     &self.params.supplier_attribute,
                     &self.params.supplier_attribute_value,
                 );
