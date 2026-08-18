@@ -1,7 +1,7 @@
 //! Shapefile writing. Groups features by the shape they write and writes each
 //! group as its own file set.
 
-use std::collections::{BTreeMap, HashMap};
+use std::collections::BTreeMap;
 use std::io::BufWriter;
 use std::sync::Arc;
 
@@ -29,10 +29,14 @@ struct Record<'a> {
 /// they write and each group becomes its own file set. A group filling one bucket
 /// is named after `key` alone; one filling several distinguishes its files by
 /// bucket.
+///
+/// With `compress_output` set, each file set is gathered into its own ZIP archive
+/// under that directory rather than left as loose files.
 pub(super) fn pipeline(
     ctx: &Context,
     sandbox_root: &Uri,
     base_path: &str,
+    compress_output: Option<&str>,
     key: &AttributeValue,
     upstream: &[Feature],
     resolver: &Arc<StorageResolver>,
@@ -46,6 +50,17 @@ pub(super) fn pipeline(
     })?;
     std::fs::create_dir_all(base_out.uri().as_path())
         .map_err(crate::errors::SinkError::ShapefileWriterIo)?;
+
+    if let Some(compress_output) = compress_output {
+        let compress_out = crate::SinkOutput::new(sandbox_root, compress_output, resolver)
+            .map_err(|e| {
+                crate::errors::SinkError::ShapefileWriter(format!(
+                    "Failed to create compressed output: {e}"
+                ))
+            })?;
+        std::fs::create_dir_all(compress_out.uri().as_path())
+            .map_err(crate::errors::SinkError::ShapefileWriterIo)?;
+    }
 
     let mut buckets: BTreeMap<Bucket, Vec<Record<'_>>> = BTreeMap::new();
     for feature in upstream {
@@ -65,10 +80,85 @@ pub(super) fn pipeline(
         } else {
             key_stem.clone()
         };
-        if let Err(err) = write_bucket(sandbox_root, base_path, &stem, bucket, &records, resolver) {
-            ctx.event_hub.error_log(
-                None,
-                format!("Failed to write shapefile with: {:?}", err.to_string()),
+        let written = match write_bucket(sandbox_root, base_path, &stem, bucket, &records, resolver)
+        {
+            Ok(written) => written,
+            Err(err) => {
+                ctx.event_hub.error_log(
+                    None,
+                    format!("Failed to write shapefile with: {:?}", err.to_string()),
+                );
+                continue;
+            }
+        };
+        if let Some(compress_output) = compress_output {
+            if let Err(err) = archive_file_set(
+                sandbox_root,
+                base_path,
+                compress_output,
+                &stem,
+                &written,
+                resolver,
+            ) {
+                ctx.event_hub.error_log(
+                    None,
+                    format!("Failed to archive shapefile with: {:?}", err.to_string()),
+                );
+            }
+        }
+    }
+    Ok(())
+}
+
+/// Gather the file set `stem` names under `base_path` into
+/// `{compress_output}/{stem}.zip`, and take the loose files away.
+///
+/// The components sit at the archive's root, named after `stem`, which is the layout
+/// the Shapefile Reader takes.
+fn archive_file_set(
+    sandbox_root: &Uri,
+    base_path: &str,
+    compress_output: &str,
+    stem: &str,
+    extensions: &[&str],
+    resolver: &Arc<StorageResolver>,
+) -> crate::errors::Result<()> {
+    let to_sink_error =
+        |e: reearth_flow_common::Error| crate::errors::SinkError::ShapefileWriter(e.to_string());
+
+    let archive =
+        reearth_flow_common::zip::StreamingZipWriter::new(std::io::Cursor::new(Vec::new()));
+    let mut gathered = Vec::new();
+    for extension in extensions {
+        let component = crate::SinkOutput::new(
+            sandbox_root,
+            &format!("{base_path}/{stem}.{extension}"),
+            resolver,
+        )
+        .map_err(|e| crate::errors::SinkError::ShapefileWriter(e.to_string()))?;
+        let bytes = std::fs::read(component.uri().as_path())
+            .map_err(crate::errors::SinkError::ShapefileWriterIo)?;
+        archive
+            .write_entry(&format!("{stem}.{extension}"), &bytes)
+            .map_err(to_sink_error)?;
+        gathered.push(component.uri().clone());
+    }
+    let buffer = archive.finish().map_err(to_sink_error)?;
+
+    crate::SinkOutput::new(
+        sandbox_root,
+        &format!("{compress_output}/{stem}.zip"),
+        resolver,
+    )
+    .map_err(|e| crate::errors::SinkError::ShapefileWriter(e.to_string()))?
+    .write(bytes::Bytes::from(buffer.into_inner()))
+    .map_err(|e| crate::errors::SinkError::ShapefileWriter(e.to_string()))?;
+
+    for uri in gathered {
+        if let Err(error) = std::fs::remove_file(uri.as_path()) {
+            tracing::warn!(
+                %error,
+                "leaving behind '{uri}', which the archive already holds"
             );
         }
     }
@@ -76,7 +166,8 @@ pub(super) fn pipeline(
 }
 
 /// Write one bucket's records as a `.shp`, `.shx`, `.dbf`, `.cpg` and, where one
-/// CRS covers them, a `.prj`.
+/// CRS covers them and a `.prj` can describe it, a `.prj`. Returns the extensions
+/// it wrote.
 fn write_bucket(
     sandbox_root: &Uri,
     base_path: &str,
@@ -84,7 +175,7 @@ fn write_bucket(
     bucket: Bucket,
     records: &[Record<'_>],
     resolver: &Arc<StorageResolver>,
-) -> crate::errors::Result<()> {
+) -> crate::errors::Result<Vec<&'static str>> {
     let output = |extension: &str| {
         crate::SinkOutput::new(
             sandbox_root,
@@ -96,21 +187,18 @@ fn write_bucket(
 
     // A field the first feature lacks would otherwise be missing from every
     // record, so the table covers the fields all of them carry.
-    let (table_builder, fields) = make_table_builder(&union_of_attributes(records))?;
+    let (table_builder, fields) = make_table_builder(records.iter().map(|r| r.attributes))?;
 
     if bucket == Bucket::Null {
-        return write_null_bucket(
+        write_null_bucket(
             &output("shp")?,
             &output("shx")?,
             records,
             table_builder,
             &fields,
-        );
-    }
-
-    let shp_out = output("shp")?;
-    // NOTE: Need to be scoped to drop the writer before the files are read back.
-    {
+        )?;
+    } else {
+        let shp_out = output("shp")?;
         let mut writer = shapefile::Writer::from_path(shp_out.uri().as_path(), table_builder)
             .map_err(to_sink_error)?;
         // Every record in a file has one shape type, and a point bucket only
@@ -125,6 +213,8 @@ fn write_bucket(
         }
     }
 
+    let mut written = vec!["shp", "shx", "dbf", "cpg"];
+
     let mut cpg = Vec::new();
     write_cpg(BufWriter::new(&mut cpg))
         .map_err(|e| crate::errors::SinkError::ShapefileWriter(e.to_string()))?;
@@ -132,42 +222,30 @@ fn write_bucket(
         .write(bytes::Bytes::from(cpg))
         .map_err(|e| crate::errors::SinkError::ShapefileWriter(e.to_string()))?;
 
-    // A file whose records come from more than one CRS, or from none, is left
-    // without a `.prj` rather than claiming a CRS that does not cover it.
+    // A file whose records come from more than one CRS, or from none, or from
+    // one no `.prj` can describe, is left without a `.prj` rather than claiming
+    // a CRS that does not cover it.
     let frames = records
         .iter()
         .fold(Frames::Nothing, |acc, r| acc.and(r.shape.frames.clone()));
-    match frames.epsg() {
-        Some(epsg) => {
-            let mut buffer = Vec::new();
-            crs::write_prj(BufWriter::new(&mut buffer), epsg)
-                .map_err(|e| crate::errors::SinkError::ShapefileWriter(e.to_string()))?;
+    let Some(epsg) = frames.epsg() else {
+        tracing::warn!("writing {stem}.shp without a .prj: no single CRS covers its coordinates");
+        return Ok(written);
+    };
+    let mut buffer = Vec::new();
+    match crs::write_prj(BufWriter::new(&mut buffer), epsg) {
+        Ok(()) => {
             output("prj")?
                 .write(bytes::Bytes::from(buffer))
                 .map_err(|e| crate::errors::SinkError::ShapefileWriter(e.to_string()))?;
+            written.push("prj");
         }
-        None => tracing::warn!(
-            "writing {stem}.shp without a .prj: no single CRS covers its coordinates"
+        Err(error) => tracing::warn!(
+            %error,
+            "writing {stem}.shp without a .prj: EPSG:{epsg} has no .prj form"
         ),
     }
-    Ok(())
-}
-
-/// The attributes to build the table from: every field any feature carries, in the
-/// order first seen, taking each field's type from its first non-null value.
-fn union_of_attributes(records: &[Record<'_>]) -> IndexMap<Attribute, AttributeValue> {
-    let mut union: IndexMap<Attribute, AttributeValue> = IndexMap::new();
-    for record in records {
-        for (name, value) in record.attributes {
-            match union.get(name) {
-                Some(AttributeValue::Null) | None => {
-                    union.insert(name.clone(), value.clone());
-                }
-                Some(_) => {}
-            }
-        }
-    }
-    union
+    Ok(written)
 }
 
 /// Whether a point bucket writes multipoint records: one feature holding more than
@@ -273,7 +351,7 @@ fn write_null_bucket(
     shx_out: &crate::SinkOutput,
     records: &[Record<'_>],
     table_builder: shapefile::dbase::TableWriterBuilder,
-    fields: &HashMap<String, Field>,
+    fields: &[Field],
 ) -> crate::errors::Result<()> {
     {
         let mut writer = shapefile::Writer::from_path(shp_out.uri().as_path(), table_builder)
@@ -323,13 +401,6 @@ mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
 
-    fn record(attributes: &IndexMap<Attribute, AttributeValue>) -> Record<'_> {
-        Record {
-            shape: WrittenShape::none(),
-            attributes,
-        }
-    }
-
     fn attributes(pairs: &[(&str, AttributeValue)]) -> IndexMap<Attribute, AttributeValue> {
         pairs
             .iter()
@@ -351,36 +422,13 @@ mod tests {
         }
     }
 
-    // Taking the table from the first feature alone would leave out a field only
-    // later features carry.
-    #[test]
-    fn the_table_covers_fields_a_later_feature_introduces() {
-        let first = attributes(&[("a", AttributeValue::String("x".into()))]);
-        let second = attributes(&[("b", AttributeValue::Bool(true))]);
-        let union = union_of_attributes(&[record(&first), record(&second)]);
-        assert_eq!(union.len(), 2);
-        assert!(union.contains_key(&Attribute::new("a")));
-        assert!(union.contains_key(&Attribute::new("b")));
-    }
-
-    // A field's type comes from a value that has one, a null saying nothing about it.
-    #[test]
-    fn a_null_first_value_takes_its_type_from_a_later_feature() {
-        let first = attributes(&[("a", AttributeValue::Null)]);
-        let second = attributes(&[("a", AttributeValue::Bool(true))]);
-        let union = union_of_attributes(&[record(&first), record(&second)]);
-        assert_eq!(
-            union.get(&Attribute::new("a")),
-            Some(&AttributeValue::Bool(true))
-        );
-    }
-
     // A field a feature carries as null must still reach that feature's record:
     // a record short of a column the table declares is rejected outright.
     #[test]
     fn a_null_valued_field_is_still_written_for_every_record() {
-        let union = attributes(&[("a", AttributeValue::String("x".into()))]);
-        let (_, fields) = make_table_builder(&union).expect("the table is expected to build");
+        let first = attributes(&[("a", AttributeValue::String("x".into()))]);
+        let (_, fields) =
+            make_table_builder([&first].into_iter()).expect("the table is expected to build");
         let feature = attributes(&[("a", AttributeValue::Null)]);
         let record = attributes_to_record(&feature, &fields);
         assert_eq!(

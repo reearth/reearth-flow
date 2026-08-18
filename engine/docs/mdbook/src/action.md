@@ -11897,7 +11897,7 @@ Reads geographic features from Shapefile archives (.zip containing .shp, .dbf, .
   "properties": {
     "encoding": {
       "title": "Character Encoding",
-      "description": "Character encoding for attribute data in the DBF file, such as \"UTF-8\", \"Shift-JIS\", or \"Windows-1252\"; labels are case-insensitive. When omitted, the encoding is taken from the .cpg file if present, otherwise UTF-8 (UTF-16 is not supported).",
+      "description": "Character encoding for attribute data in the DBF file, such as \"UTF-8\", \"Shift-JIS\", or \"Windows-1252\"; labels are case-insensitive. When omitted, the encoding is taken from the .cpg file if present, else from the code page the .dbf header declares, otherwise UTF-8 (UTF-16 is not supported).",
       "type": [
         "string",
         "null"
@@ -11994,6 +11994,31 @@ Writes features to ESRI Shapefile format, optionally grouping them into separate
       "title": "Output Directory",
       "description": "Output directory path or expression where the generated Shapefile files are written.",
       "type": "object",
+      "format": "code",
+      "required": [
+        "type",
+        "value"
+      ],
+      "properties": {
+        "type": {
+          "type": "string",
+          "enum": [
+            "flowExpr",
+            "string"
+          ]
+        },
+        "value": {
+          "type": "string"
+        }
+      }
+    },
+    "compressOutput": {
+      "title": "Compressed Output Directory",
+      "description": "Optional directory where each Shapefile is written as its own ZIP archive, holding that Shapefile's .shp, .shx, .dbf, .cpg and .prj, instead of as loose files. Leave unset to write loose files.",
+      "type": [
+        "object",
+        "null"
+      ],
       "format": "code",
       "required": [
         "type",

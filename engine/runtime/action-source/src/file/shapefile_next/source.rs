@@ -113,7 +113,7 @@ pub(super) struct ShapefileReaderParam {
     #[serde(flatten)]
     pub(super) common_property: FileReaderCommonParam,
     /// # Character Encoding
-    /// Character encoding for attribute data in the DBF file, such as "UTF-8", "Shift-JIS", or "Windows-1252"; labels are case-insensitive. When omitted, the encoding is taken from the .cpg file if present, otherwise UTF-8 (UTF-16 is not supported).
+    /// Character encoding for attribute data in the DBF file, such as "UTF-8", "Shift-JIS", or "Windows-1252"; labels are case-insensitive. When omitted, the encoding is taken from the .cpg file if present, else from the code page the .dbf header declares, otherwise UTF-8 (UTF-16 is not supported).
     pub(super) encoding: Option<String>,
     /// # Force 2D
     /// If true, forces all geometries to be 2D (ignoring Z values).
@@ -176,13 +176,14 @@ async fn read_shapefile(
     let converter = ShapeConverter::new(archive.epsg, params.force_2d);
 
     let mut features = Vec::new();
+    let field_names = archive.field_names.clone();
     for record in archive.records() {
         let (shape, record) = record.map_err(|e| {
             SourceError::shapefile_reader(format!("Failed to read shape and record: {e}"))
         })?;
         let geometry = converter.convert(shape)?;
         features.push(Feature::new_with_attributes_and_geometry(
-            record::to_attributes(record),
+            record::to_attributes(record, &field_names),
             geometry,
         ));
     }

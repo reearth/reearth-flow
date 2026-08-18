@@ -3505,7 +3505,7 @@
         },
         "encoding": {
           "title": "Character Encoding",
-          "description": "Character encoding for attribute data in the DBF file, such as \"UTF-8\", \"Shift-JIS\", or \"Windows-1252\"; labels are case-insensitive. When omitted, the encoding is taken from the .cpg file if present, otherwise UTF-8 (UTF-16 is not supported)."
+          "description": "Codificación de caracteres de los datos de atributos del archivo DBF, como \"UTF-8\", \"Shift-JIS\" o \"Windows-1252\"; las etiquetas no distinguen mayúsculas de minúsculas. Si se omite, se toma del archivo .cpg si existe, si no de la página de códigos declarada en la cabecera del .dbf, y en su defecto UTF-8 (UTF-16 no es compatible)."
         },
         "force2D": {
           "title": "Force 2D",
@@ -3524,6 +3524,10 @@
         "": {
           "title": "ShapefileWriter Parameters",
           "description": "Configuration for writing features to ESRI Shapefile format."
+        },
+        "compressOutput": {
+          "title": "Compressed Output Directory",
+          "description": "Optional directory where each Shapefile is written as its own ZIP archive, holding that Shapefile's .shp, .shx, .dbf, .cpg and .prj, instead of as loose files. Leave unset to write loose files."
         },
         "groupBy": {
           "title": "Group By",

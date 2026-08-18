@@ -85,8 +85,26 @@ impl SinkFactory for ShapefileWriterFactory {
             .map_err(|e| {
                 SinkError::ShapefileWriterFactory(format!("Failed to evaluate `output`: {e:?}"))
             })?;
+        let compress_output = params
+            .compress_output
+            .map(|code| {
+                code.compile()
+                    .map_err(|e| {
+                        SinkError::ShapefileWriterFactory(format!(
+                            "Failed to compile `compressOutput`: {e:?}"
+                        ))
+                    })?
+                    .eval_string_variables_only(ctx.variables.clone())
+                    .map_err(|e| {
+                        SinkError::ShapefileWriterFactory(format!(
+                            "Failed to evaluate `compressOutput`: {e:?}"
+                        ))
+                    })
+            })
+            .transpose()?;
         let sink = ShapefileWriter {
             output,
+            compress_output,
             group_by: params.group_by,
             buffer: Default::default(),
         };
@@ -97,6 +115,7 @@ impl SinkFactory for ShapefileWriterFactory {
 #[derive(Debug, Clone)]
 pub(crate) struct ShapefileWriter {
     output: String,
+    compress_output: Option<String>,
     group_by: Option<Vec<Attribute>>,
     pub(super) buffer: HashMap<AttributeValue, Vec<Feature>>,
 }
@@ -110,6 +129,9 @@ pub(crate) struct ShapefileWriterParam {
     /// # Output Directory
     /// Output directory path or expression where the generated Shapefile files are written.
     pub(super) output: Code,
+    /// # Compressed Output Directory
+    /// Optional directory where each Shapefile is written as its own ZIP archive, holding that Shapefile's .shp, .shx, .dbf, .cpg and .prj, instead of as loose files. Leave unset to write loose files.
+    pub(super) compress_output: Option<Code>,
     /// # Group By
     /// Attributes to group features by, writing a separate file for each distinct group.
     pub(super) group_by: Option<Vec<Attribute>>,
@@ -146,6 +168,7 @@ impl Sink for ShapefileWriter {
                 &ctx.as_context(),
                 &ctx.sandbox_root,
                 path,
+                self.compress_output.as_deref(),
                 key,
                 features,
                 &ctx.storage_resolver,

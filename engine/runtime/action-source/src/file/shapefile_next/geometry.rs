@@ -1,6 +1,11 @@
 //! Shapefile shape conversion. Builds `reearth_flow_geometry::Geometry` (per-leaf
 //! `CoordinateFrame`) from the shapes the `shapefile` crate yields.
 //!
+//! A shapefile winds its outer rings clockwise and its holes counter-clockwise,
+//! and shows a multipatch surface's front to a viewer who sees its vertices go
+//! clockwise; a geometry winds each face the other way round, so every ring and
+//! triangle is reversed on the way in.
+//!
 //! Measures (the `M` channel) are not represented: an M-bearing shape converts to
 //! its unmeasured counterpart and the measures are discarded, reported once per
 //! read by [`ShapeConverter::report_discarded_measures`].
@@ -232,16 +237,17 @@ impl ShapeConverter {
     }
 
     /// A polygon's rings, grouped into faces: each outer ring starts a face and the
-    /// inner rings after it are its holes.
+    /// inner rings around it are its holes. Every ring is reversed into the
+    /// winding a geometry expects.
     fn area<P: Position>(&self, rings: &[PolygonRing<P>]) -> Result<Geometry, SourceError> {
         let faces = group_rings(rings)?;
         let polygons = faces.into_iter().map(|(exterior, holes)| {
             Euclidean2DGeometry::Polygon(Box::new(Polygon2D::from_rings(
                 self.frame_2d.clone(),
-                exterior.iter().map(|p| self.xy(p)),
+                exterior.iter().rev().map(|p| self.xy(p)),
                 holes
                     .into_iter()
-                    .map(|hole| hole.iter().map(|p| self.xy(p)).collect::<Vec<_>>()),
+                    .map(|hole| hole.iter().rev().map(|p| self.xy(p)).collect::<Vec<_>>()),
             )))
         });
         Ok(Geometry::Euclidean2D(one_or_collection_2d(polygons)))
@@ -255,10 +261,10 @@ impl ShapeConverter {
         let polygons = faces.into_iter().map(|(exterior, holes)| {
             Euclidean3DGeometry::Polygon(Box::new(Polygon3D::from_rings(
                 self.frame_3d.clone(),
-                exterior.iter().map(|p| self.xyz(p)),
+                exterior.iter().rev().map(|p| self.xyz(p)),
                 holes
                     .into_iter()
-                    .map(|hole| hole.iter().map(|p| self.xyz(p)).collect::<Vec<_>>()),
+                    .map(|hole| hole.iter().rev().map(|p| self.xyz(p)).collect::<Vec<_>>()),
             )))
         });
         Ok(Geometry::Euclidean3D(one_or_collection_3d(polygons)))
@@ -285,6 +291,7 @@ impl ShapeConverter {
 
     /// A multipatch's patches: the ring patches as one polygon mesh, each triangle
     /// strip or fan as its own triangle mesh, collected when there is more than one.
+    /// Rings and triangles are reversed into the winding a geometry expects.
     ///
     /// Errors when elevations are being dropped, a multipatch describing a surface
     /// in space that a 2D geometry cannot stand in for.
@@ -317,10 +324,10 @@ impl ShapeConverter {
             match patch {
                 Patch::OuterRing(ring) | Patch::FirstRing(ring) => {
                     flush(&mut exterior, &mut holes, &mut faces);
-                    exterior = Some(ring.iter().map(|p| self.xyz(p)).collect());
+                    exterior = Some(ring.iter().rev().map(|p| self.xyz(p)).collect());
                 }
                 Patch::InnerRing(ring) | Patch::Ring(ring) => {
-                    let ring: Vec<[f64; 3]> = ring.iter().map(|p| self.xyz(p)).collect();
+                    let ring: Vec<[f64; 3]> = ring.iter().rev().map(|p| self.xyz(p)).collect();
                     match &exterior {
                         Some(_) => holes.push(ring),
                         // A hole with no face to belong to stands on its own rather
@@ -370,6 +377,8 @@ impl ShapeConverter {
 }
 
 /// The rings of a polygon, grouped into `(exterior, holes)` faces in file order.
+/// A hole follows its outer ring, except that holes written before any outer ring
+/// belong to the first one.
 ///
 /// Errors on a polygon with no ring at all, and on one whose rings are all holes.
 #[allow(clippy::type_complexity)]
@@ -381,12 +390,15 @@ fn group_rings<P: Position>(
     }
 
     let mut faces: Vec<(&[P], Vec<&[P]>)> = Vec::new();
+    let mut leading_holes: Vec<&[P]> = Vec::new();
     for ring in rings {
         match ring {
-            PolygonRing::Outer(points) => faces.push((points.as_slice(), Vec::new())),
+            PolygonRing::Outer(points) => {
+                faces.push((points.as_slice(), std::mem::take(&mut leading_holes)))
+            }
             PolygonRing::Inner(points) => match faces.last_mut() {
                 Some((_, holes)) => holes.push(points.as_slice()),
-                None => continue,
+                None => leading_holes.push(points.as_slice()),
             },
         }
     }
@@ -399,25 +411,27 @@ fn group_rings<P: Position>(
 
 /// The triangle index list of a strip of `n` vertices, every vertex after the first
 /// two completing a triangle with its two predecessors. Every other triangle is
-/// wound back so the strip keeps one orientation.
+/// wound back so the strip keeps one orientation, and every triangle is wound
+/// opposite to the strip's own, which shows its front to a clockwise viewer.
 fn strip_indices(n: usize) -> Vec<u32> {
     (0..n.saturating_sub(2))
         .flat_map(|i| {
             let (a, b, c) = (i as u32, i as u32 + 1, i as u32 + 2);
             if i % 2 == 0 {
-                [a, b, c]
+                [a, c, b]
             } else {
-                [b, a, c]
+                [a, b, c]
             }
         })
         .collect()
 }
 
 /// The triangle index list of a fan of `n` vertices, every vertex after the first
-/// two completing a triangle with its predecessor and the first vertex.
+/// two completing a triangle with its predecessor and the first vertex, wound
+/// opposite to the fan's own, which shows its front to a clockwise viewer.
 fn fan_indices(n: usize) -> Vec<u32> {
     (1..n.saturating_sub(1))
-        .flat_map(|i| [0, i as u32, i as u32 + 1])
+        .flat_map(|i| [0, i as u32 + 1, i as u32])
         .collect()
 }
 
@@ -580,14 +594,77 @@ mod tests {
         assert_eq!(mesh.num_faces(), 1);
     }
 
+    // A hole written before its outer ring belongs to that ring, not to nothing.
+    #[test]
+    fn a_hole_before_the_first_outer_ring_lands_on_it() {
+        let outer = vec![
+            shapefile::Point::new(0.0, 0.0),
+            shapefile::Point::new(0.0, 4.0),
+            shapefile::Point::new(4.0, 4.0),
+            shapefile::Point::new(4.0, 0.0),
+            shapefile::Point::new(0.0, 0.0),
+        ];
+        let inner = vec![
+            shapefile::Point::new(1.0, 1.0),
+            shapefile::Point::new(2.0, 1.0),
+            shapefile::Point::new(2.0, 2.0),
+            shapefile::Point::new(1.0, 1.0),
+        ];
+        let polygon = shapefile::Polygon::with_rings(vec![
+            PolygonRing::Inner(inner),
+            PolygonRing::Outer(outer),
+        ]);
+        let geometry = converter().convert(Shape::Polygon(polygon)).unwrap();
+        let Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(polygon)) = geometry else {
+            panic!("expected a 2D polygon, got {geometry:?}");
+        };
+        assert_eq!(polygon.interiors().count(), 1);
+    }
+
+    // The shapefile winds an outer ring clockwise; the geometry needs it
+    // counter-clockwise, and its holes the other way round.
+    #[test]
+    fn rings_are_reversed_into_the_geometry_winding() {
+        let outer = vec![
+            shapefile::Point::new(0.0, 0.0),
+            shapefile::Point::new(0.0, 4.0),
+            shapefile::Point::new(4.0, 4.0),
+            shapefile::Point::new(4.0, 0.0),
+            shapefile::Point::new(0.0, 0.0),
+        ];
+        let inner = vec![
+            shapefile::Point::new(1.0, 1.0),
+            shapefile::Point::new(2.0, 1.0),
+            shapefile::Point::new(2.0, 2.0),
+            shapefile::Point::new(1.0, 1.0),
+        ];
+        let polygon = shapefile::Polygon::with_rings(vec![
+            PolygonRing::Outer(outer),
+            PolygonRing::Inner(inner),
+        ]);
+        let geometry = converter().convert(Shape::Polygon(polygon)).unwrap();
+        let Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(polygon)) = geometry else {
+            panic!("expected a 2D polygon, got {geometry:?}");
+        };
+        assert!(signed_area(polygon.exterior()) > 0.0);
+        assert!(signed_area(polygon.interiors().next().unwrap()) < 0.0);
+    }
+
+    /// Twice the shoelace area: positive for a counter-clockwise ring.
+    fn signed_area(ring: &[[f64; 2]]) -> f64 {
+        ring.windows(2)
+            .map(|w| w[0][0] * w[1][1] - w[1][0] * w[0][1])
+            .sum()
+    }
+
     #[test]
     fn a_strip_winds_every_other_triangle_back() {
-        assert_eq!(strip_indices(4), vec![0, 1, 2, 2, 1, 3]);
+        assert_eq!(strip_indices(4), vec![0, 2, 1, 1, 2, 3]);
     }
 
     #[test]
     fn a_fan_shares_its_first_vertex() {
-        assert_eq!(fan_indices(4), vec![0, 1, 2, 0, 2, 3]);
+        assert_eq!(fan_indices(4), vec![0, 2, 1, 0, 3, 2]);
     }
 
     #[test]

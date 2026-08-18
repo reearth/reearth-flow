@@ -5,15 +5,25 @@ use reearth_flow_common::datetime::{DateTime, NaiveDate};
 use reearth_flow_types::{Attribute, AttributeValue};
 use shapefile::dbase::{FieldValue, Record};
 
-/// The attributes one record holds, in the order the table declares its fields.
+/// The attributes one record holds, in the order of `field_names`, which is the
+/// order the table declares its fields in.
 ///
 /// A field with no value, and one whose value the field type cannot represent,
 /// both read as [`AttributeValue::Null`] rather than being left out, so every
 /// feature carries the same attributes.
-pub(super) fn to_attributes(record: Record) -> IndexMap<Attribute, AttributeValue> {
-    record
-        .into_iter()
-        .map(|(name, value)| (Attribute::new(name), to_attribute_value(value)))
+pub(super) fn to_attributes(
+    mut record: Record,
+    field_names: &[String],
+) -> IndexMap<Attribute, AttributeValue> {
+    field_names
+        .iter()
+        .map(|name| {
+            let value = record
+                .remove(name)
+                .map(to_attribute_value)
+                .unwrap_or(AttributeValue::Null);
+            (Attribute::new(name.clone()), value)
+        })
         .collect()
 }
 
@@ -121,6 +131,21 @@ mod tests {
             AttributeValue::DateTime(DateTime::NaiveDate(
                 NaiveDate::from_ymd_opt(2025, 7, 17).unwrap()
             ))
+        );
+    }
+
+    #[test]
+    fn attributes_follow_the_table_field_order() {
+        let mut record = Record::default();
+        record.insert("b".to_string(), FieldValue::Integer(2));
+        record.insert("a".to_string(), FieldValue::Integer(1));
+        record.insert("c".to_string(), FieldValue::Integer(3));
+        let names = ["c".to_string(), "a".to_string(), "b".to_string()];
+        let attributes = to_attributes(record, &names);
+        let order: Vec<String> = attributes.keys().map(|k| k.inner()).collect();
+        assert_eq!(
+            order,
+            vec!["c".to_string(), "a".to_string(), "b".to_string()]
         );
     }
 

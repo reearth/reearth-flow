@@ -5,9 +5,13 @@
 //! [`Payload`] plus the [`Bucket`] naming the file it belongs in; the concrete
 //! shape type is settled per file once every feature in it is known.
 //!
+//! A geometry winds a face's exterior counter-clockwise and its holes clockwise,
+//! where a shapefile winds them the other way round, so every ring is reversed on
+//! the way out.
+//!
 //! Measures (the `M` channel) have no geometry counterpart and are never written.
 
-use std::collections::HashMap;
+use std::collections::HashSet;
 
 use indexmap::IndexMap;
 use reearth_flow_geometry::{
@@ -67,6 +71,12 @@ enum Unwritable {
     EmptyMesh,
     #[error("a solid with no boundary face has no shapefile counterpart")]
     EmptySolid,
+    /// A shapefile part holds at least two positions.
+    #[error("a curve with fewer than two positions has no shapefile counterpart")]
+    DegenerateCurve,
+    /// A shapefile ring holds at least three distinct positions.
+    #[error("a ring with fewer than three positions has no shapefile counterpart")]
+    DegenerateRing,
     #[error(transparent)]
     Unsplittable(#[from] UnsupportedOperation),
 }
@@ -97,6 +107,16 @@ impl Written {
             omitted: Vec::new(),
         }
     }
+
+    /// What a face writes to: its rings, and the holes it left out.
+    fn face(frame: &CoordinateFrame, elevated: bool, area: Area) -> Self {
+        Self {
+            payload: Payload::Area(area.rings),
+            elevated,
+            frames: Frames::of(frame),
+            omitted: area.omitted,
+        }
+    }
 }
 
 fn write(geometry: &Geometry) -> Result<Written, Unwritable> {
@@ -124,15 +144,15 @@ fn write_2d(geometry: &Euclidean2DGeometry) -> Result<Written, Unwritable> {
             Ok(Written::leaf(
                 l.frame(),
                 z.is_some(),
-                Payload::Curve(vec![raise(l.frame(), l.coords(), z)]),
+                Payload::Curve(vec![curve(l.frame(), l.coords(), z)?]),
             ))
         }
         Polygon(p) => {
             let z = p.elevation();
-            Ok(Written::leaf(
+            Ok(Written::face(
                 p.frame(),
                 z.is_some(),
-                Payload::Area(rings(p.frame(), p.exterior(), p.interiors(), z)),
+                rings(p.frame(), p.exterior(), p.interiors(), z)?,
             ))
         }
         PolygonMesh(m) => write_faces((**m).clone()),
@@ -152,12 +172,12 @@ fn write_3d(geometry: &Euclidean3DGeometry) -> Result<Written, Unwritable> {
         LineString(l) => Ok(Written::leaf(
             l.frame(),
             true,
-            Payload::Curve(vec![swap_all(l.frame(), l.coords())]),
+            Payload::Curve(vec![curve(l.frame(), l.coords(), None)?]),
         )),
-        Polygon(p) => Ok(Written::leaf(
+        Polygon(p) => Ok(Written::face(
             p.frame(),
             true,
-            Payload::Area(rings(p.frame(), p.exterior(), p.interiors(), None)),
+            rings(p.frame(), p.exterior(), p.interiors(), None)?,
         )),
         PolygonMesh(m) => write_faces((**m).clone()),
         TriangularMesh(m) => write_faces((**m).clone()),
@@ -263,51 +283,93 @@ fn swapped<const N: usize>(frame: &CoordinateFrame, coordinate: [f64; N]) -> [f6
     coordinate
 }
 
-fn swap_all(frame: &CoordinateFrame, coords: &[[f64; 3]]) -> Vec<[f64; 3]> {
-    let swap = swaps_axes(frame);
-    coords
-        .iter()
-        .map(|&c| if swap { [c[1], c[0], c[2]] } else { c })
-        .collect()
-}
-
-/// 2D coordinates as shapefile positions, at the elevation their geometry lies at
-/// or `0.0` where it states none.
-fn raise(frame: &CoordinateFrame, coords: &[[f64; 2]], z: Option<f64>) -> Vec<[f64; 3]> {
-    let swap = swaps_axes(frame);
-    let z = z.unwrap_or(0.0);
-    coords
-        .iter()
-        .map(|&[x, y]| if swap { [y, x, z] } else { [x, y, z] })
-        .collect()
-}
-
-/// A face's rings: its exterior, then its holes.
+/// Stored coordinates as shapefile positions, their horizontal pair swapped when
+/// `swap` says so, at the elevation `z` states or, when it states none, the one
+/// each coordinate carries (`0.0` for a 2D coordinate).
 ///
 /// The generic `N` covers both embeddings: `z` supplies the elevation for 2D
 /// coordinates and is `None` for 3D ones, which carry their own.
+fn positions<'a, const N: usize>(
+    swap: bool,
+    coords: impl Iterator<Item = &'a [f64; N]>,
+    z: Option<f64>,
+) -> Vec<[f64; 3]> {
+    coords
+        .map(|&coordinate| {
+            let [x, y] = if swap {
+                [coordinate[1], coordinate[0]]
+            } else {
+                [coordinate[0], coordinate[1]]
+            };
+            let z = z.unwrap_or_else(|| if N > 2 { coordinate[2] } else { 0.0 });
+            [x, y, z]
+        })
+        .collect()
+}
+
+/// A line's positions as one shapefile part.
+///
+/// Errors on a line too short to be a part.
+fn curve<const N: usize>(
+    frame: &CoordinateFrame,
+    coords: &[[f64; N]],
+    z: Option<f64>,
+) -> Result<Vec<[f64; 3]>, Unwritable> {
+    if coords.len() < 2 {
+        return Err(Unwritable::DegenerateCurve);
+    }
+    Ok(positions(swaps_axes(frame), coords.iter(), z))
+}
+
+/// A face's rings as shapefile rings, and the holes left out for being too short.
+struct Area {
+    rings: Vec<Ring>,
+    omitted: Vec<Unwritable>,
+}
+
+/// A face's rings: its exterior, then its holes, each reversed into the winding a
+/// shapefile expects.
+///
+/// Errors on a face whose exterior is too short to be a ring; a hole too short to
+/// be one is left out.
 fn rings<'a, const N: usize>(
     frame: &CoordinateFrame,
     exterior: &'a [[f64; N]],
     interiors: impl Iterator<Item = &'a [[f64; N]]>,
     z: Option<f64>,
-) -> Vec<Ring> {
-    std::iter::once((true, exterior))
-        .chain(interiors.map(|hole| (false, hole)))
-        .map(|(outer, ring)| Ring {
-            outer,
-            coords: ring
-                .iter()
-                .map(|coordinate| {
-                    let coordinate = swapped(frame, *coordinate);
-                    match N {
-                        2 => [coordinate[0], coordinate[1], z.unwrap_or(0.0)],
-                        _ => [coordinate[0], coordinate[1], coordinate[2]],
-                    }
-                })
-                .collect(),
-        })
-        .collect()
+) -> Result<Area, Unwritable> {
+    if !is_ring(exterior) {
+        return Err(Unwritable::DegenerateRing);
+    }
+    let swap = swaps_axes(frame);
+    let mut area = Area {
+        rings: vec![Ring {
+            outer: true,
+            coords: positions(swap, exterior.iter().rev(), z),
+        }],
+        omitted: Vec::new(),
+    };
+    for hole in interiors {
+        if !is_ring(hole) {
+            area.omitted.push(Unwritable::DegenerateRing);
+            continue;
+        }
+        area.rings.push(Ring {
+            outer: false,
+            coords: positions(swap, hole.iter().rev(), z),
+        });
+    }
+    Ok(area)
+}
+
+/// Whether `coords` can be a shapefile ring: three positions and the closing one,
+/// which is supplied on writing when it is missing.
+fn is_ring<const N: usize>(coords: &[[f64; N]]) -> bool {
+    match coords.len() {
+        0..=2 => false,
+        3 => coords[0] != coords[2],
+        _ => true,
+    }
 }
 
 /// Whether a frame stores its horizontal axes reflected from `(East, North)`.
@@ -329,73 +391,181 @@ fn swaps_axes(frame: &CoordinateFrame) -> bool {
 // Attribute table
 // ---------------------------------------------------------------------------
 
+/// The longest DBF field name, in bytes.
+const FIELD_NAME_BYTES: usize = 11;
+/// The longest DBF character field, in bytes.
+const CHARACTER_BYTES: usize = 254;
+/// The width a numeric field is declared with when its values need no more.
+const INTEGER_WIDTH: usize = 11;
+const DECIMAL_WIDTH: usize = 18;
+/// The decimal places a numeric field carrying non-integers is declared with.
+const DECIMAL_PLACES: u8 = 6;
+
 /// One column of the DBF table: the attribute it takes its value from, and the
-/// value to write where that attribute has none.
+/// type every value is written as.
 ///
 /// A DBF field name is at most 11 bytes, so it can differ from the attribute's;
 /// the field is keyed by its own name and remembers the attribute's.
 pub(super) struct Field {
+    name: String,
     attribute: Attribute,
-    default: FieldValue,
+    kind: FieldKind,
 }
 
-/// The table to write `attributes` into, and its columns keyed by DBF field name.
-///
-/// `attributes` is the union of what the features carry, so a field only some of
-/// them have still gets a column.
-pub(super) fn make_table_builder(
-    attributes: &IndexMap<Attribute, AttributeValue>,
-) -> crate::errors::Result<(TableWriterBuilder, HashMap<String, Field>)> {
-    let mut builder = TableWriterBuilder::new();
-    let mut fields = HashMap::new();
+/// The DBF type a column is declared as.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+enum FieldKind {
+    Character,
+    /// A number with `decimals` places after the point.
+    Numeric {
+        decimals: u8,
+    },
+}
 
-    for (attribute, value) in attributes {
-        let key = trim_string_bytes(attribute.to_string(), 11);
-        let name: FieldName = key.as_str().try_into().map_err(|e| {
-            crate::errors::SinkError::ShapefileWriter(format!(
-                "Failed to convert field name to FieldName: {e}"
-            ))
-        })?;
+impl Field {
+    /// The value this column writes where the feature carries none it can store.
+    fn default(&self) -> FieldValue {
+        match self.kind {
+            FieldKind::Character => FieldValue::Character(None),
+            FieldKind::Numeric { .. } => FieldValue::Numeric(None),
+        }
+    }
+}
 
-        let default = match value {
-            AttributeValue::String(_) => {
-                builder = builder.add_character_field(name, 255);
-                FieldValue::Character(None)
+/// What the values of one attribute call for in a column: whether they are all
+/// numbers, whether all integers, and the widest one written out.
+struct Column {
+    attribute: Attribute,
+    numeric: bool,
+    integral: bool,
+    width: usize,
+}
+
+impl Column {
+    fn new(attribute: &Attribute) -> Self {
+        Self {
+            attribute: attribute.clone(),
+            numeric: true,
+            integral: true,
+            width: 0,
+        }
+    }
+
+    /// Take a value into account. A value the table cannot store says nothing
+    /// about the column.
+    fn note(&mut self, value: &AttributeValue) {
+        let width = match value {
+            AttributeValue::String(s) => {
+                self.numeric = false;
+                s.len()
             }
-            AttributeValue::Number(num) => {
-                builder = if num.is_i64() {
-                    builder.add_numeric_field(name, 11, 0)
-                } else {
-                    builder.add_numeric_field(name, 18, 6)
-                };
-                FieldValue::Numeric(None)
+            AttributeValue::Number(n) if n.is_f64() => {
+                self.integral = false;
+                format!("{:.*}", DECIMAL_PLACES as usize, n.as_f64().unwrap_or(0.0)).len()
             }
-            AttributeValue::Bool(_) => {
-                builder = builder.add_character_field(name, 6);
-                FieldValue::Character(None)
+            AttributeValue::Number(n) => n.to_string().len(),
+            AttributeValue::Bool(b) => {
+                self.numeric = false;
+                b.to_string().len()
             }
-            AttributeValue::DateTime(_) => {
-                builder = builder.add_character_field(name, 255);
-                FieldValue::Character(None)
+            AttributeValue::DateTime(d) => {
+                self.numeric = false;
+                d.to_rfc3339().len()
             }
             AttributeValue::Null
             | AttributeValue::Array(_)
             | AttributeValue::Map(_)
-            | AttributeValue::Bytes(_) => continue,
+            | AttributeValue::Bytes(_) => return,
         };
-        fields.insert(
-            key,
-            Field {
-                attribute: attribute.clone(),
-                default,
-            },
-        );
+        self.width = self.width.max(width);
+    }
+
+    /// The type the column is declared as, and its width, once every value is
+    /// taken into account. Integers widen to what the widest needs; a decimal
+    /// widens to fit its integer part at [`DECIMAL_PLACES`] places.
+    fn kind(&self) -> (FieldKind, u8) {
+        let (kind, width) = match (self.numeric, self.integral) {
+            (true, true) => (
+                FieldKind::Numeric { decimals: 0 },
+                self.width.max(INTEGER_WIDTH),
+            ),
+            (true, false) => (
+                FieldKind::Numeric {
+                    decimals: DECIMAL_PLACES,
+                },
+                self.width.max(DECIMAL_WIDTH),
+            ),
+            (false, _) => (FieldKind::Character, self.width.clamp(1, CHARACTER_BYTES)),
+        };
+        (kind, width.min(u8::MAX as usize) as u8)
+    }
+}
+
+/// The table to write the attributes of `features` into, and its columns.
+///
+/// A column is declared for every attribute any feature carries a storable value
+/// for, in the order first seen: one holding only numbers is numeric, wide enough
+/// for the widest, and one holding anything else is character. Names are cut to
+/// the DBF limit and told apart where the cut makes two the same.
+pub(super) fn make_table_builder<'a>(
+    features: impl Iterator<Item = &'a IndexMap<Attribute, AttributeValue>>,
+) -> crate::errors::Result<(TableWriterBuilder, Vec<Field>)> {
+    let mut columns: IndexMap<&Attribute, Column> = IndexMap::new();
+    for attributes in features {
+        for (attribute, value) in attributes {
+            columns
+                .entry(attribute)
+                .or_insert_with(|| Column::new(attribute))
+                .note(value);
+        }
+    }
+
+    let mut builder = TableWriterBuilder::new();
+    let mut fields = Vec::new();
+    let mut taken = HashSet::new();
+    for column in columns.values().filter(|column| column.width > 0) {
+        let name = field_name(column.attribute.as_ref(), &taken);
+        taken.insert(name.clone());
+        let field_name: FieldName = name.as_str().try_into().map_err(|e| {
+            crate::errors::SinkError::ShapefileWriter(format!(
+                "Failed to convert field name to FieldName: {e}"
+            ))
+        })?;
+        let (kind, width) = column.kind();
+        builder = match kind {
+            FieldKind::Character => builder.add_character_field(field_name, width),
+            FieldKind::Numeric { decimals } => {
+                builder.add_numeric_field(field_name, width, decimals)
+            }
+        };
+        fields.push(Field {
+            name,
+            attribute: column.attribute.clone(),
+            kind,
+        });
     }
     Ok((builder, fields))
 }
 
+/// `name` cut to the DBF limit and, where that cut is already `taken`, made
+/// distinct with a counter that fits within the limit.
+fn field_name(name: &str, taken: &HashSet<String>) -> String {
+    let cut = trim_string_bytes(name.to_string(), FIELD_NAME_BYTES);
+    if !taken.contains(&cut) {
+        return cut;
+    }
+    (1..)
+        .map(|n| {
+            let suffix = format!("_{n}");
+            let head = trim_string_bytes(name.to_string(), FIELD_NAME_BYTES - suffix.len());
+            format!("{head}{suffix}")
+        })
+        .find(|candidate| !taken.contains(candidate))
+        .expect("the counter is unbounded, so some name is free")
+}
+
 /// The DBF record for one feature: exactly the table's fields, taking each from
-/// `attributes` where it holds a value the table can store and from the field's
+/// `attributes` where it holds a value the column can store and from the column's
 /// default otherwise.
 ///
 /// Every field the table declares must appear, so a feature missing one, or
@@ -403,34 +573,43 @@ pub(super) fn make_table_builder(
 /// default.
 pub(super) fn attributes_to_record(
     attributes: &IndexMap<Attribute, AttributeValue>,
-    fields: &HashMap<String, Field>,
+    fields: &[Field],
 ) -> Record {
     let mut record = Record::default();
-    for (name, field) in fields {
+    for field in fields {
         let value = attributes
             .get(&field.attribute)
-            .and_then(to_field_value)
-            .unwrap_or_else(|| field.default.clone());
-        record.insert(name.to_string(), value);
+            .and_then(|value| to_field_value(value, field.kind))
+            .unwrap_or_else(|| field.default());
+        record.insert(field.name.clone(), value);
     }
     record
 }
 
-/// The DBF value an attribute writes as, or `None` for one the table cannot store.
-fn to_field_value(value: &AttributeValue) -> Option<FieldValue> {
-    match value {
-        // Shapefile cannot store a string longer than 254 bytes.
-        AttributeValue::String(s) => Some(FieldValue::Character(Some(trim_string_bytes(
-            s.clone(),
-            254,
-        )))),
-        AttributeValue::Number(num) => Some(FieldValue::Numeric(num.as_f64())),
-        AttributeValue::Bool(b) => Some(FieldValue::Character(Some(b.to_string()))),
-        AttributeValue::DateTime(d) => Some(FieldValue::Character(Some(d.to_rfc3339()))),
-        AttributeValue::Null
-        | AttributeValue::Array(_)
-        | AttributeValue::Map(_)
-        | AttributeValue::Bytes(_) => None,
+/// The value an attribute writes as in a column of `kind`, or `None` for one the
+/// column cannot store.
+fn to_field_value(value: &AttributeValue, kind: FieldKind) -> Option<FieldValue> {
+    match kind {
+        FieldKind::Numeric { .. } => match value {
+            AttributeValue::Number(num) => Some(FieldValue::Numeric(num.as_f64())),
+            _ => None,
+        },
+        FieldKind::Character => {
+            let text = match value {
+                AttributeValue::String(s) => s.clone(),
+                AttributeValue::Number(num) => num.to_string(),
+                AttributeValue::Bool(b) => b.to_string(),
+                AttributeValue::DateTime(d) => d.to_rfc3339(),
+                AttributeValue::Null
+                | AttributeValue::Array(_)
+                | AttributeValue::Map(_)
+                | AttributeValue::Bytes(_) => return None,
+            };
+            Some(FieldValue::Character(Some(trim_string_bytes(
+                text,
+                CHARACTER_BYTES,
+            ))))
+        }
     }
 }
 
@@ -559,6 +738,53 @@ mod tests {
         assert!(!rings[1].outer);
     }
 
+    // A geometry winds its exterior counter-clockwise; the shapefile needs it
+    // clockwise, and its holes the other way round.
+    #[test]
+    fn rings_are_reversed_into_the_shapefile_winding() {
+        let polygon = Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
+            Polygon2D::from_rings(
+                euclidean(),
+                [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]],
+                [vec![[1.0, 1.0], [1.0, 2.0], [2.0, 2.0], [1.0, 1.0]]],
+            ),
+        )));
+        let written = write_geometry(&polygon);
+        let rings = area(&written);
+        assert!(signed_area(&rings[0].coords) < 0.0);
+        assert!(signed_area(&rings[1].coords) > 0.0);
+    }
+
+    /// Twice the shoelace area: positive for a counter-clockwise ring.
+    fn signed_area(ring: &[[f64; 3]]) -> f64 {
+        ring.windows(2)
+            .map(|w| w[0][0] * w[1][1] - w[1][0] * w[0][1])
+            .sum()
+    }
+
+    // A one-position line is no shapefile part; it writes no shape rather than
+    // failing the file.
+    #[test]
+    fn a_degenerate_line_writes_no_shape() {
+        let line = Geometry::Euclidean2D(Euclidean2DGeometry::LineString(
+            LineString2D::from_coords(euclidean(), [[0.0, 0.0]]),
+        ));
+        assert!(write_geometry(&line).payload.is_none());
+    }
+
+    // A hole too short to be a ring is left out; the face around it is still written.
+    #[test]
+    fn a_degenerate_hole_is_left_out() {
+        let polygon = Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
+            Polygon2D::from_rings(
+                euclidean(),
+                [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]],
+                [vec![[1.0, 1.0], [2.0, 2.0]]],
+            ),
+        )));
+        assert_eq!(area(&write_geometry(&polygon)).len(), 1);
+    }
+
     // A collection whose members are of different kinds cannot be one record, so
     // the kind that got there first is written and the rest are dropped.
     #[test]
@@ -620,6 +846,85 @@ mod tests {
             write_geometry(&point).frames.epsg(),
             Some(EpsgCode::new(6677))
         );
+    }
+
+    fn attributes(pairs: &[(&str, AttributeValue)]) -> IndexMap<Attribute, AttributeValue> {
+        pairs
+            .iter()
+            .map(|(k, v)| (Attribute::new(*k), v.clone()))
+            .collect()
+    }
+
+    fn table(features: &[&IndexMap<Attribute, AttributeValue>]) -> Vec<Field> {
+        make_table_builder(features.iter().copied())
+            .expect("the table is expected to build")
+            .1
+    }
+
+    // Two attributes cut to the same DBF name must still be two columns.
+    #[test]
+    fn attributes_cut_to_the_same_name_get_distinct_fields() {
+        let feature = attributes(&[
+            ("bldg:measuredHeight", AttributeValue::Number(10.into())),
+            (
+                "bldg:measuredHeight_uom",
+                AttributeValue::String("m".into()),
+            ),
+        ]);
+        let fields = table(&[&feature]);
+        assert_eq!(fields.len(), 2);
+        assert_eq!(fields[0].name, "bldg:measur");
+        assert_eq!(fields[1].name, "bldg:meas_1");
+        let record = attributes_to_record(&feature, &fields);
+        assert_eq!(
+            record.get("bldg:measur"),
+            Some(&FieldValue::Numeric(Some(10.0)))
+        );
+        assert_eq!(
+            record.get("bldg:meas_1"),
+            Some(&FieldValue::Character(Some("m".into())))
+        );
+    }
+
+    // Taking the table from the first feature alone would leave out a field only
+    // later features carry.
+    #[test]
+    fn the_table_covers_fields_a_later_feature_introduces() {
+        let first = attributes(&[("a", AttributeValue::String("x".into()))]);
+        let second = attributes(&[("b", AttributeValue::Bool(true))]);
+        let fields = table(&[&first, &second]);
+        assert_eq!(fields.len(), 2);
+    }
+
+    // A column is numeric only when every value in it is a number; a value of
+    // another type is written as text alongside the numbers.
+    #[test]
+    fn a_column_mixing_numbers_and_text_writes_everything_as_text() {
+        let first = attributes(&[("code", AttributeValue::Number(5.into()))]);
+        let second = attributes(&[("code", AttributeValue::String("A1".into()))]);
+        let fields = table(&[&first, &second]);
+        assert_eq!(fields[0].kind, FieldKind::Character);
+        assert_eq!(
+            attributes_to_record(&first, &fields).get("code"),
+            Some(&FieldValue::Character(Some("5".into())))
+        );
+    }
+
+    // A null says nothing about a column's type; a later value settles it.
+    #[test]
+    fn a_null_first_value_takes_its_type_from_a_later_feature() {
+        let first = attributes(&[("a", AttributeValue::Null)]);
+        let second = attributes(&[("a", AttributeValue::Number(1.into()))]);
+        let fields = table(&[&first, &second]);
+        assert_eq!(fields[0].kind, FieldKind::Numeric { decimals: 0 });
+    }
+
+    // An integer wider than the default width is not cut short.
+    #[test]
+    fn a_wide_integer_widens_its_column() {
+        let mut column = Column::new(&Attribute::new("t"));
+        column.note(&AttributeValue::Number(1723891200000i64.into()));
+        assert_eq!(column.kind(), (FieldKind::Numeric { decimals: 0 }, 13));
     }
 
     #[test]
