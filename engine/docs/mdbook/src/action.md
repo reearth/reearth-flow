@@ -1251,7 +1251,7 @@ Creates a buffer polygon around each input geometry at a specified distance.
     },
     "interpolationAngle": {
       "title": "Interpolation Angle",
-      "description": "Angular step in degrees used to approximate the rounded corners of a buffered point or curve. A smaller angle produces a smoother outline. Buffering a polygon does not use this value.",
+      "description": "Angular step in degrees used to approximate the rounded caps, joins, and discs of the buffer outline. A smaller angle produces a smoother outline.",
       "type": "number",
       "format": "double"
     }

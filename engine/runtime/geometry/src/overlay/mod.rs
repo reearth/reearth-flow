@@ -14,6 +14,9 @@
 //!   outside) an areal geometry.
 //! - [`segment_intersections()`]: the pairwise segment × segment
 //!   intersections between two polyline sets.
+//! - `buffer()` (feature `new-geometry`): the offset region within a signed
+//!   distance of a geometry, with its own operand policy documented on the
+//!   `buffer` module.
 //!
 //! The operand policy is the predicates': both operands in one coordinate
 //! frame ([`MixedFrames`](PredicateError::MixedFrames) otherwise, reprojection
@@ -53,6 +56,8 @@
 //! - Output is pure 2D: any elevation on the inputs is ignored and dropped, and
 //!   appearance does not propagate.
 
+#[cfg(feature = "new-geometry")]
+pub mod buffer;
 mod segments;
 mod shapes;
 mod snap;
@@ -75,6 +80,8 @@ use crate::predicates::{flatten_2d_pair, PredicateError, Result};
 use crate::{Euclidean2DGeometry, Geometry};
 
 pub use crate::predicates::kernel::SegmentIntersection;
+#[cfg(feature = "new-geometry")]
+pub use buffer::{buffer, buffer_2d, buffer_polygon_3d, BufferStyle};
 
 /// The boolean overlay operation to apply.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
