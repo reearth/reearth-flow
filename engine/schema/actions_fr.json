@@ -3561,9 +3561,12 @@
         "features"
       ],
       "categories": [
-        "Feature"
+        "Input"
       ],
-      "tags": []
+      "tags": [
+        "citygml",
+        "3d"
+      ]
     },
     {
       "name": "Feature CityGML 3 Reader",
@@ -8925,7 +8928,7 @@
         "properties": {
           "parseMaterials": {
             "title": "Parse Materials",
-            "description": "Enable parsing of material definitions from MTL files referenced in the OBJ file",
+            "description": "Parses material definitions from MTL files referenced in the OBJ file.",
             "default": true,
             "type": "boolean"
           },
@@ -8957,25 +8960,19 @@
           },
           "triangulate": {
             "title": "Triangulate",
-            "description": "Convert polygons with more than 3 vertices into triangles using fan triangulation",
+            "description": "Converts polygons with more than 3 vertices into triangles using fan triangulation.",
             "default": false,
             "type": "boolean"
           },
           "mergeGroups": {
             "title": "Merge Groups",
-            "description": "Merge all groups and objects into a single feature instead of creating separate features per group/object",
+            "description": "Merges all groups and objects into a single feature instead of creating separate features per group or object.",
             "default": false,
-            "type": "boolean"
-          },
-          "includeNormals": {
-            "title": "Include Normals",
-            "description": "Include vertex normal data in the output geometry",
-            "default": true,
             "type": "boolean"
           },
           "includeTexcoords": {
             "title": "Include Texture Coordinates",
-            "description": "Include texture coordinate (UV) data in the output geometry",
+            "description": "Includes texture coordinate (UV) data in the output geometry.",
             "default": true,
             "type": "boolean"
           },
@@ -9037,10 +9034,12 @@
         "features"
       ],
       "categories": [
-        "File",
-        "3D"
+        "Input"
       ],
-      "tags": []
+      "tags": [
+        "obj",
+        "3d"
+      ]
     },
     {
       "name": "OBJ Writer",
@@ -13436,24 +13435,18 @@
       "description": "Lit des modèles 3D depuis des fichiers glTF 2.0, prenant en charge les maillages, nœuds, scènes et primitives de géométrie",
       "parameter": {
         "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "glTF ReaderParam",
+        "title": "glTF Reader Parameters",
         "type": "object",
         "properties": {
-          "triangulate": {
-            "title": "Triangulate",
-            "description": "If true, converts all primitives to triangles (reserved for future use - currently all primitives are processed as triangles)",
-            "default": true,
-            "type": "boolean"
-          },
           "mergeMeshes": {
             "title": "Merge Meshes",
-            "description": "If true, combines all meshes from the glTF file into a single output feature",
+            "description": "Combines all meshes from the glTF file into a single output feature.",
             "default": false,
             "type": "boolean"
           },
           "includeNodes": {
             "title": "Include Nodes",
-            "description": "If true, includes node hierarchy information from the glTF scene graph in feature attributes",
+            "description": "Includes node hierarchy information from the glTF scene graph in feature attributes.",
             "default": true,
             "type": "boolean"
           },
@@ -13556,10 +13549,12 @@
         "features"
       ],
       "categories": [
-        "File",
-        "3D"
+        "Input"
       ],
-      "tags": []
+      "tags": [
+        "gltf",
+        "3d"
+      ]
     },
     {
       "name": "glTF Writer",

@@ -3396,7 +3396,7 @@ Extrudes a polygon geometry vertically by a given distance to produce a solid ge
 ### Type
 * processor
 ### Description
-Reads CityGML 2.0 files: resolves gml:id references and xlink:href links across files
+Reads CityGML 2.0 files, resolving gml:id references and xlink:href links across files.
 ### Parameters
 ```json
 {
@@ -3473,7 +3473,7 @@ Reads CityGML 2.0 files: resolves gml:id references and xlink:href links across 
 ### Output Ports
 * features
 ### Category
-* Feature
+* Input
 
 ## Feature CityGML 3 Reader
 ### Type
@@ -8703,7 +8703,7 @@ Replaces null-like attribute values with configured replacement values, optional
 ### Type
 * source
 ### Description
-Reads 3D models from Wavefront OBJ files, supporting vertices, faces, normals, texture coordinates, and materials
+Reads 3D models from Wavefront OBJ files, including vertices, faces, normals, texture coordinates, and materials.
 ### Parameters
 ```json
 {
@@ -8714,7 +8714,7 @@ Reads 3D models from Wavefront OBJ files, supporting vertices, faces, normals, t
   "properties": {
     "parseMaterials": {
       "title": "Parse Materials",
-      "description": "Enable parsing of material definitions from MTL files referenced in the OBJ file",
+      "description": "Parses material definitions from MTL files referenced in the OBJ file.",
       "default": true,
       "type": "boolean"
     },
@@ -8746,25 +8746,19 @@ Reads 3D models from Wavefront OBJ files, supporting vertices, faces, normals, t
     },
     "triangulate": {
       "title": "Triangulate",
-      "description": "Convert polygons with more than 3 vertices into triangles using fan triangulation",
+      "description": "Converts polygons with more than 3 vertices into triangles using fan triangulation.",
       "default": false,
       "type": "boolean"
     },
     "mergeGroups": {
       "title": "Merge Groups",
-      "description": "Merge all groups and objects into a single feature instead of creating separate features per group/object",
+      "description": "Merges all groups and objects into a single feature instead of creating separate features per group or object.",
       "default": false,
-      "type": "boolean"
-    },
-    "includeNormals": {
-      "title": "Include Normals",
-      "description": "Include vertex normal data in the output geometry",
-      "default": true,
       "type": "boolean"
     },
     "includeTexcoords": {
       "title": "Include Texture Coordinates",
-      "description": "Include texture coordinate (UV) data in the output geometry",
+      "description": "Includes texture coordinate (UV) data in the output geometry.",
       "default": true,
       "type": "boolean"
     },
@@ -8825,8 +8819,7 @@ Reads 3D models from Wavefront OBJ files, supporting vertices, faces, normals, t
 ### Output Ports
 * features
 ### Category
-* File
-* 3D
+* Input
 
 ## OBJ Writer
 ### Type
@@ -13084,29 +13077,23 @@ Compresses files referenced by incoming features into a single ZIP archive.
 ### Type
 * source
 ### Description
-Reads 3D models from glTF 2.0 files, supporting meshes, nodes, scenes, and geometry primitives
+Reads 3D models from glTF 2.0 files, including meshes, nodes, scenes, and geometry primitives.
 ### Parameters
 ```json
 {
   "$schema": "http://json-schema.org/draft-07/schema#",
-  "title": "GltfReaderParam",
+  "title": "glTF Reader Parameters",
   "type": "object",
   "properties": {
-    "triangulate": {
-      "title": "Triangulate",
-      "description": "If true, converts all primitives to triangles (reserved for future use - currently all primitives are processed as triangles)",
-      "default": true,
-      "type": "boolean"
-    },
     "mergeMeshes": {
       "title": "Merge Meshes",
-      "description": "If true, combines all meshes from the glTF file into a single output feature",
+      "description": "Combines all meshes from the glTF file into a single output feature.",
       "default": false,
       "type": "boolean"
     },
     "includeNodes": {
       "title": "Include Nodes",
-      "description": "If true, includes node hierarchy information from the glTF scene graph in feature attributes",
+      "description": "Includes node hierarchy information from the glTF scene graph in feature attributes.",
       "default": true,
       "type": "boolean"
     },
@@ -13208,8 +13195,7 @@ Reads 3D models from glTF 2.0 files, supporting meshes, nodes, scenes, and geome
 ### Output Ports
 * features
 ### Category
-* File
-* 3D
+* Input
 
 ## glTF Writer
 ### Type

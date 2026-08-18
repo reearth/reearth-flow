@@ -1174,7 +1174,7 @@
         },
         "cityGmlAttributesKey": {
           "title": "CityGML属性キー",
-          "description": "設定した場合、解析されたCityGML属性はこのキーの下にネストされてフィーチャーに出力される。nullの場合、属性はトップレベルに出力される。デフォルトはnull。"
+          "description": "設定した場合、解析されたCityGML属性はこのキーの下にネストされて地物に出力される。nullの場合、属性はトップレベルに出力される。デフォルトはnull"
         },
         "dataset": {
           "title": "データセット",
@@ -1182,19 +1182,19 @@
         },
         "extractTags": {
           "title": "タグの抽出",
-          "description": "個別フィーチャーとして展開するフィーチャータイプ名。修飾名（`bldg:Building`）、ローカル名（`Building`）、またはClark記法（`{http://…}Building`）で指定可能。空の場合はすべてのトップレベル都市オブジェクトをそのまま出力する。"
+          "description": "個別の地物として展開する地物タイプ名。修飾名（`bldg:Building`）、ローカル名（`Building`）、またはClark記法（`{http://…}Building`）で指定可能。空の場合はすべてのトップレベル都市オブジェクトをそのまま出力する"
         },
         "flattenMeasureTypes": {
           "title": "計測タイプのフラット化",
-          "description": "trueの場合、単一の`uom`属性と数値テキストコンテンツを持つ要素は数値に変換され、単位は兄弟キー`{name}_uom`として格納される。デフォルトはfalse。"
+          "description": "trueの場合、単一の`uom`属性と数値テキストコンテンツを持つ要素は数値に変換され、単位は兄弟キー`{name}_uom`として格納される。デフォルトはfalse"
         },
         "flattenSingleChildObjects": {
           "title": "単一子オブジェクトノードのフラット化",
-          "description": "trueの場合、単一の子要素のみを持つラッパー要素は除去され、子要素はその独自タグ名でキー付けされ、常に配列でラップされて上位に移動する。デフォルトはfalse。"
+          "description": "trueの場合、単一の子要素のみを持つラッパー要素は除去され、子要素はその独自タグ名でキー付けされ、常に配列でラップされて上位に移動する。デフォルトはfalse"
         },
         "keepAttributes": {
           "title": "属性の保持",
-          "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされたフィーチャーから除去される。デフォルトはtrue。"
+          "description": "falseの場合、`@gml:id`や`@codeSpace`などの`@`プレフィックス付きXML属性はパースされた地物から除去される。デフォルトはtrue"
         }
       }
     },
@@ -2690,10 +2690,6 @@
           "title": "ファイルパス",
           "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）"
         },
-        "includeNormals": {
-          "title": "法線を含める",
-          "description": "出力ジオメトリに頂点法線データを含める"
-        },
         "includeTexcoords": {
           "title": "テクスチャ座標を含める",
           "description": "出力ジオメトリにテクスチャ座標（UV）データを含める"
@@ -2704,15 +2700,15 @@
         },
         "materialFile": {
           "title": "マテリアルファイル",
-          "description": "OBJ ファイルの mtllib ディレクティブの代わりに使用する外部 MTL ファイルへのパスを返す式。指定した場合、OBJ ファイル内のマテリアルライブラリ参照を上書きする。"
+          "description": "OBJ ファイルの mtllib ディレクティブの代わりに使用する外部 MTL ファイルへのパスを返す式。指定した場合、OBJ ファイル内のマテリアルライブラリ参照を上書きする"
         },
         "mergeGroups": {
           "title": "グループをマージ",
-          "description": "グループ/オブジェクトごとに個別フィーチャーを作成する代わりに、すべてのグループとオブジェクトを単一フィーチャーにマージする"
+          "description": "グループやオブジェクトごとに個別の地物を作成する代わりに、すべてのグループとオブジェクトを単一の地物にマージする"
         },
         "parseMaterials": {
           "title": "マテリアルを解析",
-          "description": "OBJ ファイルで参照されている MTL ファイルからマテリアル定義の解析を有効にする"
+          "description": "OBJ ファイルで参照されている MTL ファイルからマテリアル定義を解析する"
         },
         "triangulate": {
           "title": "三角形分割",
@@ -3903,16 +3899,16 @@
           "description": "入力ファイルのパスを返す式（リテラルパスまたは変数参照）"
         },
         "featureClassAttribute": {
-          "title": "フィーチャークラス属性",
-          "description": "分割した各フィーチャーについて、EXT_structural_metadata のクラス名を格納する属性キー。未設定の場合、クラス名は属性として追加されない"
+          "title": "地物クラス属性",
+          "description": "分割した各地物について、EXT_structural_metadata のクラス名を格納する属性キー。未設定の場合、クラス名は属性として追加されない"
         },
         "featureGranularity": {
-          "title": "フィーチャーの粒度",
-          "description": "1つの出力フィーチャーが何を表すかを指定する。デフォルトの `mesh` は glTF メッシュごとに1つのフィーチャーを出力する。`featureId` は各メッシュを EXT_mesh_features のフィーチャーIDごとに分割し、そのオブジェクトの EXT_structural_metadata プロパティを付与する。EXT_mesh_features を持たないファイルは、引き続きメッシュごとに1つのフィーチャーを出力する。"
+          "title": "地物の粒度",
+          "description": "1つの出力地物が何を表すかを指定する。デフォルトの `mesh` は glTF メッシュごとに1つの地物を出力する。`featureId` は各メッシュを EXT_mesh_features の地物IDごとに分割し、そのオブジェクトの EXT_structural_metadata プロパティを付与する。EXT_mesh_features を持たないファイルは、引き続きメッシュごとに1つの地物を出力する"
         },
         "includeNodes": {
           "title": "ノードを含める",
-          "description": "true の場合、glTF シーングラフのノード階層情報をフィーチャー属性に含める"
+          "description": "glTF シーングラフのノード階層情報を地物属性に含める"
         },
         "inline": {
           "title": "インラインコンテンツ",
@@ -3920,11 +3916,7 @@
         },
         "mergeMeshes": {
           "title": "メッシュをマージ",
-          "description": "true の場合、glTF ファイルのすべてのメッシュを単一の出力フィーチャーに結合する"
-        },
-        "triangulate": {
-          "title": "三角形分割",
-          "description": "true の場合、すべてのプリミティブを三角形に変換する（将来の使用のために予約済み。現在はすべてのプリミティブが三角形として処理される）"
+          "description": "glTF ファイルのすべてのメッシュを単一の出力地物に結合する"
         }
       },
       "enumI18n": {

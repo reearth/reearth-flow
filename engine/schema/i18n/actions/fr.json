@@ -2690,13 +2690,9 @@
           "title": "File Path",
           "description": "Expression that returns the path to the input file, either a literal path or a variable reference."
         },
-        "includeNormals": {
-          "title": "Include Normals",
-          "description": "Include vertex normal data in the output geometry"
-        },
         "includeTexcoords": {
           "title": "Include Texture Coordinates",
-          "description": "Include texture coordinate (UV) data in the output geometry"
+          "description": "Includes texture coordinate (UV) data in the output geometry."
         },
         "inline": {
           "title": "Inline Content",
@@ -2708,15 +2704,15 @@
         },
         "mergeGroups": {
           "title": "Merge Groups",
-          "description": "Merge all groups and objects into a single feature instead of creating separate features per group/object"
+          "description": "Merges all groups and objects into a single feature instead of creating separate features per group or object."
         },
         "parseMaterials": {
           "title": "Parse Materials",
-          "description": "Enable parsing of material definitions from MTL files referenced in the OBJ file"
+          "description": "Parses material definitions from MTL files referenced in the OBJ file."
         },
         "triangulate": {
           "title": "Triangulate",
-          "description": "Convert polygons with more than 3 vertices into triangles using fan triangulation"
+          "description": "Converts polygons with more than 3 vertices into triangles using fan triangulation."
         }
       }
     },
@@ -3891,7 +3887,7 @@
       "description": "Lit des modèles 3D depuis des fichiers glTF 2.0, prenant en charge les maillages, nœuds, scènes et primitives de géométrie",
       "parameterI18n": {
         "": {
-          "title": "glTF ReaderParam"
+          "title": "glTF Reader Parameters"
         },
         "dataset": {
           "title": "File Path",
@@ -3907,7 +3903,7 @@
         },
         "includeNodes": {
           "title": "Include Nodes",
-          "description": "If true, includes node hierarchy information from the glTF scene graph in feature attributes"
+          "description": "Includes node hierarchy information from the glTF scene graph in feature attributes."
         },
         "inline": {
           "title": "Inline Content",
@@ -3915,11 +3911,7 @@
         },
         "mergeMeshes": {
           "title": "Merge Meshes",
-          "description": "If true, combines all meshes from the glTF file into a single output feature"
-        },
-        "triangulate": {
-          "title": "Triangulate",
-          "description": "If true, converts all primitives to triangles (reserved for future use - currently all primitives are processed as triangles)"
+          "description": "Combines all meshes from the glTF file into a single output feature."
         }
       },
       "enumI18n": {
