@@ -5,8 +5,13 @@
 //! The old extraction (`reearth_flow_gltf::create_geometry_from_primitives_with_transform`)
 //! still returns the old `Geometry3D`; we convert that into the new
 //! `reearth_flow_geometry::Geometry`. glTF vertices are in model space with no
-//! CRS, so every leaf uses `CoordinateFrame::Euclidean` (no axis-swap / no
-//! reprojection, unlike the GeoPackage/GeoJSON readers).
+//! CRS, so every leaf uses `CoordinateFrame::Euclidean` (no reprojection,
+//! unlike the GeoPackage/GeoJSON readers). The glTF 2.0 specification
+//! mandates a right-handed Y-up frame ("Coordinate System and Units"), while
+//! this engine's Euclidean frame is Z-up, so every position is rotated onto
+//! Z-up in [`extract_mesh_build`], right after it is read — the reader
+//! normalises the format's axis convention at the boundary, unconditionally
+//! and with no user-facing parameter.
 
 use std::{
     collections::{BTreeMap, BTreeSet, HashMap, HashSet},
@@ -24,6 +29,7 @@ use reearth_flow_geometry::{
     },
     coordinate::CoordinateFrame,
     triangular_mesh::TriangularMesh3D,
+    types::coordinate::Coordinate,
     Euclidean3DGeometry, Geometry,
 };
 use reearth_flow_runtime::{
@@ -319,6 +325,11 @@ fn extract_mesh_build(
         let positions =
             reearth_flow_gltf::read_positions_with_transform(&pos_accessor, buffer_data, transform)
                 .map_err(|e| SourceError::GltfReader(format!("Failed to read positions: {e}")))?;
+        // The glTF specification mandates a right-handed Y-up frame; rotate
+        // every position onto this engine's Z-up Euclidean frame here, at the
+        // reader boundary, so nothing downstream needs to know glTF's axis
+        // convention.
+        let positions: Vec<Coordinate> = positions.into_iter().map(y_up_to_z_up).collect();
 
         let material = primitive.material();
         let slot = material.index().map(|index| palette_by_index[&index]);
@@ -371,6 +382,20 @@ fn extract_mesh_build(
     }
 
     Ok(build)
+}
+
+/// Rotate a glTF position from the format's mandated right-handed Y-up frame
+/// onto this engine's Z-up Euclidean frame: `(x, y, z) -> (x, -z, y)`, the
+/// rotation matrix `[[1,0,0],[0,0,-1],[0,1,0]]`. Its determinant is +1 (a
+/// proper rotation), so it preserves triangle winding; `TriangularMesh3D`
+/// derives its normals from winding rather than storing them, so no separate
+/// normal handling is needed here.
+fn y_up_to_z_up(p: Coordinate) -> Coordinate {
+    Coordinate {
+        x: p.x,
+        y: -p.z,
+        z: p.y,
+    }
 }
 
 /// A triangle corner's `EXT_mesh_features` feature ID for `vertex_index`.
@@ -1149,13 +1174,17 @@ mod tests {
 
     /// Real glTF parse -> extraction -> build on an embedded-buffer triangle. Unlike
     /// the synthetic `build_geometry` tests, this exercises the actual glTF parsing
-    /// path (positions accessor, indices, triangle expansion).
+    /// path (positions accessor, indices, triangle expansion) together with the
+    /// reader's Y-up -> Z-up rotation.
     #[test]
-    fn real_gltf_triangle_reads_as_triangular_mesh_preserving_z() {
+    fn real_gltf_triangle_reads_positions_rotated_from_y_up_to_z_up() {
         let gltf = gltf::Gltf::from_slice(TRIANGLE_GLTF.as_bytes()).expect("parse glTF");
 
         // Build the embedded buffer's exact bytes (positions VEC3 f32 at 0, indices
         // u16 at 36) so the test is independent of the reader's buffer loading.
+        // Each vertex's authored (Y-up) Z distinguishes it (1, 2, 3); after the
+        // reader's (x, y, z) -> (x, -z, y) rotation those become distinct Z-up
+        // Y values (-1, -2, -3).
         let mut buf = Vec::new();
         for xyz in [[0.0f32, 0.0, 1.0], [1.0, 0.0, 2.0], [0.0, 1.0, 3.0]] {
             for c in xyz {
@@ -1180,10 +1209,40 @@ mod tests {
 
         assert_eq!(*mesh.frame(), CoordinateFrame::Euclidean);
         assert_eq!(mesh.num_triangles(), 1);
-        let zs: Vec<f64> = mesh.vertices().iter().map(|v| v[2]).collect();
-        for z in [1.0_f64, 2.0, 3.0] {
-            assert!(zs.contains(&z), "z={z} missing from mesh vertices {zs:?}");
+        // The authored Y-up vertices [0,0,1], [1,0,2], [0,1,3], each mapped
+        // through (x, y, z) -> (x, -z, y).
+        let expected: Vec<[f64; 3]> = vec![[0.0, -1.0, 0.0], [1.0, -2.0, 0.0], [0.0, -3.0, 1.0]];
+        for v in &expected {
+            assert!(
+                mesh.vertices().contains(v),
+                "rotated vertex {v:?} missing from mesh vertices {:?}",
+                mesh.vertices()
+            );
         }
+    }
+
+    /// Orientation pin: the same coordinate the Model Georeferencer's
+    /// (now-removed) `upAxis` parameter was pinned against, before that
+    /// rotation moved into this reader. Interpreted directly (no rotation)
+    /// it resolves to the open ocean south of Australia (lat -31.301, lon
+    /// 136.655); through `y_up_to_z_up` it must resolve to Japan (lat
+    /// 35.908, lon 140.102).
+    #[test]
+    fn y_up_to_z_up_resolves_the_pinned_plateau_coordinate_to_japan() {
+        let p = Coordinate {
+            x: -3958731.9,
+            y: 3736419.1,
+            z: -3309830.0,
+        };
+        let rotated = y_up_to_z_up(p);
+
+        let lon = rotated.y.atan2(rotated.x).to_degrees();
+        let lat = rotated
+            .z
+            .atan2((rotated.x * rotated.x + rotated.y * rotated.y).sqrt())
+            .to_degrees();
+        assert!((lat - 35.908).abs() < 0.01, "latitude was {lat}");
+        assert!((lon - 140.102).abs() < 0.01, "longitude was {lon}");
     }
 
     #[test]
