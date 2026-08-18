@@ -102,7 +102,7 @@ func assertChecks(t *testing.T, name, action string, call func(context.Context, 
 	t.Helper()
 	i, client, rc, docID, wsID := wsFixture(t, true)
 	require.NoError(t, call(context.Background(), i, docID), name)
-	assert.Equal(t, rbac.ResourceProjectDocument, rc.gotResource, name)
+	assert.Equal(t, rbac.ResourceProject, rc.gotResource, name)
 	assert.Equal(t, action, rc.gotAction, "%s action", name)
 	require.Len(t, rc.gotWorkspace, 1, "%s workspace", name)
 	assert.Equal(t, wsID, rc.gotWorkspace[0], "%s checked the wrong workspace", name)
@@ -154,7 +154,7 @@ func deleteDocument(ctx context.Context, i *Websocket, d string) error {
 //
 // CopyDocument and Close are covered separately below. CopyDocument authorizes
 // twice and recordingChecker keeps only the last call, so listing it here would
-// assert ActionRead and stop checking the destination.
+// assert the source's action and stop checking the destination.
 func TestWebsocket_DeniedOperationsNeverReachTheClient(t *testing.T) {
 	assertDenied(t, "GetLatest", getLatest)
 	assertDenied(t, "GetHistory", getHistory)
@@ -172,15 +172,15 @@ func TestWebsocket_DeniedOperationsNeverReachTheClient(t *testing.T) {
 // TestWebsocket_ChecksTargetProjectWorkspace pins the action each operation
 // demands, and that it is evaluated against the addressed project's workspace.
 func TestWebsocket_ChecksTargetProjectWorkspace(t *testing.T) {
-	assertChecks(t, "GetLatest", rbac.ActionRead, getLatest)
-	assertChecks(t, "GetHistory", rbac.ActionRead, getHistory)
-	assertChecks(t, "GetHistoryByVersion", rbac.ActionRead, getHistoryByVersion)
-	assertChecks(t, "GetHistoryMetadata", rbac.ActionRead, getHistoryMetadata)
-	assertChecks(t, "CreateSnapshot", rbac.ActionRead, createSnapshot)
-	assertChecks(t, "GetNamedSnapshots", rbac.ActionRead, getNamedSnapshots)
+	assertChecks(t, "GetLatest", rbac.ActionAny, getLatest)
+	assertChecks(t, "GetHistory", rbac.ActionAny, getHistory)
+	assertChecks(t, "GetHistoryByVersion", rbac.ActionAny, getHistoryByVersion)
+	assertChecks(t, "GetHistoryMetadata", rbac.ActionAny, getHistoryMetadata)
+	assertChecks(t, "CreateSnapshot", rbac.ActionAny, createSnapshot)
+	assertChecks(t, "GetNamedSnapshots", rbac.ActionAny, getNamedSnapshots)
 	assertChecks(t, "SaveNamedSnapshot", rbac.ActionEdit, saveNamedSnapshot)
 	assertChecks(t, "Rollback", rbac.ActionEdit, rollback)
-	assertChecks(t, "FlushToGCS", rbac.ActionEdit, flushToGCS)
+	assertChecks(t, "FlushToGCS", rbac.ActionAny, flushToGCS)
 	assertChecks(t, "ImportDocument", rbac.ActionEdit, importDocument)
 	assertChecks(t, "DeleteDocument", rbac.ActionDelete, deleteDocument)
 }

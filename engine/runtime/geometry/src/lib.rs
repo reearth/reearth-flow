@@ -59,9 +59,9 @@ use serde::{Deserialize, Serialize};
 
 use ops::triangulation::Cache;
 use ops::{
-    Aabb, BoundingBox, ConvertFrame, CountHoles, ExtractHoles, ExtractedPart, ForceTwoDimension,
-    ForceTwoDimensionError, RemoveAppearance, Reproject, ReprojectionCache, Translate, Triangulate,
-    UnsupportedOperation,
+    Aabb, BoundingBox, Coerce, CoercionTarget, ConvertFrame, CountHoles, ExtractHoles,
+    ExtractedPart, ForceTwoDimension, ForceTwoDimensionError, RemoveAppearance, Reproject,
+    ReprojectionCache, Translate, Triangulate, UnsupportedOperation,
 };
 // `ValidationParams` / `ValidationType` / `ValidationReport` are named by the
 // `enum_dispatch`-generated `Validate` impls on the geometry enums, so they must
@@ -181,6 +181,7 @@ impl GeometryCollection {
         BoundingBox,
         Triangulate,
         Reproject,
+        Coerce,
         ConvertFrame,
         Translate,
         Split,
@@ -196,6 +197,7 @@ impl GeometryCollection {
         BoundingBox,
         Triangulate,
         Reproject,
+        Coerce,
         Validate,
         ConvertFrame,
         Translate,
@@ -235,6 +237,7 @@ pub enum Euclidean2DGeometry {
         BoundingBox,
         Triangulate,
         Reproject,
+        Coerce,
         ConvertFrame,
         Translate,
         Split,
@@ -250,6 +253,7 @@ pub enum Euclidean2DGeometry {
         BoundingBox,
         Triangulate,
         Reproject,
+        Coerce,
         Validate,
         ConvertFrame,
         Translate,
@@ -597,6 +601,48 @@ impl GeometryCollection {
             members,
             attrs: std::mem::take(&mut self.attrs),
         })
+    }
+}
+
+impl Coerce for Geometry {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        match self {
+            // An absent geometry has no vertices to re-represent.
+            Geometry::None => Err(UnsupportedOperation {
+                geometry: "Geometry::None",
+                operation: "coerce",
+            }),
+            Geometry::Euclidean2D(g) => g.coerce(target, cache),
+            Geometry::Euclidean3D(g) => g.coerce(target, cache),
+            Geometry::GeometryCollection(c) => c.coerce(target, cache),
+        }
+    }
+}
+
+impl Coerce for GeometryCollection {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        let mut changed = false;
+        for member in self.members_mut() {
+            if let Ok(coerced) = member.coerce(target, cache) {
+                *member = coerced;
+                changed = true;
+            }
+        }
+        if !changed {
+            return Err(UnsupportedOperation {
+                geometry: "GeometryCollection",
+                operation: "coerce",
+            });
+        }
+        Ok(Geometry::GeometryCollection(std::mem::take(self)))
     }
 }
 

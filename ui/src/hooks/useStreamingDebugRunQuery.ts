@@ -298,6 +298,69 @@ function manageCacheSize(queryClient: QueryClient) {
   }
 }
 
+/**
+ * Positions the panel holds before it stops taking features.
+ *
+ * `displayLimit` counts features, which is the wrong unit for geometry that
+ * varies by two orders of magnitude between files. Measured against the
+ * transform's output, a retained position costs ~220 bytes, so 2000 features
+ * is 17 MB of CityGML LOD1 boxes and 867 MB of dense LOD2 solids — and Cesium
+ * then allocates its own positions and geometry instances on top. The second
+ * case exhausts the renderer process before anything draws.
+ *
+ * This bounds the same thing `displayLimit` bounds, in the unit that actually
+ * costs. It is deliberately generous: at ~220 bytes a position this is ~220 MB,
+ * which no ordinary file reaches. Whatever it leaves out is already reported —
+ * the table's footer reads "Rows: shown / total".
+ */
+const DISPLAY_POSITION_LIMIT = 1_000_000;
+
+/**
+ * Positions a converted geometry holds.
+ *
+ * Descends to the ring and takes its length rather than counting positions one
+ * by one, so this costs a property read per ring, not per coordinate.
+ */
+function positionsIn(coordinates: unknown): number {
+  if (!Array.isArray(coordinates) || coordinates.length === 0) return 0;
+  // A position: `[lon, lat]` or `[lon, lat, z]`.
+  if (typeof coordinates[0] === "number") return 1;
+  // A ring, or any other flat list of positions.
+  if (typeof (coordinates[0] as never[])[0] === "number") {
+    return coordinates.length;
+  }
+  let total = 0;
+  for (const item of coordinates) total += positionsIn(item);
+  return total;
+}
+
+/** Positions a transformed feature holds, across every geometry in it. */
+export function featurePositions(geometry: any): number {
+  if (!geometry) return 0;
+  if (Array.isArray(geometry.geometries)) {
+    return geometry.geometries.reduce(
+      (total: number, member: any) => total + featurePositions(member),
+      0,
+    );
+  }
+  // Legacy CityGML keeps its rings under `gmlGeometries` and has no
+  // `coordinates`, so reading only the latter would leave it uncounted.
+  const gmlGeometries =
+    geometry.gmlGeometries ?? geometry.value?.cityGmlGeometry?.gmlGeometries;
+  if (Array.isArray(gmlGeometries)) {
+    const ring = (value: unknown) => (Array.isArray(value) ? value.length : 0);
+    let total = 0;
+    for (const geom of gmlGeometries) {
+      for (const polygon of geom?.polygons ?? []) {
+        total += ring(polygon?.exterior);
+        for (const hole of polygon?.interior ?? []) total += ring(hole);
+      }
+    }
+    return total;
+  }
+  return positionsIn(geometry.coordinates);
+}
+
 export const useStreamingDebugRunQuery = (
   dataUrl: string,
   options: UseStreamingDebugRunQueryOptions = {},
@@ -353,6 +416,44 @@ export const useStreamingDebugRunQuery = (
       let detectedVisualizerType: VisualizerType = null;
       const streamData: any[] = [];
       let totalFeatures = 0;
+      let displayedPositions = 0;
+
+      /**
+       * Transform a batch and keep what fits, by feature count and by the
+       * geometry those features carry. Reports whether anything was kept.
+       */
+      const retainForDisplay = (batch: any[]): boolean => {
+        if (
+          streamData.length >= displayLimit ||
+          displayedPositions >= DISPLAY_POSITION_LIMIT
+        ) {
+          return false;
+        }
+
+        const room = displayLimit - streamData.length;
+        let added = false;
+
+        for (const feature of batch.slice(0, room)) {
+          let transformed;
+          try {
+            transformed = intermediateDataTransform(feature);
+          } catch (error) {
+            console.warn("Failed to transform feature:", error, feature);
+            transformed = feature;
+          }
+
+          const positions =
+            featurePositions((transformed as any).geometry) +
+            featurePositions((transformed as any).lodDetail?.geometry);
+          if (displayedPositions + positions > DISPLAY_POSITION_LIMIT) break;
+          streamData.push(transformed);
+          displayedPositions += positions;
+          added = true;
+          if (displayedPositions >= DISPLAY_POSITION_LIMIT) break;
+        }
+
+        return added;
+      };
       let isComplete = false;
       let progress = { bytesProcessed: 0, featuresProcessed: 0 };
 
@@ -396,30 +497,9 @@ export const useStreamingDebugRunQuery = (
               detectedVisualizerType = analysis.visualizerType;
             }
 
-            // Only store data up to display limit, but always update progress
-            let shouldUpdateData = false;
-            if (streamData.length < displayLimit) {
-              const remainingToAdd = displayLimit - streamData.length;
-              const dataToAdd = result.data.slice(0, remainingToAdd);
-
-              const transformedData = dataToAdd.map((feature) => {
-                try {
-                  const transformed = intermediateDataTransform(feature);
-                  // Keep the engine's own record for raw inspection; its
-                  // inline image bytes have already been dropped, so this
-                  // retains no pixels. It does retain everything else, though
-                  // — see `source` on TransformedFeature for what that costs
-                  // and when to reach for this line.
-                  transformed.source = feature;
-                  return transformed;
-                } catch (error) {
-                  console.warn("Failed to transform feature:", error, feature);
-                  return feature;
-                }
-              });
-              streamData.push(...transformedData);
-              shouldUpdateData = true;
-            }
+            // Only store data up to the display limits, but always update
+            // progress.
+            const shouldUpdateData = retainForDisplay(result.data);
 
             // Update streaming state
             setStreamingState((prev) => ({
@@ -429,7 +509,7 @@ export const useStreamingDebugRunQuery = (
               visualizerType: detectedVisualizerType,
               totalFeatures,
               progress: result.progress,
-              hasMore: totalFeatures > displayLimit,
+              hasMore: totalFeatures > streamData.length,
               isComplete: result.isComplete,
               isLoading: !result.isComplete,
             }));
@@ -465,34 +545,8 @@ export const useStreamingDebugRunQuery = (
               detectedVisualizerType = analysis.visualizerType;
             }
 
-            // Only store data up to display limit
-            let shouldUpdateData = false;
-            if (streamData.length < displayLimit) {
-              const remainingToAdd = displayLimit - streamData.length;
-              const dataToAdd = result.data.slice(0, remainingToAdd);
-
-              const transformedData = dataToAdd.map((feature) => {
-                try {
-                  const transformed = intermediateDataTransform(feature);
-                  // Keep the engine's own record for raw inspection; its
-                  // inline image bytes have already been dropped, so this
-                  // retains no pixels. It does retain everything else, though
-                  // — see `source` on TransformedFeature for what that costs
-                  // and when to reach for this line.
-                  transformed.source = feature;
-                  return transformed;
-                } catch (error) {
-                  console.warn(
-                    "Failed to transform streaming feature:",
-                    error,
-                    feature,
-                  );
-                  return feature;
-                }
-              });
-              streamData.push(...transformedData);
-              shouldUpdateData = true;
-            }
+            // Only store data up to the display limits
+            const shouldUpdateData = retainForDisplay(result.data);
 
             // Update streaming state
             setStreamingState((prev) => ({
@@ -502,7 +556,7 @@ export const useStreamingDebugRunQuery = (
               visualizerType: detectedVisualizerType,
               totalFeatures,
               progress: result.progress,
-              hasMore: totalFeatures > displayLimit,
+              hasMore: totalFeatures > streamData.length,
               isComplete: result.isComplete,
               isLoading: !result.isComplete,
             }));
@@ -523,7 +577,7 @@ export const useStreamingDebugRunQuery = (
           totalFeatures,
           isComplete,
           progress,
-          hasMore: totalFeatures > displayLimit,
+          hasMore: totalFeatures > streamData.length,
           error: null,
           cachedAt: Date.now(),
         };

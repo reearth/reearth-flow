@@ -7,13 +7,7 @@ import useDataColumnizer from "./useDataColumnizer";
 
 /** Run raw JSONL lines through the transform the streaming hook applies. */
 function columnize(lines: unknown[]) {
-  const features = lines.map((line) => {
-    const transformed = intermediateDataTransform(line);
-    // The streaming hook attaches the parsed record for raw inspection; do the
-    // same here, so what reaches the table is what reaches it in the app.
-    transformed.source = line;
-    return transformed;
-  });
+  const features = lines.map(intermediateDataTransform);
 
   // Built once, outside the render callback: the hook re-runs its effect
   // whenever `parsedData` changes identity, and the real caller hands it a
@@ -144,10 +138,10 @@ describe("new-format features reach the table", () => {
       },
     ]);
 
-    // The whole row, serialized, must not carry the 200k byte values —
-    // `_source` holds the parsed record, which the transform strips in place.
+    // The whole row, serialized, must not carry the 200k byte values.
+    // `transformNextFeature` is what replaced them with a description; this
+    // checks none of it leaked back in through a cell or through `_values`.
     expect(JSON.stringify(rows[0]).length).toBeLessThan(2000);
-    expect(JSON.stringify(rows[0])).toContain("byteLength");
   });
 
   test("a feature with no geometry still lists its attributes", () => {
@@ -193,7 +187,50 @@ describe("new-format features reach the table", () => {
     );
   });
 
-  test("a row carries the engine's own record for raw inspection", () => {
+  test("keeps coordinates ahead of the appearance columns", () => {
+    const { headers } = columnize([
+      {
+        id: "a",
+        attributes: {},
+        geometry: {
+          GeometryCollection: {
+            members: [
+              {
+                Euclidean3D: {
+                  PolygonMesh: {
+                    frame: { Crs: 6697 },
+                    faces: [
+                      {
+                        exterior: [
+                          [35.6, 139.7, 0],
+                          [35.6, 139.8, 0],
+                          [35.7, 139.8, 9],
+                        ],
+                      },
+                    ],
+                    appearance: {
+                      materials: [
+                        { Phong: { diffuse: [1, 0, 0], transparency: 0 } },
+                      ],
+                      themes: [{ theme: "t", front: { Uniform: 0 } }],
+                      default_theme: "t",
+                    },
+                  },
+                },
+              },
+            ],
+            attrs: [{ lod: 2 }],
+          },
+        },
+      },
+    ]);
+
+    expect(headers.indexOf("geometry.coordinates")).toBeLessThan(
+      headers.indexOf("geometry.materials"),
+    );
+  });
+
+  test("a row carries the values behind its cells, for the details panel", () => {
     const line = {
       id: "0195f3a0-0000-7000-8000-000000000005",
       attributes: { name: "Shibuya" },
@@ -208,7 +245,6 @@ describe("new-format features reach the table", () => {
                   [35.7, 139.7, 0],
                   [35.7, 139.8, 0],
                 ],
-                // Dropped by the derived GeoJSON; must survive here.
                 holes: [
                   [
                     [35.62, 139.72, 0],
@@ -224,25 +260,37 @@ describe("new-format features reach the table", () => {
     };
 
     const features = [intermediateDataTransform(line)];
-    features[0].source = line;
     const parsedData = { type: "FeatureCollection", features };
     const { result } = renderHook(() =>
       useDataColumnizer({ parsedData, type: "geojson" }),
     );
 
     const row = (result.current.tableData as any[])[0];
-    const source = row._source as typeof line;
 
-    // The engine's nested shape, not the flattened GeoJSON projection.
-    expect(source.geometry.Euclidean3D.PolygonMesh.faces[0].holes).toHaveLength(
-      1,
-    );
-    expect(source.geometry.Euclidean3D.PolygonMesh.frame).toEqual({
-      Crs: 6697,
-    });
+    // The cell string is cut to fit a cell; the value behind it is not, so the
+    // details panel can format the coordinates it actually holds.
+    // One face: its exterior ring, then its hole, each closed.
+    expect(row._values.geometry.coordinates).toEqual([
+      [
+        [
+          [139.7, 35.6, 0],
+          [139.7, 35.7, 0],
+          [139.8, 35.7, 0],
+          [139.7, 35.6, 0],
+        ],
+        [
+          [139.72, 35.62, 0],
+          [139.72, 35.63, 0],
+          [139.73, 35.63, 0],
+          [139.72, 35.62, 0],
+        ],
+      ],
+    ]);
+    expect(row._values.attributes).toEqual({ name: "Shibuya" });
+
     // Underscored, so it does not become a column.
     expect(
       (result.current.tableColumns as any[]).map((c) => c.header),
-    ).not.toContain("_source");
+    ).not.toContain("_values");
   });
 });
