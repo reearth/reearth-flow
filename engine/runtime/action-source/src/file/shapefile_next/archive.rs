@@ -11,6 +11,7 @@ use std::io::{Cursor, Read};
 use bytes::Bytes;
 use reearth_flow_geometry::coordinate::EpsgCode;
 
+use super::record::Field;
 use crate::errors::{ShapefileError, SourceError};
 
 /// Character encoding of a `.dbf`'s text fields.
@@ -90,8 +91,8 @@ pub(super) struct Archive {
     reader: shapefile::Reader<Cursor<Vec<u8>>, Cursor<Vec<u8>>>,
     /// The CRS the `.prj` names, or `None` when there is none to name it.
     pub(super) epsg: Option<EpsgCode>,
-    /// The attribute table's field names, in the order the table declares them.
-    pub(super) field_names: Vec<String>,
+    /// The attribute table's fields, in the order the table declares them.
+    pub(super) fields: Vec<Field>,
 }
 
 impl Archive {
@@ -135,10 +136,10 @@ pub(super) fn open(content: &Bytes, encoding: &Option<String>) -> Result<Archive
     }
 
     let shp = Cursor::new(components.shp.expect("a complete shapefile has a .shp"));
-    let dbf = Cursor::new(components.dbf.expect("a complete shapefile has a .dbf"));
+    let dbf = components.dbf.expect("a complete shapefile has a .dbf");
+    let decimal_places = decimal_places(&dbf);
+    let dbf = Cursor::new(dbf);
 
-    // The index gives each record's offset, so the shapes can be read without
-    // walking the whole file.
     let shapes = match components.shx {
         Some(shx) => shapefile::ShapeReader::with_shx(shp, Cursor::new(shx)).map_err(|e| {
             SourceError::shapefile_reader(format!("Failed to create shape reader with index: {e}"))
@@ -151,20 +152,28 @@ pub(super) fn open(content: &Bytes, encoding: &Option<String>) -> Result<Archive
         }
     };
     let table = dbase_reader(dbf, encoding)?;
-    let field_names = table
+    let fields = table
         .fields()
         .iter()
-        .map(|field| field.name().to_string())
+        .enumerate()
+        .map(|(i, field)| Field {
+            name: field.name().to_string(),
+            integral: matches!(
+                field.field_type(),
+                shapefile::dbase::FieldType::Numeric | shapefile::dbase::FieldType::Float
+            ) && decimal_places.get(i) == Some(&0),
+        })
         .collect();
 
     Ok(Archive {
         reader: shapefile::Reader::new(shapes, table),
         epsg,
-        field_names,
+        fields,
     })
 }
 
-/// The files of the archive's shapefile, keyed by extension.
+/// The files of the archive's shapefile, keyed by extension. Components pair by
+/// their case-folded stem.
 ///
 /// An archive holding more than one shapefile is read as the first by name, so
 /// that the same archive always yields the same shapefile.
@@ -172,9 +181,6 @@ fn extract(content: &Bytes) -> Result<Components, SourceError> {
     let mut archive = zip::ZipArchive::new(Cursor::new(content.as_ref()))
         .map_err(|e| SourceError::shapefile_reader(format!("Failed to read ZIP archive: {e}")))?;
 
-    // Keyed by the case-folded stem, a component's name being spelled in whatever
-    // case its producer chose, and ordered so that an archive of several
-    // shapefiles resolves to the same one on every read.
     let mut groups: BTreeMap<String, Components> = BTreeMap::new();
     for i in 0..archive.len() {
         let mut file = archive.by_index(i).map_err(|e| {
@@ -283,8 +289,6 @@ fn classify(path: &str) -> Entry {
     if COMPONENTS.contains(&extension.as_str()) {
         return Entry::Component(stem.to_string(), extension);
     }
-    // The metadata document is named after the whole `.shp`, so its stem is a
-    // shapefile's name with an extension still on it.
     if extension == "xml" && stem.to_lowercase().ends_with(".shp") {
         return Entry::Sidecar;
     }
@@ -328,6 +332,27 @@ fn resolve_encoding(
 /// Offset in a `.dbf` header of the byte stating the code page its text is written
 /// in.
 const CODE_PAGE_MARK_OFFSET: usize = 29;
+/// Offset in a `.dbf` of the first field descriptor.
+const FIELD_DESCRIPTORS_OFFSET: usize = 32;
+/// Bytes of one field descriptor.
+const FIELD_DESCRIPTOR_BYTES: usize = 32;
+/// The byte that ends the field descriptors.
+const FIELD_DESCRIPTORS_TERMINATOR: u8 = 0x0D;
+/// Offset in a field descriptor of its decimal count.
+const DECIMAL_COUNT_OFFSET: usize = 17;
+
+/// The decimal count each field descriptor of a `.dbf` declares, in table order.
+///
+/// `dbase` reads the count but does not expose it, and a numeric field's values
+/// cannot be told integer from decimal without it.
+fn decimal_places(dbf: &[u8]) -> Vec<u8> {
+    dbf.get(FIELD_DESCRIPTORS_OFFSET..)
+        .unwrap_or(&[])
+        .chunks_exact(FIELD_DESCRIPTOR_BYTES)
+        .take_while(|descriptor| descriptor[0] != FIELD_DESCRIPTORS_TERMINATOR)
+        .map(|descriptor| descriptor[DECIMAL_COUNT_OFFSET])
+        .collect()
+}
 
 /// What a `.dbf` header's code page mark amounts to.
 #[derive(Debug, PartialEq, Eq)]
@@ -447,8 +472,6 @@ mod tests {
         assert_eq!(classify("no-extension"), Entry::Unrelated);
     }
 
-    // Two shapefiles of the same name in different directories are different
-    // shapefiles, so their components must not be mixed.
     #[test]
     fn a_stem_keeps_its_directory() {
         assert_eq!(component("a/mesh3.shp").unwrap().0, "a/mesh3".to_string());
@@ -458,9 +481,6 @@ mod tests {
         );
     }
 
-    // The indices and metadata a shapefile ships with hold no feature data, and are
-    // recognised so an entry passed over deliberately is not mistaken for one the
-    // reader does not know about.
     #[test]
     fn a_sidecar_is_recognised_as_one() {
         for path in [
@@ -480,13 +500,10 @@ mod tests {
         }
     }
 
-    // The metadata document is named after the whole `.shp`, so it must not be taken
-    // for a component of a shapefile called `mesh3.shp`.
     #[test]
     fn the_metadata_document_is_a_sidecar_not_a_component() {
         assert_eq!(classify("dir/mesh3.shp.xml"), Entry::Sidecar);
         assert_eq!(classify("dir/mesh3.SHP.XML"), Entry::Sidecar);
-        // Some other XML in the archive is nothing to do with a shapefile.
         assert_eq!(classify("dir/metadata.xml"), Entry::Unrelated);
     }
 
@@ -518,8 +535,6 @@ mod tests {
         Bytes::from(buffer)
     }
 
-    // A producer spells the stem in whatever case it likes, and its components need
-    // not agree with each other, so pairing them cannot turn on it.
     #[test]
     fn components_pair_whatever_case_their_stem_is_spelled_in() {
         let content = zipped(&[("DATA.SHP", b"shp"), ("data.dbf", b"dbf")]);
@@ -528,16 +543,12 @@ mod tests {
         assert_eq!(components.dbf.as_deref(), Some(b"dbf".as_ref()));
     }
 
-    // A sidecar carries no feature data, so it can neither complete a shapefile nor
-    // stand in for a component that is missing.
     #[test]
     fn a_sidecar_cannot_complete_a_shapefile() {
         let content = zipped(&[("data.shp", b"shp"), ("data.qix", b"index")]);
         assert!(extract(&content).is_err());
     }
 
-    // `data.shp.xml` must not be read as a component of a shapefile whose stem is
-    // `data.shp`, which would make the metadata document its own shapefile.
     #[test]
     fn the_metadata_document_does_not_become_a_shapefile_of_its_own() {
         let content = zipped(&[
@@ -569,17 +580,12 @@ mod tests {
         assert!(resolve_encoding(&Some("not-an-encoding".to_string()), None, None).is_err());
     }
 
-    // A `.cpg` states the encoding outright, so it is taken over the header's code
-    // page mark.
     #[test]
     fn the_cpg_overrides_the_declared_code_page() {
         let encoding = resolve_encoding(&None, Some(b"UTF-8"), Some(&dbf_declaring(0x7B))).unwrap();
         assert_eq!(encoding, Encoding::Utf8);
     }
 
-    // A table that names its own code page must be read in it. Reading it as UTF-8
-    // instead garbles every non-ASCII field, which is what a Shift_JIS table
-    // shipped without a `.cpg` used to come back as.
     #[test]
     fn a_declared_code_page_is_read_in_when_nothing_else_names_one() {
         let encoding = resolve_encoding(&None, None, Some(&dbf_declaring(0x7B))).unwrap();
@@ -593,8 +599,6 @@ mod tests {
         assert_eq!(resolve_encoding(&None, None, None).unwrap(), Encoding::Utf8);
     }
 
-    // `dbase` fails outright on a code page it cannot resolve, so a DOS page the web
-    // encodings leave out must not be handed to it.
     #[test]
     fn a_code_page_with_no_decoder_falls_back_rather_than_failing() {
         // 0x01 is code page 437, which the web encodings do not cover.
@@ -606,13 +610,26 @@ mod tests {
         ));
     }
 
-    // A header too short to hold a code page byte states nothing.
+    #[test]
+    fn each_field_descriptor_states_its_decimal_count() {
+        use shapefile::dbase::{FieldName, TableWriterBuilder};
+
+        let mut dbf = Vec::new();
+        TableWriterBuilder::new()
+            .add_numeric_field(FieldName::try_from("count").unwrap(), 10, 0)
+            .add_character_field(FieldName::try_from("name").unwrap(), 20)
+            .add_numeric_field(FieldName::try_from("ratio").unwrap(), 10, 3)
+            .build_with_dest(Cursor::new(&mut dbf))
+            .finalize()
+            .expect("the table is expected to write");
+        assert_eq!(decimal_places(&dbf), vec![0, 0, 3]);
+    }
+
     #[test]
     fn a_truncated_header_states_no_code_page() {
         assert_eq!(declared_code_page(&[0u8; 4]), DeclaredCodePage::Unstated);
     }
 
-    // A projected CRS must not be reported as the geographic CRS it is built on.
     #[test]
     fn a_projected_crs_is_not_taken_for_its_datum() {
         let prj = br#"GEOGCS["GCS_JGD_2011",DATUM["D_JGD_2011",SPHEROID["GRS_1980",6378137.0,298.257222101]],PRIMEM["Greenwich",0.0],UNIT["Degree",0.0174532925199433]]"#;

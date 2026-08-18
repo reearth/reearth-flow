@@ -19,7 +19,9 @@ use super::shape::{Bucket, Frames, Payload, Ring, WrittenShape};
 
 /// The geometry of one written feature, and the attributes to write beside it.
 struct Record<'a> {
+    /// What the feature's geometry writes to.
     shape: WrittenShape,
+    /// The feature's attributes.
     attributes: &'a IndexMap<Attribute, AttributeValue>,
 }
 
@@ -185,8 +187,6 @@ fn write_bucket(
         .map_err(|e| crate::errors::SinkError::ShapefileWriter(e.to_string()))
     };
 
-    // A field the first feature lacks would otherwise be missing from every
-    // record, so the table covers the fields all of them carry.
     let (table_builder, fields) = make_table_builder(records.iter().map(|r| r.attributes))?;
 
     if bucket == Bucket::Null {
@@ -201,8 +201,6 @@ fn write_bucket(
         let shp_out = output("shp")?;
         let mut writer = shapefile::Writer::from_path(shp_out.uri().as_path(), table_builder)
             .map_err(to_sink_error)?;
-        // Every record in a file has one shape type, and a point bucket only
-        // settles on `Point` when no feature in it writes more than one position.
         let multipoint = bucket_is_multipoint(bucket, records);
         for record in records {
             let attributes = attributes_to_record(record.attributes, &fields);
@@ -222,9 +220,6 @@ fn write_bucket(
         .write(bytes::Bytes::from(cpg))
         .map_err(|e| crate::errors::SinkError::ShapefileWriter(e.to_string()))?;
 
-    // A file whose records come from more than one CRS, or from none, or from
-    // one no `.prj` can describe, is left without a `.prj` rather than claiming
-    // a CRS that does not cover it.
     let frames = records
         .iter()
         .fold(Frames::Nothing, |acc, r| acc.and(r.shape.frames.clone()));
@@ -260,6 +255,8 @@ fn bucket_is_multipoint(bucket: Bucket, records: &[Record<'_>]) -> bool {
     })
 }
 
+/// Write one record: `payload` as the shape type `bucket` and `multipoint` settle
+/// on, beside `record`.
 fn write_shape<T: std::io::Write + std::io::Seek>(
     writer: &mut shapefile::Writer<T>,
     bucket: Bucket,
@@ -319,6 +316,7 @@ fn first_position(positions: &[[f64; 3]]) -> [f64; 3] {
     positions.first().copied().unwrap_or([0.0, 0.0, 0.0])
 }
 
+/// Positions as shapefile points, their elevations dropped.
 fn points(positions: &[[f64; 3]]) -> Vec<shapefile::Point> {
     positions
         .iter()
@@ -326,6 +324,7 @@ fn points(positions: &[[f64; 3]]) -> Vec<shapefile::Point> {
         .collect()
 }
 
+/// Positions as elevated shapefile points carrying no measure.
 fn points_z(positions: &[[f64; 3]]) -> Vec<shapefile::PointZ> {
     positions
         .iter()
@@ -333,6 +332,7 @@ fn points_z(positions: &[[f64; 3]]) -> Vec<shapefile::PointZ> {
         .collect()
 }
 
+/// `points` as the outer or inner ring `ring` says it is.
 fn polygon_ring<P>(ring: &Ring, points: Vec<P>) -> shapefile::PolygonRing<P> {
     if ring.outer {
         shapefile::PolygonRing::Outer(points)
@@ -389,6 +389,7 @@ fn write_cpg(mut writer: impl std::io::Write) -> std::io::Result<()> {
     writer.flush()
 }
 
+/// A `shapefile` error as a sink error, an I/O error kept as one.
 fn to_sink_error(err: shapefile::Error) -> crate::errors::SinkError {
     match err {
         shapefile::Error::IoError(io_err) => crate::errors::SinkError::ShapefileWriterIo(io_err),
@@ -422,8 +423,6 @@ mod tests {
         }
     }
 
-    // A field a feature carries as null must still reach that feature's record:
-    // a record short of a column the table declares is rejected outright.
     #[test]
     fn a_null_valued_field_is_still_written_for_every_record() {
         let first = attributes(&[("a", AttributeValue::String("x".into()))]);

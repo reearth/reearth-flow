@@ -9,6 +9,14 @@ use byteorder::{BigEndian, LittleEndian, WriteBytesExt};
 
 /// Bytes of the header both files start with.
 const HEADER_BYTES: usize = 100;
+/// The file code every header opens with.
+const FILE_CODE: u32 = 9994;
+/// The format version every header states.
+const VERSION: u32 = 1000;
+/// The shape type of a null shape, and of a file holding only null shapes.
+const NULL_SHAPE_TYPE: u32 = 0;
+/// The number of the first record.
+const FIRST_RECORD_NUMBER: u32 = 1;
 /// Bytes of one `.shp` record: an 8-byte record header, then a 4-byte shape type
 /// and no content beyond it.
 const SHP_RECORD_BYTES: usize = 12;
@@ -21,10 +29,9 @@ const NULL_CONTENT_WORDS: i32 = 2;
 pub(super) fn write_shp(mut writer: impl Write, feature_count: usize) -> Result<()> {
     write_header(&mut writer, HEADER_BYTES + feature_count * SHP_RECORD_BYTES)?;
     for i in 0..feature_count {
-        // Record numbers start at 1.
-        writer.write_u32::<BigEndian>(i as u32 + 1)?;
+        writer.write_u32::<BigEndian>(FIRST_RECORD_NUMBER + i as u32)?;
         writer.write_i32::<BigEndian>(NULL_CONTENT_WORDS)?;
-        writer.write_u32::<LittleEndian>(0)?;
+        writer.write_u32::<LittleEndian>(NULL_SHAPE_TYPE)?;
     }
     Ok(())
 }
@@ -40,20 +47,18 @@ pub(super) fn write_shx(mut writer: impl Write, feature_count: usize) -> Result<
     Ok(())
 }
 
-/// The 100-byte header both files share. `file_bytes` is the length of the file
-/// the header belongs to, which the two files do not share.
+/// The header both files share: the file code, five unused words, the file
+/// length, the version, the shape type, then a bounding box and Z and M ranges
+/// that a file of null records leaves at zero. `file_bytes` is the length of the
+/// file the header belongs to, which the two files do not share.
 fn write_header(mut writer: impl Write, file_bytes: usize) -> Result<()> {
-    writer.write_u32::<BigEndian>(9994)?;
-    // Bytes 4..24 are unused.
+    writer.write_u32::<BigEndian>(FILE_CODE)?;
     for _ in 0..5 {
         writer.write_u32::<BigEndian>(0)?;
     }
     writer.write_i32::<BigEndian>(words(file_bytes))?;
-    writer.write_u32::<LittleEndian>(1000)?;
-    // Shape type: null.
-    writer.write_u32::<LittleEndian>(0)?;
-
-    // Bounding box, then the Z and M ranges: a file of null records bounds nothing.
+    writer.write_u32::<LittleEndian>(VERSION)?;
+    writer.write_u32::<LittleEndian>(NULL_SHAPE_TYPE)?;
     for _ in 0..8 {
         writer.write_f64::<LittleEndian>(0.0)?;
     }

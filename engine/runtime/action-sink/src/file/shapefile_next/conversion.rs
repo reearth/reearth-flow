@@ -2,8 +2,9 @@
 //! `CoordinateFrame`) into the positions a shapefile record holds.
 //!
 //! A `.shp` holds records of one shape type, so a geometry converts to a
-//! [`Payload`] plus the [`Bucket`] naming the file it belongs in; the concrete
-//! shape type is settled per file once every feature in it is known.
+//! [`Payload`] plus the [`Bucket`](super::shape::Bucket) naming the file it
+//! belongs in; the concrete shape type is settled per file once every feature in
+//! it is known.
 //!
 //! A geometry winds a face's exterior counter-clockwise and its holes clockwise,
 //! where a shapefile winds them the other way round, so every ring is reversed on
@@ -23,6 +24,8 @@ use reearth_flow_geometry::{
     Euclidean2DGeometry, Euclidean3DGeometry, Geometry,
 };
 
+use chrono::Datelike;
+use reearth_flow_common::datetime::DateTime;
 use reearth_flow_types::{Attribute, AttributeValue};
 use shapefile::dbase::{FieldName, FieldValue, Record, TableWriterBuilder};
 
@@ -91,9 +94,13 @@ fn warn_omitted(omitted: &[Unwritable]) {
 /// What a geometry writes to, with the frames its positions came from and the
 /// reasons parts of it were left out.
 struct Written {
+    /// The positions to write.
     payload: Payload,
+    /// Whether the positions carry an elevation the geometry stated.
     elevated: bool,
+    /// The frames the positions came from.
     frames: Frames,
+    /// Why parts of the geometry were left out.
     omitted: Vec<Unwritable>,
 }
 
@@ -119,6 +126,7 @@ impl Written {
     }
 }
 
+/// What `geometry` writes to, or why it cannot be written.
 fn write(geometry: &Geometry) -> Result<Written, Unwritable> {
     match geometry {
         Geometry::None => Err(Unwritable::AbsentGeometry),
@@ -128,6 +136,7 @@ fn write(geometry: &Geometry) -> Result<Written, Unwritable> {
     }
 }
 
+/// What a 2D geometry writes to; a leaf stating an elevation writes as elevated.
 fn write_2d(geometry: &Euclidean2DGeometry) -> Result<Written, Unwritable> {
     use Euclidean2DGeometry::*;
     match geometry {
@@ -161,6 +170,7 @@ fn write_2d(geometry: &Euclidean2DGeometry) -> Result<Written, Unwritable> {
     }
 }
 
+/// What a 3D geometry writes to, always elevated.
 fn write_3d(geometry: &Euclidean3DGeometry) -> Result<Written, Unwritable> {
     use Euclidean3DGeometry::*;
     match geometry {
@@ -271,10 +281,9 @@ fn merge(parts: impl Iterator<Item = Result<Written, Unwritable>>) -> Result<Wri
     }
 }
 
-// A shapefile's (x, y) is (easting, northing) whatever the CRS declares, so a
-// frame declaring the reverse has its horizontal pair swapped on the way out.
-
-/// A stored coordinate as a shapefile position, its height left where it is.
+/// A stored coordinate as a shapefile position, its height left where it is: a
+/// shapefile's `(x, y)` is `(easting, northing)` whatever the CRS declares, so a
+/// frame declaring the reverse has its horizontal pair swapped.
 fn swapped<const N: usize>(frame: &CoordinateFrame, coordinate: [f64; N]) -> [f64; N] {
     let mut coordinate = coordinate;
     if swaps_axes(frame) {
@@ -323,7 +332,9 @@ fn curve<const N: usize>(
 
 /// A face's rings as shapefile rings, and the holes left out for being too short.
 struct Area {
+    /// The exterior ring, then the holes.
     rings: Vec<Ring>,
+    /// Why holes were left out.
     omitted: Vec<Unwritable>,
 }
 
@@ -387,19 +398,18 @@ fn swaps_axes(frame: &CoordinateFrame) -> bool {
         .unwrap_or(false)
 }
 
-// ---------------------------------------------------------------------------
-// Attribute table
-// ---------------------------------------------------------------------------
-
 /// The longest DBF field name, in bytes.
 const FIELD_NAME_BYTES: usize = 11;
 /// The longest DBF character field, in bytes.
 const CHARACTER_BYTES: usize = 254;
-/// The width a numeric field is declared with when its values need no more.
-const INTEGER_WIDTH: usize = 11;
-const DECIMAL_WIDTH: usize = 18;
-/// The decimal places a numeric field carrying non-integers is declared with.
-const DECIMAL_PLACES: u8 = 6;
+/// The width of a DBF logical field.
+const LOGICAL_BYTES: usize = 1;
+/// The width of a DBF date field.
+const DATE_BYTES: usize = 8;
+/// The years a DBF date field can hold.
+const DATE_YEARS: std::ops::RangeInclusive<i32> = 0..=9999;
+/// The most decimal places a numeric column is declared with.
+const MAX_DECIMAL_PLACES: u8 = 15;
 
 /// One column of the DBF table: the attribute it takes its value from, and the
 /// type every value is written as.
@@ -407,8 +417,11 @@ const DECIMAL_PLACES: u8 = 6;
 /// A DBF field name is at most 11 bytes, so it can differ from the attribute's;
 /// the field is keyed by its own name and remembers the attribute's.
 pub(super) struct Field {
+    /// The name the table declares.
     name: String,
+    /// The attribute the values come from.
     attribute: Attribute,
+    /// The type the values are written as.
     kind: FieldKind,
 }
 
@@ -420,6 +433,22 @@ enum FieldKind {
     Numeric {
         decimals: u8,
     },
+    Logical,
+    /// A calendar date with no time of day.
+    Date,
+}
+
+impl FieldKind {
+    /// The kind a column holding values of both `self` and `other` is declared as.
+    fn join(self, other: Self) -> Self {
+        match (self, other) {
+            (a, b) if a == b => a,
+            (Self::Numeric { decimals: a }, Self::Numeric { decimals: b }) => {
+                Self::Numeric { decimals: a.max(b) }
+            }
+            _ => Self::Character,
+        }
+    }
 }
 
 impl Field {
@@ -428,85 +457,113 @@ impl Field {
         match self.kind {
             FieldKind::Character => FieldValue::Character(None),
             FieldKind::Numeric { .. } => FieldValue::Numeric(None),
+            FieldKind::Logical => FieldValue::Logical(None),
+            FieldKind::Date => FieldValue::Date(None),
         }
     }
 }
 
-/// What the values of one attribute call for in a column: whether they are all
-/// numbers, whether all integers, and the widest one written out.
+/// What the values of one attribute call for in a column: the kind every value
+/// so far fits, and how wide they are written out.
 struct Column {
+    /// The attribute the values come from.
     attribute: Attribute,
-    numeric: bool,
-    integral: bool,
-    width: usize,
+    /// `None` until a storable value is seen.
+    kind: Option<FieldKind>,
+    /// The widest value as text.
+    text_width: usize,
+    /// The widest integer part of a number, sign included.
+    integer_digits: usize,
+    /// Whether some value had no DBF counterpart and will be left out.
+    unstorable: bool,
 }
 
 impl Column {
+    /// A column for `attribute` with no value taken into account yet.
     fn new(attribute: &Attribute) -> Self {
         Self {
             attribute: attribute.clone(),
-            numeric: true,
-            integral: true,
-            width: 0,
+            kind: None,
+            text_width: 0,
+            integer_digits: 0,
+            unstorable: false,
         }
     }
 
-    /// Take a value into account. A value the table cannot store says nothing
-    /// about the column.
+    /// Take a value into account. A null says nothing about the column; a value
+    /// the table cannot store marks it as leaving something out.
     fn note(&mut self, value: &AttributeValue) {
-        let width = match value {
-            AttributeValue::String(s) => {
-                self.numeric = false;
-                s.len()
+        let (kind, text) = match value {
+            AttributeValue::String(s) => (FieldKind::Character, s.clone()),
+            AttributeValue::Number(n) => {
+                let text = number_text(n);
+                let (integer, fraction) = text.split_once('.').unwrap_or((&text, ""));
+                self.integer_digits = self.integer_digits.max(integer.len());
+                let decimals = fraction.len().min(MAX_DECIMAL_PLACES as usize) as u8;
+                (FieldKind::Numeric { decimals }, text)
             }
-            AttributeValue::Number(n) if n.is_f64() => {
-                self.integral = false;
-                format!("{:.*}", DECIMAL_PLACES as usize, n.as_f64().unwrap_or(0.0)).len()
+            AttributeValue::Bool(b) => (FieldKind::Logical, b.to_string()),
+            AttributeValue::DateTime(DateTime::NaiveDate(d)) if DATE_YEARS.contains(&d.year()) => {
+                (FieldKind::Date, d.to_string())
             }
-            AttributeValue::Number(n) => n.to_string().len(),
-            AttributeValue::Bool(b) => {
-                self.numeric = false;
-                b.to_string().len()
+            AttributeValue::DateTime(d) => (FieldKind::Character, datetime_text(d)),
+            AttributeValue::Null => return,
+            AttributeValue::Array(_) | AttributeValue::Map(_) | AttributeValue::Bytes(_) => {
+                self.unstorable = true;
+                return;
             }
-            AttributeValue::DateTime(d) => {
-                self.numeric = false;
-                d.to_rfc3339().len()
-            }
-            AttributeValue::Null
-            | AttributeValue::Array(_)
-            | AttributeValue::Map(_)
-            | AttributeValue::Bytes(_) => return,
         };
-        self.width = self.width.max(width);
+        self.kind = Some(self.kind.map_or(kind, |current| current.join(kind)));
+        self.text_width = self.text_width.max(text.len());
     }
 
     /// The type the column is declared as, and its width, once every value is
-    /// taken into account. Integers widen to what the widest needs; a decimal
-    /// widens to fit its integer part at [`DECIMAL_PLACES`] places.
+    /// taken into account. A column no value can be stored in is character, so
+    /// the attribute still has a field.
+    ///
+    /// A numeric column is as wide as its widest integer part and its decimal
+    /// places, and holds as many of those as its values need.
     fn kind(&self) -> (FieldKind, u8) {
-        let (kind, width) = match (self.numeric, self.integral) {
-            (true, true) => (
-                FieldKind::Numeric { decimals: 0 },
-                self.width.max(INTEGER_WIDTH),
-            ),
-            (true, false) => (
-                FieldKind::Numeric {
-                    decimals: DECIMAL_PLACES,
-                },
-                self.width.max(DECIMAL_WIDTH),
-            ),
-            (false, _) => (FieldKind::Character, self.width.clamp(1, CHARACTER_BYTES)),
+        let kind = self.kind.unwrap_or(FieldKind::Character);
+        let width = match kind {
+            FieldKind::Numeric { decimals: 0 } => self.integer_digits,
+            FieldKind::Numeric { decimals } => self.integer_digits + 1 + decimals as usize,
+            FieldKind::Character => self.text_width.clamp(1, CHARACTER_BYTES),
+            FieldKind::Logical => LOGICAL_BYTES,
+            FieldKind::Date => DATE_BYTES,
         };
         (kind, width.min(u8::MAX as usize) as u8)
     }
 }
 
+/// A date or time as the text a character column writes it in: a date alone as
+/// `YYYY-MM-DD`, an instant in RFC 3339.
+fn datetime_text(d: &DateTime) -> String {
+    match d {
+        DateTime::NaiveDate(d) => d.to_string(),
+        d => d.to_rfc3339(),
+    }
+}
+
+/// A number as the shortest decimal text that reads back as the same number; a
+/// non-integer keeps at least one decimal place, so its column stays a decimal
+/// one.
+fn number_text(n: &serde_json::Number) -> String {
+    match n.as_f64().filter(|_| n.is_f64()) {
+        Some(f) if f.fract() == 0.0 => format!("{f:.1}"),
+        Some(f) => format!("{f}"),
+        None => n.to_string(),
+    }
+}
+
 /// The table to write the attributes of `features` into, and its columns.
 ///
-/// A column is declared for every attribute any feature carries a storable value
-/// for, in the order first seen: one holding only numbers is numeric, wide enough
-/// for the widest, and one holding anything else is character. Names are cut to
-/// the DBF limit and told apart where the cut makes two the same.
+/// A column is declared for every attribute any feature carries, in the order
+/// first seen: one holding only numbers is numeric, wide enough for the widest,
+/// one holding only booleans is logical, one holding only dates is a date, and
+/// one holding anything else, or nothing storable, is character. Names are cut
+/// to the DBF limit and told apart where the cut makes two the same. Values with
+/// no DBF counterpart are left out and warned about.
 pub(super) fn make_table_builder<'a>(
     features: impl Iterator<Item = &'a IndexMap<Attribute, AttributeValue>>,
 ) -> crate::errors::Result<(TableWriterBuilder, Vec<Field>)> {
@@ -523,7 +580,15 @@ pub(super) fn make_table_builder<'a>(
     let mut builder = TableWriterBuilder::new();
     let mut fields = Vec::new();
     let mut taken = HashSet::new();
-    for column in columns.values().filter(|column| column.width > 0) {
+    for column in columns.values() {
+        if column.unstorable {
+            tracing::warn!(
+                "leaving out the values of '{}' that are arrays, maps or bytes, which a \
+                 shapefile attribute table cannot hold",
+                column.attribute
+            );
+        }
+        let (kind, width) = column.kind();
         let name = field_name(column.attribute.as_ref(), &taken);
         taken.insert(name.clone());
         let field_name: FieldName = name.as_str().try_into().map_err(|e| {
@@ -531,12 +596,13 @@ pub(super) fn make_table_builder<'a>(
                 "Failed to convert field name to FieldName: {e}"
             ))
         })?;
-        let (kind, width) = column.kind();
         builder = match kind {
             FieldKind::Character => builder.add_character_field(field_name, width),
             FieldKind::Numeric { decimals } => {
                 builder.add_numeric_field(field_name, width, decimals)
             }
+            FieldKind::Logical => builder.add_logical_field(field_name),
+            FieldKind::Date => builder.add_date_field(field_name),
         };
         fields.push(Field {
             name,
@@ -591,7 +657,21 @@ pub(super) fn attributes_to_record(
 fn to_field_value(value: &AttributeValue, kind: FieldKind) -> Option<FieldValue> {
     match kind {
         FieldKind::Numeric { .. } => match value {
-            AttributeValue::Number(num) => Some(FieldValue::Numeric(num.as_f64())),
+            AttributeValue::Number(n) => Some(FieldValue::Numeric(n.as_f64())),
+            _ => None,
+        },
+        FieldKind::Logical => match value {
+            AttributeValue::Bool(b) => Some(FieldValue::Logical(Some(*b))),
+            _ => None,
+        },
+        FieldKind::Date => match value {
+            AttributeValue::DateTime(DateTime::NaiveDate(d)) if DATE_YEARS.contains(&d.year()) => {
+                Some(FieldValue::Date(Some(shapefile::dbase::Date::new(
+                    d.day(),
+                    d.month(),
+                    d.year() as u32,
+                ))))
+            }
             _ => None,
         },
         FieldKind::Character => {
@@ -599,7 +679,7 @@ fn to_field_value(value: &AttributeValue, kind: FieldKind) -> Option<FieldValue>
                 AttributeValue::String(s) => s.clone(),
                 AttributeValue::Number(num) => num.to_string(),
                 AttributeValue::Bool(b) => b.to_string(),
-                AttributeValue::DateTime(d) => d.to_rfc3339(),
+                AttributeValue::DateTime(d) => datetime_text(d),
                 AttributeValue::Null
                 | AttributeValue::Array(_)
                 | AttributeValue::Map(_)
@@ -676,8 +756,6 @@ mod tests {
         assert!(written.payload.is_none());
     }
 
-    // A 2D geometry stating the height it lies at is written as an elevated shape
-    // rather than losing that height.
     #[test]
     fn a_2d_line_at_an_elevation_writes_an_elevated_curve() {
         let line = Geometry::Euclidean2D(Euclidean2DGeometry::LineString(
@@ -691,8 +769,6 @@ mod tests {
         );
     }
 
-    // The old writer joined a multi-part curve's parts into one chain; the parts
-    // must stay apart.
     #[test]
     fn a_collection_of_lines_keeps_its_parts_apart() {
         let collection =
@@ -738,8 +814,6 @@ mod tests {
         assert!(!rings[1].outer);
     }
 
-    // A geometry winds its exterior counter-clockwise; the shapefile needs it
-    // clockwise, and its holes the other way round.
     #[test]
     fn rings_are_reversed_into_the_shapefile_winding() {
         let polygon = Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
@@ -762,8 +836,6 @@ mod tests {
             .sum()
     }
 
-    // A one-position line is no shapefile part; it writes no shape rather than
-    // failing the file.
     #[test]
     fn a_degenerate_line_writes_no_shape() {
         let line = Geometry::Euclidean2D(Euclidean2DGeometry::LineString(
@@ -772,7 +844,6 @@ mod tests {
         assert!(write_geometry(&line).payload.is_none());
     }
 
-    // A hole too short to be a ring is left out; the face around it is still written.
     #[test]
     fn a_degenerate_hole_is_left_out() {
         let polygon = Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
@@ -785,8 +856,6 @@ mod tests {
         assert_eq!(area(&write_geometry(&polygon)).len(), 1);
     }
 
-    // A collection whose members are of different kinds cannot be one record, so
-    // the kind that got there first is written and the rest are dropped.
     #[test]
     fn a_collection_mixing_kinds_writes_only_one_of_them() {
         let collection =
@@ -802,8 +871,6 @@ mod tests {
         assert_eq!(positions(&written).len(), 1);
     }
 
-    // Members lying at a height and members stating none write as one elevated
-    // shape, the latter at 0.0.
     #[test]
     fn a_collection_mixing_elevations_writes_one_elevated_shape() {
         let collection =
@@ -824,8 +891,6 @@ mod tests {
         assert_eq!(parts(&written)[1][0], [5.0, 5.0, 9.0]);
     }
 
-    // A CRS declaring (northing, easting) has its pair swapped back on the way out,
-    // shapefile positions always being easting-first.
     #[test]
     fn a_northing_first_crs_swaps_the_horizontal_pair_back() {
         let point = Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
@@ -861,7 +926,6 @@ mod tests {
             .1
     }
 
-    // Two attributes cut to the same DBF name must still be two columns.
     #[test]
     fn attributes_cut_to_the_same_name_get_distinct_fields() {
         let feature = attributes(&[
@@ -886,8 +950,6 @@ mod tests {
         );
     }
 
-    // Taking the table from the first feature alone would leave out a field only
-    // later features carry.
     #[test]
     fn the_table_covers_fields_a_later_feature_introduces() {
         let first = attributes(&[("a", AttributeValue::String("x".into()))]);
@@ -896,8 +958,6 @@ mod tests {
         assert_eq!(fields.len(), 2);
     }
 
-    // A column is numeric only when every value in it is a number; a value of
-    // another type is written as text alongside the numbers.
     #[test]
     fn a_column_mixing_numbers_and_text_writes_everything_as_text() {
         let first = attributes(&[("code", AttributeValue::Number(5.into()))]);
@@ -910,7 +970,6 @@ mod tests {
         );
     }
 
-    // A null says nothing about a column's type; a later value settles it.
     #[test]
     fn a_null_first_value_takes_its_type_from_a_later_feature() {
         let first = attributes(&[("a", AttributeValue::Null)]);
@@ -919,12 +978,204 @@ mod tests {
         assert_eq!(fields[0].kind, FieldKind::Numeric { decimals: 0 });
     }
 
-    // An integer wider than the default width is not cut short.
     #[test]
-    fn a_wide_integer_widens_its_column() {
+    fn a_numeric_column_is_as_wide_and_as_precise_as_its_values() {
         let mut column = Column::new(&Attribute::new("t"));
         column.note(&AttributeValue::Number(1723891200000i64.into()));
         assert_eq!(column.kind(), (FieldKind::Numeric { decimals: 0 }, 13));
+        column.note(&AttributeValue::Number(
+            serde_json::Number::from_f64(-1.23456789).unwrap(),
+        ));
+        assert_eq!(column.kind(), (FieldKind::Numeric { decimals: 8 }, 22));
+    }
+
+    #[test]
+    fn an_integral_float_keeps_a_decimal_place() {
+        let mut column = Column::new(&Attribute::new("t"));
+        column.note(&AttributeValue::Number(
+            serde_json::Number::from_f64(889953.0).unwrap(),
+        ));
+        assert_eq!(column.kind(), (FieldKind::Numeric { decimals: 1 }, 8));
+    }
+
+    #[test]
+    fn a_column_of_booleans_is_logical_and_one_of_dates_is_a_date() {
+        let feature = attributes(&[
+            ("flag", AttributeValue::Bool(true)),
+            (
+                "day",
+                AttributeValue::DateTime(DateTime::NaiveDate(
+                    chrono::NaiveDate::from_ymd_opt(2025, 7, 17).unwrap(),
+                )),
+            ),
+        ]);
+        let fields = table(&[&feature]);
+        assert_eq!(fields[0].kind, FieldKind::Logical);
+        assert_eq!(fields[1].kind, FieldKind::Date);
+        let record = attributes_to_record(&feature, &fields);
+        assert_eq!(record.get("flag"), Some(&FieldValue::Logical(Some(true))));
+        assert_eq!(
+            record.get("day"),
+            Some(&FieldValue::Date(Some(shapefile::dbase::Date::new(
+                17, 7, 2025
+            ))))
+        );
+    }
+
+    #[test]
+    fn a_column_mixing_booleans_and_dates_writes_everything_as_text() {
+        let first = attributes(&[("v", AttributeValue::Bool(true))]);
+        let second = attributes(&[(
+            "v",
+            AttributeValue::DateTime(DateTime::NaiveDate(
+                chrono::NaiveDate::from_ymd_opt(2025, 7, 17).unwrap(),
+            )),
+        )]);
+        let fields = table(&[&first, &second]);
+        assert_eq!(fields[0].kind, FieldKind::Character);
+        assert_eq!(
+            attributes_to_record(&first, &fields).get("v"),
+            Some(&FieldValue::Character(Some("true".into())))
+        );
+        assert_eq!(
+            attributes_to_record(&second, &fields).get("v"),
+            Some(&FieldValue::Character(Some("2025-07-17".into())))
+        );
+    }
+
+    #[test]
+    fn a_column_with_nothing_storable_is_still_a_field() {
+        let feature = attributes(&[
+            ("list", AttributeValue::Array(vec![])),
+            ("nothing", AttributeValue::Null),
+        ]);
+        let fields = table(&[&feature]);
+        assert_eq!(fields.len(), 2);
+        assert!(fields.iter().all(|f| f.kind == FieldKind::Character));
+        let record = attributes_to_record(&feature, &fields);
+        assert_eq!(record.get("list"), Some(&FieldValue::Character(None)));
+        assert_eq!(record.get("nothing"), Some(&FieldValue::Character(None)));
+    }
+
+    // The table's declared types must let every value be written and read back
+    // as it was, whatever mix of values the attributes hold.
+    #[test]
+    fn a_table_writes_and_reads_back_every_kind_of_value() {
+        use shapefile::dbase::{FieldType, Reader};
+
+        let date = |y, m, d| {
+            AttributeValue::DateTime(DateTime::NaiveDate(
+                chrono::NaiveDate::from_ymd_opt(y, m, d).unwrap(),
+            ))
+        };
+        let float = |f: f64| AttributeValue::Number(serde_json::Number::from_f64(f).unwrap());
+        let features = [
+            attributes(&[
+                ("int", AttributeValue::Number((-7i64).into())),
+                ("wide", AttributeValue::Number(u64::MAX.into())),
+                ("dec", float(-0.000123456789)),
+                ("intfloat", float(889953.0)),
+                ("mixed", AttributeValue::Number(5.into())),
+                ("flag", AttributeValue::Bool(false)),
+                ("day", date(1899, 12, 31)),
+                ("bc", date(-44, 3, 15)),
+                ("text", AttributeValue::String("é".repeat(300))),
+                ("nothing", AttributeValue::Null),
+            ]),
+            attributes(&[
+                ("int", AttributeValue::Number(1234567890123i64.into())),
+                ("dec", float(1e-3)),
+                ("mixed", float(2.5)),
+                ("flag", AttributeValue::Bool(true)),
+                ("day", date(2025, 7, 17)),
+                ("bc", date(2025, 7, 17)),
+                ("text", AttributeValue::String("short".into())),
+            ]),
+        ];
+
+        let (builder, fields) =
+            make_table_builder(features.iter()).expect("the table is expected to build");
+        let mut dbf = Vec::new();
+        {
+            let mut writer = builder.build_with_dest(std::io::Cursor::new(&mut dbf));
+            for feature in &features {
+                writer
+                    .write_record(&attributes_to_record(feature, &fields))
+                    .expect("the record is expected to write");
+            }
+            writer
+                .finalize()
+                .expect("the table is expected to finalize");
+        }
+
+        let mut reader =
+            Reader::new(std::io::Cursor::new(dbf)).expect("the table is expected to read");
+        let declared: Vec<(String, FieldType, u8)> = reader
+            .fields()
+            .iter()
+            .map(|f| (f.name().to_string(), f.field_type(), f.length()))
+            .collect();
+        assert_eq!(
+            declared,
+            vec![
+                ("int".into(), FieldType::Numeric, 13),
+                ("wide".into(), FieldType::Numeric, 20),
+                ("dec".into(), FieldType::Numeric, 15),
+                ("intfloat".into(), FieldType::Numeric, 8),
+                ("mixed".into(), FieldType::Numeric, 3),
+                ("flag".into(), FieldType::Logical, 1),
+                ("day".into(), FieldType::Date, 8),
+                ("bc".into(), FieldType::Character, 11),
+                ("text".into(), FieldType::Character, 254),
+                ("nothing".into(), FieldType::Character, 1),
+            ]
+        );
+
+        let records: Vec<Record> = reader
+            .read()
+            .expect("the records are expected to read")
+            .into_iter()
+            .collect();
+        let first = &records[0];
+        assert_eq!(first.get("int"), Some(&FieldValue::Numeric(Some(-7.0))));
+        assert_eq!(
+            first.get("wide"),
+            Some(&FieldValue::Numeric(Some(u64::MAX as f64)))
+        );
+        assert_eq!(
+            first.get("dec"),
+            Some(&FieldValue::Numeric(Some(-0.000123456789)))
+        );
+        assert_eq!(
+            first.get("intfloat"),
+            Some(&FieldValue::Numeric(Some(889953.0)))
+        );
+        assert_eq!(first.get("mixed"), Some(&FieldValue::Numeric(Some(5.0))));
+        assert_eq!(first.get("flag"), Some(&FieldValue::Logical(Some(false))));
+        assert_eq!(
+            first.get("day"),
+            Some(&FieldValue::Date(Some(shapefile::dbase::Date::new(
+                31, 12, 1899
+            ))))
+        );
+        assert_eq!(
+            first.get("bc"),
+            Some(&FieldValue::Character(Some("-0044-03-15".into())))
+        );
+        assert_eq!(
+            first.get("text"),
+            Some(&FieldValue::Character(Some("é".repeat(127))))
+        );
+        assert_eq!(first.get("nothing"), Some(&FieldValue::Character(None)));
+        let second = &records[1];
+        assert_eq!(
+            second.get("int"),
+            Some(&FieldValue::Numeric(Some(1234567890123.0)))
+        );
+        assert_eq!(second.get("dec"), Some(&FieldValue::Numeric(Some(0.001))));
+        assert_eq!(second.get("mixed"), Some(&FieldValue::Numeric(Some(2.5))));
+        assert_eq!(second.get("wide"), Some(&FieldValue::Numeric(None)));
+        assert_eq!(second.get("nothing"), Some(&FieldValue::Character(None)));
     }
 
     #[test]

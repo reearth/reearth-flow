@@ -23,6 +23,7 @@ use crate::{
     file::reader::runner::{get_content, FileReaderCommonParam, FileReaderCompiledParam},
 };
 
+/// Builds the Shapefile Reader source.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct ShapefileReaderFactory;
 
@@ -90,16 +91,23 @@ impl SourceFactory for ShapefileReaderFactory {
     }
 }
 
+/// [`ShapefileReaderParam`] with its expressions compiled.
 #[derive(Debug, Clone)]
 struct ShapefileReaderCompiledParam {
+    /// Where the archive is read from.
     common: FileReaderCompiledParam,
+    /// The encoding to read the attribute table in, overriding the archive's.
     encoding: Option<String>,
+    /// Whether to drop elevations.
     force_2d: bool,
+    /// Whether a null dataset path yields no features rather than an error.
     allow_empty_path: bool,
 }
 
+/// The Shapefile Reader source.
 #[derive(Debug, Clone)]
 pub(super) struct ShapefileReader {
+    /// The reader's compiled parameters.
     params: ShapefileReaderCompiledParam,
 }
 
@@ -144,8 +152,6 @@ impl Source for ShapefileReader {
     ) -> Result<(), BoxedError> {
         let storage_resolver = Arc::clone(&ctx.storage_resolver);
 
-        // When allow_empty_path is set and the dataset resolved to null at build time,
-        // treat as "no input" and skip silently.
         if self.params.allow_empty_path
             && self.params.common.dataset.is_none()
             && self.params.common.inline.is_none()
@@ -175,14 +181,14 @@ async fn read_shapefile(
     let mut archive = archive::open(content, &params.encoding)?;
     let converter = ShapeConverter::new(archive.epsg, params.force_2d);
 
-    let field_names = archive.field_names.clone();
+    let fields = std::mem::take(&mut archive.fields);
     for record in archive.records() {
         let (shape, record) = record.map_err(|e| {
             SourceError::shapefile_reader(format!("Failed to read shape and record: {e}"))
         })?;
         let geometry = converter.convert(shape)?;
         let feature = Feature::new_with_attributes_and_geometry(
-            record::to_attributes(record, &field_names),
+            record::to_attributes(record, &fields),
             geometry,
         );
         sender
@@ -195,4 +201,92 @@ async fn read_shapefile(
     }
     converter.report_discarded_measures();
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use pretty_assertions::assert_eq;
+    use reearth_flow_common::datetime::{DateTime, NaiveDate};
+    use reearth_flow_types::{Attribute, AttributeValue};
+    use shapefile::dbase::{FieldName, FieldValue, TableWriterBuilder};
+    use std::io::{Cursor, Write as _};
+
+    /// A ZIP archive holding a one-record point shapefile whose table declares
+    /// every field type the writer can produce.
+    fn every_field_type_zipped() -> Bytes {
+        let name = |name: &str| FieldName::try_from(name).unwrap();
+        let mut shp = Vec::new();
+        let mut dbf = Vec::new();
+        {
+            let shapes = shapefile::ShapeWriter::new(Cursor::new(&mut shp));
+            let table = TableWriterBuilder::new()
+                .add_numeric_field(name("count"), 10, 0)
+                .add_numeric_field(name("ratio"), 10, 3)
+                .add_float_field(name("fcount"), 10, 0)
+                .add_integer_field(name("icount"))
+                .add_logical_field(name("flag"))
+                .add_date_field(name("day"))
+                .add_character_field(name("text"), 10)
+                .build_with_dest(Cursor::new(&mut dbf));
+            let mut writer = shapefile::Writer::new(shapes, table);
+            let mut record = shapefile::dbase::Record::default();
+            record.insert("count".into(), FieldValue::Numeric(Some(42.0)));
+            record.insert("ratio".into(), FieldValue::Numeric(Some(0.125)));
+            record.insert("fcount".into(), FieldValue::Float(Some(7.0)));
+            record.insert("icount".into(), FieldValue::Integer(9));
+            record.insert("flag".into(), FieldValue::Logical(Some(true)));
+            record.insert(
+                "day".into(),
+                FieldValue::Date(Some(shapefile::dbase::Date::new(17, 7, 2025))),
+            );
+            record.insert("text".into(), FieldValue::Character(Some("abc".into())));
+            writer
+                .write_shape_and_record(&shapefile::Point::new(1.0, 2.0), &record)
+                .expect("the record is expected to write");
+        }
+        let mut buffer = Vec::new();
+        {
+            let mut zip = zip::ZipWriter::new(Cursor::new(&mut buffer));
+            for (entry, bytes) in [("data.shp", &shp), ("data.dbf", &dbf)] {
+                zip.start_file(entry, zip::write::SimpleFileOptions::default())
+                    .unwrap();
+                zip.write_all(bytes).unwrap();
+            }
+            zip.finish().unwrap();
+        }
+        Bytes::from(buffer)
+    }
+
+    // A field's declared type decides the attribute type its values read as,
+    // whatever the values happen to be.
+    #[test]
+    fn each_field_type_reads_as_its_attribute_type() {
+        let mut archive = archive::open(&every_field_type_zipped(), &None)
+            .expect("the archive is expected to open");
+        let fields = std::mem::take(&mut archive.fields);
+        let (_, record) = archive
+            .records()
+            .next()
+            .expect("one record is expected")
+            .expect("the record is expected to read");
+        let attributes = record::to_attributes(record, &fields);
+        let get = |name: &str| attributes[&Attribute::new(name)].clone();
+
+        assert_eq!(get("count"), AttributeValue::Number(42.into()));
+        assert_eq!(
+            get("ratio"),
+            AttributeValue::Number(serde_json::Number::from_f64(0.125).unwrap())
+        );
+        assert_eq!(get("fcount"), AttributeValue::Number(7.into()));
+        assert_eq!(get("icount"), AttributeValue::Number(9.into()));
+        assert_eq!(get("flag"), AttributeValue::Bool(true));
+        assert_eq!(
+            get("day"),
+            AttributeValue::DateTime(DateTime::NaiveDate(
+                NaiveDate::from_ymd_opt(2025, 7, 17).unwrap()
+            ))
+        );
+        assert_eq!(get("text"), AttributeValue::String("abc".into()));
+    }
 }

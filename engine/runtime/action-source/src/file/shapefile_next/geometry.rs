@@ -28,7 +28,9 @@ use crate::errors::{ShapefileError, SourceError};
 
 /// A shapefile vertex's horizontal position, whatever optional channels it carries.
 trait Position {
+    /// The stored `x`, an easting.
     fn x(&self) -> f64;
+    /// The stored `y`, a northing.
     fn y(&self) -> f64;
     /// The measure, or [`NO_DATA`] for a vertex that carries none.
     fn m(&self) -> f64 {
@@ -38,6 +40,7 @@ trait Position {
 
 /// A shapefile vertex that also carries an elevation.
 trait Elevated: Position {
+    /// The elevation.
     fn z(&self) -> f64;
 }
 
@@ -116,8 +119,6 @@ impl ShapeConverter {
                 frame_3d.clone()
             }
         };
-        // Shapefile stores (x, y) as (easting, northing) whatever the CRS declares,
-        // so a frame declaring the reverse needs the pair swapped on the way in.
         let swap = match frame_3d.orientation_sign() {
             Ok(sign) => sign < 0,
             Err(error) => {
@@ -188,12 +189,14 @@ impl ShapeConverter {
         [x, y, p.z()]
     }
 
+    /// Remember that a measure was seen, if `p` carries one.
     fn note_measure(&self, p: &impl Position) {
         if p.m() > NO_DATA {
             self.discarded_measures.set(true);
         }
     }
 
+    /// A point, without its elevation.
     fn point(&self, p: &impl Position) -> Geometry {
         Geometry::Euclidean2D(Euclidean2DGeometry::Point(Point2D::new(
             self.frame_2d.clone(),
@@ -201,6 +204,7 @@ impl ShapeConverter {
         )))
     }
 
+    /// A point, with its elevation unless elevations are being dropped.
     fn point_z(&self, p: &shapefile::PointZ) -> Geometry {
         if self.force_2d {
             return self.point(p);
@@ -223,6 +227,7 @@ impl ShapeConverter {
         Geometry::Euclidean2D(one_or_collection_2d(lines))
     }
 
+    /// [`Self::curve`], with elevations unless they are being dropped.
     fn curve_z(&self, parts: &[Vec<shapefile::PointZ>]) -> Geometry {
         if self.force_2d {
             return self.curve(parts);
@@ -253,6 +258,7 @@ impl ShapeConverter {
         Ok(Geometry::Euclidean2D(one_or_collection_2d(polygons)))
     }
 
+    /// [`Self::area`], with elevations unless they are being dropped.
     fn area_z(&self, rings: &[PolygonRing<shapefile::PointZ>]) -> Result<Geometry, SourceError> {
         if self.force_2d {
             return self.area(rings);
@@ -270,6 +276,7 @@ impl ShapeConverter {
         Ok(Geometry::Euclidean3D(one_or_collection_3d(polygons)))
     }
 
+    /// A multipoint's points as a collection, without their elevations.
     fn multipoint(&self, points: &[impl Position]) -> Geometry {
         Geometry::Euclidean2D(Euclidean2DGeometry::Collection(Collection2D::new(
             points.iter().map(|p| {
@@ -278,6 +285,7 @@ impl ShapeConverter {
         )))
     }
 
+    /// [`Self::multipoint`], with elevations unless they are being dropped.
     fn multipoint_z(&self, points: &[shapefile::PointZ]) -> Geometry {
         if self.force_2d {
             return self.multipoint(points);
@@ -291,7 +299,8 @@ impl ShapeConverter {
 
     /// A multipatch's patches: the ring patches as one polygon mesh, each triangle
     /// strip or fan as its own triangle mesh, collected when there is more than one.
-    /// Rings and triangles are reversed into the winding a geometry expects.
+    /// Rings and triangles are reversed into the winding a geometry expects. A hole
+    /// patch preceding any outer ring becomes a face of its own.
     ///
     /// Errors when elevations are being dropped, a multipatch describing a surface
     /// in space that a 2D geometry cannot stand in for.
@@ -305,9 +314,6 @@ impl ShapeConverter {
         let mut holes: Vec<Vec<[f64; 3]>> = Vec::new();
         let mut exterior: Option<Vec<[f64; 3]>> = None;
 
-        // A ring patch either starts a face or adds a hole to the one in progress,
-        // so the face is only complete once a later patch or the end of the list
-        // closes it.
         let flush = |exterior: &mut Option<Vec<[f64; 3]>>,
                      holes: &mut Vec<Vec<[f64; 3]>>,
                      faces: &mut Vec<Polygon3D>| {
@@ -330,8 +336,6 @@ impl ShapeConverter {
                     let ring: Vec<[f64; 3]> = ring.iter().rev().map(|p| self.xyz(p)).collect();
                     match &exterior {
                         Some(_) => holes.push(ring),
-                        // A hole with no face to belong to stands on its own rather
-                        // than being dropped.
                         None => exterior = Some(ring),
                     }
                 }
@@ -483,8 +487,6 @@ mod tests {
         assert!(converter.discarded_measures.get());
     }
 
-    // A CRS declaring (northing, easting) stores the pair the other way round from
-    // the shapefile, so reading swaps it.
     #[test]
     fn a_northing_first_crs_swaps_the_horizontal_pair() {
         let converter = ShapeConverter::new(Some(EpsgCode::new(6668)), false);
@@ -594,7 +596,6 @@ mod tests {
         assert_eq!(mesh.num_faces(), 1);
     }
 
-    // A hole written before its outer ring belongs to that ring, not to nothing.
     #[test]
     fn a_hole_before_the_first_outer_ring_lands_on_it() {
         let outer = vec![
@@ -621,8 +622,6 @@ mod tests {
         assert_eq!(polygon.interiors().count(), 1);
     }
 
-    // The shapefile winds an outer ring clockwise; the geometry needs it
-    // counter-clockwise, and its holes the other way round.
     #[test]
     fn rings_are_reversed_into_the_geometry_winding() {
         let outer = vec![

@@ -1,7 +1,4 @@
-//! The Shapefile Writer action for the new geometry world.
-//!
-//! Independent of the old-world `shapefile` module, which is compiled only
-//! without `new-geometry` and is to be deleted once the migration is done.
+//! The Shapefile Writer action.
 
 use std::collections::HashMap;
 use std::vec;
@@ -19,6 +16,7 @@ use crate::errors::SinkError;
 
 use super::pipeline;
 
+/// Builds the Shapefile Writer sink.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct ShapefileWriterFactory;
 
@@ -112,11 +110,17 @@ impl SinkFactory for ShapefileWriterFactory {
     }
 }
 
+/// The Shapefile Writer sink: gathers every feature it is given and writes them
+/// all when the workflow finishes.
 #[derive(Debug, Clone)]
 pub(crate) struct ShapefileWriter {
+    /// The directory the file sets are written under.
     output: String,
+    /// The directory each file set is archived into, if any.
     compress_output: Option<String>,
+    /// The attributes features are grouped by, one file set per group.
     group_by: Option<Vec<Attribute>>,
+    /// The features gathered so far, by group.
     pub(super) buffer: HashMap<AttributeValue, Vec<Feature>>,
 }
 

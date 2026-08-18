@@ -5,33 +5,45 @@ use reearth_flow_common::datetime::{DateTime, NaiveDate};
 use reearth_flow_types::{Attribute, AttributeValue};
 use shapefile::dbase::{FieldValue, Record};
 
-/// The attributes one record holds, in the order of `field_names`, which is the
-/// order the table declares its fields in.
+/// One field of the attribute table, as far as reading its values goes.
+pub(super) struct Field {
+    /// The name the table declares.
+    pub(super) name: String,
+    /// Whether the field is numeric with no decimal places, so that its values
+    /// read as integers.
+    pub(super) integral: bool,
+}
+
+/// The attributes one record holds, in the order of `fields`, which is the order
+/// the table declares them in.
 ///
 /// A field with no value, and one whose value the field type cannot represent,
 /// both read as [`AttributeValue::Null`] rather than being left out, so every
 /// feature carries the same attributes.
 pub(super) fn to_attributes(
     mut record: Record,
-    field_names: &[String],
+    fields: &[Field],
 ) -> IndexMap<Attribute, AttributeValue> {
-    field_names
+    fields
         .iter()
-        .map(|name| {
+        .map(|field| {
             let value = record
-                .remove(name)
-                .map(to_attribute_value)
+                .remove(&field.name)
+                .map(|value| to_attribute_value(value, field.integral))
                 .unwrap_or(AttributeValue::Null);
-            (Attribute::new(name.clone()), value)
+            (Attribute::new(field.name.clone()), value)
         })
         .collect()
 }
 
-/// The attribute value a field holds.
-fn to_attribute_value(value: FieldValue) -> AttributeValue {
+/// The attribute value a field holds; a numeric one reads as an integer when the
+/// field is `integral` and the value has an integer counterpart.
+fn to_attribute_value(value: FieldValue, integral: bool) -> AttributeValue {
     match value {
         FieldValue::Character(Some(s)) => AttributeValue::String(s),
         FieldValue::Memo(s) => AttributeValue::String(s),
+        FieldValue::Numeric(Some(n)) if integral => integer(n),
+        FieldValue::Float(Some(f)) if integral => integer(f as f64),
         FieldValue::Numeric(Some(n)) => number(n),
         FieldValue::Float(Some(f)) => number(f as f64),
         FieldValue::Double(d) => number(d),
@@ -46,6 +58,18 @@ fn to_attribute_value(value: FieldValue) -> AttributeValue {
         | FieldValue::Logical(None)
         | FieldValue::Date(None) => AttributeValue::Null,
     }
+}
+
+/// The largest magnitude every integer up to which an `f64` holds exactly.
+const EXACT_INTEGER_LIMIT: f64 = 9007199254740992.0;
+
+/// A zero-decimal numeric field's value: the integer it holds, or the number as
+/// read for a value that is not one, or too wide to be held exactly.
+fn integer(n: f64) -> AttributeValue {
+    if n.fract() == 0.0 && n.abs() < EXACT_INTEGER_LIMIT {
+        return AttributeValue::Number((n as i64).into());
+    }
+    number(n)
 }
 
 /// A numeric field's value. A non-finite number has no attribute counterpart, so
@@ -82,11 +106,10 @@ mod tests {
     use super::*;
     use pretty_assertions::assert_eq;
 
-    // A memo is a string too long for a character field, not an absent value.
     #[test]
     fn a_memo_reads_as_a_string() {
         assert_eq!(
-            to_attribute_value(FieldValue::Memo("long".into())),
+            to_attribute_value(FieldValue::Memo("long".into()), false),
             AttributeValue::String("long".into())
         );
     }
@@ -100,30 +123,48 @@ mod tests {
             FieldValue::Currency(1.5),
         ] {
             assert_eq!(
-                to_attribute_value(value),
+                to_attribute_value(value, false),
                 AttributeValue::Number(serde_json::Number::from_f64(1.5).unwrap())
             );
         }
         assert_eq!(
-            to_attribute_value(FieldValue::Integer(7)),
+            to_attribute_value(FieldValue::Integer(7), false),
             AttributeValue::Number(7.into())
+        );
+    }
+
+    #[test]
+    fn a_zero_decimal_numeric_field_reads_as_an_integer() {
+        assert_eq!(
+            to_attribute_value(FieldValue::Numeric(Some(2019.0)), true),
+            AttributeValue::Number(2019.into())
+        );
+        assert_eq!(
+            to_attribute_value(FieldValue::Numeric(Some(2019.0)), false),
+            AttributeValue::Number(serde_json::Number::from_f64(2019.0).unwrap())
+        );
+        assert_eq!(
+            to_attribute_value(FieldValue::Numeric(Some(1e300)), true),
+            AttributeValue::Number(serde_json::Number::from_f64(1e300).unwrap())
+        );
+        assert_eq!(
+            to_attribute_value(FieldValue::Numeric(Some(1.5)), true),
+            AttributeValue::Number(serde_json::Number::from_f64(1.5).unwrap())
         );
     }
 
     #[test]
     fn a_non_finite_number_has_no_counterpart() {
         assert_eq!(
-            to_attribute_value(FieldValue::Numeric(Some(f64::NAN))),
+            to_attribute_value(FieldValue::Numeric(Some(f64::NAN)), false),
             AttributeValue::Null
         );
         assert_eq!(
-            to_attribute_value(FieldValue::Double(f64::INFINITY)),
+            to_attribute_value(FieldValue::Double(f64::INFINITY), false),
             AttributeValue::Null
         );
     }
 
-    // A date states no time of day, so it keeps its own type rather than becoming
-    // an instant at an invented hour.
     #[test]
     fn a_date_reads_as_a_date() {
         assert_eq!(
@@ -140,8 +181,14 @@ mod tests {
         record.insert("b".to_string(), FieldValue::Integer(2));
         record.insert("a".to_string(), FieldValue::Integer(1));
         record.insert("c".to_string(), FieldValue::Integer(3));
-        let names = ["c".to_string(), "a".to_string(), "b".to_string()];
-        let attributes = to_attributes(record, &names);
+        let fields: Vec<Field> = ["c", "a", "b"]
+            .into_iter()
+            .map(|name| Field {
+                name: name.to_string(),
+                integral: true,
+            })
+            .collect();
+        let attributes = to_attributes(record, &fields);
         let order: Vec<String> = attributes.keys().map(|k| k.inner()).collect();
         assert_eq!(
             order,
@@ -158,7 +205,7 @@ mod tests {
             FieldValue::Logical(None),
             FieldValue::Date(None),
         ] {
-            assert_eq!(to_attribute_value(value), AttributeValue::Null);
+            assert_eq!(to_attribute_value(value, false), AttributeValue::Null);
         }
     }
 }

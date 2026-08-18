@@ -140,6 +140,7 @@ pub(super) enum Frames {
 }
 
 impl Frames {
+    /// The one frame a leaf's positions came from.
     pub(super) fn of(frame: &CoordinateFrame) -> Self {
         Self::One(frame.clone())
     }
