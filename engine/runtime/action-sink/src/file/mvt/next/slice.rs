@@ -1,6 +1,6 @@
 use std::collections::HashMap;
 
-use tinymvt::webmercator::{lnglat_to_web_mercator, web_mercator_meters_to_lnglat};
+use tinymvt::webmercator::lnglat_to_web_mercator;
 
 use super::extract::Leaf;
 use crate::file::mvt::tiling::TileContent;
@@ -117,18 +117,17 @@ pub(super) fn slice_leaves(
     (content, tiled)
 }
 
-// Extends `content`'s lng/lat bounds and converts Web Mercator meters to the
-// normalized [0,1] space tile math uses, both derived from the same point.
+// Extends `content`'s lng/lat bounds and projects to the normalized [0,1]
+// Web Mercator space tile math uses.
 fn project_ring(ring: &[[f64; 2]], content: &mut TileContent) -> Ring {
     ring.iter()
-        .map(|&[mx, my]| {
-            let (lng, lat) = web_mercator_meters_to_lnglat(mx, my);
+        .map(|&[lng, lat]| {
             content.min_lng = content.min_lng.min(lng);
             content.max_lng = content.max_lng.max(lng);
             content.min_lat = content.min_lat.min(lat);
             content.max_lat = content.max_lat.max(lat);
-            let (nx, ny) = lnglat_to_web_mercator(lng, lat);
-            [nx, ny]
+            let (mx, my) = lnglat_to_web_mercator(lng, lat);
+            [mx, my]
         })
         .collect()
 }
@@ -340,24 +339,14 @@ fn clip_line_string(
 
 #[cfg(test)]
 mod tests {
-    use tinymvt::webmercator::lnglat_to_web_mercator_meters;
-
     use super::*;
 
     #[test]
     fn slice_leaves_drops_only_the_wrongly_wound_polygon() {
-        // A lng/lat rectangle traced counter-clockwise (right, up, left, down), given in raw
-        // Web Mercator meters (extract's Leaf contract). Its normalized Web Mercator
+        // A lng/lat rectangle traced counter-clockwise (right, up, left, down); its Web Mercator
         // projection is verified by hand to have negative `ring_area`, the winding
         // `normalize_winding` requires of an exterior ring.
-        let ccw_lnglat = [[0.0, 0.0], [90.0, 0.0], [90.0, 80.0], [0.0, 80.0]];
-        let ccw: Vec<[f64; 2]> = ccw_lnglat
-            .iter()
-            .map(|&[lng, lat]| {
-                let (mx, my) = lnglat_to_web_mercator_meters(lng, lat);
-                [mx, my]
-            })
-            .collect();
+        let ccw = vec![[0.0, 0.0], [90.0, 0.0], [90.0, 80.0], [0.0, 80.0]];
         let mut cw = ccw.clone();
         cw.reverse();
 
