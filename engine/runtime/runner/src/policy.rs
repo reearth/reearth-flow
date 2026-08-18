@@ -1,7 +1,8 @@
 use std::collections::{HashMap, HashSet};
 
 use reearth_flow_diagnostics::{
-    Disposition, DispositionPolicy, ErrorCode, OnFatalInput, OverrideInput, PolicyInput,
+    levenshtein_distance, Disposition, DispositionPolicy, ErrorCode, OnFatalInput, OverrideInput,
+    PolicyInput,
 };
 use reearth_flow_runtime::executor::dag_executor::{NodeKindTag, RejectRoutingInfo};
 use reearth_flow_runtime::node::REJECTED_PORT;
@@ -148,24 +149,6 @@ fn rejecting_codes(policy: &DispositionPolicy, composed_id: &str) -> Vec<ErrorCo
                 && policy.resolve(composed_id, code) == Disposition::Reject
         })
         .collect()
-}
-
-/// Duplicated from a private helper in the diagnostics crate — keep in sync manually.
-fn levenshtein_distance(a: &str, b: &str) -> usize {
-    let a: Vec<char> = a.chars().collect();
-    let b: Vec<char> = b.chars().collect();
-    let mut row: Vec<usize> = (0..=b.len()).collect();
-    for (i, &ca) in a.iter().enumerate() {
-        let mut prev_diag = row[0];
-        row[0] = i + 1;
-        for (j, &cb) in b.iter().enumerate() {
-            let cost = usize::from(ca != cb);
-            let above_left = prev_diag;
-            prev_diag = row[j + 1];
-            row[j + 1] = (row[j + 1] + 1).min(row[j] + 1).min(above_left + cost);
-        }
-    }
-    row[b.len()]
 }
 
 fn nearest_composed_ids(raw: &str, composed_ids: &HashSet<&str>, limit: usize) -> Vec<String> {

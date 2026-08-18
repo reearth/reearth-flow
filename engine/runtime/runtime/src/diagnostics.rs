@@ -109,6 +109,13 @@ impl NodeDiagnosticsHandle {
         }
     }
 
+    pub fn node_meta(&self) -> crate::executor::dag_executor::NodeMeta {
+        crate::executor::dag_executor::NodeMeta {
+            composed_id: self.inner.node_id().to_string(),
+            action: self.inner.action_type().to_string(),
+        }
+    }
+
     pub fn record_reject_row(
         &self,
         feature_id: Option<Uuid>,

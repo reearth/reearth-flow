@@ -144,6 +144,16 @@ impl NodeHandle {
     pub fn new(id: NodeId) -> Self {
         Self { id }
     }
+
+    /// `NodeId` is `pub(super)` here (crate-private), so an external crate cannot name it
+    /// directly. Its `Deserialize` impl is still public, so this builds one via inference
+    /// through that instead of naming the type. Primarily useful for downstream-crate tests that
+    /// need a `NodeHandle` without a real workflow graph.
+    pub fn for_test(id: &str) -> Self {
+        Self {
+            id: serde_json::from_value(serde_json::Value::String(id.to_string())).unwrap(),
+        }
+    }
 }
 
 impl Display for NodeHandle {

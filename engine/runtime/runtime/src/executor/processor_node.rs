@@ -184,10 +184,7 @@ impl<F: Future + Unpin + Debug> ProcessorNode<F> {
     }
 
     pub fn node_meta(&self) -> super::dag_executor::NodeMeta {
-        super::dag_executor::NodeMeta {
-            composed_id: self.diagnostics.inner.node_id().to_string(),
-            action: self.diagnostics.inner.action_type().to_string(),
-        }
+        self.diagnostics.node_meta()
     }
 
     fn wait_until_pool_has_capacity(&self) {

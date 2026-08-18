@@ -86,7 +86,7 @@ fn parse_code(raw: &str) -> Option<ErrorCode> {
     ErrorCode::ALL.iter().copied().find(|c| c.as_str() == raw)
 }
 
-fn levenshtein_distance(a: &str, b: &str) -> usize {
+pub fn levenshtein_distance(a: &str, b: &str) -> usize {
     let a: Vec<char> = a.chars().collect();
     let b: Vec<char> = b.chars().collect();
     let mut row: Vec<usize> = (0..=b.len()).collect();
@@ -292,12 +292,6 @@ impl DispositionPolicy {
 
     pub fn side_file(&self) -> bool {
         self.side_file
-    }
-
-    pub fn overrides_touching_node(&self, composed_node_id: &str) -> bool {
-        self.overrides
-            .iter()
-            .any(|o| o.matches_node(composed_node_id))
     }
 
     /// Over-approximating: may return true when `resolve` would actually return false, never the reverse.
@@ -701,7 +695,6 @@ mod tests {
         let policy = DispositionPolicy::default();
         assert_eq!(policy.on_fatal(), OnFatalInput::Terminate);
         assert!(!policy.side_file());
-        assert!(!policy.overrides_touching_node(NODE));
     }
 
     #[test]
@@ -713,16 +706,6 @@ mod tests {
         });
         assert_eq!(policy.on_fatal(), OnFatalInput::Continue);
         assert!(policy.side_file());
-    }
-
-    #[test]
-    fn overrides_touching_node_is_true_only_for_referenced_nodes() {
-        let policy = compile(PolicyInput {
-            overrides: vec![override_all(Some(NODE), None, None, Disposition::Fatal)],
-            ..Default::default()
-        });
-        assert!(policy.overrides_touching_node(NODE));
-        assert!(!policy.overrides_touching_node("some-other-node"));
     }
 
     #[test]

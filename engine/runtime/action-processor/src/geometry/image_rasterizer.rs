@@ -1445,20 +1445,10 @@ mod diagnostics_tests {
 
     use super::*;
 
-    /// `NodeId` is `pub(super)` inside `reearth_flow_runtime` (crate-private),
-    /// so an external crate cannot name it directly. Its `Deserialize` impl
-    /// is still public, so we build one via inference through `NodeHandle`'s
-    /// public `id` field instead of naming the type.
-    fn test_node_handle(id: &str) -> NodeHandle {
-        NodeHandle {
-            id: serde_json::from_value(serde_json::Value::String(id.to_string())).unwrap(),
-        }
-    }
-
     fn make_handle() -> Arc<NodeDiagnosticsHandle> {
         Arc::new(NodeDiagnosticsHandle::new(
             "n1".to_string(),
-            test_node_handle("n1"),
+            NodeHandle::for_test("n1"),
             "processor".into(),
             "Image Rasterizer".into(),
             Arc::default(),
