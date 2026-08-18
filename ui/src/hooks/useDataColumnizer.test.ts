@@ -187,6 +187,49 @@ describe("new-format features reach the table", () => {
     );
   });
 
+  test("keeps coordinates ahead of the appearance columns", () => {
+    const { headers } = columnize([
+      {
+        id: "a",
+        attributes: {},
+        geometry: {
+          GeometryCollection: {
+            members: [
+              {
+                Euclidean3D: {
+                  PolygonMesh: {
+                    frame: { Crs: 6697 },
+                    faces: [
+                      {
+                        exterior: [
+                          [35.6, 139.7, 0],
+                          [35.6, 139.8, 0],
+                          [35.7, 139.8, 9],
+                        ],
+                      },
+                    ],
+                    appearance: {
+                      materials: [
+                        { Phong: { diffuse: [1, 0, 0], transparency: 0 } },
+                      ],
+                      themes: [{ theme: "t", front: { Uniform: 0 } }],
+                      default_theme: "t",
+                    },
+                  },
+                },
+              },
+            ],
+            attrs: [{ lod: 2 }],
+          },
+        },
+      },
+    ]);
+
+    expect(headers.indexOf("geometry.coordinates")).toBeLessThan(
+      headers.indexOf("geometry.materials"),
+    );
+  });
+
   test("a row carries the values behind its cells, for the details panel", () => {
     const line = {
       id: "0195f3a0-0000-7000-8000-000000000005",

@@ -343,6 +343,21 @@ export function featurePositions(geometry: any): number {
       0,
     );
   }
+  // Legacy CityGML keeps its rings under `gmlGeometries` and has no
+  // `coordinates`, so reading only the latter would leave it uncounted.
+  const gmlGeometries =
+    geometry.gmlGeometries ?? geometry.value?.cityGmlGeometry?.gmlGeometries;
+  if (Array.isArray(gmlGeometries)) {
+    const ring = (value: unknown) => (Array.isArray(value) ? value.length : 0);
+    let total = 0;
+    for (const geom of gmlGeometries) {
+      for (const polygon of geom?.polygons ?? []) {
+        total += ring(polygon?.exterior);
+        for (const hole of polygon?.interior ?? []) total += ring(hole);
+      }
+    }
+    return total;
+  }
   return positionsIn(geometry.coordinates);
 }
 

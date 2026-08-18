@@ -76,6 +76,36 @@ describe("featurePositions", () => {
     ).toBe(0);
   });
 
+  test("counts a legacy CityGML record, which has no coordinates", () => {
+    // Its rings live under `gmlGeometries`; reading only `coordinates` would
+    // score it zero and leave legacy files outside the budget entirely.
+    expect(
+      featurePositions({
+        type: "CityGmlGeometry",
+        gmlGeometries: [
+          {
+            lod: 1,
+            polygons: [
+              {
+                exterior: [
+                  { x: 1, y: 2, z: 0 },
+                  { x: 3, y: 4, z: 0 },
+                  { x: 5, y: 6, z: 0 },
+                ],
+                interior: [
+                  [
+                    { x: 1, y: 2, z: 0 },
+                    { x: 3, y: 4, z: 0 },
+                  ],
+                ],
+              },
+            ],
+          },
+        ],
+      }),
+    ).toBe(5);
+  });
+
   test("counts what a CityGML building actually costs", () => {
     const building = transformNextFeature({
       id: "x",

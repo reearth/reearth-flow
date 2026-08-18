@@ -10,16 +10,16 @@ import { describe, expect, test } from "vitest";
 
 import { transformNextFeature } from "@flow/utils/jsonl/transformNextFeature";
 
-import { isCityGmlGeometry } from "./cityGmlGeometryToPrimitives";
+import { getFeatureBoundingSphereFromBounds } from "./cesiumFunctions";
+import {
+  gmlGeometriesOf,
+  isCityGmlGeometry,
+} from "./cityGmlGeometryToPrimitives";
 import { upgradeSurfaces } from "./useLodWorker";
 
-/** `gmlGeometriesOf`, for the new-format branch. */
-function surfaceRings(geometry: any): any[][] {
-  const { type, coordinates } = geometry;
-  if (!Array.isArray(coordinates)) return [];
-  if (type === "MultiPolygon") return coordinates;
-  if (type === "Polygon") return [coordinates];
-  return [];
+/** The surfaces the renderer will draw, as it reads them. */
+function surfaces(geometry: any): any[] {
+  return gmlGeometriesOf(geometry)?.flatMap((entry) => entry.polygons) ?? [];
 }
 
 /** A CityGML feature as the reader emits it: one member per level of detail. */
@@ -105,18 +105,17 @@ describe("the surfaces the renderer reads", () => {
     // A CityGML file is mostly coordinates. Emitting a parallel structure for
     // the renderer is what exhausted the tab; it reads `coordinates` instead.
     const geometry = transformNextFeature(cityGmlFeature([1])).geometry as any;
-    const rings = surfaceRings(geometry);
 
-    expect(rings[0]).toBe(geometry.coordinates[0]);
+    expect(surfaces(geometry)[0].exterior).toBe(geometry.coordinates[0][0]);
   });
 
   test("carry a usable outer ring, longitude first and closed", () => {
     const geometry = transformNextFeature(cityGmlFeature([1])).geometry as any;
-    const [surface] = surfaceRings(geometry);
+    const [surface] = surfaces(geometry);
 
     // `coordsToPositions` reads these straight into Cartesian3.fromDegrees,
     // and EPSG:6697 is north-first, so the swap has to have happened already.
-    expect(surface[0]).toEqual([
+    expect(surface.exterior).toEqual([
       [139.7, 35.6, 0],
       [139.8, 35.6, 0],
       [139.8, 35.7, 12],
@@ -129,9 +128,9 @@ describe("the surfaces the renderer reads", () => {
     // position; a ring that lost its z reads as flat ground and colours as
     // floor. This surface spans 0 to 12, so it must not read as flat.
     const geometry = transformNextFeature(cityGmlFeature([1])).geometry as any;
-    const [surface] = surfaceRings(geometry);
+    const [surface] = surfaces(geometry);
 
-    const heights = surface[0].map((position: number[]) => position[2]);
+    const heights = surface.exterior.map((position: number[]) => position[2]);
     expect(Math.max(...heights) - Math.min(...heights)).toBe(12);
   });
 
@@ -171,7 +170,7 @@ describe("the surfaces the renderer reads", () => {
       },
     }).geometry as any;
 
-    expect(surfaceRings(geometry)).toHaveLength(2);
+    expect(surfaces(geometry)).toHaveLength(2);
   });
 });
 
@@ -229,5 +228,45 @@ describe("the level swapped in when a feature is selected", () => {
     // `upgradeLod` treats null as "leave it as it is" rather than redrawing
     // the same surfaces on top of themselves.
     expect(upgradeSurfaces(drawn([2]))).toBeNull();
+  });
+});
+
+describe("the camera reaching a selected feature", () => {
+  test("bounds a new-format feature, whose positions are arrays", () => {
+    const geometry = transformNextFeature(cityGmlFeature([1])).geometry as any;
+
+    const sphere = getFeatureBoundingSphereFromBounds(
+      gmlGeometriesOf(geometry) ?? [],
+    );
+
+    expect(sphere).not.toBeNull();
+    expect(sphere?.radius).toBeGreaterThan(0);
+  });
+
+  test("bounds a legacy feature, whose positions are objects", () => {
+    const sphere = getFeatureBoundingSphereFromBounds([
+      {
+        polygons: [
+          {
+            exterior: [
+              { x: 139.7, y: 35.6, z: 0 },
+              { x: 139.8, y: 35.6, z: 0 },
+              { x: 139.8, y: 35.7, z: 12 },
+            ],
+          },
+        ],
+      },
+    ]);
+
+    expect(sphere).not.toBeNull();
+    expect(sphere?.radius).toBeGreaterThan(0);
+  });
+
+  test("skips a position it cannot read rather than bounding NaN", () => {
+    const sphere = getFeatureBoundingSphereFromBounds([
+      { polygons: [{ exterior: [["a", "b"], [null], { x: 1 }] }] },
+    ]);
+
+    expect(sphere).toBeNull();
   });
 });

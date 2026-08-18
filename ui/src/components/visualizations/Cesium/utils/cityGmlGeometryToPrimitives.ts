@@ -9,7 +9,6 @@ import {
   PerInstanceColorAppearance,
   PolygonGeometry,
   PolygonHierarchy,
-  PolygonOutlineGeometry,
   Primitive,
   PrimitiveCollection,
   ShowGeometryInstanceAttribute,
@@ -178,10 +177,12 @@ function isDemFeature(properties: Record<string, any>): boolean {
  */
 export function readCoord(coord: any): [number, number, number] | null {
   if (Array.isArray(coord)) {
-    return coord.length >= 2 ? [coord[0], coord[1], coord[2] ?? 0] : null;
+    const [x, y, z] = coord;
+    if (typeof x !== "number" || typeof y !== "number") return null;
+    return [x, y, typeof z === "number" ? z : 0];
   }
   if (typeof coord?.x === "number" && typeof coord?.y === "number") {
-    return [coord.x, coord.y, coord.z ?? 0];
+    return [coord.x, coord.y, typeof coord.z === "number" ? coord.z : 0];
   }
   return null;
 }
@@ -587,135 +588,4 @@ export function convertFeatureCollectionToPrimitives(
       : null;
 
   return { absolutePrimitive, groundPrimitive, featureMap, boundingSphere };
-}
-
-/**
- * Create a LOD-upgrade Primitive Collection for a single feature using LOD3 (fallback LOD2) geometry.
- * Returns null if no higher-LOD data is available.
- */
-export function createLodUpgradePrimitiveCollection(
-  feature: CityGmlFeature,
-  typeConfig?: CityGmlTypeConfig,
-): PrimitiveCollection | null {
-  const { geometry } = feature;
-  const featureId: string = feature.properties?._originalId || feature.id || "";
-
-  const gmlGeometries =
-    geometry.gmlGeometries || geometry.value?.cityGmlGeometry?.gmlGeometries;
-  // Only the legacy path reaches here with something to upgrade to: the
-  // new-geometry transform keeps one level, so there is no finer one held.
-  if (!gmlGeometries || !Array.isArray(gmlGeometries)) return null;
-
-  // LOD3 first, fallback to LOD2
-  let lodGeometries = gmlGeometries.filter(
-    (geom: any) =>
-      geom.lod === 3 ||
-      geom.gml_trait?.property?.includes("Lod3") ||
-      geom.gml_trait?.property?.includes("LOD3"),
-  );
-  if (lodGeometries.length === 0) {
-    lodGeometries = gmlGeometries.filter(
-      (geom: any) =>
-        geom.lod === 2 ||
-        geom.gml_trait?.property?.includes("Lod2") ||
-        geom.gml_trait?.property?.includes("LOD2"),
-    );
-  }
-
-  if (lodGeometries.length === 0) return null;
-
-  const allPolygons: any[] = [];
-  for (const geom of lodGeometries) {
-    if (geom.polygons && Array.isArray(geom.polygons)) {
-      const baseIndex: number = geom.pos ?? 0;
-      geom.polygons.forEach((polygon: any, localIdx: number) => {
-        allPolygons.push({ ...polygon, _globalIndex: baseIndex + localIdx });
-      });
-    }
-  }
-
-  if (allPolygons.length === 0) return null;
-
-  let globalMinZ = Infinity;
-  for (const p of allPolygons) {
-    for (const c of p.exterior || []) {
-      const z = coordZ(c);
-      if (z < globalMinZ) globalMinZ = z;
-    }
-  }
-
-  if (globalMinZ === Infinity) return null;
-
-  const fillInstances: GeometryInstance[] = [];
-  const outlineInstances: GeometryInstance[] = [];
-
-  allPolygons.forEach((polygon, idx) => {
-    if (!polygon.exterior || !Array.isArray(polygon.exterior)) return;
-    const rawPositions = coordsToPositions(polygon.exterior);
-    if (rawPositions.length < 3) return;
-
-    const positions = rawPositions.map((pos) => {
-      const carto = Cartographic.fromCartesian(pos);
-      carto.height = (carto.height || 0) - globalMinZ;
-      return Cartographic.toCartesian(carto);
-    });
-
-    const globalIdx: number = polygon._globalIndex ?? -1;
-    const defaultColor = typeConfig?.useSurfaceTypeColors
-      ? getSurfaceTypeColor(polygon, globalMinZ)
-      : (typeConfig?.color ?? Color.GRAY.withAlpha(0.8));
-    const color = resolveAppearanceColor(globalIdx, geometry, defaultColor);
-
-    fillInstances.push(
-      new GeometryInstance({
-        id: { featureId, instanceId: `${featureId}_fill_lod_${idx}` },
-        geometry: new PolygonGeometry({
-          polygonHierarchy: new PolygonHierarchy(positions),
-          perPositionHeight: true,
-        }),
-        attributes: {
-          color: ColorGeometryInstanceAttribute.fromColor(color),
-          show: new ShowGeometryInstanceAttribute(true),
-        },
-      }),
-    );
-
-    outlineInstances.push(
-      new GeometryInstance({
-        id: { featureId, instanceId: `${featureId}_outline_lod_${idx}` },
-        geometry: new PolygonOutlineGeometry({
-          polygonHierarchy: new PolygonHierarchy(positions),
-          perPositionHeight: true,
-        }),
-        attributes: {
-          color: ColorGeometryInstanceAttribute.fromColor(
-            Color.BLACK.withAlpha(0.8),
-          ),
-          show: new ShowGeometryInstanceAttribute(true),
-        },
-      }),
-    );
-  });
-
-  if (fillInstances.length === 0 || outlineInstances.length === 0) return null;
-  const fillPrimitive = new Primitive({
-    geometryInstances: fillInstances,
-    appearance: new PerInstanceColorAppearance({
-      flat: true,
-      translucent: true,
-    }),
-  });
-
-  const outlinePrimitive = new Primitive({
-    geometryInstances: outlineInstances,
-    appearance: new PerInstanceColorAppearance({
-      flat: true,
-      translucent: true,
-    }),
-  });
-
-  const primitiveCollection = new PrimitiveCollection();
-  primitiveCollection.add(fillPrimitive);
-  primitiveCollection.add(outlinePrimitive);
-  return primitiveCollection;
 }

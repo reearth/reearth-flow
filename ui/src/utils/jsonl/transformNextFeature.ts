@@ -514,10 +514,10 @@ function mergeMembers(
     if (type.startsWith("Multi")) {
       return {
         type,
-        ...mergeShading(geometries),
         coordinates: geometries.flatMap(
           (geometry) => geometry.coordinates as unknown[],
         ),
+        ...mergeShading(geometries),
       };
     }
   }
