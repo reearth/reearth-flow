@@ -168,8 +168,10 @@ impl Point2D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
 use crate::ops::{Footprint, FootprintError, FootprintSink};
 
+#[cfg(feature = "new-geometry")]
 impl Footprint for Point2D {
     fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
         sink.enter(&self.frame)?;
@@ -178,6 +180,7 @@ impl Footprint for Point2D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
 impl Footprint for Point3D {
     fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
         sink.enter(&self.frame)?;

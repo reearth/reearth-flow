@@ -458,8 +458,10 @@ impl Coerce for Polygon3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
 use crate::ops::{Footprint, FootprintError, FootprintSink};
 
+#[cfg(feature = "new-geometry")]
 impl Footprint for Polygon2D {
     fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
         sink.enter(self.frame())?;
@@ -471,6 +473,7 @@ impl Footprint for Polygon2D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
 impl Footprint for Polygon3D {
     fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
         sink.enter(self.frame())?;

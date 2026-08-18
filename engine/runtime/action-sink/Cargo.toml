@@ -16,6 +16,7 @@ version.workspace = true
 new-geometry = [
   "reearth-flow-action-processor/new-geometry",
   "reearth-flow-atlas/new-geometry",
+  "reearth-flow-geometry/new-geometry",
   "reearth-flow-gltf/new-geometry",
   "reearth-flow-types/new-geometry",
 ]

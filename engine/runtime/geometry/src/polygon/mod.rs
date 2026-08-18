@@ -19,6 +19,7 @@ mod constructor;
 #[cfg(not(feature = "debug-geom-feature-write"))]
 mod feature_write;
 mod ops;
+#[cfg(feature = "new-geometry")]
 mod validation;
 
 pub use constructor::{state, PolygonBuilder2D, PolygonBuilder3D, PolygonFace};

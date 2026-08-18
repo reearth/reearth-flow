@@ -22,6 +22,7 @@ mod faces;
 #[cfg(not(feature = "debug-geom-feature-write"))]
 mod feature_write;
 mod ops;
+#[cfg(feature = "new-geometry")]
 mod validation;
 
 pub(crate) use ops::build_open_rings;

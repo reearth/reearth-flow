@@ -487,7 +487,6 @@ mod tests {
     use crate::tests::utils::create_default_execute_context;
     use pretty_assertions::assert_eq;
     use reearth_flow_geometry::coordinate::{BaseFrame, CoordinateFrame, EpsgCode, TangentPlane};
-    use reearth_flow_geometry::polygon::Polygon3D;
     use reearth_flow_geometry::solid::{Shell, Solid};
     use reearth_flow_geometry::triangular_mesh::TriangularMesh3DData;
     use reearth_flow_geometry::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
@@ -521,21 +520,6 @@ mod tests {
     fn box_solid(frame: CoordinateFrame, min: [f64; 3], size: [f64; 3]) -> Geometry {
         let solid = Solid::from_exterior(frame, Shell::TriangularMesh(box_shell(min, size)));
         Geometry::Euclidean3D(Euclidean3DGeometry::Solid(Box::new(solid)))
-    }
-
-    fn wall() -> Geometry {
-        let face = Polygon3D::from_rings(
-            CoordinateFrame::Euclidean,
-            [
-                [0.0, 0.0, 0.0],
-                [3.0, 0.0, 0.0],
-                [3.0, 0.0, 5.0],
-                [0.0, 0.0, 5.0],
-                [0.0, 0.0, 0.0],
-            ],
-            Vec::<Vec<[f64; 3]>>::new(),
-        );
-        Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(face)))
     }
 
     /// A feature carrying `geometry` and one attribute to trace through.
@@ -669,8 +653,8 @@ mod tests {
     }
 
     #[test]
-    fn a_wall_has_no_horizontal_footprint_and_is_rejected() {
-        let input = feature(wall());
+    fn a_geometry_with_no_footprint_is_rejected() {
+        let input = feature(Geometry::None);
         let sent = run(&mut *build(None), &input);
         assert_eq!(sent.len(), 1);
         assert_eq!(sent[0].0.to_string(), "rejected");

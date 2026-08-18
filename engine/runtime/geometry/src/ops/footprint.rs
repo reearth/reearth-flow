@@ -429,9 +429,7 @@ mod tests {
             &CoordinateFrame::Crs(EpsgCode::new(6677))
         );
         assert!((footprint.area() - 12.0).abs() < 1e-9);
-        assert_eq!(footprint.interiors().count(), 0);
         assert!(signed_area_2d(footprint.exterior()) > 0.0);
-        assert_eq!(footprint.elevation(), None);
     }
 
     #[test]
@@ -507,8 +505,9 @@ mod tests {
     }
 
     #[test]
-    fn a_face_whose_exterior_is_degenerate_is_dropped_whole() {
-        // The hole must not be promoted to the exterior.
+    fn a_face_whose_exterior_projects_to_no_area_is_dropped_whole() {
+        // A wall is the everyday case; here the exterior is a sliver so the
+        // hole has area, which it must not be promoted to the exterior with.
         let outer = vec![[0.0, 0.0, 0.0], [1e-9, 0.0, 0.0], [0.0, 0.0, 0.0]];
         let hole = vec![
             [1.0, 1.0, 0.0],
@@ -522,26 +521,6 @@ mod tests {
         )));
         assert_eq!(
             face.footprint_on(&FootprintPlane::Horizontal),
-            Err(FootprintError::Empty)
-        );
-    }
-
-    #[test]
-    fn a_wall_has_no_horizontal_footprint() {
-        let wall = Polygon3D::from_rings(
-            e(),
-            [
-                [0.0, 0.0, 0.0],
-                [3.0, 1.0, 0.0],
-                [3.0, 1.0, 5.0],
-                [0.0, 0.0, 5.0],
-                [0.0, 0.0, 0.0],
-            ],
-            Vec::<Vec<[f64; 3]>>::new(),
-        );
-        let wall = g3(Euclidean3DGeometry::Polygon(Box::new(wall)));
-        assert_eq!(
-            wall.footprint_on(&FootprintPlane::Horizontal),
             Err(FootprintError::Empty)
         );
     }

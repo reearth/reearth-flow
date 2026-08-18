@@ -423,8 +423,10 @@ impl Coerce for TriangularMesh3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
 use crate::ops::{Footprint, FootprintError, FootprintSink};
 
+#[cfg(feature = "new-geometry")]
 impl Footprint for TriangularMesh2D {
     fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
         sink.enter(self.frame())?;
@@ -441,6 +443,7 @@ impl Footprint for TriangularMesh2D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
 impl Footprint for TriangularMesh3D {
     fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
         sink.enter(self.frame())?;
@@ -449,6 +452,7 @@ impl Footprint for TriangularMesh3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
 impl TriangularMesh3DData {
     /// Push every triangle into an entered `sink`.
     pub(crate) fn footprint_faces(&self, sink: &mut FootprintSink<'_>) {

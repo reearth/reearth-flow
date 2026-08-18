@@ -24,6 +24,7 @@ mod constructor;
 #[cfg(not(feature = "debug-geom-feature-write"))]
 mod feature_write;
 mod ops;
+#[cfg(feature = "new-geometry")]
 mod validation;
 
 /// Bit positions of the optional primary fields within a [`Segment`]'s
@@ -174,6 +175,7 @@ impl fmt::Debug for PointCloud {
     }
 }
 
+#[cfg(feature = "new-geometry")]
 crate::unsupported!(PointCloud: Footprint);
 
 crate::unsupported!(

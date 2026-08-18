@@ -183,6 +183,7 @@ pub fn segment_intersections_2d(
 /// Dissolve `shapes`, each a list of rings (outer contour first, then holes,
 /// every ring wound to Flow's convention and implicitly closed), into disjoint
 /// polygons in `frame` under the non-zero fill rule.
+#[cfg(feature = "new-geometry")]
 pub(crate) fn dissolve_shapes(
     shapes: Vec<Vec<Vec<[f64; 2]>>>,
     frame: &CoordinateFrame,

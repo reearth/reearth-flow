@@ -22,6 +22,12 @@ pub mod _alloc {
 
 // Geometry type hierarchy.
 //
+// These definitions are compiled unconditionally: they are additive and public,
+// so they neither warn nor collide with the current geometry world (`types`).
+// The migration switch is the `new-geometry` feature on `reearth-flow-types`,
+// which selects this `Geometry` for `Feature.geometry`; the types here are not
+// themselves feature-gated.
+//
 // The denormalized intermediate-data serialization is still future work: the
 // types derive default `serde` so the enclosing `Feature` can serialize, which
 // is not yet the byte-for-byte round-tripping intermediate form intended for
@@ -41,6 +47,7 @@ pub mod polygon_mesh;
 pub mod predicates;
 pub mod solid;
 pub mod triangular_mesh;
+#[cfg(feature = "new-geometry")]
 pub mod validation_next;
 
 #[cfg(test)]
@@ -60,7 +67,9 @@ use ops::{
 // `enum_dispatch`-generated `Validate` impls on the geometry enums, so they must
 // be in scope here.
 use ops::Split;
+#[cfg(feature = "new-geometry")]
 use ops::{Footprint, FootprintError, FootprintPlane, FootprintSink};
+#[cfg(feature = "new-geometry")]
 use validation_next::{Validate, ValidationParams, ValidationReport, ValidationType};
 
 use coordinate::{CoordinateFrame, EpsgCode};
@@ -168,20 +177,39 @@ impl GeometryCollection {
 /// common variants don't inflate the enum — and `Geometry` with them — to the
 /// size of the largest leaf. The small tier (`Point`, `LineString`,
 /// `Collection`) stays inline.
-#[enum_dispatch(
-    BoundingBox,
-    Triangulate,
-    Reproject,
-    Coerce,
-    Validate,
-    ConvertFrame,
-    Translate,
-    Split,
-    ForceTwoDimension,
-    RemoveAppearance,
-    CountHoles,
-    ExtractHoles,
-    Footprint
+#[cfg_attr(
+    not(feature = "new-geometry"),
+    enum_dispatch(
+        BoundingBox,
+        Triangulate,
+        Reproject,
+        Coerce,
+        ConvertFrame,
+        Translate,
+        Split,
+        ForceTwoDimension,
+        RemoveAppearance,
+        CountHoles,
+        ExtractHoles
+    )
+)]
+#[cfg_attr(
+    feature = "new-geometry",
+    enum_dispatch(
+        BoundingBox,
+        Triangulate,
+        Reproject,
+        Coerce,
+        Validate,
+        ConvertFrame,
+        Translate,
+        Split,
+        ForceTwoDimension,
+        RemoveAppearance,
+        CountHoles,
+        ExtractHoles,
+        Footprint
+    )
 )]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -206,20 +234,39 @@ pub enum Euclidean2DGeometry {
 /// with them — to the size of the largest leaf. The small tier (`Point`,
 /// `LineString`, `Csg`, `Collection`) stays inline; `Csg` already boxes its own
 /// operands.
-#[enum_dispatch(
-    BoundingBox,
-    Triangulate,
-    Reproject,
-    Coerce,
-    Validate,
-    ConvertFrame,
-    Translate,
-    Split,
-    ForceTwoDimension,
-    RemoveAppearance,
-    CountHoles,
-    ExtractHoles,
-    Footprint
+#[cfg_attr(
+    not(feature = "new-geometry"),
+    enum_dispatch(
+        BoundingBox,
+        Triangulate,
+        Reproject,
+        Coerce,
+        ConvertFrame,
+        Translate,
+        Split,
+        ForceTwoDimension,
+        RemoveAppearance,
+        CountHoles,
+        ExtractHoles
+    )
+)]
+#[cfg_attr(
+    feature = "new-geometry",
+    enum_dispatch(
+        BoundingBox,
+        Triangulate,
+        Reproject,
+        Coerce,
+        Validate,
+        ConvertFrame,
+        Translate,
+        Split,
+        ForceTwoDimension,
+        RemoveAppearance,
+        CountHoles,
+        ExtractHoles,
+        Footprint
+    )
 )]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
@@ -528,6 +575,7 @@ impl Split for GeometryCollection {
     }
 }
 
+#[cfg(feature = "new-geometry")]
 impl Footprint for Geometry {
     fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
         match self {
@@ -539,12 +587,14 @@ impl Footprint for Geometry {
     }
 }
 
+#[cfg(feature = "new-geometry")]
 impl Footprint for GeometryCollection {
     fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
         self.members.iter().try_for_each(|m| m.footprint(sink))
     }
 }
 
+#[cfg(feature = "new-geometry")]
 impl Geometry {
     /// The footprint of this geometry on `plane`: every face projected and
     /// dissolved into its union, curves and points projected as they are, as 2D
