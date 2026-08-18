@@ -1569,7 +1569,17 @@
     },
     {
       "name": "Footprint Replacer",
-      "description": "Projette la géométrie 3D sur le plan XY et calcule l'empreinte union (supporte les solides, surfaces et CityGML)"
+      "description": "Remplace la géométrie d'une entité par son empreinte : la projection dissoute de ses faces sur le plan horizontal ou sur un plan personnalisé",
+      "parameterI18n": {
+        "": {
+          "title": "Paramètres de Footprint Replacer",
+          "description": "Configure le plan sur lequel la géométrie est projetée. La géométrie doit être dans un repère euclidien ou un système de référence de coordonnées en unités linéaires ; les faces dont l'aire projetée est inférieure à 1e-6 unités carrées sont ignorées."
+        },
+        "projectionPlane": {
+          "title": "Plan de projection",
+          "description": "Plan sur lequel la géométrie est projetée. Par défaut, le plan horizontal."
+        }
+      }
     },
     {
       "name": "GeoJSON Reader",

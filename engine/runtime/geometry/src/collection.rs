@@ -20,6 +20,8 @@ use crate::ops::{
     Reproject, ReprojectionCache, UnsupportedOperation,
 };
 #[cfg(feature = "new-geometry")]
+use crate::ops::{Footprint, FootprintError, FootprintSink};
+#[cfg(feature = "new-geometry")]
 use crate::validation_next::Validate;
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 
@@ -423,6 +425,20 @@ impl ForceTwoDimension for Collection3D {
             members,
             attrs: std::mem::take(&mut self.attrs),
         }))
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for Collection2D {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        self.members.iter().try_for_each(|m| m.footprint(sink))
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for Collection3D {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        self.members.iter().try_for_each(|m| m.footprint(sink))
     }
 }
 

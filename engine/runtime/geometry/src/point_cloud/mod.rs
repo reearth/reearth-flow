@@ -175,6 +175,9 @@ impl fmt::Debug for PointCloud {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(PointCloud: Footprint);
+
 crate::unsupported!(
     PointCloud: Triangulate,
     Reproject,

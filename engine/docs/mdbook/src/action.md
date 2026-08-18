@@ -4937,9 +4937,141 @@ Inspects the file or directory at a path held in a feature attribute and adds it
 ### Type
 * processor
 ### Description
-Replaces a feature's 3D geometry with its 2D footprint projected onto the XY plane.
+Replaces a feature's geometry with its footprint: the dissolved projection of its faces onto the horizontal plane or a custom plane.
 ### Parameters
-* No parameters
+```json
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "Footprint Replacer Parameters",
+  "description": "Configure the plane the geometry is projected onto. The geometry must be in a Euclidean frame or a coordinate reference system in linear units; faces smaller than 1e-6 square units after projection are dropped.",
+  "type": "object",
+  "properties": {
+    "projectionPlane": {
+      "title": "Projection Plane",
+      "description": "Plane the geometry is projected onto. Defaults to the horizontal plane.",
+      "default": {
+        "type": "horizontal"
+      },
+      "allOf": [
+        {
+          "$ref": "#/definitions/ProjectionPlane"
+        }
+      ]
+    }
+  },
+  "definitions": {
+    "ProjectionPlane": {
+      "description": "The plane the footprint is projected onto.",
+      "oneOf": [
+        {
+          "title": "Horizontal",
+          "description": "Projects along the vertical axis onto the horizontal plane, dropping height. The footprint stays in the geometry's horizontal coordinate system.",
+          "type": "object",
+          "required": [
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "horizontal"
+              ]
+            }
+          }
+        },
+        {
+          "title": "Custom Plane",
+          "description": "Projects along a plane's normal onto that plane. The footprint is expressed in in-plane coordinates anchored at the plane origin.",
+          "type": "object",
+          "required": [
+            "normal",
+            "type"
+          ],
+          "properties": {
+            "type": {
+              "type": "string",
+              "enum": [
+                "custom"
+              ]
+            },
+            "normal": {
+              "title": "Normal",
+              "description": "Expression evaluating to the plane normal `[x, y, z]` in the geometry's coordinate frame; any non-zero length.",
+              "type": "object",
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            },
+            "origin": {
+              "title": "Origin",
+              "description": "Expression evaluating to the plane origin `[x, y, z]` in the geometry's coordinate frame. Defaults to `[0, 0, 0]`.",
+              "default": null,
+              "type": [
+                "object",
+                "null"
+              ],
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            },
+            "xAxis": {
+              "title": "X Axis",
+              "description": "Expression evaluating to a direction `[x, y, z]` whose in-plane component becomes the footprint's x axis. When omitted, the footprint's y axis is the in-plane direction closest to vertical.",
+              "default": null,
+              "type": [
+                "object",
+                "null"
+              ],
+              "format": "code",
+              "required": [
+                "type",
+                "value"
+              ],
+              "properties": {
+                "type": {
+                  "type": "string",
+                  "enum": [
+                    "flowExpr"
+                  ]
+                },
+                "value": {
+                  "type": "string"
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  }
+}
+```
 ### Input Ports
 * features
 ### Output Ports

@@ -247,6 +247,27 @@ impl Coerce for LineString3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+use crate::ops::{Footprint, FootprintError, FootprintSink};
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for LineString2D {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        sink.enter(self.frame())?;
+        sink.push_curve_2d(self.coords(), self.elevation());
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for LineString3D {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        sink.enter(self.frame())?;
+        sink.push_curve_3d(self.coords());
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

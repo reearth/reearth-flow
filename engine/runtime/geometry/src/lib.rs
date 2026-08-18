@@ -68,6 +68,8 @@ use ops::{
 // be in scope here.
 use ops::Split;
 #[cfg(feature = "new-geometry")]
+use ops::{Footprint, FootprintError, FootprintPlane, FootprintSink};
+#[cfg(feature = "new-geometry")]
 use validation_next::{Validate, ValidationParams, ValidationReport, ValidationType};
 
 use coordinate::{CoordinateFrame, EpsgCode};
@@ -205,7 +207,8 @@ impl GeometryCollection {
         ForceTwoDimension,
         RemoveAppearance,
         CountHoles,
-        ExtractHoles
+        ExtractHoles,
+        Footprint
     )
 )]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -261,7 +264,8 @@ pub enum Euclidean2DGeometry {
         ForceTwoDimension,
         RemoveAppearance,
         CountHoles,
-        ExtractHoles
+        ExtractHoles,
+        Footprint
     )
 )]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -568,6 +572,39 @@ impl Split for GeometryCollection {
             emit,
         );
         Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for Geometry {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        match self {
+            Geometry::None => Ok(()),
+            Geometry::Euclidean2D(g) => g.footprint(sink),
+            Geometry::Euclidean3D(g) => g.footprint(sink),
+            Geometry::GeometryCollection(c) => c.footprint(sink),
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for GeometryCollection {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        self.members.iter().try_for_each(|m| m.footprint(sink))
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Geometry {
+    /// The footprint of this geometry on `plane`: every face projected and
+    /// dissolved into its union, curves and points projected as they are, as 2D
+    /// geometry in the plane's frame. See [`Footprint`] and
+    /// [`FootprintSink::finish`] for the contract, and [`FootprintPlane`] for
+    /// the frame each plane needs.
+    pub fn footprint_on(&self, plane: &FootprintPlane) -> Result<Geometry, FootprintError> {
+        let mut sink = FootprintSink::new(plane);
+        self.footprint(&mut sink)?;
+        sink.finish()
     }
 }
 

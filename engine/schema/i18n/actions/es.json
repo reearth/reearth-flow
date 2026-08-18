@@ -1569,7 +1569,17 @@
     },
     {
       "name": "Footprint Replacer",
-      "description": "Proyecta la geometría 3D al plano XY y calcula el polígono base unificado (compatible con sólidos, superficies y CityGML)"
+      "description": "Reemplaza la geometría de una entidad por su huella: la proyección disuelta de sus caras sobre el plano horizontal o sobre un plano personalizado",
+      "parameterI18n": {
+        "": {
+          "title": "Parámetros de Footprint Replacer",
+          "description": "Configura el plano sobre el que se proyecta la geometría. La geometría debe estar en un marco euclidiano o en un sistema de referencia de coordenadas en unidades lineales; las caras cuya área proyectada sea menor que 1e-6 unidades cuadradas se descartan."
+        },
+        "projectionPlane": {
+          "title": "Plano de proyección",
+          "description": "Plano sobre el que se proyecta la geometría. Por defecto, el plano horizontal."
+        }
+      }
     },
     {
       "name": "GeoJSON Reader",

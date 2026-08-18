@@ -405,7 +405,7 @@ fn representative_point(geometry: &Geometry) -> Option<[f64; 3]> {
 
 /// Parse an attribute value into an `[x, y, z]` triple. Accepts a two- or
 /// three-element numeric array; a two-element array is placed at `z = 0`.
-fn attribute_value_to_xyz(
+pub(crate) fn attribute_value_to_xyz(
     value: &reearth_flow_common::attribute::AttributeValue,
 ) -> Option<[f64; 3]> {
     use reearth_flow_common::attribute::AttributeValue;

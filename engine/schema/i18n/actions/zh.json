@@ -1569,7 +1569,17 @@
     },
     {
       "name": "Footprint Replacer",
-      "description": "将3D几何体投影到XY平面并计算联合底面轮廓（支持实体、面和CityGML）"
+      "description": "将要素的几何体替换为其底面轮廓：面在水平面或自定义平面上投影并融合的结果",
+      "parameterI18n": {
+        "": {
+          "title": "Footprint Replacer 参数",
+          "description": "配置几何体投影到的平面。几何体必须处于欧几里得坐标系或以长度为单位的坐标参考系中；投影后面积小于 1e-6 平方单位的面会被丢弃。"
+        },
+        "projectionPlane": {
+          "title": "投影平面",
+          "description": "几何体投影到的平面。默认为水平面。"
+        }
+      }
     },
     {
       "name": "GeoJSON Reader",
