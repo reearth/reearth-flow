@@ -108,6 +108,8 @@ impl SinkFactory for MVTSinkFactory {
                 colon_to_underscore: params.colon_to_underscore.unwrap_or(false),
                 extent: params.extent.unwrap_or(4096) as i32,
                 schema_key: params.schema_key,
+                #[cfg(feature = "new-geometry")]
+                max_tile_bytes: params.max_tile_bytes,
             },
             join_handles: Vec::new(),
         };
@@ -163,6 +165,18 @@ pub struct MVTWriterParam {
     /// Coordinate grid resolution within each tile. Higher values preserve more positional
     /// precision for high-detail data at the cost of larger tiles. Defaults to 4096, the MVT standard.
     pub(super) extent: Option<u32>,
+    /// # Maximum Tile Size
+    /// Target maximum encoded size per tile, in bytes. When exceeded, the least visually
+    /// significant features (smallest encoded size first) are dropped until the tile fits.
+    /// Defaults to 500,000.
+    #[cfg(feature = "new-geometry")]
+    #[serde(default = "default_max_tile_bytes")]
+    pub(super) max_tile_bytes: u64,
+}
+
+#[cfg(feature = "new-geometry")]
+fn default_max_tile_bytes() -> u64 {
+    500_000
 }
 
 #[derive(Debug, Clone)]
@@ -176,6 +190,8 @@ pub struct MVTWriterCompiledParam {
     pub(super) colon_to_underscore: bool,
     pub(super) extent: i32,
     pub(super) schema_key: Option<String>,
+    #[cfg(feature = "new-geometry")]
+    pub(super) max_tile_bytes: u64,
 }
 
 impl Sink for MVTWriter {

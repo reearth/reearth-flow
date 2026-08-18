@@ -3,10 +3,9 @@ mod slice;
 mod tile;
 
 use std::collections::{HashMap, HashSet};
-use std::io::{BufWriter, Cursor, Write};
+use std::io::{BufWriter, Cursor};
 use std::sync::Arc;
 
-use flate2::{write::ZlibEncoder, Compression};
 use rayon::prelude::*;
 use reearth_flow_geometry::ops::ReprojectionCache;
 use reearth_flow_runtime::executor_operation::{ExecutorContext, NodeContext};
@@ -22,8 +21,6 @@ use tile::{make_tile, SlicedFeature, SlicedGeom};
 
 const MAX_DETAIL: u32 = 12;
 const BUFFER_PIXELS: u32 = 5;
-const MIN_EXTENT: i32 = 512;
-const MAX_COMPRESSED_TILE_BYTES: usize = 500_000;
 
 impl MVTWriter {
     pub(super) fn process_new_geometry(
@@ -34,9 +31,9 @@ impl MVTWriter {
             return Ok(());
         }
 
-        let env_vars = ctx.env_vars.clone();
+        let variables = ctx.variables.clone();
         let eval = |c: &reearth_flow_types::CompiledCode| {
-            c.eval_string(&ctx.feature, Arc::clone(&env_vars))
+            c.eval_string(&ctx.feature, Arc::clone(&variables))
                 .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))
         };
         let output = eval(&self.params.output)?;
@@ -112,7 +109,8 @@ fn write_tileset(
 ) -> crate::errors::Result<()> {
     let min_zoom = params.min_zoom;
     let max_zoom = params.max_zoom;
-    let default_extent = params.extent;
+    let extent = params.extent;
+    let max_tile_bytes = params.max_tile_bytes;
 
     let accum = upstream
         .par_iter()
@@ -135,7 +133,7 @@ fn write_tileset(
         .by_tile
         .par_iter()
         .try_for_each(|(&(zoom, x, y), feats)| {
-            write_tile(ctx, output, zoom, x, y, feats, default_extent)
+            write_tile(ctx, output, zoom, x, y, feats, extent, max_tile_bytes)
         })?;
 
     write_tilejson(
@@ -173,33 +171,14 @@ fn write_tile(
     x: u32,
     y: u32,
     feats: &[SlicedFeature],
-    default_extent: i32,
+    extent: i32,
+    max_tile_bytes: u64,
 ) -> crate::errors::Result<()> {
-    let mut extent = default_extent;
-    loop {
-        let bytes = make_tile(extent, feats)?;
-        let compressed_size = {
-            let mut e = ZlibEncoder::new(Vec::new(), Compression::default());
-            e.write_all(&bytes)
-                .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
-            e.finish()
-                .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?
-                .len()
-        };
-        if compressed_size > MAX_COMPRESSED_TILE_BYTES && extent > MIN_EXTENT {
-            tracing::warn!(
-                "Tile z:{zoom} x:{x} y:{y} with extent {extent} is too large \
-                 ({compressed_size} bytes), retrying with smaller extent"
-            );
-            extent /= 2;
-            continue;
-        }
-        let tile_rel = format!("{output_rel}/{zoom}/{x}/{y}.mvt");
-        crate::SinkOutput::new(&ctx.sandbox_root, &tile_rel, &ctx.storage_resolver)
-            .and_then(|out| out.write(bytes::Bytes::from(bytes)))
-            .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))?;
-        return Ok(());
-    }
+    let bytes = make_tile(extent, feats, max_tile_bytes)?;
+    let tile_rel = format!("{output_rel}/{zoom}/{x}/{y}.mvt");
+    crate::SinkOutput::new(&ctx.sandbox_root, &tile_rel, &ctx.storage_resolver)
+        .and_then(|out| out.write(bytes::Bytes::from(bytes)))
+        .map_err(|e| crate::errors::SinkError::MvtWriter(format!("{e:?}")))
 }
 
 fn write_tilejson(

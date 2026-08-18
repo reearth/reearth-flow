@@ -46,11 +46,13 @@ pub(super) fn slice_leaves(
                 bound(&mut content, rings.iter().flatten());
 
                 let mercator = to_web_mercator(&rings);
-                let (exterior, holes) = normalize_winding(mercator);
+                let Some((exterior, holes)) = normalize_winding(mercator) else {
+                    continue;
+                };
                 let area = ring_area(&exterior).abs();
 
                 for zoom in min_z..=max_z {
-                    if area * (4u64.pow(zoom as u32 + max_detail) as f64) < 4.0 {
+                    if area * 4f64.powi(zoom as i32 + max_detail as i32) < 4.0 {
                         continue;
                     }
                     clip_polygon(&exterior, &holes, zoom, extent, buffer, &mut tiled_polys);
@@ -162,20 +164,25 @@ fn ring_area(ring: &[[f64; 2]]) -> f64 {
     area / 2.0
 }
 
-fn normalize_winding(mut rings: Vec<Ring>) -> (Ring, Vec<Ring>) {
-    let mut holes = rings.split_off(1);
-    let mut exterior = rings.remove(0);
+fn normalize_winding(mut rings: Vec<Ring>) -> Option<(Ring, Vec<Ring>)> {
+    let holes = rings.split_off(1);
+    let exterior = rings.remove(0);
     if ring_area(&exterior) > 0.0 {
-        tracing::error!("MVT Writer: polygon exterior ring is not CCW as required; fixing winding");
-        exterior.reverse();
+        tracing::error!("MVT Writer: polygon exterior ring is not CCW as required; skipping polygon");
+        return None;
     }
-    for hole in &mut holes {
-        if ring_area(hole) < 0.0 {
-            tracing::error!("MVT Writer: polygon hole ring is not CW as required; fixing winding");
-            hole.reverse();
-        }
-    }
-    (exterior, holes)
+    let holes = holes
+        .into_iter()
+        .filter(|hole| {
+            if ring_area(hole) < 0.0 {
+                tracing::error!("MVT Writer: polygon hole ring is not CW as required; skipping hole");
+                false
+            } else {
+                true
+            }
+        })
+        .collect();
+    Some((exterior, holes))
 }
 
 fn interp(a: [f64; 2], b: [f64; 2], axis: usize, k: f64) -> [f64; 2] {
@@ -371,4 +378,33 @@ fn clip_open_chain(chain: &Ring, axis: usize, k1: f64, k2: f64) -> Ring {
         }
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn slice_leaves_drops_only_the_wrongly_wound_polygon() {
+        // A lng/lat rectangle traced counter-clockwise (right, up, left, down); its Web Mercator
+        // projection is verified by hand to have negative `ring_area`, the winding
+        // `normalize_winding` requires of an exterior ring.
+        let ccw = vec![[0.0, 0.0], [90.0, 0.0], [90.0, 80.0], [0.0, 80.0]];
+        let mut cw = ccw.clone();
+        cw.reverse();
+
+        let (_, tiled) = slice_leaves(vec![Leaf::Polygon(vec![ccw])], 0, 0, 4, 0);
+        let polygon_count = tiled
+            .iter()
+            .filter(|leaf| matches!(leaf.geom, TiledGeom::Polygon(_)))
+            .count();
+        assert_eq!(polygon_count, 1);
+
+        let (_, tiled) = slice_leaves(vec![Leaf::Polygon(vec![cw])], 0, 0, 4, 0);
+        let polygon_count = tiled
+            .iter()
+            .filter(|leaf| matches!(leaf.geom, TiledGeom::Polygon(_)))
+            .count();
+        assert_eq!(polygon_count, 0);
+    }
 }
