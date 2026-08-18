@@ -387,6 +387,7 @@ mod tests {
             mode: GeometryExportMode::Wkt {
                 column: "wkt".to_string(),
             },
+            epsg_column: None,
         }
     }
 

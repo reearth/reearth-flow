@@ -27,6 +27,14 @@ pub struct GeometryExportConfig {
     /// Specify how geometry should be written to the CSV
     #[serde(flatten)]
     pub mode: GeometryExportMode,
+
+    /// # EPSG Column Name
+    /// Optional name of a column to write the geometry's EPSG code into.
+    /// Left empty when the geometry does not resolve to a single EPSG code (no coordinate reference system, or more than one).
+    #[serde(rename = "epsgColumn")]
+    #[serde(skip_serializing_if = "Option::is_none")]
+    #[serde(default)]
+    pub epsg_column: Option<String>,
 }
 
 #[derive(Serialize, Deserialize, Debug, Clone)]
@@ -162,7 +170,7 @@ impl JsonSchema for GeometryExportMode {
 
 /// Get the names of columns that will be used for geometry output
 pub fn get_geometry_column_names(config: &GeometryExportConfig) -> Vec<String> {
-    match &config.mode {
+    let mut cols = match &config.mode {
         GeometryExportMode::Wkt { column } => vec![column.clone()],
         GeometryExportMode::Coordinates {
             x_column,
@@ -175,7 +183,11 @@ pub fn get_geometry_column_names(config: &GeometryExportConfig) -> Vec<String> {
             }
             cols
         }
+    };
+    if let Some(epsg_column) = &config.epsg_column {
+        cols.push(epsg_column.clone());
     }
+    cols
 }
 
 /// Export geometry to column values based on configuration
@@ -205,6 +217,10 @@ pub fn export_geometry(
                 }
             }
         }
+    }
+
+    if let (Some(epsg_column), Some(epsg)) = (&config.epsg_column, geometry.epsg) {
+        columns.insert(epsg_column.clone(), epsg.to_string());
     }
 
     Ok(columns)
@@ -813,6 +829,49 @@ mod tests {
                 extract_coordinates(&geometry),
                 Err(GeometryExportError::EmptyGeometry)
             ));
+        }
+    }
+
+    // The EPSG column: `export_geometry` writes the geometry's `epsg` field
+    // straight into it when one is configured, and leaves the cell for `csv.rs`
+    // to pad with an empty string when the geometry names none.
+    #[cfg(not(feature = "new-geometry"))]
+    mod epsg_column {
+        use super::*;
+
+        fn config(epsg_column: &str) -> GeometryExportConfig {
+            GeometryExportConfig {
+                mode: GeometryExportMode::Wkt {
+                    column: "geometry".to_string(),
+                },
+                epsg_column: Some(epsg_column.to_string()),
+            }
+        }
+
+        #[test]
+        fn a_geometry_with_an_epsg_code_writes_it() {
+            let geometry = Geometry {
+                epsg: Some(4326),
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Point(Point2D::from([
+                    1.0, 2.0,
+                ]))),
+            };
+            let columns =
+                export_geometry(&geometry, &config("epsg")).expect("geometry expected to export");
+            assert_eq!(columns.get("epsg"), Some(&"4326".to_string()));
+        }
+
+        #[test]
+        fn a_geometry_with_no_epsg_code_writes_nothing() {
+            let geometry = Geometry {
+                epsg: None,
+                value: GeometryValue::FlowGeometry2D(Geometry2D::Point(Point2D::from([
+                    1.0, 2.0,
+                ]))),
+            };
+            let columns =
+                export_geometry(&geometry, &config("epsg")).expect("geometry expected to export");
+            assert!(!columns.contains_key("epsg"));
         }
     }
 }

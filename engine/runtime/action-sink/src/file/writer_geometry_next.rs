@@ -1,7 +1,10 @@
-//! New-geometry geometry export for the CSV Writer. Reads
-//! `reearth_flow_geometry::Geometry`, whose coordinate frame is per-leaf, rather
-//! than the old `Geometry { epsg, value }` wrapper. Sibling of the old-world logic
-//! in `writer_geometry.rs`; selected under `new-geometry`.
+//! Geometry export for the CSV Writer: turns a feature's geometry into either a
+//! WKT column or x/y/z coordinate columns.
+//!
+//! Each geometry leaf carries its own `CoordinateFrame`, so a single feature can
+//! hold coordinates in more than one reference system. Everything here is written
+//! against that: the axis order of a coordinate is decided per leaf, and folding
+//! parts into one `MULTI*` requires them to share a frame.
 
 use std::collections::HashSet;
 use std::fmt::Write as _;
@@ -237,7 +240,9 @@ pub fn export_geometry(
 
     match &config.mode {
         GeometryExportMode::Wkt { column } => {
-            columns.insert(column.clone(), geometry_to_wkt(geometry)?);
+            let written = geometry_wkt(geometry)?;
+            columns.insert(column.clone(), written.text);
+            insert_epsg_column(&mut columns, config, single_frame_epsg_code(&written.frames));
         }
         GeometryExportMode::Coordinates {
             x_column,
@@ -250,26 +255,80 @@ pub fn export_geometry(
             if let (Some(z), Some(z_column)) = (z, z_column.as_ref()) {
                 columns.insert(z_column.clone(), z.to_string());
             }
+            insert_epsg_column(&mut columns, config, point_frame(geometry).and_then(epsg_code));
         }
     }
 
     Ok(columns)
 }
 
-/// Convert geometry to a WKT string.
+/// Write the configured EPSG column, if any, when a code is available.
 ///
-/// An absent geometry writes an empty cell rather than failing the row. Coordinates
-/// mode differs, erroring with `EmptyGeometry` — an asymmetry inherited from the
-/// old writer and kept for parity.
-pub fn geometry_to_wkt(geometry: &Geometry) -> Result<String, GeometryExportError> {
+/// Nothing is inserted when either is missing: `csv.rs` pads an unfilled geometry
+/// column with an empty string, so leaving the entry out is what produces a blank
+/// cell rather than inserting one explicitly.
+fn insert_epsg_column(
+    columns: &mut IndexMap<String, String>,
+    config: &GeometryExportConfig,
+    code: Option<EpsgCode>,
+) {
+    if let (Some(epsg_column), Some(code)) = (&config.epsg_column, code) {
+        columns.insert(epsg_column.clone(), code.to_string());
+    }
+}
+
+/// The single EPSG code a WKT cell's coordinates all came from, or `None` when
+/// they came from no CRS frame or from more than one.
+fn single_frame_epsg_code(frames: &Frames) -> Option<EpsgCode> {
+    match frames {
+        Frames::One(frame) => epsg_code(frame),
+        Frames::Nothing | Frames::Many => None,
+    }
+}
+
+/// The coordinate frame of a Point geometry, coordinates mode's only writable
+/// shape.
+fn point_frame(geometry: &Geometry) -> Option<&CoordinateFrame> {
     match geometry {
-        Geometry::None => Ok(String::new()),
+        Geometry::Euclidean2D(Euclidean2DGeometry::Point(p)) => Some(p.frame()),
+        Geometry::Euclidean3D(Euclidean3DGeometry::Point(p)) => Some(p.frame()),
+        _ => None,
+    }
+}
+
+/// The WKT text a geometry writes to, and the coordinate frame(s) its
+/// coordinates came from.
+struct GeometryWkt {
+    text: String,
+    frames: Frames,
+}
+
+fn geometry_wkt(geometry: &Geometry) -> Result<GeometryWkt, GeometryExportError> {
+    match geometry {
+        Geometry::None => Ok(GeometryWkt {
+            text: String::new(),
+            frames: Frames::Nothing,
+        }),
         geometry => {
             let written = write_geometry(geometry)?;
             warn_omitted(&written.omitted);
-            Ok(written.text)
+            Ok(GeometryWkt {
+                text: written.text,
+                frames: written.frames,
+            })
         }
     }
+}
+
+/// Convert geometry to a WKT string.
+///
+/// An absent geometry writes an empty cell rather than failing the row, since the
+/// feature's attributes are still worth a row. Coordinates mode deliberately
+/// differs and errors with `EmptyGeometry`: an empty WKT cell still reads as "no
+/// geometry", whereas blank x/y columns would be indistinguishable from a point at
+/// an unknown position.
+pub fn geometry_to_wkt(geometry: &Geometry) -> Result<String, GeometryExportError> {
+    Ok(geometry_wkt(geometry)?.text)
 }
 
 /// Extract X, Y, Z coordinates from Point geometries.
@@ -464,8 +523,8 @@ fn warn_unresolved_axis_order(code: EpsgCode, error: impl std::fmt::Display) {
 }
 
 /// One stored coordinate, space-separated, east-first. Only the horizontal pair is
-/// reordered; a height stays where it is. `{}` formatting matches the old writer,
-/// so a whole number writes as `1` rather than `1.0`.
+/// reordered; a height stays where it is. Values use `{}` formatting, so a whole
+/// number writes as `1` rather than `1.0`.
 fn coordinate<const N: usize>(swap: bool, mut coordinate: [f64; N]) -> String {
     if swap {
         coordinate.swap(0, 1);
@@ -741,6 +800,7 @@ mod tests {
             mode: GeometryExportMode::Wkt {
                 column: "geometry".to_string(),
             },
+            epsg_column: None,
         };
         let columns = export_geometry(&geometry, &config).expect("geometry expected to export");
         assert_eq!(columns.len(), 1);
@@ -762,6 +822,7 @@ mod tests {
                 y_column: "y".to_string(),
                 z_column: Some("z".to_string()),
             },
+            epsg_column: None,
         };
         let columns = export_geometry(&geometry, &config).expect("geometry expected to export");
         assert_eq!(
@@ -813,6 +874,7 @@ mod tests {
                 y_column: "y".to_string(),
                 z_column: z.map(str::to_string),
             },
+            epsg_column: None,
         }
     }
 
@@ -1049,5 +1111,117 @@ mod tests {
         let solid = Solid::from_exterior(euclidean(), shell);
         let geometry = Geometry::Euclidean3D(Euclidean3DGeometry::Solid(Box::new(solid)));
         assert_unsupported_geometry_type(geometry_to_wkt(&geometry), "Solid");
+    }
+
+    // The EPSG column: writes the geometry's code when its coordinates resolve to
+    // exactly one CRS, and is otherwise left for `csv.rs` to pad with an empty
+    // string, whichever export mode is configured.
+
+    fn wkt_config_with_epsg(epsg_column: Option<&str>) -> GeometryExportConfig {
+        GeometryExportConfig {
+            mode: GeometryExportMode::Wkt {
+                column: "geometry".to_string(),
+            },
+            epsg_column: epsg_column.map(str::to_string),
+        }
+    }
+
+    // The position is symmetric so the assertion holds regardless of whether
+    // EPSG:4326 turns out to swap its horizontal pair; this test is only about
+    // the EPSG column, not axis order (covered elsewhere).
+    #[test]
+    fn wkt_mode_writes_the_epsg_code_of_a_single_crs_geometry() {
+        let geometry = Geometry::Euclidean2D(point_2d(
+            CoordinateFrame::Crs(EpsgCode::new(4326)),
+            [1.0, 1.0],
+        ));
+        let columns = exported(&geometry, &wkt_config_with_epsg(Some("epsg")));
+        assert_eq!(
+            columns,
+            vec![
+                ("geometry".to_string(), "POINT(1 1)".to_string()),
+                ("epsg".to_string(), "4326".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn wkt_mode_leaves_the_epsg_column_unset_for_a_euclidean_geometry() {
+        let geometry = Geometry::Euclidean2D(point_2d(euclidean(), [1.0, 2.0]));
+        let columns = exported(&geometry, &wkt_config_with_epsg(Some("epsg")));
+        assert_eq!(columns.len(), 1);
+        assert!(!columns.iter().any(|(name, _)| name == "epsg"));
+    }
+
+    // Members in two different reference systems fold into a GEOMETRYCOLLECTION,
+    // not a CRS: the cell has nowhere to put two codes, so it gets none.
+    #[test]
+    fn wkt_mode_leaves_the_epsg_column_unset_for_a_mixed_crs_collection() {
+        let geometry = collection_2d(vec![
+            point_2d(CoordinateFrame::Crs(EpsgCode::new(4326)), [0.0, 0.0]),
+            point_2d(CoordinateFrame::Crs(EpsgCode::new(3857)), [1.0, 1.0]),
+        ]);
+        let columns = exported(&geometry, &wkt_config_with_epsg(Some("epsg")));
+        assert_eq!(columns.len(), 1);
+        assert!(!columns.iter().any(|(name, _)| name == "epsg"));
+    }
+
+    #[test]
+    fn wkt_mode_has_no_epsg_column_when_none_is_configured() {
+        let geometry = Geometry::Euclidean2D(point_2d(
+            CoordinateFrame::Crs(EpsgCode::new(4326)),
+            [1.0, 2.0],
+        ));
+        let columns = exported(&geometry, &wkt_config_with_epsg(None));
+        assert_eq!(columns.len(), 1);
+        assert!(!columns.iter().any(|(name, _)| name == "epsg"));
+    }
+
+    fn coordinates_config_with_epsg(epsg_column: Option<&str>) -> GeometryExportConfig {
+        GeometryExportConfig {
+            mode: GeometryExportMode::Coordinates {
+                x_column: "x".to_string(),
+                y_column: "y".to_string(),
+                z_column: None,
+            },
+            epsg_column: epsg_column.map(str::to_string),
+        }
+    }
+
+    // Symmetric position, for the same reason as the WKT-mode test above.
+    #[test]
+    fn coordinates_mode_writes_the_epsg_code_of_a_single_crs_point() {
+        let geometry = Geometry::Euclidean2D(point_2d(
+            CoordinateFrame::Crs(EpsgCode::new(4326)),
+            [1.0, 1.0],
+        ));
+        let columns = exported(&geometry, &coordinates_config_with_epsg(Some("epsg")));
+        assert_eq!(
+            columns,
+            vec![
+                ("x".to_string(), "1".to_string()),
+                ("y".to_string(), "1".to_string()),
+                ("epsg".to_string(), "4326".to_string()),
+            ]
+        );
+    }
+
+    #[test]
+    fn coordinates_mode_leaves_the_epsg_column_unset_for_a_euclidean_point() {
+        let geometry = Geometry::Euclidean2D(point_2d(euclidean(), [1.0, 2.0]));
+        let columns = exported(&geometry, &coordinates_config_with_epsg(Some("epsg")));
+        assert_eq!(columns.len(), 2);
+        assert!(!columns.iter().any(|(name, _)| name == "epsg"));
+    }
+
+    #[test]
+    fn coordinates_mode_has_no_epsg_column_when_none_is_configured() {
+        let geometry = Geometry::Euclidean2D(point_2d(
+            CoordinateFrame::Crs(EpsgCode::new(4326)),
+            [1.0, 2.0],
+        ));
+        let columns = exported(&geometry, &coordinates_config_with_epsg(None));
+        assert_eq!(columns.len(), 2);
+        assert!(!columns.iter().any(|(name, _)| name == "epsg"));
     }
 }
