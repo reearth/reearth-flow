@@ -47,7 +47,7 @@ impl SourceFactory for ObjReaderFactory {
     }
 
     fn description(&self) -> &str {
-        "Reads 3D models from Wavefront OBJ files, supporting vertices, faces, normals, texture coordinates, and materials"
+        "Reads 3D models from Wavefront OBJ files, including vertices, faces, normals, texture coordinates, and materials."
     }
 
     fn parameter_schema(&self) -> Option<schemars::schema::RootSchema> {
@@ -55,7 +55,11 @@ impl SourceFactory for ObjReaderFactory {
     }
 
     fn categories(&self) -> &[&'static str] {
-        &["File", "3D"]
+        &["Input"]
+    }
+
+    fn tags(&self) -> &[&'static str] {
+        &["obj", "3d"]
     }
 
     fn get_output_ports(&self) -> Vec<Port> {
@@ -99,7 +103,6 @@ impl SourceFactory for ObjReaderFactory {
                 })?,
             triangulate: params.triangulate,
             merge_groups: params.merge_groups,
-            _include_normals: params.include_normals,
             _include_texcoords: params.include_texcoords,
         };
         Ok(Box::new(ObjReader { params: compiled }))
@@ -113,7 +116,6 @@ pub(super) struct ObjReaderCompiledParam {
     pub(super) material_file: Option<CompiledCode>,
     pub(super) triangulate: bool,
     pub(super) merge_groups: bool,
-    pub(super) _include_normals: bool,
     pub(super) _include_texcoords: bool,
 }
 
@@ -133,7 +135,7 @@ pub(super) struct ObjReaderParam {
     pub(super) common: FileReaderCommonParam,
 
     /// # Parse Materials
-    /// Enable parsing of material definitions from MTL files referenced in the OBJ file
+    /// Parses material definitions from MTL files referenced in the OBJ file.
     #[serde(default = "default_true")]
     pub(super) parse_materials: bool,
 
@@ -143,22 +145,17 @@ pub(super) struct ObjReaderParam {
     pub(super) material_file: Option<Code>,
 
     /// # Triangulate
-    /// Convert polygons with more than 3 vertices into triangles using fan triangulation
+    /// Converts polygons with more than 3 vertices into triangles using fan triangulation.
     #[serde(default)]
     pub(super) triangulate: bool,
 
     /// # Merge Groups
-    /// Merge all groups and objects into a single feature instead of creating separate features per group/object
+    /// Merges all groups and objects into a single feature instead of creating separate features per group or object.
     #[serde(default)]
     pub(super) merge_groups: bool,
 
-    /// # Include Normals
-    /// Include vertex normal data in the output geometry
-    #[serde(default = "default_true")]
-    pub(super) include_normals: bool,
-
     /// # Include Texture Coordinates
-    /// Include texture coordinate (UV) data in the output geometry
+    /// Includes texture coordinate (UV) data in the output geometry.
     #[serde(default = "default_true")]
     pub(super) include_texcoords: bool,
 }
@@ -1087,7 +1084,6 @@ f 1 2 3 4
             material_file: None,
             triangulate: true,
             merge_groups: false,
-            _include_normals: true,
             _include_texcoords: true,
         };
 
@@ -1129,7 +1125,6 @@ f -4 -3 -2 -1
             material_file: None,
             triangulate: false,
             merge_groups: false,
-            _include_normals: true,
             _include_texcoords: true,
         };
 

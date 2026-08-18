@@ -340,7 +340,6 @@ fn test_params() -> ObjReaderCompiledParam {
         material_file: None,
         triangulate: false,
         merge_groups: false,
-        _include_normals: true,
         _include_texcoords: true,
         common: FileReaderCompiledParam {
             dataset: None,
