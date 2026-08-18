@@ -464,7 +464,7 @@ mod tests {
     /// Calibration benchmark for the point-in-solid strategies: per-query cost
     /// of the linear scan versus the reused-tree traversal across shell sizes.
     /// Run manually:
-    /// `cargo test -p reearth-flow-geometry \
+    /// `cargo test -p reearth-flow-geometry --features new-geometry \
     ///  predicates::position3d::tests::scan_vs_indexed_point_in_solid -- --ignored --nocapture`.
     #[test]
     #[ignore = "timing benchmark; point-in-solid linear scan vs reused tree"]

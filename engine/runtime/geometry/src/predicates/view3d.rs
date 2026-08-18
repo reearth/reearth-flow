@@ -139,6 +139,7 @@ pub(crate) struct TriangleSet<'a> {
     /// Cumulative triangle counts per source face: face `f`'s triangles are
     /// `face_starts[f]..face_starts[f + 1]`. Faces keep their source order; a
     /// face that produced no triangles contributes an empty span.
+    #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
     face_starts: Vec<u32>,
 }
 
@@ -201,6 +202,7 @@ impl<'a> TriangleSet<'a> {
     }
 
     /// The source face of triangle `i`.
+    #[cfg_attr(not(feature = "new-geometry"), allow(dead_code))]
     pub fn face_of(&self, i: usize) -> usize {
         self.face_starts.partition_point(|&s| s <= i as u32) - 1
     }

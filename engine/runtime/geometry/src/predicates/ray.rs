@@ -209,7 +209,7 @@ pub fn ray_cast_3d(
 /// triangle. Below it the scan wins even with the tree already built: the
 /// traversal overhead exceeds the handful of Möller-Trumbore tests it saves.
 /// Calibrated by the `bvh_vs_linear_crossover` benchmark
-/// (`cargo test -p reearth-flow-geometry
+/// (`cargo test -p reearth-flow-geometry --features new-geometry
 /// predicates::ray::tests::bvh_vs_linear_crossover -- --ignored --nocapture`):
 /// the prebuilt-tree query overtakes the linear scan between 8 and 18
 /// triangles.
@@ -634,7 +634,7 @@ mod tests {
 
     /// Calibration benchmark for [`BVH_MIN_TRIANGLES`]: prints per-ray cost of
     /// each strategy across triangle counts. Run manually:
-    /// `cargo test -p reearth-flow-geometry \
+    /// `cargo test -p reearth-flow-geometry --features new-geometry \
     ///  predicates::ray::tests::bvh_vs_linear_crossover -- --ignored --nocapture`.
     #[test]
     #[ignore = "timing benchmark; run manually to calibrate BVH_MIN_TRIANGLES"]
