@@ -12197,7 +12197,7 @@
         "properties": {
           "encoding": {
             "title": "文字エンコーディング",
-            "description": "DBF ファイルの属性データの文字エンコーディング（例: \"UTF-8\"、\"Shift-JIS\"、\"Windows-1252\"）。ラベルは大文字小文字を区別しない。未指定時は .cpg ファイルがあればそれに従い、なければ UTF-8（UTF-16 は非対応）",
+            "description": "DBF ファイルの属性データの文字エンコーディング（例: \"UTF-8\"、\"Shift-JIS\"、\"Windows-1252\"）。ラベルは大文字小文字を区別しない。未指定時は .cpg ファイルがあればそれに従い、なければ .dbf ヘッダーが宣言するコードページ、それもなければ UTF-8（UTF-16 は非対応）",
             "type": [
               "string",
               "null"
@@ -12297,6 +12297,31 @@
             "title": "出力ディレクトリ",
             "description": "生成されたShapefileファイルを書き出す出力ディレクトリのパスまたは式",
             "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "compressOutput": {
+            "title": "圧縮出力ディレクトリ",
+            "description": "各ShapefileをZIPアーカイブとして書き出すディレクトリ（任意）。アーカイブには対象Shapefileの.shp、.shx、.dbf、.cpg、.prjが含まれます。未設定の場合は非圧縮のファイル群として書き出します",
+            "type": [
+              "object",
+              "null"
+            ],
             "format": "code",
             "required": [
               "type",
