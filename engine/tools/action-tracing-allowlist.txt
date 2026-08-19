@@ -16,6 +16,7 @@ runtime/action-processor/src/citygml_parser/xlink.rs:4
 runtime/action-processor/src/feature/filter.rs:1
 runtime/action-processor/src/feature/reader/citygml/reader.rs:2
 runtime/action-processor/src/geometry/coordinate_frame_reprojector.rs:4
+runtime/action-processor/src/geometry/dissolver.rs:1
 runtime/action-processor/src/geometry/footprint_replacer.rs:2
 runtime/action-processor/src/geometry/image_rasterizer.rs:1
 runtime/action-processor/src/geometry/two_dimension_forcer.rs:1
