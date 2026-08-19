@@ -143,7 +143,7 @@ func (li *LogInteractor) runLogMonitoringLoop(ctx context.Context, jobID id.JobI
 				return
 			}
 
-			currentJob, err := li.jobRepo.FindByID(context.WithoutCancel(ctx), jobID)
+			currentJob, err := li.jobRepo.FindByID(context.Background(), jobID)
 			if err != nil {
 				reearth_log.Warnfc(ctx, "log: failed to get job status: %v", err)
 				continue
