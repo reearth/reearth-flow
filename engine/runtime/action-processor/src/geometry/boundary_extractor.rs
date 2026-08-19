@@ -2,7 +2,6 @@ use std::collections::HashMap;
 #[cfg(not(feature = "new-geometry"))]
 use std::sync::Arc;
 
-#[cfg(feature = "new-geometry")]
 use once_cell::sync::Lazy;
 #[cfg(feature = "new-geometry")]
 use reearth_flow_geometry::ops::ExtractBoundary;
@@ -35,6 +34,8 @@ use serde_json::Value;
 
 use super::errors::GeometryProcessorError;
 
+/// The boundary itself.
+pub static BOUNDARY_PORT: Lazy<Port> = Lazy::new(|| Port::new("boundary"));
 /// Geometry that closes on itself, or carries no extent to bound, leaves here
 /// with the geometry it arrived with.
 #[cfg(feature = "new-geometry")]
@@ -80,7 +81,7 @@ impl ProcessorFactory for BoundaryExtractorFactory {
     #[cfg(feature = "new-geometry")]
     fn get_output_ports(&self) -> Vec<Port> {
         vec![
-            FEATURES_PORT.clone(),
+            BOUNDARY_PORT.clone(),
             NO_BOUNDARY_PORT.clone(),
             REJECTED_PORT.clone(),
         ]
@@ -88,7 +89,7 @@ impl ProcessorFactory for BoundaryExtractorFactory {
 
     #[cfg(not(feature = "new-geometry"))]
     fn get_output_ports(&self) -> Vec<Port> {
-        vec![FEATURES_PORT.clone()]
+        vec![BOUNDARY_PORT.clone()]
     }
 
     fn build(
@@ -190,7 +191,7 @@ impl Processor for BoundaryExtractor {
             Ok(boundary) => {
                 let mut feature = ctx.feature.clone();
                 feature.set_geometry(boundary);
-                fw.send(ctx.new_with_feature_and_port(feature, FEATURES_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(feature, BOUNDARY_PORT.clone()));
             }
             Err(e) => {
                 // This port's normal business, so not worth a warning per feature.
@@ -215,7 +216,7 @@ impl Processor for BoundaryExtractor {
 
         if geometry.is_empty() {
             if self.params.keep_empty_boundaries {
-                fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), FEATURES_PORT.clone()));
+                fw.send(ctx.new_with_feature_and_port(ctx.feature.clone(), BOUNDARY_PORT.clone()));
             }
             return Ok(());
         }
@@ -252,11 +253,11 @@ impl Processor for BoundaryExtractor {
         if let Some(new_geo) = new_geometry {
             let mut new_feature = feature.clone();
             new_feature.geometry = new_geo;
-            fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(new_feature, BOUNDARY_PORT.clone()));
         } else if self.params.keep_empty_boundaries {
             let mut new_feature = feature.clone();
             new_feature.geometry = Arc::new(Geometry::default());
-            fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
+            fw.send(ctx.new_with_feature_and_port(new_feature, BOUNDARY_PORT.clone()));
         }
 
         Ok(())
@@ -791,7 +792,7 @@ mod tests {
         let input = feature(area());
         let sent = extract(&input);
 
-        assert_eq!(ports(&sent), ["features"]);
+        assert_eq!(ports(&sent), ["boundary"]);
         let NextGeometry::Euclidean3D(Euclidean3DGeometry::LineString(ring)) = &*sent[0].1.geometry
         else {
             panic!("expected one ring, got {:?}", sent[0].1.geometry);

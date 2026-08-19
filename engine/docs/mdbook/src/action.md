@@ -1042,7 +1042,7 @@ Replaces a geometry with its boundary: the endpoints of a curve, the boundary ri
 ### Input Ports
 * features
 ### Output Ports
-* features
+* boundary
 * no-boundary
 * rejected
 ### Category
