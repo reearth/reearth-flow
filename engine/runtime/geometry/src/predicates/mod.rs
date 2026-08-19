@@ -180,20 +180,6 @@ pub(crate) fn flatten_2d_pair<'a>(
     }
 }
 
-/// Flatten the single operand of a **2D-only** unary operation (the dissolve)
-/// into its 2D leaves under the same dimension policy: a purely 3D operand is
-/// [`Unsupported`](PredicateError::Unsupported) and one mixing 2D and 3D
-/// members is [`CrossDimension`](PredicateError::CrossDimension).
-/// `Geometry::None` and empty collections flatten to no leaves.
-pub(crate) fn flatten_2d_single(geometry: &Geometry) -> Result<Vec<Leaf2D<'_>>> {
-    let (leaves, three_d) = contains::flatten_geometry(geometry);
-    match three_d {
-        None => Ok(leaves),
-        Some(geometry) if leaves.is_empty() => Err(PredicateError::Unsupported { geometry }),
-        Some(_) => Err(PredicateError::CrossDimension),
-    }
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -8,9 +8,9 @@
 //! - [`overlay()`] and its [`union()`] / [`intersection()`] / [`difference()`]
 //!   / [`xor()`] shorthands: areal boolean overlay, backed by the `i_overlay`
 //!   pure-Rust backend.
-//! - [`dissolve()`]: one areal geometry's own leaves merged into each other,
-//!   the unary case of a union, with optional vertex snapping to close the
-//!   gaps left where boundaries meant to coincide do not quite.
+//! - [`dissolve_leaves()`]: one areal operand's own leaves merged into each
+//!   other, the unary case of a union, with optional vertex snapping to close
+//!   the gaps left where boundaries meant to coincide do not quite.
 //! - [`clip()`]: the portion of a set of polylines inside (or, inverted,
 //!   outside) an areal geometry.
 //! - [`segment_intersections()`]: the pairwise segment × segment
@@ -72,7 +72,7 @@ use crate::ops::Aabb;
 use crate::polygon::Polygon2D;
 use crate::predicates::relate::relate_leaves;
 use crate::predicates::view::{flatten_2d, require_common_frame_leaves, Leaf2D};
-use crate::predicates::{flatten_2d_pair, flatten_2d_single, PredicateError, Result};
+use crate::predicates::{flatten_2d_pair, PredicateError, Result};
 use crate::{Euclidean2DGeometry, Geometry};
 
 pub use crate::predicates::kernel::SegmentIntersection;
@@ -141,21 +141,15 @@ pub fn overlay_2d(
     overlay_leaves(&a_leaves, &b_leaves, op)
 }
 
-/// The union of `g`'s own leaves, as disjoint polygons in their common frame
-/// (empty when `g` encloses no area).
+/// The union of one areal operand's own leaves, as disjoint polygons in their
+/// common frame (empty when they enclose no area). The caller flattens, so
+/// several geometries can dissolve as one operand without being copied into a
+/// collection first.
 ///
 /// Vertices closer together than `tolerance` are snapped onto one position
 /// before the union, closing sliver gaps where boundaries nearly coincide; a
 /// non-positive tolerance snaps nothing. Only vertices move, so a gap between
 /// two edges with no vertices facing each other stays open.
-pub fn dissolve(g: &Geometry, tolerance: f64) -> Result<Vec<Polygon2D>> {
-    let leaves = flatten_2d_single(g)?;
-    dissolve_leaves(&leaves, tolerance)
-}
-
-/// [`dissolve`] over leaves already flattened by the caller, letting several
-/// geometries dissolve as one operand without being copied into a collection
-/// first.
 pub fn dissolve_leaves(leaves: &[Leaf2D<'_>], tolerance: f64) -> Result<Vec<Polygon2D>> {
     require_common_frame_leaves(leaves, &[])?;
     let mut shapes = shapes::areal_shapes(leaves).map_err(|_| PredicateError::Unsupported {
