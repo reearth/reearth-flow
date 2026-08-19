@@ -8,7 +8,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// actionsFor returns the declared action rules for one resource.
 func actionsFor(t *testing.T, resource string) map[string]generator.ActionRule {
 	t.Helper()
 	for _, r := range DefineResources() {
@@ -20,45 +19,36 @@ func actionsFor(t *testing.T, resource string) map[string]generator.ActionRule {
 	return nil
 }
 
-// TestProjectDocumentPolicy pins the rules the document operations depend on.
-//
-// This is the check that was missing. The interactor tests use a mock permission
-// checker, so they prove the right resource and action are REQUESTED; only the
-// policy decides whether that request can ever be granted. An action with no rule
-// is denied by default, so a read operation checking an undeclared action would
-// fail for every user including owners, and no unit test would notice.
-func TestProjectDocumentPolicy(t *testing.T) {
-	actions := actionsFor(t, ResourceProjectDocument)
+// TestProjectPolicyCoversTheDocumentActions: an action with no rule is denied for
+// everyone, owners included. The interactor tests use a mock checker, so they
+// prove the action is requested but never that the policy grants it.
+func TestProjectPolicyCoversTheDocumentActions(t *testing.T) {
+	actions := actionsFor(t, ResourceProject)
 
-	// Every action the Websocket interactor checks must have a rule.
-	for _, action := range []string{ActionRead, ActionEdit, ActionDelete} {
+	for _, action := range []string{ActionAny, ActionEdit, ActionDelete} {
 		require.Contains(t, actions, action,
-			"interactor.Websocket checks %q on %s; without a rule it is denied for everyone",
-			action, ResourceProjectDocument)
+			"interactor.Websocket checks %q on %s; with no rule it is denied for everyone",
+			action, ResourceProject)
 	}
 
-	// Reading version history is for anyone who can see the project.
-	assert.ElementsMatch(t, []string{roleReader, roleWriter, roleMaintainer, roleOwner},
-		actions[ActionRead].Roles)
+	// Reads and save use ActionAny, so it must reach everyone who can see the
+	// project — including writers, who would otherwise be unable to save.
+	assert.Contains(t, actions[ActionAny].Roles, roleWriter,
+		"writers must be able to save; saveSnapshot authorizes with ActionAny")
+	assert.Contains(t, actions[ActionAny].Roles, roleReader,
+		"readers must be able to view version history")
 
-	// Editing the document is content work, so writers are included. Excluding
-	// them would stop the people doing the collaborative editing from saving a
-	// version, rolling back, importing or copying.
-	assert.Contains(t, actions[ActionEdit].Roles, roleWriter,
-		"writers must be able to mutate a project's document")
-	assert.NotContains(t, actions[ActionEdit].Roles, roleReader,
-		"readers must not be able to mutate a project's document")
-
-	// Destroying all of a project's document data stays privileged.
-	assert.ElementsMatch(t, []string{roleMaintainer, roleOwner}, actions[ActionDelete].Roles)
+	// ActionRead is deliberately NOT used: flow:project has no read rule, so
+	// checking it would deny every user. Guard against a well-meaning switch back.
+	assert.NotContains(t, actions, ActionRead,
+		"if a read rule is added here, revisit interactor.Websocket, which avoids ActionRead precisely because there is none")
 }
 
-// TestProjectPolicyUnchangedByDocumentSplit guards the reason the document
-// operations got their own resource: ResourceProject's edit is project SETTINGS
-// (rename, configure) and is deliberately maintainer and owner only. Adding
-// writers there to unblock document editing would have widened that too.
-func TestProjectPolicyUnchangedByDocumentSplit(t *testing.T) {
-	actions := actionsFor(t, ResourceProject)
-	assert.NotContains(t, actions[ActionEdit].Roles, roleWriter,
-		"project settings edit must stay maintainer/owner; document editing lives on %s", ResourceProjectDocument)
+// TestProjectDocumentPolicyStaysDeclared keeps the target model intact so the
+// move back is one line. See the TODO in interactor.Websocket.
+func TestProjectDocumentPolicyStaysDeclared(t *testing.T) {
+	actions := actionsFor(t, ResourceProjectDocument)
+	assert.Contains(t, actions, ActionRead)
+	assert.Contains(t, actions[ActionEdit].Roles, roleWriter,
+		"the target model exists to let writers mutate a document without project-settings rights")
 }

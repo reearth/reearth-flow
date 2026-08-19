@@ -27,13 +27,13 @@ pub(super) fn write_json(
     output: &Uri,
     converter: &Option<CompiledCode>,
     storage_resolver: &Arc<StorageResolver>,
-    env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+    variables: Arc<serde_json::Map<String, serde_json::Value>>,
     features: &[Feature],
 ) -> Result<(), FeatureProcessorError> {
     let json_value: serde_json::Value = if let Some(converter) = converter {
         let synthetic = create_batch_feature(features);
         converter
-            .eval(&synthetic, env_vars)
+            .eval(&synthetic, variables)
             .map_err(|e| {
                 FeatureProcessorError::FeatureWriter(format!("Failed to evaluate converter: {e:?}"))
             })?

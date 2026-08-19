@@ -132,7 +132,7 @@ impl Processor for FeatureGeoJsonWriter {
         let feature = &ctx.feature;
         let path = self
             .output
-            .eval_string(feature, ctx.env_vars.clone())
+            .eval_string(feature, ctx.variables.clone())
             .map_err(|e| FeatureProcessorError::FeatureGeoJsonWriter(format!("{e:?}")))?;
         // Validation happens at flush time via SinkOutput::new; the buffer is
         // keyed by the raw relative-path string.

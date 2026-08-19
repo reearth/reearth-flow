@@ -35,7 +35,7 @@ type Props = {
   placeholder?: string;
   className?: string;
   attributeSuggestions?: AutocompleteSuggestion[];
-  envSuggestions?: AutocompleteSuggestion[];
+  variableSuggestions?: AutocompleteSuggestion[];
   "data-testid"?: string;
   "aria-label"?: string;
   "data-placeholder"?: string;
@@ -49,7 +49,7 @@ const FlowExprCodeEditor = forwardRef<FlowExprCodeEditorRef, Props>(
       placeholder,
       className = "",
       attributeSuggestions,
-      envSuggestions,
+      variableSuggestions,
       ...props
     },
     ref,
@@ -503,7 +503,7 @@ const FlowExprCodeEditor = forwardRef<FlowExprCodeEditorRef, Props>(
           onSuggestionSelect={handleSuggestionSelect}
           onDismiss={handleDismiss}
           attributeSuggestions={attributeSuggestions}
-          envSuggestions={envSuggestions}
+          variableSuggestions={variableSuggestions}
         />
       </div>
     );

@@ -81,7 +81,7 @@ impl SinkFactory for CzmlWriterFactory {
             .map_err(|e| {
                 SinkError::CzmlWriterFactory(format!("Failed to compile `output`: {e:?}"))
             })?
-            .eval_string_env_only(ctx.env_vars.clone())
+            .eval_string_variables_only(ctx.variables.clone())
             .map_err(|e| {
                 SinkError::CzmlWriterFactory(format!("Failed to evaluate `output`: {e:?}"))
             })?;

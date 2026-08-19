@@ -197,6 +197,78 @@ impl RemoveAppearance for Solid {
     }
 }
 
+use crate::ops::coerce::{push_face_lines_3d, triangle_ring, unchanged, wrap_3d};
+use crate::ops::{Coerce, CoercionTarget};
+use crate::polygon::Polygon3D;
+
+impl Solid {
+    /// Invoke `f` once per boundary face of the solid, the exterior shell's
+    /// faces first, then each void shell's. A triangle-mesh shell contributes
+    /// one closed triangle per face.
+    fn for_each_boundary_face(&self, mut f: impl FnMut(Polygon3D)) {
+        let frame = self.frame();
+        for shell in std::iter::once(&self.exterior).chain(self.interiors.iter()) {
+            match shell {
+                Shell::PolygonMesh(data) => data.for_each_face_polygon(frame, &mut f),
+                Shell::TriangularMesh(data) => {
+                    let vertices = data.vertices();
+                    for triangle in data.triangles() {
+                        f(Polygon3D::from_rings(
+                            frame.clone(),
+                            triangle_ring(vertices, triangle),
+                            Vec::<Vec<[f64; 3]>>::new(),
+                        ));
+                    }
+                }
+            }
+        }
+    }
+}
+
+impl Coerce for Solid {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        match target {
+            // `Triangulate` on a volume yields a volume with a triangulated
+            // boundary, not a bare mesh — the result stays a `Solid`.
+            CoercionTarget::TriangularMesh => self.triangulate(cache),
+            CoercionTarget::Polygon => {
+                let mut faces = Vec::new();
+                self.for_each_boundary_face(|face| {
+                    faces.push(Euclidean3DGeometry::Polygon(Box::new(face)))
+                });
+                wrap_3d(faces).ok_or_else(unchanged::<Self>)
+            }
+            CoercionTarget::LineString => {
+                let mut lines = Vec::new();
+                self.for_each_boundary_face(|face| push_face_lines_3d(&face, &mut lines));
+                wrap_3d(lines).ok_or_else(unchanged::<Self>)
+            }
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+use crate::ops::{Footprint, FootprintError, FootprintSink};
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for Solid {
+    /// Push the faces of every shell, voids included.
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        sink.enter(self.frame())?;
+        for shell in std::iter::once(&self.exterior).chain(self.interiors.iter()) {
+            match shell {
+                Shell::PolygonMesh(data) => data.footprint_faces(sink),
+                Shell::TriangularMesh(data) => data.footprint_faces(sink),
+            }
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -380,6 +380,28 @@
       }
     },
     {
+      "name": "Attribute Table Extractor",
+      "description": "Déplace des valeurs entre des chemins d'attributs de type map ou liste imbriqués, en suivant une table de paires de chemins source/destination indexée par un attribut de type d'entité. Un chemin de destination à plusieurs segments crée des cartes imbriquées si nécessaire",
+      "parameterI18n": {
+        "": {
+          "title": "Paramètres Attribute Table Extractor",
+          "description": "Configure la table de paires de chemins source/destination utilisée pour déplacer des valeurs d'attributs imbriqués"
+        },
+        "dataset": {
+          "title": "URI du Jeu de Données",
+          "description": "Chemin ou URI du fichier de table d'extraction. Fournissez ceci ou des données en ligne"
+        },
+        "inline": {
+          "title": "Table en Ligne",
+          "description": "Contenu de la table d'extraction fourni directement en JSON. Utilisé lorsqu'aucune URI de jeu de données n'est fournie"
+        },
+        "typeAttribute": {
+          "title": "Attribut de Type d'Entité",
+          "description": "Attribut dont la valeur sélectionne quel ensemble de règles de la table s'applique à l'entité. Par défaut `__citygml_feature_type`"
+        }
+      }
+    },
+    {
       "name": "Boundary Extractor",
       "description": "Extrait la limite des géométries. Pour les solides/maillages, retourne les surfaces limites ; pour les surfaces, retourne les arêtes limites ; pour les surfaces fermées, retourne une géométrie vide",
       "parameterI18n": {
@@ -636,6 +658,14 @@
         "output": {
           "title": "Output File",
           "description": "Output path or expression for the CSV/TSV file to create"
+        }
+      },
+      "definitionI18n": {
+        "GeometryExportConfig": {
+          "epsgColumn": {
+            "title": "EPSG Column Name",
+            "description": "Optional name of a column to write the geometry's EPSG code into. Left empty when the geometry does not resolve to a single EPSG code (no coordinate reference system, or more than one)."
+          }
         }
       },
       "enumI18n": {
@@ -1195,9 +1225,9 @@
           "title": "Extraire les Balises",
           "description": "Noms de types d'entité à aplatir en entités individuelles. Accepte la forme qualifiée (`bldg:Building`), locale (`Building`) ou la notation Clark (`{http://…}Building`). Vide signifie émettre tous les objets urbains de niveau supérieur sans modification."
         },
-        "flattenMeasureTypes": {
-          "title": "Aplatir les Types de Mesure",
-          "description": "Lorsque vrai, les éléments avec un seul attribut `uom` et un contenu textuel numérique sont convertis en valeur numérique, l'unité étant stockée comme clé sœur `{name}_uom`. Par défaut à false."
+        "flattenLeafAttributes": {
+          "title": "Aplatir les Attributs Feuille",
+          "description": "Noms d'attributs (par ex. `uom`) marquant une feuille à regrouper : un élément possédant exactement un de ces attributs XML, sans éléments enfants et avec un contenu textuel numérique est converti en valeur numérique, la valeur de l'attribut étant stockée comme clé sœur `{name}_{attribute}`. Vide (par défaut) désactive cette fonctionnalité."
         },
         "flattenSingleChildObjects": {
           "title": "Aplatir les Nœuds Objet à Enfant Unique",
@@ -1484,7 +1514,7 @@
         "Transform": {
           "expr": {
             "title": "Expression",
-            "description": "Expression over `attributes` and `env` returning a map that becomes the feature's complete attribute set. A result that is not a map, or an expression that fails to evaluate, leaves the attributes unchanged."
+            "description": "Expression over `attributes` and `variables` returning a map that becomes the feature's complete attribute set. A result that is not a map, or an expression that fails to evaluate, leaves the attributes unchanged."
           }
         }
       }
@@ -1547,7 +1577,17 @@
     },
     {
       "name": "Footprint Replacer",
-      "description": "Projette la géométrie 3D sur le plan XY et calcule l'empreinte union (supporte les solides, surfaces et CityGML)"
+      "description": "Remplace la géométrie d'une entité par son empreinte : la projection dissoute de ses faces sur le plan horizontal ou sur un plan personnalisé",
+      "parameterI18n": {
+        "": {
+          "title": "Paramètres de Footprint Replacer",
+          "description": "Configure le plan sur lequel la géométrie est projetée. La géométrie doit être dans un repère euclidien ou un système de référence de coordonnées en unités linéaires ; les faces dont l'aire projetée est inférieure à 1e-6 unités carrées sont ignorées."
+        },
+        "projectionPlane": {
+          "title": "Plan de projection",
+          "description": "Plan sur lequel la géométrie est projetée. Par défaut, le plan horizontal."
+        }
+      }
     },
     {
       "name": "GeoJSON Reader",
@@ -1740,7 +1780,24 @@
           "description": "Configuration for coercing geometries to specific target types."
         },
         "targetType": {
-          "description": "Target geometry type to coerce features to (e.g., LineString)"
+          "title": "Target Type",
+          "description": "Geometry type to re-represent each feature as. A feature the target does not apply to passes through unchanged."
+        }
+      },
+      "enumI18n": {
+        "CoercionTarget": {
+          "lineString": {
+            "title": "Line String",
+            "description": "Replaces every face with the polylines of its boundary rings, holes included."
+          },
+          "polygon": {
+            "title": "Polygon",
+            "description": "Rebuilds faces: a closed line string becomes the face it bounds, and a surface or a solid becomes the individual faces it is built from."
+          },
+          "triangularMesh": {
+            "title": "Triangular Mesh",
+            "description": "Tessellates a face or a surface into triangles. A solid stays a solid, with its boundary triangulated."
+          }
         }
       }
     },
@@ -3456,7 +3513,7 @@
         },
         "encoding": {
           "title": "Character Encoding",
-          "description": "Character encoding for attribute data in the DBF file, such as \"UTF-8\", \"Shift-JIS\", or \"Windows-1252\"; labels are case-insensitive. When omitted, the encoding is taken from the .cpg file if present, otherwise UTF-8 (UTF-16 is not supported)."
+          "description": "Encodage des caractères des données attributaires du fichier DBF, par exemple \"UTF-8\", \"Shift-JIS\" ou \"Windows-1252\" ; les libellés sont insensibles à la casse. S'il est omis, l'encodage est pris dans le fichier .cpg s'il existe, sinon dans la page de codes déclarée par l'en-tête du .dbf, sinon UTF-8 (UTF-16 non pris en charge)."
         },
         "force2D": {
           "title": "Force 2D",
@@ -3475,6 +3532,10 @@
         "": {
           "title": "ShapefileWriter Parameters",
           "description": "Configuration for writing features to ESRI Shapefile format."
+        },
+        "compressOutput": {
+          "title": "Compressed Output Directory",
+          "description": "Optional directory where each Shapefile is written as its own ZIP archive, holding that Shapefile's .shp, .shx, .dbf, .cpg and .prj, instead of as loose files. Leave unset to write loose files."
         },
         "groupBy": {
           "title": "Group By",

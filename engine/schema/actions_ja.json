@@ -996,6 +996,69 @@
       "tags": []
     },
     {
+      "name": "Attribute Table Extractor",
+      "type": "processor",
+      "description": "地物タイプ属性をキーとする移動元・移動先パスの対応表に従い、ネストされたマップまたはリスト属性の間で値を移動する。移動先パスのセグメントが2つ以上の場合、必要に応じてネストしたマップを作成する",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Attribute Table Extractor パラメータ",
+        "description": "ネストされた属性値を移動するために使う移動元・移動先パスの対応表を設定する",
+        "type": "object",
+        "properties": {
+          "dataset": {
+            "title": "データセットURI",
+            "description": "抽出テーブルファイルのパスまたはURI。これかインラインデータのいずれかを指定する",
+            "type": [
+              "object",
+              "null"
+            ],
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "inline": {
+            "title": "インラインテーブル",
+            "description": "抽出テーブルの内容をJSONとして直接指定する。データセットURIを指定しない場合に使う"
+          },
+          "typeAttribute": {
+            "title": "地物タイプ属性",
+            "description": "テーブル内のどのルールセットを地物に適用するかを選ぶ属性の値。デフォルトは`__citygml_feature_type`",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "builtin": true,
+      "inputPorts": [
+        "features"
+      ],
+      "outputPorts": [
+        "features"
+      ],
+      "categories": [
+        "Attribute"
+      ],
+      "tags": [
+        "mapping"
+      ]
+    },
+    {
       "name": "Boundary Extractor",
       "type": "processor",
       "description": "ジオメトリの境界を抽出する。ソリッド/メッシュは境界サーフェスを、サーフェスは境界エッジを、閉じたサーフェスは空のジオメトリを返す",
@@ -1792,7 +1855,17 @@
                   }
                 }
               }
-            ]
+            ],
+            "properties": {
+              "epsgColumn": {
+                "title": "EPSG Column Name",
+                "description": "Optional name of a column to write the geometry's EPSG code into. Left empty when the geometry does not resolve to a single EPSG code (no coordinate reference system, or more than one).",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
           }
         }
       },
@@ -3557,11 +3630,14 @@
             "default": false,
             "type": "boolean"
           },
-          "flattenMeasureTypes": {
-            "title": "計測タイプのフラット化",
-            "description": "trueの場合、単一の`uom`属性と数値テキストコンテンツを持つ要素は数値に変換され、単位は兄弟キー`{name}_uom`として格納される。デフォルトはfalse。",
-            "default": false,
-            "type": "boolean"
+          "flattenLeafAttributes": {
+            "title": "リーフ属性のフラット化",
+            "description": "折りたたみ対象のリーフを示す属性名（例: `uom`）。このリストの属性を1つだけ持ち、子要素を持たず、数値のテキスト内容を持つ要素は数値に変換され、その属性の値は兄弟キー`{name}_{attribute}`として格納される。空（デフォルト）の場合はこの機能を無効にする。",
+            "default": [],
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "cityGmlAttributesKey": {
             "title": "CityGML属性キー",
@@ -4609,7 +4685,7 @@
             "properties": {
               "expr": {
                 "title": "式",
-                "description": "attributes と env を参照し、地物の属性全体となるマップを返す式。マップ以外を返した場合や評価に失敗した場合、属性は変更されない",
+                "description": "attributes と variables を参照し、地物の属性全体となるマップを返す式。マップ以外を返した場合や評価に失敗した場合、属性は変更されない",
                 "type": "object",
                 "format": "code",
                 "required": [
@@ -5003,8 +5079,138 @@
     {
       "name": "Footprint Replacer",
       "type": "processor",
-      "description": "地物の 3D ジオメトリを、XY 平面に投影した 2D フットプリントに置き換える",
-      "parameter": null,
+      "description": "地物のジオメトリをフットプリント（面を水平面または任意の平面に投影して融合したもの）に置き換える",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Footprint Replacer パラメータ",
+        "description": "ジオメトリを投影する平面を設定する。ジオメトリはユークリッド座標系または長さ単位の座標参照系でなければならない。投影後の面積が 1e-6 平方単位未満の面は除外される。",
+        "type": "object",
+        "properties": {
+          "projectionPlane": {
+            "title": "投影平面",
+            "description": "ジオメトリを投影する平面。省略時は水平面。",
+            "default": {
+              "type": "horizontal"
+            },
+            "allOf": [
+              {
+                "$ref": "#/definitions/ProjectionPlane"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "ProjectionPlane": {
+            "description": "The plane the footprint is projected onto.",
+            "oneOf": [
+              {
+                "title": "Horizontal",
+                "description": "Projects along the vertical axis onto the horizontal plane, dropping height. The footprint stays in the geometry's horizontal coordinate system.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "horizontal"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "Custom Plane",
+                "description": "Projects along a plane's normal onto that plane. The footprint is expressed in in-plane coordinates anchored at the plane origin.",
+                "type": "object",
+                "required": [
+                  "normal",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "custom"
+                    ]
+                  },
+                  "normal": {
+                    "title": "Normal",
+                    "description": "Expression evaluating to the plane normal `[x, y, z]` in the geometry's coordinate frame; any non-zero length.",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "origin": {
+                    "title": "Origin",
+                    "description": "Expression evaluating to the plane origin `[x, y, z]` in the geometry's coordinate frame. Defaults to `[0, 0, 0]`.",
+                    "default": null,
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "xAxis": {
+                    "title": "X Axis",
+                    "description": "Expression evaluating to a direction `[x, y, z]` whose in-plane component becomes the footprint's x axis. When omitted, the footprint's y axis is the in-plane direction closest to vertical.",
+                    "default": null,
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
       "builtin": true,
       "inputPorts": [
         "features"
@@ -5539,21 +5745,42 @@
         ],
         "properties": {
           "targetType": {
-            "description": "フィーチャーを強制変換するターゲットジオメトリタイプ（例: LineString）",
+            "title": "ターゲットタイプ",
+            "description": "各地物を再表現するジオメトリタイプ。ターゲットが適用できない地物はそのまま通過する",
             "allOf": [
               {
-                "$ref": "#/definitions/CoerceTarget"
+                "$ref": "#/definitions/CoercionTarget"
               }
             ]
           }
         },
         "definitions": {
-          "CoerceTarget": {
-            "type": "string",
-            "enum": [
-              "lineString",
-              "polygon",
-              "triangularMesh"
+          "CoercionTarget": {
+            "oneOf": [
+              {
+                "title": "ラインストリング",
+                "description": "各面を、その境界リング（ホールを含む）のポリラインに置き換える",
+                "type": "string",
+                "enum": [
+                  "lineString"
+                ]
+              },
+              {
+                "title": "ポリゴン",
+                "description": "面を組み立て直す。閉じたラインストリングはそれが囲む面になり、サーフェスやソリッドは構成する個々の面になる",
+                "type": "string",
+                "enum": [
+                  "polygon"
+                ]
+              },
+              {
+                "title": "三角形メッシュ",
+                "description": "面やサーフェスを三角形に分割する。ソリッドはソリッドのまま、境界だけが三角形化される",
+                "type": "string",
+                "enum": [
+                  "triangularMesh"
+                ]
+              }
             ]
           }
         }
@@ -5568,7 +5795,9 @@
       "categories": [
         "Geometry"
       ],
-      "tags": []
+      "tags": [
+        "3d"
+      ]
     },
     {
       "name": "Geometry Extractor",
@@ -11978,7 +12207,7 @@
         "properties": {
           "encoding": {
             "title": "文字エンコーディング",
-            "description": "DBF ファイルの属性データの文字エンコーディング（例: \"UTF-8\"、\"Shift-JIS\"、\"Windows-1252\"）。ラベルは大文字小文字を区別しない。未指定時は .cpg ファイルがあればそれに従い、なければ UTF-8（UTF-16 は非対応）",
+            "description": "DBF ファイルの属性データの文字エンコーディング（例: \"UTF-8\"、\"Shift-JIS\"、\"Windows-1252\"）。ラベルは大文字小文字を区別しない。未指定時は .cpg ファイルがあればそれに従い、なければ .dbf ヘッダーが宣言するコードページ、それもなければ UTF-8（UTF-16 は非対応）",
             "type": [
               "string",
               "null"
@@ -12078,6 +12307,31 @@
             "title": "出力ディレクトリ",
             "description": "生成されたShapefileファイルを書き出す出力ディレクトリのパスまたは式",
             "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "compressOutput": {
+            "title": "圧縮出力ディレクトリ",
+            "description": "各ShapefileをZIPアーカイブとして書き出すディレクトリ（任意）。アーカイブには対象Shapefileの.shp、.shx、.dbf、.cpg、.prjが含まれます。未設定の場合は非圧縮のファイル群として書き出します",
+            "type": [
+              "object",
+              "null"
+            ],
             "format": "code",
             "required": [
               "type",

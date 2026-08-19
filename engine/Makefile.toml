@@ -46,6 +46,15 @@ cargo test --workspace --all-targets --features schema \
   --exclude workflow-tests --exclude reearth-flow-tests ${@:-}
 cargo test --workspace --all-targets --no-default-features \
   --exclude workflow-tests ${@:-}
+# `reearth-flow-tests` is excluded from the first run and has its
+# `new-geometry` feature off in the second, so its new-geometry cases are
+# reached by neither. Run them here.
+#
+# Filtered rather than run whole: the rest of the suite covers actions that are
+# not ported yet, which fail outright with the feature on. Add each case here as
+# its action is migrated, and drop the filter once none are left.
+cargo test -p reearth-flow-tests --all-targets --features new-geometry \
+  file::reader::shapefile ${@:-}
 ''']
 
 # Runs in the new-geometry world. Every test case whose `workflow_test.json`

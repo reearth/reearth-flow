@@ -118,7 +118,10 @@ test.describe.serial(
       await editor.submitParams();
 
       await editor.openNodeParamsForm(cityGmlReader);
-      await editor.setParamFlowExpr("Dataset", 'env.get("__value")["path"]');
+      await editor.setParamFlowExpr(
+        "Dataset",
+        'variables.get("__value")["path"]',
+      );
       await editor.submitParams();
 
       await editor.openNodeParamsForm(attributeMapper);
@@ -180,7 +183,7 @@ test.describe.serial(
       await editor.openNodeParamsForm(udxExtractor);
       await editor.setParamText(
         "root_cityGmlPath",
-        'env.get("__value")["path"]',
+        'variables.get("__value")["path"]',
       );
       await editor.submitParams();
 

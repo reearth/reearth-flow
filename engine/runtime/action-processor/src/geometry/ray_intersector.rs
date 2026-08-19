@@ -400,12 +400,12 @@ impl RayIntersector {
     fn evaluate_pair_id(
         &self,
         feature: &Feature,
-        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+        variables: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> Result<String, BoxedError> {
         let Some(ast) = &self.pair_id_ast else {
             return Ok(ALL_PAIRS_KEY.to_string());
         };
-        ast.eval(feature, env_vars)
+        ast.eval(feature, variables)
             .map(|av| av.to_string())
             .map_err(|e| {
                 GeometryProcessorError::RayIntersector(format!("Failed to evaluate pairId: {e}"))
@@ -416,10 +416,10 @@ impl RayIntersector {
     fn evaluate_geom_id(
         &self,
         feature: &Feature,
-        env_vars: Arc<serde_json::Map<String, serde_json::Value>>,
+        variables: Arc<serde_json::Map<String, serde_json::Value>>,
     ) -> Option<String> {
         self.geom_id_ast.as_ref().and_then(|ast| {
-            let av = ast.eval(feature, env_vars).ok()?;
+            let av = ast.eval(feature, variables).ok()?;
             if matches!(av, AttributeValue::Null) {
                 return None;
             }
@@ -551,9 +551,9 @@ impl Processor for RayIntersector {
         }
 
         let feature = &ctx.feature;
-        let env_vars = ctx.env_vars.clone();
+        let variables = ctx.variables.clone();
 
-        let pair_id = self.evaluate_pair_id(feature, env_vars.clone())?;
+        let pair_id = self.evaluate_pair_id(feature, variables.clone())?;
 
         // Register pair_id
         if self.pair_id_set.insert(pair_id.clone()) {
@@ -589,7 +589,7 @@ impl Processor for RayIntersector {
                 }
             },
             port if port == &*GEOM_PORT => {
-                let geom_id = self.evaluate_geom_id(feature, env_vars.clone());
+                let geom_id = self.evaluate_geom_id(feature, variables.clone());
 
                 let serialize_mesh = |mesh: TriangularMesh<f64, f64>,
                                       gid: Option<String>|

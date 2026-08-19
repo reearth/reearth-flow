@@ -12,11 +12,15 @@ use serde::{Deserialize, Serialize};
 
 use crate::coordinate::EpsgCode;
 use crate::error::Error;
+use crate::ops::coerce::unchanged;
+use crate::ops::triangulation::Cache;
 use crate::ops::union_results;
 use crate::ops::{
-    Aabb, BoundingBox, ForceTwoDimension, ForceTwoDimensionError, Reproject, ReprojectionCache,
-    UnsupportedOperation,
+    Aabb, BoundingBox, Coerce, CoercionTarget, ForceTwoDimension, ForceTwoDimensionError,
+    Reproject, ReprojectionCache, UnsupportedOperation,
 };
+#[cfg(feature = "new-geometry")]
+use crate::ops::{Footprint, FootprintError, FootprintSink};
 #[cfg(feature = "new-geometry")]
 use crate::validation_next::Validate;
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
@@ -424,6 +428,20 @@ impl ForceTwoDimension for Collection3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl Footprint for Collection2D {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        self.members.iter().try_for_each(|m| m.footprint(sink))
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for Collection3D {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        self.members.iter().try_for_each(|m| m.footprint(sink))
+    }
+}
+
 // A collection validates by recursing into its members (see
 // `validation_next::validate`), so it declares no direct checks and inherits
 // every `Validate` default.
@@ -432,6 +450,62 @@ impl Validate for Collection2D {}
 
 #[cfg(feature = "new-geometry")]
 impl Validate for Collection3D {}
+
+impl Coerce for Collection2D {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        let mut changed = false;
+        let members = std::mem::take(&mut self.members)
+            .into_iter()
+            .map(|mut member| match member.coerce(target, cache) {
+                Ok(Geometry::Euclidean2D(coerced)) => {
+                    changed = true;
+                    coerced
+                }
+                // A 2D leaf coerces to a 2D geometry, so the other `Ok` shapes
+                // do not arise; an `Err` left the member untouched.
+                _ => member,
+            })
+            .collect();
+        self.members = members;
+        if !changed {
+            return Err(unchanged::<Self>());
+        }
+        Ok(Geometry::Euclidean2D(Euclidean2DGeometry::Collection(
+            std::mem::take(self),
+        )))
+    }
+}
+
+impl Coerce for Collection3D {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        let mut changed = false;
+        let members = std::mem::take(&mut self.members)
+            .into_iter()
+            .map(|mut member| match member.coerce(target, cache) {
+                Ok(Geometry::Euclidean3D(coerced)) => {
+                    changed = true;
+                    coerced
+                }
+                _ => member,
+            })
+            .collect();
+        self.members = members;
+        if !changed {
+            return Err(unchanged::<Self>());
+        }
+        Ok(Geometry::Euclidean3D(Euclidean3DGeometry::Collection(
+            std::mem::take(self),
+        )))
+    }
+}
 
 #[cfg(test)]
 mod tests {

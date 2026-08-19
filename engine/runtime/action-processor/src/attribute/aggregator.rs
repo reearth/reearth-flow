@@ -201,7 +201,7 @@ impl Processor for AttributeAggregator {
         _fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
         let feature = &ctx.feature;
-        let env_vars = ctx.env_vars.clone();
+        let variables = ctx.variables.clone();
 
         let mut aggregates = Vec::new();
         for aggregate_attribute in &self.aggregate_attributes {
@@ -213,7 +213,7 @@ impl Processor for AttributeAggregator {
                 continue;
             }
             if let Some(code) = &aggregate_attribute.attribute_value {
-                let result = code.eval(feature, env_vars.clone()).map_err(|e| {
+                let result = code.eval(feature, variables.clone()).map_err(|e| {
                     AttributeProcessorError::Aggregator(format!(
                         "Failed to evaluate aggregation: {e}"
                     ))
@@ -224,7 +224,7 @@ impl Processor for AttributeAggregator {
         let calc = if let Some(value) = self.calculation_value {
             value
         } else if let Some(calculation) = &self.calculation {
-            calculation.eval_int(feature, env_vars).map_err(|e| {
+            calculation.eval_int(feature, variables).map_err(|e| {
                 AttributeProcessorError::Aggregator(format!("Failed to evaluate calculation: {e}"))
             })?
         } else {
