@@ -25,6 +25,9 @@ use super::utils::{frame_for, local_name, GML_NS_311_ID, GML_NS_ID};
 /// first), used to attach it to the right feature when `flatten` hoists children.
 pub(super) struct PendingGeom {
     pub(super) lod: Option<u8>,
+    /// The property this was carved from (`"lod0RoofEdge"`, `"tin"`, …). The LOD
+    /// digit cannot name it again — `lod0RoofEdge` and `lod0FootPrint` share it.
+    pub(super) property: String,
     pub(super) node: GeomNode,
     pub(super) owner_ids: Vec<String>,
 }
@@ -100,6 +103,7 @@ impl Parser {
                     };
                     geoms.push(PendingGeom {
                         lod,
+                        property: ln.to_string(),
                         node: gnode,
                         owner_ids,
                     });
@@ -690,6 +694,7 @@ mod tests {
         );
         assert_eq!(geoms.len(), 1);
         assert_eq!(geoms[0].lod, Some(0));
+        assert_eq!(geoms[0].property, "lod0MultiCurve");
         let geometry = resolve_root_bare(&geoms[0].node, &registry).unwrap();
         match only_member(&geometry) {
             Euclidean3DGeometry::LineString(ls) => {
@@ -707,6 +712,7 @@ mod tests {
         ));
         assert_eq!(geoms.len(), 1);
         assert_eq!(geoms[0].lod, Some(2));
+        assert_eq!(geoms[0].property, "lod2MultiSurface");
         let geometry = resolve_root_bare(&geoms[0].node, &registry).unwrap();
         match only_member(&geometry) {
             Euclidean3DGeometry::Polygon(p) => {
@@ -795,6 +801,7 @@ mod tests {
         ));
         assert_eq!(geoms.len(), 1);
         assert_eq!(geoms[0].lod, Some(1));
+        assert_eq!(geoms[0].property, "lod1Solid");
         match resolve_root_bare(&geoms[0].node, &registry).unwrap() {
             Euclidean3DGeometry::Solid(s) => {
                 assert_eq!(s.exterior().num_faces(), 2);
@@ -833,6 +840,8 @@ mod tests {
         );
         assert_eq!(geoms.len(), 1);
         assert_eq!(geoms[0].lod, None);
+        // A `tin` has no LOD, so its property name is all that names the element.
+        assert_eq!(geoms[0].property, "tin");
         match resolve_root_bare(&geoms[0].node, &registry).unwrap() {
             Euclidean3DGeometry::TriangularMesh(m) => {
                 assert_eq!(m.num_triangles(), 2);
@@ -850,6 +859,7 @@ mod tests {
         );
         assert_eq!(geoms.len(), 1);
         assert_eq!(geoms[0].lod, Some(0));
+        assert_eq!(geoms[0].property, "lod0Geometry");
         match resolve_root_bare(&geoms[0].node, &registry).unwrap() {
             Euclidean3DGeometry::Point(p) => assert_eq!(p.position(), [1.0, 2.0, 5.0]),
             other => panic!("expected Point, got {other:?}"),

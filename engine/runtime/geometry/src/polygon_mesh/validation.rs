@@ -60,11 +60,16 @@ fn check_mesh_too_few_points<const N: usize>(
     push: impl Fn(&CoordinateFrame, &[[f64; N]], bool, &mut ValidationReport),
     report: &mut ValidationReport,
 ) {
-    for_each_ring(face_indices, face_offsets, interior_offsets, |ring, _| {
-        if ring.len() < 4 {
-            push(frame, &ring_coords(vertices, ring), true, report);
-        }
-    });
+    for_each_ring(
+        face_indices,
+        face_offsets,
+        interior_offsets,
+        |ring, _, _| {
+            if ring.len() < 4 {
+                push(frame, &ring_coords(vertices, ring), true, report);
+            }
+        },
+    );
 }
 
 /// Report a [`ValidationType::UnclosedRing`] problem for every face ring whose
@@ -79,14 +84,19 @@ fn check_mesh_unclosed_rings<const N: usize>(
     push: impl Fn(&CoordinateFrame, &[[f64; N]], &mut ValidationReport),
     report: &mut ValidationReport,
 ) {
-    for_each_ring(face_indices, face_offsets, interior_offsets, |ring, _| {
-        // Only materialize the coords when the endpoints actually differ.
-        if let (Some(&first), Some(&last)) = (ring.first(), ring.last()) {
-            if vertices[first as usize] != vertices[last as usize] {
-                push(frame, &ring_coords(vertices, ring), report);
+    for_each_ring(
+        face_indices,
+        face_offsets,
+        interior_offsets,
+        |ring, _, _| {
+            // Only materialize the coords when the endpoints actually differ.
+            if let (Some(&first), Some(&last)) = (ring.first(), ring.last()) {
+                if vertices[first as usize] != vertices[last as usize] {
+                    push(frame, &ring_coords(vertices, ring), report);
+                }
             }
-        }
-    });
+        },
+    );
 }
 
 impl PolygonMesh3DData {
@@ -142,7 +152,7 @@ impl PolygonMesh3DData {
             &self.face_indices,
             &self.face_offsets,
             &self.interior_offsets,
-            |ring, is_exterior| {
+            |ring, _, is_exterior| {
                 edges.check_ring(frame, &self.vertices, ring, report);
                 if has_holes {
                     faces.check_ring(
@@ -218,7 +228,7 @@ impl PolygonMesh3DData {
             &self.face_indices,
             &self.face_offsets,
             &self.interior_offsets,
-            |ring, _| {
+            |ring, _, _| {
                 check_degenerate_ring_3d(
                     frame,
                     &ring_coords(&self.vertices, ring),
@@ -261,7 +271,7 @@ impl PolygonMesh3DData {
             &self.face_indices,
             &self.face_offsets,
             &self.interior_offsets,
-            |ring, is_exterior| {
+            |ring, _, is_exterior| {
                 if is_exterior {
                     face = face.wrapping_add(1);
                     if faces.contains(&face) {
@@ -284,7 +294,7 @@ impl PolygonMesh3DData {
             &self.face_indices,
             &self.face_offsets,
             &self.interior_offsets,
-            |ring, _| topology.add_face(ring),
+            |ring, _, _| topology.add_face(ring),
         );
         topology
     }
@@ -311,7 +321,7 @@ impl PolygonMesh3DData {
             &self.face_indices,
             &self.face_offsets,
             &self.interior_offsets,
-            |ring, _| {
+            |ring, _, _| {
                 // Drop the closing vertex so the fan uses only distinct corners.
                 let ring = open_ring(ring);
                 if ring.len() < 3 {
@@ -410,7 +420,7 @@ impl Validate for PolygonMesh2D {
                 &self.face_indices,
                 &self.face_offsets,
                 &self.interior_offsets,
-                |ring, is_exterior| {
+                |ring, _, is_exterior| {
                     let coords = ring_coords(&self.vertices, ring);
                     check_ring_orientation_2d(&self.frame, sign, &coords, is_exterior, r);
                 },
@@ -490,7 +500,7 @@ impl Validate for PolygonMesh2D {
                 &self.face_indices,
                 &self.face_offsets,
                 &self.interior_offsets,
-                |ring, _| {
+                |ring, _, _| {
                     check_degenerate_ring_2d(
                         &self.frame,
                         &ring_coords(&self.vertices, ring),

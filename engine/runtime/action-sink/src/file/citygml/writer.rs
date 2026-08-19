@@ -3,13 +3,21 @@ use std::io::Write;
 
 use quick_xml::events::{BytesDecl, BytesEnd, BytesStart, BytesText, Event};
 use quick_xml::Writer;
-use reearth_flow_types::material::{Texture, X3DMaterial};
+use reearth_flow_types::material::X3DMaterial;
 
-use super::converter::{
-    format_pos_list, AppearanceBundle, BoundingEnvelope, CityObjectType, GeometryEntry, GmlElement,
-    GmlSurface,
+// The seam is geometry-neutral and shared; only the `posList` formatter is
+// world-specific, and `converter` resolves to the compiled world's module, so
+// this file needs no `cfg` to pick the right one.
+use super::converter::format_pos_list;
+use super::model::{
+    AppearanceBundle, BoundingEnvelope, CityObjectType, GeometryEntry, GmlElement, GmlSolid,
+    GmlSurface, GmlTexture,
 };
 use crate::errors::SinkError;
+
+/// Written when the source recorded no theme name; the literal this writer used
+/// to emit unconditionally, and the one PLATEAU's textured models use.
+const FALLBACK_THEME: &str = "rgbTexture";
 
 /// Collected per-surface appearance info, built while writing geometry.
 struct SurfaceAppearance {
@@ -110,8 +118,11 @@ impl<W: Write> CityGmlXmlWriter<W> {
             .write_event(Event::Start(env_elem))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
-        self.write_text_element("gml:lowerCorner", &envelope.lower_corner_str())?;
-        self.write_text_element("gml:upperCorner", &envelope.upper_corner_str())?;
+        // Corners go through the same formatter as `gml:posList`, so the
+        // envelope always reads in the same axis order as the geometry it
+        // bounds, in whichever world is compiled.
+        self.write_text_element("gml:lowerCorner", &format_pos_list(&[envelope.lower]))?;
+        self.write_text_element("gml:upperCorner", &format_pos_list(&[envelope.upper]))?;
 
         self.writer
             .write_event(Event::End(BytesEnd::new("gml:Envelope")))
@@ -179,51 +190,31 @@ impl<W: Write> CityGmlXmlWriter<W> {
         let ns = city_type.namespace_prefix();
         let lod_elem = self.get_geometry_element_name(ns, entry, city_type);
 
+        self.writer
+            .write_event(Event::Start(BytesStart::new(&lod_elem)))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
         match &entry.element {
-            GmlElement::Solid { id, surfaces } => {
-                self.writer
-                    .write_event(Event::Start(BytesStart::new(&lod_elem)))
-                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
-
-                self.write_solid(
-                    id.as_deref(),
-                    surfaces,
-                    need_appearance,
-                    surface_appearances,
-                )?;
-
-                self.writer
-                    .write_event(Event::End(BytesEnd::new(&lod_elem)))
-                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+            GmlElement::Solid(solid) => {
+                self.write_solid(solid, need_appearance, surface_appearances)?
             }
-            GmlElement::MultiSurface { id, surfaces } => {
-                self.writer
-                    .write_event(Event::Start(BytesStart::new(&lod_elem)))
-                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
-
-                self.write_multi_surface(
-                    id.as_deref(),
-                    surfaces,
-                    need_appearance,
-                    surface_appearances,
-                )?;
-
-                self.writer
-                    .write_event(Event::End(BytesEnd::new(&lod_elem)))
-                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+            GmlElement::MultiSolid { id, solids } => {
+                self.write_multi_solid(id.as_deref(), solids, need_appearance, surface_appearances)?
             }
+            GmlElement::MultiSurface { id, surfaces } => self.write_multi_surface(
+                id.as_deref(),
+                surfaces,
+                need_appearance,
+                surface_appearances,
+            )?,
             GmlElement::MultiCurve { id, curves } => {
-                self.writer
-                    .write_event(Event::Start(BytesStart::new(&lod_elem)))
-                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
-
-                self.write_multi_curve(id.as_deref(), curves)?;
-
-                self.writer
-                    .write_event(Event::End(BytesEnd::new(&lod_elem)))
-                    .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+                self.write_multi_curve(id.as_deref(), curves)?
             }
         }
+
+        self.writer
+            .write_event(Event::End(BytesEnd::new(&lod_elem)))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
         Ok(())
     }
@@ -242,7 +233,8 @@ impl<W: Write> CityGmlXmlWriter<W> {
                 format!("{}:lod{}Geometry", ns, entry.lod)
             } else {
                 let geom_type = match &entry.element {
-                    GmlElement::Solid { .. } => "Solid",
+                    GmlElement::Solid(_) => "Solid",
+                    GmlElement::MultiSolid { .. } => "MultiSolid",
                     GmlElement::MultiSurface { .. } => "MultiSurface",
                     GmlElement::MultiCurve { .. } => "MultiCurve",
                 };
@@ -253,23 +245,50 @@ impl<W: Write> CityGmlXmlWriter<W> {
 
     fn write_solid(
         &mut self,
-        id: Option<&str>,
+        solid: &GmlSolid,
+        need_appearance: bool,
+        surface_appearances: &mut Vec<SurfaceAppearance>,
+    ) -> Result<(), SinkError> {
+        let mut solid_elem = BytesStart::new("gml:Solid");
+        if let Some(gml_id) = solid.id.as_deref() {
+            solid_elem.push_attribute(("gml:id", gml_id));
+        }
+        solid_elem.push_attribute(("srsName", self.srs_name.as_str()));
+        solid_elem.push_attribute(("srsDimension", "3"));
+        self.writer
+            .write_event(Event::Start(solid_elem))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        self.write_shell(
+            "gml:exterior",
+            &solid.exterior,
+            need_appearance,
+            surface_appearances,
+        )?;
+        // One `gml:interior` per void. A solid converted from the legacy world
+        // never has any: that reader discards interior shells at parse time.
+        for shell in &solid.interiors {
+            self.write_shell("gml:interior", shell, need_appearance, surface_appearances)?;
+        }
+
+        self.writer
+            .write_event(Event::End(BytesEnd::new("gml:Solid")))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        Ok(())
+    }
+
+    /// One shell of a solid: `wrapper` (`gml:exterior` or `gml:interior`)
+    /// around the `gml:CompositeSurface` of the shell's faces.
+    fn write_shell(
+        &mut self,
+        wrapper: &str,
         surfaces: &[GmlSurface],
         need_appearance: bool,
         surface_appearances: &mut Vec<SurfaceAppearance>,
     ) -> Result<(), SinkError> {
-        let mut solid = BytesStart::new("gml:Solid");
-        if let Some(gml_id) = id {
-            solid.push_attribute(("gml:id", gml_id));
-        }
-        solid.push_attribute(("srsName", self.srs_name.as_str()));
-        solid.push_attribute(("srsDimension", "3"));
         self.writer
-            .write_event(Event::Start(solid))
-            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
-
-        self.writer
-            .write_event(Event::Start(BytesStart::new("gml:exterior")))
+            .write_event(Event::Start(BytesStart::new(wrapper)))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
         self.writer
             .write_event(Event::Start(BytesStart::new("gml:CompositeSurface")))
@@ -283,10 +302,41 @@ impl<W: Write> CityGmlXmlWriter<W> {
             .write_event(Event::End(BytesEnd::new("gml:CompositeSurface")))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
         self.writer
-            .write_event(Event::End(BytesEnd::new("gml:exterior")))
+            .write_event(Event::End(BytesEnd::new(wrapper)))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        Ok(())
+    }
+
+    fn write_multi_solid(
+        &mut self,
+        id: Option<&str>,
+        solids: &[GmlSolid],
+        need_appearance: bool,
+        surface_appearances: &mut Vec<SurfaceAppearance>,
+    ) -> Result<(), SinkError> {
+        let mut ms = BytesStart::new("gml:MultiSolid");
+        if let Some(gml_id) = id {
+            ms.push_attribute(("gml:id", gml_id));
+        }
+        ms.push_attribute(("srsName", self.srs_name.as_str()));
+        ms.push_attribute(("srsDimension", "3"));
         self.writer
-            .write_event(Event::End(BytesEnd::new("gml:Solid")))
+            .write_event(Event::Start(ms))
+            .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+
+        for solid in solids {
+            self.writer
+                .write_event(Event::Start(BytesStart::new("gml:solidMember")))
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+            self.write_solid(solid, need_appearance, surface_appearances)?;
+            self.writer
+                .write_event(Event::End(BytesEnd::new("gml:solidMember")))
+                .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
+        }
+
+        self.writer
+            .write_event(Event::End(BytesEnd::new("gml:MultiSolid")))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
         Ok(())
@@ -405,7 +455,7 @@ impl<W: Write> CityGmlXmlWriter<W> {
 
     fn write_linear_ring(
         &mut self,
-        coords: &[reearth_flow_geometry::types::coordinate::Coordinate3D<f64>],
+        coords: &[[f64; 3]],
         ring_id: Option<&str>,
     ) -> Result<(), SinkError> {
         let mut ring = BytesStart::new("gml:LinearRing");
@@ -428,7 +478,7 @@ impl<W: Write> CityGmlXmlWriter<W> {
     fn write_multi_curve(
         &mut self,
         id: Option<&str>,
-        curves: &[Vec<reearth_flow_geometry::types::coordinate::Coordinate3D<f64>>],
+        curves: &[Vec<[f64; 3]>],
     ) -> Result<(), SinkError> {
         let mut mc = BytesStart::new("gml:MultiCurve");
         if let Some(gml_id) = id {
@@ -494,7 +544,11 @@ impl<W: Write> CityGmlXmlWriter<W> {
             .write_event(Event::Start(BytesStart::new("app:Appearance")))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
-        self.write_text_element("app:theme", "rgbTexture")?;
+        // The theme the converter actually selected, so downstream appearance
+        // selection keeps working; only a world that records no theme name at
+        // all falls back to the historical literal.
+        let theme = appearance.theme.as_deref().unwrap_or(FALLBACK_THEME);
+        self.write_text_element("app:theme", theme)?;
 
         let mut sorted_materials: Vec<_> = by_material.into_iter().collect();
         sorted_materials.sort_by_key(|(k, _)| *k);
@@ -555,7 +609,7 @@ impl<W: Write> CityGmlXmlWriter<W> {
 
     fn write_parameterized_texture(
         &mut self,
-        texture: &Texture,
+        texture: &GmlTexture,
         targets: &[&SurfaceAppearance],
     ) -> Result<(), SinkError> {
         self.writer
@@ -565,11 +619,14 @@ impl<W: Write> CityGmlXmlWriter<W> {
             .write_event(Event::Start(BytesStart::new("app:ParameterizedTexture")))
             .map_err(|e| SinkError::CityGmlWriter(e.to_string()))?;
 
+        // Keyed on what the texture was staged under, not on its URI: an
+        // in-memory raster has no URI to key by. For a URI-backed one the key
+        // *is* the URI string, so the legacy rewrite is unchanged.
         let image_uri = self
             .uri_remap
-            .get(texture.uri.as_str())
+            .get(texture.key.as_str())
             .cloned()
-            .unwrap_or_else(|| texture.uri.to_string());
+            .unwrap_or_else(|| texture.uri.clone());
         self.write_text_element("app:imageURI", image_uri.as_str())?;
         self.write_text_element("app:mimeType", mime_type_from_uri(image_uri.as_str()))?;
 
@@ -692,31 +749,69 @@ fn mime_type_from_uri(uri: &str) -> &'static str {
 
 #[cfg(test)]
 mod tests {
-    use reearth_flow_geometry::types::coordinate::Coordinate3D;
-    use reearth_flow_types::material::{Texture, X3DMaterial};
-    use url::Url;
+    use reearth_flow_types::material::X3DMaterial;
 
     use super::*;
 
     const SRS: &str = "http://www.opengis.net/def/crs/EPSG/0/6697";
 
-    // Exterior: 3 coords → posList "35 139 0 35 139.1 0 35.1 139 0"
-    // (format_pos_list emits y x z, integer-valued floats drop the decimal)
-    fn triangle() -> Vec<Coordinate3D<f64>> {
-        vec![
-            Coordinate3D::new__(139.0, 35.0, 0.0),
-            Coordinate3D::new__(139.1, 35.0, 0.0),
-            Coordinate3D::new__(139.0, 35.1, 0.0),
-        ]
+    /// Coordinates as the compiled world stores them, chosen so both formatters
+    /// emit the *same* `posList`. That equality is the axis-order invariant, and
+    /// it is why every expected XML string below is written once.
+    #[cfg(not(feature = "new-geometry"))]
+    mod fixture {
+        /// Exterior: 3 coords → posList "35 139 0 35 139.1 0 35.1 139 0"
+        /// (integer-valued floats drop the decimal).
+        pub fn triangle() -> Vec<[f64; 3]> {
+            vec![[139.0, 35.0, 0.0], [139.1, 35.0, 0.0], [139.0, 35.1, 0.0]]
+        }
+
+        /// Offset from `triangle()` so the two are distinguishable in an expected
+        /// posList: "35.01 139.01 1 35.01 139.02 1 35.02 139.01 1".
+        pub fn offset_triangle() -> Vec<[f64; 3]> {
+            vec![
+                [139.01, 35.01, 1.0],
+                [139.02, 35.01, 1.0],
+                [139.01, 35.02, 1.0],
+            ]
+        }
     }
 
-    /// Write a single LOD-2 MultiSurface Building and return the XML output.
-    fn write_building(surfaces: Vec<GmlSurface>, appearance: Option<&AppearanceBundle>) -> String {
-        let entry = GeometryEntry {
-            lod: 2,
-            property: None,
-            element: GmlElement::MultiSurface { id: None, surfaces },
-        };
+    #[cfg(feature = "new-geometry")]
+    mod fixture {
+        /// The same triangle, stored in EPSG:6697's declared order (lat, lon,
+        /// height), which the identity formatter writes unchanged.
+        pub fn triangle() -> Vec<[f64; 3]> {
+            vec![[35.0, 139.0, 0.0], [35.0, 139.1, 0.0], [35.1, 139.0, 0.0]]
+        }
+
+        pub fn offset_triangle() -> Vec<[f64; 3]> {
+            vec![
+                [35.01, 139.01, 1.0],
+                [35.01, 139.02, 1.0],
+                [35.02, 139.01, 1.0],
+            ]
+        }
+    }
+
+    use fixture::{offset_triangle, triangle};
+
+    /// A geometry-only surface: no material, no texture, so the writer mints no
+    /// `gml:id` for it and the expected XML stays about the nesting.
+    fn plain_surface(exterior: Vec<[f64; 3]>) -> GmlSurface {
+        GmlSurface {
+            id: None,
+            exterior,
+            interiors: vec![],
+            material_idx: None,
+            texture_idx: None,
+            uv_exterior: vec![],
+            uv_interiors: vec![],
+        }
+    }
+
+    /// Write one geometry entry as a Building city object and return the XML.
+    fn write_entry(entry: GeometryEntry, appearance: Option<&AppearanceBundle>) -> String {
         let mut buf = Vec::new();
         let mut w = CityGmlXmlWriter::new(&mut buf, false, SRS.to_string());
         w.write_city_object(
@@ -728,6 +823,18 @@ mod tests {
         .unwrap();
         w.flush_appearances().unwrap();
         String::from_utf8(buf).unwrap()
+    }
+
+    /// Write a single LOD-2 MultiSurface Building and return the XML output.
+    fn write_building(surfaces: Vec<GmlSurface>, appearance: Option<&AppearanceBundle>) -> String {
+        write_entry(
+            GeometryEntry {
+                lod: 2,
+                property: None,
+                element: GmlElement::MultiSurface { id: None, surfaces },
+            },
+            appearance,
+        )
     }
 
     // X3DMaterial
@@ -747,6 +854,7 @@ mod tests {
             uv_interiors: vec![],
         };
         let appearance = AppearanceBundle {
+            theme: None,
             // X3DMaterial::default(): diffuse=0.7/0.7/0.7, specular=0.04/0.04/0.04, ambient=0.9
             materials: vec![X3DMaterial::default()],
             textures: vec![],
@@ -805,9 +913,11 @@ mod tests {
             uv_interiors: vec![],
         };
         let appearance = AppearanceBundle {
+            theme: None,
             materials: vec![],
-            textures: vec![Texture {
-                uri: Url::parse("file:///textures/wall.jpg").unwrap(),
+            textures: vec![GmlTexture {
+                key: "file:///textures/wall.jpg".to_string(),
+                uri: "file:///textures/wall.jpg".to_string(),
             }],
         };
 
@@ -846,6 +956,273 @@ mod tests {
             r#"</app:ParameterizedTexture></app:surfaceDataMember>"#,
             r#"</app:Appearance>"#,
             r#"</app:appearanceMember>"#,
+        );
+        assert_eq!(xml, expected);
+    }
+
+    /// A named theme wins over the historical literal: a wrong `app:theme` breaks
+    /// appearance selection for anything reading the output back.
+    #[test]
+    fn a_named_theme_is_written_instead_of_the_fallback_literal() {
+        let surface = GmlSurface {
+            id: None,
+            exterior: triangle(),
+            interiors: vec![],
+            material_idx: Some(0),
+            texture_idx: None,
+            uv_exterior: vec![],
+            uv_interiors: vec![],
+        };
+        let appearance = AppearanceBundle {
+            theme: Some("iurTexture".to_string()),
+            materials: vec![X3DMaterial::default()],
+            textures: vec![],
+        };
+
+        let xml = write_building(vec![surface], Some(&appearance));
+
+        assert!(
+            xml.contains("<app:theme>iurTexture</app:theme>"),
+            "expected the selected theme, got: {xml}"
+        );
+        assert!(!xml.contains("rgbTexture"), "{xml}");
+    }
+
+    /// `app:imageURI` is rewritten by the staging key, which for an in-memory
+    /// raster is not a URI at all. The fallback URI is only what a texture that
+    /// was never staged keeps.
+    #[test]
+    fn the_image_uri_is_rewritten_by_the_staging_key() {
+        let surface = GmlSurface {
+            id: None,
+            exterior: triangle(),
+            interiors: vec![],
+            material_idx: None,
+            texture_idx: Some(0),
+            uv_exterior: vec![[0.0, 0.0], [1.0, 0.0], [0.5, 1.0]],
+            uv_interiors: vec![],
+        };
+        let appearance = AppearanceBundle {
+            theme: Some("rgbTexture".to_string()),
+            materials: vec![],
+            textures: vec![GmlTexture {
+                key: "inline:0123456789abcdef".to_string(),
+                uri: "0123456789abcdef.png".to_string(),
+            }],
+        };
+
+        let mut buf = Vec::new();
+        let mut w = CityGmlXmlWriter::new(&mut buf, false, SRS.to_string());
+        w.set_uri_remap(HashMap::from([(
+            "inline:0123456789abcdef".to_string(),
+            "city_appearance/0123456789abcdef.png".to_string(),
+        )]));
+        w.write_city_object(
+            CityObjectType::Building,
+            &[GeometryEntry {
+                lod: 2,
+                property: None,
+                element: GmlElement::MultiSurface {
+                    id: None,
+                    surfaces: vec![surface],
+                },
+            }],
+            Some("obj-001"),
+            Some(&appearance),
+        )
+        .unwrap();
+        w.flush_appearances().unwrap();
+        let xml = String::from_utf8(buf).unwrap();
+
+        assert!(
+            xml.contains(
+                "<app:imageURI>city_appearance/0123456789abcdef.png</app:imageURI>\
+                 <app:mimeType>image/png</app:mimeType>"
+            ),
+            "{xml}"
+        );
+    }
+
+    // Solid shells
+
+    /// A void shell is a second `gml:CompositeSurface` under `gml:interior`,
+    /// sibling to the exterior one — the nesting the legacy build could never
+    /// emit, because its reader discards interior shells at parse time.
+    #[test]
+    fn test_write_solid_with_a_void_shell() {
+        let entry = GeometryEntry {
+            lod: 1,
+            property: None,
+            element: GmlElement::Solid(GmlSolid {
+                id: Some("solid-1".to_string()),
+                exterior: vec![plain_surface(triangle())],
+                interiors: vec![vec![plain_surface(offset_triangle())]],
+            }),
+        };
+
+        let xml = write_entry(entry, None);
+
+        let expected = concat!(
+            r#"<core:cityObjectMember>"#,
+            r#"<bldg:Building gml:id="obj-001">"#,
+            r#"<bldg:lod1Solid>"#,
+            r#"<gml:Solid gml:id="solid-1" srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">"#,
+            r#"<gml:exterior>"#,
+            r#"<gml:CompositeSurface>"#,
+            r#"<gml:surfaceMember>"#,
+            r#"<gml:Polygon>"#,
+            r#"<gml:exterior>"#,
+            r#"<gml:LinearRing>"#,
+            r#"<gml:posList>35 139 0 35 139.1 0 35.1 139 0</gml:posList>"#,
+            r#"</gml:LinearRing>"#,
+            r#"</gml:exterior>"#,
+            r#"</gml:Polygon>"#,
+            r#"</gml:surfaceMember>"#,
+            r#"</gml:CompositeSurface>"#,
+            r#"</gml:exterior>"#,
+            // The void, as its own composite surface.
+            r#"<gml:interior>"#,
+            r#"<gml:CompositeSurface>"#,
+            r#"<gml:surfaceMember>"#,
+            r#"<gml:Polygon>"#,
+            r#"<gml:exterior>"#,
+            r#"<gml:LinearRing>"#,
+            r#"<gml:posList>35.01 139.01 1 35.01 139.02 1 35.02 139.01 1</gml:posList>"#,
+            r#"</gml:LinearRing>"#,
+            r#"</gml:exterior>"#,
+            r#"</gml:Polygon>"#,
+            r#"</gml:surfaceMember>"#,
+            r#"</gml:CompositeSurface>"#,
+            r#"</gml:interior>"#,
+            r#"</gml:Solid>"#,
+            r#"</bldg:lod1Solid>"#,
+            r#"</bldg:Building>"#,
+            r#"</core:cityObjectMember>"#,
+        );
+        assert_eq!(xml, expected);
+    }
+
+    // MultiSolid
+
+    /// Each solid of a `gml:MultiSolid` is its own `gml:solidMember`, and the
+    /// retained source property name is the wrapper verbatim.
+    #[test]
+    fn test_write_multi_solid_of_two_solids() {
+        let entry = GeometryEntry {
+            lod: 2,
+            property: Some("lod2MultiSolid".to_string()),
+            element: GmlElement::MultiSolid {
+                id: Some("msolid-1".to_string()),
+                solids: vec![
+                    GmlSolid {
+                        id: Some("solid-a".to_string()),
+                        exterior: vec![plain_surface(triangle())],
+                        interiors: vec![],
+                    },
+                    GmlSolid {
+                        id: Some("solid-b".to_string()),
+                        exterior: vec![plain_surface(offset_triangle())],
+                        interiors: vec![],
+                    },
+                ],
+            },
+        };
+
+        let xml = write_entry(entry, None);
+
+        let expected = concat!(
+            r#"<core:cityObjectMember>"#,
+            r#"<bldg:Building gml:id="obj-001">"#,
+            r#"<bldg:lod2MultiSolid>"#,
+            r#"<gml:MultiSolid gml:id="msolid-1" srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">"#,
+            r#"<gml:solidMember>"#,
+            r#"<gml:Solid gml:id="solid-a" srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">"#,
+            r#"<gml:exterior>"#,
+            r#"<gml:CompositeSurface>"#,
+            r#"<gml:surfaceMember>"#,
+            r#"<gml:Polygon>"#,
+            r#"<gml:exterior>"#,
+            r#"<gml:LinearRing>"#,
+            r#"<gml:posList>35 139 0 35 139.1 0 35.1 139 0</gml:posList>"#,
+            r#"</gml:LinearRing>"#,
+            r#"</gml:exterior>"#,
+            r#"</gml:Polygon>"#,
+            r#"</gml:surfaceMember>"#,
+            r#"</gml:CompositeSurface>"#,
+            r#"</gml:exterior>"#,
+            r#"</gml:Solid>"#,
+            r#"</gml:solidMember>"#,
+            r#"<gml:solidMember>"#,
+            r#"<gml:Solid gml:id="solid-b" srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">"#,
+            r#"<gml:exterior>"#,
+            r#"<gml:CompositeSurface>"#,
+            r#"<gml:surfaceMember>"#,
+            r#"<gml:Polygon>"#,
+            r#"<gml:exterior>"#,
+            r#"<gml:LinearRing>"#,
+            r#"<gml:posList>35.01 139.01 1 35.01 139.02 1 35.02 139.01 1</gml:posList>"#,
+            r#"</gml:LinearRing>"#,
+            r#"</gml:exterior>"#,
+            r#"</gml:Polygon>"#,
+            r#"</gml:surfaceMember>"#,
+            r#"</gml:CompositeSurface>"#,
+            r#"</gml:exterior>"#,
+            r#"</gml:Solid>"#,
+            r#"</gml:solidMember>"#,
+            r#"</gml:MultiSolid>"#,
+            r#"</bldg:lod2MultiSolid>"#,
+            r#"</bldg:Building>"#,
+            r#"</core:cityObjectMember>"#,
+        );
+        assert_eq!(xml, expected);
+    }
+
+    /// With no retained property name the wrapper falls back to the LOD and the
+    /// GML family, which for a `MultiSolid` has to name `MultiSolid` — not the
+    /// `Solid` its members are.
+    #[test]
+    fn test_multi_solid_property_name_falls_back_to_the_family() {
+        let entry = GeometryEntry {
+            lod: 3,
+            property: None,
+            element: GmlElement::MultiSolid {
+                id: None,
+                solids: vec![GmlSolid {
+                    id: None,
+                    exterior: vec![plain_surface(triangle())],
+                    interiors: vec![],
+                }],
+            },
+        };
+
+        let xml = write_entry(entry, None);
+
+        let expected = concat!(
+            r#"<core:cityObjectMember>"#,
+            r#"<bldg:Building gml:id="obj-001">"#,
+            r#"<bldg:lod3MultiSolid>"#,
+            r#"<gml:MultiSolid srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">"#,
+            r#"<gml:solidMember>"#,
+            r#"<gml:Solid srsName="http://www.opengis.net/def/crs/EPSG/0/6697" srsDimension="3">"#,
+            r#"<gml:exterior>"#,
+            r#"<gml:CompositeSurface>"#,
+            r#"<gml:surfaceMember>"#,
+            r#"<gml:Polygon>"#,
+            r#"<gml:exterior>"#,
+            r#"<gml:LinearRing>"#,
+            r#"<gml:posList>35 139 0 35 139.1 0 35.1 139 0</gml:posList>"#,
+            r#"</gml:LinearRing>"#,
+            r#"</gml:exterior>"#,
+            r#"</gml:Polygon>"#,
+            r#"</gml:surfaceMember>"#,
+            r#"</gml:CompositeSurface>"#,
+            r#"</gml:exterior>"#,
+            r#"</gml:Solid>"#,
+            r#"</gml:solidMember>"#,
+            r#"</gml:MultiSolid>"#,
+            r#"</bldg:lod3MultiSolid>"#,
+            r#"</bldg:Building>"#,
+            r#"</core:cityObjectMember>"#,
         );
         assert_eq!(xml, expected);
     }

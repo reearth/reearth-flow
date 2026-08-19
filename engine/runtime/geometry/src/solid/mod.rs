@@ -10,8 +10,9 @@
 
 use serde::{Deserialize, Serialize};
 
+use crate::appearance::Appearance;
 use crate::coordinate::CoordinateFrame;
-use crate::polygon_mesh::PolygonMesh3DData;
+use crate::polygon_mesh::{FaceVisit, PolygonMesh3DData};
 use crate::triangular_mesh::TriangularMesh3DData;
 
 mod constructor;
@@ -33,7 +34,7 @@ pub enum Shell {
 impl Shell {
     /// The shell's vertex pool, regardless of mesh kind.
     #[inline]
-    pub(crate) fn vertices(&self) -> &[[f64; 3]] {
+    pub fn vertices(&self) -> &[[f64; 3]] {
         match self {
             Shell::PolygonMesh(d) => d.vertices(),
             Shell::TriangularMesh(d) => d.vertices(),
@@ -46,6 +47,24 @@ impl Shell {
         match self {
             Shell::PolygonMesh(d) => d.num_faces(),
             Shell::TriangularMesh(d) => d.num_triangles(),
+        }
+    }
+
+    /// A solid's appearance lives on its shells, one per boundary, not on the solid.
+    #[inline]
+    pub fn appearance(&self) -> &Option<Appearance> {
+        match self {
+            Shell::PolygonMesh(d) => d.appearance(),
+            Shell::TriangularMesh(d) => d.appearance(),
+        }
+    }
+
+    /// Invoke `f` once per boundary face; see [`PolygonMesh3DData::for_each_face`].
+    #[inline]
+    pub fn for_each_face(&self, f: impl FnMut(FaceVisit<'_>)) {
+        match self {
+            Shell::PolygonMesh(d) => d.for_each_face(f),
+            Shell::TriangularMesh(d) => d.for_each_face(f),
         }
     }
 }

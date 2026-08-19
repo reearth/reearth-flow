@@ -1,0 +1,14 @@
+{
+  "description": "A textured CityGML 2.0 document read and written back under new-geometry: the selected theme is emitted, the app:target resolves to a gml:id in the same document, and every texture coordinate is flipped back to CityGML's bottom-left origin. New-world only: the legacy Feature CityGML 2 Reader builds no appearance at all (pipeline.rs::build_citygml_geometry leaves materials and textures empty), so the legacy build writes the same geometry with no app:appearanceMember and the two cannot share one expectation.",
+  "skipLegacyGeometry": true,
+  "workflowPath": "citygml_writer/roundtrip.yml",
+  "workflowVariables": [
+    {
+      "name": "cityGmlPath",
+      "value": "input.gml"
+    }
+  ],
+  "expectedOutput": {
+    "expectedFile": "expected_output.gml"
+  }
+}

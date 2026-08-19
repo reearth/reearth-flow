@@ -247,7 +247,6 @@ impl Processor for FeatureWriter {
         Ok(())
     }
 
-    #[cfg(not(feature = "new-geometry"))]
     fn finish(
         &mut self,
         ctx: NodeContext,

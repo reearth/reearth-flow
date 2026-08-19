@@ -67,6 +67,11 @@ script = ['''
 # `cargo make test-qc -- --test-threads=16` so local development is not
 # forced to a CI-specific value.
 cargo test -p workflow-tests --features new-geometry ${@:-}
+# Old/new comparison: the CityGML cases are the only ones with a `.gml`
+# expectation, and it must match in the legacy world too. Name-filtered so
+# the other cases — still `skipNewGeometry`, and only ever green in the
+# new-geometry pass — are not dragged in.
+cargo test -p workflow-tests citygml ${@:-}
 ''']
 
 [tasks.ensure-glb-decompress]
