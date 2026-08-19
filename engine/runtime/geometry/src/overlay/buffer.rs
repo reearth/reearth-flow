@@ -1,33 +1,17 @@
-//! Buffering: the region within a distance of a geometry.
+//! Buffering: the region within a signed distance of a geometry.
 //!
-//! [`buffer`] and its typed forms [`buffer_2d`] and [`buffer_polygon_3d`]
-//! construct the (Minkowski) offset of a geometry by a signed distance, backed
-//! by the `i_overlay` offset engine (`outline` for areal leaves, `stroke` for
-//! polylines).
+//! In 2D the operand is treated like an overlay operand: leaves in one
+//! coordinate frame ([`MixedFrames`] otherwise), buffered as the point-set
+//! union of the leaves. A point buffers to a disc, a polyline to a stroke with
+//! round caps and joins, an areal leaf to its offset with round joins; a
+//! negative distance contracts areal leaves and yields nothing for points and
+//! polylines. In 3D only a planar `Polygon` is accepted, buffered in its own
+//! plane; any other 3D leaf is [`Unsupported`].
 //!
-//! In 2D the operand is treated like an overlay operand: a `Point`, a
-//! `LineString`, a `Polygon`, a `PolygonMesh`, a `TriangularMesh`, or a
-//! collection of these in one coordinate frame ([`MixedFrames`] otherwise).
-//! The buffer of a collection is the buffer of the point-set union of its
-//! leaves, so overlapping member buffers dissolve into one polygon. A point
-//! buffers to a disc, a polyline to a stroke with round caps and joins, an
-//! areal leaf to its offset with round joins at convex corners; a mesh is
-//! dissolved to its union-boundary rings first. A negative distance contracts
-//! areal leaves and yields nothing for points and polylines; an areal leaf
-//! narrower than twice the contraction vanishes, and a contraction can split
-//! one polygon into several.
-//!
-//! In 3D only a planar `Polygon` is accepted, and it is buffered in its own
-//! plane: the face is checked for planarity, rotated to horizontal, offset,
-//! and rotated back, so the result lies in the same plane with the same
-//! winding sense as the input. Any other 3D leaf is [`Unsupported`].
-//!
-//! Output rings follow Flow's convention (exterior counter-clockwise, holes
-//! clockwise in canonical orientation) whenever the frame's orientation sign
-//! can be resolved, else the stored winding of the areal input. Like the rest
-//! of the module the construction is not exact: coordinates are snapped to
-//! `i_overlay`'s adaptive grid, and arcs are polygonal approximations whose
-//! angular step is [`BufferStyle::arc_step`]. Appearance does not propagate.
+//! Output rings follow the frame's orientation convention when it can be
+//! resolved, else the stored winding of the areal input. Coordinates are
+//! snapped to `i_overlay`'s adaptive grid, arcs are polygonal approximations
+//! stepped by [`BufferStyle::arc_step`], and appearance does not propagate.
 //!
 //! [`MixedFrames`]: PredicateError::MixedFrames
 //! [`Unsupported`]: PredicateError::Unsupported
@@ -41,7 +25,7 @@ use i_overlay::mesh::outline::offset::OutlineOffset;
 use i_overlay::mesh::stroke::offset::StrokeOffset;
 use i_overlay::mesh::style::{LineCap, LineJoin, OutlineStyle, StrokeStyle};
 
-use super::shapes::{self, Path, Shape};
+use super::shapes::{self, close_path, Path, Shape};
 use crate::collection::{Collection2D, Collection3D};
 use crate::coordinate::CoordinateFrame;
 use crate::ops::triangulation::normal;
@@ -60,16 +44,13 @@ pub const MAX_ARC_STEP: f64 = 0.25 * PI;
 /// How a geometry is buffered: the offset distance and the arc resolution.
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct BufferStyle {
-    /// The signed offset distance, in the frame's coordinate units. Positive
-    /// expands, negative contracts. Must be finite; a non-finite distance
-    /// buffers to nothing.
+    /// The signed offset distance in frame units; positive expands, negative
+    /// contracts. A non-finite distance buffers to nothing.
     pub distance: f64,
-    /// The angular step, in radians, of the segments approximating a round cap,
-    /// join, or disc. Clamped to `[MIN_ARC_STEP, MAX_ARC_STEP]`; the default is
-    /// `π / 16`.
+    /// The angular step, in radians, of round caps, joins, and discs. Clamped
+    /// to `[MIN_ARC_STEP, MAX_ARC_STEP]`.
     pub arc_step: f64,
-    /// The planarity tolerance a 3D face must satisfy before it is buffered in
-    /// its plane. Unused in 2D.
+    /// The planarity tolerance a 3D face must satisfy. Unused in 2D.
     pub planarity: PlanarityThreshold,
 }
 
@@ -113,10 +94,9 @@ impl Default for BufferStyle {
     }
 }
 
-/// The buffer of `geometry`: a 2D geometry buffers to a polygon (or a
-/// collection of polygons when the result has several parts) in its frame; a
-/// 3D polygon buffers in its own plane; a 3D collection is buffered member by
-/// member. An empty result is [`Geometry::None`].
+/// The buffer of `geometry`: a polygon, or a collection of polygons when the
+/// result has several parts. A 3D collection is buffered member by member. An
+/// empty result is [`Geometry::None`].
 pub fn buffer(geometry: &Geometry, style: &BufferStyle) -> Result<Geometry> {
     match geometry {
         Geometry::None => Ok(Geometry::None),
@@ -126,8 +106,7 @@ pub fn buffer(geometry: &Geometry, style: &BufferStyle) -> Result<Geometry> {
     }
 }
 
-/// The buffer of a 2D geometry, as disjoint polygons in its frame (empty when
-/// the result is empty).
+/// The buffer of a 2D geometry, as disjoint polygons in its frame.
 pub fn buffer_2d(geometry: &Euclidean2DGeometry, style: &BufferStyle) -> Result<Vec<Polygon2D>> {
     let mut leaves = Vec::new();
     flatten_2d(geometry, &mut leaves);
@@ -135,8 +114,7 @@ pub fn buffer_2d(geometry: &Euclidean2DGeometry, style: &BufferStyle) -> Result<
 }
 
 /// The buffer of a planar 3D polygon in its own plane, as polygons in its
-/// frame (empty when the result is empty; several when a contraction splits
-/// it). Errs with [`PredicateError::NotPlanar`] when the face is not planar
+/// frame. Errs with [`PredicateError::NotPlanar`] when the face is not planar
 /// within `style.planarity` or has no fitted plane.
 pub fn buffer_polygon_3d(polygon: &Polygon3D, style: &BufferStyle) -> Result<Vec<Polygon3D>> {
     let frame = polygon.frame();
@@ -171,7 +149,7 @@ pub fn buffer_polygon_3d(polygon: &Polygon3D, style: &BufferStyle) -> Result<Vec
         .into_iter()
         .filter_map(|shape| {
             let mut rings = shape.into_iter().map(|path| {
-                close(path)
+                close_path(path)
                     .into_iter()
                     .map(|p| rotation.lift(p))
                     .collect::<Vec<_>>()
@@ -182,7 +160,6 @@ pub fn buffer_polygon_3d(polygon: &Polygon3D, style: &BufferStyle) -> Result<Vec
         .collect())
 }
 
-/// Wrap the 2D result polygons as a geometry.
 fn assemble_2d(mut polygons: Vec<Polygon2D>) -> Geometry {
     match polygons.len() {
         0 => Geometry::None,
@@ -197,7 +174,6 @@ fn assemble_2d(mut polygons: Vec<Polygon2D>) -> Geometry {
     }
 }
 
-/// Wrap the 3D result polygons as a geometry.
 fn assemble_3d(mut polygons: Vec<Polygon3D>) -> Geometry {
     match polygons.len() {
         0 => Geometry::None,
@@ -212,8 +188,6 @@ fn assemble_3d(mut polygons: Vec<Polygon3D>) -> Geometry {
     }
 }
 
-/// Buffer a 3D geometry: each polygon leaf in its own plane, collected in
-/// order. A collection may hold only polygons (nested collections allowed).
 fn buffer_3d(geometry: &Euclidean3DGeometry, style: &BufferStyle) -> Result<Vec<Polygon3D>> {
     let mut out = Vec::new();
     collect_3d(geometry, style, &mut out)?;
@@ -250,21 +224,12 @@ fn unsupported<T>(geometry: &'static str) -> Result<T> {
     Err(PredicateError::Unsupported { geometry })
 }
 
-/// Buffer a heterogeneous collection: its 2D members together as one 2D
-/// operand, its 3D members each in their own plane. A collection mixing the two
-/// buffers to a collection of both results.
+/// Buffer a heterogeneous collection: its 2D leaves, at any depth, together
+/// as one operand, its 3D polygons each in their own plane.
 fn buffer_collection(collection: &GeometryCollection, style: &BufferStyle) -> Result<Geometry> {
     let mut leaves_2d = Vec::new();
     let mut polygons_3d = Vec::new();
-    let mut nested = Vec::new();
-    for member in collection.members() {
-        match member {
-            Geometry::None => {}
-            Geometry::Euclidean2D(g) => flatten_2d(g, &mut leaves_2d),
-            Geometry::Euclidean3D(g) => collect_3d(g, style, &mut polygons_3d)?,
-            Geometry::GeometryCollection(c) => nested.push(c),
-        }
-    }
+    collect_members(collection, style, &mut leaves_2d, &mut polygons_3d)?;
     let mut parts = Vec::new();
     match assemble_2d(buffer_leaves(&leaves_2d, style)?) {
         Geometry::None => {}
@@ -274,12 +239,6 @@ fn buffer_collection(collection: &GeometryCollection, style: &BufferStyle) -> Re
         Geometry::None => {}
         g => parts.push(g),
     }
-    for c in nested {
-        match buffer_collection(c, style)? {
-            Geometry::None => {}
-            g => parts.push(g),
-        }
-    }
     Ok(match parts.len() {
         0 => Geometry::None,
         1 => parts.pop().expect("one part"),
@@ -287,9 +246,23 @@ fn buffer_collection(collection: &GeometryCollection, style: &BufferStyle) -> Re
     })
 }
 
-// --- 2D leaf-level implementation ---------------------------------------------
+fn collect_members<'c>(
+    collection: &'c GeometryCollection,
+    style: &BufferStyle,
+    leaves_2d: &mut Vec<Leaf2D<'c>>,
+    polygons_3d: &mut Vec<Polygon3D>,
+) -> Result<()> {
+    for member in collection.members() {
+        match member {
+            Geometry::None => {}
+            Geometry::Euclidean2D(g) => flatten_2d(g, leaves_2d),
+            Geometry::Euclidean3D(g) => collect_3d(g, style, polygons_3d)?,
+            Geometry::GeometryCollection(c) => collect_members(c, style, leaves_2d, polygons_3d)?,
+        }
+    }
+    Ok(())
+}
 
-/// Buffer flattened 2D leaves in one frame.
 fn buffer_leaves(leaves: &[Leaf2D<'_>], style: &BufferStyle) -> Result<Vec<Polygon2D>> {
     let Some(frame) = common_frame(leaves)? else {
         return Ok(Vec::new());
@@ -305,8 +278,6 @@ fn buffer_leaves(leaves: &[Leaf2D<'_>], style: &BufferStyle) -> Result<Vec<Polyg
     let areal_shapes: Vec<Shape> = areal_shapes.into_iter().map(normalize_shape).collect();
 
     let mut groups: Vec<Vec<Shape>> = Vec::new();
-    // Discs are emitted directly, so several of them need the dissolve the
-    // backend gives the other groups for free.
     let mut needs_dissolve = false;
     if !areal_shapes.is_empty() {
         groups.push(offset_shapes(areal_shapes, style));
@@ -342,7 +313,7 @@ fn buffer_leaves(leaves: &[Leaf2D<'_>], style: &BufferStyle) -> Result<Vec<Polyg
     Ok(result
         .into_iter()
         .filter_map(|shape| {
-            let mut rings = shape.into_iter().map(close);
+            let mut rings = shape.into_iter().map(close_path);
             let exterior = rings.next()?;
             Some(match elevation {
                 Some(z) => Polygon2D::from_rings_at_elevation(frame.clone(), exterior, rings, z),
@@ -352,8 +323,8 @@ fn buffer_leaves(leaves: &[Leaf2D<'_>], style: &BufferStyle) -> Result<Vec<Polyg
         .collect())
 }
 
-/// Offset areal shapes (stored counter-clockwise exteriors, clockwise holes)
-/// by `style.distance`, dissolving overlaps. A zero distance dissolves only.
+/// Offset areal shapes (counter-clockwise exteriors, clockwise holes),
+/// dissolving overlaps.
 fn offset_shapes(shapes: Vec<Shape>, style: &BufferStyle) -> Vec<Shape> {
     if style.distance == 0.0 {
         return dissolve(shapes);
@@ -363,8 +334,7 @@ fn offset_shapes(shapes: Vec<Shape>, style: &BufferStyle) -> Vec<Shape> {
     shapes.outline(&outline)
 }
 
-/// Stroke open polylines with width twice `style.distance`, round caps and
-/// joins, dissolving overlaps.
+/// Stroke polylines with width twice `style.distance`, dissolving overlaps.
 fn stroke_paths(paths: Vec<Path>, style: &BufferStyle) -> Vec<Shape> {
     let step = style.clamped_arc_step();
     let stroke = StrokeStyle::new(2.0 * style.distance)
@@ -374,8 +344,7 @@ fn stroke_paths(paths: Vec<Path>, style: &BufferStyle) -> Vec<Shape> {
     paths.stroke(stroke, false)
 }
 
-/// The counter-clockwise disc of radius `style.distance` around `center`, as
-/// one implicitly closed path.
+/// The counter-clockwise disc of radius `style.distance` around `center`.
 fn disc(center: [f64; 2], style: &BufferStyle) -> Path {
     let r = style.distance;
     let n = (2.0 * PI / style.clamped_arc_step()).ceil().max(3.0) as usize;
@@ -393,8 +362,7 @@ fn dissolve(shapes: Vec<Shape>) -> Vec<Shape> {
     shapes.overlay(&empty, OverlayRule::Union, FillRule::NonZero)
 }
 
-/// Rewind a shape to a stored counter-clockwise exterior when its rings' total
-/// signed area is negative.
+/// Rewind a shape so its total signed area is non-negative.
 fn normalize_shape(shape: Shape) -> Shape {
     if shape_area(&shape) < 0.0 {
         reverse_shape(shape)
@@ -408,8 +376,7 @@ fn shape_area(shape: &Shape) -> f64 {
     shape.iter().map(|ring| signed_area_2d(ring)).sum()
 }
 
-/// The sign of the total signed area of areal shapes: `-1.0` when the stored
-/// winding is clockwise, else `1.0`.
+/// `-1.0` when the shapes' total signed area is negative, else `1.0`.
 fn shapes_sign(shapes: &[Shape]) -> f64 {
     if shapes.iter().map(shape_area).sum::<f64>() < 0.0 {
         -1.0
@@ -418,7 +385,6 @@ fn shapes_sign(shapes: &[Shape]) -> f64 {
     }
 }
 
-/// The frame's orientation sign, `None` when it cannot be resolved.
 fn frame_sign(frame: &CoordinateFrame) -> Option<f64> {
     frame.orientation_sign().ok().map(f64::from)
 }
@@ -433,15 +399,7 @@ fn reverse_shape(shape: Shape) -> Shape {
         .collect()
 }
 
-/// Close an implicitly closed path by appending its first vertex.
-fn close(mut path: Path) -> Path {
-    if let Some(&first) = path.first() {
-        path.push(first);
-    }
-    path
-}
-
-/// The leaves' shared frame, or `None` when there are no leaves.
+/// The leaves' shared frame; `None` when there are no leaves.
 fn common_frame<'l>(leaves: &[Leaf2D<'l>]) -> Result<Option<&'l CoordinateFrame>> {
     let mut frames = leaves.iter().map(Leaf2D::frame);
     let Some(first) = frames.next() else {
@@ -453,7 +411,7 @@ fn common_frame<'l>(leaves: &[Leaf2D<'l>]) -> Result<Option<&'l CoordinateFrame>
     Ok(Some(first))
 }
 
-/// The elevation every leaf lies at, when they all agree (a point has none).
+/// The elevation shared by every leaf, if any.
 fn common_elevation(leaves: &[Leaf2D<'_>]) -> Option<f64> {
     let mut elevations = leaves.iter().map(|leaf| match leaf {
         Leaf2D::Point(_) => None,
@@ -477,19 +435,14 @@ fn is_line(leaf: &Leaf2D<'_>) -> bool {
     matches!(leaf, Leaf2D::Line(_))
 }
 
-// --- 3D plane rotation ---------------------------------------------------------
-
-/// The rigid motion taking a planar face to the horizontal plane `z = 0`
-/// and back: a translation to the face's first vertex followed by the rotation
-/// carrying the face normal onto `+z`.
+/// The rigid motion taking a planar face to the plane `z = 0` and back.
 struct PlaneRotation {
     origin: [f64; 3],
-    /// Row-major rotation matrix.
     m: [[f64; 3]; 3],
 }
 
 impl PlaneRotation {
-    /// Fit from a closed exterior ring; `None` when the ring has no normal.
+    /// `None` when the ring has no normal.
     fn fit(exterior: &[[f64; 3]]) -> Option<Self> {
         let ring = open_ring(exterior);
         let [nx, ny, nz] = normal(ring)?;
@@ -502,8 +455,7 @@ impl PlaneRotation {
                 [[1.0, 0.0, 0.0], [0.0, -1.0, 0.0], [0.0, 0.0, -1.0]]
             }
         } else {
-            // Rodrigues rotation about the unit axis n x ez = (ny, -nx, 0) / |.|
-            // by the angle between n and ez.
+            // Rodrigues rotation about n x ez.
             let (ax, ay) = (ny / horizontal, -nx / horizontal);
             let cos = nz;
             let sin = horizontal;
@@ -517,7 +469,6 @@ impl PlaneRotation {
         Some(Self { origin, m })
     }
 
-    /// Rotate `p` into the horizontal frame and drop its (near-zero) height.
     fn flatten(&self, p: [f64; 3]) -> [f64; 2] {
         let d = [
             p[0] - self.origin[0],
@@ -528,7 +479,6 @@ impl PlaneRotation {
         [row(self.m[0]), row(self.m[1])]
     }
 
-    /// Lift a horizontal-frame point back onto the face's plane.
     fn lift(&self, [x, y]: [f64; 2]) -> [f64; 3] {
         let m = &self.m;
         [
