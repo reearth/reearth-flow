@@ -8,9 +8,8 @@
 //! - [`overlay()`] and its [`union()`] / [`intersection()`] / [`difference()`]
 //!   / [`xor()`] shorthands: areal boolean overlay, backed by the `i_overlay`
 //!   pure-Rust backend.
-//! - [`dissolve_leaves()`]: one areal operand's own leaves merged into each
-//!   other, the unary case of a union, with optional vertex snapping to close
-//!   the gaps left where boundaries meant to coincide do not quite.
+//! - [`dissolve_leaves()`]: the unary case of a union, one areal operand's own
+//!   leaves merged into each other, with optional vertex snapping.
 //! - [`clip()`]: the portion of a set of polylines inside (or, inverted,
 //!   outside) an areal geometry.
 //! - [`segment_intersections()`]: the pairwise segment × segment
@@ -142,14 +141,10 @@ pub fn overlay_2d(
 }
 
 /// The union of one areal operand's own leaves, as disjoint polygons in their
-/// common frame (empty when they enclose no area). The caller flattens, so
-/// several geometries can dissolve as one operand without being copied into a
-/// collection first.
-///
-/// Vertices closer together than `tolerance` are snapped onto one position
-/// before the union, closing sliver gaps where boundaries nearly coincide; a
-/// non-positive tolerance snaps nothing. Only vertices move, so a gap between
-/// two edges with no vertices facing each other stays open.
+/// common frame (empty when they enclose no area). Taking leaves lets several
+/// geometries dissolve as one operand. Vertices closer together than
+/// `tolerance` are snapped onto one position first, closing sliver gaps where
+/// boundaries nearly coincide; a non-positive tolerance snaps nothing.
 pub fn dissolve_leaves(leaves: &[Leaf2D<'_>], tolerance: f64) -> Result<Vec<Polygon2D>> {
     require_common_frame_leaves(leaves, &[])?;
     let mut shapes = shapes::areal_shapes(leaves).map_err(|_| PredicateError::Unsupported {

@@ -630,10 +630,9 @@ impl Dissolver {
     fn dissolve_group(&self, features: Vec<Feature>) -> Result<Option<Feature>, BoxedError> {
         let attrs = self.accumulate_attributes(&features, representative(&features));
 
-        // The whole group goes in as one operand and dissolves in a single call:
-        // the backend snaps coordinates to an adaptive grid, so folding the
-        // members in pairwise would let the result drift member by member. The
-        // leaves borrow the members, so the group's coordinates are not copied.
+        // The whole group dissolves in one call rather than one union per member:
+        // the backend rounds its input to a grid, so unioning one member at a
+        // time would round the same coordinates again on every pass.
         let mut leaves = Vec::new();
         for feature in &features {
             if let Geometry::Euclidean2D(geom_2d) = feature.geometry.as_ref() {
