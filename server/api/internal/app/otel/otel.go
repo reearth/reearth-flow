@@ -6,6 +6,7 @@ package otel
 import (
 	"context"
 	"fmt"
+	"net"
 	"time"
 
 	"cloud.google.com/go/compute/metadata"
@@ -95,6 +96,7 @@ func InitTracer(ctx context.Context, cfg *Config) (TracerProvider, error) {
 	switch cfg.ExporterType {
 	case ExporterTypeGCP:
 		log.Infoc(ctx, "otel: initializing GCP Cloud Trace exporter via OTLP")
+		cfg.Endpoint = gcpCloudTraceEndpoint
 		exporter, err = createGCPExporter(ctx)
 	case ExporterTypeJaeger, ExporterTypeOTLP:
 		log.Infoc(ctx, "otel: initializing OTLP exporter", "endpoint", cfg.Endpoint)
@@ -192,11 +194,26 @@ func createOTLPExporter(ctx context.Context, cfg *Config, useGCPAuth bool) (sdkt
 			otlptracegrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, "")),
 			otlptracegrpc.WithDialOption(grpc.WithPerRPCCredentials(oauth.TokenSource{TokenSource: creds.TokenSource})),
 		)
-	} else {
+	} else if isLoopback(cfg.Endpoint) {
+		// local collectors (make run-jaeger) have no certificate
 		opts = append(opts, otlptracegrpc.WithInsecure())
+	} else {
+		opts = append(opts, otlptracegrpc.WithTLSCredentials(credentials.NewClientTLSFromCert(nil, "")))
 	}
 
 	return otlptracegrpc.New(ctx, opts...)
+}
+
+func isLoopback(endpoint string) bool {
+	host, _, err := net.SplitHostPort(endpoint)
+	if err != nil {
+		host = endpoint
+	}
+	if host == "localhost" {
+		return true
+	}
+	ip := net.ParseIP(host)
+	return ip != nil && ip.IsLoopback()
 }
 
 func createGCPExporter(ctx context.Context) (sdktrace.SpanExporter, error) {

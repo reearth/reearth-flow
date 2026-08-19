@@ -22,6 +22,7 @@ func TestTracerConfig(t *testing.T) {
 		{name: "gcp", tracer: "gcp", sample: 0.5, gcpProject: "my-project", wantEnabled: true, wantExporter: apiotel.ExporterTypeGCP, wantRatio: 0.5},
 		{name: "jaeger", tracer: "jaeger", sample: 0.5, wantEnabled: true, wantExporter: apiotel.ExporterTypeJaeger, wantRatio: 0.5},
 		{name: "jaeger defaults to full sampling", tracer: "jaeger", sample: 0, wantEnabled: true, wantExporter: apiotel.ExporterTypeJaeger, wantRatio: 1},
+		{name: "otlp", tracer: "otlp", sample: 0.3, wantEnabled: true, wantExporter: apiotel.ExporterTypeOTLP, wantRatio: 0.3},
 		{name: "unknown value disables tracing", tracer: "datadog", wantEnabled: false},
 	}
 

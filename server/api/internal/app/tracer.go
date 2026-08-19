@@ -49,6 +49,9 @@ func tracerConfig(conf *config.Config) *apiotel.Config {
 		if conf.TracerSample == 0 {
 			cfg.SamplingRatio = 1
 		}
+	case "otlp":
+		cfg.Enabled = true
+		cfg.ExporterType = apiotel.ExporterTypeOTLP
 	default:
 		cfg.Enabled = false
 	}

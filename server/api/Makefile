@@ -44,10 +44,11 @@ run-db-pg:
 	docker compose -f ./docker-compose.yml up -d reearth-flow-postgres
 
 run-jaeger:
-	docker run --rm -d --name reearth-flow-jaeger -p 16686:16686 -p 4317:4317 jaegertracing/all-in-one:latest
+	docker rm -f reearth-flow-jaeger 2>/dev/null || true
+	docker run --rm -d --name reearth-flow-jaeger -p 16686:16686 -p 4317:4317 jaegertracing/all-in-one:1.60
 
 down-jaeger:
-	docker stop reearth-flow-jaeger
+	docker rm -f reearth-flow-jaeger 2>/dev/null || true
 
 PG_DIR=internal/infrastructure/postgres
 DB_DIR=../db
