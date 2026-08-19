@@ -1221,10 +1221,8 @@ mod tests {
         }
     }
 
-    /// Orientation pin: the same coordinate the Model Georeferencer's
-    /// (now-removed) `upAxis` parameter was pinned against, before that
-    /// rotation moved into this reader. Interpreted directly (no rotation)
-    /// it resolves to the open ocean south of Australia (lat -31.301, lon
+    /// Orientation pin: interpreted directly (no rotation) this coordinate
+    /// resolves to the open ocean south of Australia (lat -31.301, lon
     /// 136.655); through `y_up_to_z_up` it must resolve to Japan (lat
     /// 35.908, lon 140.102).
     #[test]

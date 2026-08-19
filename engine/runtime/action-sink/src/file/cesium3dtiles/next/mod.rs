@@ -1120,10 +1120,10 @@ mod tests {
         );
     }
 
-    /// A geocentric (EPSG:4978) mesh — exactly what the Model Georeferencer
-    /// emits — must produce actual tile content. This is the check that #2293
-    /// was about: before placement existed, a Euclidean mesh yielded an empty
-    /// tileset. It also proves the writer accepts a geocentric declared frame.
+    /// A geocentric (EPSG:4978) mesh must produce actual tile content: a
+    /// Euclidean mesh, lacking a georeferenced frame, yields an empty
+    /// tileset instead. This also proves the writer accepts a geocentric
+    /// declared frame.
     #[test]
     fn geocentric_mesh_produces_tile_content() {
         // Small triangle near lat 35.908, lon 140.102 in ECEF metres.
