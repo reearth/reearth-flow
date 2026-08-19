@@ -43,7 +43,6 @@ const (
 )
 
 type Config struct {
-	Enabled      bool
 	Endpoint     string
 	ExporterType ExporterType
 
@@ -51,13 +50,14 @@ type Config struct {
 	// exporter. Left empty, it is looked up from the GCE metadata server.
 	GCPProjectID string
 
+	ServiceName string
+
 	MaxExportBatchSize int
 	BatchTimeout       time.Duration
 	MaxQueueSize       int
+	SamplingRatio      float64
 
-	SamplingRatio float64
-
-	ServiceName string
+	Enabled bool
 }
 
 func (c *Config) serviceName() string {
