@@ -32,7 +32,7 @@ pub(super) fn slice_leaves(
     leaves: Vec<Leaf>,
     min_z: u8,
     max_z: u8,
-    max_detail: u32,
+    extent: u32,
 ) -> (TileContent, Vec<TiledLeaf>) {
     let mut tiled_polys: HashMap<TileKey, Vec<PolygonPart>> = HashMap::new();
     let mut tiled_lines: HashMap<TileKey, Vec<Vec<Point>>> = HashMap::new();
@@ -49,11 +49,15 @@ pub(super) fn slice_leaves(
                 let Some((exterior, holes)) = normalize_winding(mercator) else {
                     continue;
                 };
-                let area = ring_area(&exterior).abs();
                 let y_bounds = ring_bounds(&exterior, 1);
+                let x_bounds = ring_bounds(&exterior, 0);
+                let diagonal = (x_bounds.1 - x_bounds.0).hypot(y_bounds.1 - y_bounds.0);
 
                 for zoom in min_z..=max_z {
-                    if area * 4f64.powi(zoom as i32 + max_detail as i32) < 4.0 {
+                    // A whole-feature bound is never smaller than any single tile's clipped
+                    // portion of it, so this can only skip zooms the real post-slice check
+                    // (tile.rs's SUBPIXEL_DIAMETER) would also have dropped.
+                    if diagonal * (1u64 << zoom) as f64 * (extent as f64) < 1.0 {
                         continue;
                     }
                     clip_polygon(&exterior, &holes, y_bounds, zoom, &mut tiled_polys);
@@ -350,14 +354,14 @@ mod tests {
         let mut cw = ccw.clone();
         cw.reverse();
 
-        let (_, tiled) = slice_leaves(vec![Leaf::Polygon(vec![ccw])], 0, 0, 4);
+        let (_, tiled) = slice_leaves(vec![Leaf::Polygon(vec![ccw])], 0, 0, 16);
         let polygon_count = tiled
             .iter()
             .filter(|leaf| matches!(leaf.geom, TiledGeom::Polygon(_)))
             .count();
         assert_eq!(polygon_count, 1);
 
-        let (_, tiled) = slice_leaves(vec![Leaf::Polygon(vec![cw])], 0, 0, 4);
+        let (_, tiled) = slice_leaves(vec![Leaf::Polygon(vec![cw])], 0, 0, 16);
         let polygon_count = tiled
             .iter()
             .filter(|leaf| matches!(leaf.geom, TiledGeom::Polygon(_)))
