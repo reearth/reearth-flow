@@ -76,6 +76,12 @@ func (i *cmsInteractor) GetCMSProject(ctx context.Context, projectIDOrAlias stri
 }
 
 func (i *cmsInteractor) ListCMSProjects(ctx context.Context, workspaceIDs []string, keyword *string, publicOnly bool, page, pageSize *int32) (*cms.ListProjectsOutput, error) {
+	// An empty list must never reach the gateway: with no workspace to check
+	// against, an unscoped/unfiltered ListProjects call would go through unchecked.
+	if len(workspaceIDs) == 0 {
+		return nil, rerror.ErrNotFound
+	}
+
 	// Fail closed: every requested workspace must pass on its own. The client
 	// is expected to only ask for workspaces it believes it can read.
 	for _, wsIDStr := range workspaceIDs {

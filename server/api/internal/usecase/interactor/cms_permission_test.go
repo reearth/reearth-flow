@@ -2,7 +2,6 @@ package interactor
 
 import (
 	"context"
-	"errors"
 	"testing"
 
 	accountsid "github.com/reearth/reearth-accounts/server/pkg/id"
@@ -159,6 +158,19 @@ func TestCMS_ListCMSProjects_ChecksEachRequestedWorkspace(t *testing.T) {
 	assert.Equal(t, wsA, sc.calls[0][0])
 	assert.Equal(t, wsB, sc.calls[1][0])
 	assert.Equal(t, 1, gw.listProjectsCalls)
+}
+
+func TestCMS_ListCMSProjects_EmptyWorkspaceListIsDenied(t *testing.T) {
+	gw := &fakeCMSGateway{}
+	rc := &recordingChecker{allow: false}
+	i := newCMSFixture(gw, rc)
+
+	out, err := i.ListCMSProjects(context.Background(), []string{}, nil, false, nil, nil)
+
+	assert.Nil(t, out)
+	assert.ErrorIs(t, err, rerror.ErrNotFound)
+	assert.Nil(t, rc.gotWorkspace, "an empty workspace list must not run any permission check")
+	assert.Zero(t, gw.listProjectsCalls, "an empty workspace list must not reach the CMS gateway")
 }
 
 func TestCMS_ListCMSProjects_SecondWorkspaceDeniedDeniesWholeCall(t *testing.T) {
@@ -401,6 +413,6 @@ func TestCMS_UnresolvableProjectIsDenied(t *testing.T) {
 	i := newCMSFixture(gw, rc)
 
 	_, err := i.ListCMSAssets(context.Background(), "no-such-project", nil, nil)
-	assert.True(t, errors.Is(err, rerror.ErrNotFound) || err != nil, "an unresolvable project must not be allowed through")
+	assert.ErrorIs(t, err, rerror.ErrNotFound, "an unresolvable project must not be allowed through")
 	assert.Zero(t, gw.listAssetsCalls)
 }
