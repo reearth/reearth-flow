@@ -4,7 +4,9 @@ import (
 	"context"
 	"strconv"
 
+	"github.com/exaring/otelpgx"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/redis/go-redis/extra/redisotel/v9"
 	"github.com/redis/go-redis/v9"
 	"github.com/reearth/reearth-flow/api/internal/app/config"
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/auth0"
@@ -76,7 +78,12 @@ func initReposAndGateways(ctx context.Context, conf *config.Config, _ bool) (*re
 	var repos *repo.Container
 	switch conf.DB_Driver {
 	case "postgres":
-		pool, perr := pgxpool.New(ctx, conf.DB_PG)
+		pgxCfg, perr := pgxpool.ParseConfig(conf.DB_PG)
+		if perr != nil {
+			log.Fatalf("postgres error: %+v\n", perr)
+		}
+		pgxCfg.ConnConfig.Tracer = otelpgx.NewTracer()
+		pool, perr := pgxpool.NewWithConfig(ctx, pgxCfg)
 		if perr != nil {
 			log.Fatalf("postgres error: %+v\n", perr)
 		}
@@ -240,6 +247,9 @@ func initRedis(ctx context.Context, conf *config.Config) gateway.Redis {
 		log.Fatalf("failed to parse redis url: %s\n", err.Error())
 	}
 	client := redis.NewClient(opt)
+	if err := redisotel.InstrumentTracing(client); err != nil {
+		log.Warnf("failed to instrument redis tracing: %s\n", err.Error())
+	}
 	RedisRepo, err := redisrepo.NewRedisLog(client)
 	if err != nil {
 		log.Warnf("log: failed to init redis storage: %s\n", err.Error())

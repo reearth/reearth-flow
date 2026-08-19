@@ -11,7 +11,12 @@ import (
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/reearth/reearth-flow/api/pkg/project"
+	"go.opentelemetry.io/otel"
+	"go.opentelemetry.io/otel/attribute"
 )
+
+// tracerName identifies spans emitted by this package in the OpenTelemetry backend.
+const tracerName = "github.com/reearth/reearth-flow/api/internal/usecase/interactor"
 
 var skipPermissionCheck bool
 
@@ -94,6 +99,14 @@ func setSkipPermissionCheck(isSkipPermissionCheck bool) {
 }
 
 func checkPermission(ctx context.Context, permissionChecker gateway.PermissionChecker, resource string, action string, workspaceID ...accountsid.WorkspaceID) error {
+	ctx, span := otel.Tracer(tracerName).Start(ctx, "interactor.checkPermission")
+	defer span.End()
+	span.SetAttributes(
+		attribute.String("permission.resource", resource),
+		attribute.String("permission.action", action),
+		attribute.Int("permission.workspace_count", len(workspaceID)),
+	)
+
 	// At most one workspace is meaningful; reject misuse and fail closed rather
 	// than silently evaluating against workspaceID[0] and ignoring the rest.
 	if len(workspaceID) > 1 {
@@ -108,6 +121,7 @@ func checkPermission(ctx context.Context, permissionChecker gateway.PermissionCh
 	hasPermission, err := permissionChecker.CheckPermission(ctx, resource, action, workspaceID...)
 	if err != nil {
 		log.Printf("WARNING: Permission check error for resource=%s action=%s: %v", resource, action, err)
+		span.RecordError(err)
 		return err
 	}
 
