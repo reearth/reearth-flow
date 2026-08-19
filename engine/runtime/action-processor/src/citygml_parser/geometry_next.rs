@@ -25,11 +25,8 @@ use super::utils::{frame_for, local_name, GML_NS_311_ID, GML_NS_ID};
 /// first), used to attach it to the right feature when `flatten` hoists children.
 pub(super) struct PendingGeom {
     pub(super) lod: Option<u8>,
-    /// The local name of the geometry property this was carved from
-    /// (`"lod0RoofEdge"`, `"lod2Solid"`, `"tin"`, …). The LOD digit alone cannot
-    /// name the property again — `lod0RoofEdge` and `lod0FootPrint` share it —
-    /// so a writer that has to re-emit the property keeps this instead of
-    /// guessing from the LOD and the geometry family.
+    /// The property this was carved from (`"lod0RoofEdge"`, `"tin"`, …). The LOD
+    /// digit cannot name it again — `lod0RoofEdge` and `lod0FootPrint` share it.
     pub(super) property: String,
     pub(super) node: GeomNode,
     pub(super) owner_ids: Vec<String>,
@@ -843,8 +840,7 @@ mod tests {
         );
         assert_eq!(geoms.len(), 1);
         assert_eq!(geoms[0].lod, None);
-        // A `tin` carries no LOD, so its property name is the only thing that
-        // can name the element it came from.
+        // A `tin` has no LOD, so its property name is all that names the element.
         assert_eq!(geoms[0].property, "tin");
         match resolve_root_bare(&geoms[0].node, &registry).unwrap() {
             Euclidean3DGeometry::TriangularMesh(m) => {

@@ -15,10 +15,8 @@ use super::model::{
 };
 use crate::errors::SinkError;
 
-/// The `app:theme` written for an appearance whose source recorded no theme
-/// name. It is the theme PLATEAU's textured city models use, and the literal
-/// this writer emitted unconditionally before the unified converter started
-/// resolving real [`ThemeId`](reearth_flow_geometry::appearance::ThemeId)s.
+/// Written when the source recorded no theme name; the literal this writer used
+/// to emit unconditionally, and the one PLATEAU's textured models use.
 const FALLBACK_THEME: &str = "rgbTexture";
 
 /// Collected per-surface appearance info, built while writing geometry.
@@ -757,11 +755,9 @@ mod tests {
 
     const SRS: &str = "http://www.opengis.net/def/crs/EPSG/0/6697";
 
-    /// Coordinates as the compiled world stores them, chosen so both worlds'
-    /// formatters emit the *same* `posList` — which is exactly the round-trip
-    /// invariant: legacy stores `x` as longitude and transposes on write, the
-    /// unified world stores the CRS's own axis order and writes it verbatim.
-    /// Every expected XML string below is therefore written once.
+    /// Coordinates as the compiled world stores them, chosen so both formatters
+    /// emit the *same* `posList`. That equality is the axis-order invariant, and
+    /// it is why every expected XML string below is written once.
     #[cfg(not(feature = "new-geometry"))]
     mod fixture {
         /// Exterior: 3 coords → posList "35 139 0 35 139.1 0 35.1 139 0"
@@ -964,10 +960,8 @@ mod tests {
         assert_eq!(xml, expected);
     }
 
-    /// A bundle that names its theme writes that name, not the historical
-    /// literal — the one deliberate departure from what this writer used to
-    /// emit, because a wrong `app:theme` breaks appearance selection for
-    /// anything reading the output back.
+    /// A named theme wins over the historical literal: a wrong `app:theme` breaks
+    /// appearance selection for anything reading the output back.
     #[test]
     fn a_named_theme_is_written_instead_of_the_fallback_literal() {
         let surface = GmlSurface {

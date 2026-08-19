@@ -20,13 +20,9 @@ use super::{
 /// `GeometryCollection` member's source LOD (absent for a `tin`, which has none).
 pub const MEMBER_LOD_KEY: &str = "lod";
 
-/// Per-member attribute key under which the new-geometry path records the local
-/// name of the geometry property each `GeometryCollection` member was carved
-/// from (`"lod0RoofEdge"`, `"lod2Solid"`, `"tin"`, …).
-///
-/// Always written, including for a `tin`, which carries no LOD: the property
-/// name is the only thing that lets a writer re-emit the source element instead
-/// of guessing a name from the LOD and the geometry family.
+/// The local name of the geometry property each member was carved from
+/// (`"lod0RoofEdge"`, `"tin"`, …). Always written, including for a `tin`, which
+/// carries no LOD and so has nothing else to name its element by.
 pub const MEMBER_PROPERTY_KEY: &str = "citygmlProperty";
 
 /// Resolves the parsed document (xlink + codespace) and returns one feature per top-level city
@@ -317,9 +313,8 @@ mod build_next {
         appearance: &AppearanceIndex,
         srs_by_file: &HashMap<String, EpsgCode>,
     ) {
-        // Each member records its source LOD (a `tin` has none) so downstream
-        // sinks can select a single LOD, and the property name it was carved
-        // from so a writer can re-emit that element; gml:id is still TODO.
+        // Each member records its source LOD (a `tin` has none) and the property
+        // name it was carved from; gml:id is still TODO.
         let mut members: Vec<Geometry> = Vec::new();
         let mut attrs: Vec<Attributes> = Vec::new();
         for pending in geoms {
@@ -472,9 +467,7 @@ mod build_next {
             }
         }
 
-        /// Every member carries the property it was carved from, and only a
-        /// member that had one carries a LOD — a `dem:tin` is the case where the
-        /// property name is the sole source of the element's name.
+        /// Every member carries its property name; only one with a LOD carries that.
         #[test]
         fn member_attributes_carry_the_property_name_and_the_lod() {
             let features = run(

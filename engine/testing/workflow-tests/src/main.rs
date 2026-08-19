@@ -882,11 +882,9 @@ impl TestContext {
 
     /// Compare a CityGML document against its expectation as an element tree.
     ///
-    /// XML has degrees of freedom the writer's output is not contracted to fix —
-    /// indentation, line breaks, and attribute order — so the comparison is over
-    /// a parsed tree with whitespace-only text dropped and attributes sorted,
-    /// not over bytes. What it does not relax is structure: element order,
-    /// nesting, attribute values, and text content all have to match.
+    /// Indentation, line breaks and attribute order are not contracted, so the
+    /// comparison is over a parsed tree. Element order, nesting, attribute values
+    /// and text content are.
     fn verify_citygml_file(&self, file_name: &str) -> Result<()> {
         let expected_file = self.test_dir.join(file_name);
         let actual_file = self.actual_output_dir.join(file_name);
@@ -1490,8 +1488,8 @@ fn sort_geojson_features(value: &mut serde_json::Value) {
     }
 }
 
-/// One XML element, normalized for comparison: attributes are order-independent
-/// and whitespace-only text is dropped, but child order is not.
+/// One XML element, normalized: attributes order-independent, whitespace-only
+/// text dropped, child order significant.
 #[derive(Debug, Clone, PartialEq, Eq)]
 struct XmlElement {
     name: String,
@@ -1598,11 +1596,8 @@ fn rewrite_xml_values(element: &mut XmlElement, rewrite: &impl Fn(&str, &str) ->
     }
 }
 
-/// Replace the counter in every `poly_<n>` reference with a fixed placeholder.
-///
-/// The writer mints polygon and ring `gml:id`s from a counter that restarts per
-/// output file, so the numbers shift whenever a surface is added ahead of them.
-/// The `_e` / `_i<n>` suffix is kept: it says which ring the id names.
+/// Mask the counter in every `poly_<n>` id, which shifts whenever a surface is
+/// added ahead of it. The `_e` / `_i<n>` suffix is kept — it names the ring.
 fn scrub_generated_gml_ids(element: &mut XmlElement) {
     rewrite_xml_values(element, &|_name, value| {
         value.contains("poly_").then(|| mask_generated_ids(value))
@@ -1627,10 +1622,8 @@ fn mask_generated_ids(value: &str) -> String {
     out
 }
 
-/// Replace a `gml:id` that is a bare UUID with a fixed placeholder.
-///
-/// A city object whose source document carried no `gml:id` is written under the
-/// engine's per-run feature UUID, so it differs on every execution.
+/// Mask a bare-UUID `gml:id`: a city object with no source id is written under
+/// the engine's per-run feature UUID.
 fn scrub_feature_uuid_gml_ids(element: &mut XmlElement) {
     rewrite_xml_values(element, &|name, value| {
         (name == "gml:id" && uuid::Uuid::parse_str(value).is_ok())

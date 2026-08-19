@@ -5,13 +5,9 @@
 //! rings, either as raw vertex indices or as gathered coordinates, and rebuild
 //! each face as a standalone [`Polygon2D`] / [`Polygon3D`].
 //!
-//! [`FaceVisit`] is the public, read-only view of that walk: a caller outside
-//! this crate — a CityGML sink, say — gets each face's rings as coordinates
-//! together with the half-open range of corner positions each ring occupies in
-//! the mesh's corner buffer. The range is what makes per-corner appearance data
-//! usable: a theme's UV array is parallel to the corner buffer, so a ring's UV
-//! is exactly that slice of it. No mutable access to the CSR layout is exposed,
-//! and `csr_buffers()` stays crate-private.
+//! [`FaceVisit`] is the public, read-only view of that walk. Each ring comes
+//! with its corner-buffer range, which is what lets a caller slice per-corner
+//! appearance data. `csr_buffers()` stays crate-private.
 
 use std::ops::Range;
 
@@ -21,11 +17,8 @@ use crate::polygon::{Polygon2D, Polygon3D};
 
 use super::{PolygonMesh2D, PolygonMesh3D};
 
-/// One ring of one face, gathered from the shared vertex pool.
-///
-/// `corners` is the ring's half-open `[start, end)` range of positions in the
-/// mesh's corner buffer — the same indexing a theme's per-corner UV array uses
-/// — so `corners.len() == coords.len()`.
+/// One ring of one face. `corners` is its half-open range in the mesh's corner
+/// buffer — the indexing a theme's UV array uses — so it matches `coords.len()`.
 #[derive(Debug, Clone)]
 pub struct FaceRing<'a> {
     pub coords: &'a [[f64; 3]],
@@ -33,8 +26,7 @@ pub struct FaceRing<'a> {
     pub is_exterior: bool,
 }
 
-/// One face of a mesh: its index in face order, its exterior ring, and its hole
-/// rings.
+/// One face: its index in face order, its exterior ring, and its holes.
 #[derive(Debug)]
 pub struct FaceVisit<'a> {
     pub face: usize,
@@ -42,15 +34,11 @@ pub struct FaceVisit<'a> {
     pub interiors: &'a [FaceRing<'a>],
 }
 
-/// Decode the CSR face topology and invoke `f` once per face ring (each face's
-/// exterior ring, then its hole rings), passing the ring's vertex indices, the
-/// ring's `[start, end)` range in the corner buffer, and whether it is an
-/// exterior ring (vs. a hole).
+/// Invoke `f` per face ring (exterior first, then holes) with the ring's vertex
+/// indices, its corner-buffer range, and whether it is exterior.
 ///
-/// The flat index buffer is streamed rather than collected, and each ring is
-/// materialized into a single buffer reused across rings, so nothing allocated
-/// here scales with the corner count. Only the small per-face offset lists (one
-/// entry per face / per hole) are collected.
+/// Streams the index buffer and reuses one ring buffer, so nothing allocated
+/// here scales with the corner count.
 pub(crate) fn for_each_ring(
     face_indices: &IndexBuffer<1>,
     face_offsets: &IndexBuffer<1>,
@@ -127,11 +115,8 @@ pub(crate) fn for_each_face_coords<const N: usize>(
     }
 }
 
-/// Hand one face's gathered rings to `f` as a [`FaceVisit`].
-///
-/// `coords` holds the face's rings concatenated and `rings` says where each one
-/// sits in it, exterior first; both buffers are reused across faces, so the only
-/// thing allocated per face is the small ring-view list (one entry per ring).
+/// Hand one face's gathered rings to `f` as a [`FaceVisit`]. `coords` holds the
+/// rings concatenated and `rings` says where each sits in it, exterior first.
 fn visit_face(
     face: usize,
     coords: &[[f64; 3]],
@@ -146,8 +131,7 @@ fn visit_face(
             is_exterior: *is_exterior,
         })
         .collect();
-    // `for_each_ring` emits a face's exterior ring before its holes, and never
-    // emits a face with no rings at all, so the split always succeeds.
+    // `for_each_ring` always emits an exterior ring first, so this succeeds.
     let Some((exterior, interiors)) = views.split_first() else {
         return;
     };
@@ -159,14 +143,11 @@ fn visit_face(
 }
 
 impl super::PolygonMesh3DData {
-    /// Invoke `f` once per face, in face order, with that face's exterior ring
-    /// and hole rings as coordinates plus each ring's `[start, end)` range in
-    /// the mesh's corner buffer.
+    /// Invoke `f` once per face, in face order, with each ring's coordinates and
+    /// corner-buffer range. Read-only.
     ///
-    /// Read-only: nothing here hands out the CSR buffers or lets a caller edit
-    /// the mesh. Rings are yielded exactly as stored — a polygon-sourced mesh
-    /// stores them closed, an index-sourced one stores them as given — so a
-    /// consumer that needs closed rings closes them itself.
+    /// Rings are yielded as stored — closed if polygon-sourced, as given if
+    /// index-sourced — so a consumer needing closed rings closes them itself.
     pub fn for_each_face(&self, mut f: impl FnMut(FaceVisit<'_>)) {
         let (face_indices, face_offsets, interior_offsets) = self.csr_buffers();
         let vertices = self.vertices();
@@ -196,12 +177,8 @@ impl super::PolygonMesh3DData {
 }
 
 impl crate::triangular_mesh::TriangularMesh3DData {
-    /// Invoke `f` once per triangle, in triangle order. A triangle has no hole
-    /// rings and occupies corners `3i..3i + 3`, which is the same indexing a
-    /// theme's per-corner UV array uses.
-    ///
-    /// Triangles are stored open — three corners, the first not repeated — so a
-    /// consumer that needs a closed ring closes it itself.
+    /// Invoke `f` once per triangle. A triangle has no holes, occupies corners
+    /// `3i..3i + 3`, and is stored open — the consumer closes it.
     pub fn for_each_face(&self, mut f: impl FnMut(FaceVisit<'_>)) {
         let vertices = self.vertices();
         for (face, triangle) in self.triangles().enumerate() {
@@ -220,9 +197,8 @@ impl crate::triangular_mesh::TriangularMesh3DData {
 }
 
 impl PolygonMesh2D {
-    /// Invoke `f` once per face with that face rebuilt as a standalone bare
-    /// [`Polygon2D`] in the mesh's frame. Faces are streamed rather than
-    /// collected. Appearance is not carried onto them; the mesh's elevation is.
+    /// Invoke `f` per face, rebuilt as a bare [`Polygon2D`] in the mesh's frame.
+    /// Appearance is not carried onto them; the mesh's elevation is.
     pub(crate) fn for_each_face_polygon(&self, mut f: impl FnMut(Polygon2D)) {
         let (face_indices, face_offsets, interior_offsets) = self.csr_buffers();
         let frame = self.frame();
@@ -238,18 +214,15 @@ impl PolygonMesh2D {
 }
 
 impl PolygonMesh3D {
-    /// Invoke `f` once per face with that face rebuilt as a standalone bare
-    /// [`Polygon3D`] in the mesh's frame. Faces are streamed rather than
-    /// collected. Appearance is not carried onto them.
+    /// Invoke `f` per face, rebuilt as a bare [`Polygon3D`] in the mesh's frame.
     pub(crate) fn for_each_face_polygon(&self, f: impl FnMut(Polygon3D)) {
         self.data().for_each_face_polygon(self.frame(), f);
     }
 }
 
 impl super::PolygonMesh3DData {
-    /// As [`PolygonMesh3D::for_each_face_polygon`], but with the frame supplied
-    /// by the caller — the form a [`Solid`](crate::solid::Solid) shell needs,
-    /// since a shell holds mesh data and takes its frame from the solid.
+    /// As [`PolygonMesh3D::for_each_face_polygon`], with a caller-supplied frame
+    /// — what a [`Solid`](crate::solid::Solid) shell needs.
     pub(crate) fn for_each_face_polygon(
         &self,
         frame: &CoordinateFrame,
@@ -266,8 +239,7 @@ impl super::PolygonMesh3DData {
     }
 }
 
-/// Build a [`Polygon2D`] from a face's rings (exterior first, then holes), at the
-/// host mesh's `elevation`.
+/// Build a [`Polygon2D`] from a face's rings at the host mesh's `elevation`.
 fn polygon_2d_from_rings(
     frame: &CoordinateFrame,
     rings: &[Vec<[f64; 2]>],
@@ -288,7 +260,7 @@ fn polygon_2d_from_rings(
     }
 }
 
-/// Build a [`Polygon3D`] from a face's rings (exterior first, then holes).
+/// Build a [`Polygon3D`] from a face's rings.
 fn polygon_3d_from_rings(frame: &CoordinateFrame, rings: &[Vec<[f64; 3]>]) -> Polygon3D {
     let exterior = rings
         .first()

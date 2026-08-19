@@ -104,16 +104,14 @@ pub struct PolygonMesh3D {
 }
 
 impl PolygonMesh3DData {
-    /// The vertex pool. Public so a [`Solid`](crate::solid::Solid) shell — which
-    /// is this data and nothing else — can be read from outside the crate
-    /// without exposing the raw CSR layout.
+    /// The vertex pool. Public so a [`Solid`](crate::solid::Solid) shell can be
+    /// read from outside the crate without exposing the CSR layout.
     #[inline]
     pub fn vertices(&self) -> &[[f64; 3]] {
         &self.vertices
     }
 
-    /// Borrow the appearance, if any. Public for the same reason as
-    /// [`vertices`](Self::vertices): a shell's appearance lives here.
+    /// The appearance, if any. Public for the same reason as [`vertices`](Self::vertices).
     #[inline]
     pub fn appearance(&self) -> &Option<Appearance> {
         &self.appearance

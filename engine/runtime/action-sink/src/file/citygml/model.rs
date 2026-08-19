@@ -1,16 +1,12 @@
 //! The CityGML document model both geometry worlds converge on.
 //!
-//! A converter's whole job is to turn one `Feature` into a
-//! [`ConvertedCityObject`]; everything downstream of that — XML serialization,
-//! the sandboxed write, texture staging — is shared. Nothing here names a
-//! geometry type, which is why this module is compiled unconditionally and
-//! neither world's converter has to know the other exists.
+//! A converter turns one `Feature` into a [`ConvertedCityObject`]; everything
+//! downstream is shared. Nothing here names a geometry type, so this module
+//! compiles unconditionally.
 //!
-//! Coordinates are plain `[f64; 3]`, in whatever order the producing world
-//! stores its ordinates. Getting them into the axis order CityGML declares is
-//! the converter's business, not the writer's: each world exports its own
-//! `format_pos_list`, and the writer formats every `gml:posList` — and every
-//! [`BoundingEnvelope`] corner — through it.
+//! Coordinates are `[f64; 3]` in the producing world's own ordinate order. Each
+//! world exports its own `format_pos_list`, and the writer formats every
+//! `gml:posList` and [`BoundingEnvelope`] corner through it.
 
 use std::fmt;
 
@@ -19,37 +15,28 @@ use reearth_flow_common::image::MimeType;
 use reearth_flow_types::conversion::CrsCoverage;
 use reearth_flow_types::material::X3DMaterial;
 
-/// One feature's worth of converted CityGML, plus everything the shared shell
-/// needs in order to write the document around it.
+/// One feature's converted CityGML, plus what the shared shell needs around it.
 #[derive(Debug, Clone)]
 pub struct ConvertedCityObject {
     /// One entry per emitted geometry property, in source order.
     pub geometries: Vec<GeometryEntry>,
-    /// The materials and textures this object's surfaces index into.
     pub appearance: AppearanceBundle,
-    /// Folded over the coordinates that were actually emitted, so geometry the
-    /// LOD filter or an omission dropped cannot widen it. `None` when nothing
-    /// was emitted.
+    /// Folded over emitted coordinates only, so filtered geometry cannot widen it.
     pub envelope: Option<BoundingEnvelope>,
-    /// What the emitted coordinates are expressed in, folded over the same
-    /// leaves as the envelope. The shell turns this into `srsName`.
+    /// Folded over the same leaves as the envelope; the shell turns it into `srsName`.
     pub crs: CrsCoverage,
-    /// The images this object's textures reference, for the shell to stage
-    /// beside the `.gml`.
+    /// Images to stage beside the `.gml`.
     pub textures: Vec<TextureRef>,
-    /// Geometry that reached the converter but that CityGML 2.0 has no place
-    /// for. Reported, never silently dropped.
+    /// Geometry CityGML 2.0 has no place for. Reported, never silently dropped.
     pub omissions: Vec<GeometryOmission>,
 }
 
-/// One geometry property of a city object: what LOD it belongs to, what the
-/// source called it, and what GML element carries it.
+/// One geometry property: its LOD, its source name, and the GML element carrying it.
 #[derive(Debug, Clone)]
 pub struct GeometryEntry {
     pub lod: u8,
-    /// The source geometry property's local name (`"lod0RoofEdge"`, `"tin"`,
-    /// …), which becomes the wrapper element name verbatim. `None` falls back
-    /// to naming the wrapper after the LOD and the GML family.
+    /// The source property's local name (`"lod0RoofEdge"`, `"tin"`), used as the
+    /// wrapper element name. `None` falls back to LOD plus GML family.
     pub property: Option<String>,
     pub element: GmlElement,
 }
@@ -72,48 +59,37 @@ pub enum GmlElement {
     },
 }
 
-/// A `gml:Solid`: one exterior shell and, for a solid with voids, one interior
-/// shell per void.
+/// A `gml:Solid`: one exterior shell, and one interior shell per void.
 #[derive(Debug, Clone)]
 pub struct GmlSolid {
     pub id: Option<String>,
-    /// The faces of the shell bounding the solid from outside, written as
-    /// `gml:exterior/gml:CompositeSurface`.
     pub exterior: Vec<GmlSurface>,
-    /// One `gml:interior/gml:CompositeSurface` per void shell. Empty for a
-    /// solid without voids, which is every solid the legacy world can produce:
-    /// its reader discards interior shells while parsing.
+    /// Always empty in the legacy world, whose reader discards interior shells.
     pub interiors: Vec<Vec<GmlSurface>>,
 }
 
-/// One `gml:Polygon`, carrying its rings and its appearance together so the
-/// writer can mint a `gml:id` for it exactly when something targets it.
+/// One `gml:Polygon` with its rings and appearance, so the writer can mint a
+/// `gml:id` exactly when something targets it.
 #[derive(Debug, Clone)]
 pub struct GmlSurface {
     pub id: Option<String>,
     pub exterior: Vec<[f64; 3]>,
     pub interiors: Vec<Vec<[f64; 3]>>,
-    /// Index into `AppearanceBundle::materials` (None if no material)
+    /// Index into [`AppearanceBundle::materials`].
     pub material_idx: Option<u32>,
-    /// Index into `AppearanceBundle::textures` (None if no texture)
+    /// Index into [`AppearanceBundle::textures`].
     pub texture_idx: Option<u32>,
-    /// UV coords for exterior ring, parallel to `exterior` vertices
+    /// Parallel to `exterior`.
     pub uv_exterior: Vec<[f64; 2]>,
-    /// UV coords for each interior ring, parallel to `interiors` vertices
+    /// Parallel to each ring in `interiors`.
     pub uv_interiors: Vec<Vec<[f64; 2]>>,
 }
 
-/// Appearance data for a feature: the palettes `GmlSurface::material_idx` and
-/// `GmlSurface::texture_idx` index into.
+/// The palettes [`GmlSurface`]'s indices point into.
 #[derive(Debug, Clone, Default)]
 pub struct AppearanceBundle {
-    /// The name written as `app:theme`.
-    ///
-    /// `None` keeps the literal this writer has always emitted (`rgbTexture`):
-    /// the legacy geometry model carries no theme name, so there is nothing
-    /// truer to write. The unified world resolves a real
-    /// [`ThemeId`](reearth_flow_geometry::appearance::ThemeId) and puts it here,
-    /// because a wrong theme name breaks appearance selection downstream.
+    /// Written as `app:theme`. `None` keeps the historical `rgbTexture` literal,
+    /// which is all the legacy model can offer — it carries no theme name.
     pub theme: Option<String>,
     pub materials: Vec<X3DMaterial>,
     pub textures: Vec<GmlTexture>,
@@ -125,15 +101,12 @@ impl AppearanceBundle {
     }
 }
 
-/// One `app:ParameterizedTexture`'s image, as the writer needs it.
+/// One `app:ParameterizedTexture`'s image.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GmlTexture {
-    /// The [`TextureRef::key`] this image was staged under, and therefore the
-    /// key the writer looks the staged relative path up by.
+    /// The [`TextureRef::key`] this image was staged under.
     pub key: String,
-    /// What `app:imageURI` says when nothing was staged under [`key`](Self::key)
-    /// — the source URI, which is what the legacy build has always written for a
-    /// texture whose file could not be copied.
+    /// What `app:imageURI` says when nothing was staged under [`key`](Self::key).
     pub uri: String,
 }
 
@@ -155,13 +128,12 @@ impl BoundingEnvelope {
     }
 }
 
-/// An image the converted document references, for the shared shell to stage
-/// beside the `.gml` and for the writer to rewrite `app:imageURI` by.
+/// An image the document references, for the shell to stage and the writer to
+/// rewrite `app:imageURI` by.
 #[derive(Debug, Clone)]
 pub struct TextureRef {
-    /// The lookup key the writer rewrites `app:imageURI` by. For a URI-backed
-    /// raster it *is* the source URI string, which is what keeps the rewrite
-    /// identical to what the legacy path has always produced.
+    /// For a URI-backed raster this *is* the source URI string, which keeps the
+    /// rewrite identical to the legacy path's.
     pub key: String,
     pub source: TextureSource,
 }
@@ -169,20 +141,18 @@ pub struct TextureRef {
 /// Where a referenced image's bytes come from.
 #[derive(Debug, Clone)]
 pub enum TextureSource {
-    /// A raster the shell reads out of storage at this URI.
     Uri(url::Url),
-    /// A raster that arrived already decoded into memory — an OBJ `map_Kd` or a
-    /// glTF/GLB packed image — with no URI to read it back from. The shell
-    /// writes the bytes itself, naming the file from the [`MimeType`].
-    InMemory { mime: MimeType, bytes: Bytes },
+    /// Already decoded — an OBJ `map_Kd` or a glTF/GLB packed image, with no URI
+    /// to read back from. The shell writes the bytes and names the file itself.
+    InMemory {
+        mime: MimeType,
+        bytes: Bytes,
+    },
 }
 
 impl TextureSource {
-    /// The file extension a staged copy of this image gets.
-    ///
-    /// A URI-backed raster keeps whatever its source URI's last segment already
-    /// says, so this is only consulted for in-memory bytes, whose format is the
-    /// closed three-value [`MimeType`] and nothing else.
+    /// The extension a staged copy gets. Only consulted for in-memory bytes; a
+    /// URI-backed raster keeps its source's last segment.
     pub fn extension(mime: MimeType) -> &'static str {
         match mime {
             MimeType::ImageJpeg => "jpg",
@@ -192,19 +162,12 @@ impl TextureSource {
     }
 }
 
-/// One kind of geometry a conversion left out of the document.
-///
-/// Aggregated per feature, so a collection of a thousand points is reported once
-/// rather than a thousand times, and structured rather than a bare log line, so
-/// the caller decides how loudly to say it. What it must never be is a silent
-/// `continue`.
+/// One kind of geometry a conversion left out, aggregated per feature so a
+/// collection of a thousand points is reported once.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct GeometryOmission {
-    /// The leaf that was not written, named as its geometry world spells it.
     pub geometry: &'static str,
-    /// Why CityGML 2.0 has nothing to write it as.
     pub reason: &'static str,
-    /// How many leaves of this kind the feature held.
     pub count: usize,
 }
 
@@ -218,9 +181,8 @@ impl fmt::Display for GeometryOmission {
     }
 }
 
-/// The CityGML city-object class a feature is written as, which fixes its
-/// element name, its namespace prefix, and the prefix of any `gml:id` minted
-/// for it.
+/// The city-object class a feature is written as, fixing its element name,
+/// namespace prefix, and minted `gml:id` prefix.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum CityObjectType {
     Building,
@@ -243,6 +205,7 @@ pub enum CityObjectType {
 }
 
 impl CityObjectType {
+    /// Substring match, most specific first (`buildingpart` before `building`).
     pub fn from_feature_type(feature_type: &str) -> Self {
         let normalized = feature_type.to_lowercase();
         if normalized.contains("buildingpart") {
@@ -358,8 +321,6 @@ mod tests {
         );
     }
 
-    /// Merging is a per-ordinate min/max, so an envelope grows to cover both
-    /// operands and never shrinks.
     #[test]
     fn merging_envelopes_covers_both() {
         let mut envelope = BoundingEnvelope {

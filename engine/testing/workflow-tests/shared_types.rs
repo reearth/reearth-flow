@@ -62,11 +62,8 @@ pub struct WorkflowTestProfile {
     #[serde(default, skip_serializing_if = "is_false")]
     pub skip_new_geometry: bool,
 
-    /// Whether to skip this test in the legacy (default) build: the mirror of
-    /// `skipNewGeometry`, for an expectation only the unified geometry world can
-    /// produce. A CityGML solid with a void is the motivating case — the legacy
-    /// reader discards a solid's interior shells while parsing, so that input
-    /// cannot be compared old against new and gets its own expectation instead.
+    /// The mirror of `skipNewGeometry`, for an expectation only the unified world
+    /// can produce — a CityGML solid with a void is the motivating case.
     #[serde(default, skip_serializing_if = "is_false")]
     pub skip_legacy_geometry: bool,
 

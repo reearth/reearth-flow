@@ -50,8 +50,7 @@ impl Shell {
         }
     }
 
-    /// Borrow the shell's appearance, if any. A solid's appearance lives on its
-    /// shells, one per boundary, not on the solid.
+    /// A solid's appearance lives on its shells, one per boundary, not on the solid.
     #[inline]
     pub fn appearance(&self) -> &Option<Appearance> {
         match self {
@@ -60,8 +59,7 @@ impl Shell {
         }
     }
 
-    /// Invoke `f` once per boundary face, regardless of mesh kind; see
-    /// [`PolygonMesh3DData::for_each_face`].
+    /// Invoke `f` once per boundary face; see [`PolygonMesh3DData::for_each_face`].
     #[inline]
     pub fn for_each_face(&self, f: impl FnMut(FaceVisit<'_>)) {
         match self {

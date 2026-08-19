@@ -3,55 +3,32 @@
 //!
 //! [`GmlSurface`]: super::model::GmlSurface
 //!
-//! The native appearance graph is a per-theme, per-side, per-face binding over a
-//! material palette, with UV sets parallel to the host geometry's corner buffer.
-//! CityGML 2.0's `app:Appearance` is flatter: one theme, a list of
-//! `app:X3DMaterial` / `app:ParameterizedTexture` surface data, each naming the
-//! `gml:id`s it targets, with texture coordinates given per ring. Getting from
-//! one to the other is a narrowing, and this module is where every narrowing is
-//! decided and named:
+//! The native graph is a per-theme, per-side, per-face binding over a material
+//! palette, with UV sets parallel to the host geometry's corner buffer. CityGML
+//! 2.0's `app:Appearance` is flatter, so this module is a narrowing:
 //!
-//! - **One theme.** The default theme is selected by equality against
-//!   [`Appearance::default_theme`], falling back to the first (a sealed
-//!   `Appearance` always holds at least one). Every other theme is dropped with
-//!   an aggregated warning. Unlike glTF, CityGML 2.0 *could* express several
-//!   themes; emitting them is a follow-up, not an impossibility.
-//! - **Front side only.** A back-side binding is dropped with a warning.
-//! - **`Explicit` UV only.** A `WorldToTexture` matrix has no per-corner samples
-//!   to write into `app:textureCoordinates`, so a material sampling one is
-//!   rendered colour-only.
-//! - **Phong is the target model.** `app:X3DMaterial` carries diffuse colour,
-//!   specular colour and ambient intensity, which is exactly a
-//!   [`PhongMaterial`](reearth_flow_geometry::appearance::PhongMaterial)'s first
-//!   three fields. A PBR material's base colour folds onto diffuse and the rest
-//!   of it — metallic, roughness, emissive — has no CityGML counterpart.
-//! - **One map per material.** Only the diffuse / base-colour map becomes an
-//!   `app:ParameterizedTexture`; emissive, normal, occlusion and
-//!   metallic-roughness maps are dropped with a warning.
+//! - **One theme** — the default, else the first. Others are dropped with a warning.
+//! - **Front side only.**
+//! - **`Explicit` UV only** — a `WorldToTexture` matrix has no per-corner samples,
+//!   so a material sampling one comes out colour-only.
+//! - **Phong is the target** — `app:X3DMaterial` is exactly a `PhongMaterial`'s
+//!   first three fields. PBR base colour folds onto diffuse; the rest is dropped.
+//! - **One map per material** — the diffuse / base-colour one.
 //!
 //! ## Texture coordinates
 //!
-//! Two things happen here that cannot happen anywhere else, and both would look
-//! plausible in a diff if they were wrong:
+//! Two things happen here that would look plausible in a diff if they were wrong:
 //!
-//! - **The `v` flip.** Flow's canonical UV origin is top-left with `v`
-//!   increasing downward (see `reearth_flow_geometry::appearance::uv`); the
-//!   CityGML reader flips `v` to `1 - v` at ingest for exactly that reason.
-//!   CityGML's own origin is bottom-left, so the writer flips back. Miss it and
-//!   every texture in the output is mirrored vertically.
+//! - **The `v` flip.** Flow's UV origin is top-left; CityGML's is bottom-left, so
+//!   the writer inverts the flip the reader applied at ingest. Miss it and every
+//!   texture is mirrored vertically.
 //! - **Slicing by corner range.** A ring's UV is the slice of the theme's
-//!   per-corner array covering the corner range that ring occupies — the range
-//!   Phase 4's face visitor hands back. When the converter closed a ring it also
-//!   recorded which corner the appended one duplicates, and that corner's UV is
-//!   appended in the same step, so a ring and its UV can never drift apart.
-//!   `uv.len() == ring.len()` is checked afterwards regardless, because the
-//!   alternative to an error here is a document whose texture coordinates are
-//!   silently off by one corner.
+//!   per-corner array covering that ring's corner range, extended by the corner
+//!   ring closure duplicated. `uv.len() == ring.len()` is checked afterwards.
 //!
-//! Nothing in this module panics on malformed input: a per-face binding of the
-//! wrong length, an out-of-range material index, and a UV array too short for
-//! the corners it is supposed to cover are all errors naming the feature, the
-//! geometry and the face.
+//! Nothing here panics on malformed input: a per-face binding of the wrong length,
+//! an out-of-range material index, and a UV array too short for its corners are
+//! all errors naming the feature, the geometry and the face.
 
 use std::collections::HashMap;
 use std::ops::Range;
@@ -65,31 +42,23 @@ use reearth_flow_types::material::X3DMaterial;
 use super::model::{AppearanceBundle, GeometryOmission, GmlTexture, TextureRef, TextureSource};
 use crate::errors::SinkError;
 
-/// Where one emitted ring's texture coordinates live in its leaf's corner
-/// buffer.
+/// Where one emitted ring's texture coordinates live.
 #[derive(Debug, Clone)]
 pub(super) struct RingCorners {
-    /// The ring's half-open `[start, end)` range of corner positions, as the
-    /// face visitor reported it — before closure, because the corner buffer and
-    /// the UV array parallel to it never had the closing corner.
+    /// As the visitor reported it — before closure, since neither the corner
+    /// buffer nor the UV array parallel to it ever had the closing corner.
     pub(super) corners: Range<usize>,
-    /// The absolute corner position whose UV the appended closing corner
-    /// duplicates, or `None` when the ring already closed and nothing was
-    /// appended.
+    /// The corner whose UV the appended closing corner duplicates.
     pub(super) closure: Option<usize>,
-    /// The emitted ring's own length, closing corner included. Checking the UV
-    /// against this rather than against `corners.len()` is what makes the check
-    /// worth making: it cross-checks the corner bookkeeping against the
-    /// coordinates that actually reached the document.
+    /// The emitted ring's length, closing corner included. Checking UV against
+    /// this rather than `corners.len()` cross-checks the corner bookkeeping.
     pub(super) len: usize,
 }
 
-/// The corner ranges one emitted face's rings occupy, in the order the face's
-/// `gml:Polygon` writes them.
+/// One face's ring corner ranges, in the order its `gml:Polygon` writes them.
 #[derive(Debug, Clone)]
 pub(super) struct FaceCorners {
-    /// The face's position in its leaf's own face order — what a
-    /// [`FaceBinding::PerFace`] entry indexes.
+    /// Its position in the leaf's face order, which is what `PerFace` indexes.
     pub(super) face: usize,
     pub(super) exterior: RingCorners,
     pub(super) interiors: Vec<RingCorners>,
@@ -106,31 +75,21 @@ pub(super) struct SurfaceBinding {
 
 /// The feature-level palettes every leaf's bindings index into.
 ///
-/// One `app:Appearance` is written per feature, but a feature's geometry is a
-/// collection of leaves, each carrying its own `Appearance` with its own local
-/// material indices. Merging them is what this holds: each leaf's materials are
-/// appended and its indices shifted by the offset the append started at, so the
-/// merged indices are a deterministic function of leaf order.
+/// One `app:Appearance` is written per feature, but each leaf carries its own
+/// `Appearance` with its own local indices, so they are merged in leaf order.
 #[derive(Default)]
 pub(super) struct Palette {
-    /// The palettes the writer emits and `GmlSurface` indexes into.
     pub(super) bundle: AppearanceBundle,
-    /// The images those textures reference, for the shell to stage beside the
-    /// `.gml`. Deduplicated by [`TextureRef::key`], parallel to
-    /// `bundle.textures`.
+    /// Deduplicated by [`TextureRef::key`], parallel to `bundle.textures`.
     pub(super) textures: Vec<TextureRef>,
-    /// Texture key → its position in `bundle.textures`, so one image referenced
-    /// by several leaves becomes one `app:ParameterizedTexture`.
+    /// So one image referenced by several leaves is one `app:ParameterizedTexture`.
     by_key: HashMap<String, u32>,
 }
 
-/// What a failing or narrowing resolution names, so a message points at one
-/// leaf of one feature.
+/// What a message points at: one leaf of one feature.
 pub(super) struct LeafContext<'a> {
     /// The feature's `gml:id`, or its runtime id when it has none.
     pub(super) feature: &'a str,
-    /// The leaf, named as its geometry world spells it (`"PolygonMesh"`,
-    /// `"Solid exterior shell"`, …).
     pub(super) geometry: &'a str,
 }
 
@@ -139,24 +98,21 @@ pub(super) struct LeafContext<'a> {
 pub(super) struct Resolved {
     /// One entry per face in `faces`, in the same order.
     pub(super) bindings: Vec<SurfaceBinding>,
-    /// What this leaf's appearance carried that CityGML 2.0 has no place for,
-    /// aggregated by kind for the caller to fold into the feature's warnings.
+    /// Aggregated by kind, for the caller to fold into the feature's warnings.
     pub(super) omissions: Vec<GeometryOmission>,
 }
 
-/// Resolve `appearance` onto the faces `faces` describes, merging its palettes
-/// into `palette`.
+/// Resolve `appearance` onto `faces`, merging its palettes into `palette`.
 ///
-/// `faces` is one entry per emitted face, in the leaf's own face order, so its
-/// length is the face count a [`FaceBinding::PerFace`] must agree with.
+/// `faces` is one entry per emitted face, in the leaf's face order, so its length
+/// is the count a [`FaceBinding::PerFace`] must agree with.
 pub(super) fn resolve(
     appearance: &Appearance,
     faces: &[FaceCorners],
     palette: &mut Palette,
     context: &LeafContext<'_>,
 ) -> Result<Resolved, SinkError> {
-    // A sealed `Appearance` always holds at least one theme, but nothing here
-    // depends on that being true: no theme simply means nothing to paint.
+    // No theme simply means nothing to paint.
     let Some(theme) = select_theme(appearance) else {
         return Ok(Resolved {
             bindings: vec![SurfaceBinding::default(); faces.len()],
@@ -206,7 +162,7 @@ pub(super) fn resolve(
     })
 }
 
-/// The theme to paint: the default one, else the first one declared.
+/// The theme to paint: the default, else the first declared.
 fn select_theme(appearance: &Appearance) -> Option<&ThemeBinding> {
     appearance
         .themes()
@@ -215,9 +171,8 @@ fn select_theme(appearance: &Appearance) -> Option<&ThemeBinding> {
         .or_else(|| appearance.themes().first())
 }
 
-/// The theme's front-side per-corner UV arrays, by channel. A `WorldToTexture`
-/// set has no per-corner samples, so it is not in here and a material sampling
-/// its channel comes out colour-only.
+/// The theme's front-side per-corner UV arrays, by channel. `WorldToTexture` sets
+/// have no per-corner samples, so they are absent and render colour-only.
 fn front_channels(theme: &ThemeBinding) -> HashMap<ChannelId, &[[f64; 2]]> {
     theme
         .uv_sets
@@ -230,21 +185,17 @@ fn front_channels(theme: &ThemeBinding) -> HashMap<ChannelId, &[[f64; 2]]> {
         .collect()
 }
 
-/// Flow's canonical UV origin is top-left; CityGML's is bottom-left. This is the
-/// conversion at the writer's own boundary that `appearance::uv`'s coordinate
-/// convention asks for, and the exact inverse of the flip the CityGML reader
-/// applies on ingest.
+/// Flow's UV origin is top-left, CityGML's bottom-left: the exact inverse of the
+/// flip the CityGML reader applies on ingest.
 fn to_citygml_uv(uv: [f64; 2]) -> [f64; 2] {
     [uv[0], 1.0 - uv[1]]
 }
 
-/// One merged-palette material, and the texture it paints with if any.
+/// One merged-palette material, and the texture it paints with.
 #[derive(Clone, Copy)]
 struct MaterialSlot {
     material_idx: u32,
-    /// The merged texture index and the UV channel it samples. `None` for a
-    /// colour-only material, and for a textured one whose map this writer
-    /// cannot carry.
+    /// `None` for a colour-only material, or one whose map cannot be carried.
     texture: Option<(u32, ChannelId)>,
 }
 
@@ -255,14 +206,12 @@ struct Resolver<'a> {
     context: &'a LeafContext<'a>,
     palette: &'a mut Palette,
     omissions: Vec<GeometryOmission>,
-    /// Local palette index → its merged slot, filled on first use so a material
-    /// no face binds is never converted and cannot fail the write.
+    /// Filled on first use, so a material no face binds cannot fail the write.
     slots: HashMap<u32, MaterialSlot>,
 }
 
 impl Resolver<'_> {
-    /// Record the theme this feature's `app:Appearance` is written under. The
-    /// first leaf to resolve wins; a later leaf naming a different theme is a
+    /// The first leaf to resolve wins; a later leaf naming another theme is a
     /// second theme, and one `app:Appearance` writes one.
     fn record_theme(&mut self, theme: &str) {
         match &self.palette.bundle.theme {
@@ -272,12 +221,8 @@ impl Resolver<'_> {
         }
     }
 
-    /// Expand the front binding to one local material index per emitted face.
-    ///
-    /// A `PerFace` binding whose length disagrees with the face count means the
-    /// appearance and the geometry describe different meshes; writing whichever
-    /// faces happen to line up would paint the wrong surfaces, so it is an
-    /// error rather than a truncation.
+    /// One local material index per emitted face. A `PerFace` length mismatch
+    /// means appearance and geometry describe different meshes, so it errors.
     fn face_materials(
         &self,
         binding: &FaceBinding,
@@ -310,9 +255,8 @@ impl Resolver<'_> {
         }
     }
 
-    /// Reject a palette index that names no material. The palette is validated
-    /// on construction, but `appearance_mut` is an unvalidated escape hatch, so
-    /// an out-of-range index can reach here — and indexing on it would panic.
+    /// Reject an index naming no material: `appearance_mut` is an unvalidated
+    /// escape hatch, so indexing blindly would panic.
     fn check_material(&self, index: u32, face: Option<usize>) -> Result<(), SinkError> {
         if (index as usize) < self.materials.len() {
             return Ok(());
@@ -327,8 +271,7 @@ impl Resolver<'_> {
         )))
     }
 
-    /// Resolve one face: what it binds, and the texture coordinates of each of
-    /// its rings.
+    /// Resolve one face: what it binds, and each ring's texture coordinates.
     fn bind_face(
         &mut self,
         face: &FaceCorners,
@@ -360,9 +303,8 @@ impl Resolver<'_> {
         })
     }
 
-    /// One ring's texture coordinates: its slice of the theme's per-corner
-    /// array, flipped to CityGML's origin, extended by the corner ring closure
-    /// duplicated.
+    /// One ring's UV: its slice of the theme's per-corner array, flipped to
+    /// CityGML's origin, extended by the corner ring closure duplicated.
     fn ring_uv(
         &self,
         coords: &[[f64; 2]],
@@ -380,8 +322,7 @@ impl Resolver<'_> {
             )));
         };
         let mut uv: Vec<[f64; 2]> = slice.iter().copied().map(to_citygml_uv).collect();
-        // Closing the ring and extending its UV are one step: the appended
-        // corner repeats a corner of the same ring, so its UV is that corner's.
+        // The appended corner repeats one of this ring's, so its UV is that one's.
         if let Some(closed_at) = ring.closure {
             let Some(repeated) = coords.get(closed_at) else {
                 return Err(self.error(format!(
@@ -401,15 +342,13 @@ impl Resolver<'_> {
         Ok(uv)
     }
 
-    /// The merged slot for a local palette index, converting the material on
-    /// first use.
+    /// The merged slot for a local index, converting the material on first use.
     fn slot(&mut self, local: u32) -> Result<MaterialSlot, SinkError> {
         if let Some(slot) = self.slots.get(&local) {
             return Ok(*slot);
         }
-        // Read the slice out of `self` first: the borrow it hands back is the
-        // appearance's, not this `&mut self`'s, so the palette can be mutated
-        // while the material is still in hand.
+        // The borrow is the appearance's, not `&mut self`'s, so the palette can
+        // be mutated while the material is in hand.
         let materials = self.materials;
         let (x3d, map, unmapped) = narrow_material(&materials[local as usize]);
         if unmapped > 0 {
@@ -432,8 +371,7 @@ impl Resolver<'_> {
         Ok(slot)
     }
 
-    /// The merged texture index and sampled channel for one material's diffuse
-    /// map, or `None` when this writer cannot carry it.
+    /// The merged texture index and channel for one material's diffuse map.
     fn texture_slot(&mut self, map: &Texture) -> Result<Option<(u32, ChannelId)>, SinkError> {
         let channel = map.uv_channel;
         if !self.front_channels.contains_key(&channel) {
@@ -455,8 +393,7 @@ impl Resolver<'_> {
         Ok(Some((index, channel)))
     }
 
-    /// Record one thing this leaf's appearance carried that the document has no
-    /// place for, aggregated by kind.
+    /// Record one unwritable thing, aggregated by kind.
     fn omit(&mut self, kind: &'static str, reason: &'static str, count: usize) {
         match self
             .omissions
@@ -481,9 +418,8 @@ impl Resolver<'_> {
     }
 }
 
-/// Narrow one native material to the `app:X3DMaterial` CityGML 2.0 can carry,
-/// returning also its diffuse / base-colour map and how many other maps had to
-/// be dropped.
+/// Narrow a material to `app:X3DMaterial`, plus its diffuse map and how many
+/// other maps were dropped.
 fn narrow_material(material: &Material) -> (X3DMaterial, Option<&Texture>, usize) {
     match material {
         Material::Phong(phong) => (
@@ -498,10 +434,8 @@ fn narrow_material(material: &Material) -> (X3DMaterial, Option<&Texture>, usize
                 .filter(|map| map.is_some())
                 .count(),
         ),
-        // PBR's base colour is the closest thing to a diffuse colour; its
-        // metallic, roughness and emissive factors have no X3DMaterial slot, so
-        // the specular colour and ambient intensity fall back to the values
-        // CityGML readers use for a material that declares neither.
+        // Base colour is the closest thing to diffuse; specular and ambient take
+        // the values CityGML readers assume for a material declaring neither.
         Material::Pbr(pbr) => {
             let default = X3DMaterial::default();
             (
@@ -533,13 +467,11 @@ fn color(rgb: [f32; 3]) -> Color {
     Color::new(f64::from(rgb[0]), f64::from(rgb[1]), f64::from(rgb[2]))
 }
 
-/// The staging reference for one texture's raster.
+/// The staging reference for one raster.
 ///
-/// A URI-backed raster keys on its URI string, which is what keeps the writer's
-/// `app:imageURI` rewrite identical to the legacy path's. An in-memory one — an
-/// OBJ `map_Kd` or a glTF/GLB packed image — has no URI at all, so it keys on a
-/// hash of its bytes: two leaves carrying the same image then stage it once, and
-/// the name is stable across runs of the same input.
+/// A URI-backed one keys on its URI string, keeping the `app:imageURI` rewrite
+/// identical to the legacy path's; an in-memory one keys on a hash of its bytes,
+/// so the same image stages once and its name is stable across runs.
 fn texture_ref(map: &Texture) -> Result<TextureRef, SinkError> {
     match &*map.raster {
         Raster::Uri(uri) => {
@@ -564,9 +496,8 @@ fn texture_ref(map: &Texture) -> Result<TextureRef, SinkError> {
     }
 }
 
-/// What `app:imageURI` says if this image is never staged: its source URI, or —
-/// for bytes that have no source — the name it would have been staged under, so
-/// the reference is at least self-consistent.
+/// What `app:imageURI` says if the image is never staged: its source URI, or the
+/// name it would have been staged under.
 fn fallback_uri(reference: &TextureRef) -> String {
     match &reference.source {
         TextureSource::Uri(url) => url.to_string(),
@@ -576,20 +507,13 @@ fn fallback_uri(reference: &TextureRef) -> String {
     }
 }
 
-/// A short, stable identity for a block of image bytes.
+/// A short, stable identity for a block of image bytes. Not cryptographic — it
+/// only has to distinguish one document's images and be reproducible.
 ///
-/// Not cryptographic and not collision-proof: it only has to distinguish the
-/// handful of images one document references, and to be the same on every run
-/// over the same input so a staged file name is reproducible.
-///
-/// FNV-1a is spelled out here rather than taken from
-/// [`DefaultHasher`](std::collections::hash_map::DefaultHasher) because this
-/// value is *observable output*: it becomes the staged file's name and the
-/// `app:imageURI` that points at it, and
-/// `engine/testing/data/testcases/citygml_writer/gltf_textured/expected_output.gml`
-/// names one. `DefaultHasher`'s algorithm is explicitly unspecified across Rust
-/// releases, so a toolchain upgrade could have renamed every staged image and
-/// broken that expectation; this one is fixed by its constants.
+/// Spelled out rather than taken from `DefaultHasher` because this value is
+/// *observable output*: it becomes the staged file name and the `app:imageURI`
+/// pointing at it, and a test expectation names one. `DefaultHasher`'s algorithm
+/// is unspecified across Rust releases; this one is fixed by its constants.
 fn content_key(bytes: &[u8]) -> String {
     const FNV_OFFSET_BASIS: u64 = 0xcbf2_9ce4_8422_2325;
     const FNV_PRIME: u64 = 0x0000_0100_0000_01b3;
@@ -1101,11 +1025,8 @@ mod tests {
         }
     }
 
-    /// The content key is observable output — it names the staged file and the
-    /// `app:imageURI` that points at it, and a workflow expectation
-    /// (`citygml_writer/gltf_textured`) has one written into it. Pinning the
-    /// literal here is what turns a change to the hash from a confusing
-    /// end-to-end XML diff into a one-line unit failure that says so.
+    /// The key is observable output, and `citygml_writer/gltf_textured` has one
+    /// written into it. Pinning the literal turns a hash change into a clear failure.
     #[test]
     fn the_content_key_is_pinned_to_its_algorithm() {
         assert_eq!(content_key(b"webp-bytes"), "a470fa1d13e58dd9");
