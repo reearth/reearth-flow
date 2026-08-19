@@ -6,6 +6,8 @@ import (
 
 	"github.com/reearth/reearth-flow/api/internal/infrastructure/memory"
 	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
+	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
+	"github.com/reearth/reearth-flow/api/pkg/job"
 	"github.com/samber/lo"
 	"github.com/stretchr/testify/assert"
 )
@@ -70,4 +72,38 @@ func TestPreviewSchema_SerializationRetryDoesNotDoubleSubmit(t *testing.T) {
 
 	// And the workflow object was uploaded once, so the retry left no orphan.
 	assert.Equal(t, 1, ff.uploadWorkflowCalls)
+}
+
+// ctxRecordingJobRepo embeds a nil repo.Job so only Save needs implementing,
+// and records the ctx.Err() it observed when Save was invoked.
+type ctxRecordingJobRepo struct {
+	repo.Job
+	saveCtxErr error
+	saved      *job.Job
+	saveCalled bool
+}
+
+func (r *ctxRecordingJobRepo) Save(ctx context.Context, j *job.Job) error {
+	r.saveCalled = true
+	r.saveCtxErr = ctx.Err()
+	r.saved = j
+	return nil
+}
+
+// failJob is the recovery path run right after the caller's ctx died (e.g. a
+// trigger's HTTP deadline), so it must not silently drop the write by reusing
+// that same, already-cancelled ctx.
+func TestFailJob_DetachesFromCancelledContext(t *testing.T) {
+	parentCtx, cancel := context.WithCancel(context.Background())
+	cancel()
+	assert.Error(t, parentCtx.Err())
+
+	jobRepo := &ctxRecordingJobRepo{}
+	j := job.New().NewID().Status(job.StatusPending).MustBuild()
+
+	failJob(parentCtx, jobRepo, j)
+
+	assert.True(t, jobRepo.saveCalled)
+	assert.NoError(t, jobRepo.saveCtxErr)
+	assert.Equal(t, job.StatusFailed, jobRepo.saved.Status())
 }
