@@ -14,8 +14,8 @@ use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
 ///
 /// * `Ok(geometry)`: the boundary.
 /// * `Ok(`[`Geometry::None`]`)`: the boundary is empty.
-/// * `Err(`[`UnsupportedOperation`]`)`: the type has no boundary to report at
-///   all.
+/// * `Err(`[`UnsupportedOperation`]`)`: the geometry has no boundary to report
+///   at all.
 ///
 /// A face's rings come out verbatim, neither re-wound nor re-closed. Appearance
 /// is dropped from bounding curves and kept on the shells a volume bounds. A
