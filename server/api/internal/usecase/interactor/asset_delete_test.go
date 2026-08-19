@@ -103,6 +103,33 @@ func TestAsset_Delete_FailingTransactionNeverDeletesObject(t *testing.T) {
 	assert.Zero(t, fileGW.deleteCalls, "a failed transaction must never delete the object")
 }
 
+func TestAsset_Delete_EmptyURLNeverDeletesObject(t *testing.T) {
+	wsID := accountsid.NewWorkspaceID()
+	aid := id.NewAssetID()
+	a, err := asset.New().ID(aid).Workspace(wsID).CreatedByUser(accountsid.NewUserID()).Name("f.txt").Size(1).URL("").NewUUID().Build()
+	require.NoError(t, err)
+
+	assetRepo := &snapshotAssetRepo{a: a}
+	fileGW := &recordingFileGateway{assetRepo: assetRepo}
+	uc := &Asset{
+		repos: &repo.Container{
+			Asset: assetRepo,
+		},
+		gateways: &gateway.Container{
+			File: fileGW,
+		},
+		permissionChecker: NewMockPermissionChecker(func(ctx context.Context, resource, action string) (bool, error) {
+			return true, nil
+		}),
+	}
+
+	_, err = uc.Delete(context.Background(), aid)
+	require.NoError(t, err)
+
+	assert.Equal(t, 1, assetRepo.deleteCalls)
+	assert.Zero(t, fileGW.deleteCalls, "an asset with an empty URL must never trigger an object delete")
+}
+
 func TestAsset_Delete_ObjectDeleteFailureDoesNotFailMutation(t *testing.T) {
 	uc, assetRepo, fileGW, aid := newDeleteFixture(t, nil, nil, assert.AnError)
 

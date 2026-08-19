@@ -319,9 +319,11 @@ func (i *Asset) Delete(ctx context.Context, aid id.AssetID) (result id.AssetID, 
 	// Only now is it safe to drop the object: the row that stopped referencing
 	// it is durable. Best-effort, since a failure here leaks an object rather
 	// than leaving a listed asset with no bytes behind it.
-	if u, _ := url.Parse(deletedURL); u != nil {
-		if err := i.gateways.File.DeleteAsset(ctx, u); err != nil {
-			log.Errorfc(ctx, "asset: could not remove object for deleted asset %s: %v", aid, err)
+	if deletedURL != "" {
+		if u, _ := url.Parse(deletedURL); u != nil {
+			if err := i.gateways.File.DeleteAsset(ctx, u); err != nil {
+				log.Errorfc(ctx, "asset: could not remove object for deleted asset %s: %v", aid, err)
+			}
 		}
 	}
 
