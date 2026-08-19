@@ -7,6 +7,10 @@ import { ProjectFragment } from "@flow/lib/gql/__gen__/graphql";
 export type MockProject = ProjectFragment & {
   isArchived: boolean;
   version: number;
+  basicAuthUsername: string;
+  basicAuthPassword: string;
+  isBasicAuthActive: boolean;
+  parameters: unknown[];
 };
 
 export const mockProjects: MockProject[] = [
@@ -20,6 +24,10 @@ export const mockProjects: MockProject[] = [
     updatedAt: "2024-01-15T10:00:00Z",
     isArchived: false,
     version: 1,
+    basicAuthUsername: "",
+    basicAuthPassword: "",
+    isBasicAuthActive: false,
+    parameters: [],
     isLocked: false,
     deployment: null,
   },
@@ -33,6 +41,10 @@ export const mockProjects: MockProject[] = [
     updatedAt: "2024-01-20T09:15:00Z",
     isArchived: false,
     version: 1,
+    basicAuthUsername: "",
+    basicAuthPassword: "",
+    isBasicAuthActive: false,
+    parameters: [],
     isLocked: true,
     deployment: null,
   },
@@ -46,6 +58,10 @@ export const mockProjects: MockProject[] = [
     updatedAt: "2024-01-25T11:20:00Z",
     isArchived: false,
     version: 1,
+    basicAuthUsername: "",
+    basicAuthPassword: "",
+    isBasicAuthActive: false,
+    parameters: [],
     isLocked: true,
     deployment: null,
   },
@@ -59,6 +75,10 @@ export const mockProjects: MockProject[] = [
     updatedAt: "2024-01-28T15:30:00Z",
     isArchived: false,
     version: 1,
+    basicAuthUsername: "",
+    basicAuthPassword: "",
+    isBasicAuthActive: false,
+    parameters: [],
     isLocked: false,
     deployment: null,
   },
@@ -72,6 +92,10 @@ export const mockProjects: MockProject[] = [
     updatedAt: "2023-12-15T17:00:00Z",
     isArchived: false,
     version: 1,
+    basicAuthUsername: "",
+    basicAuthPassword: "",
+    isBasicAuthActive: false,
+    parameters: [],
     isLocked: true,
     deployment: null,
   },
@@ -85,6 +109,10 @@ export const mockProjects: MockProject[] = [
     updatedAt: "2024-01-22T14:45:00Z",
     isArchived: false,
     version: 1,
+    basicAuthUsername: "",
+    basicAuthPassword: "",
+    isBasicAuthActive: false,
+    parameters: [],
     isLocked: false,
     deployment: null,
   },

@@ -101,9 +101,11 @@ export const typeDefs = `
     name: String!
     projectId: ID!
     required: Boolean!
+    public: Boolean!
     type: ParameterType!
     updatedAt: DateTime!
-    value: Any!
+    defaultValue: Any!
+    config: JSON
   }
 
   enum ParameterType {
@@ -196,7 +198,7 @@ export const typeDefs = `
   type Job implements Node {
     completedAt: DateTime
     deployment: Deployment
-    deploymentId: ID!
+    deploymentId: ID
     debug: Boolean
     id: ID!
     workerLogsURL: String

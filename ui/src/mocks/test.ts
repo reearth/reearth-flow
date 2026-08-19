@@ -95,7 +95,8 @@ export const testMockServer = async () => {
               id
               name
               type
-              value
+              defaultValue
+              public
             }
           }
           pageInfo {

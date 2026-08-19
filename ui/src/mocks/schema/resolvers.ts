@@ -18,7 +18,7 @@ import {
   mockCmsModels,
   mockCmsItems,
 } from "../data/cmsIntegration";
-import { mockDeployments } from "../data/deployments";
+import { mockDeployments, type MockDeployment } from "../data/deployments";
 import { mockJobs, mockLogs } from "../data/jobs";
 import { mockProjects, type MockProject } from "../data/projects";
 import {
@@ -863,6 +863,10 @@ export const resolvers = {
         isArchived: false,
         isLocked: false,
         version: 1,
+        basicAuthUsername: "",
+        basicAuthPassword: "",
+        isBasicAuthActive: false,
+        parameters: [],
       };
 
       projects.push(newProject);
@@ -917,6 +921,7 @@ export const resolvers = {
       if (!deployment) {
         deployment = {
           id: generateId("deployment"),
+          isHead: true,
           projectId: input.projectId,
           workspaceId: input.workspaceId,
           description: "Auto-generated deployment",
@@ -1142,7 +1147,7 @@ export const resolvers = {
     // Deployment mutations
     createDeployment: (_: any, args: { input: any }) => {
       const { input } = args;
-      const newDeployment: DeploymentFragment = {
+      const newDeployment: MockDeployment = {
         id: generateId("deployment"),
         projectId: input.projectId,
         workspaceId: input.workspaceId,
@@ -1151,6 +1156,7 @@ export const resolvers = {
         workflowUrl: `https://workflow-${generateId("flow")}.reearth-flow.com`,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
+        isHead: true,
         project: null,
       };
 
