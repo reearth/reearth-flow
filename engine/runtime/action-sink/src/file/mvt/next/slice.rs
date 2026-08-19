@@ -42,11 +42,12 @@ pub(super) fn slice_leaves(
     for leaf in leaves {
         match leaf {
             Leaf::Polygon(rings) => {
-                let mercator: Vec<Vec<Point>> = rings
+                let (exterior, holes) = normalize_winding(rings);
+                let exterior = project_ring(&exterior, &mut content);
+                let holes: Vec<Vec<Point>> = holes
                     .iter()
                     .map(|ring| project_ring(ring, &mut content))
                     .collect();
-                let (exterior, holes) = normalize_winding(mercator);
                 let y_bounds = ring_bounds(&exterior, 1);
                 let x_bounds = ring_bounds(&exterior, 0);
                 let diagonal = (x_bounds.1 - x_bounds.0).hypot(y_bounds.1 - y_bounds.0);
@@ -151,24 +152,26 @@ fn ring_area(ring: &[Point]) -> f64 {
     area / 2.0
 }
 
-// MVT requires CW exterior (opposite of Flow internals)
 fn normalize_winding(mut rings: Vec<Vec<Point>>) -> (Vec<Point>, Vec<Vec<Point>>) {
     let holes = rings.split_off(1);
     let mut exterior = rings.remove(0);
     let exterior_area = ring_area(&exterior);
-    if exterior_area > 0.0 {
+    if exterior_area < 0.0 {
+        // invalid geometry in Flow, but coincidentally consistent with MVT's CW convention, so we don't reverse twice but simply reuse
+        // not dropped because float error may occasionally cause sign flip for tiny features
         tracing::warn!(
             area = exterior_area,
             "MVT Writer: polygon exterior ring is not CCW"
         );
     } else {
+        // correct, but since MVT needs CW, we still need to do a reverse
         exterior.reverse();
     }
     let holes = holes
         .into_iter()
         .map(|mut hole| {
             let hole_area = ring_area(&hole);
-            if hole_area < 0.0 {
+            if hole_area > 0.0 {
                 tracing::warn!(area = hole_area, "MVT Writer: polygon hole ring is not CW");
             } else {
                 hole.reverse();
