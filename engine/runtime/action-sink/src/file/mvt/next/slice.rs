@@ -151,7 +151,7 @@ fn ring_area(ring: &[Point]) -> f64 {
     area / 2.0
 }
 
-// MVT requires exterior rings clockwise and hole rings counterclockwise.
+// MVT requires CW exterior (opposite of Flow internals)
 fn normalize_winding(mut rings: Vec<Vec<Point>>) -> (Vec<Point>, Vec<Vec<Point>>) {
     let holes = rings.split_off(1);
     let mut exterior = rings.remove(0);
@@ -159,7 +159,7 @@ fn normalize_winding(mut rings: Vec<Vec<Point>>) -> (Vec<Point>, Vec<Vec<Point>>
     if exterior_area > 0.0 {
         tracing::warn!(
             area = exterior_area,
-            "MVT Writer: polygon exterior ring is not CCW as required"
+            "MVT Writer: polygon exterior ring is not CCW"
         );
     } else {
         exterior.reverse();
@@ -171,7 +171,7 @@ fn normalize_winding(mut rings: Vec<Vec<Point>>) -> (Vec<Point>, Vec<Vec<Point>>
             if hole_area < 0.0 {
                 tracing::warn!(
                     area = hole_area,
-                    "MVT Writer: polygon hole ring is not CW as required"
+                    "MVT Writer: polygon hole ring is not CW"
                 );
             } else {
                 hole.reverse();
