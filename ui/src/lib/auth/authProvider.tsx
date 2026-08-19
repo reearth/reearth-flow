@@ -1,14 +1,7 @@
 import { Auth0Provider } from "@auth0/auth0-react";
 import React, { createContext, ReactNode, useState } from "react";
 
-import {
-  config,
-  getAuthInfo,
-  getSignInCallbackUrl,
-  logInToTenant,
-} from "@flow/config";
-
-import { useMockAuth } from "./mockAuth";
+import { getAuthInfo, getSignInCallbackUrl, logInToTenant } from "@flow/config";
 
 import { useAuth0Auth, AuthHook } from "./";
 
@@ -19,11 +12,6 @@ const Auth0Wrapper = ({ children }: { children: ReactNode }) => {
   return <AuthContext.Provider value={auth}>{children}</AuthContext.Provider>;
 };
 
-const MockAuthWrapper = ({ children }: { children: ReactNode }) => {
-  const auth = useMockAuth();
-  return <AuthContext.Provider value={auth}>{children}</AuthContext.Provider>;
-};
-
 export const AuthProvider: React.FC<{ children?: ReactNode }> = ({
   children,
 }) => {
@@ -31,13 +19,6 @@ export const AuthProvider: React.FC<{ children?: ReactNode }> = ({
     logInToTenant(); // note that it includes side effect
     return getAuthInfo();
   });
-
-  // Dev-only, and after the hook above so the hook count never varies.
-  // import.meta.env.DEV is statically false in production builds, so this branch
-  // and useMockAuth are dropped from the bundle entirely.
-  if (import.meta.env.DEV && config().mockEnabled) {
-    return <MockAuthWrapper>{children}</MockAuthWrapper>;
-  }
 
   const domain = authInfo?.auth0Domain;
   const clientId = authInfo?.auth0ClientId;

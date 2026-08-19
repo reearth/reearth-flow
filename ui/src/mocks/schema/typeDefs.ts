@@ -101,11 +101,9 @@ export const typeDefs = `
     name: String!
     projectId: ID!
     required: Boolean!
-    public: Boolean!
     type: ParameterType!
     updatedAt: DateTime!
-    defaultValue: Any!
-    config: JSON
+    value: Any!
   }
 
   enum ParameterType {
@@ -198,7 +196,7 @@ export const typeDefs = `
   type Job implements Node {
     completedAt: DateTime
     deployment: Deployment
-    deploymentId: ID
+    deploymentId: ID!
     debug: Boolean
     id: ID!
     workerLogsURL: String
@@ -258,9 +256,10 @@ export const typeDefs = `
   # Document Types
   type ProjectDocument {
     id: ID!
-    timestamp: DateTime!
-    updates: [Int!]!
-    version: Int!
+    projectId: ID!
+    content: JSON!
+    createdAt: DateTime!
+    updatedAt: DateTime!
   }
 
   type ProjectSnapshot {
@@ -272,8 +271,10 @@ export const typeDefs = `
   }
 
   type ProjectSnapshotMetadata {
-    timestamp: DateTime!
-    version: Int!
+    id: ID!
+    version: String!
+    description: String
+    createdAt: DateTime!
   }
 
   type NamedSnapshotState {
@@ -696,7 +697,6 @@ export const typeDefs = `
     projects(
       workspaceId: ID!
       includeArchived: Boolean
-      keyword: String
       pagination: PageBasedPagination!
     ): ProjectConnection!
     projectSharingInfo(projectId: ID!): ProjectSharingInfoPayload!
@@ -725,8 +725,8 @@ export const typeDefs = `
 
     # Document queries
     latestProjectSnapshot(projectId: ID!): ProjectDocument
-    projectSnapshot(projectId: ID!, version: Int!): ProjectSnapshot!
-    projectHistory(projectId: ID!): [ProjectSnapshotMetadata!]!
+    projectSnapshot(projectId: ID!, version: String!): ProjectSnapshot!
+    projectHistory(projectId: ID!, pagination: PageBasedPagination!): [ProjectSnapshotMetadata!]!
     projectNamedSnapshots(projectId: ID!): [NamedSnapshot!]!
     projectNamedSnapshot(projectId: ID!, snapshotNumber: Int!): NamedSnapshotState!
 

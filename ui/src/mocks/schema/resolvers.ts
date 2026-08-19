@@ -18,9 +18,9 @@ import {
   mockCmsModels,
   mockCmsItems,
 } from "../data/cmsIntegration";
-import { mockDeployments, type MockDeployment } from "../data/deployments";
+import { mockDeployments } from "../data/deployments";
 import { mockJobs, mockLogs } from "../data/jobs";
-import { mockProjects, type MockProject } from "../data/projects";
+import { mockProjects } from "../data/projects";
 import {
   mockUsers,
   getCurrentUser,
@@ -98,21 +98,6 @@ const paginateResults = <T>(
     },
     totalCount: filteredItems.length,
   };
-};
-
-// mockWorkflowDoc builds a real Y.Doc so the states these resolvers return can
-// actually be decoded and previewed. Random bytes would fail in a way production
-// never would.
-const mockWorkflowDoc = (name: string) => {
-  const doc = new Y.Doc();
-  const workflows = doc.getMap("workflows");
-  const workflow = new Y.Map();
-  workflow.set("id", new Y.Text("mock-entry-graph"));
-  workflow.set("name", new Y.Text(name));
-  workflow.set("nodes", new Y.Map());
-  workflow.set("edges", new Y.Map());
-  workflows.set("mock-entry-graph", workflow);
-  return doc;
 };
 
 export const resolvers = {
@@ -518,34 +503,44 @@ export const resolvers = {
     },
 
     latestProjectSnapshot: (_: any, args: { projectId: string }) => {
-      // Real Y.Doc state, matching ProjectDocument's shape in the API schema. The
-      // previous fixture returned a pre-CRDT `content: JSON` document, which no
-      // longer validates and made the panel's current-version header fail.
+      // Mock project document
       return {
-        id: args.projectId,
-        timestamp: "2024-01-28T10:00:00Z",
-        updates: Array.from(Y.encodeStateAsUpdate(mockWorkflowDoc("live"))),
-        version: 41,
+        id: `doc-${args.projectId}`,
+        projectId: args.projectId,
+        content: { nodes: [], edges: [] },
+        createdAt: "2024-01-28T10:00:00Z",
+        updatedAt: "2024-01-28T10:00:00Z",
       };
     },
 
-    projectSnapshot: (_: any, args: { projectId: string; version: number }) => {
+    projectSnapshot: (_: any, args: { projectId: string; version: string }) => {
+      // Mock project snapshot
       return {
-        timestamp: "2024-01-28T10:00:00Z",
-        updates: Array.from(
-          Y.encodeStateAsUpdate(mockWorkflowDoc(`version ${args.version}`)),
-        ),
-        version: args.version,
+        id: `snapshot-${args.projectId}-${args.version}`,
+        projectId: args.projectId,
+        content: { nodes: [], edges: [] },
+        createdAt: "2024-01-28T10:00:00Z",
+        metadata: {
+          id: `meta-${args.projectId}-${args.version}`,
+          version: args.version,
+          description: "Project snapshot",
+          createdAt: "2024-01-28T10:00:00Z",
+        },
       };
     },
 
-    // The raw update log, which the corruption-recovery dialog reads. Its `version`
-    // is an update-log clock, deliberately unlike NamedSnapshot.snapshotNumber.
-    projectHistory: (_: any, _args: { projectId: string }) => [
-      { timestamp: "2024-01-28T10:00:00Z", version: 41 },
-      { timestamp: "2024-01-15T09:30:00Z", version: 27 },
-      { timestamp: "2024-01-01T10:00:00Z", version: 1 },
-    ],
+    projectHistory: (_: any, args: { projectId: string; pagination: any }) => {
+      // Mock project history
+      const history = [
+        {
+          id: `meta-${args.projectId}-1`,
+          version: "1.0.0",
+          description: "Initial version",
+          createdAt: "2024-01-01T10:00:00Z",
+        },
+      ];
+      return paginateResults(history, args.pagination).nodes;
+    },
 
     projectNamedSnapshots: (_: any, _args: { projectId: string }) => {
       // Several distinct, labelled snapshots so local dev reflects real
@@ -576,13 +571,20 @@ export const resolvers = {
       _: any,
       args: { projectId: string; snapshotNumber: number },
     ) => {
+      // A real Y.Doc update, not random bytes: the panel applies this to build a
+      // preview, so anything undecodable would fail in a way production would not.
+      const doc = new Y.Doc();
+      const workflows = doc.getMap("workflows");
+      const workflow = new Y.Map();
+      workflow.set("id", new Y.Text("mock-entry-graph"));
+      workflow.set("name", new Y.Text(`snapshot ${args.snapshotNumber}`));
+      workflow.set("nodes", new Y.Map());
+      workflow.set("edges", new Y.Map());
+      workflows.set("mock-entry-graph", workflow);
+
       return {
         snapshotNumber: args.snapshotNumber,
-        updates: Array.from(
-          Y.encodeStateAsUpdate(
-            mockWorkflowDoc(`snapshot ${args.snapshotNumber}`),
-          ),
-        ),
+        updates: Array.from(Y.encodeStateAsUpdate(doc)),
       };
     },
 
@@ -851,7 +853,7 @@ export const resolvers = {
     // Project mutations
     createProject: (_: any, args: { input: any }) => {
       const { input } = args;
-      const newProject: MockProject = {
+      const newProject: ProjectFragment = {
         id: generateId("project"),
         name: input.name || "New Project",
         description: input.description || "",
@@ -860,13 +862,7 @@ export const resolvers = {
         deployment: null,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        isArchived: false,
         isLocked: false,
-        version: 1,
-        basicAuthUsername: "",
-        basicAuthPassword: "",
-        isBasicAuthActive: false,
-        parameters: [],
       };
 
       projects.push(newProject);
@@ -921,7 +917,6 @@ export const resolvers = {
       if (!deployment) {
         deployment = {
           id: generateId("deployment"),
-          isHead: true,
           projectId: input.projectId,
           workspaceId: input.workspaceId,
           description: "Auto-generated deployment",
@@ -1147,7 +1142,7 @@ export const resolvers = {
     // Deployment mutations
     createDeployment: (_: any, args: { input: any }) => {
       const { input } = args;
-      const newDeployment: MockDeployment = {
+      const newDeployment: DeploymentFragment = {
         id: generateId("deployment"),
         projectId: input.projectId,
         workspaceId: input.workspaceId,
@@ -1156,7 +1151,6 @@ export const resolvers = {
         workflowUrl: `https://workflow-${generateId("flow")}.reearth-flow.com`,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
-        isHead: true,
         project: null,
       };
 

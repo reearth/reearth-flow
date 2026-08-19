@@ -1,15 +1,10 @@
 import { DeploymentFragment } from "@flow/lib/gql/__gen__/graphql";
 
-// Same reason as MockProject: DeploymentFragment carries only the fields the app's
-// fragment selects, but the mock schema serves the full Deployment type.
-export type MockDeployment = DeploymentFragment & { isHead: boolean };
-
-export const mockDeployments: MockDeployment[] = [
+export const mockDeployments: DeploymentFragment[] = [
   {
     id: "deployment-1",
     projectId: "project-1",
     workspaceId: "workspace-1",
-    isHead: false,
     version: "1.0.0",
     description: "Initial deployment of data processing pipeline",
     workflowUrl: "https://workflow-1.reearth-flow.com",
@@ -21,7 +16,6 @@ export const mockDeployments: MockDeployment[] = [
     id: "deployment-2",
     projectId: "project-2",
     workspaceId: "workspace-2",
-    isHead: false,
     version: "2.1.0",
     description: "Real-time analytics deployment with improved performance",
     workflowUrl: "https://workflow-2.reearth-flow.com",
@@ -33,7 +27,6 @@ export const mockDeployments: MockDeployment[] = [
     id: "deployment-3",
     projectId: "project-3",
     workspaceId: "workspace-2",
-    isHead: false,
     version: "1.0.0",
     description: "Failed ML workflow deployment",
     workflowUrl: "https://workflow-3.reearth-flow.com",
@@ -45,7 +38,6 @@ export const mockDeployments: MockDeployment[] = [
     id: "deployment-4",
     projectId: "project-4",
     workspaceId: "workspace-3",
-    isHead: false,
     version: "3.0.0",
     description: "Dashboard deployment in progress",
     workflowUrl: "https://workflow-4.reearth-flow.com",
@@ -57,7 +49,6 @@ export const mockDeployments: MockDeployment[] = [
     id: "deployment-5",
     projectId: "project-5",
     workspaceId: "workspace-1",
-    isHead: false,
     version: "1.0.0",
     description: "Legacy migration deployment",
     workflowUrl: "https://workflow-5.reearth-flow.com",
@@ -69,7 +60,6 @@ export const mockDeployments: MockDeployment[] = [
     id: "deployment-6",
     projectId: "project-6",
     workspaceId: "workspace-4",
-    isHead: false,
     version: "1.2.0",
     description: "Design system components deployment",
     workflowUrl: "https://workflow-6.reearth-flow.com",
