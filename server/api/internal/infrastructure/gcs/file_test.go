@@ -1,10 +1,15 @@
 package gcs
 
 import (
+	"context"
 	"net/url"
 	"testing"
+	"time"
 
+	"cloud.google.com/go/storage"
+	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/api/option"
 )
 
 func TestGetGCSObjectURL(t *testing.T) {
@@ -106,6 +111,30 @@ func TestGetGCSObjectURL_WithUnderscores(t *testing.T) {
 			assert.Equal(t, expected, result)
 		})
 	}
+}
+
+func TestIssueUploadAssetLink_SignedURLFailureWrapsCause(t *testing.T) {
+	client, err := storage.NewClient(context.Background(), option.WithoutAuthentication())
+	assert.NoError(t, err)
+
+	baseURL, _ := url.Parse("https://storage.googleapis.com/mybucket")
+	repo := &fileRepo{
+		bucketName: "mybucket",
+		base:       baseURL,
+		client:     client,
+	}
+
+	link, err := repo.IssueUploadAssetLink(context.Background(), gateway.IssueUploadAssetParam{
+		UUID:      "test-uuid",
+		Filename:  "test.txt",
+		ExpiresAt: time.Now().Add(time.Hour),
+		Workspace: "ws",
+	})
+
+	assert.Nil(t, link)
+	assert.ErrorIs(t, err, gateway.ErrSignedURLFailed)
+	assert.NotEqual(t, gateway.ErrSignedURLFailed.Error(), err.Error(), "error must retain the underlying cause, not just the sentinel message")
+	assert.Contains(t, err.Error(), "GoogleAccessID", "underlying signing cause should be preserved")
 }
 
 func TestGetJobLogURL(t *testing.T) {

@@ -63,13 +63,33 @@ func NewFile(bucketName, base string, cacheControl string, replaceUploadURL bool
 		return nil, fmt.Errorf("failed to create GCS client: %w", err)
 	}
 
-	return &fileRepo{
+	repo := &fileRepo{
 		bucketName:       bucketName,
 		base:             u,
 		cacheControl:     cacheControl,
 		replaceUploadURL: replaceUploadURL,
 		client:           client,
-	}, nil
+	}
+
+	go repo.probeSignedURL(context.Background())
+
+	return repo, nil
+}
+
+// probeSignedURL issues a throwaway signed URL at startup to catch signing
+// misconfiguration (e.g. missing iam.serviceAccounts.signBlob on the runtime
+// service account) at deploy time rather than on a user's first upload. It
+// never creates an object and must not fail boot.
+func (f *fileRepo) probeSignedURL(ctx context.Context) {
+	p := path.Join(gcsAssetBasePath, "___signed_url_probe___")
+	_, err := f.bucket().SignedURL(p, &storage.SignedURLOptions{
+		Scheme:  storage.SigningSchemeV4,
+		Method:  http.MethodPut,
+		Expires: time.Now().Add(time.Minute),
+	})
+	if err != nil {
+		log.Errorfc(ctx, "gcs: startup SignedURL probe failed (bucket=%s): %v -- asset uploads will fail until signing is fixed (check IAM Credentials API and iam.serviceAccounts.signBlob on the runtime service account)", f.bucketName, err)
+	}
 }
 
 func (f *fileRepo) ReadAsset(ctx context.Context, name string) (io.ReadCloser, error) {
@@ -542,7 +562,7 @@ func (f *fileRepo) IssueUploadAssetLink(ctx context.Context, param gateway.Issue
 	uploadURL, err := bucket.SignedURL(p, opt)
 	if err != nil {
 		log.Errorfc(ctx, "gcs: SignedURL failed (path=%s, bucket=%s): %v", p, f.bucketName, err)
-		return nil, gateway.ErrUnsupportedOperation
+		return nil, fmt.Errorf("%w: %w", gateway.ErrSignedURLFailed, err)
 	}
 
 	return &gateway.UploadAssetLink{

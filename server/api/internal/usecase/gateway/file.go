@@ -23,6 +23,12 @@ var (
 	ErrFailedToRemoveWorkflow     error = errors.New("failed to remove workflow")
 	ErrUnsupportedContentEncoding error = errors.New("unsupported content encoding")
 	ErrUnsupportedOperation       error = errors.New("unsupported operation")
+	// ErrAssetUploadNotConfigured is returned when the deployment has no
+	// asset storage backend capable of issuing upload links (local-fs fallback).
+	ErrAssetUploadNotConfigured error = errors.New("asset upload is not configured for this deployment")
+	// ErrSignedURLFailed is returned when signing an asset upload URL fails.
+	// Wrap the underlying cause with %w so it can still be inspected/logged.
+	ErrSignedURLFailed error = errors.New("failed to sign asset upload url")
 )
 
 type IssueUploadAssetParam struct {
