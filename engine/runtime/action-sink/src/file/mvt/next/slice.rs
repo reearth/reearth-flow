@@ -54,9 +54,7 @@ pub(super) fn slice_leaves(
                 let diagonal = (x_bounds.1 - x_bounds.0).hypot(y_bounds.1 - y_bounds.0);
 
                 for zoom in min_z..=max_z {
-                    // A whole-feature bound is never smaller than any single tile's clipped
-                    // portion of it, so this can only skip zooms the real post-slice check
-                    // (tile.rs's SUBPIXEL_DIAMETER) would also have dropped.
+                    // early subpixel feature skip for efficient slicing
                     if diagonal * (1u64 << zoom) as f64 * (extent as f64) < 1.0 {
                         continue;
                     }
