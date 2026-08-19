@@ -12,11 +12,11 @@ func TestTracerConfig(t *testing.T) {
 	tests := []struct {
 		name         string
 		tracer       string
-		sample       float64
 		gcpProject   string
-		wantEnabled  bool
 		wantExporter apiotel.ExporterType
+		sample       float64
 		wantRatio    float64
+		wantEnabled  bool
 	}{
 		{name: "disabled by default", tracer: "", wantEnabled: false},
 		{name: "gcp", tracer: "gcp", sample: 0.5, gcpProject: "my-project", wantEnabled: true, wantExporter: apiotel.ExporterTypeGCP, wantRatio: 0.5},
