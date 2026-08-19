@@ -1,5 +1,6 @@
 use std::collections::HashMap;
 
+#[cfg(feature = "new-geometry")]
 use once_cell::sync::Lazy;
 #[cfg(not(feature = "new-geometry"))]
 use reearth_flow_geometry::types::geometry::Geometry2D;
@@ -26,6 +27,7 @@ use serde_json::Value;
 
 /// Geometry that closes on itself, or carries no extent to bound, leaves here
 /// with the geometry it arrived with.
+#[cfg(feature = "new-geometry")]
 pub static NO_BOUNDARY_PORT: Lazy<Port> = Lazy::new(|| Port::new("no-boundary"));
 
 #[derive(Debug, Clone, Default)]
@@ -56,12 +58,20 @@ impl ProcessorFactory for BoundaryExtractorFactory {
         vec![FEATURES_PORT.clone()]
     }
 
+    #[cfg(feature = "new-geometry")]
     fn get_output_ports(&self) -> Vec<Port> {
         vec![
             FEATURES_PORT.clone(),
             NO_BOUNDARY_PORT.clone(),
             REJECTED_PORT.clone(),
         ]
+    }
+
+    // The old geometry world cannot tell geometry that is bounded by nothing from
+    // geometry that has no boundary to give, so it reports both as rejected.
+    #[cfg(not(feature = "new-geometry"))]
+    fn get_output_ports(&self) -> Vec<Port> {
+        vec![FEATURES_PORT.clone(), REJECTED_PORT.clone()]
     }
 
     fn build(
@@ -79,14 +89,6 @@ impl ProcessorFactory for BoundaryExtractorFactory {
 struct BoundaryExtractor;
 
 impl Processor for BoundaryExtractor {
-    /// Replace the geometry with what bounds it, one dimension down: a volume
-    /// with its shells, a surface with the rings around it, a curve with its two
-    /// ends.
-    ///
-    /// Geometry bounded by nothing leaves via `no-boundary` with the geometry it
-    /// arrived with, so a workflow can tell "closed" from "not a surface". A
-    /// feature with no geometry, or one whose type has no boundary to give,
-    /// leaves via `rejected`.
     #[cfg(feature = "new-geometry")]
     fn process(
         &mut self,
@@ -127,34 +129,30 @@ impl Processor for BoundaryExtractor {
         let feature = &ctx.feature;
         let geometry = &feature.geometry;
 
-        if geometry.is_empty() {
-            fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
-            return Ok(());
-        }
-
-        let boundary = match &geometry.value {
-            GeometryValue::FlowGeometry2D(geo) => {
-                extract_2d_boundary(geo).map(GeometryValue::FlowGeometry2D)
+        let boundary = if geometry.is_empty() {
+            None
+        } else {
+            match &geometry.value {
+                GeometryValue::FlowGeometry2D(geo) => {
+                    extract_2d_boundary(geo).map(GeometryValue::FlowGeometry2D)
+                }
+                GeometryValue::FlowGeometry3D(geo) => {
+                    extract_3d_boundary(geo).map(GeometryValue::FlowGeometry3D)
+                }
+                // CityGML geometry has to be converted to a plain geometry first.
+                GeometryValue::None | GeometryValue::CityGmlGeometry(_) => None,
             }
-            GeometryValue::FlowGeometry3D(geo) => {
-                extract_3d_boundary(geo).map(GeometryValue::FlowGeometry3D)
-            }
-            // CityGML geometry has to be converted to a plain geometry first.
-            GeometryValue::None | GeometryValue::CityGmlGeometry(_) => LegacyBoundary::None,
         };
 
         match boundary {
-            LegacyBoundary::Boundary(value) => {
+            Some(value) => {
                 let mut new_geometry = (**geometry).clone();
                 new_geometry.value = value;
                 let mut new_feature = feature.clone();
                 new_feature.geometry = std::sync::Arc::new(new_geometry);
                 fw.send(ctx.new_with_feature_and_port(new_feature, FEATURES_PORT.clone()));
             }
-            LegacyBoundary::Empty => {
-                fw.send(ctx.new_with_feature_and_port(feature.clone(), NO_BOUNDARY_PORT.clone()));
-            }
-            LegacyBoundary::None => {
+            None => {
                 fw.send(ctx.new_with_feature_and_port(feature.clone(), REJECTED_PORT.clone()));
             }
         }
@@ -178,63 +176,40 @@ impl Processor for BoundaryExtractor {
     }
 }
 
-/// What a geometry turned out to be bounded by, so the three cases the ports
-/// distinguish cannot be collapsed into one another.
-#[cfg(not(feature = "new-geometry"))]
-enum LegacyBoundary<T> {
-    /// The geometry it is bounded by.
-    Boundary(T),
-    /// Bounded by nothing: it closes on itself, or has no extent to bound.
-    Empty,
-    /// A type with no boundary to give.
-    None,
-}
-
-#[cfg(not(feature = "new-geometry"))]
-impl<T> LegacyBoundary<T> {
-    fn map<U>(self, f: impl FnOnce(T) -> U) -> LegacyBoundary<U> {
-        match self {
-            LegacyBoundary::Boundary(t) => LegacyBoundary::Boundary(f(t)),
-            LegacyBoundary::Empty => LegacyBoundary::Empty,
-            LegacyBoundary::None => LegacyBoundary::None,
-        }
-    }
-}
-
 /// The rings of every face, exterior then holes, as one geometry.
 #[cfg(not(feature = "new-geometry"))]
-fn rings_2d(rings: Vec<LineString2D<f64>>) -> LegacyBoundary<Geometry2D<f64>> {
+fn rings_2d(rings: Vec<LineString2D<f64>>) -> Option<Geometry2D<f64>> {
     match rings.len() {
-        0 => LegacyBoundary::Empty,
-        1 => LegacyBoundary::Boundary(Geometry2D::LineString(rings.into_iter().next().unwrap())),
-        _ => LegacyBoundary::Boundary(Geometry2D::MultiLineString(MultiLineString2D::new(rings))),
+        0 => None,
+        1 => Some(Geometry2D::LineString(rings.into_iter().next().unwrap())),
+        _ => Some(Geometry2D::MultiLineString(MultiLineString2D::new(rings))),
     }
 }
 
 #[cfg(not(feature = "new-geometry"))]
-fn rings_3d(rings: Vec<LineString3D<f64>>) -> LegacyBoundary<Geometry3D<f64>> {
+fn rings_3d(rings: Vec<LineString3D<f64>>) -> Option<Geometry3D<f64>> {
     match rings.len() {
-        0 => LegacyBoundary::Empty,
-        1 => LegacyBoundary::Boundary(Geometry3D::LineString(rings.into_iter().next().unwrap())),
-        _ => LegacyBoundary::Boundary(Geometry3D::MultiLineString(MultiLineString3D::new(rings))),
+        0 => None,
+        1 => Some(Geometry3D::LineString(rings.into_iter().next().unwrap())),
+        _ => Some(Geometry3D::MultiLineString(MultiLineString3D::new(rings))),
     }
 }
 
 #[cfg(not(feature = "new-geometry"))]
-fn extract_2d_boundary(geo: &Geometry2D<f64>) -> LegacyBoundary<Geometry2D<f64>> {
+fn extract_2d_boundary(geo: &Geometry2D<f64>) -> Option<Geometry2D<f64>> {
     match geo {
         // Positions have no extent, so nothing bounds them.
-        Geometry2D::Point(_) | Geometry2D::MultiPoint(_) => LegacyBoundary::Empty,
+        Geometry2D::Point(_) | Geometry2D::MultiPoint(_) => None,
 
-        Geometry2D::Line(line) => LegacyBoundary::Boundary(Geometry2D::GeometryCollection(vec![
+        Geometry2D::Line(line) => Some(Geometry2D::GeometryCollection(vec![
             Geometry2D::Point(line.start_point()),
             Geometry2D::Point(line.end_point()),
         ])),
 
         // A chain is bounded by its two ends; one that closes has none.
         Geometry2D::LineString(ls) => match chain_ends_2d(ls) {
-            Some(points) => LegacyBoundary::Boundary(Geometry2D::GeometryCollection(points)),
-            None => LegacyBoundary::Empty,
+            Some(points) => Some(Geometry2D::GeometryCollection(points)),
+            None => None,
         },
 
         Geometry2D::Polygon(polygon) => rings_2d(polygon.rings().to_vec()),
@@ -242,9 +217,9 @@ fn extract_2d_boundary(geo: &Geometry2D<f64>) -> LegacyBoundary<Geometry2D<f64>>
         Geometry2D::MultiLineString(mls) => {
             let ends: Vec<_> = mls.iter().filter_map(chain_ends_2d).flatten().collect();
             if ends.is_empty() {
-                LegacyBoundary::Empty
+                None
             } else {
-                LegacyBoundary::Boundary(Geometry2D::GeometryCollection(ends))
+                Some(Geometry2D::GeometryCollection(ends))
             }
         }
 
@@ -253,33 +228,33 @@ fn extract_2d_boundary(geo: &Geometry2D<f64>) -> LegacyBoundary<Geometry2D<f64>>
         }
 
         Geometry2D::Rect(rect) => {
-            LegacyBoundary::Boundary(Geometry2D::LineString(rect.to_polygon().exterior().clone()))
+            Some(Geometry2D::LineString(rect.to_polygon().exterior().clone()))
         }
 
         Geometry2D::Triangle(triangle) => {
             let c = triangle.to_array();
-            LegacyBoundary::Boundary(Geometry2D::LineString(LineString2D::from(vec![
+            Some(Geometry2D::LineString(LineString2D::from(vec![
                 c[0], c[1], c[2], c[0],
             ])))
         }
 
-        _ => LegacyBoundary::None,
+        _ => None,
     }
 }
 
 #[cfg(not(feature = "new-geometry"))]
-fn extract_3d_boundary(geo: &Geometry3D<f64>) -> LegacyBoundary<Geometry3D<f64>> {
+fn extract_3d_boundary(geo: &Geometry3D<f64>) -> Option<Geometry3D<f64>> {
     match geo {
-        Geometry3D::Point(_) | Geometry3D::MultiPoint(_) => LegacyBoundary::Empty,
+        Geometry3D::Point(_) | Geometry3D::MultiPoint(_) => None,
 
-        Geometry3D::Line(line) => LegacyBoundary::Boundary(Geometry3D::GeometryCollection(vec![
+        Geometry3D::Line(line) => Some(Geometry3D::GeometryCollection(vec![
             Geometry3D::Point(line.start_point()),
             Geometry3D::Point(line.end_point()),
         ])),
 
         Geometry3D::LineString(ls) => match chain_ends_3d(ls) {
-            Some(points) => LegacyBoundary::Boundary(Geometry3D::GeometryCollection(points)),
-            None => LegacyBoundary::Empty,
+            Some(points) => Some(Geometry3D::GeometryCollection(points)),
+            None => None,
         },
 
         Geometry3D::Polygon(polygon) => rings_3d(polygon.rings().to_vec()),
@@ -287,9 +262,9 @@ fn extract_3d_boundary(geo: &Geometry3D<f64>) -> LegacyBoundary<Geometry3D<f64>>
         Geometry3D::MultiLineString(mls) => {
             let ends: Vec<_> = mls.iter().filter_map(chain_ends_3d).flatten().collect();
             if ends.is_empty() {
-                LegacyBoundary::Empty
+                None
             } else {
-                LegacyBoundary::Boundary(Geometry3D::GeometryCollection(ends))
+                Some(Geometry3D::GeometryCollection(ends))
             }
         }
 
@@ -297,13 +272,11 @@ fn extract_3d_boundary(geo: &Geometry3D<f64>) -> LegacyBoundary<Geometry3D<f64>>
             rings_3d(mp.iter().flat_map(|p| p.rings().to_vec()).collect())
         }
 
-        Geometry3D::Rect(rect) => {
-            LegacyBoundary::Boundary(Geometry3D::MultiPolygon(rect.to_multi_polygon()))
-        }
+        Geometry3D::Rect(rect) => Some(Geometry3D::MultiPolygon(rect.to_multi_polygon())),
 
         Geometry3D::Triangle(triangle) => {
             let c = triangle.to_array();
-            LegacyBoundary::Boundary(Geometry3D::LineString(LineString3D::from(vec![
+            Some(Geometry3D::LineString(LineString3D::from(vec![
                 c[0], c[1], c[2], c[0],
             ])))
         }
@@ -314,35 +287,20 @@ fn extract_3d_boundary(geo: &Geometry3D<f64>) -> LegacyBoundary<Geometry3D<f64>>
 
         // A volume is bounded by its surface.
         Geometry3D::Solid(solid) => match solid.clone().as_triangle_mesh(None) {
-            Ok(mesh) => LegacyBoundary::Boundary(Geometry3D::TriangularMesh(mesh)),
-            Err(_) => LegacyBoundary::None,
+            Ok(mesh) => Some(Geometry3D::TriangularMesh(mesh)),
+            Err(_) => None,
         },
 
         Geometry3D::GeometryCollection(collection) => {
-            let mut bounded = Vec::new();
-            let mut any = false;
-            for member in collection {
-                match extract_3d_boundary(member) {
-                    LegacyBoundary::Boundary(b) => {
-                        any = true;
-                        bounded.push(b);
-                    }
-                    LegacyBoundary::Empty => any = true,
-                    LegacyBoundary::None => {}
-                }
-            }
-            if !any && !collection.is_empty() {
-                LegacyBoundary::None
-            } else if bounded.is_empty() {
-                LegacyBoundary::Empty
-            } else if bounded.len() == 1 {
-                LegacyBoundary::Boundary(bounded.into_iter().next().unwrap())
-            } else {
-                LegacyBoundary::Boundary(Geometry3D::GeometryCollection(bounded))
+            let bounded: Vec<_> = collection.iter().filter_map(extract_3d_boundary).collect();
+            match bounded.len() {
+                0 => None,
+                1 => Some(bounded.into_iter().next().unwrap()),
+                _ => Some(Geometry3D::GeometryCollection(bounded)),
             }
         }
 
-        _ => LegacyBoundary::None,
+        _ => None,
     }
 }
 
@@ -374,9 +332,7 @@ fn chain_ends_3d(ls: &LineString3D<f64>) -> Option<Vec<Geometry3D<f64>>> {
 
 /// The edges only one triangle walks, chained into rings.
 #[cfg(not(feature = "new-geometry"))]
-fn extract_mesh_boundary(
-    mesh: &TriangularMesh<f64, f64>,
-) -> LegacyBoundary<MultiLineString3D<f64>> {
+fn extract_mesh_boundary(mesh: &TriangularMesh<f64, f64>) -> Option<MultiLineString3D<f64>> {
     let mut walks: HashMap<(usize, usize), usize> = HashMap::new();
     for triangle in mesh.get_triangles() {
         for edge in [
@@ -393,7 +349,7 @@ fn extract_mesh_boundary(
         .filter_map(|(edge, count)| (count == 1).then_some(edge))
         .collect::<Vec<_>>();
     if edges.is_empty() {
-        return LegacyBoundary::Empty;
+        return None;
     }
     edges.sort_unstable();
 
@@ -500,9 +456,9 @@ fn extract_mesh_boundary(
     }
 
     if chains.is_empty() {
-        LegacyBoundary::Empty
+        None
     } else {
-        LegacyBoundary::Boundary(MultiLineString3D::new(chains))
+        Some(MultiLineString3D::new(chains))
     }
 }
 
