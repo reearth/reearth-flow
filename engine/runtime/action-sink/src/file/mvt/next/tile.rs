@@ -281,16 +281,24 @@ pub(super) fn make_tile(
         .filter_map(|feature| build_candidate(extent, feature))
         .filter(|c| c.diameter.is_none_or(|d| d >= SUBPIXEL_DIAMETER))
         .collect();
-    // Fewest geometry commands first, so the least-detailed feature is the one dropped when the
-    // real encoded tile below still doesn't fit under the cap.
-    candidates.sort_by_key(|c| c.geometry.len());
+    // Drop the visually smallest (by diameter) first when trimming for size.
+    candidates.sort_by(|a, b| {
+        a.diameter
+            .unwrap_or(0.0)
+            .total_cmp(&b.diameter.unwrap_or(0.0))
+    });
 
     loop {
         let bytes = encode_tile(extent, &candidates);
-        if bytes.len() as u64 <= max_tile_bytes || candidates.is_empty() {
+        let actual = bytes.len() as u64;
+        if actual <= max_tile_bytes || candidates.is_empty() {
             return Ok(bytes);
         }
-        candidates.remove(0);
+        // Drop roughly (actual - max_tile_bytes) / actual of the smallest-diameter candidates
+        // +1 floor guarantees halt
+        let over = (actual - max_tile_bytes) as u128 * candidates.len() as u128;
+        let drop = (over / actual as u128) as usize + 1;
+        candidates = candidates.split_off(drop);
     }
 }
 

@@ -156,22 +156,24 @@ fn normalize_winding(mut rings: Vec<Vec<Point>>) -> (Vec<Point>, Vec<Vec<Point>>
     let holes = rings.split_off(1);
     let mut exterior = rings.remove(0);
     let exterior_area = ring_area(&exterior);
-    if exterior_area < 0.0 {
+    if exterior_area > 0.0 {
         tracing::warn!(
             area = exterior_area,
-            "MVT Writer: polygon exterior ring is not CCW as required; reversing it"
+            "MVT Writer: polygon exterior ring is not CCW as required"
         );
+    } else {
         exterior.reverse();
     }
     let holes = holes
         .into_iter()
         .map(|mut hole| {
             let hole_area = ring_area(&hole);
-            if hole_area > 0.0 {
+            if hole_area < 0.0 {
                 tracing::warn!(
                     area = hole_area,
-                    "MVT Writer: polygon hole ring is not CW as required; reversing it"
+                    "MVT Writer: polygon hole ring is not CW as required"
                 );
+            } else {
                 hole.reverse();
             }
             hole

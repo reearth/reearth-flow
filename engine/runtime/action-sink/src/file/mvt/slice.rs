@@ -68,15 +68,8 @@ pub(super) fn slice_cityobj_geoms<'a>(
                             });
 
                             let poly = normalize_winding(poly);
-                            let area = poly.area();
 
                             for zoom in min_z..=max_z {
-                                // Skip if the polygon is smaller than 4 square subpixels
-                                //
-                                // TODO: emulate the 'tiny-polygon-reduction' of tippecanoe
-                                if area * (4u64.pow(zoom as u32 + max_detail) as f64) < 4.0 {
-                                    continue;
-                                }
                                 slice_polygon(
                                     zoom,
                                     extent,
@@ -140,12 +133,8 @@ pub(super) fn slice_cityobj_geoms<'a>(
                     });
 
                     let poly = normalize_winding(poly);
-                    let area = poly.area();
 
                     for zoom in min_z..=max_z {
-                        if area * (4u64.pow(zoom as u32 + max_detail) as f64) < 4.0 {
-                            continue;
-                        }
                         slice_polygon(zoom, extent, buffer, &poly, layer_name, &mut tiled_mpolys);
                     }
                 };
