@@ -180,6 +180,21 @@ pub fn segment_intersections_2d(
     segment_intersections_leaves(&a_leaves, &b_leaves)
 }
 
+/// Dissolve `shapes`, each a list of rings (outer contour first, then holes,
+/// every ring wound to Flow's convention and implicitly closed), into disjoint
+/// polygons in `frame` under the non-zero fill rule.
+#[cfg(feature = "new-geometry")]
+pub(crate) fn dissolve_shapes(
+    shapes: Vec<Vec<Vec<[f64; 2]>>>,
+    frame: &CoordinateFrame,
+) -> Vec<Polygon2D> {
+    let empty: Vec<shapes::Shape> = Vec::new();
+    shapes::shapes_to_polygons(
+        shapes.overlay(&empty, OverlayRule::Union, FillRule::NonZero),
+        frame,
+    )
+}
+
 // --- leaf-level implementations ------------------------------------------------
 
 fn overlay_leaves(a: &[Leaf2D<'_>], b: &[Leaf2D<'_>], op: OverlayOp) -> Result<Vec<Polygon2D>> {

@@ -1855,7 +1855,17 @@
                   }
                 }
               }
-            ]
+            ],
+            "properties": {
+              "epsgColumn": {
+                "title": "EPSG Column Name",
+                "description": "Optional name of a column to write the geometry's EPSG code into. Left empty when the geometry does not resolve to a single EPSG code (no coordinate reference system, or more than one).",
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
           }
         }
       },
@@ -5069,8 +5079,138 @@
     {
       "name": "Footprint Replacer",
       "type": "processor",
-      "description": "将3D几何体投影到XY平面并计算联合底面轮廓（支持实体、面和CityGML）",
-      "parameter": null,
+      "description": "将要素的几何体替换为其底面轮廓：面在水平面或自定义平面上投影并融合的结果",
+      "parameter": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "title": "Footprint Replacer 参数",
+        "description": "配置几何体投影到的平面。几何体必须处于欧几里得坐标系或以长度为单位的坐标参考系中；投影后面积小于 1e-6 平方单位的面会被丢弃。",
+        "type": "object",
+        "properties": {
+          "projectionPlane": {
+            "title": "投影平面",
+            "description": "几何体投影到的平面。默认为水平面。",
+            "default": {
+              "type": "horizontal"
+            },
+            "allOf": [
+              {
+                "$ref": "#/definitions/ProjectionPlane"
+              }
+            ]
+          }
+        },
+        "definitions": {
+          "ProjectionPlane": {
+            "description": "The plane the footprint is projected onto.",
+            "oneOf": [
+              {
+                "title": "Horizontal",
+                "description": "Projects along the vertical axis onto the horizontal plane, dropping height. The footprint stays in the geometry's horizontal coordinate system.",
+                "type": "object",
+                "required": [
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "horizontal"
+                    ]
+                  }
+                }
+              },
+              {
+                "title": "Custom Plane",
+                "description": "Projects along a plane's normal onto that plane. The footprint is expressed in in-plane coordinates anchored at the plane origin.",
+                "type": "object",
+                "required": [
+                  "normal",
+                  "type"
+                ],
+                "properties": {
+                  "type": {
+                    "type": "string",
+                    "enum": [
+                      "custom"
+                    ]
+                  },
+                  "normal": {
+                    "title": "Normal",
+                    "description": "Expression evaluating to the plane normal `[x, y, z]` in the geometry's coordinate frame; any non-zero length.",
+                    "type": "object",
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "origin": {
+                    "title": "Origin",
+                    "description": "Expression evaluating to the plane origin `[x, y, z]` in the geometry's coordinate frame. Defaults to `[0, 0, 0]`.",
+                    "default": null,
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  },
+                  "xAxis": {
+                    "title": "X Axis",
+                    "description": "Expression evaluating to a direction `[x, y, z]` whose in-plane component becomes the footprint's x axis. When omitted, the footprint's y axis is the in-plane direction closest to vertical.",
+                    "default": null,
+                    "type": [
+                      "object",
+                      "null"
+                    ],
+                    "format": "code",
+                    "required": [
+                      "type",
+                      "value"
+                    ],
+                    "properties": {
+                      "type": {
+                        "type": "string",
+                        "enum": [
+                          "flowExpr"
+                        ]
+                      },
+                      "value": {
+                        "type": "string"
+                      }
+                    }
+                  }
+                }
+              }
+            ]
+          }
+        }
+      },
       "builtin": true,
       "inputPorts": [
         "features"
@@ -12067,7 +12207,7 @@
         "properties": {
           "encoding": {
             "title": "Character Encoding",
-            "description": "Character encoding for attribute data in the DBF file, such as \"UTF-8\", \"Shift-JIS\", or \"Windows-1252\"; labels are case-insensitive. When omitted, the encoding is taken from the .cpg file if present, otherwise UTF-8 (UTF-16 is not supported).",
+            "description": "DBF 文件中属性数据的字符编码，例如 \"UTF-8\"、\"Shift-JIS\" 或 \"Windows-1252\"；标签不区分大小写。省略时，优先使用 .cpg 文件，其次使用 .dbf 头部声明的代码页，否则使用 UTF-8（不支持 UTF-16）。",
             "type": [
               "string",
               "null"
@@ -12167,6 +12307,31 @@
             "title": "Output Directory",
             "description": "Output directory path or expression where the generated Shapefile files are written.",
             "type": "object",
+            "format": "code",
+            "required": [
+              "type",
+              "value"
+            ],
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "flowExpr",
+                  "string"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            }
+          },
+          "compressOutput": {
+            "title": "Compressed Output Directory",
+            "description": "Optional directory where each Shapefile is written as its own ZIP archive, holding that Shapefile's .shp, .shx, .dbf, .cpg and .prj, instead of as loose files. Leave unset to write loose files.",
+            "type": [
+              "object",
+              "null"
+            ],
             "format": "code",
             "required": [
               "type",

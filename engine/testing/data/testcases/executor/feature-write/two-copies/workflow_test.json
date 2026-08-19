@@ -1,6 +1,5 @@
 {
   "description": "Test feature writing with two instances of the same subgraph definition (fan-out to two copies)",
-  "skipNewGeometry": true,
   "workflowPath": "executor-testing/feature-write/two-copies.yml",
   "expectedOutput": {
     "expectedFile": "output.csv"

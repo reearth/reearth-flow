@@ -660,6 +660,14 @@
           "description": "作成するCSV/TSVファイルの出力パスまたは式"
         }
       },
+      "definitionI18n": {
+        "GeometryExportConfig": {
+          "epsgColumn": {
+            "title": "EPSG Column Name",
+            "description": "Optional name of a column to write the geometry's EPSG code into. Left empty when the geometry does not resolve to a single EPSG code (no coordinate reference system, or more than one)."
+          }
+        }
+      },
       "enumI18n": {
         "CsvFormat": {
           "csv": {
@@ -1569,7 +1577,17 @@
     },
     {
       "name": "Footprint Replacer",
-      "description": "地物の 3D ジオメトリを、XY 平面に投影した 2D フットプリントに置き換える"
+      "description": "地物のジオメトリをフットプリント（面を水平面または任意の平面に投影して融合したもの）に置き換える",
+      "parameterI18n": {
+        "": {
+          "title": "Footprint Replacer パラメータ",
+          "description": "ジオメトリを投影する平面を設定する。ジオメトリはユークリッド座標系または長さ単位の座標参照系でなければならない。投影後の面積が 1e-6 平方単位未満の面は除外される。"
+        },
+        "projectionPlane": {
+          "title": "投影平面",
+          "description": "ジオメトリを投影する平面。省略時は水平面。"
+        }
+      }
     },
     {
       "name": "GeoJSON Reader",
@@ -3500,7 +3518,7 @@
         },
         "encoding": {
           "title": "文字エンコーディング",
-          "description": "DBF ファイルの属性データの文字エンコーディング（例: \"UTF-8\"、\"Shift-JIS\"、\"Windows-1252\"）。ラベルは大文字小文字を区別しない。未指定時は .cpg ファイルがあればそれに従い、なければ UTF-8（UTF-16 は非対応）"
+          "description": "DBF ファイルの属性データの文字エンコーディング（例: \"UTF-8\"、\"Shift-JIS\"、\"Windows-1252\"）。ラベルは大文字小文字を区別しない。未指定時は .cpg ファイルがあればそれに従い、なければ .dbf ヘッダーが宣言するコードページ、それもなければ UTF-8（UTF-16 は非対応）"
         },
         "force2D": {
           "title": "2D に強制",
@@ -3519,6 +3537,10 @@
         "": {
           "title": "ShapefileWriter パラメータ",
           "description": "地物をESRI Shapefile形式に書き出す設定"
+        },
+        "compressOutput": {
+          "title": "圧縮出力ディレクトリ",
+          "description": "各ShapefileをZIPアーカイブとして書き出すディレクトリ（任意）。アーカイブには対象Shapefileの.shp、.shx、.dbf、.cpg、.prjが含まれます。未設定の場合は非圧縮のファイル群として書き出します"
         },
         "groupBy": {
           "title": "グループ化属性",

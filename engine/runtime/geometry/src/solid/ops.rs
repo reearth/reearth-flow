@@ -251,6 +251,24 @@ impl Coerce for Solid {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+use crate::ops::{Footprint, FootprintError, FootprintSink};
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for Solid {
+    /// Push the faces of every shell, voids included.
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        sink.enter(self.frame())?;
+        for shell in std::iter::once(&self.exterior).chain(self.interiors.iter()) {
+            match shell {
+                Shell::PolygonMesh(data) => data.footprint_faces(sink),
+                Shell::TriangularMesh(data) => data.footprint_faces(sink),
+            }
+        }
+        Ok(())
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

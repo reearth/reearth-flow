@@ -68,6 +68,15 @@ pub enum ShapefileError {
     PolygonNoRings,
     #[error("Polygon has no outer rings")]
     PolygonNoOuterRings,
+    #[cfg(feature = "new-geometry")]
+    #[error("No complete shapefile found in ZIP archive. Required files: .shp and .dbf")]
+    NoCompleteShapefile,
+    #[cfg(feature = "new-geometry")]
+    #[error("Multipatch has no patches")]
+    MultipatchNoPatches,
+    #[cfg(feature = "new-geometry")]
+    #[error("Multipatch describes a surface in space and cannot be read as 2D. Turn off `force2D` to read it")]
+    MultipatchNotTwoDimensional,
 }
 
 #[derive(Error, Debug)]
