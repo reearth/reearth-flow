@@ -21,22 +21,38 @@ The mock server uses **Mock Service Worker (MSW)** to intercept GraphQL requests
 Set the environment variable in your `.env` file:
 
 ```bash
-FLOW_ENABLE_MOCK=true
+FLOW_MOCK_ENABLED=true
 ```
 
 ### 2. Start Development Server
 
 ```bash
-yarn start
+FLOW_MOCK_ENABLED=true yarn start
 ```
 
-The mock server will automatically start and intercept GraphQL requests.
+The mock server starts and intercepts GraphQL requests.
+
+Two things to know:
+
+- **Authentication is bypassed in mock mode.** `AuthProvider` substitutes
+  `useMockAuth` (`src/lib/auth/mockAuth.ts`) so the app renders without an identity
+  provider. Guarded by `import.meta.env.DEV`, which Vite replaces with `false` when
+  building, so the bypass is eliminated from production bundles rather than merely
+  disabled. Before this existed, mock mode rendered a blank page: `AuthProvider`
+  returned `null` and, because that is legal React, there was no error to see.
+- **The editor canvas still needs a WebSocket server.** `useYjsSetup` only renders
+  the canvas once the Yjs provider syncs, so mocking GraphQL alone is not enough to
+  open a project. Run `server/websocket-go` (with Redis and fake-gcs) alongside.
+
+If Service Worker registration fails, which happens in some embedded browsers, the
+app now logs the failure and continues to mount rather than silently rendering
+nothing. GraphQL will then hit the real API instead of the mocks.
 
 ## Configuration
 
 ### Environment Variables
 
-- `FLOW_ENABLE_MOCK=true` - Enable the mock server
+- `FLOW_MOCK_ENABLED=true` - Enable the mock server
 - `FLOW_AUTH_PROVIDER=mock` - Use mock authentication
 - `FLOW_DEV_MODE=true` - Enable development mode
 
@@ -204,8 +220,6 @@ mocks/
 ├── README.md                 # This documentation
 ├── index.ts                  # Mock server entry point
 ├── browser.ts                # MSW browser setup
-├── auth/
-│   └── MockAuthProvider.tsx  # Mock authentication provider
 ├── data/                     # Mock data definitions
 │   ├── users.ts
 │   ├── workspaces.ts
@@ -235,7 +249,7 @@ When the mock server is running, you'll see console logs for GraphQL operations:
 The mock server automatically disables itself in production:
 
 - Only runs when `NODE_ENV === "development"`
-- Requires explicit `FLOW_ENABLE_MOCK=true` configuration
+- Requires explicit `FLOW_MOCK_ENABLED=true` configuration
 - Service worker excluded from production builds
 
 ## Troubleshooting
@@ -245,7 +259,7 @@ The mock server automatically disables itself in production:
 1. Check environment variables:
 
    ```bash
-   FLOW_ENABLE_MOCK=true
+   FLOW_MOCK_ENABLED=true
    ```
 
 2. Verify MSW service worker is installed:
