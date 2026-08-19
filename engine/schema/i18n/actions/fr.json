@@ -2549,19 +2549,6 @@
       }
     },
     {
-      "name": "Model Georeferencer",
-      "parameterI18n": {
-        "": {
-          "title": "Paramètres du Géoréférenceur de Modèles",
-          "description": "Contrôle l'orientation et le positionnement des coordonnées de l'espace du modèle sur le globe."
-        },
-        "placement": {
-          "title": "Positionnement",
-          "description": "Comment le modèle est positionné sur le globe."
-        }
-      }
-    },
-    {
       "name": "Neighbor Finder",
       "description": "Trouve les entités candidates les plus proches pour chaque entité de base basée sur la proximité spatiale",
       "parameterI18n": {
