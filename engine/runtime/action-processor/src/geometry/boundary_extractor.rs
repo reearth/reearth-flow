@@ -67,8 +67,6 @@ impl ProcessorFactory for BoundaryExtractorFactory {
         ]
     }
 
-    // The old geometry world cannot tell geometry that is bounded by nothing from
-    // geometry that has no boundary to give, so it reports both as rejected.
     #[cfg(not(feature = "new-geometry"))]
     fn get_output_ports(&self) -> Vec<Port> {
         vec![FEATURES_PORT.clone(), REJECTED_PORT.clone()]
