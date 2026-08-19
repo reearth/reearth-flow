@@ -34,7 +34,10 @@ fn quantize(points: &[[f64; 2]], extent: i32) -> Vec<[i32; 2]> {
     points
         .iter()
         .map(|&[x, y]| {
-            [(x * extent as f64).round() as i32, (y * extent as f64).round() as i32]
+            [
+                (x * extent as f64).round() as i32,
+                (y * extent as f64).round() as i32,
+            ]
         })
         .collect()
 }
@@ -293,8 +296,8 @@ pub(super) fn make_tile(
 
 #[cfg(test)]
 mod tests {
-    use super::*;
     use super::super::slice::Point;
+    use super::*;
 
     #[test]
     fn drops_least_detailed_feature_to_fit_the_size_cap() {

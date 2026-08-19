@@ -20,7 +20,6 @@ use slice::{slice_leaves, TileKey, TiledGeom};
 use tile::{make_tile, SlicedFeature, SlicedGeom};
 
 const MAX_DETAIL: u32 = 12;
-const MARGIN_PIXELS: u32 = 5;
 
 impl MVTWriter {
     pub(super) fn process_new_geometry(
@@ -118,8 +117,7 @@ fn write_tileset(
             acc.layer_names.insert(layer_name.clone());
             let mut cache = ReprojectionCache::new();
             let leaves = extract(&feature.geometry, &mut cache);
-            let (content, tiled) =
-                slice_leaves(leaves, min_zoom, max_zoom, MAX_DETAIL, MARGIN_PIXELS);
+            let (content, tiled) = slice_leaves(leaves, min_zoom, max_zoom, MAX_DETAIL);
             acc.content = std::mem::take(&mut acc.content).union(content);
             for tiled_leaf in tiled {
                 let sliced = to_sliced_feature(layer_name, tiled_leaf.geom, feature);
