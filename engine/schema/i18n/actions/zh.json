@@ -380,6 +380,28 @@
       }
     },
     {
+      "name": "Attribute Table Extractor",
+      "description": "根据以要素类型属性为键的源/目标路径对照表，在嵌套的map或list属性路径之间移动值。当目标路径包含多个片段时，会按需创建嵌套map",
+      "parameterI18n": {
+        "": {
+          "title": "Attribute Table Extractor 参数",
+          "description": "配置用于移动嵌套属性值的源/目标路径对照表"
+        },
+        "dataset": {
+          "title": "数据集URI",
+          "description": "抽取表文件的路径或URI。提供此项或内联数据二选一"
+        },
+        "inline": {
+          "title": "内联表",
+          "description": "直接以JSON形式提供的抽取表内容。在未提供数据集URI时使用"
+        },
+        "typeAttribute": {
+          "title": "要素类型属性",
+          "description": "其值用于选择表中应用于该要素的规则集的属性。默认为`__citygml_feature_type`"
+        }
+      }
+    },
+    {
       "name": "Boundary Extractor",
       "description": "提取几何体的边界。对于实体/网格返回边界面，对于面返回边界边，对于封闭面返回空几何体",
       "parameterI18n": {
@@ -636,6 +658,14 @@
         "output": {
           "title": "Output File",
           "description": "Output path or expression for the CSV/TSV file to create"
+        }
+      },
+      "definitionI18n": {
+        "GeometryExportConfig": {
+          "epsgColumn": {
+            "title": "EPSG Column Name",
+            "description": "Optional name of a column to write the geometry's EPSG code into. Left empty when the geometry does not resolve to a single EPSG code (no coordinate reference system, or more than one)."
+          }
         }
       },
       "enumI18n": {
@@ -1195,9 +1225,9 @@
           "title": "提取标签",
           "description": "要展开为独立要素的要素类型名称。接受限定形式（`bldg:Building`）、本地形式（`Building`）或Clark记法（`{http://…}Building`）。留空表示原样输出所有顶级城市对象。"
         },
-        "flattenMeasureTypes": {
-          "title": "展平度量类型",
-          "description": "为true时，具有单个`uom`属性和数值文本内容的元素将被转换为数值，单位以兄弟键`{name}_uom`存储。默认为false。"
+        "flattenLeafAttributes": {
+          "title": "展平叶属性",
+          "description": "标记可折叠叶节点的属性名（例如`uom`）：只含此列表中一个XML属性、没有子元素且文本内容为数值的元素会被转换为数值，该属性的值存储为兄弟键`{name}_{attribute}`。默认为空，表示禁用此功能。"
         },
         "flattenSingleChildObjects": {
           "title": "展平单子对象节点",
@@ -1484,7 +1514,7 @@
         "Transform": {
           "expr": {
             "title": "Expression",
-            "description": "Expression over `attributes` and `env` returning a map that becomes the feature's complete attribute set. A result that is not a map, or an expression that fails to evaluate, leaves the attributes unchanged."
+            "description": "Expression over `attributes` and `variables` returning a map that becomes the feature's complete attribute set. A result that is not a map, or an expression that fails to evaluate, leaves the attributes unchanged."
           }
         }
       }
@@ -1547,7 +1577,17 @@
     },
     {
       "name": "Footprint Replacer",
-      "description": "将3D几何体投影到XY平面并计算联合底面轮廓（支持实体、面和CityGML）"
+      "description": "将要素的几何体替换为其底面轮廓：面在水平面或自定义平面上投影并融合的结果",
+      "parameterI18n": {
+        "": {
+          "title": "Footprint Replacer 参数",
+          "description": "配置几何体投影到的平面。几何体必须处于欧几里得坐标系或以长度为单位的坐标参考系中；投影后面积小于 1e-6 平方单位的面会被丢弃。"
+        },
+        "projectionPlane": {
+          "title": "投影平面",
+          "description": "几何体投影到的平面。默认为水平面。"
+        }
+      }
     },
     {
       "name": "GeoJSON Reader",
@@ -1740,7 +1780,24 @@
           "description": "Configuration for coercing geometries to specific target types."
         },
         "targetType": {
-          "description": "Target geometry type to coerce features to (e.g., LineString)"
+          "title": "Target Type",
+          "description": "Geometry type to re-represent each feature as. A feature the target does not apply to passes through unchanged."
+        }
+      },
+      "enumI18n": {
+        "CoercionTarget": {
+          "lineString": {
+            "title": "Line String",
+            "description": "Replaces every face with the polylines of its boundary rings, holes included."
+          },
+          "polygon": {
+            "title": "Polygon",
+            "description": "Rebuilds faces: a closed line string becomes the face it bounds, and a surface or a solid becomes the individual faces it is built from."
+          },
+          "triangularMesh": {
+            "title": "Triangular Mesh",
+            "description": "Tessellates a face or a surface into triangles. A solid stays a solid, with its boundary triangulated."
+          }
         }
       }
     },
@@ -3469,7 +3526,7 @@
         },
         "encoding": {
           "title": "Character Encoding",
-          "description": "Character encoding for attribute data in the DBF file, such as \"UTF-8\", \"Shift-JIS\", or \"Windows-1252\"; labels are case-insensitive. When omitted, the encoding is taken from the .cpg file if present, otherwise UTF-8 (UTF-16 is not supported)."
+          "description": "DBF 文件中属性数据的字符编码，例如 \"UTF-8\"、\"Shift-JIS\" 或 \"Windows-1252\"；标签不区分大小写。省略时，优先使用 .cpg 文件，其次使用 .dbf 头部声明的代码页，否则使用 UTF-8（不支持 UTF-16）。"
         },
         "force2D": {
           "title": "Force 2D",
@@ -3488,6 +3545,10 @@
         "": {
           "title": "ShapefileWriter Parameters",
           "description": "Configuration for writing features to ESRI Shapefile format."
+        },
+        "compressOutput": {
+          "title": "Compressed Output Directory",
+          "description": "Optional directory where each Shapefile is written as its own ZIP archive, holding that Shapefile's .shp, .shx, .dbf, .cpg and .prj, instead of as loose files. Leave unset to write loose files."
         },
         "groupBy": {
           "title": "Group By",

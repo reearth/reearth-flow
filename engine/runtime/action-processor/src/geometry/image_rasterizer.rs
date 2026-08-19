@@ -145,7 +145,7 @@ impl ProcessorFactory for ImageRasterizerFactory {
                             "Failed to compile save_to: {e:?}"
                         ))
                     })?
-                    .eval_string_env_only(ctx.env_vars.clone())
+                    .eval_string_variables_only(ctx.variables.clone())
                     .map_err(|e| {
                         GeometryProcessorError::ImageRasterizerFactory(format!(
                             "Failed to evaluate save_to: {e:?}"
@@ -312,8 +312,8 @@ impl Processor for ImageRasterizer {
                     Some(OnOverlap::Max(_)) | Some(OnOverlap::Min(_))
                 ) {
                     if let Some(ref ast) = self.overlap_value_ast {
-                        let env_vars = ctx.env_vars.clone();
-                        if let Ok(attr_val) = ast.eval(feature, env_vars) {
+                        let variables = ctx.variables.clone();
+                        if let Ok(attr_val) = ast.eval(feature, variables) {
                             if let Some(n) = attr_val.as_f64() {
                                 polygon.overlap_value = Some(OverlapValue::Number(n));
                             } else if let Some(s) = attr_val.as_string() {

@@ -16,7 +16,7 @@ graphs:
           format: csv
           inline:
             type: flowExpr
-            value: env["csvFile"]
+            value: variables["csvFile"]
           geometry:
             geometryMode: wkt
             column: geometry

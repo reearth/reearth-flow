@@ -463,7 +463,7 @@ func parametersToVariables(params []*parameter.Parameter) map[string]string {
 			continue
 		}
 		// A parameter with no default must not be sent: stringifying nil yields
-		// the literal "<nil>", which would override the workflow's env.get(...)
+		// the literal "<nil>", which would override the workflow's variables.get(...)
 		// resolution / the engine default. Leave it unset instead.
 		dv := p.DefaultValue()
 		if dv == nil {

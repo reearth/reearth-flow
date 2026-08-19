@@ -16,7 +16,7 @@ graphs:
         with:
           sourceDataset:
             type: flowExpr
-            value: env.get("cityGmlPath")
+            value: variables.get("cityGmlPath")
           extractArchive: true
 
       - id: 8d830d0f-8f5c-4bac-9c5a-0a4f0c68c697
@@ -37,7 +37,7 @@ graphs:
         with:
           cityGmlPath:
             type: flowExpr
-            value: env.get("__value")["path"]
+            value: variables.get("__value")["path"]
 
       - id: abd47145-383b-4703-8710-e5becfdc055a
         name: Keep Building Package
@@ -47,7 +47,7 @@ graphs:
           conditions:
             - expr:
                 type: flowExpr
-                value: attributes["package"] in env["targetPackages"]
+                value: attributes["package"] in variables["targetPackages"]
               outputPort: features
 
       - id: 30a2626c-886c-4bd5-96d4-30e4c9c26f07
@@ -57,7 +57,7 @@ graphs:
         with:
           dataset:
             type: flowExpr
-            value: env.get("__value")["path"]
+            value: variables.get("__value")["path"]
 
       - id: 5f5f1dbd-7891-40db-8e4d-629cd5586b0a
         name: Keep Core Attributes

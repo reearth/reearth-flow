@@ -12,11 +12,15 @@ use serde::{Deserialize, Serialize};
 
 use crate::coordinate::EpsgCode;
 use crate::error::Error;
+use crate::ops::coerce::unchanged;
+use crate::ops::triangulation::Cache;
 use crate::ops::union_results;
 use crate::ops::{
-    Aabb, BoundingBox, ForceTwoDimension, ForceTwoDimensionError, Reproject, ReprojectionCache,
-    UnsupportedOperation,
+    Aabb, BoundingBox, Coerce, CoercionTarget, ForceTwoDimension, ForceTwoDimensionError,
+    Reproject, ReprojectionCache, UnsupportedOperation,
 };
+#[cfg(feature = "new-geometry")]
+use crate::ops::{Footprint, FootprintError, FootprintSink};
 #[cfg(feature = "new-geometry")]
 use crate::validation_next::Validate;
 use crate::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
@@ -301,27 +305,6 @@ impl crate::ops::Translate for Collection3D {
     }
 }
 
-impl crate::ops::Place for Collection3D {
-    /// Placed atomically: a member failing partway through (`Csg`, a 2D
-    /// member, a `ScaledI32`-encoded `PointCloud` segment, ...) must not leave
-    /// earlier members transformed while the collection as a whole is
-    /// rejected. So this places into a cloned members vector and only writes
-    /// it back to `self` once every member has succeeded, rather than
-    /// mutating `self.members` in place and returning on the first error.
-    fn place(
-        &mut self,
-        affine: &crate::ops::Affine3,
-        frame: &crate::coordinate::CoordinateFrame,
-    ) -> crate::error::Result<()> {
-        let mut members = self.members.clone();
-        for member in members.iter_mut() {
-            member.place(affine, frame)?;
-        }
-        self.members = members;
-        Ok(())
-    }
-}
-
 impl crate::ops::RemoveAppearance for Collection2D {
     fn remove_appearance(&mut self) {
         for member in self.members_mut() {
@@ -445,6 +428,20 @@ impl ForceTwoDimension for Collection3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl Footprint for Collection2D {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        self.members.iter().try_for_each(|m| m.footprint(sink))
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for Collection3D {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        self.members.iter().try_for_each(|m| m.footprint(sink))
+    }
+}
+
 // A collection validates by recursing into its members (see
 // `validation_next::validate`), so it declares no direct checks and inherits
 // every `Validate` default.
@@ -453,6 +450,62 @@ impl Validate for Collection2D {}
 
 #[cfg(feature = "new-geometry")]
 impl Validate for Collection3D {}
+
+impl Coerce for Collection2D {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        let mut changed = false;
+        let members = std::mem::take(&mut self.members)
+            .into_iter()
+            .map(|mut member| match member.coerce(target, cache) {
+                Ok(Geometry::Euclidean2D(coerced)) => {
+                    changed = true;
+                    coerced
+                }
+                // A 2D leaf coerces to a 2D geometry, so the other `Ok` shapes
+                // do not arise; an `Err` left the member untouched.
+                _ => member,
+            })
+            .collect();
+        self.members = members;
+        if !changed {
+            return Err(unchanged::<Self>());
+        }
+        Ok(Geometry::Euclidean2D(Euclidean2DGeometry::Collection(
+            std::mem::take(self),
+        )))
+    }
+}
+
+impl Coerce for Collection3D {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        let mut changed = false;
+        let members = std::mem::take(&mut self.members)
+            .into_iter()
+            .map(|mut member| match member.coerce(target, cache) {
+                Ok(Geometry::Euclidean3D(coerced)) => {
+                    changed = true;
+                    coerced
+                }
+                _ => member,
+            })
+            .collect();
+        self.members = members;
+        if !changed {
+            return Err(unchanged::<Self>());
+        }
+        Ok(Geometry::Euclidean3D(Euclidean3DGeometry::Collection(
+            std::mem::take(self),
+        )))
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -513,57 +566,5 @@ mod tests {
     fn empty_collection_has_no_box() {
         let c = Collection2D::new(std::iter::empty());
         assert!(c.bounding_box().is_err());
-    }
-
-    #[test]
-    fn place_is_atomic_when_a_later_member_is_unplaceable() {
-        // Regression for the atomicity bug: `place` used to mutate members in
-        // order and return on the first error, so a collection with an
-        // unplaceable member reached the caller's `rejected` port with
-        // earlier members already transformed and reframed. This asserts the
-        // whole collection comes back byte-identical (full structural
-        // equality, not just "it errored") after a failed `place`.
-        use crate::csg::Csg;
-        use crate::ops::{Affine3, Place};
-        use crate::solid::Solid;
-        use crate::triangular_mesh::TriangularMesh3DData;
-
-        fn unplaceable_csg() -> Euclidean3DGeometry {
-            let shell = TriangularMesh3DData::from_parts(
-                vec![[0.0, 0.0, 0.0], [1.0, 0.0, 0.0], [0.0, 1.0, 0.0]],
-                [0u32, 1, 2],
-            )
-            .unwrap();
-            let solid = Solid::from_exterior(CoordinateFrame::Euclidean, shell);
-            // `Csg::place` unconditionally errors: a boolean tree has no
-            // single coordinate buffer or frame of its own to place.
-            Euclidean3DGeometry::Csg(Csg::union(solid.clone(), solid))
-        }
-
-        let placeable =
-            Euclidean3DGeometry::Point(Point3D::new(CoordinateFrame::Euclidean, [1.0, 2.0, 3.0]));
-        let mut collection = Collection3D::new([placeable, unplaceable_csg()]);
-        let before = collection.clone();
-
-        // A non-identity affine, so a bug that transforms the placeable
-        // member before failing on the `Csg` member would actually change
-        // its coordinates rather than coincidentally leaving them alone.
-        let affine = Affine3::new(
-            [[1.0, 0.0, 0.0], [0.0, 0.0, -1.0], [0.0, 1.0, 0.0]],
-            [10.0, 20.0, 30.0],
-        );
-        let target = CoordinateFrame::Crs(EpsgCode::new(4978));
-
-        let result = collection.place(&affine, &target);
-
-        assert!(
-            result.is_err(),
-            "placement must fail because of the Csg member"
-        );
-        assert_eq!(
-            collection, before,
-            "the whole collection, including the placeable member, must be untouched \
-             when a later member fails to place"
-        );
     }
 }

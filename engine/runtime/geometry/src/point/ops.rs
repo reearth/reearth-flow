@@ -79,7 +79,7 @@ impl Reproject for Point3D {
     }
 }
 
-use crate::ops::{plan_frame_step, Affine3, ConvertFrame, FrameStep, Place, Translate};
+use crate::ops::{plan_frame_step, ConvertFrame, FrameStep, Translate};
 
 impl Translate for Point2D {
     fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
@@ -94,14 +94,6 @@ impl Translate for Point3D {
         self.position[0] += delta[0];
         self.position[1] += delta[1];
         self.position[2] += delta[2];
-        Ok(())
-    }
-}
-
-impl Place for Point3D {
-    fn place(&mut self, affine: &Affine3, frame: &CoordinateFrame) -> crate::error::Result<()> {
-        self.position = affine.apply(self.position);
-        self.frame = frame.clone();
         Ok(())
     }
 }
@@ -173,6 +165,27 @@ impl Point2D {
     pub(crate) fn into_3d(self) -> Point3D {
         let [x, y] = self.position;
         Point3D::new(self.frame, [x, y, 0.0])
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+use crate::ops::{Footprint, FootprintError, FootprintSink};
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for Point2D {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        sink.enter(&self.frame)?;
+        sink.push_point_2d(self.position);
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for Point3D {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        sink.enter(&self.frame)?;
+        sink.push_point_3d(self.position);
+        Ok(())
     }
 }
 

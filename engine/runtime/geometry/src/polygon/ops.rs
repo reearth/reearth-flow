@@ -104,10 +104,7 @@ impl Reproject for Polygon3D {
     }
 }
 
-use crate::ops::{
-    apply_affine_3d, plan_frame_step, translate_2d, translate_3d, Affine3, ConvertFrame, FrameStep,
-    Place, Translate,
-};
+use crate::ops::{plan_frame_step, translate_2d, translate_3d, ConvertFrame, FrameStep, Translate};
 
 impl Translate for Polygon2D {
     fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
@@ -119,14 +116,6 @@ impl Translate for Polygon2D {
 impl Translate for Polygon3D {
     fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
         translate_3d(&mut self.coords, delta);
-        Ok(())
-    }
-}
-
-impl Place for Polygon3D {
-    fn place(&mut self, affine: &Affine3, frame: &CoordinateFrame) -> crate::error::Result<()> {
-        apply_affine_3d(&mut self.coords, affine);
-        self.frame = frame.clone();
         Ok(())
     }
 }
@@ -427,6 +416,69 @@ impl RemoveAppearance for Polygon2D {
 impl RemoveAppearance for Polygon3D {
     fn remove_appearance(&mut self) {
         *self.appearance_mut() = None;
+    }
+}
+
+use crate::ops::coerce::{push_face_lines_2d, push_face_lines_3d, unchanged, wrap_2d, wrap_3d};
+use crate::ops::{Coerce, CoercionTarget};
+
+impl Coerce for Polygon2D {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        match target {
+            CoercionTarget::Polygon => Err(unchanged::<Self>()),
+            CoercionTarget::TriangularMesh => self.triangulate(cache),
+            CoercionTarget::LineString => {
+                let mut lines = Vec::new();
+                push_face_lines_2d(self, &mut lines);
+                wrap_2d(lines).ok_or_else(unchanged::<Self>)
+            }
+        }
+    }
+}
+
+impl Coerce for Polygon3D {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        match target {
+            CoercionTarget::Polygon => Err(unchanged::<Self>()),
+            CoercionTarget::TriangularMesh => self.triangulate(cache),
+            CoercionTarget::LineString => {
+                let mut lines = Vec::new();
+                push_face_lines_3d(self, &mut lines);
+                wrap_3d(lines).ok_or_else(unchanged::<Self>)
+            }
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+use crate::ops::{Footprint, FootprintError, FootprintSink};
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for Polygon2D {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        sink.enter(self.frame())?;
+        sink.push_face_2d(
+            std::iter::once(self.exterior()).chain(self.interiors()),
+            self.elevation(),
+        );
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for Polygon3D {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        sink.enter(self.frame())?;
+        sink.push_face_3d(std::iter::once(self.exterior()).chain(self.interiors()));
+        Ok(())
     }
 }
 

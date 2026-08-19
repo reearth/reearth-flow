@@ -1,8 +1,6 @@
 use super::{Csg, ThreeDimensional};
-use crate::coordinate::CoordinateFrame;
 use crate::ops::{
-    union_results, Aabb, Affine3, BoundingBox, Place, RemoveAppearance, Translate,
-    UnsupportedOperation,
+    union_results, Aabb, BoundingBox, RemoveAppearance, Translate, UnsupportedOperation,
 };
 
 impl BoundingBox for Csg {
@@ -59,18 +57,6 @@ fn translate_operand(operand: &mut ThreeDimensional, delta: [f64; 3]) -> crate::
     match operand {
         ThreeDimensional::Solid(s) => s.translate(delta),
         ThreeDimensional::Csg(c) => c.translate(delta),
-    }
-}
-
-impl Place for Csg {
-    /// A CSG tree's shape is defined by its boolean tree over its operand
-    /// solids; there is no single coordinate buffer or frame to place, so this
-    /// is rejected outright rather than guessing which operand's frame should
-    /// win.
-    fn place(&mut self, _affine: &Affine3, _frame: &CoordinateFrame) -> crate::error::Result<()> {
-        Err(crate::error::Error::invalid_geometry(
-            "cannot place a Csg geometry",
-        ))
     }
 }
 

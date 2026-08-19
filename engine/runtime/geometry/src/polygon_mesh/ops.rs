@@ -114,10 +114,7 @@ impl Reproject for PolygonMesh3D {
     }
 }
 
-use crate::ops::{
-    apply_affine_3d, plan_frame_step, translate_2d, translate_3d, Affine3, ConvertFrame, FrameStep,
-    Place, Translate,
-};
+use crate::ops::{plan_frame_step, translate_2d, translate_3d, ConvertFrame, FrameStep, Translate};
 
 impl Translate for PolygonMesh2D {
     fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
@@ -129,14 +126,6 @@ impl Translate for PolygonMesh2D {
 impl Translate for PolygonMesh3D {
     fn translate(&mut self, delta: [f64; 3]) -> crate::error::Result<()> {
         translate_3d(self.data.vertices_mut(), delta);
-        Ok(())
-    }
-}
-
-impl Place for PolygonMesh3D {
-    fn place(&mut self, affine: &Affine3, frame: &CoordinateFrame) -> crate::error::Result<()> {
-        apply_affine_3d(self.data.vertices_mut(), affine);
-        self.frame = frame.clone();
         Ok(())
     }
 }
@@ -617,6 +606,100 @@ impl RemoveAppearance for PolygonMesh2D {
 impl RemoveAppearance for PolygonMesh3D {
     fn remove_appearance(&mut self) {
         *self.appearance_mut() = None;
+    }
+}
+
+use crate::ops::coerce::{push_face_lines_2d, push_face_lines_3d, unchanged, wrap_2d, wrap_3d};
+use crate::ops::{Coerce, CoercionTarget};
+
+impl Coerce for PolygonMesh2D {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        match target {
+            CoercionTarget::TriangularMesh => self.triangulate(cache),
+            CoercionTarget::Polygon => {
+                let mut faces = Vec::new();
+                self.for_each_face_polygon(|face| {
+                    faces.push(Euclidean2DGeometry::Polygon(Box::new(face)))
+                });
+                wrap_2d(faces).ok_or_else(unchanged::<Self>)
+            }
+            CoercionTarget::LineString => {
+                let mut lines = Vec::new();
+                self.for_each_face_polygon(|face| push_face_lines_2d(&face, &mut lines));
+                wrap_2d(lines).ok_or_else(unchanged::<Self>)
+            }
+        }
+    }
+}
+
+impl Coerce for PolygonMesh3D {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        match target {
+            CoercionTarget::TriangularMesh => self.triangulate(cache),
+            CoercionTarget::Polygon => {
+                let mut faces = Vec::new();
+                self.for_each_face_polygon(|face| {
+                    faces.push(Euclidean3DGeometry::Polygon(Box::new(face)))
+                });
+                wrap_3d(faces).ok_or_else(unchanged::<Self>)
+            }
+            CoercionTarget::LineString => {
+                let mut lines = Vec::new();
+                self.for_each_face_polygon(|face| push_face_lines_3d(&face, &mut lines));
+                wrap_3d(lines).ok_or_else(unchanged::<Self>)
+            }
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+use crate::ops::{Footprint, FootprintError, FootprintSink};
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for PolygonMesh2D {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        sink.enter(self.frame())?;
+        let (face_indices, face_offsets, interior_offsets) = self.csr_buffers();
+        super::faces::for_each_face_coords(
+            self.vertices(),
+            face_indices,
+            face_offsets,
+            interior_offsets,
+            |rings| sink.push_face_2d(rings.iter().map(Vec::as_slice), self.elevation()),
+        );
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for PolygonMesh3D {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        sink.enter(self.frame())?;
+        self.data().footprint_faces(sink);
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl PolygonMesh3DData {
+    /// Push every face into an entered `sink`.
+    pub(crate) fn footprint_faces(&self, sink: &mut FootprintSink<'_>) {
+        let (face_indices, face_offsets, interior_offsets) = self.csr_buffers();
+        super::faces::for_each_face_coords(
+            self.vertices(),
+            face_indices,
+            face_offsets,
+            interior_offsets,
+            |rings| sink.push_face_3d(rings.iter().map(Vec::as_slice)),
+        );
     }
 }
 

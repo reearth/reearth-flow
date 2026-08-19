@@ -175,13 +175,8 @@ impl fmt::Debug for PointCloud {
     }
 }
 
-impl PointCloud {
-    /// The coordinate frame all segments are expressed in.
-    #[inline]
-    pub fn frame(&self) -> &CoordinateFrame {
-        &self.frame
-    }
-}
+#[cfg(feature = "new-geometry")]
+crate::unsupported!(PointCloud: Footprint);
 
 crate::unsupported!(
     PointCloud: Triangulate,
@@ -190,5 +185,6 @@ crate::unsupported!(
     ForceTwoDimension,
     RemoveAppearance,
     CountHoles,
-    ExtractHoles
+    ExtractHoles,
+    Coerce
 );

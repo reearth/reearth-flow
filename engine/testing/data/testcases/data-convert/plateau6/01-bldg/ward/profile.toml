@@ -9,6 +9,14 @@ citygml_zip_name = "13104_shinjuku-ku_pref_2025_citygml_1_op_bldg.zip"
 [filter.tree]
 "udx/bldg" = ["53394517_bldg_6697_op.gml"]
 
+[tests.output_files.ward_boundary]
+must_include = [
+  "13104_shinjuku-ku_pref_2025_citygml_1_op_bldg_3dtiles_lod1.zip",
+  "13104_shinjuku-ku_pref_2025_citygml_1_op_bldg_3dtiles_lod2.zip",
+  "13104_shinjuku-ku_pref_2025_citygml_1_op_bldg_3dtiles_lod2_no_texture.zip",
+]
+must_exclude = "rest"
+
 [convs.cesium_attributes.lod2]
 path = "13104_shinjuku-ku_pref_2025_citygml_1_op_bldg_3dtiles_lod2_no_texture"
 truth_path = "cesium_lod2_truth.json"

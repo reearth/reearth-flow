@@ -59,14 +59,16 @@ use serde::{Deserialize, Serialize};
 
 use ops::triangulation::Cache;
 use ops::{
-    Aabb, Affine3, BoundingBox, ConvertFrame, CountHoles, ExtractHoles, ExtractedPart,
-    ForceTwoDimension, ForceTwoDimensionError, Place, RemoveAppearance, Reproject,
+    Aabb, BoundingBox, Coerce, CoercionTarget, ConvertFrame, CountHoles, ExtractHoles,
+    ExtractedPart, ForceTwoDimension, ForceTwoDimensionError, RemoveAppearance, Reproject,
     ReprojectionCache, Translate, Triangulate, UnsupportedOperation,
 };
 // `ValidationParams` / `ValidationType` / `ValidationReport` are named by the
 // `enum_dispatch`-generated `Validate` impls on the geometry enums, so they must
 // be in scope here.
 use ops::Split;
+#[cfg(feature = "new-geometry")]
+use ops::{Footprint, FootprintError, FootprintPlane, FootprintSink};
 #[cfg(feature = "new-geometry")]
 use validation_next::{Validate, ValidationParams, ValidationReport, ValidationType};
 
@@ -181,6 +183,7 @@ impl GeometryCollection {
         BoundingBox,
         Triangulate,
         Reproject,
+        Coerce,
         ConvertFrame,
         Translate,
         Split,
@@ -196,6 +199,7 @@ impl GeometryCollection {
         BoundingBox,
         Triangulate,
         Reproject,
+        Coerce,
         Validate,
         ConvertFrame,
         Translate,
@@ -203,14 +207,13 @@ impl GeometryCollection {
         ForceTwoDimension,
         RemoveAppearance,
         CountHoles,
-        ExtractHoles
+        ExtractHoles,
+        Footprint
     )
 )]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
 #[derive(Serialize, Deserialize, Clone, Debug, PartialEq)]
 #[cfg_attr(feature = "schema", schemars(title = "2D geometry"))]
-// `Place` is intentionally NOT dispatched here: placement is a 3D-only
-// operation (see `impl Place for Geometry`, which errors on `Euclidean2D`).
 pub enum Euclidean2DGeometry {
     Point(Point2D),
     LineString(LineString2D),
@@ -237,9 +240,9 @@ pub enum Euclidean2DGeometry {
         BoundingBox,
         Triangulate,
         Reproject,
+        Coerce,
         ConvertFrame,
         Translate,
-        Place,
         Split,
         ForceTwoDimension,
         RemoveAppearance,
@@ -253,15 +256,16 @@ pub enum Euclidean2DGeometry {
         BoundingBox,
         Triangulate,
         Reproject,
+        Coerce,
         Validate,
         ConvertFrame,
         Translate,
-        Place,
         Split,
         ForceTwoDimension,
         RemoveAppearance,
         CountHoles,
-        ExtractHoles
+        ExtractHoles,
+        Footprint
     )
 )]
 #[cfg_attr(feature = "schema", derive(schemars::JsonSchema))]
@@ -468,37 +472,6 @@ impl Translate for GeometryCollection {
     }
 }
 
-impl Place for Geometry {
-    fn place(
-        &mut self,
-        affine: &ops::Affine3,
-        frame: &coordinate::CoordinateFrame,
-    ) -> crate::error::Result<()> {
-        match self {
-            Geometry::Euclidean3D(g) => g.place(affine, frame),
-            // Placed atomically, mirroring `Collection3D::place`: a member
-            // failing partway through must not leave earlier members
-            // transformed while the collection as a whole is rejected. Place
-            // into a cloned members vector and only write it back to `self`
-            // once every member has succeeded.
-            Geometry::GeometryCollection(c) => {
-                let mut members = c.members.clone();
-                for member in members.iter_mut() {
-                    member.place(affine, frame)?;
-                }
-                c.members = members;
-                Ok(())
-            }
-            Geometry::None => Err(crate::error::Error::invalid_geometry(
-                "cannot place an empty geometry",
-            )),
-            Geometry::Euclidean2D(_) => Err(crate::error::Error::invalid_geometry(
-                "cannot place 2D geometry; placement requires 3D coordinates",
-            )),
-        }
-    }
-}
-
 impl RemoveAppearance for Geometry {
     fn remove_appearance(&mut self) {
         match self {
@@ -602,6 +575,39 @@ impl Split for GeometryCollection {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+impl Footprint for Geometry {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        match self {
+            Geometry::None => Ok(()),
+            Geometry::Euclidean2D(g) => g.footprint(sink),
+            Geometry::Euclidean3D(g) => g.footprint(sink),
+            Geometry::GeometryCollection(c) => c.footprint(sink),
+        }
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for GeometryCollection {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        self.members.iter().try_for_each(|m| m.footprint(sink))
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Geometry {
+    /// The footprint of this geometry on `plane`: every face projected and
+    /// dissolved into its union, curves and points projected as they are, as 2D
+    /// geometry in the plane's frame. See [`Footprint`] and
+    /// [`FootprintSink::finish`] for the contract, and [`FootprintPlane`] for
+    /// the frame each plane needs.
+    pub fn footprint_on(&self, plane: &FootprintPlane) -> Result<Geometry, FootprintError> {
+        let mut sink = FootprintSink::new(plane);
+        self.footprint(&mut sink)?;
+        sink.finish()
+    }
+}
+
 impl Geometry {
     /// Force this geometry into a 2D embedding by dropping the Z coordinate,
     /// recursing into collection members. All-or-nothing: one member that cannot
@@ -632,6 +638,48 @@ impl GeometryCollection {
             members,
             attrs: std::mem::take(&mut self.attrs),
         })
+    }
+}
+
+impl Coerce for Geometry {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        match self {
+            // An absent geometry has no vertices to re-represent.
+            Geometry::None => Err(UnsupportedOperation {
+                geometry: "Geometry::None",
+                operation: "coerce",
+            }),
+            Geometry::Euclidean2D(g) => g.coerce(target, cache),
+            Geometry::Euclidean3D(g) => g.coerce(target, cache),
+            Geometry::GeometryCollection(c) => c.coerce(target, cache),
+        }
+    }
+}
+
+impl Coerce for GeometryCollection {
+    fn coerce(
+        &mut self,
+        target: CoercionTarget,
+        cache: &mut Cache,
+    ) -> Result<Geometry, UnsupportedOperation> {
+        let mut changed = false;
+        for member in self.members_mut() {
+            if let Ok(coerced) = member.coerce(target, cache) {
+                *member = coerced;
+                changed = true;
+            }
+        }
+        if !changed {
+            return Err(UnsupportedOperation {
+                geometry: "GeometryCollection",
+                operation: "coerce",
+            });
+        }
+        Ok(Geometry::GeometryCollection(std::mem::take(self)))
     }
 }
 
