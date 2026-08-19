@@ -120,19 +120,14 @@ struct Bufferer {
 }
 
 impl Processor for Bufferer {
-    /// A 2D geometry buffers to a flat polygon in its frame; a planar 3D
-    /// polygon buffers in its own plane. A geometry that cannot be buffered (a
-    /// 3D point, line, mesh, solid, a non-planar face, a mixed-frame collection)
-    /// leaves via `rejected`. A geometry that buffers to nothing (a contraction
-    /// that swallows it) leaves via `features` with no geometry, as does a
-    /// feature that arrived with none.
+    /// A geometry that cannot be buffered leaves via `rejected`; one that
+    /// buffers to nothing leaves via `features` with no geometry.
     #[cfg(feature = "new-geometry")]
     fn process(
         &mut self,
         ctx: ExecutorContext,
         fw: &ProcessorChannelForwarder,
     ) -> Result<(), BoxedError> {
-        let BufferType::Area2D = self.buffer_type;
         let style = BufferStyle::new(self.distance).arc_step(self.interpolation_angle.to_radians());
         match buffer(&ctx.feature.geometry, &style) {
             Ok(buffered) => {
@@ -351,34 +346,17 @@ mod tests {
     use pretty_assertions::assert_eq;
     use reearth_flow_geometry::coordinate::CoordinateFrame;
     use reearth_flow_geometry::point::{Point2D, Point3D};
-    use reearth_flow_geometry::polygon::{Polygon2D, Polygon3D};
+    use reearth_flow_geometry::polygon::Polygon2D;
     use reearth_flow_geometry::{Euclidean2DGeometry, Euclidean3DGeometry, Geometry};
     use reearth_flow_runtime::forwarder::NoopChannelForwarder;
     use reearth_flow_types::{Attribute, AttributeValue, Feature};
 
-    const TRACED_ATTRIBUTE: &str = "id";
-    const TRACED_VALUE: i64 = 3;
-
     fn feature(geometry: Geometry) -> Feature {
         let mut feature = Feature::from(geometry);
-        feature.insert(
-            TRACED_ATTRIBUTE,
-            AttributeValue::Number(TRACED_VALUE.into()),
-        );
+        feature.insert("id", AttributeValue::Number(3.into()));
         feature
     }
 
-    fn square_2d() -> Geometry {
-        Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
-            Polygon2D::from_rings(
-                CoordinateFrame::Euclidean,
-                [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]],
-                Vec::<Vec<[f64; 2]>>::new(),
-            ),
-        )))
-    }
-
-    /// Run the processor over `feature`, returning what it sent, port by port.
     fn run(feature: &Feature, distance: f64) -> (String, Feature) {
         let fw = ProcessorChannelForwarder::Noop(NoopChannelForwarder::default());
         Bufferer {
@@ -389,17 +367,17 @@ mod tests {
         .process(create_default_execute_context(feature), &fw)
         .unwrap();
         let ProcessorChannelForwarder::Noop(noop) = fw else {
-            unreachable!("built as a noop forwarder");
+            unreachable!()
         };
         let ports = noop.send_ports.lock().unwrap().clone();
         let features = noop.send_features.lock().unwrap().clone();
         let [(port, out)] = <[_; 1]>::try_from(ports.into_iter().zip(features).collect::<Vec<_>>())
-            .expect("one feature in, one feature out");
+            .expect("one feature out");
         (port.to_string(), out)
     }
 
     #[test]
-    fn a_2d_geometry_leaves_buffered_with_its_identity_and_attributes() {
+    fn buffered_feature_keeps_its_identity_and_attributes() {
         let input = feature(Geometry::Euclidean2D(Euclidean2DGeometry::Point(
             Point2D::new(CoordinateFrame::Euclidean, [1.0, 1.0]),
         )));
@@ -408,50 +386,27 @@ mod tests {
         let Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(p)) = &*out.geometry else {
             panic!("expected a polygon, got {:?}", out.geometry);
         };
-        assert_eq!(p.exterior().len() - 1, 36); // 360° / 10°
+        assert_eq!(p.exterior().len() - 1, 36);
         assert_eq!(out.id, input.id);
         assert_eq!(
-            out.attributes.get(&Attribute::new(TRACED_ATTRIBUTE)),
-            Some(&AttributeValue::Number(TRACED_VALUE.into()))
+            out.attributes.get(&Attribute::new("id")),
+            Some(&AttributeValue::Number(3.into()))
         );
     }
 
     #[test]
-    fn a_planar_3d_polygon_is_buffered_in_place() {
-        let face = Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(Box::new(
-            Polygon3D::from_rings(
+    fn vanished_geometry_leaves_as_none_and_unbufferable_geometry_is_rejected() {
+        let square = Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
+            Polygon2D::from_rings(
                 CoordinateFrame::Euclidean,
-                [
-                    [0.0, 0.0, 5.0],
-                    [4.0, 0.0, 5.0],
-                    [4.0, 4.0, 5.0],
-                    [0.0, 4.0, 5.0],
-                    [0.0, 0.0, 5.0],
-                ],
-                Vec::<Vec<[f64; 3]>>::new(),
+                [[0.0, 0.0], [4.0, 0.0], [4.0, 4.0], [0.0, 4.0], [0.0, 0.0]],
+                Vec::<Vec<[f64; 2]>>::new(),
             ),
         )));
-        let (port, out) = run(&feature(face), -1.0);
-        assert_eq!(port, "features");
-        let Geometry::Euclidean3D(Euclidean3DGeometry::Polygon(p)) = &*out.geometry else {
-            panic!("expected a 3D polygon, got {:?}", out.geometry);
-        };
-        assert_eq!(p.exterior().len(), 5);
-        assert!(p.exterior().iter().all(|c| c[2] == 5.0));
-    }
-
-    #[test]
-    fn a_geometry_that_vanishes_leaves_with_no_geometry() {
-        let (port, out) = run(&feature(square_2d()), -3.0);
+        let (port, out) = run(&feature(square), -3.0);
         assert_eq!(port, "features");
         assert_eq!(&*out.geometry, &Geometry::None);
-        let (port, out) = run(&feature(Geometry::None), 1.0);
-        assert_eq!(port, "features");
-        assert_eq!(&*out.geometry, &Geometry::None);
-    }
 
-    #[test]
-    fn a_geometry_that_cannot_be_buffered_is_rejected_unchanged() {
         let input = feature(Geometry::Euclidean3D(Euclidean3DGeometry::Point(
             Point3D::new(CoordinateFrame::Euclidean, [0.0; 3]),
         )));

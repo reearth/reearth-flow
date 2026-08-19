@@ -102,7 +102,7 @@ pub(super) fn paths_to_line_strings(
 }
 
 /// Close an implicitly closed path by appending its first vertex.
-fn close_path(mut path: Path) -> Path {
+pub(super) fn close_path(mut path: Path) -> Path {
     if let Some(&first) = path.first() {
         path.push(first);
     }
