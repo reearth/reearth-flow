@@ -128,9 +128,7 @@ fn write_tileset(
     accum
         .by_tile
         .par_iter()
-        .try_for_each(|(&(zoom, x, y), feats)| {
-            write_tile(ctx, output, zoom, x, y, feats, extent, max_tile_bytes)
-        })?;
+        .try_for_each(|(&key, feats)| write_tile(ctx, output, key, feats, extent, max_tile_bytes))?;
 
     write_tilejson(
         ctx,
@@ -163,9 +161,7 @@ fn to_sliced_feature(layer_name: &str, geom: TiledGeom, feature: &Feature) -> Sl
 fn write_tile(
     ctx: &NodeContext,
     output_rel: &str,
-    zoom: u8,
-    x: u32,
-    y: u32,
+    (zoom, x, y): TileKey,
     feats: &[SlicedFeature],
     extent: i32,
     max_tile_bytes: u64,

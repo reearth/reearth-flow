@@ -57,8 +57,7 @@ fn farthest_from_segment(points: &[[i32; 2]], start: usize, end: usize) -> (usiz
 
     let mut best_idx = start + 1;
     let mut best_dist = -1.0;
-    for i in start + 1..end {
-        let [px, py] = points[i];
+    for (i, &[px, py]) in points.iter().enumerate().take(end).skip(start + 1) {
         let (ex, ey) = ((px - ax) as f64, (py - ay) as f64);
         let dist = if len_sq == 0.0 {
             (ex * ex + ey * ey).sqrt()

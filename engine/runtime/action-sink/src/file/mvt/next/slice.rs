@@ -169,10 +169,7 @@ fn normalize_winding(mut rings: Vec<Vec<Point>>) -> (Vec<Point>, Vec<Vec<Point>>
         .map(|mut hole| {
             let hole_area = ring_area(&hole);
             if hole_area < 0.0 {
-                tracing::warn!(
-                    area = hole_area,
-                    "MVT Writer: polygon hole ring is not CW"
-                );
+                tracing::warn!(area = hole_area, "MVT Writer: polygon hole ring is not CW");
             } else {
                 hole.reverse();
             }
