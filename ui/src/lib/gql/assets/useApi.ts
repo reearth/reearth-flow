@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useState } from "react";
 
 import { useToast } from "@flow/features/NotificationSystem/useToast";
 import { useT } from "@flow/lib/i18n";
@@ -12,9 +12,19 @@ import {
   CreateAssetUploadInput,
 } from "../__gen__/graphql";
 
+import {
+  putFileWithProgress,
+  type UploadProgress,
+  type UploadResult,
+} from "./putFileWithProgress";
 import { useQueries } from "./useQueries";
 // Files larger than 30MB will use direct upload
 const MAX_STANDARD_UPLOAD_SIZE_MB = 30;
+
+// A direct upload PUTs the whole file to storage in one request, which on a slow
+// connection is legitimately long-running. Give up only once the transfer stops
+// making progress, so a slow-but-moving upload is never cut off.
+const UPLOAD_STALL_TIMEOUT_MS = 2 * 60 * 1000;
 
 export const useAsset = () => {
   const {
@@ -26,6 +36,10 @@ export const useAsset = () => {
   } = useQueries();
   const { toast } = useToast();
   const t = useT();
+
+  const [uploadProgress, setUploadProgress] = useState<
+    UploadProgress | undefined
+  >(undefined);
   const useGetAssets = (
     workspaceId?: string,
     keyword?: string,
@@ -138,6 +152,9 @@ export const useAsset = () => {
     }): Promise<CreateAsset> => {
       const { workspaceId, file } = input;
       const { mutateAsync, ...rest } = createAssetWithStandardUploadMutation;
+
+      let stage: "sign" | "upload" | "register" = "sign";
+      setUploadProgress({ loaded: 0, total: file.size, percent: 0 });
       try {
         const { assetUpload } = await createAssetUploadUrl({
           workspaceId,
@@ -148,21 +165,34 @@ export const useAsset = () => {
           throw new Error("Failed to get upload URL");
         }
 
-        const uploadResponse = await fetch(assetUpload.url, {
-          method: "PUT",
-          body: file,
-          headers: {
-            "Content-Type": assetUpload.contentType || file.type,
-            ...(assetUpload.contentEncoding && {
-              "Content-Encoding": assetUpload.contentEncoding,
-            }),
-          },
-        });
+        stage = "upload";
+        const contentType = assetUpload.contentType || file.type;
 
-        if (!uploadResponse.ok) {
-          throw new Error(`Upload failed: ${uploadResponse.statusText}`);
+        let uploadResponse: UploadResult;
+        try {
+          uploadResponse = await putFileWithProgress({
+            url: assetUpload.url,
+            file,
+            headers: {
+              "Content-Type": contentType,
+              "Content-Encoding": assetUpload.contentEncoding,
+            },
+            stallTimeoutMs: UPLOAD_STALL_TIMEOUT_MS,
+            onProgress: setUploadProgress,
+          });
+        } catch (networkErr) {
+          throw new Error(
+            `PUT to storage never completed: ${(networkErr as Error).message}. No HTTP response was received.`,
+          );
         }
 
+        if (uploadResponse.status < 200 || uploadResponse.status >= 300) {
+          throw new Error(
+            `PUT to storage returned ${uploadResponse.status} ${uploadResponse.statusText}. ${uploadResponse.responseText.slice(0, 500)}`,
+          );
+        }
+
+        stage = "register";
         const asset: Asset | undefined = await mutateAsync({
           workspaceId,
           token: assetUpload.token,
@@ -175,13 +205,22 @@ export const useAsset = () => {
 
         return { asset, ...rest };
       } catch (err) {
-        console.error("Direct upload failed:", err);
+        const stageLabel = {
+          sign: "requesting the upload URL",
+          upload: "uploading the file to storage",
+          register: "registering the uploaded asset",
+        }[stage];
         toast({
           title: t("Asset Could Not Be Created"),
-          description: t("There was an error when creating the asset."),
+          description: t("Failed while {{stage}}: {{reason}}", {
+            stage: stageLabel,
+            reason: (err as Error).message,
+          }),
           variant: "destructive",
         });
         return { asset: undefined, ...rest };
+      } finally {
+        setUploadProgress(undefined);
       }
     },
     [createAssetUploadUrl, createAssetWithStandardUploadMutation, toast, t],
@@ -207,15 +246,18 @@ export const useAsset = () => {
     },
     [createAssetWithStandardUpload, createAssetWithDirectUpload],
   );
+
   const isCreatingAsset =
     createAssetWithStandardUploadMutation.isPending ||
-    createAssetDirectUploadMutation.isPending;
+    createAssetDirectUploadMutation.isPending ||
+    uploadProgress !== undefined;
   return {
     useGetAssets,
     createAsset,
     createAssetUploadUrl,
     createAssetWithDirectUpload,
     isCreatingAsset,
+    uploadProgress,
     updateAsset,
     deleteAsset,
   };
