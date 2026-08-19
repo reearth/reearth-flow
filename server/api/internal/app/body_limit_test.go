@@ -2,13 +2,19 @@ package app
 
 import (
 	"bytes"
+	"context"
+	"fmt"
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
+	"github.com/reearth/reearth-flow/api/internal/app/config"
+	"github.com/reearth/reearth-flow/api/internal/usecase/gateway"
+	"github.com/reearth/reearth-flow/api/internal/usecase/repo"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -73,13 +79,16 @@ func TestGraphqlBodyLimitMiddleware_EnforcesLimitAtReadTime(t *testing.T) {
 	t.Parallel()
 	const limit = 16
 
+	// Chain the same two middlewares in the same order as newAuthMiddlewares,
+	// so the asserted status is what production actually returns, not one the
+	// test handler fabricates.
 	e := echo.New()
 	e.POST("/api/graphql", func(c echo.Context) error {
 		if _, err := io.Copy(io.Discard, c.Request().Body); err != nil {
-			return c.String(http.StatusRequestEntityTooLarge, err.Error())
+			return err
 		}
 		return c.NoContent(http.StatusOK)
-	}, graphqlBodyLimitMiddleware(limit))
+	}, graphqlBodyLimitMiddleware(limit), gqlOpNameMiddleware())
 
 	oversized := bytes.Repeat([]byte("a"), limit+1)
 	req := httptest.NewRequest(http.MethodPost, "/api/graphql", bytes.NewReader(oversized))
@@ -112,4 +121,60 @@ func TestGraphqlBodyLimitMiddleware_UsesConfiguredMaxUploadSize(t *testing.T) {
 	e.ServeHTTP(rec, req)
 
 	assert.Equal(t, http.StatusOK, rec.Code)
+}
+
+// TestInitEcho_EnforcesNonGraphQLBodyLimit drives a request through the real
+// echo instance built by initEcho, not a hand-built one, to prove the
+// BodyLimit middleware is actually installed there.
+func TestInitEcho_EnforcesNonGraphQLBodyLimit(t *testing.T) {
+	t.Parallel()
+
+	cfg := &ServerConfig{
+		Config: &config.Config{
+			Web_Disabled: true,
+			AuthSrv:      config.AuthSrvConfig{Disabled: true},
+		},
+		Repos:    &repo.Container{},
+		Gateways: &gateway.Container{},
+	}
+	e := initEcho(context.Background(), cfg)
+
+	body := bytes.Repeat([]byte("a"), 32*1024*1024+1)
+	req := httptest.NewRequest(http.MethodPost, "/api/signup", bytes.NewReader(body))
+	rec := httptest.NewRecorder()
+	e.ServeHTTP(rec, req)
+
+	assert.Equal(t, http.StatusRequestEntityTooLarge, rec.Code)
+}
+
+// TestNewAuthMiddlewares_WrapsGraphQLBodyWithMaxBytesReader drives a request
+// through the first middleware of the real slice newAuthMiddlewares wires
+// into the GraphQL route, and asserts the body it hands downstream is
+// actually bounded by http.MaxBytesReader (rather than only advisory).
+func TestNewAuthMiddlewares_WrapsGraphQLBodyWithMaxBytesReader(t *testing.T) {
+	t.Parallel()
+
+	mws := newAuthMiddlewares(&authMiddlewaresParam{
+		Cfg:     &ServerConfig{Config: &config.Config{}},
+		SkipOps: map[string]struct{}{},
+	})
+	if len(mws) == 0 {
+		t.Fatal("newAuthMiddlewares returned no middlewares")
+	}
+
+	var gotBodyType string
+	probe := func(c echo.Context) error {
+		gotBodyType = fmt.Sprintf("%T", c.Request().Body)
+		return c.NoContent(http.StatusOK)
+	}
+
+	e := echo.New()
+	req := httptest.NewRequest(http.MethodPost, "/api/graphql", strings.NewReader(`{"query":"{__typename}"}`))
+	rec := httptest.NewRecorder()
+	c := e.NewContext(req, rec)
+	c.SetPath("/api/graphql")
+
+	err := mws[0](probe)(c)
+	assert.NoError(t, err)
+	assert.Equal(t, "*http.maxBytesReader", gotBodyType)
 }

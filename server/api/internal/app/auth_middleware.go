@@ -3,6 +3,7 @@ package app
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 
@@ -54,6 +55,13 @@ func gqlOpNameMiddleware() echo.MiddlewareFunc {
 		return func(c echo.Context) error {
 			if c.Path() == "/api/graphql" && c.Request().Method == http.MethodPost {
 				data, err := io.ReadAll(c.Request().Body)
+				if err != nil {
+					var tooLarge *http.MaxBytesError
+					if errors.As(err, &tooLarge) {
+						log.Warnfc(c.Request().Context(), "gqlOpNameMiddleware: request body too large: %v", err)
+						return echo.ErrStatusRequestEntityTooLarge
+					}
+				}
 				if err == nil && len(data) > 0 {
 					_ = c.Request().Body.Close()
 					c.Request().Body = io.NopCloser(bytes.NewBuffer(data))
