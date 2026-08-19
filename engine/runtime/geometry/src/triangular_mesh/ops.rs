@@ -468,6 +468,38 @@ impl TriangularMesh3DData {
     }
 }
 
+use crate::ops::boundary::ExtractBoundary;
+use crate::ops::{surface_boundary_2d, surface_boundary_3d, BoundaryEdges};
+
+fn triangle_boundary_edges(triangles: impl Iterator<Item = [u32; 3]>) -> BoundaryEdges {
+    let mut edges = BoundaryEdges::new();
+    for triangle in triangles {
+        edges.add_triangle(triangle);
+    }
+    edges
+}
+
+impl ExtractBoundary for TriangularMesh2D {
+    fn extract_boundary(&self) -> Result<Geometry, UnsupportedOperation> {
+        Ok(surface_boundary_2d(
+            self.frame(),
+            self.vertices(),
+            self.elevation(),
+            triangle_boundary_edges(self.triangles()),
+        ))
+    }
+}
+
+impl ExtractBoundary for TriangularMesh3D {
+    fn extract_boundary(&self) -> Result<Geometry, UnsupportedOperation> {
+        Ok(surface_boundary_3d(
+            self.frame(),
+            self.vertices(),
+            triangle_boundary_edges(self.triangles()),
+        ))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

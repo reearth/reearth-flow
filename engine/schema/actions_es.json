@@ -1061,36 +1061,24 @@
     {
       "name": "Boundary Extractor",
       "type": "processor",
-      "description": "Extrae el límite de geometrías. Para sólidos/mallas devuelve superficies delimitadoras, para superficies devuelve aristas de límite, para superficies cerradas devuelve geometría vacía",
-      "parameter": {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "Boundary Extractor Parameters",
-        "description": "Configuration for extracting boundaries from geometries.",
-        "type": "object",
-        "properties": {
-          "keepEmptyBoundaries": {
-            "description": "Whether to keep features with empty boundaries (default: false)",
-            "default": false,
-            "type": "boolean"
-          },
-          "exteriorOnly": {
-            "description": "Whether to extract only exterior boundaries (ignoring holes) for polygons (default: false)",
-            "default": false,
-            "type": "boolean"
-          }
-        }
-      },
+      "description": "Reemplaza una geometría por su frontera: los extremos de una curva, los anillos de borde de una superficie y los cascarones que delimitan un volumen.",
+      "parameter": null,
       "builtin": true,
       "inputPorts": [
         "features"
       ],
       "outputPorts": [
-        "features"
+        "features",
+        "no-boundary",
+        "rejected"
       ],
       "categories": [
         "Geometry"
       ],
-      "tags": []
+      "tags": [
+        "3d",
+        "spatial"
+      ]
     },
     {
       "name": "Bounds Extractor",

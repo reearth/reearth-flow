@@ -269,6 +269,33 @@ impl Footprint for Solid {
     }
 }
 
+use crate::ops::boundary::ExtractBoundary;
+use crate::polygon_mesh::PolygonMesh3D;
+use crate::triangular_mesh::TriangularMesh3D;
+
+// The shells the volume already carries, paired with the frame they are
+// expressed in. Nothing is re-triangulated and appearance stays on them.
+//
+// Whether the shells close is not asserted here: taking the boundary of the
+// result answers that, and is empty exactly when they do.
+impl ExtractBoundary for Solid {
+    fn extract_boundary(&self) -> Result<Geometry, UnsupportedOperation> {
+        let frame = self.frame();
+        let shells = std::iter::once(&self.exterior)
+            .chain(self.interiors.iter())
+            .map(|shell| match shell {
+                Shell::PolygonMesh(data) => Euclidean3DGeometry::PolygonMesh(Box::new(
+                    PolygonMesh3D::new(frame.clone(), data.clone()),
+                )),
+                Shell::TriangularMesh(data) => Euclidean3DGeometry::TriangularMesh(Box::new(
+                    TriangularMesh3D::new(frame.clone(), data.clone()),
+                )),
+            })
+            .collect();
+        Ok(wrap_3d(shells).unwrap_or(Geometry::None))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

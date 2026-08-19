@@ -507,6 +507,90 @@ impl Coerce for Collection3D {
     }
 }
 
+impl crate::ops::ExtractBoundary for Collection2D {
+    fn extract_boundary(&self) -> Result<crate::Geometry, crate::ops::UnsupportedOperation> {
+        let mut members = Vec::new();
+        let mut attrs = Vec::new();
+        let mut any = false;
+        for (i, member) in self.members().iter().enumerate() {
+            let Ok(boundary) = member.extract_boundary() else {
+                continue;
+            };
+            any = true;
+            // A 2D member is bounded by 2D geometry; `Geometry::None` is the
+            // empty boundary and drops out here.
+            if let crate::Geometry::Euclidean2D(g) = boundary {
+                members.push(g);
+                if let Some(a) = self.member_attributes().get(i) {
+                    attrs.push(a.clone());
+                }
+            }
+        }
+        if !any && !self.members().is_empty() {
+            return Err(crate::ops::boundary::unsupported::<Self>());
+        }
+        Ok(wrap_members_2d(members, attrs))
+    }
+}
+
+impl crate::ops::ExtractBoundary for Collection3D {
+    fn extract_boundary(&self) -> Result<crate::Geometry, crate::ops::UnsupportedOperation> {
+        let mut members = Vec::new();
+        let mut attrs = Vec::new();
+        let mut any = false;
+        for (i, member) in self.members().iter().enumerate() {
+            let Ok(boundary) = member.extract_boundary() else {
+                continue;
+            };
+            any = true;
+            if let crate::Geometry::Euclidean3D(g) = boundary {
+                members.push(g);
+                if let Some(a) = self.member_attributes().get(i) {
+                    attrs.push(a.clone());
+                }
+            }
+        }
+        if !any && !self.members().is_empty() {
+            return Err(crate::ops::boundary::unsupported::<Self>());
+        }
+        Ok(wrap_members_3d(members, attrs))
+    }
+}
+
+/// Gather boundary members into a collection, keeping their attributes when the
+/// source carried any. A collection's boundary stays a collection even when one
+/// member gave it, so the shape does not turn on how many members contributed.
+fn wrap_members_2d(members: Vec<Euclidean2DGeometry>, attrs: Vec<Attributes>) -> crate::Geometry {
+    if members.is_empty() {
+        return crate::Geometry::None;
+    }
+    let attrs = if attrs.len() == members.len() {
+        attrs
+    } else {
+        Vec::new()
+    };
+    crate::Geometry::Euclidean2D(Euclidean2DGeometry::Collection(Collection2D {
+        members,
+        attrs,
+    }))
+}
+
+/// The 3D counterpart of [`wrap_members_2d`].
+fn wrap_members_3d(members: Vec<Euclidean3DGeometry>, attrs: Vec<Attributes>) -> crate::Geometry {
+    if members.is_empty() {
+        return crate::Geometry::None;
+    }
+    let attrs = if attrs.len() == members.len() {
+        attrs
+    } else {
+        Vec::new()
+    };
+    crate::Geometry::Euclidean3D(Euclidean3DGeometry::Collection(Collection3D {
+        members,
+        attrs,
+    }))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
