@@ -676,3 +676,207 @@ fn gate_keeps_nearly_touching_operands_separate() {
     assert_eq!(u.len(), 2);
     assert!(intersection(&a, &b).unwrap().is_empty());
 }
+
+// --- dissolve ------------------------------------------------------------------
+
+/// A collection of the given 2D geometries.
+fn collection(members: impl IntoIterator<Item = Geometry>) -> Geometry {
+    Geometry::Euclidean2D(Euclidean2DGeometry::Collection(Collection2D::new(
+        members.into_iter().map(|g| match g {
+            Geometry::Euclidean2D(g) => g,
+            _ => unreachable!("2D members only"),
+        }),
+    )))
+}
+
+/// Dissolve `members` as one operand: every member's leaves go in together,
+/// the shape a caller merging several features builds.
+fn dissolve_all(members: &[Geometry], tolerance: f64) -> Result<Vec<Polygon2D>> {
+    let mut leaves = Vec::new();
+    for member in members {
+        match member {
+            Geometry::Euclidean2D(g) => flatten_2d(g, &mut leaves),
+            _ => unreachable!("2D members only"),
+        }
+    }
+    dissolve_leaves(&leaves, tolerance)
+}
+
+#[test]
+fn edge_adjacent_members_dissolve_into_one_face() {
+    let dissolved = dissolve_all(
+        &[
+            polygon(&rect(0.0, 0.0, 2.0, 2.0), &[]),
+            polygon(&rect(2.0, 0.0, 4.0, 2.0), &[]),
+        ],
+        0.0,
+    )
+    .unwrap();
+    assert_eq!(dissolved.len(), 1);
+    assert_eq!(area(&dissolved), 8.0);
+}
+
+#[test]
+fn overlapping_members_dissolve_and_lose_the_interior_edge() {
+    let dissolved = dissolve_all(
+        &[
+            polygon(&rect(0.0, 0.0, 3.0, 2.0), &[]),
+            polygon(&rect(1.0, 0.0, 4.0, 2.0), &[]),
+        ],
+        0.0,
+    )
+    .unwrap();
+    assert_eq!(dissolved.len(), 1);
+    assert_eq!(area(&dissolved), 8.0);
+    assert_eq!(dissolved[0].exterior().len(), 5); // a plain rect, closed
+}
+
+#[test]
+fn separate_members_stay_separate() {
+    let dissolved = dissolve_all(
+        &[
+            polygon(&rect(0.0, 0.0, 2.0, 2.0), &[]),
+            polygon(&rect(5.0, 5.0, 7.0, 7.0), &[]),
+        ],
+        0.0,
+    )
+    .unwrap();
+    assert_eq!(dissolved.len(), 2);
+    assert_eq!(area(&dissolved), 8.0);
+}
+
+#[test]
+fn a_member_filling_a_hole_closes_it() {
+    let dissolved = dissolve_all(
+        &[
+            polygon(&rect(0.0, 0.0, 4.0, 4.0), &[rect_cw(1.0, 1.0, 3.0, 3.0)]),
+            polygon(&rect(1.0, 1.0, 3.0, 3.0), &[]),
+        ],
+        0.0,
+    )
+    .unwrap();
+    assert_eq!(dissolved.len(), 1);
+    assert_eq!(polygon2d_rings(&dissolved[0]).count(), 1);
+    assert_eq!(area(&dissolved), 16.0);
+}
+
+#[test]
+fn a_lone_member_dissolves_to_itself() {
+    let dissolved = dissolve_all(&[polygon(&rect(0.0, 0.0, 2.0, 2.0), &[])], 0.0).unwrap();
+    assert_eq!(dissolved.len(), 1);
+    assert_eq!(area(&dissolved), 4.0);
+}
+
+#[test]
+fn members_nested_in_a_collection_dissolve_like_flat_ones() {
+    let members = [
+        polygon(&rect(0.0, 0.0, 2.0, 2.0), &[]),
+        polygon(&rect(2.0, 0.0, 4.0, 2.0), &[]),
+    ];
+    let nested = dissolve_all(&[collection(members.clone())], 0.0).unwrap();
+    assert_eq!(nested.len(), 1);
+    assert_eq!(area(&nested), area(&dissolve_all(&members, 0.0).unwrap()));
+}
+
+#[test]
+fn mesh_members_dissolve_with_polygon_members() {
+    // Two quads sharing x = 2 cover [0,4] x [0,2]; the polygon extends it to 6.
+    let mesh = PolygonMesh2D::from_parts(
+        e(),
+        vec![
+            [0.0, 0.0],
+            [2.0, 0.0],
+            [2.0, 2.0],
+            [0.0, 2.0],
+            [4.0, 0.0],
+            [4.0, 2.0],
+        ],
+        vec![vec![0u32, 1, 2, 3], vec![1, 4, 5, 2]],
+    )
+    .unwrap();
+    let dissolved = dissolve_all(
+        &[
+            Geometry::Euclidean2D(Euclidean2DGeometry::PolygonMesh(Box::new(mesh))),
+            polygon(&rect(4.0, 0.0, 6.0, 2.0), &[]),
+        ],
+        0.0,
+    )
+    .unwrap();
+    assert_eq!(dissolved.len(), 1);
+    assert_eq!(area(&dissolved), 12.0);
+}
+
+#[test]
+fn nothing_dissolves_to_nothing() {
+    assert!(dissolve_leaves(&[], 0.0).unwrap().is_empty());
+    assert!(dissolve_leaves(&[], 0.5).unwrap().is_empty());
+    assert!(dissolve_all(&[collection([])], 0.0).unwrap().is_empty());
+}
+
+#[test]
+fn dissolve_refuses_mixed_frames_and_non_areal_members() {
+    let in_crs = Geometry::Euclidean2D(Euclidean2DGeometry::Polygon(Box::new(
+        Polygon2D::from_rings(
+            CoordinateFrame::Crs(EpsgCode::new(6677)),
+            rect(0.0, 0.0, 1.0, 1.0),
+            Vec::<Vec<[f64; 2]>>::new(),
+        ),
+    )));
+    assert_eq!(
+        dissolve_all(&[polygon(&rect(0.0, 0.0, 1.0, 1.0), &[]), in_crs], 0.0),
+        Err(PredicateError::MixedFrames)
+    );
+
+    assert_eq!(
+        dissolve_all(
+            &[
+                polygon(&rect(0.0, 0.0, 2.0, 2.0), &[]),
+                line(&[[0.0, 0.0], [2.0, 2.0]]),
+            ],
+            0.0
+        ),
+        Err(PredicateError::Unsupported {
+            geometry: "LineString2D"
+        })
+    );
+    assert_eq!(
+        dissolve_all(&[point([0.0, 0.0])], 0.0),
+        Err(PredicateError::Unsupported {
+            geometry: "Point2D"
+        })
+    );
+}
+
+#[test]
+fn the_tolerance_merges_boundaries_that_nearly_coincide() {
+    // Neighbours meant to share the edge x = 2, one digitized 0.001 off.
+    let nearly_adjacent = [
+        polygon(&rect(0.0, 0.0, 2.0, 2.0), &[]),
+        polygon(&rect(2.001, 0.001, 4.001, 2.001), &[]),
+    ];
+
+    // Without a tolerance the sliver gap survives as a second face.
+    let untouched = dissolve_all(&nearly_adjacent, 0.0).unwrap();
+    assert_eq!(untouched.len(), 2);
+
+    // With one, the near-coincident vertices snap together and the pair merges.
+    let dissolved = dissolve_all(&nearly_adjacent, 0.01).unwrap();
+    assert_eq!(dissolved.len(), 1);
+}
+
+#[test]
+fn the_tolerance_leaves_a_gap_with_no_facing_vertices_open() {
+    // The documented limit: snapping is vertex to vertex, so a corridor between
+    // two long parallel edges stays open even though it is narrower than the
+    // tolerance. The upper slab is inset in x so that no corner of one is
+    // within the tolerance of a corner of the other.
+    let dissolved = dissolve_all(
+        &[
+            polygon(&rect(0.0, 0.0, 100.0, 2.0), &[]),
+            polygon(&rect(20.0, 2.5, 80.0, 4.0), &[]),
+        ],
+        1.0,
+    )
+    .unwrap();
+    assert_eq!(dissolved.len(), 2);
+}
