@@ -71,7 +71,11 @@ func NewFile(bucketName, base string, cacheControl string, replaceUploadURL bool
 		client:           client,
 	}
 
-	go repo.probeSignedURL(context.Background())
+	go func() {
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		repo.probeSignedURL(ctx)
+	}()
 
 	return repo, nil
 }
@@ -79,17 +83,30 @@ func NewFile(bucketName, base string, cacheControl string, replaceUploadURL bool
 // probeSignedURL issues a throwaway signed URL at startup to catch signing
 // misconfiguration (e.g. missing iam.serviceAccounts.signBlob on the runtime
 // service account) at deploy time rather than on a user's first upload. It
-// never creates an object and must not fail boot.
+// never creates an object and must not fail boot. Bounded by ctx so a hung
+// signing RPC doesn't hold the probe goroutine open indefinitely.
 func (f *fileRepo) probeSignedURL(ctx context.Context) {
+	done := make(chan error, 1)
+	go func() { done <- f.signProbeURL() }()
+
+	select {
+	case err := <-done:
+		if err != nil {
+			log.Errorfc(ctx, "gcs: startup SignedURL probe failed (bucket=%s): %v -- asset uploads will fail until signing is fixed (check IAM Credentials API and iam.serviceAccounts.signBlob on the runtime service account)", f.bucketName, err)
+		}
+	case <-ctx.Done():
+		log.Errorfc(ctx, "gcs: startup SignedURL probe did not complete before timeout (bucket=%s) -- check IAM Credentials API connectivity", f.bucketName)
+	}
+}
+
+func (f *fileRepo) signProbeURL() error {
 	p := path.Join(gcsAssetBasePath, "___signed_url_probe___")
 	_, err := f.bucket().SignedURL(p, &storage.SignedURLOptions{
 		Scheme:  storage.SigningSchemeV4,
 		Method:  http.MethodPut,
 		Expires: time.Now().Add(time.Minute),
 	})
-	if err != nil {
-		log.Errorfc(ctx, "gcs: startup SignedURL probe failed (bucket=%s): %v -- asset uploads will fail until signing is fixed (check IAM Credentials API and iam.serviceAccounts.signBlob on the runtime service account)", f.bucketName, err)
-	}
+	return err
 }
 
 func (f *fileRepo) ReadAsset(ctx context.Context, name string) (io.ReadCloser, error) {
