@@ -29,7 +29,7 @@ graphs:
             type: flowExpr
             value: |
               [
-                {"cityGmlPath": env["cityGmlPath"]},
+                {"cityGmlPath": variables["cityGmlPath"]},
               ]
 
       - id: 567b77bf-3d07-4cfc-b6bb-78e66016d422

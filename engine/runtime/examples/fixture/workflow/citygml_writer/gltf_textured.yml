@@ -35,7 +35,7 @@ graphs:
         with:
           dataset:
             type: flowExpr
-            value: env["gltfPath"]
+            value: variables["gltfPath"]
 
       - id: 9c2b1d5a-7e64-4f83-a0c1-2d6e8f4b3a90
         name: CityGmlWriter
