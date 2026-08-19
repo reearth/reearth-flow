@@ -46,9 +46,7 @@ pub(super) fn slice_leaves(
                     .iter()
                     .map(|ring| project_ring(ring, &mut content))
                     .collect();
-                let Some((exterior, holes)) = normalize_winding(mercator) else {
-                    continue;
-                };
+                let (exterior, holes) = normalize_winding(mercator);
                 let y_bounds = ring_bounds(&exterior, 1);
                 let x_bounds = ring_bounds(&exterior, 0);
                 let diagonal = (x_bounds.1 - x_bounds.0).hypot(y_bounds.1 - y_bounds.0);
@@ -153,29 +151,33 @@ fn ring_area(ring: &[Point]) -> f64 {
     area / 2.0
 }
 
-fn normalize_winding(mut rings: Vec<Vec<Point>>) -> Option<(Vec<Point>, Vec<Vec<Point>>)> {
+// MVT requires exterior rings clockwise and hole rings counterclockwise.
+fn normalize_winding(mut rings: Vec<Vec<Point>>) -> (Vec<Point>, Vec<Vec<Point>>) {
     let holes = rings.split_off(1);
-    let exterior = rings.remove(0);
-    if ring_area(&exterior) > 0.0 {
-        tracing::error!(
-            "MVT Writer: polygon exterior ring is not CCW as required; skipping polygon"
+    let mut exterior = rings.remove(0);
+    let exterior_area = ring_area(&exterior);
+    if exterior_area < 0.0 {
+        tracing::warn!(
+            area = exterior_area,
+            "MVT Writer: polygon exterior ring is not CCW as required; reversing it"
         );
-        return None;
+        exterior.reverse();
     }
     let holes = holes
         .into_iter()
-        .filter(|hole| {
-            if ring_area(hole) < 0.0 {
-                tracing::error!(
-                    "MVT Writer: polygon hole ring is not CW as required; skipping hole"
+        .map(|mut hole| {
+            let hole_area = ring_area(&hole);
+            if hole_area > 0.0 {
+                tracing::warn!(
+                    area = hole_area,
+                    "MVT Writer: polygon hole ring is not CW as required; reversing it"
                 );
-                false
-            } else {
-                true
+                hole.reverse();
             }
+            hole
         })
         .collect();
-    Some((exterior, holes))
+    (exterior, holes)
 }
 
 fn interp(a: Point, b: Point, axis: usize, k: f64) -> Point {
@@ -266,15 +268,11 @@ fn clip_polygon(
             let k1 = (xi as f64 - MARGIN_WIDTH) / z_scale;
             let k2 = ((xi + 1) as f64 + MARGIN_WIDTH) / z_scale;
 
-            let to_local = |ring: &[Point]| {
+            let to_local = |ring: &[Point]| -> Vec<Point> {
                 let ring = clip_band(ring, 0, k1, k2, true);
-                let mut local: Vec<Point> = ring
-                    .iter()
+                ring.iter()
                     .map(|&[x, y]| [x * z_scale - xi as f64, y * z_scale - yi as f64])
-                    .collect();
-                // MVT requires clockwise winding.
-                local.reverse();
-                local
+                    .collect()
             };
 
             let part_exterior = to_local(&y_sliced_exterior);
@@ -344,26 +342,24 @@ mod tests {
     use super::*;
 
     #[test]
-    fn slice_leaves_drops_only_the_wrongly_wound_polygon() {
-        // A lng/lat rectangle traced counter-clockwise (right, up, left, down); its Web Mercator
-        // projection is verified by hand to have negative `ring_area`, the winding
-        // `normalize_winding` requires of an exterior ring.
+    fn slice_leaves_fixes_up_either_winding_to_mvts_required_cw() {
+        // A lng/lat rectangle traced counter-clockwise (right, up, left, down).
         let ccw = vec![[0.0, 0.0], [90.0, 0.0], [90.0, 80.0], [0.0, 80.0]];
         let mut cw = ccw.clone();
         cw.reverse();
 
-        let (_, tiled) = slice_leaves(vec![Leaf::Polygon(vec![ccw])], 0, 0, 16);
-        let polygon_count = tiled
-            .iter()
-            .filter(|leaf| matches!(leaf.geom, TiledGeom::Polygon(_)))
-            .count();
-        assert_eq!(polygon_count, 1);
-
-        let (_, tiled) = slice_leaves(vec![Leaf::Polygon(vec![cw])], 0, 0, 16);
-        let polygon_count = tiled
-            .iter()
-            .filter(|leaf| matches!(leaf.geom, TiledGeom::Polygon(_)))
-            .count();
-        assert_eq!(polygon_count, 0);
+        for input in [ccw, cw] {
+            let (_, tiled) = slice_leaves(vec![Leaf::Polygon(vec![input])], 0, 0, 16);
+            let exteriors: Vec<_> = tiled
+                .iter()
+                .filter_map(|leaf| match &leaf.geom {
+                    TiledGeom::Polygon(parts) => Some(parts),
+                    _ => None,
+                })
+                .flatten()
+                .collect();
+            assert_eq!(exteriors.len(), 1);
+            assert!(ring_area(&exteriors[0].exterior) > 0.0);
+        }
     }
 }
