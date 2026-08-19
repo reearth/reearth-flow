@@ -125,10 +125,9 @@ fn write_tileset(
         })
         .reduce(SliceAccum::default, SliceAccum::merge);
 
-    accum
-        .by_tile
-        .par_iter()
-        .try_for_each(|(&key, feats)| write_tile(ctx, output, key, feats, extent, max_tile_bytes))?;
+    accum.by_tile.par_iter().try_for_each(|(&key, feats)| {
+        write_tile(ctx, output, key, feats, extent, max_tile_bytes)
+    })?;
 
     write_tilejson(
         ctx,
