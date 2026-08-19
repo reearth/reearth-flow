@@ -1,20 +1,15 @@
-/// The converter→writer seam. Shared and unconditional: it names no geometry
-/// type, so both worlds' converters build it and one writer consumes it.
+/// The converter→writer seam. Shared and unconditional.
 pub mod model;
 pub mod writer;
 
-// One module name, two files: the shared shell calls `converter::…` with no
-// `cfg` at the call site, and `writer.rs` resolves `format_pos_list` to the
-// compiled world's formatter the same way.
+// One module name, two files, so no call site needs a `cfg`.
 #[cfg(not(feature = "new-geometry"))]
 pub mod converter;
 #[cfg(feature = "new-geometry")]
 #[path = "citygml/converter_next.rs"]
 pub mod converter;
 
-// Appearance resolution has no legacy counterpart: the legacy converter reads
-// palettes the reader already flattened, while this narrows the native
-// appearance graph. It exists only in the world that has one.
+// No legacy counterpart: the legacy reader flattens palettes itself.
 #[cfg(feature = "new-geometry")]
 mod appearance_next;
 
@@ -44,16 +39,13 @@ use model::{
 };
 use writer::CityGmlXmlWriter;
 
-/// Write `features` as CityGML 2.0 to `output`, copying texture images alongside it.
+/// Write `features` as CityGML 2.0 to `output`, staging texture images alongside.
 ///
-/// This is the single canonical implementation shared by both the `CityGmlWriter` sink and
-/// the `Feature Writer` processor.
+/// Shared by the `CityGmlWriter` sink and the `Feature Writer` processor.
 ///
-/// Every feature is converted before the header is written, because the header
-/// declares an `srsName` and a `gml:boundedBy` that only the converted geometry
-/// can justify: the CRS is folded over the coordinates that actually reach the
-/// file, and so is the envelope. That costs holding the converted geometry
-/// alongside the buffered features for the duration of the write.
+/// Every feature is converted before the header is written: `srsName` and
+/// `gml:boundedBy` are folded over the coordinates that actually reach the file,
+/// at the cost of holding converted geometry alongside the buffered features.
 pub fn write_citygml_to_storage(
     output: &Uri,
     sandbox_root: &Uri,
@@ -77,8 +69,6 @@ pub fn write_citygml_to_storage(
         let object = converter::convert_city_object(feature, lod_mask)?;
 
         if !object.omissions.is_empty() {
-            // One line per feature, not per leaf: the omissions are already
-            // aggregated by kind.
             let omitted = object
                 .omissions
                 .iter()
@@ -107,6 +97,11 @@ pub fn write_citygml_to_storage(
         converted.push(object);
     }
 
+    // Every feature was filtered out or held nothing writable: no document.
+    if converted.iter().all(|object| object.geometries.is_empty()) {
+        return Ok(());
+    }
+
     let srs_name = converter::srs_name(features, epsg_code, crs)?;
     let uri_remap = stage_textures(
         &textures,
@@ -116,7 +111,6 @@ pub fn write_citygml_to_storage(
         converter::STRICT_TEXTURE_STAGING,
     )?;
 
-    // Build and write XML.
     let buffer_size = (features.len() * 4096).clamp(32 * 1024, 512 * 1024);
     let mut xml_buffer = Vec::with_capacity(buffer_size);
     {
@@ -127,8 +121,6 @@ pub fn write_citygml_to_storage(
         xml_writer.write_header(envelope.as_ref())?;
 
         for (feature, object) in features.iter().zip(&converted) {
-            // A feature whose geometry all fell out of the LOD filter, or that
-            // CityGML has no element for, produces no cityObjectMember at all.
             if object.geometries.is_empty() {
                 continue;
             }
@@ -167,32 +159,22 @@ pub fn write_citygml_to_storage(
     Ok(())
 }
 
-/// Stage every image the converted document references next to the GML file and
-/// return the key → relative-staged-path remap the writer rewrites
-/// `app:imageURI` with.
+/// Stage every referenced image into `{gml_stem}_appearance/` beside the GML file
+/// and return the key → relative-path remap the writer rewrites `app:imageURI` with.
 ///
-/// Images land in a `{gml_stem}_appearance/` directory beside the GML file, and
-/// every destination is acquired through [`crate::SinkOutput`] so a hostile
-/// source URI cannot escape the sandbox. The returned paths are relative to the
-/// GML file, not to the sandbox root, because that is what `app:imageURI` means.
+/// Destinations go through [`crate::SinkOutput`], so a hostile source URI cannot
+/// escape the sandbox. Returned paths are relative to the GML file, which is what
+/// `app:imageURI` means.
 ///
-/// `textures` arrives deduplicated by [`TextureRef::key`] — the source URI
-/// string for a URI-backed raster, a content hash for one that arrived as bytes
-/// — so one image referenced by many features is read and written exactly once.
-/// What still has to be disambiguated here is the **destination basename**,
-/// because only the last path segment of a source URI becomes the file name. Two
-/// distinct sources named `a/tex.png` and `b/tex.png` would otherwise both stage
-/// to `{stem}_appearance/tex.png`, and since `SinkOutput::write` is a full
-/// overwrite the second would silently replace the first. The later one gets a
-/// numbered suffix (`tex_1.png`) instead.
+/// `textures` arrives deduplicated by [`TextureRef::key`]. What still needs
+/// disambiguating is the destination *basename*: only a URI's last segment becomes
+/// the file name, so `a/tex.png` and `b/tex.png` would both stage as `tex.png` and
+/// the second would overwrite the first. The later one gets a numbered suffix.
 ///
-/// `strict` is the compiled world's policy for a texture that is referenced but
-/// cannot be read or written, supplied by the converter module (see
-/// `converter::STRICT_TEXTURE_STAGING`). The legacy path warns and continues,
-/// leaving that texture's original absolute `app:imageURI` in the output — the
-/// behaviour it has always had. The unified path fails the write instead, so an
-/// emitted document can never point `app:imageURI` at an image nobody wrote.
-/// Either way, a destination that cannot be derived at all is fatal in both.
+/// `strict` is the compiled world's policy for an unstageable texture (see
+/// `converter::STRICT_TEXTURE_STAGING`): the legacy path warns and leaves the
+/// original URI in place, the unified path fails the write. A destination that
+/// cannot be derived at all is fatal in both.
 fn stage_textures(
     textures: &[TextureRef],
     output: &Uri,
@@ -200,7 +182,6 @@ fn stage_textures(
     storage_resolver: &Arc<StorageResolver>,
     strict: bool,
 ) -> Result<HashMap<String, String>, SinkError> {
-    // Compute appearance directory name from GML output stem (e.g. "foo_appearance")
     let gml_stem = output
         .path()
         .file_stem()
@@ -208,15 +189,10 @@ fn stage_textures(
         .unwrap_or_default();
     let appearance_dir_name = format!("{}_appearance", gml_stem);
 
-    // Compute the GML output's relative path under sandbox_root by stripping the
-    // sandbox_root prefix. This is used to derive the texture dst relative path.
     let sandbox_root_str = sandbox_root.as_str().trim_end_matches('/');
     let output_str = output.as_str();
-    // `output` was produced by SinkOutput::new (sandbox_root.join(relative)),
-    // so it must always start with sandbox_root. If the prefix strip ever fails,
-    // something upstream is broken — fail loudly rather than silently writing
-    // textures to a flat appearance dir, which would collide across groups
-    // and corrupt data.
+    // `SinkOutput::new` builds `output` from `sandbox_root`, so a failed strip
+    // means something upstream is broken. Fail rather than flatten the layout.
     let gml_rel_path: String = output_str
         .strip_prefix(sandbox_root_str)
         .map(|s| s.trim_start_matches('/').to_string())
@@ -226,13 +202,11 @@ fn stage_textures(
                  refusing to fall back to a flat appearance directory"
             ))
         })?;
-    // Parent directory of the GML's relative path (e.g. "group" or "" if at root)
     let gml_rel_parent = gml_rel_path
         .rsplit_once('/')
         .map(|(parent, _)| parent)
         .unwrap_or("");
 
-    // Copy texture images to the appearance dir and build a key → relative-path remap.
     let mut uri_remap: HashMap<String, String> = HashMap::new();
     let mut staged_names: HashSet<String> = HashSet::new();
     for texture in textures {
@@ -246,11 +220,9 @@ fn stage_textures(
                 continue;
             }
         };
-        // Only a texture that is about to be written claims a destination
-        // name, so a skipped one leaves the un-suffixed name free.
+        // Only a texture about to be written claims a name, so a skipped one
+        // leaves the un-suffixed name free.
         let staged_name = unique_staged_name(&filename, &staged_names);
-        // Compute the texture destination as a relative path under sandbox_root.
-        // e.g. "group/foo_appearance/bar.png" (or "foo_appearance/bar.png" at root)
         let texture_rel_path = if gml_rel_parent.is_empty() {
             format!("{}/{}", appearance_dir_name, staged_name)
         } else {
@@ -287,16 +259,11 @@ fn stage_textures(
     Ok(uri_remap)
 }
 
-/// The destination file name and the bytes for one referenced image, or an
-/// explanation of why it could not be obtained.
+/// The destination file name and bytes for one image, or why it could not be got.
 ///
-/// The two sources differ in where the name comes from: a URI-backed raster
-/// keeps its source's last path segment, so a CityGML→CityGML round trip stages
-/// `wall.png` as `wall.png`; an in-memory one has no source name at all, so it
-/// is named after its content-hash key with the extension the closed
-/// [`MimeType`](reearth_flow_common::image::MimeType) enum fixes. The key is
-/// filtered down to file-name-safe characters, so no key a producer invents can
-/// steer a write out of the appearance directory.
+/// A URI-backed raster keeps its source's last path segment; an in-memory one is
+/// named after its content-hash key, filtered to file-name-safe characters so no
+/// producer-invented key can steer a write out of the appearance directory.
 fn load_texture(
     texture: &TextureRef,
     storage_resolver: &Arc<StorageResolver>,
@@ -343,11 +310,6 @@ fn load_texture(
 }
 
 /// Apply the compiled world's policy to one texture that could not be staged.
-///
-/// `strict` turns it into a `SinkError` because the alternative is a document
-/// whose `app:imageURI` names an image nobody wrote; otherwise it is the warning
-/// the legacy build has always emitted before carrying on with the source URI
-/// left in place.
 fn report_texture_failure(strict: bool, reason: String) -> Result<(), SinkError> {
     if strict {
         return Err(SinkError::CityGmlWriter(format!(
@@ -358,13 +320,8 @@ fn report_texture_failure(strict: bool, reason: String) -> Result<(), SinkError>
     Ok(())
 }
 
-/// Return `desired` if no texture has been staged under that name yet, otherwise
-/// the first free `{stem}_{n}{.ext}` variant.
-///
-/// The suffix goes before the extension so the staged file keeps the extension
-/// `mime_type_from_uri` sniffs `app:mimeType` from. Iteration order of the copy
-/// loop is buffer order then per-feature texture order, so the numbering is
-/// deterministic for a given input.
+/// `desired`, or the first free `{stem}_{n}{.ext}` variant. The suffix goes before
+/// the extension so `mime_type_from_uri` can still sniff `app:mimeType`.
 fn unique_staged_name(desired: &str, taken: &HashSet<String>) -> String {
     if !taken.contains(desired) {
         return desired.to_string();
@@ -522,8 +479,7 @@ impl Sink for CityGmlWriterSink {
         "CityGML Writer"
     }
 
-    /// Buffering is all this does: the envelope and the CRS are folded during
-    /// conversion in `finish`, from exactly the geometry that reaches the file.
+    /// Buffering only; the envelope and CRS are folded during conversion in `finish`.
     fn process(&mut self, ctx: ExecutorContext) -> Result<(), BoxedError> {
         self.buffer.push(ctx.feature);
         Ok(())
@@ -576,12 +532,8 @@ mod sandbox_tests {
         );
     }
 
-    /// Coverage for `stage_textures`, which both worlds share: it is fed the
-    /// converted texture manifest, which names no geometry type.
-    ///
-    /// Everything runs over `ram://` storage, so no test touches the filesystem.
-    /// Each test builds its own `StorageResolver`, and an OpenDAL memory backend
-    /// is per-operator, so the in-memory stores are isolated from each other.
+    /// `stage_textures` is shared, so this covers both worlds. Everything runs
+    /// over `ram://`; a per-test resolver keeps the memory backends isolated.
     mod staging {
         use std::str::FromStr;
         use std::sync::Arc;
@@ -801,10 +753,8 @@ mod sandbox_tests {
             assert!(message.contains("never written"), "{message}");
         }
 
-        /// The staged path is physically under the GML's own directory, while the
-        /// remap value stays relative to the GML file — that asymmetry is what
-        /// keeps `app:imageURI` resolvable and appearance dirs from colliding
-        /// across output groups.
+        /// The staged path sits under the GML's directory while the remap stays
+        /// GML-relative — what keeps `app:imageURI` resolvable across groups.
         #[test]
         fn staged_path_is_beside_the_gml_and_remap_stays_gml_relative() {
             let resolver = resolver();

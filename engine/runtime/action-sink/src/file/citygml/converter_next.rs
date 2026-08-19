@@ -1,52 +1,28 @@
 //! The unified world's half of the converter seam: `reearth_flow_geometry`'s
 //! recursive hierarchy in, the shared [`super::model`] out.
 //!
-//! Scope: every 3D leaf CityGML 2.0 has an element for — `Polygon`,
+//! Handles every 3D leaf CityGML 2.0 has an element for — `Polygon`,
 //! `LineString`, `PolygonMesh`, `TriangularMesh`, `Solid` — and collections of
 //! them, each carrying whatever appearance the leaf held.
 //!
-//! # What this writer does not emit
+//! # Not emitted
 //!
-//! Every one of these is a deliberate narrowing, reported rather than silently
-//! dropped, and none of them is a limitation of CityGML 2.0 — they are the edges
-//! of this port:
+//! Deliberate narrowings, each reported as a [`GeometryOmission`] rather than
+//! silently dropped: `Point`, `PointCloud`, `Csg` and every 2D leaf; appearance
+//! beyond one theme, one side and the diffuse map (see
+//! [`super::appearance_next`]); `app:GeoreferencedTexture`; source geometry
+//! `gml:id`s, which the unified model does not retain; feature attributes,
+//! semantic surfaces and `xsi:schemaLocation`; CityGML 3.0.
 //!
-//! - **`Point`, `PointCloud`, `Csg`, and every 2D leaf.** `gml:Point` /
-//!   `gml:MultiPoint` output matches the legacy build's (there is none); a
-//!   boolean tree has no counterpart until it is evaluated, which this writer
-//!   does not do; and promoting a 2D leaf to `Z = 0` would fabricate elevation.
-//!   Each becomes a [`GeometryOmission`].
-//! - **Appearance beyond one theme, one side, one map.** The default theme, the
-//!   front side, `Explicit` UV and the diffuse map only — see
-//!   [`super::appearance_next`], which owns those narrowings and names each of
-//!   them.
-//! - **`app:GeoreferencedTexture`.** Only `app:ParameterizedTexture` is written.
-//! - **Source geometry `gml:id`s.** The unified geometry model does not retain
-//!   the `gml:id` of the surface a leaf came from, so `gml:Polygon` ids are
-//!   minted by the writer and only when an appearance targets them.
-//! - **Feature attributes, semantic surfaces (`bldg:boundedBy` and its kin), and
-//!   `xsi:schemaLocation`.** A written city object carries its `gml:id`, its
-//!   type and its geometry, and nothing else.
-//! - **CityGML 3.0 / GML 3.2.** The output is CityGML 2.0.
+//! # Owned here, not by the legacy converter
 //!
-//! # What this module owns that the legacy converter does not
-//!
-//! - **Axis order.** The new reader stores `gml:posList` ordinates in the axis
-//!   order the CRS itself declares, so [`format_pos_list`] writes them back
-//!   verbatim. That reproduces the source `posList` byte for byte on a
-//!   CityGML→CityGML round trip, and stays correct for projected frames where
-//!   the legacy world's blind `y x z` transposition would not be.
-//! - **The CRS declaration.** `srsName` is folded over the leaves that actually
-//!   reach the file, so it is never a guess: one CRS is declared, a mixture is
-//!   an error, and coordinates outside any CRS are only labelled when the user
-//!   supplied an `epsgCode` to label them with.
-//! - **Ring closure, and the UV that has to follow it.** A `gml:LinearRing` must
-//!   repeat its first corner, but the geometry crate stores rings as they
-//!   arrived — a triangle-mesh face has three corners and no closing one. Every
-//!   emitted ring is closed here, and the corner the appended one duplicates is
-//!   recorded in the same step, so [`super::appearance_next`] extends that
-//!   ring's texture coordinates by exactly that corner and the two cannot drift
-//!   apart.
+//! - **Axis order.** The new reader stores ordinates in the CRS's own declared
+//!   order, so [`format_pos_list`] writes them back verbatim.
+//! - **The CRS declaration.** `srsName` is folded over the leaves that reach the
+//!   file: one CRS declared, a mixture an error.
+//! - **Ring closure.** Rings arrive as stored, so they are closed here — and the
+//!   duplicated corner is recorded so [`super::appearance_next`] extends the UV
+//!   in the same step.
 
 use std::ops::Range;
 
@@ -68,42 +44,27 @@ use super::model::{
 };
 use crate::errors::SinkError;
 
-/// The member-attribute key the CityGML reader records each collection member's
-/// source LOD under. Declared here rather than imported because `action-sink`
-/// depends on `action-processor` only as a dev-dependency; a unit test pins the
-/// two spellings together.
+/// Spelled out rather than imported: `action-sink` depends on `action-processor`
+/// only as a dev-dependency. A unit test pins the two spellings together.
 const MEMBER_LOD_KEY: &str = "lod";
 
-/// The member-attribute key the CityGML reader records the local name of the
-/// geometry property each collection member was carved from under.
+/// The source geometry property's local name, as the reader records it.
 const MEMBER_PROPERTY_KEY: &str = "citygmlProperty";
 
-/// The LOD a member with no recorded LOD is written at, matching the legacy
-/// converter's `lod.unwrap_or(0)`. The `lodFilter` applies to it like any other,
-/// so the default stays observable instead of becoming a hidden exemption.
+/// Matches the legacy `lod.unwrap_or(0)`. `lodFilter` applies to it like any other.
 const DEFAULT_LOD: u8 = 0;
 
-/// The highest LOD [`LodMask`] can represent; a larger value could not be
-/// filtered on, so it is rejected rather than silently written.
+/// The highest LOD [`LodMask`] can represent; larger is rejected, not written.
 const MAX_LOD: u8 = 4;
 
-/// Whether a texture this world referenced but could not stage aborts the write.
-///
-/// It does: the unified path resolves appearance itself and knows exactly which
-/// images the document points at, so a staged image that was never written would
-/// leave a dangling `app:imageURI` nobody asked for. The legacy path keeps its
-/// warn-and-continue behaviour.
+/// An unstageable texture aborts the write: this path knows exactly which images
+/// the document points at, so a dangling `app:imageURI` would be inexcusable.
 pub const STRICT_TEXTURE_STAGING: bool = true;
 
-/// Serialize `coords` as the body of a `gml:posList` — or of a
-/// `gml:lowerCorner` / `gml:upperCorner`, which the writer formats the same way
-/// so a document's envelope always reads in the same axis order as its geometry.
+/// Serialize `coords` as a `gml:posList` body, or an envelope corner.
 ///
-/// This is the identity formatter: the new reader parses `posList` into ordinate
-/// triples in the source's own axis order and every leaf keeps them that way, so
-/// writing them back unchanged is what reproduces the source. The legacy world
-/// stores `x` as longitude/easting and therefore has its own, transposing,
-/// formatter.
+/// The identity formatter: the reader parses ordinates in the source's own axis
+/// order and every leaf keeps them, so writing them back reproduces the source.
 pub fn format_pos_list(coords: &[[f64; 3]]) -> String {
     coords
         .iter()
@@ -112,17 +73,11 @@ pub fn format_pos_list(coords: &[[f64; 3]]) -> String {
         .join(" ")
 }
 
-/// The OGC CRS URI to declare for a document whose emitted coordinates have the
-/// given `coverage`.
+/// The OGC CRS URI to declare for the given `coverage`.
 ///
-/// `features` is unused here: unlike the legacy world, which reads a
-/// whole-feature EPSG off the first feature, the unified world's CRS lives on
-/// each leaf and is already folded into `coverage` — over exactly the leaves
-/// that were written, so filtered and omitted geometry cannot influence it.
-///
-/// `epsg_code` declares, it does not reproject: when the coverage names a CRS
-/// the parameter must agree with it, and when the coverage names none the
-/// parameter is the only thing that can label the coordinates truthfully.
+/// `features` is unused: the unified world's CRS lives on each leaf and is
+/// already folded into `coverage`, over exactly the leaves that were written.
+/// `epsg_code` declares, it does not reproject.
 pub fn srs_name(
     _features: &[Feature],
     epsg_code: Option<u32>,
@@ -159,22 +114,17 @@ pub fn srs_name(
                 ))
             }
         },
-        // Nothing that names the CRS is written for a document with no emitted
-        // coordinate — no envelope, no geometry element — so this value never
-        // reaches the file and cannot mislabel anything.
+        // Unreachable: the shell returns early when nothing was emitted.
         CrsCoverage::NoCoordinates => epsg_code.unwrap_or(DEFAULT_EPSG),
     };
     Ok(format!("http://www.opengis.net/def/crs/EPSG/0/{code}"))
 }
 
-/// The code the legacy world falls back to, kept only for the degenerate
-/// document that declares a CRS no element references.
+/// Kept only for a document that declares a CRS no element references.
 const DEFAULT_EPSG: u32 = 4326;
 
-/// Convert one feature's geometry into the shared CityGML model.
-///
-/// Members filtered out by `lod_mask` are skipped before anything is
-/// accumulated, so neither the envelope nor the CRS coverage sees them.
+/// Convert one feature's geometry into the shared CityGML model. Geometry the
+/// `lod_mask` filters out is skipped before the envelope or CRS coverage sees it.
 pub fn convert_city_object(
     feature: &Feature,
     lod_mask: &LodMask,
@@ -197,10 +147,7 @@ struct FeatureContext {
     id: String,
 }
 
-/// One emitted leaf, before it is grouped into a GML family. Members of one
-/// source property share LOD, property name, and appearance semantics by
-/// construction, which is what makes coalescing them into one `gml:MultiSurface`
-/// / `gml:MultiCurve` safe.
+/// One emitted leaf, before it is grouped into a GML family.
 enum Piece {
     Solid(GmlSolid),
     Surface(GmlSurface),
@@ -214,8 +161,7 @@ struct Conversion {
     geometries: Vec<GeometryEntry>,
     envelope: Option<BoundingEnvelope>,
     crs: CrsCoverage,
-    /// The material and texture palettes every leaf's bindings index into, one
-    /// `app:Appearance` per feature.
+    /// One `app:Appearance` per feature; every leaf's bindings index into it.
     palette: Palette,
     omissions: Vec<GeometryOmission>,
 }
@@ -232,9 +178,7 @@ impl Conversion {
         }
     }
 
-    /// Convert one collection member (or the feature's whole geometry, which is
-    /// the same thing one level up), at the LOD and under the property name it
-    /// inherited.
+    /// Convert one collection member, or the feature's whole geometry.
     fn convert_member(
         &mut self,
         geometry: &Geometry,
@@ -252,6 +196,11 @@ impl Conversion {
                 Ok(())
             }
             Geometry::Euclidean3D(geometry) => {
+                // Top-level geometry carries no member attributes, so it arrives
+                // at `DEFAULT_LOD` without passing `convert_collection`'s check.
+                if !lod_mask.has_lod(lod) {
+                    return Ok(());
+                }
                 let mut pieces = Vec::new();
                 self.collect_pieces(geometry, &mut pieces)?;
                 self.push_entries(lod, property, pieces);
@@ -263,8 +212,8 @@ impl Conversion {
         }
     }
 
-    /// Walk a heterogeneous collection, reading each member's LOD and property
-    /// name off the parallel attribute record the CityGML reader filled in.
+    /// Walk a collection, reading each member's LOD and property name off the
+    /// parallel attribute record the reader filled in.
     fn convert_collection(
         &mut self,
         collection: &GeometryCollection,
@@ -279,8 +228,8 @@ impl Conversion {
                 Some(attributes) => self.member_lod(attributes, index)?.unwrap_or(inherited_lod),
                 None => inherited_lod,
             };
-            // Filtering here, before anything is accumulated, is what keeps a
-            // filtered-out member out of the envelope and the CRS coverage.
+            // Before accumulation, so a filtered member reaches neither the
+            // envelope nor the CRS coverage.
             if !lod_mask.has_lod(lod) {
                 continue;
             }
@@ -292,11 +241,8 @@ impl Conversion {
         Ok(())
     }
 
-    /// The LOD a member records, or `None` when it records none.
-    ///
-    /// A present-but-unusable value is an error rather than a fallback to the
-    /// default: it means the metadata channel is broken, and guessing would
-    /// write geometry under the wrong LOD.
+    /// The LOD a member records, or `None`. A present-but-unusable value is an
+    /// error: guessing would write geometry under the wrong LOD.
     fn member_lod(&self, attributes: &Attributes, index: usize) -> Result<Option<u8>, SinkError> {
         let Some(value) = attributes.get(&Attribute::new(MEMBER_LOD_KEY)) else {
             return Ok(None);
@@ -315,17 +261,15 @@ impl Conversion {
         Ok(Some(lod))
     }
 
-    /// Flatten one 3D geometry into the leaves CityGML 2.0 can carry, reporting
-    /// the rest.
+    /// Flatten one 3D geometry into leaves CityGML 2.0 can carry, reporting the rest.
     fn collect_pieces(
         &mut self,
         geometry: &Euclidean3DGeometry,
         out: &mut Vec<Piece>,
     ) -> Result<(), SinkError> {
         match geometry {
-            // A polygon is one face whose rings are concatenated in its own
-            // coordinate buffer, exterior first — which is also the corner
-            // buffer its UV is parallel to.
+            // One face whose rings are concatenated exterior-first, which is
+            // also the corner buffer its UV is parallel to.
             Euclidean3DGeometry::Polygon(polygon) => {
                 self.fold_frame(polygon.frame());
                 let mut corner = 0;
@@ -354,8 +298,7 @@ impl Conversion {
                     self.collect_pieces(member, out)?;
                 }
             }
-            // A mesh is a set of independent faces sharing a vertex pool, which
-            // is exactly what `gml:MultiSurface` is: one `gml:Polygon` per face.
+            // Independent faces sharing a vertex pool — one `gml:Polygon` each.
             Euclidean3DGeometry::PolygonMesh(mesh) => {
                 self.fold_frame(mesh.frame());
                 let mut faces = Vec::with_capacity(mesh.num_faces());
@@ -370,16 +313,12 @@ impl Conversion {
                 let surfaces = self.emit_surfaces(faces, mesh.appearance(), "a TriangularMesh")?;
                 out.extend(surfaces.into_iter().map(Piece::Surface));
             }
-            // One `gml:CompositeSurface` per shell: the exterior bounds the
-            // volume, each interior bounds a void the unified reader kept and
-            // the legacy one discarded.
+            // One `gml:CompositeSurface` per shell.
             Euclidean3DGeometry::Solid(solid) => {
                 self.fold_frame(solid.frame());
                 let solid = self.solid(solid)?;
                 out.push(Piece::Solid(solid));
             }
-            // Parity-first omissions: CityGML 2.0 has no element for these, and
-            // coercing them would fabricate geometry.
             Euclidean3DGeometry::Point(_) => self.omit("Point", POINT_REASON),
             Euclidean3DGeometry::PointCloud(_) => self.omit("PointCloud", POINT_REASON),
             Euclidean3DGeometry::Csg(_) => self.omit(
@@ -391,10 +330,8 @@ impl Conversion {
         Ok(())
     }
 
-    /// One solid, as its exterior shell's faces plus one face list per void.
-    ///
-    /// A solid carries no appearance of its own; each boundary shell carries
-    /// its own, over its own corner buffer, so each is resolved separately.
+    /// One solid: its exterior shell's faces plus one face list per void. Each
+    /// shell carries its own appearance over its own corner buffer.
     fn solid(&mut self, solid: &Solid) -> Result<GmlSolid, SinkError> {
         let exterior = self.shell(solid.exterior(), "a Solid's exterior shell")?;
         let mut interiors = Vec::with_capacity(solid.interiors().len());
@@ -415,11 +352,8 @@ impl Conversion {
         self.emit_surfaces(faces, shell.appearance(), named)
     }
 
-    /// Turn one leaf's faces into `gml:Polygon`s and paint them.
-    ///
-    /// Closing the rings and resolving the appearance are one step on purpose:
-    /// the corner a closed ring duplicates is only known here, and it is exactly
-    /// the corner whose texture coordinate has to be duplicated with it.
+    /// Turn one leaf's faces into `gml:Polygon`s and paint them. Closing rings and
+    /// resolving appearance is one step: the duplicated corner is only known here.
     fn emit_surfaces(
         &mut self,
         faces: Vec<FaceRings>,
@@ -451,9 +385,8 @@ impl Conversion {
         Ok(surfaces)
     }
 
-    /// Build one `gml:Polygon` from a face's rings: close each ring, fold its
-    /// coordinates into the envelope, and record where each ring's texture
-    /// coordinates live.
+    /// Build one `gml:Polygon`: close each ring, fold it into the envelope, and
+    /// record where its texture coordinates live.
     fn surface(&mut self, face: FaceRings) -> (GmlSurface, FaceCorners) {
         let (exterior, exterior_corners) = self.ring(face.exterior);
         let mut interiors = Vec::with_capacity(face.interiors.len());
@@ -481,14 +414,12 @@ impl Conversion {
         )
     }
 
-    /// Close one ring, fold it into the envelope, and say where its texture
-    /// coordinates come from.
+    /// Close one ring, fold it into the envelope, and locate its UV.
     fn ring(
         &mut self,
         (mut ring, corners): (Vec<[f64; 3]>, Range<usize>),
     ) -> (Vec<[f64; 3]>, RingCorners) {
-        // The closing corner duplicates the ring's first, whose absolute
-        // position in the corner buffer is where the ring's range starts.
+        // The closing corner duplicates the ring's first, at `corners.start`.
         let closure = close_ring(&mut ring).map(|local| corners.start + local);
         self.fold_envelope(&ring);
         let len = ring.len();
@@ -502,11 +433,8 @@ impl Conversion {
         )
     }
 
-    /// Group one member's emitted leaves by GML family: all solids into one
-    /// `gml:Solid` or `gml:MultiSolid`, all surfaces into one
-    /// `gml:MultiSurface`, all curves into one `gml:MultiCurve`. A member that
-    /// produced several families yields one entry per family, in descending
-    /// dimension.
+    /// Group one member's leaves by GML family, one entry per family, in
+    /// descending dimension.
     fn push_entries(&mut self, lod: u8, property: Option<&str>, pieces: Vec<Piece>) {
         let mut solids = Vec::new();
         let mut surfaces = Vec::new();
@@ -518,9 +446,7 @@ impl Conversion {
                 Piece::Curve(curve) => curves.push(curve),
             }
         }
-        // One solid stays a `gml:Solid`, so a `lod1Solid` property still names
-        // the element it wraps; several coalesce into one `gml:MultiSolid`,
-        // which is only nameable because the source property name is retained.
+        // One solid stays a `gml:Solid` so `lod1Solid` still names what it wraps.
         match solids.len() {
             0 => {}
             1 => self.geometries.push(GeometryEntry {
@@ -554,8 +480,7 @@ impl Conversion {
     fn fold_frame(&mut self, frame: &CoordinateFrame) {
         let coverage = match frame {
             CoordinateFrame::Crs(code) => CrsCoverage::Single(*code),
-            // A tangent plane's in-plane coordinates are not its base CRS's, so
-            // neither frame names a CRS these coordinates are in.
+            // A tangent plane's in-plane coordinates are not its base CRS's.
             CoordinateFrame::Euclidean | CoordinateFrame::Tangent(_) => CrsCoverage::OutsideAnyCrs,
         };
         self.crs = self.crs.and(coverage);
@@ -575,14 +500,12 @@ impl Conversion {
         }
     }
 
-    /// Record one leaf CityGML 2.0 has no place for, aggregated by kind so a
-    /// collection of a thousand points is reported once.
+    /// Record one unwritable leaf, aggregated by kind.
     fn omit(&mut self, geometry: &'static str, reason: &'static str) {
         self.omit_n(geometry, reason, 1);
     }
 
-    /// As [`omit`](Self::omit), for a narrowing that already counted itself —
-    /// an appearance drops several themes or maps at once.
+    /// As [`omit`](Self::omit), for a narrowing that already counted itself.
     fn omit_n(&mut self, geometry: &'static str, reason: &'static str, count: usize) {
         match self
             .omissions
@@ -610,13 +533,11 @@ fn paint(surface: &mut GmlSurface, binding: SurfaceBinding) {
 const POINT_REASON: &str =
     "this writer emits no gml:Point / gml:MultiPoint, matching the legacy build";
 
-/// One face on its way out: each ring's coordinates paired with the corner range
-/// that ring occupies in its leaf's corner buffer.
+/// One face on its way out: each ring's coordinates plus its corner range.
 ///
-/// The coordinates are copied because the face visitor's borrows do not outlive
-/// its callback; the ranges are carried alongside because they are the only
-/// thing that can line a ring up with the theme's per-corner UV array, and they
-/// are not recoverable once the coordinates have been copied out.
+/// Coordinates are copied because the visitor's borrows do not outlive its
+/// callback; the ranges come along because they are unrecoverable afterwards and
+/// are the only thing that lines a ring up with the theme's UV array.
 struct FaceRings {
     face: usize,
     exterior: (Vec<[f64; 3]>, Range<usize>),
@@ -637,14 +558,11 @@ impl From<&FaceVisit<'_>> for FaceRings {
     }
 }
 
-/// Close `ring` for GML: a `gml:LinearRing` repeats its first corner, and rings
-/// reach here open whenever they came from a triangle (three corners, no
-/// closing one) or from an index-sourced mesh, so this is not an edge case.
+/// Close `ring`: a `gml:LinearRing` repeats its first corner, and triangle and
+/// index-sourced faces arrive open, so this is not an edge case.
 ///
-/// Returns the ring-local position of the corner the appended one duplicates —
-/// always `0` — or `None` when the ring was already closed. Phase 5 extends the
-/// ring's UV slice by exactly that corner, which is why closing a ring and
-/// slicing its UV have to happen in the same step.
+/// Returns the ring-local position of the duplicated corner — always `0` — or
+/// `None` if it was already closed. The caller extends the UV by that corner.
 fn close_ring(ring: &mut Vec<[f64; 3]>) -> Option<usize> {
     let first = *ring.first()?;
     if *ring.last()? == first {
@@ -666,8 +584,7 @@ fn member_property(attributes: &Attributes) -> Option<&str> {
 mod tests {
     use super::*;
 
-    /// The unified world is the only one that builds these, so the fixtures need
-    /// no gating: this whole module compiles only under `new-geometry`.
+    /// No gating needed: this module compiles only under `new-geometry`.
     mod fixture {
         use std::str::FromStr;
         use std::sync::Arc;
@@ -985,9 +902,7 @@ mod tests {
             .all(|ring| ring.first() == ring.last() && ring.len() >= 4)
     }
 
-    /// The reader writes these keys; the converter reads them. They are spelled
-    /// out in both crates because the dependency runs the other way, so this is
-    /// the assertion that keeps the two spellings one fact.
+    /// The keys are spelled out in both crates, so this keeps them one fact.
     #[test]
     fn the_member_attribute_keys_match_the_readers() {
         use reearth_flow_action_processor::citygml_parser::pipeline::{
@@ -1345,10 +1260,8 @@ mod tests {
 
     // Appearance
 
-    /// The whole appearance path, end to end on one leaf: the material and the
-    /// image reach the feature's palettes, the surface points at both, the
-    /// selected theme is what the document will declare, and the image is
-    /// listed for the shell to stage.
+    /// The appearance path end to end on one leaf: palettes, surface indices,
+    /// theme, and the image listed for the shell to stage.
     #[test]
     fn a_textured_polygon_reaches_the_document_with_its_material_texture_and_image() {
         let feature = feature(vec![(
@@ -1395,10 +1308,8 @@ mod tests {
         );
     }
 
-    /// The reason the face visitor hands back corner ranges at all: a mesh's UV
-    /// is one flat array over the whole corner buffer, so each face's ring takes
-    /// its own slice of it — and each open face gains the UV of the corner its
-    /// closure repeats, from within its own slice.
+    /// Why the visitor hands back corner ranges: a mesh's UV is one flat array,
+    /// so each ring slices its own part, closure corner included.
     #[test]
     fn each_mesh_face_takes_its_own_slice_of_the_meshs_uv() {
         // Six corners, three per triangle, each face's UVs distinguishable.
@@ -1496,6 +1407,29 @@ mod tests {
         assert!(converted.appearance.theme.is_none());
         assert!(converted.textures.is_empty());
         assert_eq!(surfaces(&converted.geometries[0])[0].material_idx, None);
+    }
+
+    /// A bare leaf is written at `DEFAULT_LOD`, and `lodFilter` applies to that
+    /// default like any other LOD — it is not exempt for having no metadata.
+    #[test]
+    fn a_bare_leaf_is_filtered_by_its_default_lod() {
+        let feature = bare(triangle(crs(6697), 0.0));
+
+        let kept = convert_city_object(&feature, &only_lod(DEFAULT_LOD)).unwrap();
+        assert_eq!(kept.geometries.len(), 1);
+        assert_eq!(kept.geometries[0].lod, DEFAULT_LOD);
+
+        let dropped = convert_city_object(&feature, &only_lod(2)).unwrap();
+        assert!(dropped.geometries.is_empty());
+        assert!(
+            dropped.envelope.is_none(),
+            "a filtered leaf must not reach the envelope"
+        );
+        assert_eq!(
+            dropped.crs,
+            CrsCoverage::NoCoordinates,
+            "a filtered leaf must not reach the CRS coverage"
+        );
     }
 
     // Collections

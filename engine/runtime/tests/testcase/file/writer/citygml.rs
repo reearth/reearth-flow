@@ -5,6 +5,7 @@ use reearth_flow_action_sink::file::citygml::write_citygml_to_storage;
 use reearth_flow_common::uri::Uri;
 use reearth_flow_storage::resolve::StorageResolver;
 use reearth_flow_types::lod::LodMask;
+use reearth_flow_types::{Attributes, Feature};
 
 use crate::helper::execute;
 
@@ -75,11 +76,7 @@ fn test_citygml_writer_geometry_coordinates() {
     );
 }
 
-/// No features means no file at all — not an empty `core:CityModel`.
-///
-/// The port moved conversion, the envelope, and the CRS declaration ahead of the
-/// header, so the one guard that still short-circuits the whole write is the
-/// empty buffer. This pins it in the world this crate is compiled for.
+/// No features means no file at all, not an empty `core:CityModel`.
 #[test]
 fn test_citygml_writer_empty_input_writes_no_file() {
     let storage_resolver = Arc::new(StorageResolver::new());
@@ -101,5 +98,35 @@ fn test_citygml_writer_empty_input_writes_no_file() {
     assert!(
         storage.get_sync(output.path().as_path()).is_err(),
         "an empty feature buffer must write no file"
+    );
+}
+
+/// Features that convert to nothing are the same case as no features at all:
+/// an empty `core:CityModel` on disk is worse than no file.
+#[test]
+fn test_citygml_writer_unwritable_features_write_no_file() {
+    let storage_resolver = Arc::new(StorageResolver::new());
+    let sandbox_root = Uri::from_str("ram:///jobs/nothing").unwrap();
+    let output = Uri::from_str("ram:///jobs/nothing/city.gml").unwrap();
+    let features = vec![
+        Feature::new_with_attributes(Attributes::new()),
+        Feature::new_with_attributes(Attributes::new()),
+    ];
+
+    write_citygml_to_storage(
+        &output,
+        &sandbox_root,
+        &features,
+        &LodMask::all(),
+        None,
+        true,
+        &storage_resolver,
+    )
+    .unwrap();
+
+    let storage = storage_resolver.resolve(&output).unwrap();
+    assert!(
+        storage.get_sync(output.path().as_path()).is_err(),
+        "features that emit no geometry must write no file"
     );
 }
