@@ -18,7 +18,7 @@ graphs:
             value: |
               [
                 {
-                  "city_gml_path": env["cityGmlPath"],
+                  "city_gml_path": variables["cityGmlPath"],
                 },
               ]
 
