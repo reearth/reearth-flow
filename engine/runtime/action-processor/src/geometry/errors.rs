@@ -15,6 +15,10 @@ pub(super) enum GeometryProcessorError {
     ThreeDimensionBoxReplacerFactory(String),
     #[error("ThreeDimensionBoxReplacer error: {0}")]
     ThreeDimensionBoxReplacer(String),
+    #[error("BoundaryExtractor Factory error: {0}")]
+    BoundaryExtractorFactory(String),
+    #[error("BoundaryExtractor error: {0}")]
+    BoundaryExtractor(String),
     #[error("CoordinateSystemSetter Factory error: {0}")]
     CoordinateSystemSetterFactory(String),
     #[error("CoordinateSystemSetter error: {0}")]
