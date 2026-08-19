@@ -1,6 +1,15 @@
 import { ProjectFragment } from "@flow/lib/gql/__gen__/graphql";
 
-export const mockProjects: ProjectFragment[] = [
+// ProjectFragment only carries the fields the app's own fragment selects, but the
+// mock schema serves the full Project type, so fixtures must be able to satisfy
+// fields the app does not currently request (isArchived is non-null in
+// server/api/gql/project.graphql).
+export type MockProject = ProjectFragment & {
+  isArchived: boolean;
+  version: number;
+};
+
+export const mockProjects: MockProject[] = [
   {
     id: "project-1",
     name: "Data Processing Pipeline",
@@ -9,6 +18,8 @@ export const mockProjects: ProjectFragment[] = [
     sharedToken: "shared-token-1",
     createdAt: "2024-01-01T10:00:00Z",
     updatedAt: "2024-01-15T10:00:00Z",
+    isArchived: false,
+    version: 1,
     isLocked: false,
     deployment: null,
   },
@@ -20,6 +31,8 @@ export const mockProjects: ProjectFragment[] = [
     sharedToken: null,
     createdAt: "2024-01-05T14:30:00Z",
     updatedAt: "2024-01-20T09:15:00Z",
+    isArchived: false,
+    version: 1,
     isLocked: true,
     deployment: null,
   },
@@ -31,6 +44,8 @@ export const mockProjects: ProjectFragment[] = [
     sharedToken: "shared-token-3",
     createdAt: "2024-01-10T16:45:00Z",
     updatedAt: "2024-01-25T11:20:00Z",
+    isArchived: false,
+    version: 1,
     isLocked: true,
     deployment: null,
   },
@@ -42,6 +57,8 @@ export const mockProjects: ProjectFragment[] = [
     sharedToken: null,
     createdAt: "2024-01-12T09:00:00Z",
     updatedAt: "2024-01-28T15:30:00Z",
+    isArchived: false,
+    version: 1,
     isLocked: false,
     deployment: null,
   },
@@ -53,6 +70,8 @@ export const mockProjects: ProjectFragment[] = [
     sharedToken: null,
     createdAt: "2023-12-01T08:00:00Z",
     updatedAt: "2023-12-15T17:00:00Z",
+    isArchived: false,
+    version: 1,
     isLocked: true,
     deployment: null,
   },
@@ -64,6 +83,8 @@ export const mockProjects: ProjectFragment[] = [
     sharedToken: null,
     createdAt: "2024-01-08T12:00:00Z",
     updatedAt: "2024-01-22T14:45:00Z",
+    isArchived: false,
+    version: 1,
     isLocked: false,
     deployment: null,
   },

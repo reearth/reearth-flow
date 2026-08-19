@@ -256,10 +256,9 @@ export const typeDefs = `
   # Document Types
   type ProjectDocument {
     id: ID!
-    projectId: ID!
-    content: JSON!
-    createdAt: DateTime!
-    updatedAt: DateTime!
+    timestamp: DateTime!
+    updates: [Int!]!
+    version: Int!
   }
 
   type ProjectSnapshot {
@@ -271,10 +270,8 @@ export const typeDefs = `
   }
 
   type ProjectSnapshotMetadata {
-    id: ID!
-    version: String!
-    description: String
-    createdAt: DateTime!
+    timestamp: DateTime!
+    version: Int!
   }
 
   type NamedSnapshotState {
@@ -697,6 +694,7 @@ export const typeDefs = `
     projects(
       workspaceId: ID!
       includeArchived: Boolean
+      keyword: String
       pagination: PageBasedPagination!
     ): ProjectConnection!
     projectSharingInfo(projectId: ID!): ProjectSharingInfoPayload!
@@ -725,8 +723,8 @@ export const typeDefs = `
 
     # Document queries
     latestProjectSnapshot(projectId: ID!): ProjectDocument
-    projectSnapshot(projectId: ID!, version: String!): ProjectSnapshot!
-    projectHistory(projectId: ID!, pagination: PageBasedPagination!): [ProjectSnapshotMetadata!]!
+    projectSnapshot(projectId: ID!, version: Int!): ProjectSnapshot!
+    projectHistory(projectId: ID!): [ProjectSnapshotMetadata!]!
     projectNamedSnapshots(projectId: ID!): [NamedSnapshot!]!
     projectNamedSnapshot(projectId: ID!, snapshotNumber: Int!): NamedSnapshotState!
 

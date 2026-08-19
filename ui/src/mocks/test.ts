@@ -42,6 +42,9 @@ export const testMockServer = async () => {
       }
     }
 
+    // Collected so the summary below can report a real verdict.
+    const failures: string[] = [];
+
     // Test 2: Query execution - Me
     console.log("\n📋 Test 2: Me Query Execution");
     const meQuery = `
@@ -69,6 +72,7 @@ export const testMockServer = async () => {
 
     if (meResult.errors) {
       console.error("❌ Me query failed:", meResult.errors);
+      failures.push("me");
     } else {
       console.log("✅ Me query successful");
       console.log(
@@ -114,6 +118,7 @@ export const testMockServer = async () => {
 
     if (projectsResult.errors) {
       console.error("❌ Projects query failed:", projectsResult.errors);
+      failures.push("projects");
     } else {
       console.log("✅ Projects query successful");
       const projects = (projectsResult.data as any)?.projects;
@@ -163,6 +168,7 @@ export const testMockServer = async () => {
 
     if (jobsResult.errors) {
       console.error("❌ Jobs query failed:", jobsResult.errors);
+      failures.push("jobs");
     } else {
       console.log("✅ Jobs query successful");
       const jobs = (jobsResult.data as any)?.jobs;
@@ -208,6 +214,7 @@ export const testMockServer = async () => {
         "❌ Create project mutation failed:",
         createProjectResult.errors,
       );
+      failures.push("createProject");
     } else {
       console.log("✅ Create project mutation successful");
       const project = (createProjectResult.data as any)?.createProject?.project;
@@ -247,6 +254,7 @@ export const testMockServer = async () => {
 
     if (runProjectResult.errors) {
       console.error("❌ Run project mutation failed:", runProjectResult.errors);
+      failures.push("runProject");
     } else {
       console.log("✅ Run project mutation successful");
       const job = (runProjectResult.data as any)?.runProject?.job;
@@ -286,12 +294,22 @@ export const testMockServer = async () => {
 
     if (nodeResult.errors) {
       console.error("❌ Node query failed:", nodeResult.errors);
+      failures.push("node");
     } else {
       console.log("✅ Node interface resolution successful");
       console.log(
         "🔗 Node result:",
         JSON.stringify(nodeResult.data?.node, null, 2),
       );
+    }
+
+    if (failures.length) {
+      // Previously this always printed success, so real failures were logged and
+      // then contradicted two lines later, training everyone to ignore them.
+      console.error(
+        `\n❌ ${failures.length} mock server test(s) FAILED: ${failures.join(", ")}`,
+      );
+      return;
     }
 
     console.log("\n🎉 All mock server component tests completed successfully!");
