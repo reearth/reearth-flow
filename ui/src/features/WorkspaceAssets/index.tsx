@@ -47,6 +47,8 @@ const AssetsManager: React.FC = () => {
     searchTerm,
     layoutView,
     isCreatingAsset,
+    uploadingTitle,
+    uploadPercent,
     setAssetToBeDeleted,
     setAssetToBeEdited,
     setCurrentPage,
@@ -161,7 +163,7 @@ const AssetsManager: React.FC = () => {
           </div>
         ) : (
           <div className="h-full">
-            <LoadingSkeleton title={t("Uploading Asset...")} />
+            <LoadingSkeleton title={uploadingTitle} progress={uploadPercent} />
           </div>
         )}
         {assets && assets.length > 0 && (
