@@ -32,7 +32,7 @@ use reearth_flow_types::{Geometry, GeometryValue};
 use reearth_flow_geometry::{
     collection::Collection2D,
     coordinate::CoordinateFrame,
-    overlay::dissolve_2d,
+    overlay::dissolve_leaves,
     polygon::Polygon2D,
     predicates::view::{flatten_2d, Leaf2D},
     Euclidean2DGeometry, Geometry,
@@ -353,6 +353,8 @@ impl Dissolver {
         self.group_map.clear();
         #[cfg(feature = "new-geometry")]
         self.group_frame.clear();
+        #[cfg(feature = "new-geometry")]
+        self.reported_groups.clear();
         self.group_count = 0;
 
         Ok(dissolved)
@@ -630,14 +632,15 @@ impl Dissolver {
 
         // The whole group goes in as one operand and dissolves in a single call:
         // the backend snaps coordinates to an adaptive grid, so folding the
-        // members in pairwise would let the result drift member by member.
-        let group = Euclidean2DGeometry::Collection(Collection2D::new(features.iter().filter_map(
-            |feature| match feature.geometry.as_ref() {
-                Geometry::Euclidean2D(geom_2d) => Some(geom_2d.clone()),
-                _ => None,
-            },
-        )));
-        let polygons = dissolve_2d(&group, self.tolerance).map_err(|e| {
+        // members in pairwise would let the result drift member by member. The
+        // leaves borrow the members, so the group's coordinates are not copied.
+        let mut leaves = Vec::new();
+        for feature in &features {
+            if let Geometry::Euclidean2D(geom_2d) = feature.geometry.as_ref() {
+                flatten_2d(geom_2d, &mut leaves);
+            }
+        }
+        let polygons = dissolve_leaves(&leaves, self.tolerance).map_err(|e| {
             GeometryProcessorError::Dissolver(format!("Failed to dissolve group: {e}"))
         })?;
 

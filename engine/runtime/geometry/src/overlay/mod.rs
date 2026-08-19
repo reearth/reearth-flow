@@ -153,11 +153,19 @@ pub fn dissolve(g: &Geometry, tolerance: f64) -> Result<Vec<Polygon2D>> {
     dissolve_leaves(&leaves, tolerance)
 }
 
-/// [`dissolve`] over a 2D geometry.
-pub fn dissolve_2d(g: &Euclidean2DGeometry, tolerance: f64) -> Result<Vec<Polygon2D>> {
-    let mut leaves = Vec::new();
-    flatten_2d(g, &mut leaves);
-    dissolve_leaves(&leaves, tolerance)
+/// [`dissolve`] over leaves already flattened by the caller, letting several
+/// geometries dissolve as one operand without being copied into a collection
+/// first.
+pub fn dissolve_leaves(leaves: &[Leaf2D<'_>], tolerance: f64) -> Result<Vec<Polygon2D>> {
+    require_common_frame_leaves(leaves, &[])?;
+    let mut shapes = shapes::areal_shapes(leaves).map_err(|_| PredicateError::Unsupported {
+        geometry: operand_name(leaves, is_areal),
+    })?;
+    let Some(frame) = leaves.first().map(Leaf2D::frame) else {
+        return Ok(Vec::new());
+    };
+    snap::snap_shapes(&mut shapes, tolerance);
+    Ok(dissolve_shapes(shapes, frame))
 }
 
 /// The portion of the polylines of `lines` inside the areal geometry `area`,
@@ -241,18 +249,6 @@ fn overlay_leaves(a: &[Leaf2D<'_>], b: &[Leaf2D<'_>], op: OverlayOp) -> Result<V
             Ok(shapes::shapes_to_polygons(result, frame))
         }
     }
-}
-
-fn dissolve_leaves(leaves: &[Leaf2D<'_>], tolerance: f64) -> Result<Vec<Polygon2D>> {
-    require_common_frame_leaves(leaves, &[])?;
-    let mut shapes = shapes::areal_shapes(leaves).map_err(|_| PredicateError::Unsupported {
-        geometry: operand_name(leaves, is_areal),
-    })?;
-    let Some(frame) = leaves.first().map(Leaf2D::frame) else {
-        return Ok(Vec::new());
-    };
-    snap::snap_shapes(&mut shapes, tolerance);
-    Ok(dissolve_shapes(shapes, frame))
 }
 
 // --- exactness gate --------------------------------------------------------

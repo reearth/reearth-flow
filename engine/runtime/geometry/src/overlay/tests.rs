@@ -856,21 +856,6 @@ fn the_tolerance_leaves_a_gap_with_no_facing_vertices_open() {
 }
 
 #[test]
-fn dissolve_2d_matches_dissolve_on_the_same_members() {
-    let strip = collection([
-        polygon(&rect(0.0, 0.0, 2.0, 2.0), &[]),
-        nudged_square([2.0, 0.0], 0.001),
-    ]);
-    let Geometry::Euclidean2D(strip_2d) = &strip else {
-        unreachable!();
-    };
-    assert_eq!(
-        dissolve_2d(strip_2d, 0.01).unwrap(),
-        dissolve(&strip, 0.01).unwrap()
-    );
-}
-
-#[test]
 fn dissolve_refuses_a_three_dimensional_operand() {
     let solid = Geometry::Euclidean3D(crate::Euclidean3DGeometry::LineString(
         crate::line_string::LineString3D::from_coords(e(), [[0.0, 0.0, 0.0], [1.0, 1.0, 1.0]]),
