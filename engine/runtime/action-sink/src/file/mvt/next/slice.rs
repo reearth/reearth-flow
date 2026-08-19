@@ -281,7 +281,7 @@ fn clip_polygon(
             }
             let part_holes: Vec<Vec<Point>> = y_sliced_holes
                 .iter()
-                .map(to_local)
+                .map(|ring| to_local(ring))
                 .filter(|h| h.len() >= 3)
                 .collect();
 
