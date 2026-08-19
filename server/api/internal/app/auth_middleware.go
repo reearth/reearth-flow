@@ -22,12 +22,27 @@ type authMiddlewaresParam struct {
 
 func newAuthMiddlewares(param *authMiddlewaresParam) authMiddlewares {
 	return []echo.MiddlewareFunc{
+		graphqlBodyLimitMiddleware(maxUploadSize),
 		gqlOpNameMiddleware(),
 		jwtContextMiddleware(),
 		authMiddleware(param.Cfg.AccountGQLClient, param.SkipOps),
 		// TODO: Currently, the following middleware is necessary because permission checks such as filterByWorkspaces are performed in mongo.repo.
 		// It will be removed when centralized permission checks by the account server are implemented.
 		attachOpMiddleware(param.Cfg),
+	}
+}
+
+// graphqlBodyLimitMiddleware caps the GraphQL request body at read time so the
+// configured maxUploadSize is actually enforced, not just advisory for gqlgen's
+// multipart handling.
+func graphqlBodyLimitMiddleware(limit int64) echo.MiddlewareFunc {
+	return func(next echo.HandlerFunc) echo.HandlerFunc {
+		return func(c echo.Context) error {
+			if c.Path() == "/api/graphql" && c.Request().Method == http.MethodPost {
+				c.Request().Body = http.MaxBytesReader(c.Response(), c.Request().Body, limit)
+			}
+			return next(c)
+		}
 	}
 }
 
