@@ -121,7 +121,7 @@ func TestProjectDeleter_Delete_NilProject(t *testing.T) {
 // commits). ProjectDeleter no longer touches the websocket document at all;
 // that happens in Project.Delete's post-commit step, asserted below.
 
-func TestProject_Delete_DeletesWebsocketDocumentAfterCommit(t *testing.T) {
+func TestProject_Delete_DeletesWebsocketDocument(t *testing.T) {
 	ctx := context.Background()
 	projectRepo := memory.NewProject()
 	jobRepo := memory.NewJob()
@@ -169,6 +169,33 @@ func TestProject_Delete_SerializationRetryDeletesDocumentOnce(t *testing.T) {
 
 	// ...but the document was only destroyed once.
 	assert.Equal(t, []string{prj.ID().String()}, wsClient.deletedDocIDs)
+}
+
+func TestProject_Delete_ContinuesWhenWebsocketFails(t *testing.T) {
+	ctx := context.Background()
+	projectRepo := memory.NewProject()
+	jobRepo := memory.NewJob()
+	wsClient := &mockWebsocketClient{
+		deleteDocumentFunc: func(context.Context, string) error {
+			return errors.New("ws unavailable")
+		},
+	}
+
+	prj := project.New().NewID().MustBuild()
+	assert.NoError(t, projectRepo.Save(ctx, prj))
+
+	uc := &Project{
+		projectRepo:       projectRepo,
+		jobRepo:           jobRepo,
+		websocket:         wsClient,
+		transaction:       usecasex.NewTransactor(&usecasex.NopTransaction{}, 0),
+		permissionChecker: NewMockPermissionChecker(nil),
+	}
+
+	assert.NoError(t, uc.Delete(ctx, prj.ID()))
+
+	_, err := projectRepo.FindByID(ctx, prj.ID())
+	assert.ErrorIs(t, err, rerror.ErrNotFound)
 }
 
 func TestProject_Delete_DoesNotDeleteDocumentWhenTransactionFails(t *testing.T) {
