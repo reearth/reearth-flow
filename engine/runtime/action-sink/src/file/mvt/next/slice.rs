@@ -8,6 +8,9 @@ use crate::file::mvt::tiling::TileContent;
 pub(super) type Point = [f64; 2];
 pub(super) type TileKey = (u8, u32, u32);
 
+// A standard web-map tile is 256 pixels wide.
+const STANDARD_TILE_PIXELS: u32 = 256;
+
 pub(super) struct PolygonPart {
     pub(super) exterior: Vec<Point>,
     pub(super) holes: Vec<Vec<Point>>,
@@ -30,7 +33,7 @@ pub(super) fn slice_leaves(
     min_z: u8,
     max_z: u8,
     max_detail: u32,
-    buffer_pixels: u32,
+    margin_pixels: u32,
 ) -> (TileContent, Vec<TiledLeaf>) {
     let mut tiled_polys: HashMap<TileKey, Vec<PolygonPart>> = HashMap::new();
     let mut tiled_lines: HashMap<TileKey, Vec<Vec<Point>>> = HashMap::new();
@@ -38,7 +41,7 @@ pub(super) fn slice_leaves(
     let mut content = TileContent::default();
 
     let extent = 1 << max_detail;
-    let buffer = extent * buffer_pixels / 256;
+    let margin = extent * margin_pixels / STANDARD_TILE_PIXELS;
 
     for leaf in leaves {
         match leaf {
@@ -51,19 +54,23 @@ pub(super) fn slice_leaves(
                     continue;
                 };
                 let area = ring_area(&exterior).abs();
+                let y_bounds = ring_bounds(&exterior, 1);
 
                 for zoom in min_z..=max_z {
                     if area * 4f64.powi(zoom as i32 + max_detail as i32) < 4.0 {
                         continue;
                     }
-                    clip_polygon(&exterior, &holes, zoom, extent, buffer, &mut tiled_polys);
+                    clip_polygon(
+                        &exterior, &holes, y_bounds, zoom, extent, margin, &mut tiled_polys,
+                    );
                 }
             }
             Leaf::LineString(coords) => {
                 let mercator = project_ring(&coords, &mut content);
+                let y_bounds = ring_bounds(&mercator, 1);
 
                 for zoom in min_z..=max_z {
-                    clip_line_string(&mercator, zoom, extent, buffer, &mut tiled_lines);
+                    clip_line_string(&mercator, y_bounds, zoom, extent, margin, &mut tiled_lines);
                 }
             }
             Leaf::Point(point) => {
@@ -229,21 +236,22 @@ fn ring_bounds(ring: &[Point], axis: usize) -> (f64, f64) {
 fn clip_polygon(
     exterior: &[Point],
     holes: &[Vec<Point>],
+    y_bounds: (f64, f64),
     zoom: u8,
     extent: u32,
-    buffer: u32,
+    margin: u32,
     out: &mut HashMap<TileKey, Vec<PolygonPart>>,
 ) {
     let z_scale = (1u64 << zoom) as f64;
-    let buf_width = buffer as f64 / extent as f64;
+    let margin_width = margin as f64 / extent as f64;
 
-    let (min_y, max_y) = ring_bounds(exterior, 1);
+    let (min_y, max_y) = y_bounds;
     let y_lo = (min_y * z_scale).floor() as i64;
     let y_hi = (max_y * z_scale).ceil() as i64;
 
     for yi in y_lo..y_hi {
-        let k1 = (yi as f64 - buf_width) / z_scale;
-        let k2 = ((yi + 1) as f64 + buf_width) / z_scale;
+        let k1 = (yi as f64 - margin_width) / z_scale;
+        let k2 = ((yi + 1) as f64 + margin_width) / z_scale;
         let y_sliced_exterior = clip_band(exterior, 1, k1, k2, true);
         if y_sliced_exterior.is_empty() {
             continue;
@@ -258,8 +266,8 @@ fn clip_polygon(
         let x_hi = (max_x * z_scale).ceil() as i64;
 
         for xi in x_lo..x_hi {
-            let k1 = (xi as f64 - buf_width) / z_scale;
-            let k2 = ((xi + 1) as f64 + buf_width) / z_scale;
+            let k1 = (xi as f64 - margin_width) / z_scale;
+            let k2 = ((xi + 1) as f64 + margin_width) / z_scale;
 
             let to_local = |ring: &[Point]| {
                 let ring = clip_band(ring, 0, k1, k2, true);
@@ -293,21 +301,22 @@ fn clip_polygon(
 
 fn clip_line_string(
     line: &[Point],
+    y_bounds: (f64, f64),
     zoom: u8,
     extent: u32,
-    buffer: u32,
+    margin: u32,
     out: &mut HashMap<TileKey, Vec<Vec<Point>>>,
 ) {
     let z_scale = (1u64 << zoom) as f64;
-    let buf_width = buffer as f64 / extent as f64;
+    let margin_width = margin as f64 / extent as f64;
 
-    let (min_y, max_y) = ring_bounds(line, 1);
+    let (min_y, max_y) = y_bounds;
     let y_lo = (min_y * z_scale).floor() as i64;
     let y_hi = (max_y * z_scale).ceil() as i64;
 
     for yi in y_lo..y_hi {
-        let k1 = (yi as f64 - buf_width) / z_scale;
-        let k2 = ((yi + 1) as f64 + buf_width) / z_scale;
+        let k1 = (yi as f64 - margin_width) / z_scale;
+        let k2 = ((yi + 1) as f64 + margin_width) / z_scale;
         let y_sliced = clip_band(line, 1, k1, k2, false);
         if y_sliced.is_empty() {
             continue;
@@ -318,8 +327,8 @@ fn clip_line_string(
         let x_hi = (max_x * z_scale).ceil() as i64;
 
         for xi in x_lo..x_hi {
-            let k1 = (xi as f64 - buf_width) / z_scale;
-            let k2 = ((xi + 1) as f64 + buf_width) / z_scale;
+            let k1 = (xi as f64 - margin_width) / z_scale;
+            let k2 = ((xi + 1) as f64 + margin_width) / z_scale;
 
             let clipped = clip_band(&y_sliced, 0, k1, k2, false);
             if clipped.len() < 2 {
