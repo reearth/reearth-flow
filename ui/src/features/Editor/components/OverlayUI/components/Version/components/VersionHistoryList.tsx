@@ -8,17 +8,16 @@ type Props = {
   latestProjectSnapshotVersion?: ProjectDocument;
   snapshots?: NamedSnapshot[];
   isError?: boolean;
+  selectedSnapshotNumber?: number | null;
+  onSnapshotSelect?: (snapshotNumber: number) => void;
 };
 
-// Read-only: NamedSnapshot.id is a different, backend-assigned ID space
-// than the raw update-log `version` that preview/revert are built on (see
-// the comment in ../hooks.ts). There is no correct client-side mapping, so
-// rows here are informational only — no click-through to preview, no
-// revert affordance.
 const VersionHistoryList: React.FC<Props> = ({
   latestProjectSnapshotVersion,
   snapshots,
   isError,
+  selectedSnapshotNumber,
+  onSnapshotSelect,
 }) => {
   const t = useT();
   // Sort by snapshotNumber, not timestamp: it is a monotonic per-room counter, so
@@ -50,28 +49,53 @@ const VersionHistoryList: React.FC<Props> = ({
 
       {sortedSnapshots && sortedSnapshots.length > 0 ? (
         <div className="flex flex-col overflow-auto">
-          {sortedSnapshots.map((snapshot) => (
-            <div key={snapshot.snapshotNumber}>
-              <div
-                className="flex justify-between gap-2 px-2 py-2"
-                style={{ height: "100%" }}>
-                <p className="flex-2 self-center text-xs font-light dark:font-thin">
-                  {snapshot.label && snapshot.label !== AUTO_SNAPSHOT_LABEL
-                    ? snapshot.label
-                    : formatDate(snapshot.timestamp)}
-                </p>
-                <div className="flex justify-end">
-                  <p className="rounded border bg-border/15 p-1 text-xs font-thin dark:bg-primary/30">
-                    <span className="font-light">
-                      {" "}
+          {sortedSnapshots.map((snapshot) => {
+            const isSelected =
+              selectedSnapshotNumber === snapshot.snapshotNumber;
+            return (
+              <div key={snapshot.snapshotNumber}>
+                <div
+                  className={`flex cursor-pointer justify-between gap-2 px-2 py-2 hover:bg-accent/50 ${isSelected ? "bg-accent" : ""}`}
+                  style={{ height: "100%" }}
+                  role="button"
+                  tabIndex={0}
+                  aria-pressed={isSelected}
+                  onClick={() => onSnapshotSelect?.(snapshot.snapshotNumber)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      onSnapshotSelect?.(snapshot.snapshotNumber);
+                    }
+                  }}>
+                  <div className="flex flex-col gap-1">
+                    <p className="flex-2 self-start text-xs font-light dark:font-thin">
+                      {snapshot.label &&
+                      snapshot.label !== AUTO_SNAPSHOT_LABEL ? (
+                        snapshot.label
+                      ) : (
+                        <span className="opacity-70">{t("Autosaved")}</span>
+                      )}
+                    </p>
+                    <p className="text-xs font-thin">
                       {formatDate(snapshot.timestamp)}
-                    </span>
-                  </p>
+                    </p>
+                  </div>
+                  <div className="flex justify-end">
+                    {/* The snapshot's own number, not the update-log version in
+                    the header above: the two are unrelated id spaces, so they
+                    are worded differently to keep them distinguishable. */}
+                    <p className="h-fit rounded border bg-border/15 p-1 text-xs font-thin dark:bg-primary/30">
+                      <span className="font-light">
+                        {t("Snapshot ")}
+                        {snapshot.snapshotNumber}
+                      </span>
+                    </p>
+                  </div>
                 </div>
+                <div className="h-px bg-border" />
               </div>
-              <div className="h-px bg-border" />
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : isError ? (
         // Distinct from the empty state on purpose. A failed query used to render

@@ -1,5 +1,5 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, test } from "vitest";
+import { describe, expect, test, vi } from "vitest";
 
 import { formatDate } from "@flow/utils";
 
@@ -9,7 +9,7 @@ describe("VersionHistoryList", () => {
   const snapshots = [
     {
       snapshotNumber: 1,
-      label: "",
+      label: "auto",
       timestamp: "2026-07-30T09:00:00Z",
       size: 100,
     },
@@ -26,70 +26,80 @@ describe("VersionHistoryList", () => {
 
     // Assert on visible text order rather than CSS selectors: restyling must not
     // break this, and a real ordering regression must not hide behind markup.
-    // snapshotNumber 2 is newer, so its label comes before the older row's date.
     const newest = screen.getByText("before migration");
-    const oldest = screen.getAllByText(formatDate(snapshots[0].timestamp))[0];
+    const oldest = screen.getByText("Snapshot 1");
     expect(
       newest.compareDocumentPosition(oldest) & Node.DOCUMENT_POSITION_FOLLOWING,
     ).toBeTruthy();
   });
 
-  test("falls back to a formatted timestamp when the label is empty", () => {
+  // The predecessor of this test asserted getAllByText(date).length >= 1, which
+  // was true whether the date rendered once or twice. It therefore accommodated a
+  // bug where the trailing badge repeated the row's own date and snapshotNumber
+  // was never displayed at all. Exact counts, so that cannot recur.
+  test("each row shows its snapshot number once and its date once", () => {
     render(<VersionHistoryList snapshots={snapshots} />);
 
-    // The auto-created snapshot (id 1) has no label, so the row must still
-    // be readable: it should show the formatted timestamp instead of a
-    // blank row. (The timestamp also appears in the row's trailing badge,
-    // so at least one match is expected.)
-    expect(
-      screen.getAllByText(formatDate(snapshots[0].timestamp)).length,
-    ).toBeGreaterThanOrEqual(1);
+    expect(screen.getAllByText("Snapshot 1")).toHaveLength(1);
+    expect(screen.getAllByText("Snapshot 2")).toHaveLength(1);
+
+    for (const snapshot of snapshots) {
+      expect(screen.getAllByText(formatDate(snapshot.timestamp))).toHaveLength(
+        1,
+      );
+    }
   });
 
-  test("snapshot rows carry no interactive affordance", () => {
-    const { container } = render(<VersionHistoryList snapshots={snapshots} />);
-
-    // snapshotNumber and the update-log `version` that previewSnapshot and
-    // rollbackProject expect are unrelated id spaces, and rollback deletes every
-    // update above the number it is given. Rows therefore stay informational.
-    //
-    // Asserting queryAllByRole("button") is NOT enough on its own: a plain
-    // <div onClick> has no button role, so that check passes with a click
-    // handler present. Verified — it did. These assertions target what a
-    // clickable row would actually add.
-    const rows = container.querySelectorAll('[class*="justify-between"]');
-    expect(rows.length).toBeGreaterThan(0);
-    rows.forEach((row) => {
-      expect(row.className).not.toContain("cursor-pointer");
-      expect(row).not.toHaveAttribute("tabindex");
-      expect(row).not.toHaveAttribute("role");
-      // onClick shows up as a React prop key on the DOM node's fiber; the class
-      // and attribute checks above are the observable proxy for it.
-    });
-    expect(screen.queryAllByRole("button")).toHaveLength(0);
-  });
-
-  test('treats the "auto" label as unnamed and shows the timestamp', () => {
+  test('renders the "auto" label as Autosaved, never verbatim', () => {
     // Every automatically captured version arrives labelled "auto" (ygo stamps
     // it), so rendering the label verbatim would fill the panel with identical
     // rows reading "auto". Production shape, not a hypothetical one.
+    render(<VersionHistoryList snapshots={snapshots} />);
+
+    expect(screen.queryByText("auto")).not.toBeInTheDocument();
+    expect(screen.getByText("Autosaved")).toBeInTheDocument();
+    // The user-named row keeps its own label.
+    expect(screen.getByText("before migration")).toBeInTheDocument();
+  });
+
+  test("selecting a row reports that row's snapshotNumber", () => {
+    // The number passed here is fed to projectNamedSnapshot. Passing a row's
+    // index, or the update-log version, would read an unrelated point in history.
+    const onSnapshotSelect = vi.fn();
     render(
       <VersionHistoryList
-        snapshots={[
-          {
-            snapshotNumber: 3,
-            label: "auto",
-            timestamp: "2026-07-30T12:00:00Z",
-            size: 10,
-          },
-        ]}
+        snapshots={snapshots}
+        onSnapshotSelect={onSnapshotSelect}
       />,
     );
 
-    expect(screen.queryByText("auto")).not.toBeInTheDocument();
-    expect(
-      screen.getAllByText(formatDate("2026-07-30T12:00:00Z")).length,
-    ).toBeGreaterThanOrEqual(1);
+    screen.getByText("before migration").click();
+    expect(onSnapshotSelect).toHaveBeenCalledTimes(1);
+    expect(onSnapshotSelect).toHaveBeenCalledWith(2);
+  });
+
+  test("rows are reachable and operable by keyboard", () => {
+    const onSnapshotSelect = vi.fn();
+    const { container } = render(
+      <VersionHistoryList
+        snapshots={snapshots}
+        onSnapshotSelect={onSnapshotSelect}
+      />,
+    );
+
+    const rows = container.querySelectorAll('[role="button"]');
+    expect(rows.length).toBe(2);
+    rows.forEach((row) => expect(row).toHaveAttribute("tabindex", "0"));
+  });
+
+  test("marks the selected row as pressed", () => {
+    const { container } = render(
+      <VersionHistoryList snapshots={snapshots} selectedSnapshotNumber={2} />,
+    );
+
+    const pressed = container.querySelectorAll('[aria-pressed="true"]');
+    expect(pressed).toHaveLength(1);
+    expect(pressed[0].textContent).toContain("before migration");
   });
 
   test("shows an empty state when there are no snapshots", () => {

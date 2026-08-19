@@ -1,45 +1,167 @@
-import { useDocument } from "@flow/lib/gql/document/useApi";
+import { useCallback, useRef, useState } from "react";
+import * as Y from "yjs";
 
-// This panel has two distinct consumers with two distinct data sources,
-// and they must not be merged:
+import { useToast } from "@flow/features/NotificationSystem/useToast";
+import { useDocument } from "@flow/lib/gql/document/useApi";
+import { useT } from "@flow/lib/i18n";
+import type { YWorkflow } from "@flow/lib/yjs/types";
+
+import { docFromUpdate, makeGetMetadata, revertUpdate } from "./yjsRevert";
+
+// Normal browsing lists user-meaningful named versions, and both preview and
+// restore are addressed by snapshotNumber via projectNamedSnapshot.
 //
-// - Normal browsing (this hook, used by ./index.tsx) wants user-meaningful
-//   named versions: the snapshot list. NamedSnapshot.id and the raw
-//   update-log `version` consumed by previewSnapshot/rollbackProject are
-//   different, backend-assigned ID spaces (see
-//   server/websocket-go/internal/gcs/snapshots.go, SnapNextIDName, vs. the
-//   update-log clock read by GetHistoryByVersion/Rollback in
-//   server/api/internal/usecase/interactor/websocket.go) with no correct
-//   client-side translation between them. Feeding a snapshot id into
-//   rollbackProject rebuilds the project at an unrelated update-log clock
-//   and durably prunes every update after it — real, irrecoverable data
-//   loss, not just a wrong preview. So this hook intentionally exposes no
-//   preview-on-click and no revert action; the panel is read-only.
-// - Project-corruption recovery (see ./recoveryHooks.ts, used by
-//   ./RecoveryDialog.tsx) wants "get me back to any working state" for a
-//   project that will not open at all, and stays on the raw update log
-//   end to end: `projectHistory` entries carry the same `version` that
-//   previewSnapshot/rollbackProject expect, so that mapping is correct and
-//   safe. Do not read the paragraph above as implying recovery mode is
-//   also unsafe — it uses a completely different data source that was
-//   never affected by this ID-space mismatch.
+// What must never happen here is passing a snapshotNumber to previewSnapshot or
+// rollbackProject. Those consume the raw update-log clock, an unrelated
+// backend-assigned numbering space, and rollbackProject reaches PruneAfter,
+// which deletes every update above the number it is given. An earlier revision
+// of this panel wired exactly that and it was caught in review.
 //
-// A GraphQL query keyed by snapshot id (previewNamedSnapshot(projectId,
-// snapshotId), backed by the existing GET /api/document/{id}/snapshots/{sid}
-// endpoint) would let normal-mode preview/revert work correctly; that is
-// tracked separately and not yet implemented.
-export default ({ projectId }: { projectId: string }) => {
-  const { useGetProjectNamedSnapshots, useGetLatestProjectSnapshot } =
-    useDocument();
+// Restore therefore never calls rollbackProject at all. It reads the snapshot
+// state and applies an inverse update to the live document, so history is
+// preserved and peers converge over the normal websocket path. See ./yjsRevert.ts.
+export default ({
+  projectId,
+  yDoc,
+  onDialogClose,
+}: {
+  projectId: string;
+  yDoc: Y.Doc | null;
+  onDialogClose?: () => void;
+}) => {
+  const {
+    useGetProjectNamedSnapshots,
+    useGetLatestProjectSnapshot,
+    useGetProjectNamedSnapshot,
+    useSaveNamedSnapshot,
+  } = useDocument();
+
   const { snapshots, isFetching, isError } =
     useGetProjectNamedSnapshots(projectId);
   const { projectDocument } = useGetLatestProjectSnapshot(projectId);
   const latestProjectSnapshotVersion = projectDocument;
+
+  const { toast } = useToast();
+  const t = useT();
+
+  const previewDocRef = useRef<Y.Doc | null>(null);
+  const [previewDocYWorkflows, setPreviewDocYWorkflows] =
+    useState<Y.Map<YWorkflow> | null>(null);
+  const [selectedSnapshotNumber, setSelectedSnapshotNumber] = useState<
+    number | null
+  >(null);
+  const [isLoadingPreview, setIsLoadingPreview] = useState(false);
+  const [isRestoring, setIsRestoring] = useState(false);
+  const [openVersionConfirmationDialog, setOpenVersionConfirmationDialog] =
+    useState(false);
+
+  const destroyPreview = useCallback(() => {
+    previewDocRef.current?.destroy();
+    previewDocRef.current = null;
+    setPreviewDocYWorkflows(null);
+  }, []);
+
+  const onSnapshotSelect = useCallback(
+    async (snapshotNumber: number) => {
+      setSelectedSnapshotNumber(snapshotNumber);
+      destroyPreview();
+      setIsLoadingPreview(true);
+
+      try {
+        const updates = await useGetProjectNamedSnapshot(
+          projectId,
+          snapshotNumber,
+        );
+        if (!updates?.length) {
+          // Retention evicts snapshots, so a listed row can be gone by the time
+          // it is clicked. Say so rather than showing an unchanged canvas.
+          setSelectedSnapshotNumber(null);
+          return toast({
+            title: t("Version unavailable"),
+            description: t("This version is no longer available."),
+            variant: "destructive",
+          });
+        }
+
+        const previewDoc = docFromUpdate(updates, "snapshot-preview");
+        previewDocRef.current = previewDoc;
+        setPreviewDocYWorkflows(previewDoc.getMap<YWorkflow>("workflows"));
+      } catch (error) {
+        console.error("Snapshot preview failed:", error);
+        setSelectedSnapshotNumber(null);
+        toast({
+          title: t("Could not load this version"),
+          variant: "destructive",
+        });
+      } finally {
+        setIsLoadingPreview(false);
+      }
+    },
+    [projectId, useGetProjectNamedSnapshot, destroyPreview, toast, t],
+  );
+
+  const onSnapshotRestore = useCallback(async () => {
+    if (selectedSnapshotNumber === null || !yDoc) return;
+    setIsRestoring(true);
+
+    try {
+      const updates = await useGetProjectNamedSnapshot(
+        projectId,
+        selectedSnapshotNumber,
+      );
+      if (!updates?.length) {
+        throw new Error(`snapshot ${selectedSnapshotNumber} has no state`);
+      }
+
+      // Snapshot the current state FIRST, so the state being replaced stays
+      // reachable from this panel. Auto-versioning is only every 15 minutes, so
+      // recent work may otherwise have no snapshot of its own.
+      await useSaveNamedSnapshot(projectId, t("Before restore"));
+
+      // Additive, not a prune: this leaves every existing update in place and
+      // reaches other peers as an ordinary edit.
+      yDoc.transact(() => {
+        revertUpdate(yDoc, updates, makeGetMetadata(yDoc));
+      });
+
+      setOpenVersionConfirmationDialog(false);
+      onDialogClose?.();
+    } catch (error) {
+      console.error("Snapshot restore failed:", error);
+      setOpenVersionConfirmationDialog(false);
+      toast({
+        title: t("Restore failed"),
+        description: t("This version could not be restored."),
+        variant: "destructive",
+      });
+    } finally {
+      setIsRestoring(false);
+    }
+  }, [
+    projectId,
+    selectedSnapshotNumber,
+    yDoc,
+    useGetProjectNamedSnapshot,
+    useSaveNamedSnapshot,
+    onDialogClose,
+    toast,
+    t,
+  ]);
 
   return {
     snapshots,
     latestProjectSnapshotVersion,
     isFetching,
     isError,
+    previewDocRef,
+    previewDocYWorkflows,
+    selectedSnapshotNumber,
+    isLoadingPreview,
+    isRestoring,
+    openVersionConfirmationDialog,
+    setOpenVersionConfirmationDialog,
+    onSnapshotSelect,
+    onSnapshotRestore,
+    destroyPreview,
   };
 };

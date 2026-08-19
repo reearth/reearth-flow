@@ -277,6 +277,11 @@ export const typeDefs = `
     createdAt: DateTime!
   }
 
+  type NamedSnapshotState {
+    snapshotNumber: Int!
+    updates: [Int!]!
+  }
+
   type NamedSnapshot {
     snapshotNumber: Int!
     label: String!
@@ -723,6 +728,7 @@ export const typeDefs = `
     projectSnapshot(projectId: ID!, version: String!): ProjectSnapshot!
     projectHistory(projectId: ID!, pagination: PageBasedPagination!): [ProjectSnapshotMetadata!]!
     projectNamedSnapshots(projectId: ID!): [NamedSnapshot!]!
+    projectNamedSnapshot(projectId: ID!, snapshotNumber: Int!): NamedSnapshotState!
 
     # Trigger queries
     triggers(workspaceId: ID!, pagination: PageBasedPagination!): TriggerConnection!
@@ -756,6 +762,9 @@ export const typeDefs = `
     deleteProject(input: DeleteProjectInput!): DeleteProjectPayload
     runProject(input: RunProjectInput!): RunProjectPayload
     previewSchema(input: PreviewSchemaInput!): PreviewSchemaPayload!
+
+    # Document / version-history mutations
+    saveNamedSnapshot(projectId: ID!, label: String!): NamedSnapshot!
 
     # Parameter mutations
     declareParameter(projectId: ID!, input: DeclareParameterInput!): Parameter!

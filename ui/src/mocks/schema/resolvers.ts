@@ -1,3 +1,5 @@
+import * as Y from "yjs";
+
 import {
   type AssetFragment,
   type CmsItemFragment,
@@ -565,6 +567,27 @@ export const resolvers = {
       ];
     },
 
+    projectNamedSnapshot: (
+      _: any,
+      args: { projectId: string; snapshotNumber: number },
+    ) => {
+      // A real Y.Doc update, not random bytes: the panel applies this to build a
+      // preview, so anything undecodable would fail in a way production would not.
+      const doc = new Y.Doc();
+      const workflows = doc.getMap("workflows");
+      const workflow = new Y.Map();
+      workflow.set("id", new Y.Text("mock-entry-graph"));
+      workflow.set("name", new Y.Text(`snapshot ${args.snapshotNumber}`));
+      workflow.set("nodes", new Y.Map());
+      workflow.set("edges", new Y.Map());
+      workflows.set("mock-entry-graph", workflow);
+
+      return {
+        snapshotNumber: args.snapshotNumber,
+        updates: Array.from(Y.encodeStateAsUpdate(doc)),
+      };
+    },
+
     triggers: (_: any, args: { workspaceId: string; pagination: any }) => {
       // No triggers in mock data yet
       return paginateResults([], args.pagination);
@@ -666,6 +689,16 @@ export const resolvers = {
 
   // Mutation resolvers
   Mutation: {
+    saveNamedSnapshot: (
+      _: any,
+      args: { projectId: string; label: string },
+    ) => ({
+      snapshotNumber: 4,
+      label: args.label,
+      timestamp: new Date().toISOString(),
+      size: 5120,
+    }),
+
     // User mutations
     signup: () => {
       const newUser: MockUser = {

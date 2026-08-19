@@ -506,6 +506,22 @@ export type GetProjectNamedSnapshotsQueryVariables = Exact<{
 
 export type GetProjectNamedSnapshotsQuery = { projectNamedSnapshots: Array<{ snapshotNumber: number, label: string, timestamp: any, size: any }> };
 
+export type GetProjectNamedSnapshotQueryVariables = Exact<{
+  projectId: string;
+  snapshotNumber: number;
+}>;
+
+
+export type GetProjectNamedSnapshotQuery = { projectNamedSnapshot: { snapshotNumber: number, updates: Array<number> } };
+
+export type SaveNamedSnapshotMutationVariables = Exact<{
+  projectId: string;
+  label: string;
+}>;
+
+
+export type SaveNamedSnapshotMutation = { saveNamedSnapshot: { snapshotNumber: number, label: string, timestamp: any, size: any } };
+
 export type PreviewSnapshotMutationVariables = Exact<{
   projectId: string;
   version: number;
@@ -1355,6 +1371,24 @@ export const GetProjectNamedSnapshotsDocument = gql`
   }
 }
     `;
+export const GetProjectNamedSnapshotDocument = gql`
+    query GetProjectNamedSnapshot($projectId: ID!, $snapshotNumber: Int!) {
+  projectNamedSnapshot(projectId: $projectId, snapshotNumber: $snapshotNumber) {
+    snapshotNumber
+    updates
+  }
+}
+    `;
+export const SaveNamedSnapshotDocument = gql`
+    mutation SaveNamedSnapshot($projectId: ID!, $label: String!) {
+  saveNamedSnapshot(projectId: $projectId, label: $label) {
+    snapshotNumber
+    label
+    timestamp
+    size
+  }
+}
+    `;
 export const PreviewSnapshotDocument = gql`
     mutation PreviewSnapshot($projectId: ID!, $version: Int!) {
   previewSnapshot(projectId: $projectId, version: $version) {
@@ -1829,6 +1863,12 @@ export function getSdk(client: GraphQLClient, withWrapper: SdkFunctionWrapper = 
     },
     GetProjectNamedSnapshots(variables: GetProjectNamedSnapshotsQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetProjectNamedSnapshotsQuery> {
       return withWrapper((wrappedRequestHeaders) => client.request<GetProjectNamedSnapshotsQuery>({ document: GetProjectNamedSnapshotsDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetProjectNamedSnapshots', 'query', variables);
+    },
+    GetProjectNamedSnapshot(variables: GetProjectNamedSnapshotQueryVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<GetProjectNamedSnapshotQuery> {
+      return withWrapper((wrappedRequestHeaders) => client.request<GetProjectNamedSnapshotQuery>({ document: GetProjectNamedSnapshotDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'GetProjectNamedSnapshot', 'query', variables);
+    },
+    SaveNamedSnapshot(variables: SaveNamedSnapshotMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<SaveNamedSnapshotMutation> {
+      return withWrapper((wrappedRequestHeaders) => client.request<SaveNamedSnapshotMutation>({ document: SaveNamedSnapshotDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'SaveNamedSnapshot', 'mutation', variables);
     },
     PreviewSnapshot(variables: PreviewSnapshotMutationVariables, requestHeaders?: GraphQLClientRequestHeaders, signal?: RequestInit['signal']): Promise<PreviewSnapshotMutation> {
       return withWrapper((wrappedRequestHeaders) => client.request<PreviewSnapshotMutation>({ document: PreviewSnapshotDocument, variables, requestHeaders: { ...requestHeaders, ...wrappedRequestHeaders }, signal }), 'PreviewSnapshot', 'mutation', variables);

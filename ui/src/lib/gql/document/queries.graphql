@@ -31,6 +31,22 @@ query GetProjectNamedSnapshots($projectId: ID!) {
   }
 }
 
+query GetProjectNamedSnapshot($projectId: ID!, $snapshotNumber: Int!) {
+  projectNamedSnapshot(projectId: $projectId, snapshotNumber: $snapshotNumber) {
+    snapshotNumber
+    updates
+  }
+}
+
+mutation SaveNamedSnapshot($projectId: ID!, $label: String!) {
+  saveNamedSnapshot(projectId: $projectId, label: $label) {
+    snapshotNumber
+    label
+    timestamp
+    size
+  }
+}
+
 mutation PreviewSnapshot($projectId: ID!, $version: Int!) {
   previewSnapshot(projectId: $projectId, version: $version) {
     id
