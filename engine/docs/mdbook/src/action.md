@@ -3215,7 +3215,7 @@ Dissolve Features by Grouping Attributes
         },
         {
           "title": "Use Attributes From One Feature",
-          "description": "The output inherits the attributes of one representative feature (the last feature in the group)",
+          "description": "The output inherits the attributes of one representative feature of the group",
           "type": "string",
           "enum": [
             "useOneFeature"
