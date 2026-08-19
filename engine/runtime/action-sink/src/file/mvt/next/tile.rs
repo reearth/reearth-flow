@@ -294,9 +294,10 @@ pub(super) fn make_tile(
             return Ok(bytes);
         }
         // Drop roughly (actual - max_tile_bytes) / actual of the smallest-diameter candidates
-        // +1 floor guarantees halt
+        // +1 floor guarantees halt; capped at len() so max_tile_bytes == 0 empties the tile
+        // instead of overshooting split_off's valid range.
         let over = (actual - max_tile_bytes) as u128 * candidates.len() as u128;
-        let drop = (over / actual as u128) as usize + 1;
+        let drop = ((over / actual as u128) as usize + 1).min(candidates.len());
         candidates = candidates.split_off(drop);
     }
 }

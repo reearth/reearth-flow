@@ -167,8 +167,7 @@ pub struct MVTWriterParam {
     pub(super) extent: Option<u32>,
     /// # Maximum Tile Size
     /// Target maximum encoded size per tile, in bytes. When exceeded, the least visually
-    /// significant features (smallest encoded size first) are dropped until the tile fits.
-    /// Defaults to 500,000.
+    /// significant features are dropped until the tile fits. Defaults to 500,000.
     #[cfg(feature = "new-geometry")]
     #[serde(default = "default_max_tile_bytes")]
     pub(super) max_tile_bytes: u64,

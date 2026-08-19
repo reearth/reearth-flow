@@ -8407,7 +8407,7 @@ Writes features to Mapbox Vector Tiles (MVT) format.
     },
     "maxTileBytes": {
       "title": "Maximum Tile Size",
-      "description": "Target maximum encoded size per tile, in bytes. When exceeded, the least visually significant features (smallest encoded size first) are dropped until the tile fits. Defaults to 500,000.",
+      "description": "Target maximum encoded size per tile, in bytes. When exceeded, the least visually significant features are dropped until the tile fits. Defaults to 500,000.",
       "default": 500000,
       "type": "integer",
       "format": "uint64",
