@@ -206,9 +206,9 @@ export const useAsset = () => {
         return { asset, ...rest };
       } catch (err) {
         const stageLabel = {
-          sign: "requesting the upload URL",
-          upload: "uploading the file to storage",
-          register: "registering the uploaded asset",
+          sign: t("Requesting the upload URL"),
+          upload: t("Uploading the file to storage"),
+          register: t("Registering the uploaded asset"),
         }[stage];
         toast({
           title: t("Asset Could Not Be Created"),

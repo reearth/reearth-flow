@@ -81,15 +81,16 @@ afterEach(() => {
 describe("putFileWithProgress", () => {
   test("PUTs the file and resolves with the response", async () => {
     install();
+    const file = fakeFile(100);
     const promise = putFileWithProgress({
       url: "https://storage.example.com/o",
-      file: fakeFile(100),
+      file,
     });
 
     const xhr = FakeXHR.last;
     expect(xhr.method).toBe("PUT");
     expect(xhr.url).toBe("https://storage.example.com/o");
-    expect(xhr.sentBody).toBe(xhr.sentBody);
+    expect(xhr.sentBody).toBe(file);
 
     xhr.respond(200, "OK");
 
