@@ -423,6 +423,51 @@ impl Coerce for TriangularMesh3D {
     }
 }
 
+#[cfg(feature = "new-geometry")]
+use crate::ops::{Footprint, FootprintError, FootprintSink};
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for TriangularMesh2D {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        sink.enter(self.frame())?;
+        let vertices = self.vertices();
+        for [i, j, k] in self.triangles() {
+            let ring = [
+                vertices[i as usize],
+                vertices[j as usize],
+                vertices[k as usize],
+            ];
+            sink.push_face_2d(std::iter::once(&ring[..]), self.elevation());
+        }
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl Footprint for TriangularMesh3D {
+    fn footprint(&self, sink: &mut FootprintSink<'_>) -> Result<(), FootprintError> {
+        sink.enter(self.frame())?;
+        self.data.footprint_faces(sink);
+        Ok(())
+    }
+}
+
+#[cfg(feature = "new-geometry")]
+impl TriangularMesh3DData {
+    /// Push every triangle into an entered `sink`.
+    pub(crate) fn footprint_faces(&self, sink: &mut FootprintSink<'_>) {
+        let vertices = self.vertices();
+        for [i, j, k] in self.triangles() {
+            let ring = [
+                vertices[i as usize],
+                vertices[j as usize],
+                vertices[k as usize],
+            ];
+            sink.push_face_3d(std::iter::once(&ring[..]));
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

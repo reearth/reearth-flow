@@ -660,6 +660,14 @@
           "description": "Output path or expression for the CSV/TSV file to create"
         }
       },
+      "definitionI18n": {
+        "GeometryExportConfig": {
+          "epsgColumn": {
+            "title": "EPSG Column Name",
+            "description": "Optional name of a column to write the geometry's EPSG code into. Left empty when the geometry does not resolve to a single EPSG code (no coordinate reference system, or more than one)."
+          }
+        }
+      },
       "enumI18n": {
         "CsvFormat": {
           "csv": {
@@ -1569,7 +1577,17 @@
     },
     {
       "name": "Footprint Replacer",
-      "description": "Proyecta la geometría 3D al plano XY y calcula el polígono base unificado (compatible con sólidos, superficies y CityGML)"
+      "description": "Reemplaza la geometría de una entidad por su huella: la proyección disuelta de sus caras sobre el plano horizontal o sobre un plano personalizado",
+      "parameterI18n": {
+        "": {
+          "title": "Parámetros de Footprint Replacer",
+          "description": "Configura el plano sobre el que se proyecta la geometría. La geometría debe estar en un marco euclidiano o en un sistema de referencia de coordenadas en unidades lineales; las caras cuya área proyectada sea menor que 1e-6 unidades cuadradas se descartan."
+        },
+        "projectionPlane": {
+          "title": "Plano de proyección",
+          "description": "Plano sobre el que se proyecta la geometría. Por defecto, el plano horizontal."
+        }
+      }
     },
     {
       "name": "GeoJSON Reader",
@@ -3461,7 +3479,7 @@
         },
         "encoding": {
           "title": "Character Encoding",
-          "description": "Character encoding for attribute data in the DBF file, such as \"UTF-8\", \"Shift-JIS\", or \"Windows-1252\"; labels are case-insensitive. When omitted, the encoding is taken from the .cpg file if present, otherwise UTF-8 (UTF-16 is not supported)."
+          "description": "Codificación de caracteres de los datos de atributos del archivo DBF, como \"UTF-8\", \"Shift-JIS\" o \"Windows-1252\"; las etiquetas no distinguen mayúsculas de minúsculas. Si se omite, se toma del archivo .cpg si existe, si no de la página de códigos declarada en la cabecera del .dbf, y en su defecto UTF-8 (UTF-16 no es compatible)."
         },
         "force2D": {
           "title": "Force 2D",
@@ -3480,6 +3498,10 @@
         "": {
           "title": "ShapefileWriter Parameters",
           "description": "Configuration for writing features to ESRI Shapefile format."
+        },
+        "compressOutput": {
+          "title": "Compressed Output Directory",
+          "description": "Optional directory where each Shapefile is written as its own ZIP archive, holding that Shapefile's .shp, .shx, .dbf, .cpg and .prj, instead of as loose files. Leave unset to write loose files."
         },
         "groupBy": {
           "title": "Group By",

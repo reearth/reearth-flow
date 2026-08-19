@@ -67,3 +67,4 @@ zip.workspace = true
 
 [dev-dependencies]
 bytes.workspace = true
+pretty_assertions.workspace = true
