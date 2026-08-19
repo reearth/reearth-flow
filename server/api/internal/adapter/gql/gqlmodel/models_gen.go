@@ -365,6 +365,11 @@ type NamedSnapshot struct {
 	Size           int64     `json:"size"`
 }
 
+type NamedSnapshotState struct {
+	SnapshotNumber int   `json:"snapshotNumber"`
+	Updates        []int `json:"updates"`
+}
+
 type NodeExecution struct {
 	ID          ID         `json:"id"`
 	JobID       ID         `json:"jobId"`

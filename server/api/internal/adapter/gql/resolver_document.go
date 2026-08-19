@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/reearth/reearth-flow/api/internal/adapter/gql/gqlmodel"
+	"github.com/reearth/reearth-flow/api/internal/usecase/interfaces"
 )
 
 func (r *queryResolver) LatestProjectSnapshot(ctx context.Context, projectId gqlmodel.ID) (*gqlmodel.ProjectDocument, error) {
@@ -48,6 +49,24 @@ func (r *queryResolver) ProjectHistory(ctx context.Context, projectId gqlmodel.I
 	}
 
 	return nodes, nil
+}
+
+// ProjectNamedSnapshot reads one snapshot's state by its per-room snapshot
+// number. Never pass a snapshotNumber to previewSnapshot or rollbackProject:
+// those consume the update-log clock, a different numbering space.
+func (r *queryResolver) ProjectNamedSnapshot(ctx context.Context, projectId gqlmodel.ID, snapshotNumber int) (*gqlmodel.NamedSnapshotState, error) {
+	state, err := usecases(ctx).Websocket.GetSnapshotState(ctx, string(projectId), snapshotNumber)
+	if err != nil {
+		return nil, err
+	}
+	if state == nil {
+		return nil, interfaces.ErrSnapshotNotFound
+	}
+
+	return &gqlmodel.NamedSnapshotState{
+		SnapshotNumber: int(state.SnapshotID),
+		Updates:        state.Updates,
+	}, nil
 }
 
 func (r *queryResolver) ProjectNamedSnapshots(ctx context.Context, projectId gqlmodel.ID) ([]*gqlmodel.NamedSnapshot, error) {

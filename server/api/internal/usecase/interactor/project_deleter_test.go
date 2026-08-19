@@ -27,6 +27,9 @@ func (m *mockWebsocketClient) DeleteDocument(ctx context.Context, docID string) 
 }
 
 // Stub implementations for the rest of the interface.
+func (m *mockWebsocketClient) GetSnapshotState(context.Context, string, int) (*ws.SnapshotState, error) {
+	return nil, nil
+}
 func (m *mockWebsocketClient) GetLatest(context.Context, string) (*ws.Document, error) {
 	return nil, nil
 }

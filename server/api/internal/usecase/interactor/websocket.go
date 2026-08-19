@@ -89,6 +89,22 @@ func (i *Websocket) SaveNamedSnapshot(ctx context.Context, docID, label string) 
 	return i.client.SaveNamedSnapshot(ctx, docID, label)
 }
 
+// GetSnapshotState reads one snapshot's stored state, addressed by the per-room
+// snapshot number. ActionAny, not ActionEdit: this only reads, so a reader may
+// preview a version.
+//
+// Restore is built on this same read. The write half never comes through here:
+// the client applies the snapshot as an ordinary inverse update to the live
+// document, which is why restore preserves history instead of pruning it. That
+// write inherits whatever the collaborative document path enforces, so this
+// method deliberately does not claim to authorize it.
+func (i *Websocket) GetSnapshotState(ctx context.Context, docID string, snapshotNumber int) (*ws.SnapshotState, error) {
+	if err := i.authorize(ctx, docID, rbac.ActionAny); err != nil {
+		return nil, err
+	}
+	return i.client.GetSnapshotState(ctx, docID, snapshotNumber)
+}
+
 // Rollback prunes every update above the target clock.
 func (i *Websocket) Rollback(ctx context.Context, docID string, version int) (*ws.Document, error) {
 	if err := i.authorize(ctx, docID, rbac.ActionEdit); err != nil {
