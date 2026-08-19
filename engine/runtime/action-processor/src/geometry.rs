@@ -30,8 +30,6 @@ pub(crate) mod image_rasterizer;
 pub(crate) mod jp_standard_grid_accumulator;
 pub(crate) mod line_on_line_overlayer;
 pub(crate) mod mapping;
-#[cfg(feature = "new-geometry")]
-pub(crate) mod model_georeferencer;
 pub(crate) mod neighbor_finder;
 pub(crate) mod offsetter;
 pub(crate) mod orientation_extractor;
